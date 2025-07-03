@@ -18,9 +18,6 @@ contents:
   - dst: /lib/systemd/system/
     src: ./dist/dist-packages/linux/openziti-controller/ziti-controller.service
 
-  - dst: /etc/systemd/system/ziti-controller.service.d/override.conf
-    src: ./dist/dist-packages/linux/openziti-controller/ziti-controller.service.override.conf
-
   - dst: /opt/openziti/etc/controller
     type: dir
     file_info:
@@ -38,10 +35,14 @@ contents:
     src: ./dist/dist-packages/linux/openziti-controller/bootstrap.bash
 
   - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/uninstall.bash
+
+  - dst: /opt/openziti/etc/controller/
     src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
 depends:
   - openziti  # ziti CLI
   - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
 
 scripts:
+  preinstall: ./dist/dist-packages/linux/openziti-controller/preinstall.bash
   postinstall: ./dist/dist-packages/linux/openziti-controller/postinstall.bash
