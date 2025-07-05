@@ -336,7 +336,6 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 				log.WithError(err).Error("error sending router link message")
 			}
 			log.WithField("ctrlId", ch.Id()).Info("notified controller of new link")
-
 		}
 	}
 }

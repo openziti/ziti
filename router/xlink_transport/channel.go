@@ -118,7 +118,7 @@ type DialLinkChannelConfig struct {
 	Underlay               channel.Underlay
 	MaxDefaultChannels     int
 	MaxAckChannel          int
-	UnderlayChangeCallback func(underlay []channel.Underlay)
+	UnderlayChangeCallback func(ch *DialLinkChannel)
 }
 
 func NewDialLinkChannel(config DialLinkChannelConfig) UnderlayHandlerLinkChannel {
@@ -150,7 +150,7 @@ type DialLinkChannel struct {
 	BaseLinkChannel
 	dialer         channel.DialUnderlayFactory
 	constraints    channel.UnderlayConstraints
-	changeCallback func([]channel.Underlay)
+	changeCallback func(ch *DialLinkChannel)
 }
 
 func (self *DialLinkChannel) Start(channel channel.MultiChannel) {
@@ -164,17 +164,13 @@ func (self *DialLinkChannel) HandleUnderlayClose(ch channel.MultiChannel, underl
 		WithField("underlayType", channel.GetUnderlayType(underlay)).
 		Info("underlay closed")
 
-	underlays := ch.GetUnderlays()
-	go self.changeCallback(underlays)
-
+	self.changeCallback(self)
 	self.constraints.Apply(ch, self)
 }
 
 func (self *DialLinkChannel) HandleUnderlayAccepted(ch channel.MultiChannel, underlay channel.Underlay) {
 	self.BaseLinkChannel.HandleUnderlayAccepted(ch, underlay)
-
-	underlays := ch.GetUnderlays()
-	go self.changeCallback(underlays)
+	self.changeCallback(self)
 }
 
 func (self *DialLinkChannel) DialFailed(_ channel.MultiChannel, _ string, attempt int) {

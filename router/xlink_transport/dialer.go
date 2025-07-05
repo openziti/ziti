@@ -272,8 +272,8 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 			Underlay:           underlay,
 			MaxDefaultChannels: int(self.config.maxDefaultConnections),
 			MaxAckChannel:      int(self.config.maxAckConnections),
-			UnderlayChangeCallback: func(underlay []channel.Underlay) {
-				self.notifyOfLinkChange(dial.GetLinkId(), bindHandler.link.GetAddresses())
+			UnderlayChangeCallback: func(ch *DialLinkChannel) {
+				self.notifyOfLinkChange(ch, bindHandler.link)
 			},
 		}
 		var dialLinkChannel = NewDialLinkChannel(dialLinkChangeConfig)
@@ -296,18 +296,32 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 	return bindHandler.link, nil
 }
 
-func (self *dialer) notifyOfLinkChange(linkId string, connections []*ctrl_pb.LinkConn) {
-	ctrl := self.env.GetNetworkControllers().AnyCtrlChannel()
-	if ctrl == nil {
-		pfxlog.Logger().Error("unable to send link change notification, no controller available")
-	}
-	msg := &ctrl_pb.LinkStateUpdate{
-		Id:        linkId,
-		Underlays: connections,
+func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
+	log := pfxlog.Logger().WithField("linkId", link.Id())
+
+	message := &ctrl_pb.LinkStateUpdate{
+		Id:        link.Id(),
+		Underlays: link.GetAddresses(),
 	}
 
-	if err := protobufs.MarshalTyped(msg).WithTimeout(time.Second).Send(ctrl); err != nil {
-		pfxlog.Logger().WithError(err).Error("unable to send link change notification, send failure")
+	err := self.env.GetRateLimiterPool().QueueOrError(func() {
+		channels := self.env.GetNetworkControllers().AllResponsiveCtrlChannels()
+
+		if len(channels) == 0 {
+			log.Info("no controllers available to notify of link")
+			return
+		}
+
+		for _, ctrlCh := range channels {
+			if err := protobufs.MarshalTyped(message).WithTimeout(time.Second).Send(ctrlCh); err != nil {
+				log.WithError(err).Error("error sending router link state message")
+			}
+			log.WithField("ctrlId", ctrlCh.Id()).Info("notified controller of updated router link state")
+		}
+	})
+
+	if err != nil {
+		log.WithError(err).Error("error sending router link state message")
 	}
 }
 
