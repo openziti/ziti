@@ -17,6 +17,7 @@
 package common
 
 import (
+	"encoding/json"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
@@ -53,6 +54,16 @@ func (self *IdentityService) GetName() string {
 
 func (self *IdentityService) IsEncryptionRequired() bool {
 	return self.Service.EncryptionRequired
+}
+
+func (self *IdentityService) GetConfig(configTypeName string, v any) (bool, error) {
+	if config, ok := self.Configs[configTypeName]; ok {
+		if err := json.Unmarshal([]byte(config.Config.DataJson), &v); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (self *IdentityService) Equals(other *IdentityService) bool {
