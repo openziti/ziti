@@ -215,16 +215,16 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 			}
 		}
 
-		if err := self.configureSourceAddrProvider(svc); err != nil {
+		if err = self.configureSourceAddrProvider(svc); err != nil {
 			log.WithError(err).Error("failed interpreting source ip")
 		}
-		if err := self.configureDialIdentityProvider(svc); err != nil {
+		if err = self.configureDialIdentityProvider(svc); err != nil {
 			log.WithError(err).Error("error interpreting dialOptions.identity")
 		}
 
 		// not all interceptors need a config, specifically proxy doesn't need one
-		log.Infof("starting tunnel for newly available service %s", *svc.Name)
-		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
+		log.Infof("checking if we can intercept newly available service %s", *svc.Name)
+		if err = self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
 			log.Errorf("failed to intercept service: %v", err)
 		}
 	}

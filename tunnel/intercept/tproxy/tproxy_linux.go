@@ -178,6 +178,11 @@ func (self *interceptor) Stop() {
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
+	// only attempt to intercept if the appropriate config is present
+	if service.InterceptV1Config == nil {
+		return nil
+	}
+
 	tproxy, err := self.newTproxy(service, resolver, tracker)
 	if err != nil {
 		return err
