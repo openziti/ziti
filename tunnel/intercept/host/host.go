@@ -30,8 +30,12 @@ func New() intercept.Interceptor {
 	return &interceptor{}
 }
 
-func (p interceptor) Intercept(*entities.Service, dns.Resolver, intercept.AddressTracker) error {
-	return errors.New("can not intercept services in host mode")
+func (p interceptor) Intercept(svc *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
+	// only return error if an intercept has been requested
+	if svc.InterceptV1Config != nil {
+		return errors.New("can not intercept services in host mode")
+	}
+	return nil
 }
 
 func (p interceptor) Stop() {
