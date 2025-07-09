@@ -18,15 +18,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.29
-	github.com/openziti/channel/v4 v4.2.12
+	github.com/openziti/channel/v4 v4.2.13
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/fablab v0.5.108
-	github.com/openziti/foundation/v2 v2.0.68
-	github.com/openziti/identity v1.0.107
+	github.com/openziti/foundation/v2 v2.0.69
+	github.com/openziti/identity v1.0.108
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/sdk-golang v1.1.2
-	github.com/openziti/storage v0.4.19
-	github.com/openziti/transport/v2 v2.0.179
+	github.com/openziti/storage v0.4.20
+	github.com/openziti/transport/v2 v2.0.180
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -34,7 +34,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/bbolt v1.4.1
+	go.etcd.io/bbolt v1.4.2
 	golang.org/x/net v0.41.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
@@ -75,9 +75,9 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/gaissmai/extnetip v1.1.0 // indirect
-	github.com/go-acme/lego/v4 v4.23.1 // indirect
+	github.com/go-acme/lego/v4 v4.24.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.2 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -151,7 +151,7 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.75 // indirect
+	github.com/openziti/runzmd v1.0.76 // indirect
 	github.com/openziti/secretstream v0.1.36 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
