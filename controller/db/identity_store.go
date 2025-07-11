@@ -319,7 +319,7 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
-	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, false)
+	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, true)
 
 	ctx.SetTimeP(FieldIdentityDisabledAt, entity.DisabledAt)
 	ctx.SetTimeP(FieldIdentityDisabledUntil, entity.DisabledUntil)
