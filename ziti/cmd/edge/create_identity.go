@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/ziti/cmd/api"
@@ -43,6 +44,8 @@ type createIdentityOptions struct {
 	serviceCosts             map[string]int
 	servicePrecedences       map[string]string
 	appData                  map[string]string
+	appDataJson              string
+	appDataJsonFile          string
 	externalId               string
 	authPolicyNameOrId       string
 }
@@ -95,9 +98,12 @@ func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *co
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
-	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data, specified as a map of string -> string")
+	cmd.Flags().StringVar(&options.appDataJson, "app-data-json", "", "Custom application data, specified as JSON")
+	cmd.Flags().StringVar(&options.appDataJsonFile, "app-data-json-file", "", "Custom application data, specified as a JSON file")
 	cmd.Flags().StringVarP(&options.authPolicyNameOrId, "auth-policy", "P", "default", "The name or id of the auth policy to assign to the identity")
 
+	cmd.MarkFlagsMutuallyExclusive("app-data", "app-data-json", "app-data-json-file")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -116,7 +122,35 @@ func runCreateIdentity(o *createIdentityOptions) error {
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	api.SetJSONValue(entityData, o.appData, "appData")
+
+	if o.Cmd.Flags().Changed("app-data") {
+		api.SetJSONValue(entityData, o.appData, "appData")
+	}
+
+	handleAppDataJson := func(data []byte) error {
+		var result map[string]any
+		if err := json.Unmarshal(data, &result); err != nil {
+			return fmt.Errorf("unable to parse app data json (%w)", err)
+		}
+		api.SetJSONValue(entityData, result, "appData")
+		return nil
+	}
+
+	if o.Cmd.Flags().Changed("app-data-json") {
+		if err := handleAppDataJson([]byte(o.appDataJson)); err != nil {
+			return err
+		}
+	}
+
+	if o.Cmd.Flags().Changed("app-data-json-file") {
+		jsonData, err := os.ReadFile(o.appDataJsonFile)
+		if err != nil {
+			return fmt.Errorf("unable to load app data json from file '%s' (%w)", o.appDataJsonFile, err)
+		}
+		if err := handleAppDataJson(jsonData); err != nil {
+			return err
+		}
+	}
 
 	if o.externalId != "" {
 		api.SetJSONValue(entityData, o.externalId, "externalId")
