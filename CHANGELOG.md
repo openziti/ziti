@@ -1,3 +1,31 @@
+# Release 1.6.6
+
+## What's New
+
+* Nested Identity App Data
+
+## Nested Identity App Data
+
+Identity app data may now be a full JSON document, rather than just a single layer map. There 
+are also some additional CLI methods to work with the data:
+
+```
+$ ziti edge create identity test --app-data foo=bar
+$ ziti edge create identity test --app-data-json '{ "foo" : "bar", "test" : { "nested" : true, "number" : 234 } }'
+$ ziti edge create identity test --app-data-json-file test-app-data.json 
+
+$ ziti edge update identity test --app-data foo=bar
+$ ziti edge update identity test --app-data-json '{ "foo" : "bar", "test" : { "nested" : true, "number" : 234 } }'
+$ ziti edge update identity test --app-data-json-file test-app-data.json 
+```
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/storage: [v0.4.20 -> v0.4.21](https://github.com/openziti/storage/compare/v0.4.20...v0.4.21)
+* github.com/openziti/ziti: [v1.6.5 -> v1.6.6](https://github.com/openziti/ziti/compare/v1.6.5...v1.6.6)
+    * [Issue #3161](https://github.com/openziti/ziti/issues/3161) - Allow setting structured data in identity appData from CLI
+    * [Issue #3169](https://github.com/openziti/ziti/issues/3169) - Allow identity app data to be a full JSON document, rather than just a flat map
+
 # Release 1.6.5
 
 ## What's New
