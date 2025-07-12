@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
-	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
+	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
@@ -101,6 +101,21 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.router", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
+				return nil
+			})
+		}),
+	},
+	Factories: []model.Factory{
+		model.FactoryFunc(func(m *model.Model) error {
+			return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
+				if routerType, ok := c.Type.(*zitilab.RouterType); ok {
+					clone := *routerType
+					c.Type = &clone
+					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
+					if c.ScaleIndex >= 14 {
+						clone.Version = "v1.5.4"
+					}
+				}
 				return nil
 			})
 		}),
@@ -218,13 +233,11 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(host.GroupExec("*", 50, "touch .hushlogin"))
-			workflow.AddAction(component.Stop(".ctrl"))
+			workflow.AddAction(component.StopInParallel("*", 100))
 			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			workflow.AddAction(component.Start(".ctrl"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+			workflow.AddAction(component.Start("#ctrl1"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(edge.InitRaftController("#ctrl1"))
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
@@ -232,8 +245,14 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
 			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 50))
+
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+			workflow.AddAction(semaphore.Sleep(5 * time.Second))
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(component.StartInParallel(".router", 100))
 
 			return workflow
 		}),
@@ -245,7 +264,7 @@ var m = &model.Model{
 		"login2":   model.Bind(edge.Login("#ctrl2")),
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
-		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+		"validateUp": model.BindF(func(run model.Run) error {
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}
@@ -254,8 +273,11 @@ var m = &model.Model{
 				return component.StartInParallel(".router", 100).Execute(run)
 			}
 			return nil
-		})),
-		"validateLinks": model.Bind(model.ActionFunc(validateLinks)),
+		}),
+		"validateLinks": model.BindF(validateLinks),
+		"testIteration": model.BindF(func(run model.Run) error {
+			return run.GetModel().Exec(run, "sowChaos", "validateUp", "validateLinks")
+		}),
 	},
 
 	Infrastructure: model.Stages{
@@ -275,7 +297,7 @@ var m = &model.Model{
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
-		aws_ssh_key2.Dispose(),
+		awsSshKeyDispose.Dispose(),
 	},
 }
 

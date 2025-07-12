@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/link"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/link"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"reflect"
@@ -42,6 +42,13 @@ const (
 	DefaultUnhealthyMinRetryInterval   = time.Minute
 	DefaultUnhealthyMaxRetryInterval   = time.Hour
 	DefaultUnhealthyRetryBackoffFactor = 10
+
+	DefaultMaxDefaultConnections = 3
+	DefaultMaxAckConnections     = 1
+	DefaultStartupDelay          = 3 * time.Second
+
+	MaxDefaultConnections = 100
+	MaxAckConnections     = 100
 )
 
 func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, error) {
@@ -147,13 +154,63 @@ type listenerConfig struct {
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
-	config := &dialerConfig{split: true}
+	config := &dialerConfig{
+		split:                 true,
+		maxDefaultConnections: DefaultMaxDefaultConnections,
+		maxAckConnections:     DefaultMaxAckConnections,
+		startupDelay:          DefaultStartupDelay,
+	}
 
 	if value, found := data["split"]; found {
 		if split, ok := value.(bool); ok {
 			config.split = split
 		} else {
 			return nil, errors.Errorf("invalid 'split' flag in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["maxDefaultConnections"]; found {
+		if intVal, ok := value.(int); ok {
+			if intVal < 1 {
+				return nil, errors.Errorf("invalid 'maxDefaultConnections' setting in link dialer config, is (%d), must be at least 1", intVal)
+			}
+			if intVal > MaxDefaultConnections {
+				return nil, errors.Errorf("invalid 'maxDefaultConnections' setting in link dialer config, is (%d), must be at most %d", intVal, MaxDefaultConnections)
+			}
+			config.maxDefaultConnections = uint8(intVal)
+		} else {
+			return nil, errors.Errorf("invalid 'maxDefaultConnections' setting in link dialer config, is (%s), should be integer number", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["maxAckConnections"]; found {
+		if intVal, ok := value.(int); ok {
+			if intVal < 0 {
+				return nil, errors.Errorf("invalid 'maxAckConnections' setting in link dialer config, is (%d), must be at least 0", intVal)
+			}
+			if intVal > MaxAckConnections {
+				return nil, errors.Errorf("invalid 'maxAckConnections' setting in link dialer config, is (%d), must be at most %d", intVal, MaxAckConnections)
+			}
+			config.maxAckConnections = uint8(intVal)
+		} else {
+			return nil, errors.Errorf("invalid 'maxAckConnections' setting in link dialer config, is (%s), should be integer number", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["startupDelay"]; found {
+		if strVal, ok := value.(string); ok {
+			d, err := time.ParseDuration(strVal)
+			if err != nil {
+				return nil, fmt.Errorf("invalid 'startupDelay' setting in link dialer config, should be string duration (%w)", err)
+			}
+
+			if d < 0 {
+				return nil, errors.New("invalid 'startupDelay' setting in link dialer config, minimum value is 0")
+			}
+
+			config.startupDelay = d
+		} else {
+			return nil, errors.Errorf("invalid 'startupDelay' setting in link dialer config, is (%s), should be string duration", reflect.TypeOf(value))
 		}
 	}
 
@@ -317,6 +374,9 @@ func (self *backoffConfig) load(data map[interface{}]interface{}) error {
 
 type dialerConfig struct {
 	split                  bool
+	maxDefaultConnections  uint8
+	maxAckConnections      uint8
+	startupDelay           time.Duration
 	localBinding           string
 	groups                 []string
 	options                *channel.Options

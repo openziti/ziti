@@ -140,9 +140,16 @@ type Xlink interface {
 	CloseOnce(f func())
 	IsClosed() bool
 	InspectLink() *inspect.LinkInspectDetail
-	GetAddresses() []*ctrl_pb.LinkConn
+	GetLinkConnState() *ctrl_pb.LinkConnState
 	IsDialed() bool
 	Iteration() uint32
 	AreFaultsSent() bool
 	DuplicatesRejected() uint32
+}
+
+type MultiConnXLink interface {
+	Xlink
+	MarkLinkStateSynced(ctrlId string)
+	MarkLinkStateSyncedForState(ctrlId string, stateId string)
+	GetCtrlRequiringSync() (string, []string)
 }

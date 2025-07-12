@@ -54,6 +54,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"math"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -483,12 +484,12 @@ func (network *Network) notifyAssembleAndClean() {
 	}
 }
 
-func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProtocol, dialAddress string, srcRouter *model.Router, dstRouterId string) {
+func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink *ctrl_pb.RouterLinks_RouterLink) {
 	log := pfxlog.Logger().
 		WithField("routerId", srcRouter.Id).
-		WithField("linkId", id).
-		WithField("destRouterId", dstRouterId).
-		WithField("iteration", iteration)
+		WithField("linkId", reportedLink.Id).
+		WithField("destRouterId", reportedLink.DestRouterId).
+		WithField("iteration", reportedLink.Iteration)
 
 	src := network.Router.GetConnected(srcRouter.Id)
 	if src == nil {
@@ -501,12 +502,12 @@ func (network *Network) NotifyExistingLink(id string, iteration uint32, linkProt
 		return
 	}
 
-	dst := network.Router.GetConnected(dstRouterId)
+	dst := network.Router.GetConnected(reportedLink.DestRouterId)
 	if dst == nil {
-		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
+		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
-	link, created := network.Link.RouterReportedLink(id, iteration, linkProtocol, dialAddress, srcRouter, dst, dstRouterId)
+	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
@@ -1408,9 +1409,12 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 			Dialed:       link.Dialed,
 		}
 		detail.DestConnected = network.ConnectedRouter(link.Dest)
-		if _, found := linkMap[link.Id]; found {
+		if ctrlLink, found := linkMap[link.Id]; found {
 			detail.CtrlState = mgmt_pb.LinkState_LinkEstablished
 			detail.IsValid = detail.DestConnected
+			if link.Dialed { // only compare against dialer side of the link, as src/dst will be flipped on the listener side
+				network.checkLinkConns(ctrlLink, link, detail)
+			}
 		} else {
 			detail.CtrlState = mgmt_pb.LinkState_LinkUnknown
 			detail.IsValid = !detail.DestConnected
@@ -1445,6 +1449,79 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 	}
 
 	cb(result)
+}
+
+func (network *Network) checkLinkConns(ctrlLink *model.Link, routerLink *inspect.LinkInspectDetail, result *mgmt_pb.RouterLinkDetail) {
+	sortF := func(v []*ctrl_pb.LinkConn) []*ctrl_pb.LinkConn {
+		return slices.SortedFunc(slices.Values(v), func(e *ctrl_pb.LinkConn, e2 *ctrl_pb.LinkConn) int {
+			if diff := strings.Compare(e.Type, e2.Type); diff != 0 {
+				return diff
+			}
+			if diff := strings.Compare(e.LocalAddr, e2.LocalAddr); diff != 0 {
+				return diff
+			}
+			return strings.Compare(e.RemoteAddr, e2.RemoteAddr)
+		})
+	}
+
+	var routerConns []*ctrl_pb.LinkConn
+
+	for _, v := range routerLink.Connections {
+		routerConns = append(routerConns, &ctrl_pb.LinkConn{
+			Type:       v.Type,
+			LocalAddr:  v.Source,
+			RemoteAddr: v.Dest,
+		})
+	}
+
+	// ensure that conn info is being reported
+	if srcR := ctrlLink.Src; srcR != nil {
+		hasMinVersion, err := srcR.VersionInfo.HasMinimumVersion("v1.6.6")
+		if err != nil {
+			result.IsValid = false
+			result.Messages = append(result.Messages, err.Error())
+			return
+		}
+		if !hasMinVersion {
+			return
+		}
+	}
+
+	ctrlConnState := ctrlLink.GetConnsState()
+	ctrlConns := sortF(ctrlConnState.GetConns())
+	routerConns = sortF(routerConns)
+
+	if len(ctrlConns) != len(routerConns) {
+		result.Messages = append(result.Messages, fmt.Sprintf("for link %s, len(ctrlConns): %d != len(routerConns): %d",
+			ctrlLink.Id, len(ctrlConns), len(ctrlConns)))
+		return
+	}
+
+	if routerLink.ConnStateIteration != ctrlConnState.GetStateIteration() {
+		result.Messages = append(result.Messages, fmt.Sprintf("for link %s, conn state iteration doesn't match, ctrl: %d != router: %d",
+			ctrlLink.Id, ctrlConnState.GetStateIteration(), routerLink.ConnStateIteration))
+		return
+	}
+
+	for i := 0; i < len(ctrlConns); i++ {
+		ctrlConn := ctrlConns[i]
+		routerConn := routerConns[i]
+		if ctrlConn.Type != routerConn.Type {
+			result.IsValid = false
+			result.Messages = append(result.Messages, fmt.Sprintf("for link %s, type doesn't match. ctrl %s != router %s",
+				ctrlLink.Id, ctrlConn.Type, routerConn.Type))
+		}
+		if ctrlConn.LocalAddr != routerConn.LocalAddr {
+			result.IsValid = false
+			result.Messages = append(result.Messages, fmt.Sprintf("for link %s, local addr doesn't match. ctrl %s != router %s",
+				ctrlLink.Id, ctrlConn.LocalAddr, routerConn.LocalAddr))
+		}
+		if ctrlConn.RemoteAddr != routerConn.RemoteAddr {
+			result.IsValid = false
+			result.Messages = append(result.Messages, fmt.Sprintf("for link %s, remote addr doesn't match. ctrl %s != router %s",
+				ctrlLink.Id, ctrlConn.RemoteAddr, routerConn.RemoteAddr))
+		}
+	}
 }
 
 func (network *Network) reportRouterLinksError(router *model.Router, err error, cb LinkValidationCallback) {

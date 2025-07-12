@@ -19,9 +19,11 @@ package xlink_transport
 import (
 	"fmt"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 )
 
@@ -49,11 +51,17 @@ func (self channelType) String() string {
 	return "invalid"
 }
 
+type LinkEnv interface {
+	GetMetricsRegistry() metrics.UsageRegistry
+	GetXLinkRegistry() xlink.Registry
+	GetNetworkControllers() env.NetworkControllers
+	GetRateLimiterPool() goroutines.Pool
+}
+
 func NewFactory(accepter xlink.Acceptor,
 	bindHandlerFactory BindHandlerFactory,
 	tcfg transport.Configuration,
-	xlinkRegistry xlink.Registry,
-	metricsRegistry metrics.Registry) xlink.Factory {
+	env LinkEnv) xlink.Factory {
 
 	tcfg[transport.KeyProtocol] = append(tcfg.Protocols(), "ziti-link")
 
@@ -61,8 +69,7 @@ func NewFactory(accepter xlink.Acceptor,
 		acceptor:           accepter,
 		bindHandlerFactory: bindHandlerFactory,
 		transportConfig:    tcfg,
-		xlinkRegistry:      xlinkRegistry,
-		metricsRegistry:    metricsRegistry,
+		env:                env,
 	}
 }
 
@@ -88,8 +95,8 @@ func (self *factory) CreateListener(id *identity.TokenId, configData transport.C
 		bindHandlerFactory: self.bindHandlerFactory,
 		tcfg:               self.transportConfig,
 		pendingLinks:       map[string]*pendingLink{},
-		xlinkRegistery:     self.xlinkRegistry,
-		metricsRegistry:    self.metricsRegistry,
+		xlinkRegistery:     self.env.GetXLinkRegistry(),
+		metricsRegistry:    self.env.GetMetricsRegistry(),
 	}, nil
 }
 
@@ -113,7 +120,7 @@ func (self *factory) CreateDialer(id *identity.TokenId, configData transport.Con
 		acceptor:           self.acceptor,
 		bindHandlerFactory: self.bindHandlerFactory,
 		transportConfig:    self.transportConfig,
-		metricsRegistry:    self.metricsRegistry,
+		env:                self.env,
 	}, nil
 }
 
@@ -121,6 +128,5 @@ type factory struct {
 	acceptor           xlink.Acceptor
 	bindHandlerFactory BindHandlerFactory
 	transportConfig    transport.Configuration
-	xlinkRegistry      xlink.Registry
-	metricsRegistry    metrics.Registry
+	env                LinkEnv
 }

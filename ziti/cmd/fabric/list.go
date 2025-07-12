@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/controllers"
-	edge_rest_model "github.com/openziti/edge-api/rest_model"
+	edgeRestModel "github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
-	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
+	fabricRestModel "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/controller/rest_client/circuit"
 	"github.com/openziti/ziti/controller/rest_client/link"
 	"github.com/openziti/ziti/controller/rest_client/router"
@@ -93,7 +93,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 }
 
 func runListCircuits(o *api.Options) error {
-	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+	return WithFabricClient(o, func(client *fabricRestModel.ZitiFabric) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 		result, err := client.Circuit.ListCircuits(&circuit.ListCircuitsParams{
@@ -142,7 +142,7 @@ func outputCircuits(o *api.Options, results *circuit.ListCircuitsOK) error {
 }
 
 func runListLinks(o *api.Options) error {
-	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+	return WithFabricClient(o, func(client *fabricRestModel.ZitiFabric) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 		result, err := client.Link.ListLinks(&link.ListLinksParams{
@@ -162,7 +162,7 @@ func outputLinks(o *api.Options, results *link.ListLinksOK) error {
 		{Number: 8, Align: text.AlignRight},
 	}
 	t.SetColumnConfigs(columnConfigs)
-	t.AppendHeader(table.Row{"ID", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
+	t.AppendHeader(table.Row{"ID", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost", "Connections"})
 
 	for _, entity := range results.Payload.Data {
 		id := valOrDefault(entity.ID)
@@ -175,6 +175,12 @@ func outputLinks(o *api.Options, results *link.ListLinksOK) error {
 		down := valOrDefault(entity.Down)
 		cost := valOrDefault(entity.Cost)
 
+		var conns []string
+
+		for _, conn := range entity.Connections {
+			conns = append(conns, fmt.Sprintf("%s: %s -> %s", conn.Type, conn.Source, conn.Dest))
+		}
+
 		status := "up"
 		if down {
 			status = "down"
@@ -183,7 +189,7 @@ func outputLinks(o *api.Options, results *link.ListLinksOK) error {
 		t.AppendRow(table.Row{id, srcRouter, dstRouter, staticCost,
 			fmt.Sprintf("%.1fms", srcLatency),
 			fmt.Sprintf("%.1fms", dstLatency),
-			state, status, cost})
+			state, status, cost, strings.Join(conns, "\n")})
 	}
 
 	api.RenderTable(o, t, getPaging(results.Payload.Meta))
@@ -192,7 +198,7 @@ func outputLinks(o *api.Options, results *link.ListLinksOK) error {
 }
 
 func runListTerminators(o *api.Options) error {
-	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+	return WithFabricClient(o, func(client *fabricRestModel.ZitiFabric) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 
@@ -229,7 +235,7 @@ func outputTerminators(o *api.Options, result *terminator.ListTerminatorsOK) err
 }
 
 func runListServices(o *api.Options) error {
-	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+	return WithFabricClient(o, func(client *fabricRestModel.ZitiFabric) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 
@@ -260,7 +266,7 @@ func outputServices(o *api.Options, result *service.ListServicesOK) error {
 }
 
 func runListRouters(o *api.Options) error {
-	return WithFabricClient(o, func(client *fabric_rest_client.ZitiFabric) error {
+	return WithFabricClient(o, func(client *fabricRestModel.ZitiFabric) error {
 		ctx, cancelF := o.GetContext()
 		defer cancelF()
 
@@ -345,7 +351,7 @@ func getPaging(meta *rest_model.Meta) *api.Paging {
 	}
 }
 
-func getEdgePaging(meta *edge_rest_model.Meta) *api.Paging {
+func getEdgePaging(meta *edgeRestModel.Meta) *api.Paging {
 	return &api.Paging{
 		Limit:  *meta.Pagination.Limit,
 		Offset: *meta.Pagination.Offset,

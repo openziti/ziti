@@ -44,6 +44,7 @@ enum ContentType {
   UpdateClusterLeaderRequestType = 1051;
 
   UpdateRouterInterfaces = 1052;
+  LinkState = 1053;
 }
 
 enum ControlHeaders {
@@ -158,9 +159,14 @@ message Dial {
 }
 
 message LinkConn {
-  string id = 1;
+  string type = 1;
   string localAddr = 2;
   string remoteAddr = 3;
+}
+
+message LinkConnState {
+  uint32 stateIteration = 1;
+  repeated LinkConn conns = 2;
 }
 
 message LinkConnected {
@@ -176,6 +182,7 @@ message RouterLinks {
     repeated string linkCostTags = 4;
     string dialAddress = 5;
     uint32 iteration = 6;
+    LinkConnState connState = 7;
   }
 
   repeated RouterLink links = 1;
@@ -307,4 +314,10 @@ message Interface {
 
 message RouterInterfacesUpdate {
   repeated Interface interfaces = 1;
+}
+
+message LinkStateUpdate {
+  string linkId = 1;
+  uint32 linkIteration = 2;
+  LinkConnState connState = 3;
 }

@@ -3,6 +3,7 @@ package edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
@@ -59,6 +60,10 @@ func (self *raftJoin) Execute(run model.Run) error {
 				time.Sleep(2 * time.Second)
 			} else {
 				break
+			}
+			log.Info("Ensure controllers are started")
+			if err = component.StartInParallel(self.componentSpec, 3).Execute(run); err != nil {
+				log.WithError(err).Error("unable to start controllers")
 			}
 		}
 	}

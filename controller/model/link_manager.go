@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
 	"github.com/openziti/ziti/common/datastructures"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/orcaman/concurrent-map/v2"
@@ -132,12 +133,12 @@ func (self *LinkManager) ScanForDeadLinks() {
 	}
 }
 
-func (self *LinkManager) RouterReportedLink(linkId string, iteration uint32, linkProtocol, dialAddress string, src, dst *Router, dstId string) (*Link, bool) {
+func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	link, _ := self.Get(linkId)
-	if link != nil && link.Iteration >= iteration {
+	link, _ := self.Get(reportedLink.Id)
+	if link != nil && link.Iteration >= reportedLink.Iteration {
 		return link, false
 	}
 
@@ -145,20 +146,21 @@ func (self *LinkManager) RouterReportedLink(linkId string, iteration uint32, lin
 	if link != nil {
 		log := pfxlog.Logger().
 			WithField("routerId", src.Id).
-			WithField("linkId", linkId).
-			WithField("destRouterId", dstId).
-			WithField("iteration", iteration)
+			WithField("linkId", reportedLink.Id).
+			WithField("destRouterId", reportedLink.DestRouterId).
+			WithField("iteration", reportedLink.Iteration)
 
 		self.Remove(link)
-		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, iteration)
+		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, reportedLink.Iteration)
 	}
 
-	link = newLink(linkId, linkProtocol, dialAddress, self.initialLatency)
-	link.Iteration = iteration
+	link = newLink(reportedLink.Id, reportedLink.LinkProtocol, reportedLink.DialAddress, self.initialLatency)
+	link.Iteration = reportedLink.Iteration
 	link.Src = src
 	link.Dst.Store(dst)
-	link.DstId = dstId
+	link.DstId = reportedLink.DestRouterId
 	link.SetState(Connected)
+	link.SetConnsState(reportedLink.ConnState)
 	self.Add(link)
 	return link, true
 }

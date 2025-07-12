@@ -19,6 +19,7 @@ ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
   startupTimeout: 5m
+  endpointsFile: /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.endpoints
 
 healthChecks:
   ctrlPingCheck:
@@ -40,6 +41,8 @@ link:
       advertise:        tls:{{$router_ip}}:60{{printf "%02d" .Component.ScaleIndex }}
   dialers:
     - binding:          transport
+      healthyDialBackoff:
+        maxRetryInterval: 1m
       options:
         connectTimeout: 30s
 

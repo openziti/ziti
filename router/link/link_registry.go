@@ -218,18 +218,27 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 			return nil, true
 		}
 
-		// if the id is the same we want to throw away the older one, since the new one is a replacement
-		// If 5 duplicates have already come in, then clearly the other side is not happy with the
+		// If the id is the same, we want to throw away the older one, since the new one is a replacement.
+		// If 5 duplicates have already come in, then the other side is not happy with the
 		// existing link, so try the new one instead
 		if existing.Id() < link.Id() && existing.DuplicatesRejected() <= 5 {
 			log.Info("duplicate link detected. closing other link (current link id is < than new link id)")
 
-			// give the other side a chance to close the link first and report it as a duplicate
-			time.AfterFunc(30*time.Second, func() {
-				if err := link.Close(); err != nil {
-					log.WithError(err).Error("error closing duplicate link")
-				}
-			})
+			if link.IsDialed() {
+				// if we dialed the link, close it right away
+				go func() {
+					if err := link.Close(); err != nil {
+						log.WithError(err).Error("error closing duplicate link")
+					}
+				}()
+			} else {
+				// give the other side a chance to close the link first and report it as a duplicate
+				time.AfterFunc(30*time.Second, func() {
+					if err := link.Close(); err != nil {
+						log.WithError(err).Error("error closing duplicate link")
+					}
+				})
+			}
 			return existing, false
 		}
 
@@ -258,7 +267,15 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 				}
 			})
 
-			time.AfterFunc(time.Minute, func() {
+			// if we're not the link dialer, wait longer to let the dialer close the link
+			closeTimeout := func() time.Duration {
+				if existing.IsDialed() {
+					return time.Minute
+				}
+				return 75 * time.Second
+			}()
+
+			time.AfterFunc(closeTimeout, func() {
 				_ = existing.Close()
 			})
 		}()
@@ -316,6 +333,7 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 				LinkProtocol: link.LinkProtocol(),
 				DialAddress:  link.DialAddress(),
 				Iteration:    link.Iteration(),
+				ConnState:    link.GetLinkConnState(),
 			},
 		},
 	}
@@ -335,7 +353,6 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 				log.WithError(err).Error("error sending router link message")
 			}
 			log.WithField("ctrlId", ch.Id()).Info("notified controller of new link")
-
 		}
 	}
 }
@@ -386,6 +403,8 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("resending link states after reconnect")
 	alwaysSend := !capabilities.IsCapable(ch, capabilities.ControllerSingleRouterLinkSource)
 
+	var onComplete []func()
+
 	routerLinks := &ctrl_pb.RouterLinks{}
 	for link := range self.Iter() {
 		if alwaysSend || link.IsDialed() {
@@ -395,12 +414,23 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 				LinkProtocol: link.LinkProtocol(),
 				DialAddress:  link.DialAddress(),
 				Iteration:    link.Iteration(),
+				ConnState:    link.GetLinkConnState(),
 			})
+
+			if multiConnLink, ok := link.(xlink.MultiConnXLink); ok {
+				onComplete = append(onComplete, func() {
+					multiConnLink.MarkLinkStateSynced(ch.Id())
+				})
+			}
 		}
 	}
 
 	if err := protobufs.MarshalTyped(routerLinks).Send(ch); err != nil {
 		logrus.WithError(err).Error("failed to send router links on reconnect")
+	} else {
+		for _, f := range onComplete {
+			f()
+		}
 	}
 }
 
@@ -444,7 +474,7 @@ func (self *linkRegistryImpl) markFaultedLinksNotified(successfullySent []stateA
 	})
 }
 
-func (self *linkRegistryImpl) dialFailed(state *linkState) {
+func (self *linkRegistryImpl) dialFailed(state *linkState, applyFailed bool) {
 	self.queueEvent(&updateLinkStatusToDialFailed{
 		linkState: state,
 	})
@@ -475,6 +505,7 @@ func (self *linkRegistryImpl) run() {
 			self.notifyControllersOfLinks()
 		case <-fullScanTicker.C:
 			self.evaluateDestinations()
+			self.syncRequiredLinkStates()
 		case <-self.env.GetCloseNotify():
 			return
 		}
@@ -531,6 +562,45 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 	}
 }
 
+func (self *linkRegistryImpl) syncRequiredLinkStates() {
+	for link := range self.Iter() {
+		if link.IsClosed() {
+			continue
+		}
+
+		if multiConnLink, ok := link.(xlink.MultiConnXLink); ok {
+			stateUuid, ctrlIds := multiConnLink.GetCtrlRequiringSync()
+			if len(ctrlIds) == 0 {
+				continue
+			}
+
+			message := &ctrl_pb.LinkStateUpdate{
+				LinkId:        link.Id(),
+				LinkIteration: link.Iteration(),
+				ConnState:     link.GetLinkConnState(),
+			}
+
+			for _, ctrlId := range ctrlIds {
+				log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("linkId", link.Id())
+				ctrlCh := self.ctrls.GetCtrlChannel(ctrlId)
+
+				err := self.env.GetRateLimiterPool().QueueOrError(func() {
+					if err := protobufs.MarshalTyped(message).WithTimeout(100 * time.Millisecond).Send(ctrlCh); err != nil {
+						log.WithError(err).Error("error sending router link state message")
+					} else {
+						log.WithField("ctrlId", ctrlCh.Id()).Info("notified controller of updated router link state")
+						multiConnLink.MarkLinkStateSyncedForState(ctrlCh.Id(), stateUuid)
+					}
+				})
+
+				if err != nil {
+					log.WithError(err).Error("failed to queue send of router link state message")
+				}
+			}
+		}
+	}
+}
+
 func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 	log := pfxlog.Logger().WithField("key", state.linkKey)
 
@@ -556,20 +626,20 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 			link, err := state.dialer.Dial(state)
 			if err != nil {
 				log.WithError(err).Error("error dialing link")
-				self.dialFailed(state)
+				self.dialFailed(state, false)
 				return
 			}
 
 			existing, success := self.DialSucceeded(link)
 			if !success && existing == nil {
-				self.dialFailed(state)
+				self.dialFailed(state, true)
 			}
 		})
 		if err != nil {
 			state.dialActive.Store(false)
 			log.WithError(err).Error("unable to queue link dial, see pool error")
 			state.updateStatus(StatusQueueFailed)
-			state.dialFailed(self)
+			state.dialFailed(self, false)
 		}
 	}
 }
@@ -658,7 +728,7 @@ func (self *linkRegistryImpl) notifyControllersOfLinks() {
 							WithField("linkId", state.linkId).
 							Info("link not found for link key on established link, marking failed")
 						state.updateStatus(StatusDialFailed)
-						state.dialFailed(self)
+						state.dialFailed(self, false)
 					} else if link.IsDialed() {
 						links = append(links, stateAndLink{
 							state: state,
@@ -675,7 +745,13 @@ func (self *linkRegistryImpl) notifyControllersOfLinks() {
 
 			if len(state.linkFaults) > 0 {
 				var linkFaults []linkFault
-				linkFaults = append(linkFaults, state.linkFaults...)
+				for _, fault := range state.linkFaults {
+					linkFaults = append(linkFaults, linkFault{
+						linkId:    fault.linkId,
+						iteration: fault.iteration,
+					})
+				}
+
 				faults = append(faults, stateAndFaults{
 					state:  state,
 					faults: linkFaults,
@@ -723,6 +799,7 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 			LinkProtocol: link.LinkProtocol(),
 			DialAddress:  link.DialAddress(),
 			Iteration:    link.Iteration(),
+			ConnState:    link.GetLinkConnState(),
 		})
 	}
 
@@ -788,8 +865,10 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 						log.Info("notified controller of link fault")
 					}
 				} else if ctrl.TimeSinceLastContact() < 2*time.Minute {
-					// if this is a brief outage, need to keep trying, otherwise there are potential race conditions
+					// if this is a brief outage, need to keep trying; otherwise there are potential race conditions
 					allSent = false
+				} else {
+					log.Info("controller has been disconnected for longer than 2 minutes, not sending link fault")
 				}
 			}
 			if allSent {

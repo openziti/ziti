@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,6 +39,7 @@ type Link struct {
 	state       LinkState
 	down        bool
 	StaticCost  int32
+	connState   concurrenz.AtomicValue[*ctrl_pb.LinkConnState]
 	usable      atomic.Bool
 	lock        sync.Mutex
 }
@@ -82,6 +84,20 @@ func (link *Link) SetState(m LinkMode) {
 	link.state.Mode = m
 	link.state.Timestamp = time.Now().UnixMilli()
 	link.recalculateUsable()
+}
+
+func (link *Link) SetConnsState(state *ctrl_pb.LinkConnState) {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+
+	currentState := link.connState.Load()
+	if currentState == nil || state.GetStateIteration() > currentState.StateIteration {
+		link.connState.Store(state)
+	}
+}
+
+func (link *Link) GetConnsState() *ctrl_pb.LinkConnState {
+	return link.connState.Load()
 }
 
 func (link *Link) SetDown(down bool) {

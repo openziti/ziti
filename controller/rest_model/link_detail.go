@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -42,6 +43,9 @@ import (
 //
 // swagger:model linkDetail
 type LinkDetail struct {
+
+	// connections
+	Connections []*LinkConnection `json:"connections"`
 
 	// cost
 	// Required: true
@@ -92,6 +96,10 @@ type LinkDetail struct {
 func (m *LinkDetail) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateConnections(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateCost(formats); err != nil {
 		res = append(res, err)
 	}
@@ -139,6 +147,32 @@ func (m *LinkDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *LinkDetail) validateConnections(formats strfmt.Registry) error {
+	if swag.IsZero(m.Connections) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Connections); i++ {
+		if swag.IsZero(m.Connections[i]) { // not required
+			continue
+		}
+
+		if m.Connections[i] != nil {
+			if err := m.Connections[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("connections" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("connections" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -267,6 +301,10 @@ func (m *LinkDetail) validateStaticCost(formats strfmt.Registry) error {
 func (m *LinkDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateConnections(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateDestRouter(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -278,6 +316,26 @@ func (m *LinkDetail) ContextValidate(ctx context.Context, formats strfmt.Registr
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *LinkDetail) contextValidateConnections(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Connections); i++ {
+
+		if m.Connections[i] != nil {
+			if err := m.Connections[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("connections" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("connections" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 

@@ -21,15 +21,18 @@ import (
 )
 
 type LinkInspectDetail struct {
-	Id          string `json:"id"`
-	Iteration   uint32 `json:"iteration"`
-	Key         string `json:"key"`
-	Split       bool   `json:"split"`
-	Protocol    string `json:"protocol"`
-	DialAddress string `json:"dialAddress"`
-	Dest        string `json:"dest"`
-	DestVersion string `json:"destVersion"`
-	Dialed      bool   `json:"dialed"`
+	Id                 string            `json:"id"`
+	Iteration          uint32            `json:"iteration"`
+	Key                string            `json:"key"`
+	Split              bool              `json:"split"`
+	Protocol           string            `json:"protocol"`
+	DialAddress        string            `json:"dialAddress"`
+	Dest               string            `json:"dest"`
+	DestVersion        string            `json:"destVersion"`
+	Dialed             bool              `json:"dialed"`
+	Underlays          map[string]int    `json:"underlays"`
+	Connections        []*LinkConnection `json:"connections"`
+	ConnStateIteration uint32            `json:"connStateIteration"`
 }
 
 type LinksInspectResult struct {
@@ -44,6 +47,12 @@ type LinkDest struct {
 	Healthy        bool         `json:"healthy"`
 	UnhealthySince *time.Time   `json:"unhealthySince,omitempty"`
 	LinkStates     []*LinkState `json:"linkStates"`
+}
+
+type LinkConnection struct {
+	Type   string
+	Source string
+	Dest   string
 }
 
 type LinkState struct {

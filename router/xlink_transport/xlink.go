@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/xlink"
 	"sync/atomic"
 	"time"
 )
@@ -29,7 +30,7 @@ import (
 type impl struct {
 	id            string
 	key           string
-	ch            channel.Channel
+	ch            LinkChannel
 	routerId      string
 	routerVersion string
 	linkProtocol  string
@@ -74,7 +75,7 @@ func (self *impl) Init(metricsRegistry metrics.Registry) error {
 
 func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
 	if timeout == 0 {
-		sent, err := self.ch.TrySend(msg.Marshall())
+		sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 		if err == nil && !sent {
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
@@ -88,11 +89,11 @@ func (self *impl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloa
 		return err
 	}
 
-	return msg.Marshall().WithTimeout(timeout).Send(self.ch)
+	return msg.Marshall().WithTimeout(timeout).Send(self.ch.GetDefaultSender())
 }
 
 func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetAckSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -100,7 +101,7 @@ func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
 }
 
 func (self *impl) SendControl(msg *xgress.Control) error {
-	sent, err := self.ch.TrySend(msg.Marshall())
+	sent, err := self.ch.GetDefaultSender().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -109,7 +110,7 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 
 func (self *impl) Close() error {
 	self.droppedMsgMeter.Dispose()
-	return self.ch.Close()
+	return self.ch.GetChannel().Close()
 }
 
 func (self *impl) CloseNotified() error {
@@ -148,7 +149,7 @@ func (self *impl) CloseOnce(f func()) {
 }
 
 func (self *impl) IsClosed() bool {
-	return self.ch.IsClosed()
+	return self.ch.GetChannel().IsClosed()
 }
 
 func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
@@ -156,31 +157,77 @@ func (self *impl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
 }
 
 func (self *impl) InspectLink() *inspect.LinkInspectDetail {
-	return &inspect.LinkInspectDetail{
-		Id:          self.Id(),
-		Iteration:   self.Iteration(),
-		Key:         self.key,
-		Split:       false,
-		Protocol:    self.LinkProtocol(),
-		DialAddress: self.DialAddress(),
-		Dest:        self.DestinationId(),
-		DestVersion: self.DestVersion(),
-		Dialed:      self.dialed,
-	}
+	result := GetLinkInspectDetail(self)
+	result.Split = false
+	result.Underlays = self.ch.GetChannel().GetUnderlayCountsByType()
+	return result
 }
 
-func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
-	localAddr := self.ch.Underlay().GetLocalAddr()
-	remoteAddr := self.ch.Underlay().GetRemoteAddr()
-	return []*ctrl_pb.LinkConn{
-		{
-			Id:         "single",
+func (self *impl) GetLinkConnState() *ctrl_pb.LinkConnState {
+	var connections []*ctrl_pb.LinkConn
+	for _, u := range self.ch.GetChannel().GetUnderlays() {
+		localAddr := u.GetLocalAddr()
+		remoteAddr := u.GetRemoteAddr()
+		t := channel.GetUnderlayType(u)
+		if t == "" {
+			t = "single"
+		}
+		connections = append(connections, &ctrl_pb.LinkConn{
+			Type:       t,
 			LocalAddr:  localAddr.Network() + ":" + localAddr.String(),
 			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
-		},
+		})
+	}
+	return &ctrl_pb.LinkConnState{
+		StateIteration: self.ch.GetConnStateIteration(),
+		Conns:          connections,
 	}
 }
 
 func (self *impl) DuplicatesRejected() uint32 {
 	return atomic.AddUint32(&self.dupsRejected, 1)
+}
+
+func (self *impl) MarkLinkStateSynced(ctrlId string) {
+	if stateConn, ok := self.ch.(StateTrackingLinkChannel); ok {
+		stateConn.MarkLinkStateSynced(ctrlId)
+	}
+}
+
+func (self *impl) MarkLinkStateSyncedForState(ctrlId string, stateId string) {
+	if stateConn, ok := self.ch.(StateTrackingLinkChannel); ok {
+		stateConn.MarkLinkStateSyncedForState(ctrlId, stateId)
+	}
+}
+
+func (self *impl) GetCtrlRequiringSync() (string, []string) {
+	if stateConn, ok := self.ch.(StateTrackingLinkChannel); ok {
+		return stateConn.GetCtrlRequiringSync()
+	}
+	return "", nil
+}
+
+func GetLinkInspectDetail(link xlink.Xlink) *inspect.LinkInspectDetail {
+	result := &inspect.LinkInspectDetail{
+		Id:          link.Id(),
+		Iteration:   link.Iteration(),
+		Key:         link.Key(),
+		Protocol:    link.LinkProtocol(),
+		DialAddress: link.DialAddress(),
+		Dest:        link.DestinationId(),
+		DestVersion: link.DestVersion(),
+		Dialed:      link.IsDialed(),
+	}
+
+	linkConnState := link.GetLinkConnState()
+	result.ConnStateIteration = linkConnState.StateIteration
+	for _, c := range linkConnState.Conns {
+		result.Connections = append(result.Connections, &inspect.LinkConnection{
+			Type:   c.Type,
+			Source: c.LocalAddr,
+			Dest:   c.RemoteAddr,
+		})
+	}
+
+	return result
 }

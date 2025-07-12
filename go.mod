@@ -5,8 +5,6 @@ go 1.24.0
 toolchain go1.24.1
 
 // pinned
-replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
-
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
 require (

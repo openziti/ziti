@@ -133,6 +133,24 @@ func setupEnv() link.Env {
 	}
 }
 
+type testLinkEnv struct {
+	link.Env
+	linkRegistry xlink.Registry
+}
+
+func (self *testLinkEnv) GetXLinkRegistry() xlink.Registry {
+	return self.linkRegistry
+}
+
+func newTestLinkEnv() *testLinkEnv {
+	e := setupEnv()
+	linkRegistry := link.NewLinkRegistry(e)
+	return &testLinkEnv{
+		linkRegistry: linkRegistry,
+		Env:          e,
+	}
+}
+
 func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	ctx := NewFabricTestContext(t)
 	defer ctx.Teardown()
@@ -152,8 +170,8 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	tcfg := transport.Configuration{
 		"split": false,
 	}
-	metricsRegistery := metrics.NewRegistry("test", nil)
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
+	linkEnv := newTestLinkEnv()
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, linkEnv)
 	dialer, err := factory.CreateDialer(badId, tcfg)
 	ctx.Req.NoError(err)
 	dialReq := &testDial{
@@ -189,8 +207,8 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 		"split": false,
 	}
 
-	metricsRegistery := metrics.NewRegistry("test", nil)
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, link.NewLinkRegistry(setupEnv()), metricsRegistery)
+	linkEnv := newTestLinkEnv()
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, linkEnv)
 	dialer, err := factory.CreateDialer(router2Id, tcfg)
 	ctx.Req.NoError(err)
 	dialReq := &testDial{
