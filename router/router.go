@@ -466,9 +466,13 @@ func (self *Router) GetXgressBindHandler() xgress.BindHandler {
 	return self.xgBindHandler
 }
 
+func (self *Router) GetXLinkRegistry() xlink.Registry {
+	return self.xlinkRegistry
+}
+
 func (self *Router) registerComponents() error {
 	self.xlinkFactories = make(map[string]xlink.Factory)
-	xlinkAccepter := newXlinkAccepter(self.forwarder)
+	acceptor := newXlinkAccepter(self.forwarder)
 	xlinkChAccepter := handler_link.NewBindHandlerFactory(
 		self.ctrls,
 		self.forwarder,
@@ -483,7 +487,7 @@ func (self *Router) registerComponents() error {
 	}
 	linkTransportConfig[transport.KeyCachedProxyConfiguration] = self.config.Proxy
 
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, linkTransportConfig, self.xlinkRegistry, self.metricsRegistry)
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(acceptor, xlinkChAccepter, linkTransportConfig, self)
 
 	xgress_router.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
 	xgress_router.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
@@ -952,8 +956,8 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 				DestRouterId: currentLink.DestinationId(),
 				Addresses:    map[string]linkConnDetail{},
 			}
-			for _, addr := range currentLink.GetAddresses() {
-				detail.Addresses[addr.Id] = linkConnDetail{
+			for _, addr := range currentLink.GetLinkConnState().Conns {
+				detail.Addresses[addr.Type] = linkConnDetail{
 					LocalAddr:  addr.LocalAddr,
 					RemoteAddr: addr.RemoteAddr,
 				}

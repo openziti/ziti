@@ -257,6 +257,7 @@ message RouterLinkDetail {
   bool isValid = 5;
   string destRouterId = 6;
   bool dialed = 7;
+  repeated string messages = 8;
 }
 
 message ValidateRouterSdkTerminatorsRequest {

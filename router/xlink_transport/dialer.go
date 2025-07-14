@@ -17,17 +17,29 @@
 package xlink_transport
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"time"
 )
+
+var minMultiUnderlayVersion versions.SemVer
+var devVersion versions.SemVer
+
+func init() {
+	minMultiUnderlayVersion = *versions.MustParseSemVer("1.6.6")
+	devVersion = *versions.MustParseSemVer("0.0.0")
+}
 
 type dialer struct {
 	id                 *identity.TokenId
@@ -35,8 +47,8 @@ type dialer struct {
 	bindHandlerFactory BindHandlerFactory
 	acceptor           xlink.Acceptor
 	transportConfig    transport.Configuration
-	metricsRegistry    metrics.Registry
 	adoptedBinding     string
+	env                LinkEnv
 }
 
 func (self *dialer) GetHealthyBackoffConfig() xlink.BackoffConfig {
@@ -63,29 +75,43 @@ func (self *dialer) GetBinding() string {
 }
 
 func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
+	log := pfxlog.Logger().WithField("linkId", dial.GetLinkId()).
+		WithField("dialAddress", dial.GetAddress()).
+		WithField("destRouterId", dial.GetRouterId()).
+		WithField("destRouterVersion", dial.GetRouterVersion())
+
 	address, err := transport.ParseAddress(dial.GetAddress())
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing link address [%s]", dial.GetAddress())
+		return nil, fmt.Errorf("error parsing link address [%s] (%w)", dial.GetAddress(), err)
 	}
 
 	linkId := self.id.ShallowCloneWithNewToken(dial.GetLinkId())
 	connId := uuid.NewString()
 
+	dialRouterVersion, err := versions.ParseSemVer(dial.GetRouterVersion())
+	isDevVersion := err == nil && dialRouterVersion.Equals(&devVersion)
+	supportsMultiUnderlay := err == nil && (dialRouterVersion.CompareTo(&minMultiUnderlayVersion) >= 0)
+
 	var xli xlink.Xlink
-	if self.config.split {
+	if isDevVersion || supportsMultiUnderlay {
+		xli, err = self.dialMulti(linkId, address, connId, dial)
+	} else if self.config.split {
+		log.Info("destination router doesn't support multi-underlay links, falling back to split impl")
 		xli, err = self.dialSplit(linkId, address, connId, dial)
 	} else {
+		log.Info("destination router doesn't support multi-underlay links, falling back to single impl")
 		xli, err = self.dialSingle(linkId, address, connId, dial)
 	}
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s@%v]", linkId.Token, dial.GetIteration())
 	}
 
 	if err = self.acceptor.Accept(xli); err != nil {
 		if closeErr := xli.Close(); closeErr != nil {
-			pfxlog.Logger().WithError(closeErr).WithField("acceptErr", err).Error("error closing link after accept error")
+			log.WithError(closeErr).WithField("acceptErr", err).Error("error closing link after accept error")
 		}
-		return nil, errors.Wrapf(err, "error accepting link [l/%s@%v]", linkId.Token, dial.GetIteration())
+		return nil, fmt.Errorf("error accepting link [l/%s@%v] (%w)", linkId.Token, dial.GetIteration(), err)
 	}
 
 	return xli, nil
@@ -202,13 +228,141 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	return bindHandler.link, nil
 }
 
+func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
+	log := pfxlog.Logger().WithFields(logrus.Fields{
+		"linkId": linkId.Token,
+		"connId": connId,
+	})
+
+	log.Info("dialing link with multi-underlay channel")
+
+	headers := channel.Headers{
+		LinkHeaderRouterId:      []byte(self.id.Token),
+		LinkHeaderConnId:        []byte(connId),
+		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
+		LinkHeaderBinding:       []byte(self.GetBinding()),
+	}
+	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
+	headers.PutBoolHeader(channel.IsGroupedHeader, true)
+	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+
+	linkDialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity:        linkId,
+		Endpoint:        address,
+		LocalBinding:    self.config.localBinding,
+		Headers:         headers,
+		TransportConfig: self.transportConfig,
+		MessageStrategy: channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
+	})
+
+	bindHandler := &dialBindHandler{
+		dialer: self,
+		link: &impl{
+			id:            dial.GetLinkId(),
+			key:           dial.GetLinkKey(),
+			routerId:      dial.GetRouterId(),
+			linkProtocol:  dial.GetLinkProtocol(),
+			routerVersion: dial.GetRouterVersion(),
+			dialAddress:   dial.GetAddress(),
+			iteration:     dial.GetIteration(),
+			dialed:        true,
+		},
+	}
+
+	underlay, err := linkDialer.CreateWithHeaders(self.config.options.ConnectTimeout, headers)
+	if err != nil {
+		return nil, fmt.Errorf("error dialing link [l/%s] (%w)", linkId.Token, err)
+	}
+
+	if isGrouped, _ := channel.Headers(underlay.Headers()).GetBoolHeader(channel.IsGroupedHeader); isGrouped {
+		dialLinkChangeConfig := DialLinkChannelConfig{
+			Dialer:             linkDialer,
+			Underlay:           underlay,
+			MaxDefaultChannels: int(self.config.maxDefaultConnections),
+			MaxAckChannel:      int(self.config.maxAckConnections),
+			StartupDelay:       self.config.startupDelay,
+			UnderlayChangeCallback: func(ch *DialLinkChannel) {
+				self.notifyOfLinkChange(ch, bindHandler.link)
+			},
+		}
+		var dialLinkChannel = NewDialLinkChannel(dialLinkChangeConfig)
+		multiChannelConfig := &channel.MultiChannelConfig{
+			LogicalName:     fmt.Sprintf("l/%s", underlay.Id()),
+			Options:         self.config.options,
+			UnderlayHandler: dialLinkChannel,
+			BindHandler:     bindHandler,
+			Underlay:        underlay,
+		}
+		_, err = channel.NewMultiChannel(multiChannelConfig)
+	} else {
+		_, err = channel.NewChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
+	}
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
+	}
+
+	return bindHandler.link, nil
+}
+
+func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
+	if ch.GetChannel().IsClosed() { // don't send connection changes for closed links. close notification covers everything
+		return
+	}
+
+	log := pfxlog.Logger().WithField("linkId", link.Id())
+
+	stateUuid, first := ch.LinkConnectionsChanged(self.env.GetNetworkControllers())
+	if first { // initial connection is reported by newRouterLink event
+		return
+	}
+
+	message := &ctrl_pb.LinkStateUpdate{
+		LinkId:        link.Id(),
+		LinkIteration: link.Iteration(),
+		ConnState:     link.GetLinkConnState(),
+	}
+
+	err := self.env.GetRateLimiterPool().QueueOrError(func() {
+		channels := self.env.GetNetworkControllers().AllResponsiveCtrlChannels()
+
+		if len(channels) == 0 {
+			log.Info("no controllers available to notify of link")
+			return
+		}
+
+		for _, ctrlCh := range channels {
+			if err := protobufs.MarshalTyped(message).WithTimeout(time.Second).Send(ctrlCh); err != nil {
+				log.WithError(err).Error("error sending router link state message")
+			} else {
+				log.WithField("ctrlId", ctrlCh.Id()).Info("notified controller of updated router link state")
+				ch.MarkLinkStateSyncedForState(ctrlCh.Id(), stateUuid)
+			}
+		}
+	})
+
+	if err != nil {
+		log.WithError(err).Error("failed to queue send of router link state message")
+	}
+}
+
 type dialBindHandler struct {
 	dialer *dialer
 	link   *impl
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
-	self.link.ch = binding.GetChannel()
+	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
+		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
+			linkChan.InitChannel(mc)
+			self.link.ch = linkChan
+		}
+	}
+
+	if self.link.ch == nil {
+		self.link.ch = NewSingleLinkChannel(binding.GetChannel())
+	}
+
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 	return bindHandler.BindChannel(binding)
 }

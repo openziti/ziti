@@ -17,6 +17,7 @@
 package xlink_transport
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
@@ -86,6 +87,7 @@ func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, p
 	if timeout == 0 {
 		sent, err := self.payloadCh.TrySend(msg.Marshall())
 		if err == nil && !sent {
+			pfxlog.Logger().WithField("circuitId", msg.CircuitId).Info("dropped payload")
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
 				self.droppedXgMsgMeter.Mark(1)
@@ -185,36 +187,35 @@ func (self *splitImpl) InspectCircuit(detail *xgress.CircuitInspectDetail) {
 }
 
 func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
-	return &inspect.LinkInspectDetail{
-		Id:          self.Id(),
-		Iteration:   self.Iteration(),
-		Key:         self.key,
-		Split:       true,
-		Protocol:    self.LinkProtocol(),
-		DialAddress: self.DialAddress(),
-		Dest:        self.DestinationId(),
-		DestVersion: self.DestVersion(),
-		Dialed:      self.dialed,
+	result := GetLinkInspectDetail(self)
+	result.Split = true
+	result.Underlays = map[string]int{
+		"ack":     1,
+		"payload": 1,
 	}
+	return result
 }
 
-func (self *splitImpl) GetAddresses() []*ctrl_pb.LinkConn {
+func (self *splitImpl) GetLinkConnState() *ctrl_pb.LinkConnState {
 	ackLocalAddr := self.ackCh.Underlay().GetLocalAddr()
 	ackRemoteAddr := self.ackCh.Underlay().GetRemoteAddr()
 
 	plLocalAddr := self.payloadCh.Underlay().GetLocalAddr()
 	plRemoteAddr := self.payloadCh.Underlay().GetRemoteAddr()
 
-	return []*ctrl_pb.LinkConn{
-		{
-			Id:         "ack",
-			LocalAddr:  ackLocalAddr.Network() + ":" + ackLocalAddr.String(),
-			RemoteAddr: ackRemoteAddr.Network() + ":" + ackRemoteAddr.String(),
-		},
-		{
-			Id:         "payload",
-			LocalAddr:  plLocalAddr.Network() + ":" + plLocalAddr.String(),
-			RemoteAddr: plRemoteAddr.Network() + ":" + plRemoteAddr.String(),
+	return &ctrl_pb.LinkConnState{
+		StateIteration: 1,
+		Conns: []*ctrl_pb.LinkConn{
+			{
+				Type:       "ack",
+				LocalAddr:  ackLocalAddr.Network() + ":" + ackLocalAddr.String(),
+				RemoteAddr: ackRemoteAddr.Network() + ":" + ackRemoteAddr.String(),
+			},
+			{
+				Type:       "payload",
+				LocalAddr:  plLocalAddr.Network() + ":" + plLocalAddr.String(),
+				RemoteAddr: plRemoteAddr.Network() + ":" + plRemoteAddr.String(),
+			},
 		},
 	}
 }

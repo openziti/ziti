@@ -280,13 +280,14 @@ func (self *addLinkFaultForReplacedLink) Handle(registry *linkRegistryImpl) {
 }
 
 type updateLinkStatusToDialFailed struct {
-	linkState *linkState
+	linkState   *linkState
+	applyFailed bool
 }
 
 func (self *updateLinkStatusToDialFailed) Handle(registry *linkRegistryImpl) {
 	if self.linkState.status == StatusDialing {
 		self.linkState.updateStatus(StatusDialFailed)
-		self.linkState.dialFailed(registry)
+		self.linkState.dialFailed(registry, self.applyFailed)
 	}
 }
 

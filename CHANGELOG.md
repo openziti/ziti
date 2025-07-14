@@ -1,3 +1,137 @@
+# Release 1.6.6
+
+## What's New
+
+* Multi-underlay links
+
+## Multi-underlay Link
+
+In previous releases, routers would attempt to set up two connections per link, one for payloads and one for acks.
+If either one failed, the whole link would be torn down. With this release, links can be made up of a
+user-configurable number of connections. 
+
+### Link Connection Types
+
+Link connections are of two types:
+
+* default - These may carry payloads and acks. As long as there is at least one default connection, the link will stay up.
+* ack - These may carry only acks. They act as a prioritization mechanism for acks. There may be zero ack connections.
+
+The desired number of default and ack channels can be configured in the router configuration.
+
+```yaml
+link:
+  dialers:
+    - binding: transport
+
+      # Target number of default connections. Allowed range 1-100. Defaults to 3.
+      maxDefaultConnections: 3
+  
+      # Target number of ack connections. Allowed range 1-100. Defaults to 1.
+      maxAckConnections: 1
+
+      # Time to delay making additional connections after the initial connection. Defaults to 3s
+      # Reduces connection churn when routers are dialing each other at the same time.
+      startupDelay: 3s
+```
+
+It's recommended to configure at least two connections per link.
+
+**Why Multiple Connections?**
+
+1. They allow  for link continuity even if one of the connections goes down. 
+2. They can keep traffic moving if one of the connections stalls for some reason.
+3. Using multiple links also multiples the number of OS buffers in use, although the amount of per-connection buffers can also be bumped up at the OS level. 
+
+**Why a ACK Priority Connection?**
+
+If a payload gets dropped, it will need to be retransmitted. If an ack gets dropped, a payload
+that's already been received will be retransmitted. Acks are also generally much smaller than 
+payloads. The faster we can deliver them, the faster the flow control logic can react.
+
+**How Many Connections?**
+
+At least two. However, having more connections doesn't increase the physical bandwidth available between routers. Some 
+additional connections provide additional resilience and perhaps more performance due to increased OS resources. However,
+the benefits diminish quickly. More than the default of three is unlikely to provide much benefit. 
+
+**How is traffic load-balanced?**
+
+There is a queue for payloads and other for acks. Default connections pull from both queues, ack connections only pull from
+the ack queue. Because connections pull from the queues, if one connection is slower it will naturally pull fewer messages
+than other connections.
+
+### Backwards Compatibility
+
+When creating links to a router older than 1.6.6, routers will fallback to the old logic and dial one payload and one
+ack channel. 
+
+### Link Events
+
+Links will now report their connections to the controller. They are now reported when listing links using `ziti fabric list links`.
+
+Here is an example from a test setup.
+
+```
+$ ziti fabric list links 'skip 3 limit 2'
+╭────────────────────────┬───────────────────────┬────────────────────────┬─────────────┬─────────────┬─────────────┬───────────┬────────┬───────────┬──────────────────────────────────────────────────────────────╮
+│ ID                     │ DIALER                │ ACCEPTOR               │ STATIC COST │ SRC LATENCY │ DST LATENCY │ STATE     │ STATUS │ FULL COST │ CONNECTIONS                                                  │
+├────────────────────────┼───────────────────────┼────────────────────────┼─────────────┼─────────────┼─────────────┼───────────┼────────┼───────────┼──────────────────────────────────────────────────────────────┤
+│ 101OzJLiMrrFSpwT0LnYOY │ router-eu-central-3.7 │ router-eu-central-2.11 │           1 │       2.7ms │       2.7ms │ Connected │     up │         5 │ link.default: tcp:10.0.0.230:40028 -> tcp:54.93.210.111:6011 │
+│                        │                       │                        │             │             │             │           │        │           │ link.default: tcp:10.0.0.230:40032 -> tcp:54.93.210.111:6011 │
+│                        │                       │                        │             │             │             │           │        │           │ link.ack: tcp:10.0.0.230:46092 -> tcp:54.93.210.111:6011     │
+│                        │                       │                        │             │             │             │           │        │           │ link.default: tcp:10.0.0.230:46096 -> tcp:54.93.210.111:6011 │
+│ 101YAe327nSngeRIXeKR0T │ router-eu-central-3.5 │ router-us-east-4.17    │           1 │      91.5ms │      91.4ms │ Connected │     up │       183 │ ack: tcp:10.0.0.230:57574 -> tcp:13.220.214.103:6017         │
+│                        │                       │                        │             │             │             │           │        │           │ payload: tcp:10.0.0.230:57568 -> tcp:13.220.214.103:6017     │
+╰────────────────────────┴───────────────────────┴────────────────────────┴─────────────┴─────────────┴─────────────┴───────────┴────────┴───────────┴──────────────────────────────────────────────────────────────╯
+results: 4-5 of 79803
+```
+
+A link is considered created once it has an initial default connection. The link will then attempt to reach the desired count of default 
+and ack connections. Whenever a new underlay connection is established or closes, the controller will be notified and an event will
+be generated.
+
+Link event example:
+
+```
+{
+  "namespace": "link",
+  "event_src_id": "ctrl_client",
+  "timestamp": "2025-07-11T10:35:01.614896435-04:00",
+  "event_type": "connectionsChanged",
+  "link_id": "7mCYLrQAiO93du7SLGDeXf",
+  "connections": [
+    {
+      "id": "link.default",
+      "local_addr": "tcp:127.0.0.1:33682",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    },
+    {
+      "id": "link.default",
+      "local_addr": "tcp:127.0.0.1:33686",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    },
+    {
+      "id": "link.ack",
+      "local_addr": "tcp:127.0.0.1:33696",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    },
+    {
+      "id": "link.default",
+      "local_addr": "tcp:127.0.0.1:33702",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    }
+  ]
+}
+```
+
+**NOTES**
+
+1. Link events show the full set of connections for the current state instead of the change.
+2. New routers dialing older routers will still report link connections. See the second link in the list above.
+3. Old routers will not report connections.
+
+
 # Release 1.6.5
 
 ## What's New
