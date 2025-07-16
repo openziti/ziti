@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
-	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
+	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 )
@@ -66,38 +66,38 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "echo"))
+	workflow.AddAction(zitilibActions.Edge("create", "service", "echo"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "echo-servers", "Bind", "--service-roles", "@echo", "--identity-roles", "#service"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "echo-client", "Dial", "--service-roles", "@echo", "--identity-roles", "#client"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "echo-servers", "Bind", "--service-roles", "@echo", "--identity-roles", "#service"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "echo-client", "Dial", "--service-roles", "@echo", "--identity-roles", "#client"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "echo-servers", "--edge-router-roles", "#host", "--identity-roles", "#service"))
-	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "echo-clients", "--edge-router-roles", "#client", "--identity-roles", "#client"))
+	workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "echo-servers", "--edge-router-roles", "#host", "--identity-roles", "#service"))
+	workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "echo-clients", "--edge-router-roles", "#client", "--identity-roles", "#client"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "serp-all", "--service-roles", "#all", "--edge-router-roles", "#all"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "serp-all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-host", "host.v1", `
+	workflow.AddAction(zitilibActions.Edge("create", "config", "files-host", "host.v1", `
 		{
 			"address" : "localhost",
 			"port" : 8090,
 			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-host", "host.v1", `
+	workflow.AddAction(zitilibActions.Edge("create", "config", "iperf-host", "host.v1", `
 		{
 			"address" : "localhost",
 			"port" : 5201,
 			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "ssh-host", "host.v1", `
+	workflow.AddAction(zitilibActions.Edge("create", "config", "ssh-host", "host.v1", `
 		{
 			"address" : "localhost",
 			"port" : 22,
 			"protocol" : "tcp"
 		}`))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "fortio-host", "host.v1", `
+	workflow.AddAction(zitilibActions.Edge("create", "config", "fortio-host", "host.v1", `
 		{
 			"address" : "localhost",
 			"port" : 8080,
@@ -122,7 +122,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 					"protocols": ["tcp"]
 				}`, hostType, suffix)
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", filesConfigName, "intercept.v1", filesConfigDef))
+			workflow.AddAction(zitilibActions.Edge("create", "config", filesConfigName, "intercept.v1", filesConfigDef))
 
 			iperfConfigName := fmt.Sprintf("iperf-intercept-%s%s", hostType, suffix)
 			iperfConfigDef := fmt.Sprintf(`
@@ -132,7 +132,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 					"protocols": ["tcp"]
 				}`, hostType, suffix)
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", iperfConfigName, "intercept.v1", iperfConfigDef))
+			workflow.AddAction(zitilibActions.Edge("create", "config", iperfConfigName, "intercept.v1", iperfConfigDef))
 
 			sshConfigName := fmt.Sprintf("ssh-intercept-%s%s", hostType, suffix)
 			sshConfigDef := fmt.Sprintf(`
@@ -142,7 +142,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 					"protocols": ["tcp"]
 				}`, hostType, suffix)
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", sshConfigName, "intercept.v1", sshConfigDef))
+			workflow.AddAction(zitilibActions.Edge("create", "config", sshConfigName, "intercept.v1", sshConfigDef))
 
 			fortioConfigName := fmt.Sprintf("fortio-intercept-%s%s", hostType, suffix)
 			fortioConfigDef := fmt.Sprintf(`
@@ -152,33 +152,46 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 					"protocols": ["tcp"]
 				}`, hostType, suffix)
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", fortioConfigName, "intercept.v1", fortioConfigDef))
+			workflow.AddAction(zitilibActions.Edge("create", "config", fortioConfigName, "intercept.v1", fortioConfigDef))
 
 			filesServiceName := fmt.Sprintf("%s-files%s", hostType, suffix)
 			filesConfigs := fmt.Sprintf("files-host,%s", filesConfigName)
-			workflow.AddAction(zitilib_actions.Edge("create", "service", filesServiceName, "-c", filesConfigs, "-e", encryptionFlag, "-a", hostType))
+			workflow.AddAction(zitilibActions.Edge("create", "service", filesServiceName, "-c", filesConfigs, "-e", encryptionFlag, "-a", hostType))
 
 			iperfServiceName := fmt.Sprintf("%s-iperf%s", hostType, suffix)
 			iperfConfigs := fmt.Sprintf("iperf-host,%s", iperfConfigName)
-			workflow.AddAction(zitilib_actions.Edge("create", "service", iperfServiceName, "-c", iperfConfigs, "-e", encryptionFlag, "-a", hostType))
+			workflow.AddAction(zitilibActions.Edge("create", "service", iperfServiceName, "-c", iperfConfigs, "-e", encryptionFlag, "-a", hostType))
 
 			sshServiceName := fmt.Sprintf("%s-ssh%s", hostType, suffix)
 			sshConfigs := fmt.Sprintf("ssh-host,%s", sshConfigName)
-			workflow.AddAction(zitilib_actions.Edge("create", "service", sshServiceName, "-c", sshConfigs, "-e", encryptionFlag, "-a", hostType))
+			workflow.AddAction(zitilibActions.Edge("create", "service", sshServiceName, "-c", sshConfigs, "-e", encryptionFlag, "-a", hostType))
 
 			fortioServiceName := fmt.Sprintf("%s-fortio%s", hostType, suffix)
 			fortioConfigs := fmt.Sprintf("fortio-host,%s", fortioConfigName)
-			workflow.AddAction(zitilib_actions.Edge("create", "service", fortioServiceName, "-c", fortioConfigs, "-e", encryptionFlag, "-a", hostType))
+			workflow.AddAction(zitilibActions.Edge("create", "service", fortioServiceName, "-c", fortioConfigs, "-e", encryptionFlag, "-a", hostType))
 		}
 	}
 
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "ert-hosts", "Bind", "--service-roles", "#ert", "--identity-roles", "#ert-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "zet-hosts", "Bind", "--service-roles", "#zet", "--identity-roles", "#zet-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "ziti-tunnel-hosts", "Bind", "--service-roles", "#ziti-tunnel", "--identity-roles", "#ziti-tunnel-host"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "client-tunnelers", "Dial", "--service-roles", "#all", "--identity-roles", "#client"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "ert-hosts", "Bind", "--service-roles", "#ert", "--identity-roles", "#ert-host"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "zet-hosts", "Bind", "--service-roles", "#zet", "--identity-roles", "#zet-host"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "ziti-tunnel-hosts", "Bind", "--service-roles", "#ziti-tunnel", "--identity-roles", "#ziti-tunnel-host"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "client-tunnelers", "Dial", "--service-roles", "#all", "--identity-roles", "#client"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "client-routers", "--edge-router-roles", "#client", "--identity-roles", "#client"))
-	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
+	workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "client-routers", "--edge-router-roles", "#client", "--identity-roles", "#client"))
+	workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
+
+	// Add sim services
+	workflow.AddAction(zitilibActions.Edge("create", "service", "throughput", "-a", "loop,loop-host"))
+	workflow.AddAction(zitilibActions.Edge("create", "service", "latency", "-a", "loop,loop-host"))
+
+	workflow.AddAction(zitilibActions.Edge("create", "service", "throughput-xg", "-a", "loop,loop-host-xg"))
+	workflow.AddAction(zitilibActions.Edge("create", "service", "latency-xg", "-a", "loop,loop-host-xg"))
+	workflow.AddAction(zitilibActions.Edge("create", "service", "slow-xg", "-a", "loop,loop-host-xg"))
+
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "loop-hosts", "Bind", "--service-roles", "#loop-host", "--identity-roles", "#loop-host"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "loop-hosts-xg", "Bind", "--service-roles", "#loop-host-xg", "--identity-roles", "#loop-host-xg"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "loop-hosts-ert", "Bind", "--service-roles", "#loop-host-ert", "--identity-roles", "#loop-host-ert"))
+	workflow.AddAction(zitilibActions.Edge("create", "service-policy", "loop-clients", "Dial", "--service-roles", "#loop", "--identity-roles", "#loop-client"))
 
 	if isHA {
 		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))

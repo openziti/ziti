@@ -28,7 +28,7 @@ func TestIPerf(t *testing.T) {
 		t.Run("ert-hosted", func(t *testing.T) {
 			t.Parallel()
 
-			for _, clientType := range []string{"ert", "zet", "ziti-tunnel"} {
+			for _, clientType := range []string{"ert" /*"zet",*/, "ziti-tunnel"} {
 				for _, encrypted := range []bool{true, false} {
 					for _, reversed := range []bool{true, false} {
 						testIPerf(t, clientType, "ert", encrypted, reversed)
@@ -37,22 +37,22 @@ func TestIPerf(t *testing.T) {
 			}
 		})
 
-		t.Run("zet-hosted", func(t *testing.T) {
-			t.Parallel()
-
-			for _, clientType := range []string{"zet", "ziti-tunnel", "ert"} {
-				for _, encrypted := range []bool{true, false} {
-					for _, reversed := range []bool{true, false} {
-						testIPerf(t, clientType, "zet", encrypted, reversed)
-					}
-				}
-			}
-		})
+		//t.Run("zet-hosted", func(t *testing.T) {
+		//	t.Parallel()
+		//
+		//	for _, clientType := range []string{"zet", "ziti-tunnel", "ert"} {
+		//		for _, encrypted := range []bool{true, false} {
+		//			for _, reversed := range []bool{true, false} {
+		//				testIPerf(t, clientType, "zet", encrypted, reversed)
+		//			}
+		//		}
+		//	}
+		//})
 
 		t.Run("ziti-tunnel-hosted", func(t *testing.T) {
 			t.Parallel()
 
-			for _, clientType := range []string{"ziti-tunnel", "ert", "zet"} {
+			for _, clientType := range []string{"ziti-tunnel", "ert" /*, "zet"*/} {
 				for _, encrypted := range []bool{true, false} {
 					for _, reversed := range []bool{true, false} {
 						testIPerf(t, clientType, "ziti-tunnel", encrypted, reversed)

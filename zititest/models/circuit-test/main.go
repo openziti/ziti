@@ -169,12 +169,12 @@ var m = &model.Model{
 			"slowWorkload":             slowWorkload,
 
 			"testErtClient":   true,
-			"testSdkClient":   false,
-			"testSdkXgClient": true,
+			"testSdkClient":   true,
+			"testSdkXgClient": false,
 
 			"testErtHost":   true,
-			"testSdkHost":   false,
-			"testSdkXgHost": true,
+			"testSdkHost":   true,
+			"testSdkXgHost": false,
 		},
 	},
 	StructureFactories: []model.Factory{

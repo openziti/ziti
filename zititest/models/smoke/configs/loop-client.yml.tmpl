@@ -1,0 +1,29 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: false
+      ha: {{ .Component.GetFlag "ha"}}
+      max_control_underlays: 1
+      test_service: latency
+
+workloads:
+  - name:         throughput
+    service_name: throughput
+    connector:    default
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+
+  - name:         throughput-xg
+    service_name: throughput-xg
+    connector:    default
+    {{ $.Model.MustVariable "gentleThroughputWorkload" }}
+
+  - name:         latency
+    service_name: latency
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
+
+  - name:         latency-xg
+    service_name: latency-xg
+    connector:    default
+    {{ $.Model.MustVariable "latencyWorkload" }}
