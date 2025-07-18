@@ -31,10 +31,11 @@ import (
 )
 
 type zcatAction struct {
-	verbose      bool
-	logFormatter string
-	configFile   string
-	ha           bool // todo: remove when ha flag is no longer needed
+	verbose        bool
+	logFormatter   string
+	configFile     string
+	ha             bool // todo: remove when ha flag is no longer needed
+	sdkFlowControl bool
 }
 
 func newZcatCmd() *cobra.Command {
@@ -54,6 +55,7 @@ func newZcatCmd() *cobra.Command {
 	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().BoolVar(&action.ha, "ha", false, "Enable HA controller compatibility")
+	cmd.Flags().BoolVar(&action.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
 	cmd.Flags().SetInterspersed(true)
 
 	return cmd
@@ -108,6 +110,11 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			log.WithError(cfgErr).Fatalf("unable to load ziti identity from [%v]", self.configFile)
 		}
 
+		if self.sdkFlowControl {
+			zitiConfig.MaxControlConnections = 1
+			zitiConfig.MaxDefaultConnections = 2
+		}
+
 		dialIdentifier := ""
 		if atIdx := strings.IndexByte(addr, '@'); atIdx > 0 {
 			dialIdentifier = addr[:atIdx]
@@ -118,12 +125,18 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
 		if ctxErr != nil {
 			pfxlog.Logger().WithError(err).Fatal("could not create sdk context from config")
+			panic(ctxErr)
 		}
 
 		dialOptions := &ziti.DialOptions{
 			ConnectTimeout: 5 * time.Second,
 			Identity:       dialIdentifier,
 		}
+
+		if self.sdkFlowControl {
+			dialOptions.SdkFlowControl = &self.sdkFlowControl
+		}
+
 		conn, err = zitiContext.DialWithOptions(addr, dialOptions)
 		if err != nil {
 			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)

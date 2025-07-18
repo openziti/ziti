@@ -23,10 +23,10 @@ import (
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	terraformInit "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
-	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
+	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -97,7 +98,11 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t3.micro"
+				if strings.HasPrefix(host.Id, "ctrl") {
+					host.InstanceType = "t3.medium"
+				} else {
+					host.InstanceType = "c5.large"
+				}
 				return nil
 			})
 		}),
@@ -319,7 +324,7 @@ var Model = &model.Model{
 
 	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
-		&terraform_0.Terraform{
+		&terraformInit.Terraform{
 			Retries: 3,
 			ReadyCheck: &semaphore.ReadyStage{
 				MaxWait: 90 * time.Second,
@@ -334,7 +339,7 @@ var Model = &model.Model{
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
-		aws_ssh_key2.Dispose(),
+		awsSshKeyDispose.Dispose(),
 	},
 }
 

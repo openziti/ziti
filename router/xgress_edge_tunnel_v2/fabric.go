@@ -75,7 +75,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return err
 	}
 
-	log := logrus.WithField("service", service.GetName())
+	log := logrus.WithField("service", service.GetName()).WithField("src", conn.RemoteAddr().String())
 
 	peerData := make(map[uint32][]byte)
 	if service.IsEncryptionRequired() {
@@ -115,6 +115,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		log.WithError(err).Warn("failed to dial fabric")
 		return err
 	}
+
+	log.WithField("circuitId", response.CircuitId).Debug("circuit established")
 
 	peerKey, peerKeyFound := response.PeerData[uint32(edge.PublicKeyHeader)]
 	if service.IsEncryptionRequired() && !peerKeyFound {

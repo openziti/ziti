@@ -33,7 +33,18 @@ import (
 	"time"
 )
 
-const TargetZitiVersion = ""
+var ClientRoutersVersion = ""
+var HostRoutersVersion = ""
+
+type testMode string
+
+const (
+	TestModeDefault                      = "default"
+	TestModeClientBackwardsCompatibility = "client-backwards-compatibility"
+	TestModeHostBackwardsCompatibility   = "host-backwards-compatibility"
+)
+
+var mode testMode = TestModeDefault
 
 var entityCounts = map[string]uint32{
 	"loop-client":    1,
@@ -156,16 +167,60 @@ var m = &model.Model{
 			"gentleThroughputWorkload": gentleThroughputWorkload,
 			"latencyWorkload":          latencyWorkload,
 			"slowWorkload":             slowWorkload,
-			"testErtHost":              true,
-			"testErtClient":            true,
-			"testSdkClient":            true,
-			"testSdkHost":              true,
-			"testSdkXgClient":          false,
-			"testSdkXgHost":            false,
+
+			"testErtClient":   true,
+			"testSdkClient":   false,
+			"testSdkXgClient": true,
+
+			"testErtHost":   true,
+			"testSdkHost":   false,
+			"testSdkXgHost": true,
 		},
 	},
 	StructureFactories: []model.Factory{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
+		model.FactoryFunc(func(m *model.Model) error {
+			if mode == TestModeDefault {
+				ClientRoutersVersion = ""
+				HostRoutersVersion = ""
+			} else if mode == TestModeClientBackwardsCompatibility {
+				ClientRoutersVersion = "v1.5.4"
+				HostRoutersVersion = ""
+
+				m.Scope.Defaults["testErtClient"] = true
+				m.Scope.Defaults["testSdkClient"] = true
+				m.Scope.Defaults["testSdkXgClient"] = false
+
+				m.Scope.Defaults["testErtHost"] = true
+				m.Scope.Defaults["testSdkHost"] = true
+				m.Scope.Defaults["testSdkXgHost"] = true
+			} else if mode == TestModeHostBackwardsCompatibility {
+				ClientRoutersVersion = ""
+				HostRoutersVersion = "v1.5.4"
+
+				m.Scope.Defaults["testErtClient"] = true
+				m.Scope.Defaults["testSdkClient"] = true
+				m.Scope.Defaults["testSdkXgClient"] = true
+
+				m.Scope.Defaults["testErtHost"] = true
+				m.Scope.Defaults["testSdkHost"] = true
+				m.Scope.Defaults["testSdkXgHost"] = false
+			}
+
+			err := m.ForEachComponent(".client-router", 1, func(c *model.Component) error {
+				c.Type.(*zitilab.RouterType).Version = ClientRoutersVersion
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			return m.ForEachComponent(".host-router", 1, func(c *model.Component) error {
+				c.Type.(*zitilab.RouterType).Version = HostRoutersVersion
+				return nil
+			})
+		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			err := m.ForEachHost("*", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
@@ -288,8 +343,10 @@ var m = &model.Model{
 				"router-client-1": {
 					Components: model.Components{
 						"router-client-1": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest", "client-router"}},
+							Type: &zitilab.RouterType{
+								Version: ClientRoutersVersion,
+							},
 						},
 						"tcpdump-client-1": {
 							Scope: model.Scope{Tags: model.Tags{"tcpdump", "client"}},
@@ -303,8 +360,10 @@ var m = &model.Model{
 				"router-client-2": {
 					Components: model.Components{
 						"router-client-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client", "test", "underTest", "client-router"}},
+							Type: &zitilab.RouterType{
+								Version: ClientRoutersVersion,
+							},
 						},
 						"tcpdump-client-2": {
 							Scope: model.Scope{Tags: model.Tags{"tcpdump", "client"}},
@@ -318,8 +377,10 @@ var m = &model.Model{
 				"ert": {
 					Components: model.Components{
 						"ert": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "test", "loop-client", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "test", "loop-client", "underTest", "client-router"}},
+							Type: &zitilab.RouterType{
+								Version: ClientRoutersVersion,
+							},
 						},
 						"loop-client-ert": {
 							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-ert", "sdk-app", "client", "sim-services-client"}},
@@ -387,8 +448,10 @@ var m = &model.Model{
 				"router-host-1": {
 					Components: model.Components{
 						"router-host-1": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest", "host-router"}},
+							Type: &zitilab.RouterType{
+								Version: HostRoutersVersion,
+							},
 						},
 						"tcpdump-host-1": {
 							Scope: model.Scope{Tags: model.Tags{"tcpdump", "host"}},
@@ -402,8 +465,10 @@ var m = &model.Model{
 				"router-host-2": {
 					Components: model.Components{
 						"router-host-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "host", "test", "underTest", "host-router"}},
+							Type: &zitilab.RouterType{
+								Version: HostRoutersVersion,
+							},
 						},
 						"tcpdump-host-2": {
 							Scope: model.Scope{Tags: model.Tags{"tcpdump", "host"}},
@@ -417,8 +482,10 @@ var m = &model.Model{
 				"ert-host": {
 					Components: model.Components{
 						"ert-host": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "loop-host-ert", "test", "underTest"}},
-							Type:  &zitilab.RouterType{},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "loop-host-ert", "test", "underTest", "host-router"}},
+							Type: &zitilab.RouterType{
+								Version: HostRoutersVersion,
+							},
 						},
 						"loop-host-ert": {
 							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},

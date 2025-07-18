@@ -32,7 +32,7 @@ require (
 	github.com/go-openapi/swag v0.23.1
 	github.com/go-openapi/validate v0.24.0
 	github.com/go-resty/resty/v2 v2.16.5
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
@@ -56,18 +56,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.29
-	github.com/openziti/channel/v4 v4.2.13
+	github.com/openziti/channel/v4 v4.2.16
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.46
-	github.com/openziti/foundation/v2 v2.0.69
-	github.com/openziti/identity v1.0.108
+	github.com/openziti/foundation/v2 v2.0.70
+	github.com/openziti/identity v1.0.109
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
-	github.com/openziti/runzmd v1.0.76
-	github.com/openziti/sdk-golang v1.1.2
-	github.com/openziti/secretstream v0.1.36
-	github.com/openziti/storage v0.4.21
-	github.com/openziti/transport/v2 v2.0.180
+	github.com/openziti/runzmd v1.0.77
+	github.com/openziti/sdk-golang v1.2.0
+	github.com/openziti/secretstream v0.1.37
+	github.com/openziti/storage v0.4.22
+	github.com/openziti/transport/v2 v2.0.182
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.4
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -80,12 +80,12 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.39.0
+	github.com/zitadel/oidc/v3 v3.41.0
 	go.etcd.io/bbolt v1.4.2
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
@@ -114,7 +114,7 @@ require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
-	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.9.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
