@@ -248,7 +248,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	if err := listener.underlayListener.Listen(); err != nil {
 		return err
 	}
-	accepter := NewAcceptor(listener, listener.underlayListener, nil)
+	accepter := NewAcceptor(listener, listener.underlayListener)
 	go accepter.Run()
 
 	return nil
@@ -269,6 +269,13 @@ type edgeClientConn struct {
 	xgCircuits   cmap.ConcurrentMap[string, *xgEdgeForwarder]
 }
 
+func (self *edgeClientConn) getIdentityId() string {
+	if self.apiSession == nil {
+		return ""
+	}
+	return self.apiSession.IdentityId
+}
+
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	log := pfxlog.ContextLogger(self.ch.GetChannel().Label())
 	log.Debugf("closing")
@@ -279,18 +286,15 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 
 func (self *edgeClientConn) cleanupXgressCircuits() {
 	for entry := range self.xgCircuits.IterBuffered() {
-		self.cleanupXgressCircuit(entry.Val, true)
+		self.cleanupXgressCircuit(entry.Val)
 	}
 }
 
-func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder, sendEndOfCircuit bool) {
+func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder) {
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
-	if sendEndOfCircuit {
-		self.forwarder.EndCircuit(circuitId)
-	}
-
+	self.forwarder.EndCircuit(circuitId)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault
@@ -474,7 +478,7 @@ func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Mess
 
 	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
 	if supportsCreateTerminatorV2 {
-		self.processBindV2(manager, req, ch, ctrlCh)
+		self.processBindV2(req, ch, ctrlCh)
 	} else {
 		self.processBindV1(manager, req, ch, ctrlCh)
 	}
@@ -608,7 +612,7 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
 	sessionToken := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
@@ -758,7 +762,7 @@ func (self *edgeClientConn) processBindV2(manager state.Manager, req *channel.Me
 	}
 }
 
-func (self *edgeClientConn) processUnbind(manager state.Manager, req *channel.Message, _ channel.Channel) {
+func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	token := string(req.Body)
 	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(connId, token, self)
@@ -955,7 +959,7 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 	}
 }
 
-func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *channel.Message, ch channel.Channel) {
+func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {
 	currentApiSession := self.listener.factory.stateManager.GetApiSessionFromCh(ch)
 
 	if currentApiSession == nil || currentApiSession.JwtToken == nil {
@@ -1014,8 +1018,12 @@ func (self *edgeClientConn) processTokenUpdate(manager state.Manager, req *chann
 
 func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channel) {
 	circuitId := string(msg.Body)
+	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if edgeForwarder, ok := self.xgCircuits.Get(circuitId); ok {
-		self.cleanupXgressCircuit(edgeForwarder, false)
+		log.Debug("received close request from sdk, closing sdk-xg circuit")
+		self.cleanupXgressCircuit(edgeForwarder)
+	} else {
+		log.Debug("received close request from sdk, but no edge forwarder found")
 	}
 }
 
@@ -1028,7 +1036,7 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 
 	edgeFwd, _ := self.xgCircuits.Get(payload.CircuitId)
 	if edgeFwd == nil {
-		self.responseToMissingXgress(msg, payload)
+		pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Warn("no xgress edge forwarder for circuit")
 		return
 	}
 
@@ -1047,20 +1055,6 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 			edgeFwd.metrics.Rx(edgeFwd, edgeFwd.originator, payload)
 		}
 	}
-}
-
-func (self *edgeClientConn) responseToMissingXgress(req *channel.Message, payload *xgress.Payload) {
-	var msg *channel.Message
-	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
-	if len(payload.Data) == 0 && payload.IsCircuitEndFlagSet() {
-		ack := xgress.NewAcknowledgement(payload.CircuitId, payload.GetOriginator().Invert())
-		msg = ack.Marshall()
-	} else {
-		msg = edge.NewStateClosedMsg(connId, "xgress closed")
-	}
-
-	msg.PutUint32Header(edge.ConnIdHeader, connId)
-	_, _ = self.ch.GetControlSender().TrySend(msg)
 }
 
 func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
@@ -1196,7 +1190,7 @@ func (self *xgEdgeForwarder) GetTags() map[string]string {
 	return self.tags
 }
 
-func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
+func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {
 	// pfxlog.Logger().Infof("forwarding payload to sdk circuitId: %s, seq: %d", payload.CircuitId, payload.Sequence)
 
 	msg := payload.Marshall()
@@ -1206,8 +1200,8 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 		if err == nil && !sent {
 			self.listener.droppedMsgMeter.Mark(1)
 			self.listener.droppedPayloadsMeter.Mark(1)
-		}
-		if err == nil && sent {
+
+			pfxlog.Logger().WithField("circuitId", payload.CircuitId).Info("payload to xgress sdk dropped")
 			if !payload.IsRetransmitFlagSet() {
 				self.metrics.Tx(self, self.originator, payload)
 			}
@@ -1263,11 +1257,13 @@ func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 }
 
 func (self *xgEdgeForwarder) RegisterRouting() {
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("routing registered")
 	self.forwarder.RegisterDestination(self.circuitId, self.address, self)
 	self.xgCircuits.Set(self.circuitId, self)
 }
 
 func (self *xgEdgeForwarder) UnregisterRouting() {
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("routing unregistered")
 	self.forwarder.EndCircuit(self.circuitId)
 	self.xgCircuits.Set(self.circuitId, self)
 }
@@ -1284,7 +1280,6 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	self.tags = response.Tags
 	self.RegisterRouting()
 
-	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	connId, _ := ctx.req.GetUint32Header(edge.ConnIdHeader)
 
 	msg := edge.NewStateConnectedMsg(connId)
@@ -1311,12 +1306,15 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 }
 
 func (self *xgEdgeForwarder) Unrouted() {
+	pfxlog.Logger().WithField("circuitId", self.circuitId).Info("unroute: start")
+	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Info("unroute: complete")
 	self.xgCircuits.Remove(self.circuitId)
 
 	msg := edge.NewStateClosedMsg(self.connId, "xgress unrouted")
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
+		pfxlog.Logger().WithField("circuitId", self.circuitId).
+			WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
 	}
 }
 

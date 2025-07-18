@@ -2,8 +2,16 @@
 
 ## What's New
 
+* SDK Flow Control Updates
 * Multi-underlay links
 * Nested Identity App Data
+
+## SDK Flow Control Updates
+
+The circuit testing for sdk flow control is complete. Many fixes were made. The SDK flow control
+code is still considered experimental, in that the features or API may change. However, it should
+now be feature complete and relatively stable.. Once it has been in production use for a reasonable
+ period and no further changes are anticipated, it will be marked stable.
 
 ## Multi-underlay Link
 

@@ -114,7 +114,25 @@ func (handler *validateCircuitsHandler) ValidateCircuits(filter string, cb Circu
 			sem.Acquire()
 			go func() {
 				defer sem.Release()
-				handler.validRouterCircuits(router, cb)
+				if connectedRouter == nil {
+					handler.validRouterCircuits(router, cb)
+					return
+				}
+
+				supportsInspect, err := connectedRouter.VersionInfo.HasMinimumVersion("1.6.6")
+				if err != nil {
+					handler.reportError(connectedRouter, err, cb)
+				} else if supportsInspect {
+					handler.validRouterCircuits(router, cb)
+				} else {
+					// if the router doesn't support inspection, just report success
+					cb(&mgmt_pb.RouterCircuitDetails{
+						RouterId:        router.Id,
+						RouterName:      router.Name,
+						ValidateSuccess: true,
+						Details:         map[string]*mgmt_pb.RouterCircuitDetail{},
+					})
+				}
 			}()
 		}
 	}

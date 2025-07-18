@@ -23,10 +23,10 @@ import (
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	terraformInit "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
-	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
+	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
@@ -35,12 +35,56 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"os"
+	"strings"
 	"time"
 )
 
-const ZitiEdgeTunnelVersion = "v1.5.10"
+const ZitiEdgeTunnelVersion = "v1.6.1"
 const ZitiCtrlVersion = ""
 const ZitiRouterVersion = ""
+
+var throughputWorkload = "" +
+	`concurrency:  1
+    iterations:   2
+    dialer:
+      txRequests:       80000
+      rxTimeout:        5s
+      payloadMinBytes:  10000
+      payloadMaxBytes:  10000
+    listener:
+      rxTimeout:        5s
+`
+
+var gentleThroughputWorkload = "" +
+	`concurrency:  2
+    iterations:   2
+    dialer:
+      txRequests:       7000
+      txPacing:         1ms
+      txMaxJitter:      0
+      rxTimeout:        5s
+      payloadMinBytes:  10000
+      payloadMaxBytes:  10000
+    listener:
+      rxTimeout:        5s
+`
+
+var latencyWorkload = "" +
+	`concurrency:  5
+    iterations:  400
+    dialer:
+      txRequests:       1
+      rxTimeout:        5s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+      latencyFrequency: 1
+    listener:
+      txRequests:       1
+      txAfterRx:        true
+      rxTimeout:        5s
+      payloadMinBytes:  2048
+      payloadMaxBytes:  10000
+`
 
 //go:embed configs
 var configResource embed.FS
@@ -69,6 +113,9 @@ var Model = &model.Model{
 					"password": "admin",
 				},
 			},
+			"throughputWorkload":       throughputWorkload,
+			"gentleThroughputWorkload": gentleThroughputWorkload,
+			"latencyWorkload":          latencyWorkload,
 		},
 	},
 
@@ -97,7 +144,11 @@ var Model = &model.Model{
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t3.micro"
+				if strings.HasPrefix(host.Id, "ctrl") {
+					host.InstanceType = "t3.medium"
+				} else {
+					host.InstanceType = "c5.large"
+				}
 				return nil
 			})
 		}),
@@ -160,7 +211,7 @@ var Model = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"ert-client"}},
 					Components: model.Components{
 						"router-east-1": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "client"}},
 							Type: &zitilab.RouterType{
 								Debug:   false,
 								Version: ZitiRouterVersion,
@@ -175,7 +226,7 @@ var Model = &model.Model{
 				"router-east-2": {
 					Components: model.Components{
 						"router-east-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "test"}},
 							Type: &zitilab.RouterType{
 								Debug:   false,
 								Version: ZitiRouterVersion,
@@ -204,6 +255,30 @@ var Model = &model.Model{
 						},
 					},
 				},
+				"loop-client": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+					Components: model.Components{
+						"loop-client": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-no-xg", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								ConfigSource: "loop-client.yml.tmpl",
+								Mode:         zitilab.Loop4RemoteControlled,
+							},
+						},
+					},
+				},
+				"loop-client-xg": {
+					Scope: model.Scope{Tags: model.Tags{"loop-client"}},
+					Components: model.Components{
+						"loop-client-xg": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-xg", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								ConfigSource: "loop-client-xg.yml.tmpl",
+								Mode:         zitilab.Loop4RemoteControlled,
+							},
+						},
+					},
+				},
 			},
 		},
 		"us-west-2": {
@@ -224,7 +299,7 @@ var Model = &model.Model{
 				"router-west": {
 					Components: model.Components{
 						"router-west": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "test"}},
 							Type: &zitilab.RouterType{
 								Debug:   false,
 								Version: ZitiRouterVersion,
@@ -289,6 +364,30 @@ var Model = &model.Model{
 						},
 					},
 				},
+				"loop-host": {
+					Scope: model.Scope{Tags: model.Tags{"loop-host"}},
+					Components: model.Components{
+						"loop-host": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								ConfigSource: "loop-host.yml.tmpl",
+								Mode:         zitilab.Loop4Listener,
+							},
+						},
+					},
+				},
+				"loop-host-xg": {
+					Scope: model.Scope{Tags: model.Tags{"loop-host-xg"}},
+					Components: model.Components{
+						"loop-host-xg": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								ConfigSource: "loop-host-xg.yml.tmpl",
+								Mode:         zitilab.Loop4Listener,
+							},
+						},
+					},
+				},
 			},
 		},
 	},
@@ -319,7 +418,7 @@ var Model = &model.Model{
 
 	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
-		&terraform_0.Terraform{
+		&terraformInit.Terraform{
 			Retries: 3,
 			ReadyCheck: &semaphore.ReadyStage{
 				MaxWait: 90 * time.Second,
@@ -334,7 +433,7 @@ var Model = &model.Model{
 
 	Disposal: model.Stages{
 		terraform.Dispose(),
-		aws_ssh_key2.Dispose(),
+		awsSshKeyDispose.Dispose(),
 	},
 }
 

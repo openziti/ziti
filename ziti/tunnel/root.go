@@ -64,7 +64,9 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	root.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	root.PersistentFlags().BoolVar(&ha, "ha", false, "Enable HA controller compatibility")
-	root.PersistentFlags().BoolVar(&separateCtrlConn, "separate-ctrl-connection", false, "enables a separate control connection")
+	root.PersistentFlags().BoolVar(&sdkFlowControl, "sdk-flow-control", true, "enables sdk flow control")
+	root.PersistentFlags().Uint8Var(&maxDefaultConnections, "default-connections", 2, "sets the desired number of default connections")
+	root.PersistentFlags().Uint8Var(&maxControlConnections, "control-connections", 1, "sets the desired number of control connections")
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
 	for _, cmdF := range hostSpecificCmds {
@@ -88,7 +90,9 @@ var cliAgentEnabled bool
 var cliAgentAddr string
 var cliAgentAlias string
 var ha bool
-var separateCtrlConn bool
+var sdkFlowControl bool
+var maxDefaultConnections uint8
+var maxControlConnections uint8
 
 func rootPreRun(cmd *cobra.Command, _ []string) {
 	verbose, err := cmd.Flags().GetBool("verbose")
@@ -193,9 +197,8 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		zitiCfg.EnableHa = ha
 	}
 
-	if separateCtrlConn {
-		zitiCfg.MaxControlConnections = 1
-	}
+	zitiCfg.MaxControlConnections = uint32(maxControlConnections)
+	zitiCfg.MaxDefaultConnections = uint32(maxDefaultConnections)
 
 	serviceListener := serviceListenerGroup.NewServiceListener()
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)

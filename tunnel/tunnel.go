@@ -18,6 +18,7 @@ package tunnel
 
 import (
 	"encoding/json"
+	"github.com/michaelquigley/pfxlog"
 	"strconv"
 	"time"
 
@@ -28,8 +29,6 @@ import (
 	"strings"
 )
 
-var log = logrus.StandardLogger()
-
 type Service interface {
 	GetName() string
 	GetId() string
@@ -38,15 +37,16 @@ type Service interface {
 }
 
 func DialAndRun(fabricProvider FabricProvider, service Service, instanceId string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {
+	log := pfxlog.Logger().WithField("service", service.GetName()).WithField("src", clientConn.RemoteAddr().String())
 	appInfoJson, err := json.Marshal(appInfo)
 	if err != nil {
-		log.WithError(err).WithField("service", service.GetName()).Error("unable to marshal appInfo")
+		log.WithError(err).Error("unable to marshal appInfo")
 		_ = clientConn.Close()
 		return
 	}
 
-	if err := fabricProvider.TunnelService(service, instanceId, clientConn, halfClose, appInfoJson); err != nil {
-		log.WithError(err).WithField("service", service.GetName()).Error("tunnel failed")
+	if err = fabricProvider.TunnelService(service, instanceId, clientConn, halfClose, appInfoJson); err != nil {
+		log.WithError(err).Error("tunnel failed")
 		_ = clientConn.Close()
 	}
 }
@@ -81,20 +81,21 @@ func GetAppInfo(protocol, dstHostname, dstIp, dstPort, sourceAddr string) map[st
 	return result
 }
 
-func Run(zitiConn net.Conn, clientConn net.Conn, halfClose bool) {
+func Run(zitiConn edge.Conn, clientConn net.Conn, halfClose bool) {
 	loggerFields := logrus.Fields{
 		"src-remote": clientConn.RemoteAddr(), "src-local": clientConn.LocalAddr(),
-		"dst-local": zitiConn.LocalAddr(), "dst-remote": zitiConn.RemoteAddr()}
+		"dst-local": zitiConn.LocalAddr(), "dst-remote": zitiConn.RemoteAddr(),
+		"circuitId": zitiConn.GetCircuitId()}
 
-	log := log.WithFields(loggerFields)
+	log := pfxlog.Logger().WithFields(loggerFields)
 	log.Info("tunnel started")
 
 	doneSend := make(chan int64)
 	doneRecv := make(chan int64)
 
-	go myCopy(clientConn, zitiConn, doneSend, halfClose)
+	go myCopy(clientConn, zitiConn, doneSend, halfClose, zitiConn.GetCircuitId())
 
-	go myCopy(zitiConn, clientConn, doneRecv, halfClose)
+	go myCopy(zitiConn, clientConn, doneRecv, halfClose, zitiConn.GetRouterId())
 
 	defer func() {
 		_ = clientConn.Close()
@@ -113,24 +114,25 @@ func Run(zitiConn net.Conn, clientConn net.Conn, halfClose bool) {
 	log.Infof("tunnel closed: %d bytes sent; %d bytes received", n2, n1)
 }
 
-func myCopy(dst net.Conn, src net.Conn, done chan int64, halfClose bool) {
+func myCopy(dst net.Conn, src net.Conn, done chan int64, halfClose bool, circuitId string) {
 	loggerFields := logrus.Fields{
 		"src-remote": src.RemoteAddr(), "src-local": src.LocalAddr(),
-		"dst-local": dst.LocalAddr(), "dst-remote": dst.RemoteAddr()}
+		"dst-local": dst.LocalAddr(), "dst-remote": dst.RemoteAddr(),
+		"circuitId": circuitId}
 
-	logger := log.WithFields(loggerFields)
+	log := pfxlog.Logger().WithFields(loggerFields)
 	defer func() {
 		if cw, ok := dst.(edge.CloseWriter); halfClose && ok {
-			logger.Debug("doing half-close")
+			log.Debug("doing half-close")
 			_ = cw.CloseWrite()
 		} else {
-			logger.Debug("doing full-close")
+			log.Debug("doing full-close")
 			_ = dst.Close()
 		}
 
 	}()
 
-	defer logger.Info("stopping pipe")
+	defer log.Info("stopping pipe")
 	// use smaller copyBuf so UDP payloads aren't chunked when sending to tunnelers with smaller MTU.
 	// 17 bytes covers encryption overhead.
 	copyBuf := make([]byte, 0x4000-17)
@@ -138,6 +140,6 @@ func myCopy(dst net.Conn, src net.Conn, done chan int64, halfClose bool) {
 	done <- n
 
 	if err != nil {
-		log.WithFields(loggerFields).Error(err.Error())
+		log.WithError(err).Error("copy failed")
 	}
 }

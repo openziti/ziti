@@ -163,7 +163,7 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		ha = "--ha"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s -v %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
 		useSudo, binaryPath, mode.String(), ha, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
