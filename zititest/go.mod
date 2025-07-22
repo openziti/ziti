@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.29
-	github.com/openziti/channel/v4 v4.2.16
+	github.com/openziti/channel/v4 v4.2.18
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/fablab v0.5.115
 	github.com/openziti/foundation/v2 v2.0.70

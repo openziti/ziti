@@ -637,6 +637,10 @@ type simpleTestChannel struct {
 	isClosed bool
 }
 
+func (ch *simpleTestChannel) CloseNotify() <-chan struct{} {
+	panic("implement me")
+}
+
 func (ch *simpleTestChannel) GetUnderlays() []channel.Underlay {
 	return []channel.Underlay{simpleTestUnderlay{}}
 }

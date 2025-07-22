@@ -87,7 +87,12 @@ func TestIperf(clientHostSelector, hostType string, encrypted, reversed bool, ru
 		extraOptions += " -R"
 	}
 
-	logFile := fmt.Sprintf("logs/iperf-%s.log", hostType)
+	logFile := fmt.Sprintf("logs/iperf-%s%s%s.log", hostType, urlExtra, func() string {
+		if reversed {
+			return "-r"
+		}
+		return ""
+	}())
 
 	cmd := fmt.Sprintf(`set -o pipefail; iperf3 -c %s -P 5 -t 10 %s > %s 2>&1 `, addr, extraOptions, logFile)
 
