@@ -567,8 +567,8 @@ github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b/go.mo
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti-incubator/cf v0.0.3 h1:JKs55DbaIxl87nI/Ra/3DHMiz5iaPpu8JjsuN8SnG7w=
 github.com/openziti-incubator/cf v0.0.3/go.mod h1:6abCY06bCjKmK2I9kohij+cp9uXIPFiFwSCNZPdMk8E=
-github.com/openziti/agent v1.0.29 h1:ayNJcstCiGUVhUu2Q5YcR0ay9B82CPNU/kYqHSYScr8=
-github.com/openziti/agent v1.0.29/go.mod h1:pjQ9jSOl+9ZR/0Y9+wOwJhGekYwyai2uKB3YCd0nulI=
+github.com/openziti/agent v1.0.30-0.20250723183741-99f765b96f00 h1:iaAApp3yFoV1VFpvfQMBMmzh7SiKqeLmdXVWOaAwU50=
+github.com/openziti/agent v1.0.30-0.20250723183741-99f765b96f00/go.mod h1:pjQ9jSOl+9ZR/0Y9+wOwJhGekYwyai2uKB3YCd0nulI=
 github.com/openziti/channel/v4 v4.2.18 h1:RuyB26/p+3L3BCtTB7tUH3O0KwfkRXeeVc2fEN9WU1c=
 github.com/openziti/channel/v4 v4.2.18/go.mod h1:v8AOCXLqE++BHGmDK7Ut8Uc2nCGyOu9hjkJNoWgpcyU=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
@@ -587,8 +587,8 @@ github.com/openziti/metrics v1.4.2 h1:zaBj5DrvRGPWPhS1w7XNkTPyX4KUYwToNGMCtJrkCv
 github.com/openziti/metrics v1.4.2/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.77 h1:81//kx+dI8+7Ft3fxLpZXh4n/lwi2YW26B/l3lb/8tc=
 github.com/openziti/runzmd v1.0.77/go.mod h1:jY2ESEodXb+sas3tXoQjwxW7xFcI4cYHdB/37tcfKdw=
-github.com/openziti/sdk-golang v1.2.0 h1:rmuBwuhN9A46ucWQnWOs/7UlOTneo/Bqd+YiWMsbPCQ=
-github.com/openziti/sdk-golang v1.2.0/go.mod h1:ADyhBcmBwtVzZ/s7j0toLdzYxn2Ufpu7pxP8xjb25aw=
+github.com/openziti/sdk-golang v1.2.1-0.20250723183907-861f859e29e3 h1:VSvl/jZJpuYSgFHke92Dphan9JaVv8GwHemxFhJjJFA=
+github.com/openziti/sdk-golang v1.2.1-0.20250723183907-861f859e29e3/go.mod h1:Umvh9B4VSJH8jIGAdkRdRUHXznynJNiGsJtaZJszM7M=
 github.com/openziti/secretstream v0.1.37 h1:ZiI4fIA09JO9IegwrLcUUJ5nkjFYtpeap/+UFHb4Tic=
 github.com/openziti/secretstream v0.1.37/go.mod h1:yj3n6atdVIr0AE7+/I05yl3aJR8H6BPDSJBqAbhPsYE=
 github.com/openziti/storage v0.4.22 h1:PrZpnNW31weURN1QmSYH6sjT75WutkEMDYTlsYDtzGI=

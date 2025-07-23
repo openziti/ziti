@@ -17,14 +17,14 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/agent v1.0.29
+	github.com/openziti/agent v1.0.30-0.20250723183741-99f765b96f00
 	github.com/openziti/channel/v4 v4.2.18
 	github.com/openziti/edge-api v0.26.46
 	github.com/openziti/fablab v0.5.115
 	github.com/openziti/foundation/v2 v2.0.70
 	github.com/openziti/identity v1.0.109
 	github.com/openziti/metrics v1.4.2
-	github.com/openziti/sdk-golang v1.2.0
+	github.com/openziti/sdk-golang v1.2.1-0.20250723183907-861f859e29e3
 	github.com/openziti/storage v0.4.22
 	github.com/openziti/transport/v2 v2.0.182
 	github.com/openziti/ziti v1.6.2
