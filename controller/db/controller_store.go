@@ -133,18 +133,20 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 
-	apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)
-	if err != nil {
-		ctx.Bucket.SetError(err)
-		return
-	}
+	if ctx.ProceedWithSet(FieldControllerApiAddresses) && (ctx.ProceedWithSet(FieldControllerApiAddressUrl) || ctx.ProceedWithSet(FieldControllerApiAddressVersion)) {
+		apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)
+		if err != nil {
+			ctx.Bucket.SetError(err)
+			return
+		}
 
-	for apiKey, apis := range entity.ApiAddresses {
-		apiBucket, _ := apiListBucket.EmptyBucket(apiKey)
-		for i, instance := range apis {
-			instanceBucket := apiBucket.GetOrCreateBucket(strconv.Itoa(i))
-			instanceBucket.SetString(FieldControllerApiAddressUrl, instance.Url, ctx.FieldChecker)
-			instanceBucket.SetString(FieldControllerApiAddressVersion, instance.Version, ctx.FieldChecker)
+		for apiKey, apis := range entity.ApiAddresses {
+			apiBucket, _ := apiListBucket.EmptyBucket(apiKey)
+			for i, instance := range apis {
+				instanceBucket := apiBucket.GetOrCreateBucket(strconv.Itoa(i))
+				instanceBucket.SetString(FieldControllerApiAddressUrl, instance.Url, ctx.FieldChecker)
+				instanceBucket.SetString(FieldControllerApiAddressVersion, instance.Version, ctx.FieldChecker)
+			}
 		}
 	}
 }
