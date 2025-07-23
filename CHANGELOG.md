@@ -157,11 +157,37 @@ $ ziti edge update identity test --app-data-json-file test-app-data.json
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/storage: [v0.4.20 -> v0.4.21](https://github.com/openziti/storage/compare/v0.4.20...v0.4.21)
+* github.com/openziti/agent: [v1.0.29 -> v1.0.30](https://github.com/openziti/agent/compare/v1.0.29...v1.0.30)
+    * [Issue #27](https://github.com/openziti/agent/issues/27) - Add support for generating heap dumps
+
+* github.com/openziti/channel/v4: [v4.2.13 -> v4.2.18](https://github.com/openziti/channel/compare/v4.2.13...v4.2.18)
+    * [Issue #201](https://github.com/openziti/channel/issues/201) - SendAndWait methods should return an error if the channel closes instead of blocking
+    * [Issue #199](https://github.com/openziti/channel/issues/199) - Reject multi-underlay connections that are the first connection for a channel, but aren't marked as such.
+    * [Issue #197](https://github.com/openziti/channel/issues/197) - Break out of dial loop if channel is closed
+
+* github.com/openziti/foundation/v2: [v2.0.69 -> v2.0.70](https://github.com/openziti/foundation/compare/v2.0.69...v2.0.70)
+* github.com/openziti/identity: [v1.0.108 -> v1.0.109](https://github.com/openziti/identity/compare/v1.0.108...v1.0.109)
+* github.com/openziti/runzmd: [v1.0.76 -> v1.0.77](https://github.com/openziti/runzmd/compare/v1.0.76...v1.0.77)
+* github.com/openziti/sdk-golang: [v1.1.2 -> v1.2.1](https://github.com/openziti/sdk-golang/compare/v1.1.2...v1.2.1)
+    * [Issue #777](https://github.com/openziti/sdk-golang/issues/777) - OIDC auth token refresh doesn't fall back to re-auth if token has expired
+    * [Issue #772](https://github.com/openziti/sdk-golang/issues/772) - xgress close tweaks
+    * [Issue #769](https://github.com/openziti/sdk-golang/issues/769) - Require sdk flow control when using more than one default connection
+    * [Issue #765](https://github.com/openziti/sdk-golang/issues/765) - Allow independent close of xgress send and receive
+    * [Issue #763](https://github.com/openziti/sdk-golang/issues/763) - Use a go-routine pool for payload ingest
+    * [Issue #761](https://github.com/openziti/sdk-golang/issues/761) - Use cmap.ConcurrentMap for message multiplexer
+    * [Issue #754](https://github.com/openziti/sdk-golang/issues/754) - panic: unaligned 64-bit atomic operation when running on 32-bit raspberry pi
+    * [Issue #757](https://github.com/openziti/sdk-golang/issues/757) - Not authenticated check fails on session create when using OIDC
+
+* github.com/openziti/secretstream: [v0.1.36 -> v0.1.37](https://github.com/openziti/secretstream/compare/v0.1.36...v0.1.37)
+* github.com/openziti/storage: [v0.4.20 -> v0.4.22](https://github.com/openziti/storage/compare/v0.4.20...v0.4.22)
+* github.com/openziti/transport/v2: [v2.0.180 -> v2.0.182](https://github.com/openziti/transport/compare/v2.0.180...v2.0.182)
 * github.com/openziti/ziti: [v1.6.5 -> v1.6.6](https://github.com/openziti/ziti/compare/v1.6.5...v1.6.6)
+    * [Issue #3183](https://github.com/openziti/ziti/issues/3183) - Add support for generating heap dumps using the agent
     * [Issue #3161](https://github.com/openziti/ziti/issues/3161) - Allow setting structured data in identity appData from CLI
     * [Issue #3169](https://github.com/openziti/ziti/issues/3169) - Allow identity app data to be a full JSON document, rather than just a flat map
     * [Issue #3134](https://github.com/openziti/ziti/issues/3134) - Support multi-underlay links
+    * [Issue #3165](https://github.com/openziti/ziti/issues/3165) - Docker controller doesn't renew identity
+
 
 # Release 1.6.5
 
