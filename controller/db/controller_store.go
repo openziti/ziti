@@ -133,7 +133,7 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 
-	if ctx.ProceedWithSet(FieldControllerApiAddresses) && ctx.ProceedWithSet(FieldControllerApiAddressUrl) && ctx.ProceedWithSet(FieldControllerApiAddressVersion) {
+	if ctx.ProceedWithSet(FieldControllerApiAddresses) && (ctx.ProceedWithSet(FieldControllerApiAddressUrl) || ctx.ProceedWithSet(FieldControllerApiAddressVersion)) {
 		apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)
 		if err != nil {
 			ctx.Bucket.SetError(err)
