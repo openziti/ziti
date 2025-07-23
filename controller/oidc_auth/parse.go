@@ -28,7 +28,7 @@ import (
 	"unicode/utf8"
 )
 
-type Totp struct {
+type TotpRequestBody struct {
 	AuthRequestBody
 	Code string `json:"code"`
 }

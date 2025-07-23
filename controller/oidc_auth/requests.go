@@ -37,6 +37,7 @@ type AuthRequest struct {
 	IdentityId            string
 	AuthTime              time.Time
 	ApiSessionId          string
+	IsTotpEnrolled        bool
 	SecondaryTotpRequired bool
 	SecondaryExtJwtSigner *model.ExternalJwtSigner
 	ConfigTypes           []string
@@ -198,13 +199,14 @@ func (a *AuthRequest) GetAuthQueries() []*rest_model.AuthQueryDetail {
 	if a.NeedsTotp() {
 		provider := rest_model.MfaProvidersZiti
 		authQueries = append(authQueries, &rest_model.AuthQueryDetail{
-			Format:     rest_model.MfaFormatsNumeric,
-			HTTPMethod: "POST",
-			HTTPURL:    "./oidc/login/totp",
-			MaxLength:  8,
-			MinLength:  6,
-			Provider:   &provider,
-			TypeID:     rest_model.AuthQueryTypeTOTP,
+			Format:         rest_model.MfaFormatsNumeric,
+			HTTPMethod:     "POST",
+			HTTPURL:        "./oidc/login/totp",
+			MaxLength:      8,
+			MinLength:      6,
+			Provider:       &provider,
+			TypeID:         rest_model.AuthQueryTypeTOTP,
+			IsTotpEnrolled: a.IsTotpEnrolled,
 		})
 	}
 

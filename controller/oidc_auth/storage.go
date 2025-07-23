@@ -65,9 +65,19 @@ type Storage interface {
 	// A change context is required for the removal of one-time TOTP recovery codes
 	VerifyTotp(ctx *change.Context, code string, id string) (*AuthRequest, error)
 
-	StartTotpEnrollment(ctx *change.Context, authRequestId string) (string, error)
+	// StartTotpEnrollment will attempt to create a MFA record for the current in scope identity
+	// if it can. If an MFA record already exists, it will fail and CompleteTotpEnrollment or
+	// DeleteTotpEnrollment must be used.
+	StartTotpEnrollment(ctx *change.Context, authRequestId string) (*model.Mfa, error)
 
+	// CompleteTotpEnrollment will validate the supplied code against the current unverified MFA record for
+	// the identity in scope. If MFA enrollment hasn't been started, StartTotpEnrollment should be used.
 	CompleteTotpEnrollment(ctx *change.Context, authRequestId, code string) error
+
+	// DeleteTotpEnrollment will delete a current MFA record for the identity in scope. If the MFA record
+	// has been verified (CompleteTotpEnrollment) a code must be supplied that passes verification. If the
+	// record has not been verified, deletion will occur without verifying the code value.
+	DeleteTotpEnrollment(ctx *change.Context, authRequestId string, code string) error
 
 	// IsTokenRevoked will return true if a token has been removed.
 	// TokenId may be a JWT token id or an identity id
@@ -78,6 +88,8 @@ type Storage interface {
 
 	// GetAuthRequest returns an *AuthRequest by its id
 	GetAuthRequest(id string) (*AuthRequest, error)
+
+	Managers() *model.Managers
 }
 
 func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
@@ -112,14 +124,57 @@ type HybridStorage struct {
 	keys cmap.ConcurrentMap[string, *pubKey]
 }
 
-func (s *HybridStorage) StartTotpEnrollment(changeCtx *change.Context, authRequestId string) (string, error) {
+func (s *HybridStorage) Managers() *model.Managers {
+	return s.env.GetManagers()
+}
+
+func (s *HybridStorage) StartTotpEnrollment(changeCtx *change.Context, authRequestId string) (*model.Mfa, error) {
 	authRequest, err := s.GetAuthRequest(authRequestId)
 
 	if err != nil {
-		return "", errorz.NewUnauthorized()
+		return nil, errorz.NewUnauthorized()
 	}
 
-	return s.env.GetManagers().Mfa.CreateForIdentityId(authRequest.IdentityId, changeCtx)
+	id, err := s.env.GetManagers().Mfa.CreateForIdentityId(authRequest.IdentityId, changeCtx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return s.env.GetManagers().Mfa.Read(id)
+}
+
+func (s *HybridStorage) DeleteTotpEnrollment(changeCtx *change.Context, authRequestId string, code string) error {
+	authRequest, err := s.GetAuthRequest(authRequestId)
+
+	if err != nil {
+		return errorz.NewUnauthorized()
+	}
+
+	mfaDetail, err := s.env.GetManagers().Mfa.ReadOneByIdentityId(authRequest.IdentityId)
+
+	if err != nil {
+		return err
+	}
+
+	if mfaDetail == nil {
+		return errorz.NewNotFound()
+	}
+
+	if mfaDetail.IsVerified {
+		ok, err := s.env.GetManagers().Mfa.Verify(mfaDetail, code, changeCtx)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return apierror.NewInvalidMfaTokenError()
+		}
+
+		//ok fall through
+	}
+
+	return s.env.GetManagers().Mfa.Delete(mfaDetail.Id, changeCtx)
 }
 
 func (s *HybridStorage) CompleteTotpEnrollment(changeCtx *change.Context, authRequestId, code string) error {
@@ -249,7 +304,8 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 		return nil, err
 	}
 
-	authRequest.SecondaryTotpRequired = (mfa != nil && mfa.IsVerified) || result.AuthPolicy().Secondary.RequireTotp
+	authRequest.IsTotpEnrolled = mfa != nil && mfa.IsVerified
+	authRequest.SecondaryTotpRequired = authRequest.IsTotpEnrolled || result.AuthPolicy().Secondary.RequireTotp
 
 	extJwtSignerId := stringz.OrEmpty(result.AuthPolicy().Secondary.RequiredExtJwtSigner)
 

@@ -172,12 +172,17 @@ func GetTestContext() *TestContext {
 }
 
 // testContextChanged is used to update the *testing.T reference used by library
-// level tests. Necessary because using the wrong *testing.T will cause go test library
+// level tests. Necessary because, using the wrong *testing.T will cause go test library
 // errors.
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
 	ctx.Req = require.New(t)
 	ctx.Assertions = ctx.Req
+}
+
+// NextTest is an alias for testContextChanged and reflects the bbolt testing framework
+func (ctx *TestContext) NextTest(t *testing.T) {
+	ctx.testContextChanged(t)
 }
 
 func (ctx *TestContext) T() *testing.T {

@@ -42,7 +42,7 @@ func Test_Map(t *testing.T) {
 	)
 
 	t.Run("totp id/code payload", func(t *testing.T) {
-		dstTotp := &Totp{}
+		dstTotp := &TotpRequestBody{}
 
 		srcMap := map[string][]string{
 			"id":   {"123"},

@@ -165,6 +165,7 @@ func (self *MfaManager) ReadOneByIdentityId(identityId string) (*Mfa, error) {
 	return resultList.Mfas[0], nil
 }
 
+// Verify will attempt to check a code (recovery or totp) against the current secret.
 func (self *MfaManager) Verify(mfa *Mfa, code string, ctx *change.Context) (bool, error) {
 	//check recovery codes
 	for i, recoveryCode := range mfa.RecoveryCodes {
