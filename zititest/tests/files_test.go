@@ -24,21 +24,6 @@ import (
 )
 
 func TestDownloadFiles(t *testing.T) {
-	zetHostsTested := 0
-	zetClientsTest := 0
-
-	allZetHostedFailed := true
-	allZetClientsFailed := true
-
-	checkZetHost := func(hostType string, success bool) {
-		if hostType == "zet" {
-			zetHostsTested++
-			if success {
-				allZetHostedFailed = false
-			}
-		}
-	}
-
 	t.Run("download-tests", func(t *testing.T) {
 		t.Run("test-ert-downloads", func(t *testing.T) {
 			t.Parallel()
@@ -47,8 +32,7 @@ func TestDownloadFiles(t *testing.T) {
 				for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
 					for _, client := range smoke.HttpClients {
 						for _, encrypted := range []bool{true, false} {
-							success := testFileDownload(t, "ert", client, hostType, encrypted, size)
-							checkZetHost(hostType, success)
+							testFileDownload(t, "ert", client, hostType, encrypted, size)
 						}
 					}
 				}
@@ -62,12 +46,7 @@ func TestDownloadFiles(t *testing.T) {
 				for _, hostType := range []string{"zet", "ziti-tunnel", "ert"} {
 					for _, client := range smoke.HttpClients {
 						for _, encrypted := range []bool{true, false} {
-							success := testFileDownload(t, "zet", client, hostType, encrypted, size)
-							checkZetHost(hostType, success)
-							if success {
-								allZetClientsFailed = false
-							}
-							zetClientsTest++
+							testFileDownload(t, "zet", client, hostType, encrypted, size)
 						}
 					}
 				}
@@ -81,23 +60,13 @@ func TestDownloadFiles(t *testing.T) {
 				for _, hostType := range []string{"ziti-tunnel", "ert", "zet"} {
 					for _, client := range smoke.HttpClients {
 						for _, encrypted := range []bool{true, false} {
-							success := testFileDownload(t, "ziti-tunnel", client, hostType, encrypted, size)
-							checkZetHost(hostType, success)
+							testFileDownload(t, "ziti-tunnel", client, hostType, encrypted, size)
 						}
 					}
 				}
 			}
 		})
 	})
-
-	req := require.New(t)
-	if zetHostsTested > 0 {
-		req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
-	}
-
-	if zetClientsTest > 0 {
-		req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
-	}
 }
 
 func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient, hostType string, encrypted bool, fileSize string) bool {
@@ -113,16 +82,6 @@ func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient
 		testRun = true
 		o, err := smoke.TestFileDownload(hostSelector, client, hostType, encrypted, fileSize)
 		t.Log(o)
-
-		if hostType == "zet" && err != nil {
-			t.Skipf("zet hosted file transfer failed [%v]", err.Error())
-			return
-		}
-
-		if hostSelector == "zet" && err != nil {
-			t.Skipf("zet client file transfer failed [%v]", err.Error())
-			return
-		}
 
 		require.NoError(t, err)
 		success = true
