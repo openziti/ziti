@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 39
+	CurrentDbVersion = 40
 	FieldVersion     = "version"
 )
 
@@ -185,6 +185,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 39 {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
+	}
+
+	if step.CurrentVersion < 40 {
+		m.createInterfacesV1ConfigType(step)
 	}
 
 	// current version
