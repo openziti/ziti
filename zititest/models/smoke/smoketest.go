@@ -18,6 +18,10 @@ package smoke
 
 import (
 	"embed"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
@@ -34,9 +38,6 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"os"
-	"strings"
-	"time"
 )
 
 const ZitiEdgeTunnelVersion = "v1.5.10"
@@ -195,7 +196,7 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client", "zet"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version:        ZitiEdgeTunnelVersion,
-								VerbosityLevel: 3,
+								VerbosityLevel: 6,
 							},
 						},
 					},
@@ -259,7 +260,7 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host", "zet"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
 								Version:        ZitiEdgeTunnelVersion,
-								VerbosityLevel: 3,
+								VerbosityLevel: 6,
 							},
 						},
 						"iperf-server-zet": {
