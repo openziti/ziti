@@ -115,7 +115,7 @@ func (self *validateRouterErtTerminatorsAction) validateRouterErtTerminators(_ *
 
 			routerHeaderDone := false
 			outputRouterHeader := func() {
-				fmt.Printf("routerId: %s, routerName: %v, Ert-terminators: %v, %s\n",
+				fmt.Printf("routerId: %s, routerName: %v, ert-terminators: %v, %s\n",
 					routerDetail.RouterId, routerDetail.RouterName, len(routerDetail.Details), result)
 				routerHeaderDone = true
 			}

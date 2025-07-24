@@ -48,6 +48,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	agentCmd.AddCommand(NewPprofHeapCmd(p))
 	agentCmd.AddCommand(NewPprofCpuCmd(p))
 	agentCmd.AddCommand(NewTraceCmd(p))
+	agentCmd.AddCommand(NewDumpHeapCmd(p))
 	agentCmd.AddCommand(NewSetLogLevelCmd(p))
 	agentCmd.AddCommand(NewSetChannelLogLevelCmd(p))
 	agentCmd.AddCommand(NewClearChannelLogLevelCmd(p))

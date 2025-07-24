@@ -114,7 +114,7 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 	}
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
-	if terminator != nil {
+	if terminator != nil && self.getNetwork().Dispatcher.IsLeader() {
 		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
 			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 			return

@@ -83,8 +83,8 @@ func GetAppInfo(protocol, dstHostname, dstIp, dstPort, sourceAddr string) map[st
 
 func Run(zitiConn edge.Conn, clientConn net.Conn, halfClose bool) {
 	loggerFields := logrus.Fields{
-		"src-remote": clientConn.RemoteAddr(), "src-local": clientConn.LocalAddr(),
-		"dst-local": zitiConn.LocalAddr(), "dst-remote": zitiConn.RemoteAddr(),
+		"src-remote": clientConn.RemoteAddr().String(), "src-local": clientConn.LocalAddr().String(),
+		"dst-local": zitiConn.LocalAddr().String(), "dst-remote": zitiConn.RemoteAddr().String(),
 		"circuitId": zitiConn.GetCircuitId()}
 
 	log := pfxlog.Logger().WithFields(loggerFields)

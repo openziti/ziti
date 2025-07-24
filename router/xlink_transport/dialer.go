@@ -245,6 +245,7 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 	headers.PutBoolHeader(channel.IsGroupedHeader, true)
 	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
 
 	linkDialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:        linkId,
