@@ -18,6 +18,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"math"
 	"time"
@@ -41,6 +42,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.addProcessMultiPostureCheck(step)
 	step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
 	m.addSystemAuthPolicies(step)
+	m.createInterfacesV1ConfigType(step)
 
 	return CurrentDbVersion
 }
@@ -581,6 +583,34 @@ var interceptV1ConfigType = &ConfigType{
 	},
 }
 
+var InterfacesV1TypeId = "interfaces.v1"
+
+var interfacesConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{
+		Id: InterfacesV1TypeId,
+	},
+	Name: "ziti-tunneler-server.v1",
+	Schema: map[string]interface{}{
+		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"definitions":          healthCheckSchema["definitions"],
+		"required": []interface{}{
+			"interfaces",
+		},
+		"properties": combine(
+			map[string]interface{}{
+				"interfaces": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "string",
+					},
+				},
+			},
+		),
+	},
+}
+
 func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
 	clientConfigTypeV1 := &ConfigType{
 		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
@@ -718,4 +748,13 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		}
 	}
 
+}
+
+func (m *Migrations) createInterfacesV1ConfigType(step *boltz.MigrationStep) {
+	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), interfacesConfigTypeV1.Name)
+	if cfg == nil {
+		step.SetError(m.stores.ConfigType.Create(step.Ctx, interfacesConfigTypeV1))
+	} else {
+		pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", interfacesConfigTypeV1.Name)
+	}
 }
