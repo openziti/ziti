@@ -26,6 +26,7 @@ const (
 	HostConfigV1   = "host.v1"
 	HostConfigV2   = "host.v2"
 	InterceptV1    = "intercept.v1"
+	InterfacesV1   = "interfaces.v1"
 )
 
 type ServiceConfig struct {
@@ -437,4 +438,8 @@ func (self *Service) GetDialIdentityTemplate() string {
 
 func (self *Service) IsEncryptionRequired() bool {
 	return genext.OrDefault(self.EncryptionRequired)
+}
+
+type InterfacesV1Config struct {
+	Interfaces []string `json:"interfaces"`
 }

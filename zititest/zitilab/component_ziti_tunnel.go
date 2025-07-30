@@ -19,6 +19,7 @@ package zitilab
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -50,12 +51,15 @@ func (self ZitiTunnelMode) String() string {
 }
 
 type ZitiTunnelType struct {
-	Mode        ZitiTunnelMode
-	Version     string
-	LocalPath   string
-	ConfigPathF func(c *model.Component) string
-	HA          bool
-	Count       uint8
+	Mode                     ZitiTunnelMode
+	Version                  string
+	LocalPath                string
+	ConfigPathF              func(c *model.Component) string
+	HA                       bool
+	Count                    uint8
+	DefaultRouterConnections uint8
+	ControlRouterConnections uint8
+	EnableSdkFlowControl     bool
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -80,6 +84,19 @@ func (self *ZitiTunnelType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
 	if self.Count < 1 {
 		self.Count = 1
+	}
+	if self.DefaultRouterConnections == 0 {
+		self.DefaultRouterConnections = 1
+	}
+	if self.DefaultRouterConnections > 5 {
+		self.DefaultRouterConnections = 5
+	}
+	if self.ControlRouterConnections > 1 {
+		self.ControlRouterConnections = 1
+	}
+
+	if self.DefaultRouterConnections > 1 {
+		self.EnableSdkFlowControl = true
 	}
 }
 
@@ -163,8 +180,31 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		ha = "--ha"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), ha, c.Id, configPath, logsPath)
+	supportsSdkFlowControl := self.Version == ""
+
+	if self.Version != "" {
+		v := versions.MustParseSemVer(self.Version)
+		supportsSdkFlowControl = v.CompareTo(versions.MustParseSemVer("v1.6.6")) >= 0
+	}
+
+	connectCfg := ""
+
+	if supportsSdkFlowControl {
+		if self.ControlRouterConnections > 0 {
+			connectCfg += fmt.Sprintf("--control-connections %d", self.ControlRouterConnections)
+		}
+
+		if self.DefaultRouterConnections > 1 {
+			connectCfg += fmt.Sprintf(" --default-connections %d", self.DefaultRouterConnections)
+		}
+
+		if self.EnableSdkFlowControl {
+			connectCfg += fmt.Sprintf(" --sdk-flow-control=%v", self.EnableSdkFlowControl)
+		}
+	}
+
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), ha, connectCfg, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,

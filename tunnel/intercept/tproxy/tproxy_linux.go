@@ -293,6 +293,7 @@ type tProxy struct {
 	udpLn       *net.UDPConn
 	tracker     intercept.AddressTracker
 	resolver    dns.Resolver
+	interfaces  []string
 }
 
 const (
@@ -529,23 +530,21 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 	self.addresses = append(self.addresses, interceptAddr)
 
 	if self.interceptor.diverter != "" {
-		for _, srcCidr := range self.getSourceAddressesAsCidrs() {
-			cidr := strings.Split(ipNet.String(), "/")
-			if len(cidr) != 2 {
-				return errors.Errorf("failed parsing '%s' as cidr", ipNet.String())
-			}
-			cmd := exec.Command(self.interceptor.diverter, "-I",
-				"-c", cidr[0], "-m", cidr[1], "-p", interceptAddr.Proto(),
-				"-o", srcCidr.ip, "-n", srcCidr.prefixLen,
-				"-l", fmt.Sprintf("%d", interceptAddr.LowPort()), "-h", fmt.Sprintf("%d", interceptAddr.HighPort()),
-				"-t", fmt.Sprintf("%d", port.GetPort()), "-s", *service.ID)
-			cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
-			cmdLogger.Debug("running external diverter")
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				return errors.Errorf("diverter command failed. output: %s", out)
-			} else {
-				cmdLogger.Infof("diverter command succeeded. output: %s", out)
+		interfaces := &entities.InterfacesV1Config{}
+		found, err := service.GetConfigOfType(entities.InterfacesV1, &interfaces)
+		if err != nil {
+			return fmt.Errorf("unable to parse interfaces.v1 config for service %s (%w)", *service.Name, err)
+		}
+
+		if !found {
+			self.interfaces = []string{""}
+		} else {
+			self.interfaces = interfaces.Interfaces
+		}
+
+		for _, intf := range self.interfaces {
+			if err = self.interceptWithDiverter(service, interceptAddr, port, ipNet, intf); err != nil {
+				return err
 			}
 		}
 	} else {
@@ -591,6 +590,44 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 	return nil
 }
 
+func (self *tProxy) interceptWithDiverter(service *entities.Service, interceptAddr *intercept.InterceptAddress, port IPPortAddr, ipNet *net.IPNet, intf string) error {
+	for _, srcCidr := range self.getSourceAddressesAsCidrs() {
+		cidr := strings.Split(ipNet.String(), "/")
+		if len(cidr) != 2 {
+			return errors.Errorf("failed parsing '%s' as cidr", ipNet.String())
+		}
+
+		args := []string{
+			"-I",
+			"-c", cidr[0],
+			"-m", cidr[1],
+			"-p", interceptAddr.Proto(),
+			"-o", srcCidr.ip,
+			"-n", srcCidr.prefixLen,
+			"-l", fmt.Sprintf("%d", interceptAddr.LowPort()),
+			"-h", fmt.Sprintf("%d", interceptAddr.HighPort()),
+			"-t", fmt.Sprintf("%d", port.GetPort()),
+			"-s", *service.ID,
+		}
+
+		if intf != "" {
+			args = append(args, "-N", intf)
+		}
+
+		cmd := exec.Command(self.interceptor.diverter, args...)
+
+		cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
+		cmdLogger.Debug("running external diverter")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return errors.Errorf("diverter command failed. output: %s", out)
+		} else {
+			cmdLogger.Infof("diverter command succeeded. output: %s", out)
+		}
+	}
+	return nil
+}
+
 func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 	var errorList []error
 
@@ -601,23 +638,38 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 		log.Infof("removing intercepted low-port: %v, high-port: %v", addr.LowPort(), addr.HighPort())
 
 		if self.interceptor.diverter != "" {
-			for _, srcCidr := range self.getSourceAddressesAsCidrs() {
-				cidr := strings.Split(addr.IpNet().String(), "/")
-				if len(cidr) != 2 {
-					return errors.Errorf("failed parsing '%s' as cidr", addr.IpNet().String())
-				}
-				cmd := exec.Command(self.interceptor.diverter, "-D",
-					"-c", cidr[0], "-m", cidr[1], "-p", addr.Proto(),
-					"-o", srcCidr.ip, "-n", srcCidr.prefixLen,
-					"-l", fmt.Sprintf("%d", addr.LowPort()), "-h", fmt.Sprintf("%d", addr.HighPort()))
-				cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
-				cmdLogger.Debug("running external diverter")
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					errorList = append(errorList, err)
-					cmdLogger.Errorf("diverter command failed. output: %s", out)
-				} else {
-					cmdLogger.Infof("diverter command succeeded. output: %s", out)
+			for _, intf := range self.interfaces {
+				for _, srcCidr := range self.getSourceAddressesAsCidrs() {
+					cidr := strings.Split(addr.IpNet().String(), "/")
+					if len(cidr) != 2 {
+						return errors.Errorf("failed parsing '%s' as cidr", addr.IpNet().String())
+					}
+
+					args := []string{
+						"-D",
+						"-c", cidr[0],
+						"-m", cidr[1],
+						"-p", addr.Proto(),
+						"-o", srcCidr.ip,
+						"-n", srcCidr.prefixLen,
+						"-l", fmt.Sprintf("%d", addr.LowPort()),
+						"-h", fmt.Sprintf("%d", addr.HighPort()),
+					}
+
+					if intf != "" {
+						args = append(args, "-N", intf)
+					}
+
+					cmd := exec.Command(self.interceptor.diverter, args...)
+					cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
+					cmdLogger.Debug("running external diverter")
+					out, err := cmd.CombinedOutput()
+					if err != nil {
+						errorList = append(errorList, err)
+						cmdLogger.Errorf("diverter command failed. output: %s", out)
+					} else {
+						cmdLogger.Infof("diverter command succeeded. output: %s", out)
+					}
 				}
 			}
 		} else {

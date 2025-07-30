@@ -79,6 +79,7 @@ var Model = &model.Model{
 					"db":  "ziti",
 				},
 			},
+			"ziti_version": "v1.6.6",
 		},
 	},
 
@@ -134,7 +135,6 @@ var Model = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl": {
-					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest"}},
@@ -153,7 +153,6 @@ var Model = &model.Model{
 					},
 				},
 				"router-metrics": {
-					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-metrics": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal", "metrics"}},
@@ -164,12 +163,21 @@ var Model = &model.Model{
 					},
 				},
 				"ziti-tunnel-client": {
-					InstanceType: "t3.micro",
-					Scope:        model.Scope{Tags: model.Tags{"ziti-tunnel-client", "underTest"}},
+					InstanceResourceType: "ondemand_iops",
+					EC2: model.EC2Host{
+						Volume: model.EC2Volume{
+							Type:   "gp3",
+							SizeGB: 20,
+							IOPS:   1000,
+						},
+					},
 					Components: model.Components{
 						"ziti-tunnel-client": {
-							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
-							Type:  &zitilab.ZitiTunnelType{},
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client", "ssh-client", "underTest"}},
+							Type: &zitilab.ZitiTunnelType{
+								ControlRouterConnections: 1,
+								DefaultRouterConnections: 2,
+							},
 						},
 					},
 				},
@@ -193,15 +201,28 @@ var Model = &model.Model{
 				"router-host": {
 					Components: model.Components{
 						"router-host": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "test", "loop-host", "ssh-host", "underTest"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "test", "loop-host", "underTest"}},
 							Type: &zitilab.RouterType{
 								Debug: false,
 							},
 						},
+
 						"loop-host": {
 							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host"}},
 							Type: &zitilab.Loop4SimType{
 								Mode: zitilab.Loop4Listener,
+							},
+						},
+					},
+				},
+				"ziti-tunnel-host": {
+					Components: model.Components{
+						"ziti-tunnel-host": {
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ssh-host", "underTest"}},
+							Type: &zitilab.ZitiTunnelType{
+								Mode:                     zitilab.ZitiTunnelModeHost,
+								ControlRouterConnections: 1,
+								DefaultRouterConnections: 2,
 							},
 						},
 					},
@@ -220,6 +241,7 @@ var Model = &model.Model{
 
 			workflow.AddAction(semaphore.Sleep(5 * time.Second))
 			workflow.AddAction(component.StartInParallel("loop-host", 5))
+			workflow.AddAction(component.Start(".ziti-tunnel"))
 
 			workflow.AddAction(edge.Login("#ctrl"))
 			workflow.AddAction(zitilibActions.Edge("list", "edge-routers", "limit none"))
