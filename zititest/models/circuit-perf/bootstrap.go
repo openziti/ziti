@@ -102,7 +102,5 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "hosts", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "clients", "--edge-router-roles", "#client", "--identity-roles", "#client"))
 
-	workflow.AddAction(component.Stop(models.ControllerTag))
-
 	return workflow
 }
