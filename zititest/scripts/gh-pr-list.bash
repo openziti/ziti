@@ -143,5 +143,5 @@ fi
 
 # Print GitHub URL for the same search criteria if we found any PRs
 if (( FOUND_PR )); then
-  echo -e "\n#### [Open in browser]($(generate_github_url)) ####"
+  echo -e "\n#### [View list on GitHub.com]($(generate_github_url)) ####"
 fi
