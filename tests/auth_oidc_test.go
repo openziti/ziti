@@ -1,3 +1,5 @@
+//go:build apitests
+
 package tests
 
 import (
@@ -147,7 +149,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	defer rpServer.Stop()
 
 	t.Run("attempt to auth with multipart form data, expect unsupported media type", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
@@ -166,7 +168,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	})
 
 	t.Run("updb with auth request id in body", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
@@ -201,7 +203,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
-			ctx.testContextChanged(t)
+			ctx.NextTest(t)
 			parser := jwt.NewParser()
 
 			accessClaims := &common.AccessClaims{}
@@ -220,7 +222,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	})
 
 	t.Run("updb with auth request id in query string", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
@@ -255,7 +257,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
-			ctx.testContextChanged(t)
+			ctx.NextTest(t)
 			parser := jwt.NewParser()
 
 			accessClaims := &common.AccessClaims{}
@@ -274,7 +276,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	})
 
 	t.Run("updb with id in query string", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
@@ -309,7 +311,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
-			ctx.testContextChanged(t)
+			ctx.NextTest(t)
 			parser := jwt.NewParser()
 
 			accessClaims := &common.AccessClaims{}
@@ -328,7 +330,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	})
 
 	t.Run("cert", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		ctx.RequireAdminManagementApiLogin()
 
@@ -367,7 +369,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotEmpty(outTokens.RefreshToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
-			ctx.testContextChanged(t)
+			ctx.NextTest(t)
 			parser := jwt.NewParser()
 
 			accessClaims := &common.AccessClaims{}
@@ -386,7 +388,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	})
 
 	t.Run("test cert auth totp ext-jwt", func(t *testing.T) {
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 
 		managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + "/edge/management/v1")
 		ctx.Req.NoError(err)
@@ -403,7 +405,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.NotNil(apiSession)
 
-		ctx.testContextChanged(t)
+		ctx.NextTest(t)
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
 
 		clientId := "test-client-id-99"
@@ -490,7 +492,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.NotNil(createIdentityUpdbAuthenticatorResp)
 
 		t.Run("can authenticate via UPDB and see two auth queries", func(t *testing.T) {
-			ctx.testContextChanged(t)
+			ctx.NextTest(t)
 			identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
 			identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
 			resp, err := identityClient.R().Get(rpServer.LoginUri)
@@ -539,6 +541,216 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[0], scope1)
 			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[1], scope2)
 			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].HTTPURL, extAuthUrl)
+
+			t.Run("totp enroll flag is false", func(t *testing.T) {
+				ctx.NextTest(t)
+
+				ctx.False(parsedBody.AuthQueries[totpIdx].IsTotpEnrolled)
+			})
+
+			t.Run("can start totp enroll", func(t *testing.T) {
+				ctx.NextTest(t)
+
+				totpEnrollUrl := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/totp/enroll"
+				totpVerifyUrl := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/totp/enroll/verify"
+				mfaDetail := &rest_model.DetailMfa{}
+				resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).SetResult(mfaDetail).Post(totpEnrollUrl)
+
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+				ctx.Req.NotEmpty(mfaDetail.ID)
+				ctx.Req.NotNil(mfaDetail.CreatedAt)
+				ctx.Req.NotZero(mfaDetail.CreatedAt)
+				ctx.Req.NotEmpty(mfaDetail.UpdatedAt)
+				ctx.Req.NotZero(mfaDetail.UpdatedAt)
+				ctx.Req.NotEmpty(mfaDetail.ProvisioningURL)
+				ctx.Req.NotEmpty(mfaDetail.RecoveryCodes)
+
+				t.Run("starting again errors", func(t *testing.T) {
+					ctx.NextTest(t)
+					apiError := &rest_model.APIError{}
+					resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).Post(totpEnrollUrl)
+
+					ctx.Req.NoError(err)
+					ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+
+					err = apiError.UnmarshalBinary(resp.Body())
+					ctx.Req.NoError(err)
+					ctx.Req.NotEmpty(apiError.Message)
+					ctx.Req.NotEmpty(apiError.Code)
+				})
+
+				t.Run("deleting unverified MFA requires no code", func(t *testing.T) {
+					ctx.NextTest(t)
+					resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).Delete(totpEnrollUrl)
+					ctx.Req.NoError(err)
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+					t.Run("after deleting can restart", func(t *testing.T) {
+						ctx.NextTest(t)
+
+						resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).SetResult(mfaDetail).Post(totpEnrollUrl)
+
+						ctx.Req.NoError(err)
+						ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+						ctx.Req.NotEmpty(mfaDetail.ID)
+						ctx.Req.NotNil(mfaDetail.CreatedAt)
+						ctx.Req.NotZero(mfaDetail.CreatedAt)
+						ctx.Req.NotEmpty(mfaDetail.UpdatedAt)
+						ctx.Req.NotZero(mfaDetail.UpdatedAt)
+						ctx.Req.NotEmpty(mfaDetail.ProvisioningURL)
+						ctx.Req.NotEmpty(mfaDetail.RecoveryCodes)
+
+						t.Run("verification fails with wrong code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := "123456"
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification fails with invalid characters", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := "@#$^%$#%$&%$&#%&%$#"
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification fails with empty code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := ""
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification fails with a really short code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := "1"
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification fails with a really long code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := "430248509285928525809580250953850938520958032598058350913850585098103598103598135091385098109589358150913809s1"
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification fails with a recovery code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							invalidCode := mfaDetail.RecoveryCodes[0]
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
+						})
+
+						t.Run("verification passes with correct code", func(t *testing.T) {
+							ctx.NextTest(t)
+
+							secret, err := parseSecretFromProvisioningUrl(mfaDetail.ProvisioningURL)
+							ctx.Req.NoError(err)
+							ctx.Req.NotEmpty(secret)
+
+							validCode := computeMFACode(secret)
+
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": authRequestId, "code": validCode}).
+								Post(totpVerifyUrl)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+						})
+
+						t.Run("reauthenticating shows that totp is enrolled", func(t *testing.T) {
+							ctx.NextTest(t)
+							ctx.NextTest(t)
+							identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+							identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+							resp, err := identityClient.R().Get(rpServer.LoginUri)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+							authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+							ctx.Req.NotEmpty(authRequestId)
+
+							opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
+
+							resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId, "username": identityName, "password": identityPassword}).Post(opLoginUri)
+
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+							type respBody struct {
+								AuthQueries []*rest_model.AuthQueryDetail `json:"authQueries"`
+							}
+
+							parsedBody := &respBody{}
+
+							err = json.Unmarshal(resp.Body(), parsedBody)
+							ctx.Req.NoError(err)
+
+							ctx.Req.Len(parsedBody.AuthQueries, 2)
+
+							extJwtIdx := -1
+							totpIdx := -1
+
+							for i, authQuery := range parsedBody.AuthQueries {
+								if authQuery.TypeID == rest_model.AuthQueryTypeEXTDashJWT {
+									extJwtIdx = i
+								} else if authQuery.TypeID == rest_model.AuthQueryTypeTOTP {
+									totpIdx = i
+								} else {
+									ctx.Req.Failf("unexexpected auth quuery type id encountered: %s", string(authQuery.TypeID))
+								}
+							}
+
+							ctx.Req.True(extJwtIdx >= 0, "expected extJwtIdx to be set")
+							ctx.Req.True(totpIdx >= 0, "expected totpIdx to be set")
+
+							ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].ClientID, clientId)
+							ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[0], scope1)
+							ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[1], scope2)
+							ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].HTTPURL, extAuthUrl)
+
+							t.Run("totp enroll flag is true", func(t *testing.T) {
+								ctx.NextTest(t)
+
+								ctx.True(parsedBody.AuthQueries[totpIdx].IsTotpEnrolled)
+							})
+						})
+					})
+				})
+			})
 		})
 
 	})

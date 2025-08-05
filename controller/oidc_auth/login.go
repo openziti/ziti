@@ -21,6 +21,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
@@ -141,7 +142,8 @@ func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 
 	l.router.Path("/totp").Methods("POST").HandlerFunc(l.checkTotp)
 	l.router.Path("/totp/enroll").Methods("POST").HandlerFunc(l.startEnrollTotp)
-	l.router.Path("/totp/enroll/verify").Methods("POST").HandlerFunc(l.completeTotpEnrollment)
+	l.router.Path("/totp/enroll").Methods("DELETE").HandlerFunc(l.deleteEnrollTotp)
+	l.router.Path("/totp/enroll/verify").Methods("POST").HandlerFunc(l.verifyTotp)
 }
 
 func (l *login) genericHandler(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +234,7 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 		id = r.FormValue("id")
 		code = r.FormValue("code")
 	} else if bodyContentType == JsonContentType {
-		payload := &Totp{}
+		payload := &TotpRequestBody{}
 		body, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -388,6 +390,34 @@ func (m *JsonMap) MarshalBinary() ([]byte, error) {
 	return swag.WriteJSON(m)
 }
 
+func (l *login) deleteEnrollTotp(w http.ResponseWriter, r *http.Request) {
+	changeCtx := NewHttpChangeCtx(r)
+
+	_, err := negotiateResponseContentType(r)
+
+	if err != nil {
+		renderJsonError(w, err)
+		return
+	}
+
+	payload := &TotpRequestBody{}
+	apiErr := parsePayload(r, payload)
+
+	if apiErr != nil {
+		renderJsonError(w, apiErr)
+		return
+	}
+
+	apiErr = l.store.DeleteTotpEnrollment(changeCtx, payload.AuthRequestId, payload.Code)
+
+	if apiErr != nil {
+		renderJsonError(w, apiErr)
+		return
+	}
+
+	renderJson(w, http.StatusOK, &rest_model.Empty{})
+}
+
 func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {
 	changeCtx := NewHttpChangeCtx(r)
 
@@ -406,16 +436,30 @@ func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, apiErr = l.store.StartTotpEnrollment(changeCtx, payload.AuthRequestId)
+	mfaDetail, totpStartErr := l.store.StartTotpEnrollment(changeCtx, payload.AuthRequestId)
 
-	if apiErr != nil {
-		renderJsonError(w, apiErr)
+	if totpStartErr != nil {
+		renderJsonError(w, totpStartErr)
+		return
 	}
 
-	renderJson(w, http.StatusOK, &rest_model.Empty{})
+	renderJson(w, http.StatusCreated, &rest_model.DetailMfa{
+		BaseEntity: rest_model.BaseEntity{
+			CreatedAt: ToPtr(strfmt.DateTime(mfaDetail.CreatedAt)),
+			ID:        ToPtr(mfaDetail.Id),
+			UpdatedAt: ToPtr(strfmt.DateTime(mfaDetail.UpdatedAt)),
+		},
+		IsVerified:      ToPtr(false),
+		ProvisioningURL: l.store.Managers().Mfa.GetProvisioningUrl(mfaDetail),
+		RecoveryCodes:   mfaDetail.RecoveryCodes,
+	})
 }
 
-func (l *login) completeTotpEnrollment(w http.ResponseWriter, r *http.Request) {
+func ToPtr[T any](v T) *T {
+	return &v
+}
+
+func (l *login) verifyTotp(w http.ResponseWriter, r *http.Request) {
 	changeCtx := NewHttpChangeCtx(r)
 
 	_, err := negotiateResponseContentType(r)
@@ -425,7 +469,7 @@ func (l *login) completeTotpEnrollment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload := &Totp{}
+	payload := &TotpRequestBody{}
 	apiErr := parsePayload(r, payload)
 
 	if apiErr != nil {
@@ -433,10 +477,11 @@ func (l *login) completeTotpEnrollment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiErr = l.store.CompleteTotpEnrollment(changeCtx, payload.Code, payload.AuthRequestId)
+	apiErr = l.store.CompleteTotpEnrollment(changeCtx, payload.AuthRequestId, payload.Code)
 
 	if apiErr != nil {
 		renderJsonError(w, apiErr)
+		return
 	}
 
 	renderJson(w, http.StatusOK, &rest_model.Empty{})

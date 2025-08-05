@@ -21,6 +21,7 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/dgryski/dgoogauth"
@@ -1082,6 +1083,31 @@ func computeMFACode(secret string) string {
 
 	//pad leading 0s to 6 characters
 	return fmt.Sprintf("%06d", code)
+}
+
+func parseSecretFromProvisioningUrl(provisioningUrl string) (string, error) {
+	parsedUrl, err := url.Parse(provisioningUrl)
+
+	if err != nil {
+		return "", err
+	}
+
+	queryParams, err := url.ParseQuery(parsedUrl.RawQuery)
+	if err != nil {
+		return "", err
+	}
+
+	secrets, ok := queryParams["secret"]
+
+	if !ok {
+		return "", errors.New("no secret found in provisioning url")
+	}
+
+	if len(secrets) != 1 {
+		return "", fmt.Errorf("expected 1 secret, got %d", len(secrets))
+	}
+
+	return secrets[0], nil
 }
 
 type mfaCode struct {

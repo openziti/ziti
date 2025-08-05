@@ -746,7 +746,14 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 	totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
 
 	if totpRequired && !rc.ApiSession.MfaComplete {
-		rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryZitiMfa())
+		totpAuthQuery := NewAuthQueryZitiMfa()
+
+		mfaDetail, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.ApiSession.IdentityId)
+
+		if err == nil && mfaDetail != nil {
+			totpAuthQuery.IsTotpEnrolled = mfaDetail.IsVerified
+		}
+		rc.AuthQueries = append(rc.AuthQueries, totpAuthQuery)
 	}
 
 	if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {

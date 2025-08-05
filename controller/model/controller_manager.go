@@ -247,18 +247,7 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 			CtrlAddress:  peer.Addr,
 			IsOnline:     true,
 			LastJoinedAt: time.Now(),
-			ApiAddresses: map[string][]ApiAddress{},
-		}
-
-		for apiKey, instances := range peer.ApiAddresses {
-			newController.ApiAddresses[apiKey] = nil
-
-			for _, instance := range instances {
-				newController.ApiAddresses[apiKey] = append(newController.ApiAddresses[apiKey], ApiAddress{
-					Url:     instance.Url,
-					Version: instance.Version,
-				})
-			}
+			ApiAddresses: apiAddressesFromPeer(peer),
 		}
 
 		existing := controllers[peer.Id]
@@ -351,4 +340,59 @@ func (self *ControllerManager) PeersDisconnected(peers []*event.ClusterPeer) {
 			pfxlog.Logger().WithError(err).Error("could not update controller during peer(s) disconnection")
 		}
 	}
+}
+
+// UpdateSelfOnNewLeader has each controller update itself with its current configuration. This is then
+// forwarded to the current leader for updates. Ensure that new leaders always have the most update-to-date configuration
+// from each controller and avoid stale or out-of-date information.
+func (self *ControllerManager) UpdateSelfOnNewLeader() {
+	peer := self.getCurrentAsClusterPeer()
+
+	newController := &Controller{
+		BaseEntity: models.BaseEntity{
+			Id: peer.Id,
+		},
+		Name:         peer.ServerCert[0].Subject.CommonName,
+		CertPem:      nfpem.EncodeToString(peer.ServerCert[0]),
+		Fingerprint:  nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
+		CtrlAddress:  peer.Addr,
+		IsOnline:     true,
+		ApiAddresses: apiAddressesFromPeer(peer),
+	}
+	disconnectFields := fields.UpdatedFieldsMap{
+		db.FieldControllerIsOnline:          struct{}{},
+		db.FieldControllerCertPem:           struct{}{},
+		db.FieldControllerFingerprint:       struct{}{},
+		db.FieldControllerCtrlAddress:       struct{}{},
+		db.FieldControllerApiAddresses:      struct{}{},
+		db.FieldControllerApiAddressUrl:     struct{}{},
+		db.FieldControllerApiAddressVersion: struct{}{},
+		db.FieldName:                        struct{}{},
+	}
+
+	changeCtx := change.New()
+	changeCtx.SetSourceType("raft.state.has_leader").
+		SetChangeAuthorType(change.AuthorTypeController)
+
+	if err := self.Update(newController, disconnectFields, changeCtx); err != nil {
+		pfxlog.Logger().WithError(err).Error("could not update self")
+	}
+}
+
+// apiAddressFromPeer converts event.ClusterPeer API Addresses to model API Addresses
+func apiAddressesFromPeer(peer *event.ClusterPeer) map[string][]ApiAddress {
+	result := map[string][]ApiAddress{}
+
+	for apiKey, instances := range peer.ApiAddresses {
+		result[apiKey] = nil
+
+		for _, instance := range instances {
+			result[apiKey] = append(result[apiKey], ApiAddress{
+				Url:     instance.Url,
+				Version: instance.Version,
+			})
+		}
+	}
+
+	return result
 }

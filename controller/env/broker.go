@@ -96,6 +96,9 @@ func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	if clusterEvent.EventType == event.ClusterLeadershipGained {
 		broker.ae.Managers.Controller.UpdateControllerState(clusterEvent.Peers, false)
+	} else if clusterEvent.EventType == event.ClusterHasLeader && !broker.ae.HostController.IsRaftLeader() {
+		//gained a leader and it isn't us
+		broker.ae.Managers.Controller.UpdateSelfOnNewLeader()
 	}
 
 	if broker.ae.HostController.IsRaftLeader() {
