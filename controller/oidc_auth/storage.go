@@ -89,7 +89,12 @@ type Storage interface {
 	// GetAuthRequest returns an *AuthRequest by its id
 	GetAuthRequest(id string) (*AuthRequest, error)
 
+	// Managers returns the model managers used to interact with durable storage
 	Managers() *model.Managers
+
+	// UpdateSdkEnvInfo will attempt to take the identity in scope of an AuthRequest and update its durable SDK/ENV
+	// info.
+	UpdateSdkEnvInfo(request *AuthRequest) error
 }
 
 func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
@@ -122,6 +127,43 @@ type HybridStorage struct {
 	config    *Config
 
 	keys cmap.ConcurrentMap[string, *pubKey]
+}
+
+func (s *HybridStorage) UpdateSdkEnvInfo(request *AuthRequest) error {
+	identity, err := s.env.GetManagers().Identity.Read(request.IdentityId)
+
+	if err != nil {
+		return err
+	}
+
+	changeCtx := NewChangeCtx()
+
+	var envInfo *model.EnvInfo
+	var sdkInfo *model.SdkInfo
+
+	if request.EnvInfo != nil {
+		envInfo = &model.EnvInfo{
+			Arch:      request.EnvInfo.Arch,
+			Os:        request.EnvInfo.Os,
+			OsRelease: request.EnvInfo.OsRelease,
+			OsVersion: request.EnvInfo.OsVersion,
+			Domain:    request.EnvInfo.Domain,
+			Hostname:  request.EnvInfo.Hostname,
+		}
+	}
+
+	if request.SdkInfo != nil {
+		sdkInfo = &model.SdkInfo{
+			AppId:      request.SdkInfo.AppID,
+			AppVersion: request.SdkInfo.AppVersion,
+			Branch:     request.SdkInfo.Branch,
+			Revision:   request.SdkInfo.Revision,
+			Type:       request.SdkInfo.Type,
+			Version:    request.SdkInfo.Version,
+		}
+	}
+
+	return s.env.GetManagers().Identity.UpdateSdkEnvInfo(identity, envInfo, sdkInfo, changeCtx)
 }
 
 func (s *HybridStorage) Managers() *model.Managers {
