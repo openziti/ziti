@@ -1,14 +1,15 @@
 package xlink_transport
 
 import (
-	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/env"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/router/env"
 )
 
 const (
@@ -248,12 +249,15 @@ func (self *DialLinkChannel) HandleUnderlayAccepted(ch channel.MultiChannel, und
 	self.changeCallback(self)
 }
 
-func (self *DialLinkChannel) DialFailed(_ channel.MultiChannel, _ string, attempt int) {
+func (self *DialLinkChannel) DialFailed(ch channel.MultiChannel, _ string, attempt int) {
 	delay := 2 * time.Duration(attempt) * time.Second
 	if delay > time.Minute {
 		delay = time.Minute
 	}
 	time.Sleep(delay)
+
+	// if the constraints are no longer valid after sleeping, close the channel
+	self.constraints.CheckStateValid(ch, true)
 }
 
 func (self *DialLinkChannel) CreateGroupedUnderlay(groupId string, groupSecret []byte, underlayType string, timeout time.Duration) (channel.Underlay, error) {
