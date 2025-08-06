@@ -22,7 +22,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v1.1.0
-	github.com/go-acme/lego/v4 v4.25.1
+	github.com/go-acme/lego/v4 v4.25.2
 	github.com/go-jose/go-jose/v4 v4.1.1
 	github.com/go-openapi/errors v0.22.1
 	github.com/go-openapi/loads v0.22.0
