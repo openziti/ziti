@@ -21,9 +21,9 @@ require (
 	github.com/ef-ds/deque v1.0.4
 	github.com/fatih/color v1.18.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-	github.com/gaissmai/extnetip v1.1.0
-	github.com/go-acme/lego/v4 v4.25.1
-	github.com/go-jose/go-jose/v4 v4.1.1
+	github.com/gaissmai/extnetip v1.2.0
+	github.com/go-acme/lego/v4 v4.25.2
+	github.com/go-jose/go-jose/v4 v4.1.2
 	github.com/go-openapi/errors v0.22.1
 	github.com/go-openapi/loads v0.22.0
 	github.com/go-openapi/runtime v0.28.0
@@ -33,7 +33,7 @@ require (
 	github.com/go-openapi/validate v0.24.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
@@ -45,7 +45,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
-	github.com/jedib0t/go-pretty/v6 v6.6.7
+	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/judedaryl/go-arrayutils v0.0.1
@@ -53,7 +53,7 @@ require (
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/miekg/dns v1.1.67
+	github.com/miekg/dns v1.1.68
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.30
