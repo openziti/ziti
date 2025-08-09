@@ -22,6 +22,15 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"plugin"
+	"runtime/debug"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
@@ -64,14 +73,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"plugin"
-	"runtime/debug"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 type Router struct {
@@ -299,6 +300,8 @@ func (self *Router) GetConfig() *env.Config {
 }
 
 func (self *Router) Start() error {
+	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventStart, self)
+
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
