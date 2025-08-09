@@ -302,6 +302,8 @@ func (self *Router) GetConfig() *env.Config {
 }
 
 func (self *Router) Start() error {
+	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventStart, self)
+
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
