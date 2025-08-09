@@ -17,6 +17,9 @@
 package link
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -121,6 +122,18 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 					registry.evaluateLinkState(newLinkState)
 				} else {
 					log.Info("link already known")
+					if existingLinkState.listener.Address != listener.Address {
+						log.WithField("oldAddr", existingLinkState.listener.Address).
+							WithField("newAddr", listener.Address).
+							Info("link address changed, updating")
+						if existingLinkState.link != nil {
+							if err := existingLinkState.link.Close(); err != nil {
+								log.WithError(err).Error("error closing existing link")
+							}
+						}
+					}
+					existingLinkState.listener = listener // even if the key is the same, the address could have changed
+
 					// if link isn't established, try establishing now
 					if becameHealthy && existingLinkState.status != StatusEstablished {
 						existingLinkState.retryDelay = time.Duration(0)
