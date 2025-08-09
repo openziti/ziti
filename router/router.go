@@ -22,6 +22,15 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"plugin"
+	"runtime/debug"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
@@ -64,14 +73,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"plugin"
-	"runtime/debug"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 type Router struct {
@@ -105,6 +106,7 @@ type Router struct {
 	indexWatchers       env.IndexWatchers
 	xgBindHandler       xgress.BindHandler
 	xgMetrics           *routerMetrics.XgressMetrics
+	initializers        concurrenz.CopyOnWriteSlice[func(cfg *env.Config) error]
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -298,7 +300,17 @@ func (self *Router) GetConfig() *env.Config {
 	return self.config
 }
 
+func (self *Router) AddInitializer(f func(cfg *env.Config) error) {
+	self.initializers.Append(f)
+}
+
 func (self *Router) Start() error {
+	for _, initializer := range self.initializers.Value() {
+		if err := initializer(self.config); err != nil {
+			return err
+		}
+	}
+
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
