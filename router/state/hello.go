@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package handler_edge_ctrl
+package state
 
 import (
 	"strconv"
@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/state"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,10 +35,10 @@ type helloHandler struct {
 	hostname           string
 	supportedProtocols []string
 	protocolPorts      []string
-	stateManager       state.Manager
+	stateManager       Manager
 }
 
-func NewHelloHandler(stateManager state.Manager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
+func NewHelloHandler(stateManager Manager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
 	//supportedProtocols, protocolPorts, and hostname is for backwards compatibility with v0.26.3 and older controllers
 	var supportedProtocols []string
 	var protocolPorts []string

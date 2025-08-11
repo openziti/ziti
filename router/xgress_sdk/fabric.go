@@ -18,9 +18,13 @@ package xgress_sdk
 
 import (
 	"fmt"
+	"net"
+	"sync/atomic"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream/kx"
@@ -29,12 +33,9 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/posture"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"net"
-	"sync/atomic"
 )
 
 func NewFabric(env env.RouterEnv, options *xgress.Options) (Fabric, error) {
@@ -43,6 +44,7 @@ func NewFabric(env env.RouterEnv, options *xgress.Options) (Fabric, error) {
 		options: options,
 	}
 
+	env.MarkRouterDataModelRequired()
 	if err := env.GetRouterDataModel().SubscribeToIdentityChanges(env.GetRouterId().Token, result, true); err != nil {
 		return nil, err
 	}

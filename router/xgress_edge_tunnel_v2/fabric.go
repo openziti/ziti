@@ -18,6 +18,11 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -35,10 +40,6 @@ import (
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"net"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
