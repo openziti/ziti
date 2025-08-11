@@ -18,6 +18,9 @@ package xgress_edge
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -30,13 +33,10 @@ import (
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/internal/apiproxy"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
-	"strings"
-	"time"
 )
 
 type reconnectionHandler interface {
@@ -51,7 +51,6 @@ type Factory struct {
 	hostedServices       *hostedServiceRegistry
 	stateManager         state.Manager
 	versionProvider      versions.VersionProvider
-	certChecker          *CertExpirationChecker
 	metricsRegistry      metrics.Registry
 	env                  env.RouterEnv
 	reconnectionHandlers concurrenz.CopyOnWriteSlice[reconnectionHandler]
@@ -74,11 +73,6 @@ func (factory *Factory) Enabled() bool {
 }
 
 func (factory *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.stateManager, factory.edgeRouterConfig.EdgeListeners))
-
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.env.GetRouterId(), func() {
-		factory.certChecker.CertsUpdated()
-	}))
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
@@ -104,15 +98,6 @@ func (factory *Factory) addReconnectionHandler(h reconnectionHandler) {
 
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
-
-	factory.certChecker = NewCertExpirationChecker(factory.env.GetRouterId(), factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
-
-	go func() {
-		if err := factory.certChecker.Run(); err != nil {
-			pfxlog.Logger().WithError(err).Error("error while running certchecker")
-		}
-	}()
-
 	return nil
 }
 

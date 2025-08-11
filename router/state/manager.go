@@ -21,6 +21,14 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"math/rand"
+	"os"
+	"runtime/debug"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
@@ -39,13 +47,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"os"
-	"runtime/debug"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -1059,6 +1060,9 @@ func (sm *ManagerImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
 }
 
 func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(NewHelloHandler(sm, sm.env.GetConfig().Edge.EdgeListeners))
+	binding.AddTypedReceiveHandler(NewExtendEnrollmentCertsHandler(sm.env))
+
 	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(sm))
 	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(sm, binding))
 	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(sm))

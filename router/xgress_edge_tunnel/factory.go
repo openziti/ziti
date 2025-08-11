@@ -18,20 +18,21 @@ package xgress_edge_tunnel
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
-	"strings"
-	"time"
 )
 
 const (
@@ -112,8 +113,6 @@ func NewV1Factory(env env.RouterEnv, routerConfig *env.Config, stateManager stat
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
-	self.env.MarkRouterDataModelRequired()
-
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
@@ -127,8 +126,6 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_rout
 
 // CreateDialer creates a new Edge Xgress dialer
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
-	self.env.MarkRouterDataModelRequired()
-
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
