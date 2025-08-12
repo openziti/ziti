@@ -21,10 +21,10 @@ require (
 	github.com/ef-ds/deque v1.0.4
 	github.com/fatih/color v1.18.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-	github.com/gaissmai/extnetip v1.1.0
-	github.com/go-acme/lego/v4 v4.25.1
-	github.com/go-jose/go-jose/v4 v4.1.1
-	github.com/go-openapi/errors v0.22.1
+	github.com/gaissmai/extnetip v1.2.0
+	github.com/go-acme/lego/v4 v4.25.2
+	github.com/go-jose/go-jose/v4 v4.1.2
+	github.com/go-openapi/errors v0.22.2
 	github.com/go-openapi/loads v0.22.0
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/spec v0.21.0
@@ -33,7 +33,7 @@ require (
 	github.com/go-openapi/validate v0.24.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
@@ -45,7 +45,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
-	github.com/jedib0t/go-pretty/v6 v6.6.7
+	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/judedaryl/go-arrayutils v0.0.1
@@ -53,11 +53,11 @@ require (
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/miekg/dns v1.1.67
+	github.com/miekg/dns v1.1.68
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.30
-	github.com/openziti/channel/v4 v4.2.18
+	github.com/openziti/channel/v4 v4.2.21
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.47
 	github.com/openziti/foundation/v2 v2.0.70
@@ -65,10 +65,10 @@ require (
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/runzmd v1.0.77
-	github.com/openziti/sdk-golang v1.2.1
-	github.com/openziti/secretstream v0.1.37
+	github.com/openziti/sdk-golang v1.2.2
+	github.com/openziti/secretstream v0.1.38
 	github.com/openziti/storage v0.4.22
-	github.com/openziti/transport/v2 v2.0.182
+	github.com/openziti/transport/v2 v2.0.183
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.4
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -86,18 +86,18 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.42.0
+	github.com/zitadel/oidc/v3 v3.44.0
 	go.etcd.io/bbolt v1.4.2
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.40.0
+	golang.org/x/crypto v0.41.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.42.0
+	golang.org/x/net v0.43.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.34.0
-	golang.org/x/text v0.27.0
-	google.golang.org/protobuf v1.36.6
+	golang.org/x/sys v0.35.0
+	golang.org/x/text v0.28.0
+	google.golang.org/protobuf v1.36.7
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -136,7 +136,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b // indirect
+	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
@@ -201,10 +201,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/image v0.28.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/term v0.33.0 // indirect
-	golang.org/x/tools v0.34.0 // indirect
+	golang.org/x/image v0.30.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/term v0.34.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
 )
