@@ -1,3 +1,27 @@
+# Release 1.6.7
+
+## What's New
+
+* Bug fixes and library updates
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v4: [v4.2.18 -> v4.2.21](https://github.com/openziti/channel/compare/v4.2.18...v4.2.21)
+    * [Issue #203](https://github.com/openziti/channel/issues/203) - Track last dial time in UnderlayConstraints
+
+* github.com/openziti/edge-api: [v0.26.46 -> v0.26.47](https://github.com/openziti/edge-api/compare/v0.26.46...v0.26.47)
+* github.com/openziti/sdk-golang: [v1.2.1 -> v1.2.2](https://github.com/openziti/sdk-golang/compare/v1.2.1...v1.2.2)
+    * [Issue #786](https://github.com/openziti/sdk-golang/issues/786) - Slow down dials to an ER if they happen too quickly
+    * [Issue #784](https://github.com/openziti/sdk-golang/issues/784) - Drop retransmit error to debug
+
+* github.com/openziti/secretstream: [v0.1.37 -> v0.1.38](https://github.com/openziti/secretstream/compare/v0.1.37...v0.1.38)
+* github.com/openziti/transport/v2: [v2.0.182 -> v2.0.183](https://github.com/openziti/transport/compare/v2.0.182...v2.0.183)
+* github.com/openziti/ziti: [v1.6.6 -> v1.6.7](https://github.com/openziti/ziti/compare/v1.6.6...v1.6.7)
+    * [Issue #3199](https://github.com/openziti/ziti/issues/3199) - Other routers don't react to link listener address changes
+    * [Issue #3178](https://github.com/openziti/ziti/issues/3178) - Controller List Edge APIs Missing
+    * [Issue #3193](https://github.com/openziti/ziti/issues/3193) - Add flag to TOTP auth query with enrollment state
+    * [Issue #3162](https://github.com/openziti/ziti/issues/3162) - Update go tunnel implementation to support multiple interfaces
+
 # Release 1.6.6
 
 ## What's New

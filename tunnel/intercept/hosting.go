@@ -18,6 +18,13 @@ package intercept
 
 import (
 	"fmt"
+	"net"
+	"net/netip"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
@@ -29,14 +36,7 @@ import (
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/proxy"
-	"net"
-	"net/netip"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type healthChecksProvider interface {
@@ -347,7 +347,7 @@ func (self *hostingContext) translateAddress(addr string) (string, error) {
 		if x.fromPrefix.Contains(a) {
 			t, err := translateIP(a, x.fromPrefix, x.toPrefix)
 			if err != nil {
-				log.WithError(err).Errorf("failed to translate address %s", addr)
+				pfxlog.Logger().WithError(err).Errorf("failed to translate address %s", addr)
 				continue
 			}
 			to = t.String()
