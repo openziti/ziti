@@ -177,6 +177,10 @@ func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
 	return self.options
 }
 
+func (self *hostingContext) GetAllowConfig() tunnel.AllowConfig {
+	return self.config.GetAllowConfig()
+}
+
 func (self *hostingContext) dialAddress(options map[string]interface{}, protocol string, address string) (net.Conn, bool, error) {
 	var sourceAddr string
 	if val, ok := options[tunnel.SourceAddrKey]; ok {

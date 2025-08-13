@@ -19,9 +19,11 @@ package xgress_router
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/ziti/router/env"
 	"sync"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/controller/ioc"
+	"github.com/openziti/ziti/router/env"
 )
 
 type registry struct {
@@ -29,11 +31,13 @@ type registry struct {
 	factoryF    map[string]func(env.RouterEnv) Factory
 	initialized bool
 	lock        sync.Mutex
+	iocRegistry *ioc.TypedRegistry
 }
 
 func NewRegistry() *registry {
 	return &registry{
-		factoryF: make(map[string]func(env.RouterEnv) Factory),
+		factoryF:    make(map[string]func(env.RouterEnv) Factory),
+		iocRegistry: ioc.NewTypedRegistry(),
 	}
 }
 
@@ -75,6 +79,10 @@ func (registry *registry) List() []string {
 		names = append(names, k)
 	}
 	return names
+}
+
+func (registry *registry) IOC() *ioc.TypedRegistry {
+	return registry.iocRegistry
 }
 
 func (registry *registry) Debug() string {

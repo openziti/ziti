@@ -22,6 +22,15 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"plugin"
+	"runtime/debug"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
@@ -43,6 +52,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
 	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/controller/ioc"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_ctrl"
@@ -64,14 +74,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"plugin"
-	"runtime/debug"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 type Router struct {
@@ -277,6 +279,10 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 	)
 
+	ioc.RegisterTypedSingleton[xgress.BindHandler](xgress_router.GlobalRegistry().IOC(), router.xgBindHandler)
+	ioc.RegisterTypedSingleton[env.RouterEnv](xgress_router.GlobalRegistry().IOC(), router)
+	ioc.RegisterTypedSingleton[state.Manager](xgress_router.GlobalRegistry().IOC(), router.stateManager)
+
 	return router
 }
 
@@ -310,13 +316,12 @@ func (self *Router) Start() error {
 	}
 	self.startProfiling()
 
-	healthChecker, err := self.initializeHealthChecks()
-	if err != nil {
+	if healthChecker, err := self.initializeHealthChecks(); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checker")
-	}
-
-	if err := self.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
-		logrus.WithError(err).Fatalf("failed to create health checks api factory")
+	} else {
+		if err = self.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+			logrus.WithError(err).Fatalf("failed to create health checks api factory")
+		}
 	}
 
 	if err := self.registerComponents(); err != nil {
@@ -338,7 +343,7 @@ func (self *Router) Start() error {
 		go web.Run()
 	}
 
-	if err = self.startControlPlane(); err != nil {
+	if err := self.startControlPlane(); err != nil {
 		return err
 	}
 	return nil

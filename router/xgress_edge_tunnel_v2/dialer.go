@@ -17,6 +17,8 @@
 package xgress_edge_tunnel_v2
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -28,7 +30,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
-	"time"
 )
 
 func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
