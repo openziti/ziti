@@ -19,9 +19,10 @@ package xgress_router
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/router/env"
-	"sync"
 )
 
 type registry struct {

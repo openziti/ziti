@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/posture"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
@@ -42,16 +43,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
+func NewTunnelFabricProvider(routerEnv env.RouterEnv, hostedServicesRegistry *HostedServiceRegistry) TunnelFabricProvider {
 	return &fabricProvider{
-		factory:  factory,
-		tunneler: tunneler,
+		env:            routerEnv,
+		hostedServices: hostedServicesRegistry,
+		bindHandler:    routerEnv.GetXgressBindHandler(),
 	}
 }
 
 type fabricProvider struct {
-	factory  *Factory
-	tunneler *tunneler
+	env            env.RouterEnv
+	hostedServices *HostedServiceRegistry
+	options        *xgress.Options
+	bindHandler    xgress.BindHandler
 
 	currentIdentity atomic.Pointer[rest_model.IdentityDetail]
 }
@@ -66,8 +70,12 @@ func (self *fabricProvider) GetCurrentIdentityWithBackoff() (*rest_model.Identit
 	return self.currentIdentity.Load(), nil
 }
 
-func (self *fabricProvider) updateIdentity(i *rest_model.IdentityDetail) {
+func (self *fabricProvider) UpdateIdentity(i *rest_model.IdentityDetail) {
 	self.currentIdentity.Store(i)
+}
+
+func (self *fabricProvider) SetXgressOptions(options *xgress.Options) {
+	self.options = options
 }
 
 func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInstanceId string, conn net.Conn, halfClose bool, appData []byte) error {
@@ -89,7 +97,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	peerData[uint32(ctrl_msg.InitiatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
 	peerData[uint32(ctrl_msg.InitiatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	ctrlCh := self.env.GetNetworkControllers().AnyCtrlChannel()
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create circuit"
 		log.Error(errStr)
@@ -98,8 +106,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	log = log.WithField("ctrlId", ctrlCh.Id())
 
-	rdm := self.factory.stateManager.RouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
+	rdm := self.env.GetRouterDataModel()
+	if policy, err := posture.HasAccess(rdm, self.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
 		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
 	}
 
@@ -132,8 +140,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		}
 	}
 
-	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
-	self.tunneler.bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
+	self.bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	return nil
@@ -152,13 +160,13 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	}
 	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
 
-	self.factory.hostedServices.EstablishTerminator(terminator)
+	self.hostedServices.EstablishTerminator(terminator)
 
 	return terminator, nil
 }
 
 func (self *fabricProvider) GetCachedTerminatorId(serviceId string, fallback string) string {
-	cache := self.factory.env.GetRouterDataModel().GetTerminatorIdCache()
+	cache := self.env.GetRouterDataModel().GetTerminatorIdCache()
 	result, found := cache.Get(serviceId)
 	if found {
 		return result
@@ -173,7 +181,7 @@ func (self *fabricProvider) GetCachedTerminatorId(serviceId string, fallback str
 }
 
 func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, precedence *edge.Precedence) error {
-	ctrlCh := self.factory.ctrls.GetModelUpdateCtrlChannel()
+	ctrlCh := self.env.GetNetworkControllers().GetModelUpdateCtrlChannel()
 	if ctrlCh == nil {
 		return errors.New("no controller available, cannot update terminator")
 	}
@@ -205,7 +213,7 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 
 	log.Debug("updating terminator")
 
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(ctrlCh)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.env.DefaultRequestTimeout()).SendForReply(ctrlCh)
 	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTunnelTerminatorResponseType); err != nil {
 		log.WithError(err).Error("terminator update failed")
 		return err
@@ -216,7 +224,7 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 }
 
 func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed bool) error {
-	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	ctrlCh := self.env.GetNetworkControllers().AnyCtrlChannel()
 	if ctrlCh == nil {
 		return errors.New("no controller available, cannot forward health event")
 	}
@@ -229,7 +237,7 @@ func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed boo
 		WithField("checkPassed", checkPassed)
 	logger.Debug("sending health event")
 
-	if err := msg.WithTimeout(self.factory.ctrls.DefaultRequestTimeout()).Send(ctrlCh); err != nil {
+	if err := msg.WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).Send(ctrlCh); err != nil {
 		logger.WithError(err).Error("health event send failed")
 	} else {
 		logger.Debug("health event sent")
@@ -258,13 +266,13 @@ func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 
 func (self *tunnelTerminator) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
-		self.provider.factory.stateManager.RouterDataModel().GetTerminatorIdCache().Remove(self.context.ServiceId())
+		self.provider.env.GetRouterDataModel().GetTerminatorIdCache().Remove(self.context.ServiceId())
 
 		log := logrus.WithField("service", self.context.ServiceName()).
-			WithField("routerId", self.provider.factory.id.Token).
+			WithField("routerId", self.provider.env.GetRouterId().Token).
 			WithField("terminatorId", self.id)
 
-		self.provider.factory.hostedServices.queueRemoveTerminatorAsync(self, "close called")
+		self.provider.hostedServices.queueRemoveTerminatorAsync(self, "close called")
 		log.Info("queued tunnel terminator remove")
 
 		log.Debug("closing tunnel terminator context")

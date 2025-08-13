@@ -18,6 +18,11 @@ package xgress_edge_tunnel_v2
 
 import (
 	"encoding/json"
+	"net"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/xgress"
@@ -25,28 +30,30 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
 	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	"github.com/pkg/errors"
-	"net"
-	"strings"
-	"sync/atomic"
-	"time"
 )
+
+type TunnelFabricProvider interface {
+	tunnel.FabricProvider
+	SetXgressOptions(*xgress.Options)
+	UpdateIdentity(i *rest_model.IdentityDetail)
+}
 
 type tunneler struct {
 	env           routerEnv.RouterEnv
 	dialOptions   *Options
 	listenOptions *Options
-	bindHandler   xgress.BindHandler
 
 	interceptor     intercept.Interceptor
 	serviceListener *intercept.ServiceListener
-	fabricProvider  *fabricProvider
-	hostedServices  *hostedServiceRegistry
+	fabricProvider  TunnelFabricProvider
+	hostedServices  *HostedServiceRegistry
 	notifyReconnect chan struct{}
 
 	createTime  time.Time
@@ -56,12 +63,9 @@ type tunneler struct {
 func newTunneler(factory *Factory) *tunneler {
 	result := &tunneler{
 		env:             factory.env,
-		hostedServices:  factory.hostedServices,
 		notifyReconnect: make(chan struct{}, 1),
 		createTime:      time.Now(),
 	}
-
-	result.fabricProvider = newProvider(factory, result)
 
 	return result
 }
@@ -131,8 +135,7 @@ func (self *tunneler) WaitForInitialized() {
 	}
 }
 
-func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
-	self.bindHandler = bindHandler
+func (self *tunneler) Listen(string, xgress.BindHandler) error {
 	return nil
 }
 
@@ -144,11 +147,11 @@ func (self *tunneler) Close() error {
 func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType common.IdentityEventType) {
 	if eventType == common.EventIdentityDeleted || state.Identity.Disabled {
 		pfxlog.Logger().Infof("identity deleted or disabled %s, eventType: %s", state.Identity.Id, eventType)
-		self.fabricProvider.updateIdentity(self.mapRdmIdentityToRest(state.Identity))
+		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
 	} else if eventType == common.EventFullState || eventType == common.EventIdentityUpdated {
 		pfxlog.Logger().Infof("identity updated %s, eventType: %s", state.Identity.Id, eventType)
-		self.fabricProvider.updateIdentity(self.mapRdmIdentityToRest(state.Identity))
+		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
 		for _, svc := range state.Services {
 			self.NotifyServiceChange(state, svc, common.EventAccessGained)
