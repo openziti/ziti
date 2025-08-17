@@ -53,7 +53,6 @@ type RouterAction struct {
 	Options
 	EnableDebugOps            bool
 	ForceCertificateExtension bool
-	ConfigureCallback         func(env env.RouterEnv) error
 }
 
 func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
@@ -77,12 +76,6 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 	startLogger.Info("starting ziti router")
 
 	r := router.Create(config, version.GetCmdBuildInfo())
-
-	if self.ConfigureCallback != nil {
-		if err = self.ConfigureCallback(r); err != nil {
-			logrus.WithError(err).Panic("startup error")
-		}
-	}
 
 	if self.CliAgentEnabled {
 		if self.EnableDebugOps {

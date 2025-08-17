@@ -18,6 +18,11 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -35,10 +40,6 @@ import (
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"net"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
@@ -98,7 +99,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	log = log.WithField("ctrlId", ctrlCh.Id())
 
 	rdm := self.factory.stateManager.RouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
+	if policy, err := posture.HasAccess(rdm, self.factory.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
 		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
 	}
 

@@ -18,20 +18,21 @@ package xgress_edge_tunnel
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
-	"strings"
-	"time"
 )
 
 const (
@@ -44,7 +45,6 @@ const (
 type Factory struct {
 	id                 *identity.TokenId
 	ctrls              env.NetworkControllers
-	routerConfig       *env.Config
 	stateManager       state.Manager
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
 	tunneler           *tunneler
@@ -84,7 +84,7 @@ func (self *Factory) LoadConfig(map[interface{}]interface{}) error {
 }
 
 func (self *Factory) DefaultRequestTimeout() time.Duration {
-	return self.routerConfig.Ctrl.DefaultRequestTimeout
+	return self.env.DefaultRequestTimeout()
 }
 
 type XrctrlFactory interface {
@@ -93,14 +93,13 @@ type XrctrlFactory interface {
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
-	return NewFactoryWrapper(env, routerConfig, stateManager)
+func NewFactory(env env.RouterEnv, stateManager state.Manager) XrctrlFactory {
+	return NewFactoryWrapper(env, stateManager)
 }
 
-func NewV1Factory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
+func NewV1Factory(env env.RouterEnv, stateManager state.Manager) XrctrlFactory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
-		routerConfig:    routerConfig,
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,

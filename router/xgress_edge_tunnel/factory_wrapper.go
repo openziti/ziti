@@ -2,27 +2,26 @@ package xgress_edge_tunnel
 
 import (
 	"errors"
+	"os"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/xgress_edge_tunnel_v2"
 	"github.com/openziti/ziti/router/xgress_router"
-	"os"
-	"time"
 )
 
 type FactoryWrapper struct {
-	env          env.RouterEnv
-	routerConfig *env.Config
-	stateManager state.Manager
-	initDone     chan struct{}
-	delegate     concurrenz.AtomicValue[XrctrlFactory]
+	env      env.RouterEnv
+	initDone chan struct{}
+	delegate concurrenz.AtomicValue[XrctrlFactory]
 
 	listenerOptions chan xgress.OptionsData
 	listenerArgs    chan listenArgs
@@ -83,11 +82,9 @@ func (self *FactoryWrapper) NotifyOfReconnect(ch channel.Channel) {
 	}
 }
 
-func NewFactoryWrapper(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) XrctrlFactory {
+func NewFactoryWrapper(env env.RouterEnv, stateManager state.Manager) XrctrlFactory {
 	wrapper := &FactoryWrapper{
 		env:             env,
-		routerConfig:    routerConfig,
-		stateManager:    stateManager,
 		initDone:        make(chan struct{}),
 		listenerOptions: make(chan xgress.OptionsData, 5),
 		listenerArgs:    make(chan listenArgs, 5),
@@ -118,10 +115,10 @@ func NewFactoryWrapper(env env.RouterEnv, routerConfig *env.Config, stateManager
 		var factory XrctrlFactory
 		if env.GetRouterDataModelEnabledConfig().Load() {
 			log.Info("router data model enabled, using xgress_edge_tunnel_v2")
-			factory = xgress_edge_tunnel_v2.NewFactory(env, routerConfig, stateManager)
+			factory = xgress_edge_tunnel_v2.NewFactory(env, stateManager)
 		} else {
 			log.Info("router data model NOT enabled, using xgress_edge_tunnel")
-			factory = NewV1Factory(env, routerConfig, stateManager)
+			factory = NewV1Factory(env, stateManager)
 		}
 
 		wrapper.delegate.Store(factory)

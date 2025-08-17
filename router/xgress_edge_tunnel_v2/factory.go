@@ -18,6 +18,10 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
@@ -29,9 +33,6 @@ import (
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -44,7 +45,6 @@ const (
 type Factory struct {
 	id                *identity.TokenId
 	ctrls             env.NetworkControllers
-	routerConfig      *env.Config
 	stateManager      state.Manager
 	tunneler          *tunneler
 	metricsRegistry   metrics.UsageRegistry
@@ -84,14 +84,13 @@ func (self *Factory) LoadConfig(map[interface{}]interface{}) error {
 }
 
 func (self *Factory) DefaultRequestTimeout() time.Duration {
-	return self.routerConfig.Ctrl.DefaultRequestTimeout
+	return self.env.DefaultRequestTimeout()
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) *Factory {
+func NewFactory(env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
-		routerConfig:    routerConfig,
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,
