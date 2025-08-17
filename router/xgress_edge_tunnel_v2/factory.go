@@ -65,7 +65,6 @@ func OverrideFabricProviderF(f func(env.RouterEnv, *HostedServiceRegistry) Tunne
 type Factory struct {
 	id                *identity.TokenId
 	ctrls             env.NetworkControllers
-	routerConfig      *env.Config
 	stateManager      state.Manager
 	tunneler          *tunneler
 	metricsRegistry   metrics.UsageRegistry
@@ -105,14 +104,13 @@ func (self *Factory) LoadConfig(map[interface{}]interface{}) error {
 }
 
 func (self *Factory) DefaultRequestTimeout() time.Duration {
-	return self.routerConfig.Ctrl.DefaultRequestTimeout
+	return self.env.DefaultRequestTimeout()
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.Manager) *Factory {
+func NewFactory(env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
-		routerConfig:    routerConfig,
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,

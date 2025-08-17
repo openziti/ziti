@@ -211,9 +211,7 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
-func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
-	closeNotify := make(chan struct{})
-
+func createMetricsRegistry(cfg *env.Config, closeNotify <-chan struct{}) metrics.UsageRegistry {
 	metricsConfig := metrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
 	metricsConfig.EventQueueSize = cfg.Metrics.EventQueueSize
 	if cfg.Metrics.IntervalAgeThreshold != 0 {
@@ -222,26 +220,15 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 	env.IntervalSize = cfg.Metrics.ReportInterval
 
-	metricsRegistry := metrics.NewUsageRegistry(metricsConfig)
-	xgMetrics := xgress.NewMetrics(metricsRegistry)
+	return metrics.NewUsageRegistry(metricsConfig)
+}
 
-	linkDialerPoolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(cfg.Forwarder.LinkDial.QueueLength),
-		MinWorkers:  0,
-		MaxWorkers:  uint32(cfg.Forwarder.LinkDial.WorkerCount),
-		IdleTime:    30 * time.Second,
-		CloseNotify: closeNotify,
-		PanicHandler: func(err interface{}) {
-			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
-		},
-	}
+func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
+	// Notify lifecycle listeners that configuration has been loaded
+	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventConfigLoaded, nil, cfg)
 
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, metricsRegistry, "pool.link.dialer")
-
-	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
-	if err != nil {
-		panic(fmt.Errorf("error creating link dialer pool (%w)", err))
-	}
+	closeNotify := make(chan struct{})
+	metricsRegistry := createMetricsRegistry(cfg, closeNotify)
 
 	router := &Router{
 		config:              cfg,
@@ -251,10 +238,10 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
-		linkDialerPool:      linkDialerPool,
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
 		rdmEnabled:          config.NewConfigValue[bool](),
 		indexWatchers:       env.NewIndexWatchers(),
+		xgMetrics:           routerMetrics.NewXgressMetrics(metricsRegistry),
 	}
 
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
@@ -266,49 +253,35 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
 
-	payloadIngester := xgress.NewPayloadIngesterWithConfig(64, closeNotify)
-	ackSender := xgress_router.NewAcker(router.forwarder, metricsRegistry, closeNotify)
-	retransmitter := xgress.NewRetransmitter(router.forwarder, metricsRegistry, closeNotify)
-
+	var err error
 	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
 	if err != nil {
 		panic(err)
 	}
 
-	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
-		Acker:           ackSender,
-		Forwarder:       router.forwarder,
-		Retransmitter:   retransmitter,
-		PayloadIngester: payloadIngester,
-		Metrics:         xgMetrics,
-	})
-
-	router.xgMetrics = routerMetrics.NewXgressMetrics(router.metricsRegistry)
-	router.xgBindHandler = handler_xgress.NewBindHandler(router, dataPlaneAdapter,
+	router.xgBindHandler = handler_xgress.NewBindHandler(router, router.createDataPlaneAdapter(),
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 	)
-
-	// Register edge-related xgress factories
-	xgressEdgeFactory := xgress_edge.NewFactory(cfg, router, router.stateManager)
-	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
-	if err = router.RegisterXrctrl(xgressEdgeFactory); err != nil {
-		panic(fmt.Errorf("error registering edge in framework: %w", err))
-	}
-
-	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
-	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
-
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(router, cfg, router.stateManager)
-	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
-	if err = router.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
-		panic(fmt.Errorf("error registering edge tunnel in framework: %w", err))
-	}
 
 	if err = router.RegisterXrctrl(router.stateManager); err != nil {
 		panic(fmt.Errorf("error registering state manager in framework: %w", err))
 	}
 
 	return router
+}
+
+func (self *Router) createDataPlaneAdapter() xgress.DataPlaneAdapter {
+	payloadIngester := xgress.NewPayloadIngesterWithConfig(64, self.shutdownC)
+	ackSender := xgress_router.NewAcker(self.forwarder, self.metricsRegistry, self.shutdownC)
+	retransmitter := xgress.NewRetransmitter(self.forwarder, self.metricsRegistry, self.GetCloseNotify())
+
+	return handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
+		Acker:           ackSender,
+		Forwarder:       self.forwarder,
+		Retransmitter:   retransmitter,
+		PayloadIngester: payloadIngester,
+		Metrics:         xgress.NewMetrics(self.metricsRegistry),
+	})
 }
 
 func (self *Router) ListenForShutdownSignal() {
@@ -372,7 +345,7 @@ func (self *Router) GetConfig() *env.Config {
 }
 
 func (self *Router) Start() error {
-	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventStart, self)
+	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventStart, self, self.config)
 
 	// Initialize directories and show configuration
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
@@ -382,9 +355,10 @@ func (self *Router) Start() error {
 	self.showOptions()
 
 	// Initialize pools and profiling
-	if err := self.initRateLimiterPool(); err != nil {
+	if err := self.initGoroutinePools(); err != nil {
 		return err
 	}
+
 	self.startProfiling()
 
 	if healthChecker, err := self.initializeHealthChecks(); err != nil {
@@ -501,6 +475,41 @@ func (self *Router) startProfiling() {
 	go newRouterMonitor(self.forwarder, self.shutdownC).Monitor()
 }
 
+func (self *Router) initGoroutinePools() error {
+	if err := self.initLinkDialerPool(); err != nil {
+		return err
+	}
+
+	if err := self.initRateLimiterPool(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (self *Router) initLinkDialerPool() error {
+	linkDialerPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(self.config.Forwarder.LinkDial.QueueLength),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(self.config.Forwarder.LinkDial.WorkerCount),
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.shutdownC,
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.metricsRegistry, "pool.link.dialer")
+
+	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
+	if err != nil {
+		return fmt.Errorf("error creating link dialer pool (%w)", err)
+	}
+	self.linkDialerPool = linkDialerPool
+
+	return nil
+}
+
 func (self *Router) initRateLimiterPool() error {
 	rateLimiterPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(self.forwarder.Options.RateLimiter.QueueLength),
@@ -579,6 +588,22 @@ func (self *Router) registerComponents() error {
 	xgress_router.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
 	xgress_router.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
 	xgress_router.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
+
+	// Register edge-related xgress factories
+	xgressEdgeFactory := xgress_edge.NewFactory(self.config, self, self.stateManager)
+	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
+	if err := self.RegisterXrctrl(xgressEdgeFactory); err != nil {
+		return fmt.Errorf("error registering edge in framework (%w)", err)
+	}
+
+	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
+	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(self, self.stateManager)
+	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
+	if err := self.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
+		return fmt.Errorf("error registering edge tunnel in framework (%w)", err)
+	}
 
 	xwo := xweb.InstanceOptions{
 		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {

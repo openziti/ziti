@@ -17,11 +17,15 @@
 package tests
 
 import (
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/controller/config"
-	env2 "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
-	"github.com/openziti/ziti/zitirest"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	cryptoTls "crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -35,15 +39,11 @@ import (
 	"testing"
 	"time"
 
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	cryptoTls "crypto/tls"
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
-	"fmt"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/controller/config"
+	env2 "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/zitirest"
 
 	"github.com/Jeffail/gabs"
 	"github.com/go-openapi/strfmt"
@@ -426,13 +426,13 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	config, err := config.LoadConfig(ControllerConfFile)
+	ctrlConfig, err := config.LoadConfig(ControllerConfFile)
 	ctx.Req.NoError(err)
 
-	ctx.ControllerConfig = config
+	ctx.ControllerConfig = ctrlConfig
 
 	log.Info("creating fabric controller")
-	ctx.fabricController, err = controller.NewController(config, NewVersionProviderTest())
+	ctx.fabricController, err = controller.NewController(ctrlConfig, NewVersionProviderTest())
 	ctx.Req.NoError(err)
 
 	log.Info("creating edge controller")
@@ -527,9 +527,9 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 }
 
 func (ctx *TestContext) startTransitRouter() {
-	config, err := env2.LoadConfig(TransitRouterConfFile)
+	routerConfig, err := env2.LoadConfig(TransitRouterConfFile)
 	ctx.Req.NoError(err)
-	newRouter := router.Create(config, NewVersionProviderTest())
+	newRouter := router.Create(routerConfig, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
 
 	ctx.Req.NoError(newRouter.Start())
@@ -569,7 +569,7 @@ func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Ro
 	xgressEdgeFactory := xgress_edge.NewFactory(config, newRouter, newRouter.GetStateManager())
 	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
 
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, config, newRouter.GetStateManager())
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, newRouter.GetStateManager())
 	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 
 	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeFactory))
