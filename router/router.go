@@ -23,17 +23,21 @@ import (
 	stderr "errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"plugin"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
@@ -51,6 +55,7 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
+	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
@@ -61,6 +66,9 @@ import (
 	"github.com/openziti/ziti/router/link"
 	routerMetrics "github.com/openziti/ziti/router/metrics"
 	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/router/xgress_edge"
+	"github.com/openziti/ziti/router/xgress_edge_transport"
+	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/openziti/ziti/router/xgress_proxy"
 	"github.com/openziti/ziti/router/xgress_proxy_udp"
 	"github.com/openziti/ziti/router/xgress_router"
@@ -280,7 +288,69 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),
 	)
 
+	// Register edge-related xgress factories
+	xgressEdgeFactory := xgress_edge.NewFactory(cfg, router, router.stateManager)
+	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
+	if err = router.RegisterXrctrl(xgressEdgeFactory); err != nil {
+		panic(fmt.Errorf("error registering edge in framework: %w", err))
+	}
+
+	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
+	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(router, cfg, router.stateManager)
+	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
+	if err = router.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
+		panic(fmt.Errorf("error registering edge tunnel in framework: %w", err))
+	}
+
+	if err = router.RegisterXrctrl(router.stateManager); err != nil {
+		panic(fmt.Errorf("error registering state manager in framework: %w", err))
+	}
+
 	return router
+}
+
+func (self *Router) ListenForShutdownSignal() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+
+	s := <-ch
+
+	if s == syscall.SIGQUIT {
+		fmt.Println("=== STACK DUMP BEGIN ===")
+		debugz.DumpStack()
+		fmt.Println("=== STACK DUMP CLOSE ===")
+	}
+
+	log := pfxlog.Logger()
+
+	log.Info("shutting down ziti router")
+
+	if err := self.Shutdown(); err != nil {
+		log.WithError(err).Info("error encountered during shutdown")
+	}
+}
+
+func (self *Router) RunCliAgent(agentAddr, appAlias string) {
+	options := agent.Options{
+		Addr:       agentAddr,
+		AppAlias:   appAlias,
+		AppId:      self.config.Id.Token,
+		AppType:    "router",
+		AppVersion: version.GetVersion(),
+	}
+
+	self.RegisterDefaultAgentOps(self.config.EnableDebugOps)
+
+	options.CustomOps = map[byte]func(conn net.Conn) error{
+		agent.CustomOp:      self.HandleAgentOp,
+		agent.CustomOpAsync: self.HandleAgentAsyncOp,
+	}
+
+	if err := agent.Listen(options); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+	}
 }
 
 func (self *Router) RegisterXrctrl(x env.Xrctrl) error {
@@ -304,12 +374,14 @@ func (self *Router) GetConfig() *env.Config {
 func (self *Router) Start() error {
 	GlobalLifecycleNotifier.NotifyListeners(LifecycleEventStart, self)
 
+	// Initialize directories and show configuration
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
 	}
-
 	self.showOptions()
+
+	// Initialize pools and profiling
 	if err := self.initRateLimiterPool(); err != nil {
 		return err
 	}
@@ -323,6 +395,7 @@ func (self *Router) Start() error {
 		}
 	}
 
+	// Register components and plugins
 	if err := self.registerComponents(); err != nil {
 		return err
 	}
@@ -331,20 +404,25 @@ func (self *Router) Start() error {
 		return err
 	}
 
+	// Initialize xgress registry
 	xgress_router.GlobalRegistry().Initialize(self)
 
+	// Start network listeners and dialers
 	self.startXlinkDialers()
 	self.startXlinkListeners()
 	self.setDefaultDialerBindings()
 	self.startXgressListeners()
 
+	// Start web services
 	for _, web := range self.xwebs {
 		go web.Run()
 	}
 
+	// Start control plane (must be last)
 	if err := self.startControlPlane(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -683,13 +761,13 @@ func (self *Router) startControlPlane() error {
 func (self *Router) connectToController(addr transport.Address, bindHandler channel.BindHandler) error {
 	attributes := map[int32][]byte{}
 
-	version, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
+	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
 
 	if err != nil {
 		return fmt.Errorf("error with version header information value: %v", err)
 	}
 
-	attributes[channel.HelloVersionHeader] = version
+	attributes[channel.HelloVersionHeader] = routerVersion
 
 	listeners := &ctrl_pb.Listeners{}
 	for _, listener := range self.xlinkListeners {
