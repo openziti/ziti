@@ -19,11 +19,12 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/sdk-golang/ziti"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 )
 
 func Test_PostureChecks_Sessions(t *testing.T) {
@@ -84,6 +85,9 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 		t.Run("can be created", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			_, ztx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
+
+			// This is testing legacy/non-oidc behavior, so we need to disable OIDC here
+			ztx.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
 			var ok bool
 			clientContext, ok = ztx.(*ziti.ContextImpl)
 			ctx.Req.True(ok)

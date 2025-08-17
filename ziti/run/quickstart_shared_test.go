@@ -8,6 +8,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/openziti/edge-api/rest_management_api_client"
 	api_client_config "github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
@@ -23,14 +32,6 @@ import (
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"testing"
-	"time"
 )
 
 func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) (*ziti.Config, error) {
@@ -81,6 +82,8 @@ func createZitifiedHttpClient(idFile string) http.Client {
 	if err != nil {
 		panic(err)
 	}
+	// TODO: OIDC Remove when OIDC issues are resolved
+	zitiContext.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
 	zitiTransport.DialContext = Dial                                 //zitiDialContext.Dial
 	zitiTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}

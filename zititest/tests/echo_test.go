@@ -18,11 +18,12 @@ package tests
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSdkEcho(t *testing.T) {
@@ -39,12 +40,8 @@ func TestSdkEcho(t *testing.T) {
 	for _, c := range components {
 		remoteConfigFile := "/home/ubuntu/fablab/cfg/" + c.Id + ".json"
 
-		ha := ""
-		if len(run.GetModel().SelectComponents(".ctrl")) > 1 {
-			ha = "--ha"
-		}
-		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti demo zcat %s --identity %s ziti:echo 2>&1`,
-			data, c.GetHost().GetSshUser(), ha, remoteConfigFile)
+		echoClientCmd := fmt.Sprintf(`echo "%s" | /home/%s/fablab/bin/ziti demo zcat --identity %s ziti:echo 2>&1`,
+			data, c.GetHost().GetSshUser(), remoteConfigFile)
 		t.Logf("running: %s", echoClientCmd)
 		output, err := c.GetHost().ExecLoggedWithTimeout(10*time.Second, echoClientCmd)
 		t.Logf("test output:\n%s", output)

@@ -18,21 +18,22 @@ package zitilib_runlevel_5_operation
 
 import (
 	"encoding/binary"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
-	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
-	"github.com/openziti/ziti/zititest/zitilab/cli"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
+	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
+	"github.com/openziti/ziti/zititest/zitilab/cli"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -57,12 +58,12 @@ type SimServices struct {
 }
 
 func (self *SimServices) SetupSimControllerIdentity(run model.Run) error {
-	if err := zitilib_actions.EdgeExec(run.GetModel(), "delete", "identity", SimControllerName); err != nil {
+	if err := zitilibActions.EdgeExec(run.GetModel(), "delete", "identity", SimControllerName); err != nil {
 		return err
 	}
 
 	jwtFilePath := run.GetLabel().GetFilePath("sim-controller.jwt")
-	if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "identity", SimControllerName, "-a", "metrics-host,sim-services-host", "-o", jwtFilePath); err != nil {
+	if err := zitilibActions.EdgeExec(run.GetModel(), "create", "identity", SimControllerName, "-a", "metrics-host,sim-services-host", "-o", jwtFilePath); err != nil {
 		return err
 	}
 
@@ -84,7 +85,6 @@ func (self *SimServices) GetZitiContext(run model.Run) (ziti.Context, error) {
 		if err != nil {
 			return nil, err
 		}
-		cfg.EnableHa = true
 		pfxlog.Logger().Infof("loading ziti context from [%s]", identityConfigPath)
 		context, err := ziti.NewContext(cfg)
 		if err != nil {

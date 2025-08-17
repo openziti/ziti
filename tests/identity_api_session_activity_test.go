@@ -1,14 +1,15 @@
 package tests
 
 import (
-	rest_identity "github.com/openziti/edge-api/rest_management_api_client/identity"
-	"github.com/openziti/edge-api/rest_model"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/webapis"
 	"net/url"
 	"testing"
 	"time"
+
+	restidentity "github.com/openziti/edge-api/rest_management_api_client/identity"
+	"github.com/openziti/edge-api/rest_model"
+	edgeapis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller/webapis"
 )
 
 func Test_Identity_HasErConnection(t *testing.T) {
@@ -37,12 +38,12 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	managementUrl, err := url.Parse(managementStr)
 	ctx.Req.NoError(err)
 
-	creds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	creds := edgeapis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
 
 	caPool, err := ziti.GetControllerWellKnownCaPool("https://" + ctx.ApiHost)
 	ctx.Req.NoError(err)
 
-	managementClient := edge_apis.NewManagementApiClient([]*url.URL{managementUrl}, caPool, func(strings chan string) {
+	managementClient := edgeapis.NewManagementApiClient([]*url.URL{managementUrl}, caPool, func(strings chan string) {
 		strings <- "123"
 	})
 
@@ -51,7 +52,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	ctx.Req.NotNil(curSession)
 
 	result := make(chan *rest_model.IdentityDetail)
-	detailIdentityParams := rest_identity.NewDetailIdentityParams()
+	detailIdentityParams := restidentity.NewDetailIdentityParams()
 	detailIdentityParams.ID = sdkIdentity.Id
 
 	//HasEdgeRouterConnection can take up to the minimum heartbeat interval (default 60s, configured in tests for 10s)
@@ -63,7 +64,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.NotNil(resp)
 
-			if *resp.Payload.Data.HasAPISession && *resp.Payload.Data.HasEdgeRouterConnection {
+			if *resp.Payload.Data.HasEdgeRouterConnection {
 				result <- resp.Payload.Data
 				return
 			}
@@ -75,7 +76,9 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	//Should receive a valid result no later than ~10s later based on the heartbeat interval.
 	select {
 	case id := <-result:
-		ctx.Req.True(*id.HasAPISession)
+		ctx.Req.NotNil(id.EdgeRouterConnectionStatus)
+		ctx.Req.Equal(*id.EdgeRouterConnectionStatus, "online")
+		ctx.Req.NotNil(*id.HasEdgeRouterConnection)
 		ctx.Req.True(*id.HasEdgeRouterConnection)
 	case <-time.After(15 * time.Second):
 		ctx.Fail("timed out")

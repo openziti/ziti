@@ -1,21 +1,24 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
+	"testing"
+	"time"
+
 	"github.com/dgryski/dgoogauth"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client/api_session"
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
-	management_service "github.com/openziti/edge-api/rest_management_api_client/service"
+	managementservice "github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
-	management_service_policy "github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	managementservicepolicy "github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/foundation/v2/debugz"
+	edgeapis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
-	"net/url"
-	"testing"
-	"time"
 )
 
 func Test_SDK_Events(t *testing.T) {
@@ -29,8 +32,8 @@ func Test_SDK_Events(t *testing.T) {
 	managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeManagementApiPath)
 	ctx.Req.NoError(err)
 
-	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-	adminClient := edge_apis.NewManagementApiClient([]*url.URL{managementApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
+	adminCreds := edgeapis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	adminClient := edgeapis.NewManagementApiClient([]*url.URL{managementApiUrl}, ctx.ControllerConfig.Id.CA(), func(strings chan string) {
 		strings <- "123"
 	})
 	apiSession, err := adminClient.Authenticate(adminCreds, nil)
@@ -43,7 +46,7 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
+		testIdCreds := edgeapis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		cfg := &ziti.Config{
@@ -61,9 +64,9 @@ func Test_SDK_Events(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(ztx)
 
-		called := make(chan edge_apis.ApiSession, 1)
+		called := make(chan edgeapis.ApiSession, 1)
 
-		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
+		removeFullListener := ztx.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edgeapis.ApiSession) {
 			ctx.Req.NotNil(ztx)
 			called <- detail
 		})
@@ -123,20 +126,31 @@ func Test_SDK_Events(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			ztxPostMfa, err := ziti.NewContext(cfg)
+			// This is testing MFA in legacy/non-oidc context, so we need to disable OIDC here
+			ztxPostMfa.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
 			ctx.Req.NoError(err)
 
 			defer func() {
 				ztxPostMfa.Close()
 			}()
 
-			partialChan := make(chan edge_apis.ApiSession, 1)
+			partialChan := make(chan edgeapis.ApiSession, 1)
 
-			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
+			removePartialListener := ztxPostMfa.Events().AddAuthenticationStatePartialListener(func(ztx ziti.Context, detail edgeapis.ApiSession) {
 				ctx.Req.NotNil(ztx)
 				partialChan <- detail
 			})
 
-			err = ztxPostMfa.Authenticate()
+			errC := make(chan error, 1)
+			go func() {
+				errC <- ztxPostMfa.Authenticate()
+			}()
+			select {
+			case err = <-errC:
+			case <-time.After(time.Second * 5):
+				err = errors.New("timed out waiting for authenticate")
+				debugz.DumpStack()
+			}
 			ctx.Req.NoError(err)
 
 			select {
@@ -160,9 +174,9 @@ func Test_SDK_Events(t *testing.T) {
 			t.Run("EventAuthenticationStateFull emitted after providing MFA TOTP Code", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				fullChan := make(chan edge_apis.ApiSession, 1)
+				fullChan := make(chan edgeapis.ApiSession, 1)
 
-				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
+				fullListenerRemover := ztxPostMfa.Events().AddAuthenticationStateFullListener(func(ztx ziti.Context, detail edgeapis.ApiSession) {
 					ctx.Req.NotNil(ztx)
 					fullChan <- detail
 				})
@@ -194,9 +208,9 @@ func Test_SDK_Events(t *testing.T) {
 				t.Run("EventAuthenticationStateUnauthenticated emitted if the current API Session is deleted", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					unauthCalled := make(chan edge_apis.ApiSession, 1)
+					unauthCalled := make(chan edgeapis.ApiSession, 1)
 
-					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail edge_apis.ApiSession) {
+					removeUnauthedListener := ztxPostMfa.Events().AddAuthenticationStateUnauthenticatedListener(func(ztx ziti.Context, detail edgeapis.ApiSession) {
 						ctx.Req.NotNil(ztx)
 						ctx.Req.NotNil(detail)
 
@@ -250,11 +264,11 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
+		testIdCreds := edgeapis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
-		serviceParams := management_service.NewCreateServiceParams()
+		serviceParams := managementservice.NewCreateServiceParams()
 		serviceParams.Service = &rest_model.ServiceCreate{
 			Name:               &serviceName,
 			EncryptionRequired: ToPtr(true),
@@ -265,7 +279,7 @@ func Test_SDK_Events(t *testing.T) {
 
 		ctx.Req.NoError(err)
 		//service.CreateServiceBadRequest, Payload() rest_model.APIError > Error rest_model.APIError
-		policyParams := management_service_policy.NewCreateServicePolicyParams()
+		policyParams := managementservicepolicy.NewCreateServicePolicyParams()
 		policyParams.Policy = &rest_model.ServicePolicyCreate{
 			IdentityRoles: []string{"@" + testId.Id},
 			ServiceRoles:  []string{"@" + serviceResp.Payload.Data.ID},
@@ -333,11 +347,11 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
+		testIdCreds := edgeapis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
-		serviceParams := management_service.NewCreateServiceParams()
+		serviceParams := managementservice.NewCreateServiceParams()
 		serviceParams.Service = &rest_model.ServiceCreate{
 			Name:               &serviceName,
 			EncryptionRequired: ToPtr(true),
@@ -348,7 +362,7 @@ func Test_SDK_Events(t *testing.T) {
 
 		ctx.Req.NoError(err)
 		//service.CreateServiceBadRequest, Payload() rest_model.APIError > Error rest_model.APIError
-		policyParams := management_service_policy.NewCreateServicePolicyParams()
+		policyParams := managementservicepolicy.NewCreateServicePolicyParams()
 		policyParams.Policy = &rest_model.ServicePolicyCreate{
 			IdentityRoles: []string{"@" + testId.Id},
 			ServiceRoles:  []string{"@" + serviceResp.Payload.Data.ID},
@@ -400,7 +414,7 @@ func Test_SDK_Events(t *testing.T) {
 			ctx.Req.Fail("time out, service added event not received")
 		}
 
-		patchServiceParams := management_service.NewPatchServiceParams()
+		patchServiceParams := managementservice.NewPatchServiceParams()
 		patchServiceParams.ID = serviceResp.Payload.Data.ID
 		patchServiceParams.Service = &rest_model.ServicePatch{
 			TerminatorStrategy: "weighted",
@@ -441,11 +455,11 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
+		testIdCreds := edgeapis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
-		serviceParams := management_service.NewCreateServiceParams()
+		serviceParams := managementservice.NewCreateServiceParams()
 		serviceParams.Service = &rest_model.ServiceCreate{
 			Name:               &serviceName,
 			EncryptionRequired: ToPtr(true),
@@ -456,7 +470,7 @@ func Test_SDK_Events(t *testing.T) {
 
 		ctx.Req.NoError(err)
 		//service.CreateServiceBadRequest, Payload() rest_model.APIError > Error rest_model.APIError
-		policyParams := management_service_policy.NewCreateServicePolicyParams()
+		policyParams := managementservicepolicy.NewCreateServicePolicyParams()
 		policyParams.Policy = &rest_model.ServicePolicyCreate{
 			IdentityRoles: []string{"@" + testId.Id},
 			ServiceRoles:  []string{"@" + serviceResp.Payload.Data.ID},
@@ -504,7 +518,7 @@ func Test_SDK_Events(t *testing.T) {
 			ctx.Req.Fail("time out, service added event not received")
 		}
 
-		patchServiceParams := management_service.NewDeleteServiceParams()
+		patchServiceParams := managementservice.NewDeleteServiceParams()
 		patchServiceParams.ID = serviceResp.Payload.Data.ID
 
 		_, err = adminClient.API.Service.DeleteService(patchServiceParams, nil)
@@ -544,11 +558,11 @@ func Test_SDK_Events(t *testing.T) {
 		testId := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 		testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
-		testIdCreds := edge_apis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
+		testIdCreds := edgeapis.NewCertCredentials(testIdCerts.certs, testIdCerts.key)
 		testIdCreds.CaPool = ctx.ControllerConfig.Id.CA()
 
 		serviceName := uuid.NewString()
-		serviceParams := management_service.NewCreateServiceParams()
+		serviceParams := managementservice.NewCreateServiceParams()
 		serviceParams.Service = &rest_model.ServiceCreate{
 			Name:               &serviceName,
 			EncryptionRequired: ToPtr(true),
@@ -558,7 +572,7 @@ func Test_SDK_Events(t *testing.T) {
 		err = rest_util.WrapErr(err)
 		ctx.Req.NoError(err)
 
-		servicePolicyParams := management_service_policy.NewCreateServicePolicyParams()
+		servicePolicyParams := managementservicepolicy.NewCreateServicePolicyParams()
 		servicePolicyParams.Policy = &rest_model.ServicePolicyCreate{
 			IdentityRoles: []string{"@" + testId.Id},
 			ServiceRoles:  []string{"@" + serviceResp.Payload.Data.ID},

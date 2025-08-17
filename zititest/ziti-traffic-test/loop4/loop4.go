@@ -19,6 +19,13 @@ package loop4
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"sort"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/foundation/v2/util"
@@ -31,12 +38,6 @@ import (
 	trafficMetrics "github.com/openziti/ziti/zititest/ziti-traffic-test/metrics"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"sort"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 func init() {
@@ -107,7 +108,6 @@ func (sim *Sim) InitConnectors() error {
 					name, connector.SdkOptions.IdentityFile, err)
 			}
 
-			cfg.EnableHa = connector.SdkOptions.Ha
 			cfg.SetMaxControlConnections(connector.SdkOptions.MaxControlUnderlays)
 			cfg.SetMaxDefaultConnections(connector.SdkOptions.MaxDataUnderlays)
 

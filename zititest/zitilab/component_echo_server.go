@@ -18,10 +18,11 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var _ model.ComponentType = (*EchoServerType)(nil)
@@ -75,17 +76,12 @@ func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *EchoServerType) Start(run model.Run, c *model.Component) error {
+func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := GetZitiBinaryPath(c, self.Version)
 	configPath := fmt.Sprintf("/home/%s/fablab/cfg/%s.json", user, c.Id)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
-
-	ha := ""
-	if len(run.GetModel().SelectComponents(".ctrl")) > 1 {
-		ha = "--ha"
-	}
 
 	serviceHostingFlags := ""
 	if self.BindService != "" {
@@ -97,8 +93,8 @@ func (self *EchoServerType) Start(run model.Run, c *model.Component) error {
 		portFlag = fmt.Sprintf("-p %d", self.Port)
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s %s %s > %s 2>&1 &",
-		binaryPath, c.Id, ha, serviceHostingFlags, portFlag, logsPath)
+	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s %s > %s 2>&1 &",
+		binaryPath, c.Id, serviceHostingFlags, portFlag, logsPath)
 
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

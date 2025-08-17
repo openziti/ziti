@@ -18,11 +18,12 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var _ model.ComponentType = (*ZitiTunnelType)(nil)
@@ -175,11 +176,6 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		useSudo = "sudo"
 	}
 
-	ha := ""
-	if self.HA {
-		ha = "--ha"
-	}
-
 	supportsSdkFlowControl := self.Version == ""
 
 	if self.Version != "" {
@@ -203,8 +199,8 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		}
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), ha, connectCfg, c.Id, configPath, logsPath)
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), connectCfg, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,

@@ -1,6 +1,11 @@
+//go:build apitests
+
 package tests
 
 import (
+	"net/url"
+	"testing"
+
 	"github.com/golang-jwt/jwt/v5"
 	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
@@ -8,8 +13,6 @@ import (
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
-	"net/url"
-	"testing"
 )
 
 func Test_Authenticate_OIDC_Refresh(t *testing.T) {

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package verify
 
 import (
@@ -131,6 +132,8 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&t.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
 	_ = cmd.Flags().MarkHidden("ha")
 
+	_ = cmd.Flags().MarkDeprecated("ha", "use in an HA environment should now be automatically detected")
+
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
 	t.loginOpts.Err = errOut
@@ -139,7 +142,6 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (t *traffic) startServer(ctx context.Context, serviceName string, zitiCfg *ziti.Config) error {
-	zitiCfg.EnableHa = t.haEnabled
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
 		log.Fatal(err)
@@ -203,7 +205,6 @@ func handleConnection(conn net.Conn) {
 
 func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, zitiCfg *ziti.Config) error {
 	waitForTerminator(client, serviceName, 10*time.Second)
-	zitiCfg.EnableHa = t.haEnabled
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
 		log.Fatal(err)

@@ -24,7 +24,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.70
 	github.com/openziti/identity v1.0.109
 	github.com/openziti/metrics v1.4.2
-	github.com/openziti/sdk-golang v1.2.2
+	github.com/openziti/sdk-golang v1.2.3
 	github.com/openziti/storage v0.4.22
 	github.com/openziti/transport/v2 v2.0.183
 	github.com/openziti/ziti v1.6.2
@@ -83,7 +83,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
 	github.com/go-openapi/errors v0.22.2 // indirect
-	github.com/go-openapi/jsonpointer v0.21.1 // indirect
+	github.com/go-openapi/jsonpointer v0.21.2 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/loads v0.22.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
