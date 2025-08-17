@@ -22,6 +22,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -41,9 +44,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"reflect"
-	"strings"
-	"time"
 )
 
 const updateUnrestricted = 1
@@ -241,47 +241,27 @@ func (self *AuthenticatorManager) getRootPool() *x509.CertPool {
 }
 
 func (self *AuthenticatorManager) ReadByUsername(username string) (*Authenticator, error) {
-	query := fmt.Sprintf("%s = \"%v\"", db.FieldAuthenticatorUpdbUsername, username)
-
-	entity, err := self.readEntityByQuery(query)
-
-	if err != nil {
+	modelEntity := &Authenticator{}
+	index := self.env.GetStores().Authenticator.GetUsernameIndex()
+	if err := self.readEntityWithIndex("username", []byte(username), index, modelEntity); err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-
-	if entity == nil {
-		return nil, nil
-	}
-
-	authenticator, ok := entity.(*Authenticator)
-
-	if !ok {
-		return nil, fmt.Errorf("could not cast from %v to authenticator", reflect.TypeOf(entity))
-	}
-
-	return authenticator, nil
+	return modelEntity, nil
 }
 
 func (self *AuthenticatorManager) ReadByFingerprint(fingerprint string) (*Authenticator, error) {
-	query := fmt.Sprintf("%s = \"%v\"", db.FieldAuthenticatorCertFingerprint, fingerprint)
-
-	entity, err := self.readEntityByQuery(query)
-
-	if err != nil {
+	modelEntity := &Authenticator{}
+	index := self.env.GetStores().Authenticator.GetFingerprintIndex()
+	if err := self.readEntityWithIndex("fingerprint", []byte(fingerprint), index, modelEntity); err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-
-	if entity == nil {
-		return nil, nil
-	}
-
-	authenticator, ok := entity.(*Authenticator)
-
-	if !ok {
-		return nil, fmt.Errorf("could not cast from %v to authenticator", reflect.TypeOf(entity))
-	}
-
-	return authenticator, nil
+	return modelEntity, nil
 }
 
 func (self *AuthenticatorManager) UpdateSelf(authenticatorSelf *AuthenticatorSelf, ctx *change.Context) error {

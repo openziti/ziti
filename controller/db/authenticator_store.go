@@ -18,11 +18,12 @@ package db
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"time"
 )
 
 const (
@@ -141,6 +142,9 @@ var _ ApiSessionStore = (*apiSessionStoreImpl)(nil)
 
 type AuthenticatorStore interface {
 	Store[*Authenticator]
+
+	GetUsernameIndex() boltz.ReadIndex
+	GetFingerprintIndex() boltz.ReadIndex
 }
 
 func newAuthenticatorStore(stores *stores) *authenticatorStoreImpl {
@@ -153,13 +157,15 @@ func newAuthenticatorStore(stores *stores) *authenticatorStoreImpl {
 type authenticatorStoreImpl struct {
 	*baseStore[*Authenticator]
 	symbolIdentityId boltz.EntitySymbol
+	fingerprintIndex boltz.ReadIndex
+	usernameIndex    boltz.ReadIndex
 }
 
 func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 
 	store.AddSymbol(FieldAuthenticatorMethod, ast.NodeTypeString)
-	store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)
+	fingerprintSymbol := store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertPem, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertIsIssuedByNetwork, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorCertIsExtendRequested, ast.NodeTypeBool)
@@ -168,11 +174,23 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldAuthenticatorCertPublicKeyPrint, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertLastAuthResolvedToRoot, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorCertLastExtendRolledKeys, ast.NodeTypeBool)
-	store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
+	usernameSymbol := store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
 
 	store.symbolIdentityId = store.AddFkSymbol(FieldAuthenticatorIdentity, store.stores.identity)
+
+	// Add nullable unique indexes for fingerprint and username
+	store.fingerprintIndex = store.AddNullableUniqueIndex(fingerprintSymbol)
+	store.usernameIndex = store.AddNullableUniqueIndex(usernameSymbol)
+}
+
+func (store *authenticatorStoreImpl) GetUsernameIndex() boltz.ReadIndex {
+	return store.usernameIndex
+}
+
+func (store *authenticatorStoreImpl) GetFingerprintIndex() boltz.ReadIndex {
+	return store.fingerprintIndex
 }
 
 func (store *authenticatorStoreImpl) initializeLinked() {

@@ -20,6 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
@@ -41,8 +44,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"time"
 )
 
 const (
@@ -533,25 +534,15 @@ func (self *IdentityManager) VisitIdentityAuthenticatorFingerprints(tx *bbolt.Tx
 }
 
 func (self *IdentityManager) ReadByExternalId(externalId string) (*Identity, error) {
-	query := fmt.Sprintf("%s = \"%v\"", db.FieldIdentityExternalId, externalId)
-
-	entity, err := self.readEntityByQuery(query)
-
-	if err != nil {
+	modelEntity := &Identity{}
+	index := self.env.GetStores().Identity.GetExternalIdIndex()
+	if err := self.readEntityWithIndex("externalId", []byte(externalId), index, modelEntity); err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-
-	if entity == nil {
-		return nil, nil
-	}
-
-	identity, ok := entity.(*Identity)
-
-	if !ok {
-		return nil, fmt.Errorf("could not cast from %T to %T", entity, identity)
-	}
-
-	return identity, nil
+	return modelEntity, nil
 }
 
 func (self *IdentityManager) Disable(identityId string, duration time.Duration, ctx *change.Context) error {
