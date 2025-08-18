@@ -18,6 +18,9 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -35,12 +38,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"sync/atomic"
-	"time"
 )
 
-func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
-	result := &hostedServiceRegistry{
+func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *HostedServiceRegistry {
+	result := &HostedServiceRegistry{
 		terminators:  cmap.New[*tunnelTerminator](),
 		events:       make(chan terminatorEvent),
 		env:          env,
@@ -50,10 +51,12 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manag
 		deleteSet:    map[string]*tunnelTerminator{},
 	}
 
+	result.Start()
+
 	return result
 }
 
-type hostedServiceRegistry struct {
+type HostedServiceRegistry struct {
 	terminators  cmap.ConcurrentMap[string, *tunnelTerminator]
 	events       chan terminatorEvent
 	env          routerEnv.RouterEnv
@@ -67,17 +70,17 @@ type hostedServiceRegistry struct {
 }
 
 type terminatorEvent interface {
-	handle(registry *hostedServiceRegistry)
+	handle(registry *HostedServiceRegistry)
 }
 
-func (self *hostedServiceRegistry) Start() {
+func (self *HostedServiceRegistry) Start() {
 	if self.started.CompareAndSwap(false, true) {
 		self.env.GetNetworkControllers().AddChangeListener(routerEnv.CtrlEventListenerFunc(self.NotifyOfCtrlChange))
 		go self.run()
 	}
 }
 
-func (self *hostedServiceRegistry) run() {
+func (self *HostedServiceRegistry) run() {
 	terminatorIdCacheTicker := time.NewTicker(4 * time.Hour)
 	defer terminatorIdCacheTicker.Stop()
 
@@ -127,7 +130,7 @@ func (self *hostedServiceRegistry) run() {
 	}
 }
 
-func (self *hostedServiceRegistry) pruneTerminatorIdCache() {
+func (self *HostedServiceRegistry) pruneTerminatorIdCache() {
 	cache := self.env.GetRouterDataModel().GetTerminatorIdCache()
 
 	var toRemove []string
@@ -142,14 +145,14 @@ func (self *hostedServiceRegistry) pruneTerminatorIdCache() {
 	}
 }
 
-func (self *hostedServiceRegistry) triggerEvaluates() {
+func (self *HostedServiceRegistry) triggerEvaluates() {
 	select {
 	case self.triggerEvalC <- struct{}{}:
 	default:
 	}
 }
 
-func (self *hostedServiceRegistry) evaluateEstablishQueue() {
+func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 	for id, terminator := range self.establishSet {
 		dequeue := func() {
 			delete(self.establishSet, id)
@@ -197,7 +200,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 	}
 }
 
-func (self *hostedServiceRegistry) evaluateDeleteQueue() {
+func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 	var deleteList []*tunnelTerminator
 
 	for terminatorId, terminator := range self.deleteSet {
@@ -238,7 +241,7 @@ func (self *hostedServiceRegistry) evaluateDeleteQueue() {
 	}
 }
 
-func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*tunnelTerminator) bool {
+func (self *HostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*tunnelTerminator) bool {
 	if self.env.GetCtrlRateLimiter().IsRateLimited() {
 		self.requeueForDeleteSync(terminators)
 		return false
@@ -303,7 +306,7 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*t
 	return true
 }
 
-func (self *hostedServiceRegistry) requeueForDeleteSync(terminators []*tunnelTerminator) {
+func (self *HostedServiceRegistry) requeueForDeleteSync(terminators []*tunnelTerminator) {
 	for _, terminator := range terminators {
 		existing, _ := self.terminators.Get(terminator.id)
 		if existing == nil || existing == terminator { // make sure we're still the current terminator
@@ -314,7 +317,7 @@ func (self *hostedServiceRegistry) requeueForDeleteSync(terminators []*tunnelTer
 	}
 }
 
-func (self *hostedServiceRegistry) RemoveTerminators(terminatorIds []string) (string, error) {
+func (self *HostedServiceRegistry) RemoveTerminators(terminatorIds []string) (string, error) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.RemoveTerminatorsRequest{
 		TerminatorIds: terminatorIds,
@@ -352,7 +355,7 @@ type queueEstablishTerminator struct {
 	terminator *tunnelTerminator
 }
 
-func (self *queueEstablishTerminator) handle(registry *hostedServiceRegistry) {
+func (self *queueEstablishTerminator) handle(registry *HostedServiceRegistry) {
 	registry.queueEstablishTerminatorSync(self.terminator)
 }
 
@@ -360,7 +363,7 @@ type requeueRemoveTerminator struct {
 	terminator *tunnelTerminator
 }
 
-func (self *requeueRemoveTerminator) handle(registry *hostedServiceRegistry) {
+func (self *requeueRemoveTerminator) handle(registry *HostedServiceRegistry) {
 	registry.requeueRemoveTerminatorSync(self.terminator)
 }
 
@@ -369,16 +372,16 @@ type queueRemoveTerminator struct {
 	reason     string
 }
 
-func (self *queueRemoveTerminator) handle(registry *hostedServiceRegistry) {
+func (self *queueRemoveTerminator) handle(registry *HostedServiceRegistry) {
 	registry.queueRemoveTerminatorSync(self.terminator, self.reason)
 }
 
-func (self *hostedServiceRegistry) EstablishTerminator(terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) EstablishTerminator(terminator *tunnelTerminator) {
 	self.terminators.Set(terminator.id, terminator)
 	self.queueEstablishTerminatorAsync(terminator)
 }
 
-func (self *hostedServiceRegistry) queue(event terminatorEvent) {
+func (self *HostedServiceRegistry) queue(event terminatorEvent) {
 	select {
 	case self.events <- event:
 	case <-self.env.GetCloseNotify():
@@ -386,7 +389,7 @@ func (self *hostedServiceRegistry) queue(event terminatorEvent) {
 	}
 }
 
-func (self *hostedServiceRegistry) queueWithTimeout(event terminatorEvent, timeout time.Duration) error {
+func (self *HostedServiceRegistry) queueWithTimeout(event terminatorEvent, timeout time.Duration) error {
 	select {
 	case self.events <- event:
 		return nil
@@ -397,33 +400,33 @@ func (self *hostedServiceRegistry) queueWithTimeout(event terminatorEvent, timeo
 	}
 }
 
-func (self *hostedServiceRegistry) queueEstablishTerminatorSync(terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) queueEstablishTerminatorSync(terminator *tunnelTerminator) {
 	if terminator.IsEstablishing() {
 		terminator.operationActive.Store(false)
 		self.establishSet[terminator.id] = terminator
 	}
 }
 
-func (self *hostedServiceRegistry) queueEstablishTerminatorAsync(terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) queueEstablishTerminatorAsync(terminator *tunnelTerminator) {
 	self.queue(&queueEstablishTerminator{
 		terminator: terminator,
 	})
 }
 
-func (self *hostedServiceRegistry) queueRemoveTerminatorAsync(terminator *tunnelTerminator, reason string) {
+func (self *HostedServiceRegistry) queueRemoveTerminatorAsync(terminator *tunnelTerminator, reason string) {
 	self.queue(&queueRemoveTerminator{
 		terminator: terminator,
 		reason:     reason,
 	})
 }
 
-func (self *hostedServiceRegistry) requeueRemoveTerminatorAsync(terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) requeueRemoveTerminatorAsync(terminator *tunnelTerminator) {
 	self.queue(&requeueRemoveTerminator{
 		terminator: terminator,
 	})
 }
 
-func (self *hostedServiceRegistry) requeueRemoveTerminatorSync(terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) requeueRemoveTerminatorSync(terminator *tunnelTerminator) {
 	existing, _ := self.terminators.Get(terminator.id)
 	if existing == nil || existing == terminator && terminator.state.Load() == xgress_common.TerminatorStateDeleting { // make sure we're still the current terminator
 		terminator.operationActive.Store(false)
@@ -431,27 +434,27 @@ func (self *hostedServiceRegistry) requeueRemoveTerminatorSync(terminator *tunne
 	}
 }
 
-func (self *hostedServiceRegistry) queueRemoveTerminatorSync(terminator *tunnelTerminator, reason string) {
+func (self *HostedServiceRegistry) queueRemoveTerminatorSync(terminator *tunnelTerminator, reason string) {
 	existing, _ := self.terminators.Get(terminator.id)
 	if existing == nil || existing == terminator { // make sure we're still the current terminator
 		self.queueRemoveTerminatorUnchecked(terminator, reason)
 	}
 }
 
-func (self *hostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *tunnelTerminator, reason string) {
+func (self *HostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *tunnelTerminator, reason string) {
 	terminator.setState(xgress_common.TerminatorStateDeleting, reason)
 	terminator.operationActive.Store(false)
 	self.deleteSet[terminator.id] = terminator
 }
 
-func (self *hostedServiceRegistry) markEstablished(terminator *tunnelTerminator, reason string) {
+func (self *HostedServiceRegistry) markEstablished(terminator *tunnelTerminator, reason string) {
 	self.queue(&markEstablishedEvent{
 		terminator: terminator,
 		reason:     reason,
 	})
 }
 
-func (self *hostedServiceRegistry) scanForRetries() {
+func (self *HostedServiceRegistry) scanForRetries() {
 	var retryList []*tunnelTerminator
 
 	self.terminators.IterCb(func(_ string, terminator *tunnelTerminator) {
@@ -471,11 +474,11 @@ func (self *hostedServiceRegistry) scanForRetries() {
 	}
 }
 
-func (self *hostedServiceRegistry) Get(terminatorId string) (*tunnelTerminator, bool) {
+func (self *HostedServiceRegistry) Get(terminatorId string) (*tunnelTerminator, bool) {
 	return self.terminators.Get(terminatorId)
 }
 
-func (self *hostedServiceRegistry) Remove(terminator *tunnelTerminator, reason string) bool {
+func (self *HostedServiceRegistry) Remove(terminator *tunnelTerminator, reason string) bool {
 	removed := self.terminators.RemoveCb(terminator.id, func(key string, v *tunnelTerminator, exists bool) bool {
 		return v == terminator
 	})
@@ -487,7 +490,7 @@ func (self *hostedServiceRegistry) Remove(terminator *tunnelTerminator, reason s
 	return removed
 }
 
-func (self *hostedServiceRegistry) establishTerminator(terminator *tunnelTerminator) error {
+func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTerminator) error {
 	start := time.Now().UnixMilli()
 	log := pfxlog.Logger().
 		WithField("routerId", self.env.GetRouterId().Token).
@@ -532,7 +535,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *tunnelTermina
 	return nil
 }
 
-func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
+func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
 	defer self.triggerEvaluates()
 
 	log := pfxlog.Logger().WithField("routerId", self.env.GetRouterId().Token)
@@ -580,7 +583,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	self.markEstablished(terminator, "create notification received")
 }
 
-func (self *hostedServiceRegistry) HandleReestablish() {
+func (self *HostedServiceRegistry) HandleReestablish() {
 	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
 
 	var reestablishList []*tunnelTerminator
@@ -600,7 +603,7 @@ func (self *hostedServiceRegistry) HandleReestablish() {
 	}
 }
 
-func (self *hostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent) {
+func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent) {
 	// only re-establish after we lose connection to the leader
 	if event.Type == routerEnv.ControllerDisconnected && !self.env.GetNetworkControllers().IsLeaderConnected() {
 		self.connectedToLeader.Store(false)
@@ -615,7 +618,7 @@ func (self *hostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 	}
 }
 
-func (self *hostedServiceRegistry) Inspect(timeout time.Duration) *inspect.ErtTerminatorInspectResult {
+func (self *HostedServiceRegistry) Inspect(timeout time.Duration) *inspect.ErtTerminatorInspectResult {
 	evt := &inspectTerminatorsEvent{
 		result: atomic.Pointer[[]*inspect.ErtTerminatorInspectDetail]{},
 		done:   make(chan struct{}),
@@ -641,7 +644,7 @@ type inspectTerminatorsEvent struct {
 	done   chan struct{}
 }
 
-func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
+func (self *inspectTerminatorsEvent) handle(registry *HostedServiceRegistry) {
 	var result []*inspect.ErtTerminatorInspectDetail
 	registry.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
 		detail := &inspect.ErtTerminatorInspectDetail{
@@ -676,7 +679,7 @@ type markEstablishedEvent struct {
 	reason     string
 }
 
-func (self *markEstablishedEvent) handle(registry *hostedServiceRegistry) {
+func (self *markEstablishedEvent) handle(registry *HostedServiceRegistry) {
 	log := pfxlog.Logger().
 		WithField("routerId", registry.env.GetRouterId().Token).
 		WithField("terminatorId", self.terminator.id).

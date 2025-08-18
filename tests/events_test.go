@@ -20,13 +20,14 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 )
 
 type eventsCollector struct {
@@ -116,7 +117,7 @@ func Test_EventsTest(t *testing.T) {
 
 	evt := ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
-	ctx.Req.True(ok)
+	ctx.Req.Truef(ok, "should be a session event, no %T", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)

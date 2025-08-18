@@ -20,6 +20,12 @@ import (
 	"context"
 	stdErr "errors"
 	"fmt"
+	"net"
+	"os/exec"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
@@ -35,11 +41,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	"net"
-	"os/exec"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (

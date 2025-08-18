@@ -2,6 +2,13 @@ package entities
 
 import (
 	"fmt"
+	"net"
+	"reflect"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/edge-api/rest_model"
@@ -12,12 +19,6 @@ import (
 	"github.com/openziti/ziti/tunnel/health"
 	"github.com/openziti/ziti/tunnel/utils"
 	"github.com/pkg/errors"
-	"net"
-	"reflect"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 const (
@@ -89,6 +90,24 @@ type AddressTranslation struct {
 	PrefixLength uint8
 }
 
+type allowConfig struct {
+	AllowedProtocols  []string
+	AllowedAddresses  []string
+	AllowedPortRanges []tunnel.PortRange
+}
+
+func (self *allowConfig) GetAllowedProtocols() []string {
+	return self.AllowedProtocols
+}
+
+func (self *allowConfig) GetAllowedPortRanges() []tunnel.PortRange {
+	return self.AllowedPortRanges
+}
+
+func (self *allowConfig) GetAllowedAddresses() []string {
+	return self.AllowedAddresses
+}
+
 type HostV1Config struct {
 	Protocol                   string
 	ForwardProtocol            bool
@@ -109,6 +128,21 @@ type HostV1Config struct {
 	Proxy         *ProxyConfiguration
 
 	allowedAddrs []allowedAddress
+}
+
+func (self *HostV1Config) GetAllowConfig() tunnel.AllowConfig {
+	var result []tunnel.PortRange
+	for _, r := range self.AllowedPortRanges {
+		result = append(result, tunnel.PortRange{
+			Low:  r.Low,
+			High: r.High,
+		})
+	}
+	return &allowConfig{
+		AllowedProtocols:  self.AllowedProtocols,
+		AllowedAddresses:  self.AllowedAddresses,
+		AllowedPortRanges: result,
+	}
 }
 
 func (self *HostV1Config) ToHostV2Config() *HostV2Config {
