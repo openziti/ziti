@@ -53,6 +53,10 @@ func (self *eventsCollector) AcceptCircuitEvent(event *event.CircuitEvent) {
 	self.acceptEvent(event)
 }
 
+func (self *eventsCollector) AcceptApiSessionEvent(event *event.ApiSessionEvent) {
+	self.acceptEvent(event)
+}
+
 func (self *eventsCollector) PopNextEvent(ctx *TestContext, desc string, timeout time.Duration) interface{} {
 	select {
 	case evt := <-self.events:
@@ -63,17 +67,23 @@ func (self *eventsCollector) PopNextEvent(ctx *TestContext, desc string, timeout
 	}
 }
 
-func Test_EventsTest(t *testing.T) {
+func Test_LegacyEvents(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 
 	ctx.StartServer()
+
+	ctx.RequireAdminManagementApiLogin()
+	ctx.RequireAdminClientApiLogin()
 
 	ec := &eventsCollector{
 		events: make(chan interface{}, 50),
 	}
 
 	dispatcher := ctx.fabricController.GetEventDispatcher()
+
+	dispatcher.AddApiSessionEventHandler(ec)
+	defer dispatcher.RemoveApiSessionEventHandler(ec)
 
 	dispatcher.AddCircuitEventHandler(ec)
 	defer dispatcher.RemoveCircuitEventHandler(ec)
@@ -84,9 +94,6 @@ func Test_EventsTest(t *testing.T) {
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
 
-	ctx.RequireAdminManagementApiLogin()
-	ctx.RequireAdminClientApiLogin()
-
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
@@ -94,7 +101,7 @@ func Test_EventsTest(t *testing.T) {
 	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext.Close()
 
-	// TODO: OIDC will need to update expected events when using OIDC
+	// We're testing legacy/non-oidc authentication, so we need to disable OIDC
 	hostContext.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
 
 	listener, err := hostContext.Listen(service.Name)
@@ -110,7 +117,7 @@ func Test_EventsTest(t *testing.T) {
 	clientIdentity, clientContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer clientContext.Close()
 
-	// TODO: OIDC will need to update expected events when using OIDC
+	// We're testing legacy/non-oidc authentication, so we need to disable OIDC
 	clientContext.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
@@ -122,18 +129,156 @@ func Test_EventsTest(t *testing.T) {
 	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
 	ctx.Req.NoError(err)
 
-	evt := ec.PopNextEvent(ctx, "sessions.created", time.Second)
+	evt := ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
+	apiSession, ok := evt.(*event.ApiSessionEvent)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Equal("apiSession", apiSession.Namespace)
+	ctx.Req.Equal("created", apiSession.EventType)
+	ctx.Req.Equalf(hostIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
+	ctx.Req.Equal("legacy", apiSession.Type)
+
+	evt = ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
 	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
+	ctx.Req.Equal("legacy", edgeSession.Provider)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
+
+	evt = ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
+	apiSession, ok = evt.(*event.ApiSessionEvent)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Equal("apiSession", apiSession.Namespace)
+	ctx.Req.Equal("created", apiSession.EventType)
+	ctx.Req.Equal("legacy", edgeSession.Provider)
+	ctx.Req.Equalf(clientIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
+	ctx.Req.Equal("legacy", apiSession.Type)
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*event.SessionEvent)
 	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
+	ctx.Req.Equal("legacy", edgeSession.Provider)
+	ctx.Req.Equal(clientIdentity.Id, edgeSession.IdentityId)
+
+	evt = ec.PopNextEvent(ctx, "circuits.created", time.Second)
+	circuitEvent, ok := evt.(*event.CircuitEvent)
+	ctx.Req.True(ok)
+	ctx.Req.Equal("circuit", circuitEvent.Namespace)
+	ctx.Req.Equal("created", string(circuitEvent.EventType))
+	ctx.Req.Equal("legacy", edgeSession.Provider)
+	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
+	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
+
+	timeout := time.Minute * 2
+	for i := 0; i < 3; i++ {
+		evt = ec.PopNextEvent(ctx, fmt.Sprintf("usage or circuits deleted %v", i+1), timeout)
+		if usage, ok := evt.(*event.UsageEventV2); ok {
+			timeout = time.Second * 10
+			ctx.Req.Equal("usage", usage.Namespace)
+			ctx.Req.Equal(uint32(2), usage.Version)
+			ctx.Req.Equal(circuitEvent.CircuitId, usage.CircuitId)
+			expected := []string{"usage.ingress.rx", "usage.egress.tx"}
+			ctx.Req.True(stringz.Contains(expected, usage.EventType), "was %v, expected one of %+v", usage.EventType, expected)
+			ctx.Req.Equal(ctx.edgeRouterEntity.id, usage.SourceId)
+			ctx.Req.Equal(uint64(26), usage.Usage)
+		} else if circuitEvent, ok := evt.(*event.CircuitEvent); ok {
+			ctx.Req.Equal("circuit", circuitEvent.Namespace)
+			ctx.Req.Equal("deleted", string(circuitEvent.EventType))
+			ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
+		} else {
+			ctx.Req.Fail("unexpected event type: %v", reflect.TypeOf(evt))
+		}
+	}
+}
+
+func Test_OidcEvents(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+
+	ctx.StartServer()
+
+	ctx.RequireAdminManagementApiLogin()
+	ctx.RequireAdminClientApiLogin()
+
+	ec := &eventsCollector{
+		events: make(chan interface{}, 50),
+	}
+
+	dispatcher := ctx.fabricController.GetEventDispatcher()
+
+	dispatcher.AddApiSessionEventHandler(ec)
+	defer dispatcher.RemoveApiSessionEventHandler(ec)
+
+	dispatcher.AddCircuitEventHandler(ec)
+	defer dispatcher.RemoveCircuitEventHandler(ec)
+
+	dispatcher.AddSessionEventHandler(ec)
+	defer dispatcher.RemoveSessionEventHandler(ec)
+
+	dispatcher.AddUsageEventHandler(ec)
+	defer dispatcher.RemoveUsageEventHandler(ec)
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+
+	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
+	defer hostContext.Close()
+
+	listener, err := hostContext.Listen(service.Name)
+	ctx.Req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	testServer := newTestServer(listener, func(conn *testServerConn) error {
+		conn.ReadString(128, time.Second)
+		return conn.server.close()
+	})
+	testServer.start()
+
+	clientIdentity, clientContext := ctx.AdminManagementSession.RequireCreateSdkContext()
+	defer clientContext.Close()
+
+	conn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer func() { _ = conn.Close() }()
+
+	conn.WriteString("hello, hello, how are you?", time.Second)
+
+	testServer.waitForDone(ctx, 5*time.Second)
+	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
+	ctx.Req.NoError(err)
+
+	evt := ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
+	apiSession, ok := evt.(*event.ApiSessionEvent)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Equal("apiSession", apiSession.Namespace)
+	ctx.Req.Equal("created", apiSession.EventType)
+	ctx.Req.Equalf(hostIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
+	ctx.Req.Equal("jwt", apiSession.Type)
+
+	evt = ec.PopNextEvent(ctx, "sessions.created", time.Second)
+	edgeSession, ok := evt.(*event.SessionEvent)
+	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Equal("session", edgeSession.Namespace)
+	ctx.Req.Equal("created", edgeSession.EventType)
+	ctx.Req.Equal("jwt", edgeSession.Provider)
+	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
+
+	evt = ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
+	apiSession, ok = evt.(*event.ApiSessionEvent)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Equal("apiSession", apiSession.Namespace)
+	ctx.Req.Equal("created", apiSession.EventType)
+	ctx.Req.Equalf(clientIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
+	ctx.Req.Equal("jwt", apiSession.Type)
+
+	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
+	edgeSession, ok = evt.(*event.SessionEvent)
+	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Equal("session", edgeSession.Namespace)
+	ctx.Req.Equal("created", edgeSession.EventType)
+	ctx.Req.Equal("jwt", edgeSession.Provider)
 	ctx.Req.Equal(clientIdentity.Id, edgeSession.IdentityId)
 
 	evt = ec.PopNextEvent(ctx, "circuits.created", time.Second)
