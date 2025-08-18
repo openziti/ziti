@@ -19,6 +19,10 @@ package env
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
@@ -26,9 +30,6 @@ import (
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -79,6 +80,7 @@ type NetworkControllers interface {
 	NotifyOfReconnect(ctrlId string)
 	GetExpectedCtrlCount() uint32
 	IsLeaderConnected() bool
+	ControllersHaveMinVersion(version string) bool
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -102,6 +104,20 @@ type networkControllers struct {
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 	expectedCtrlCount     atomic.Uint32
+}
+
+func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
+	for _, ctrl := range self.ctrls.AsMap() {
+		hasMinVersion, err := ctrl.GetVersion().HasMinimumVersion(version)
+		if err != nil {
+			pfxlog.Logger().WithError(err).WithField("version", version).Error("failed to check version")
+			return false
+		}
+		if !hasMinVersion {
+			return false
+		}
+	}
+	return true
 }
 
 func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
