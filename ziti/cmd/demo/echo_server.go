@@ -18,6 +18,15 @@ package demo
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
@@ -29,14 +38,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
@@ -61,7 +62,6 @@ type echoServer struct {
 	cliAgentEnabled bool
 	cliAgentAddr    string
 	cliAgentAlias   string
-	ha              bool
 	sdkFlowControl  bool
 }
 
@@ -87,7 +87,6 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&server.cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
-	cmd.Flags().BoolVar(&server.ha, "ha", false, "Enable HA controller compatibility")
 	cmd.Flags().Uint8("max-terminators", 3, "max terminators to create")
 	cmd.Flags().BoolVar(&server.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
 	return cmd
@@ -162,7 +161,6 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to load ziti identity from [%v]", self.configFile)
 		}
-		zitiConfig.EnableHa = self.ha
 		if self.sdkFlowControl {
 			zitiConfig.MaxDefaultConnections = 2
 			zitiConfig.MaxControlConnections = 1
@@ -176,10 +174,6 @@ func (self *echoServer) run(*cobra.Command, []string) {
 
 		if err != nil {
 			log.WithError(err).Fatal("unable to get create ziti context from config")
-		}
-
-		if self.ha {
-			zitiContext.(*ziti.ContextImpl).CtrlClt.SetUseOidc(true)
 		}
 
 		zitiIdentity, err := zitiContext.GetCurrentIdentity()

@@ -65,7 +65,7 @@ require (
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/runzmd v1.0.77
-	github.com/openziti/sdk-golang v1.2.2
+	github.com/openziti/sdk-golang v1.2.3
 	github.com/openziti/secretstream v0.1.38
 	github.com/openziti/storage v0.4.22
 	github.com/openziti/transport/v2 v2.0.183
@@ -133,7 +133,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
-	github.com/go-openapi/jsonpointer v0.21.1 // indirect
+	github.com/go-openapi/jsonpointer v0.21.2 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a // indirect

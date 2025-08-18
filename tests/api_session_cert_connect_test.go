@@ -19,9 +19,10 @@
 package tests
 
 import (
-	"github.com/openziti/sdk-golang/ziti"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
 )
 
 func Test_ApiSessionCertConnection(t *testing.T) {
@@ -37,7 +38,6 @@ func Test_ApiSessionCertConnection(t *testing.T) {
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithUpdb(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 
-	clientConfig.EnableHa = true
 	clientContext, err := ziti.NewContext(clientConfig)
 	ctx.Req.NoError(err)
 

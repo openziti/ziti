@@ -17,24 +17,24 @@
 package demo
 
 import (
+	"io"
+	"net"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"os"
-	"strings"
-	"time"
 )
 
 type zcatAction struct {
 	verbose        bool
 	logFormatter   string
 	configFile     string
-	ha             bool // todo: remove when ha flag is no longer needed
 	sdkFlowControl bool
 }
 
@@ -54,7 +54,6 @@ func newZcatCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&action.verbose, "verbose", "v", false, "Enable verbose logging")
 	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
-	cmd.Flags().BoolVar(&action.ha, "ha", false, "Enable HA controller compatibility")
 	cmd.Flags().BoolVar(&action.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
 	cmd.Flags().SetInterspersed(true)
 
@@ -120,7 +119,6 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			dialIdentifier = addr[:atIdx]
 			addr = addr[atIdx+1:]
 		}
-		zitiConfig.EnableHa = self.ha
 
 		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
 		if ctxErr != nil {

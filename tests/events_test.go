@@ -20,13 +20,15 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
 )
 
 type eventsCollector struct {
@@ -92,6 +94,9 @@ func Test_EventsTest(t *testing.T) {
 	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext.Close()
 
+	// TODO: OIDC will need to update expected events when using OIDC
+	hostContext.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
+
 	listener, err := hostContext.Listen(service.Name)
 	ctx.Req.NoError(err)
 	defer func() { _ = listener.Close() }()
@@ -105,6 +110,9 @@ func Test_EventsTest(t *testing.T) {
 	clientIdentity, clientContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer clientContext.Close()
 
+	// TODO: OIDC will need to update expected events when using OIDC
+	clientContext.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
+
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	defer func() { _ = conn.Close() }()
 
@@ -116,14 +124,14 @@ func Test_EventsTest(t *testing.T) {
 
 	evt := ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
-	ctx.Req.True(ok)
+	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*event.SessionEvent)
-	ctx.Req.True(ok)
+	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(clientIdentity.Id, edgeSession.IdentityId)

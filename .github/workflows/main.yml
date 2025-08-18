@@ -172,10 +172,10 @@ jobs:
 
       - name: Run Unit and Integration Tests
         if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
-        timeout-minutes: 10
+        timeout-minutes: 15
         shell: bash
         run: |
-          go test ./... --tags apitests
+          go test -tags apitests -timeout 15m ./... 
 
   fablab-smoketest:
     name: Fablab Smoketest

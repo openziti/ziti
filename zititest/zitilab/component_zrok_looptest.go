@@ -18,13 +18,14 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 var _ model.ComponentType = (*ZrokLoopTestType)(nil)

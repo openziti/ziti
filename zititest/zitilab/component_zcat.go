@@ -17,9 +17,10 @@
 package zitilab
 
 import (
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
-	"strings"
 )
 
 var _ model.ComponentType = (*ZCatType)(nil)

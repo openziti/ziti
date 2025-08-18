@@ -25,6 +25,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
@@ -67,11 +73,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
-	"io"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 var _ model.Env = &AppEnv{}
@@ -621,7 +622,7 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
 			apiErr := errorz.NewUnauthorized()
-			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", rc.ApiSession.IdentityId)
+			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", rc.Claims.Subject)
 			apiErr.AppendCause = true
 			return apiErr
 		} else {

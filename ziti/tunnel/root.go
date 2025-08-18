@@ -17,13 +17,14 @@
 package tunnel
 
 import (
-	"github.com/openziti/sdk-golang/ziti/sdkinfo"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti/sdkinfo"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/util"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
@@ -63,7 +64,6 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	root.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
-	root.PersistentFlags().BoolVar(&ha, "ha", false, "Enable HA controller compatibility")
 	root.PersistentFlags().BoolVar(&sdkFlowControl, "sdk-flow-control", true, "enables sdk flow control")
 	root.PersistentFlags().Uint8Var(&maxDefaultConnections, "default-connections", 2, "sets the desired number of default connections")
 	root.PersistentFlags().Uint8Var(&maxControlConnections, "control-connections", 1, "sets the desired number of control connections")
@@ -89,7 +89,6 @@ var logFormatter string
 var cliAgentEnabled bool
 var cliAgentAddr string
 var cliAgentAlias string
-var ha bool
 var sdkFlowControl bool
 var maxDefaultConnections uint8
 var maxControlConnections uint8
@@ -191,10 +190,6 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		entities.InterceptV1,
 		entities.HostConfigV1,
 		entities.HostConfigV2,
-	}
-
-	if cmd.Flags().Changed("ha") {
-		zitiCfg.EnableHa = ha
 	}
 
 	zitiCfg.MaxControlConnections = uint32(maxControlConnections)

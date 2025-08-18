@@ -18,10 +18,11 @@ package loop4
 
 import (
 	"fmt"
-	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
-	"gopkg.in/yaml.v2"
 	"os"
 	"time"
+
+	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
+	"gopkg.in/yaml.v2"
 )
 
 type Connector struct {
@@ -36,7 +37,6 @@ type SdkConnectOptions struct {
 	EnableSdkXgress     bool   `yaml:"enable_sdk_xgress"`
 	ReportSdkMetrics    bool   `yaml:"report_sdk_metrics"`
 	TestService         string `yaml:"test_service"`
-	Ha                  bool   `yaml:"ha"`
 }
 
 type TransportConnectOptions struct {
