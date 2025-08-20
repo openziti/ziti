@@ -17,6 +17,9 @@
 package db
 
 import (
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"strings"
-	"time"
 )
 
 const (
@@ -136,6 +137,7 @@ type IdentityStore interface {
 
 	LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{}
 	GetIdentityServicesCursorProvider(identityId string) ast.SetCursorProvider
+	GetExternalIdIndex() boltz.ReadIndex
 }
 
 func newIdentityStore(stores *stores) *identityStoreImpl {
@@ -172,6 +174,10 @@ type identityStoreImpl struct {
 
 func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 	return store.indexRoleAttributes
+}
+
+func (store *identityStoreImpl) GetExternalIdIndex() boltz.ReadIndex {
+	return store.externalIdIndex
 }
 
 func (store *identityStoreImpl) initializeLocal() {

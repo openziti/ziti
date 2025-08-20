@@ -18,13 +18,14 @@ package db
 
 import (
 	"crypto/x509"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
 
 const (
-	CurrentDbVersion = 40
+	CurrentDbVersion = 41
 	FieldVersion     = "version"
 )
 
@@ -189,6 +190,17 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 40 {
 		m.createInterfacesV1ConfigType(step)
+	}
+
+	if step.CurrentVersion < 41 {
+		step.SetError(m.stores.Authenticator.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
+			log := pfxlog.Logger().WithError(err)
+			if fixed {
+				log.Info("authenticator updated during index rebuild")
+			} else {
+				log.Error("unfixable error during authenticator index rebuild:")
+			}
+		}))
 	}
 
 	// current version
