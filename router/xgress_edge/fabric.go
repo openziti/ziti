@@ -18,6 +18,12 @@ package xgress_edge
 
 import (
 	"fmt"
+	"io"
+	"math"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -27,11 +33,6 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
-	"io"
-	"math"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // headers to pass through fabric to the other side

@@ -97,6 +97,7 @@ type Router struct {
 	versionProvider     versions.VersionProvider
 	debugOperations     map[byte]func(c *bufio.ReadWriter) error
 	stateManager        state.Manager
+	certManager         *state.CertExpirationChecker
 	rdmEnabled          *config.Value[bool]
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -249,6 +250,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
 	router.stateManager = state.NewManager(router)
+	router.certManager = state.NewCertExpirationChecker(router)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
@@ -468,6 +470,10 @@ func (self *Router) GetXgressBindHandler() xgress.BindHandler {
 
 func (self *Router) GetXLinkRegistry() xlink.Registry {
 	return self.xlinkRegistry
+}
+
+func (self *Router) NotifyCertsUpdated() {
+	self.certManager.CertsUpdated()
 }
 
 func (self *Router) registerComponents() error {

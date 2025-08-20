@@ -18,6 +18,10 @@ package xgress_edge_tunnel_v2
 
 import (
 	"fmt"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
@@ -29,9 +33,6 @@ import (
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -103,8 +104,8 @@ func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
-	self.hostedServices.Start()
 	self.env.MarkRouterDataModelRequired()
+	self.hostedServices.Start()
 
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
@@ -121,7 +122,6 @@ func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_rout
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
 	if self.dialerInitialized.CompareAndSwap(false, true) {
 		self.env.MarkRouterDataModelRequired()
-
 		options := &Options{}
 		if err := options.load(optionsData); err != nil {
 			return nil, err

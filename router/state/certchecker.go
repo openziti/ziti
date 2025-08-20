@@ -14,22 +14,23 @@
 	limitations under the License.
 */
 
-package xgress_edge
+package state
 
 import (
 	"crypto/x509"
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/env"
+	controllerEnv "github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/router/enroll"
 	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"sync/atomic"
-	"time"
 )
 
 const DefaultTimeoutDuration = 35 * time.Second
@@ -39,6 +40,13 @@ type CertExtender interface {
 	IsRequesting() bool
 	IsRequestingCompareAndSwap(bool, bool) bool
 	SetIsRequesting(bool)
+}
+
+type CertEnv interface {
+	GetNetworkControllers() routerEnv.NetworkControllers
+	GetRouterId() *identity.TokenId
+	GetCloseNotify() <-chan struct{}
+	GetConfig() *routerEnv.Config
 }
 
 type CertExpirationChecker struct {
@@ -57,17 +65,23 @@ type CertExpirationChecker struct {
 	extender CertExtender
 }
 
-func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *routerEnv.EdgeConfig, ctrls routerEnv.NetworkControllers, closeNotify <-chan struct{}) *CertExpirationChecker {
+func NewCertExpirationChecker(env CertEnv) *CertExpirationChecker {
 	ret := &CertExpirationChecker{
-		id:              id,
-		closeNotify:     closeNotify,
-		ctrls:           ctrls,
-		edgeConfig:      edgeConfig,
+		id:              env.GetRouterId(),
+		closeNotify:     env.GetCloseNotify(),
+		ctrls:           env.GetNetworkControllers(),
+		edgeConfig:      env.GetConfig().Edge,
 		certsUpdated:    make(chan struct{}, 1),
 		timeoutDuration: DefaultTimeoutDuration,
 	}
 
 	ret.extender = ret
+
+	go func() {
+		if err := ret.Run(); err != nil {
+			pfxlog.Logger().WithError(err).Error("error while running certchecker")
+		}
+	}()
 
 	return ret
 }
@@ -215,7 +229,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 		return fmt.Errorf("could not marshal enrollment extension request: %v", err)
 	}
 
-	msg := channel.NewMessage(env.EnrollmentExtendRouterRequestType, body)
+	msg := channel.NewMessage(controllerEnv.EnrollmentExtendRouterRequestType, body)
 
 	if err = ctrlCh.Send(msg); err != nil {
 		return fmt.Errorf("could not send enrollment extension request, error: %v", err)

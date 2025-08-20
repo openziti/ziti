@@ -1,4 +1,4 @@
-package xgress_edge
+package state
 
 import (
 	"crypto/ecdsa"
@@ -7,6 +7,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"math/big"
+	"net"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
@@ -16,11 +22,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"net"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 func Test_CertExpirationChecker(t *testing.T) {
@@ -560,7 +561,42 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	return NewCertExpirationChecker(id, &env.EdgeConfig{}, ctrls, closeNotify), func() { close(closeNotify) }
+	testEnv := &testCertEnv{
+		id:          id,
+		ctrls:       ctrls,
+		closeNotify: closeNotify,
+		config: &env.Config{
+			Edge: &env.EdgeConfig{
+				Csr: &env.Csr{
+					Sans: &env.Sans{},
+				},
+			},
+		},
+	}
+	return NewCertExpirationChecker(testEnv), func() { close(closeNotify) }
+}
+
+type testCertEnv struct {
+	id          *identity.TokenId
+	ctrls       env.NetworkControllers
+	closeNotify <-chan struct{}
+	config      *env.Config
+}
+
+func (self *testCertEnv) GetNetworkControllers() env.NetworkControllers {
+	return self.ctrls
+}
+
+func (self *testCertEnv) GetRouterId() *identity.TokenId {
+	return self.id
+}
+
+func (self *testCertEnv) GetCloseNotify() <-chan struct{} {
+	return self.closeNotify
+}
+
+func (self *testCertEnv) GetConfig() *env.Config {
+	return self.config
 }
 
 type simpleTestUnderlay struct{}
@@ -696,7 +732,7 @@ func (ch *simpleTestChannel) TrySend(channel.Sendable) (bool, error) {
 }
 
 func (ch *simpleTestChannel) Send(channel.Sendable) error {
-	panic("implement me")
+	return nil
 }
 
 func (ch *simpleTestChannel) Underlay() channel.Underlay {

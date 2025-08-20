@@ -14,37 +14,36 @@
 	limitations under the License.
 */
 
-package handler_edge_ctrl
+package state
 
 import (
 	"crypto/sha1"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/env"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/identity"
+	controllerEnv "github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/router/env"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type extendEnrollmentCertsHandler struct {
-	id               *identity.TokenId
-	notifyCertUpdate func()
+	routerEnv env.RouterEnv
 }
 
-func NewExtendEnrollmentCertsHandler(id *identity.TokenId, notifyCertUpdate func()) *extendEnrollmentCertsHandler {
+func NewExtendEnrollmentCertsHandler(routerEnv env.RouterEnv) *extendEnrollmentCertsHandler {
 	return &extendEnrollmentCertsHandler{
-		id:               id,
-		notifyCertUpdate: notifyCertUpdate,
+		routerEnv: routerEnv,
 	}
 }
 
 func (h *extendEnrollmentCertsHandler) ContentType() int32 {
-	return env.EnrollmentCertsResponseType
+	return controllerEnv.EnrollmentCertsResponseType
 }
 
 func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
@@ -107,21 +106,21 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel.Message, ch ch
 				return
 			}
 
-			if err := h.id.SetCert(enrollmentCerts.ClientCertPem); err != nil {
+			if err := h.routerEnv.GetRouterId().SetCert(enrollmentCerts.ClientCertPem); err != nil {
 				log.WithError(err).Error("enrollment extension could not set client pem")
 			}
 
-			if err := h.id.SetServerCert(enrollmentCerts.ServerCertPem); err != nil {
+			if err := h.routerEnv.GetRouterId().SetServerCert(enrollmentCerts.ServerCertPem); err != nil {
 				pfxlog.Logger().WithError(err).Error("enrollment extension could not set server pem")
 			}
 
-			if err := h.id.Reload(); err == nil {
-				h.notifyCertUpdate()
+			if err := h.routerEnv.GetRouterId().Reload(); err == nil {
+				h.routerEnv.NotifyCertsUpdated()
 			} else {
 				log.WithError(err).Errorf("could not reload extended certificates, please manually restart the router")
 			}
 
-			newFingerprint := fmt.Sprintf("%x", sha1.Sum(h.id.Cert().Certificate[0]))
+			newFingerprint := fmt.Sprintf("%x", sha1.Sum(h.routerEnv.GetRouterId().Cert().Certificate[0]))
 
 			log.WithField("newFingerprint", newFingerprint).Info("enrollment extension done")
 		} else {

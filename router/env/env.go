@@ -57,6 +57,7 @@ type RouterEnv interface {
 	GetConfig() *Config
 	GetForwarder() Forwarder
 	GetXgressMetrics() XgressMetrics
+	NotifyCertsUpdated()
 }
 
 type ConnectEventsConfig struct {
