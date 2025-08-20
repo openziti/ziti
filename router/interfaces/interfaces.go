@@ -18,15 +18,16 @@ package interfaces
 
 import (
 	"errors"
+	"net"
+	"sort"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
-	"net"
-	"sort"
-	"time"
 )
 
 func StartInterfaceReporter(ctrls env.NetworkControllers, closeNotify <-chan struct{}, config env.InterfaceDiscoveryConfig) {
@@ -55,7 +56,9 @@ type InterfaceReporter struct {
 
 func (self *InterfaceReporter) run() {
 	for {
-		self.report()
+		if self.ctrls.ControllersHaveMinVersion("1.6.3") {
+			self.report()
+		}
 
 		select {
 		case <-time.After(self.checkInterval): // using this instead of ticker, as we want to wait the time, not have ticks pile up
