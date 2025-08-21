@@ -273,7 +273,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		},
 	}
 
-	jwtStr, genErr := ae.GetServerJwtSigner().Generate(claims)
+	jwtStr, genErr := ae.GetRootTlsJwtSigner().Generate(claims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))
