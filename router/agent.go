@@ -4,6 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"net"
+	"os"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/handler_common"
@@ -12,14 +17,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"net"
-	"os"
-	"time"
 )
 
 const (
-	AgentAppId byte = 2
+	AgentAppId      byte = 2
+	DumpApiSessions byte = 128
 )
 
 func (self *Router) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
@@ -42,6 +44,10 @@ func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 		}
 		return nil
 	}))
+
+	if debugEnabled {
+		self.RegisterAgentOp(DumpApiSessions, self.GetStateManager().DumpApiSessions)
+	}
 }
 
 func (self *Router) RegisterAgentOp(opId byte, f func(c *bufio.ReadWriter) error) {
