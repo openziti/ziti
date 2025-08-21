@@ -18,6 +18,8 @@ package env
 
 import (
 	"crypto"
+	"crypto/tls"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/storage/boltz"
@@ -83,6 +85,10 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	ae.HostController.GetEventDispatcher().AddClusterEventHandler(broker)
 
 	return broker
+}
+
+func (broker *Broker) AddPublicKey(cert *tls.Certificate) {
+	broker.routerSyncStrategy.AddPublicKey(cert)
 }
 
 func (broker *Broker) ValidateRouterDataModel() []error {

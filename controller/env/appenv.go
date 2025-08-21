@@ -182,7 +182,7 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, err
 	}
 
-	if revocation != nil && tokenRevocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
+	if revocation != nil && revocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
 		return nil, errors.New("access token has been revoked by identity")
 	}
 

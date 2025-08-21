@@ -24,6 +24,12 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"math/big"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -62,11 +68,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
-	"math/big"
-	"os"
-	"strings"
-	"sync"
-	"sync/atomic"
 )
 
 type Controller struct {
@@ -251,6 +252,11 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 				for _, httpServer := range server.HttpServers {
 					serverTlsConfig := httpServer.TLSConfig.Clone()
 
+					if serverConfig.Identity != nil && len(serverConfig.Identity.ServerCert()) > 0 {
+						pfxlog.Logger().Infof("adding public key for xweb instance %s", serverConfig.Name)
+						c.env.Broker.AddPublicKey(serverConfig.Identity.ServerCert()[0])
+					}
+
 					prev := serverTlsConfig.GetConfigForClient
 					httpServer.TLSConfig.GetConfigForClient = func(info *cryptoTls.ClientHelloInfo) (*cryptoTls.Config, error) {
 						result := serverTlsConfig
@@ -266,7 +272,6 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 						}
 
 						result.ClientCAs = c.env.GetManagers().Ca.GetTrustCache().GetAllPool()
-
 						return result, nil
 					}
 				}
