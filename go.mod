@@ -87,7 +87,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v3 v3.44.0
-	go.etcd.io/bbolt v1.4.2
+	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.41.0
@@ -97,7 +97,7 @@ require (
 	golang.org/x/sync v0.16.0
 	golang.org/x/sys v0.35.0
 	golang.org/x/text v0.28.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
