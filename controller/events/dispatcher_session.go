@@ -18,14 +18,21 @@ package events
 
 import (
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/pkg/errors"
-	"reflect"
-	"time"
 )
+
+func (self *Dispatcher) AcceptSessionEvent(evt *event.SessionEvent) {
+	for _, handler := range self.sessionEventHandlers.Value() {
+		go handler.AcceptSessionEvent(evt)
+	}
+}
 
 func (self *Dispatcher) AddSessionEventHandler(handler event.SessionEventHandler) {
 	self.sessionEventHandlers.Append(handler)
@@ -55,6 +62,7 @@ func (self *Dispatcher) sessionCreated(session *db.Session) {
 		EventSrcId:   self.ctrlId,
 		Id:           session.Id,
 		SessionType:  session.Type,
+		Provider:     event.SessionProviderLegacy,
 		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
@@ -74,6 +82,7 @@ func (self *Dispatcher) sessionDeleted(session *db.Session) {
 		EventSrcId:   self.ctrlId,
 		Id:           session.Id,
 		SessionType:  session.Type,
+		Provider:     event.SessionProviderLegacy,
 		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
