@@ -1,4 +1,4 @@
-name: mattermost-ziti-webhook
+name: Send Event to Mattermost with Javascript SDK
 on:
   create:
   delete:
@@ -10,6 +10,7 @@ on:
   push:
   fork:
   release:
+  workflow_dispatch:
 
 jobs:
   mattermost-ziti-webhook:
@@ -23,6 +24,6 @@ jobs:
       - uses: openziti/ziti-webhook-action@main
         with:
           ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-          webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
+          webhook-url: http://webhook.mattermost.ziti.internal/plugins/github/webhook
           webhook-secret: ${{ secrets.ZITI_MATTERMOSTI_WEBHOOK_SECRET }}
 

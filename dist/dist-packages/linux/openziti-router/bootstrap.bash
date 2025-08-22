@@ -77,16 +77,37 @@ enroll() {
     return 1
   fi
 
+  local _token_sum
+
+  # forcing enrollment is useful when re-enrolling a router; the marker file is used to ensure re-enrollment is only attempted if it did not previously succeed for the same token, avoiding a follow-on deployment to unset ZITI_BOOTSTRAP_ENROLLMENT=force
   if [[ ! -s "${ZITI_ROUTER_IDENTITY_CERT}" || "${1:-}" == --force ]]; then
-    if [[ -n "${ZITI_ENROLL_TOKEN:-}" && ! -f "${ZITI_ENROLL_TOKEN}" ]]; then
+    if [[ -z "${ZITI_ENROLL_TOKEN:-}" ]]; then
+      echo  "ERROR: set ZITI_ENROLL_TOKEN to enrollment token or path" >&2
+      return 1
+    fi
+    if [[ ! -f "${ZITI_ENROLL_TOKEN}" ]]; then
+      _token_sum=$(sha256sum <<< "${ZITI_ENROLL_TOKEN}" | awk '{print $1}')
+      if [[ -s "./enrollment.sha256sum" ]] && diff <(echo "${_token_sum}") ./enrollment.sha256sum; then
+          echo "INFO: enrollment token has not changed, skipping re-enrollment" >&2
+          return 0
+      fi
       # shellcheck disable=SC2188
       ziti router enroll "${_config_file}" \
-        --jwt <(echo "${ZITI_ENROLL_TOKEN}") 2>&1
-    elif [[ -n "${ZITI_ENROLL_TOKEN:-}" && -s "${ZITI_ENROLL_TOKEN}" ]]; then
+          --jwt <(echo "${ZITI_ENROLL_TOKEN}") 2>&1
+      echo "${_token_sum}" | tee ./enrollment.sha256sum
+    elif [[ -s "${ZITI_ENROLL_TOKEN}" ]]; then
+      _token_sum=$(sha256sum "${ZITI_ENROLL_TOKEN}" | awk '{print $1}')
+      if [[ -s "./enrollment.sha256sum" ]]; then
+        if diff <(echo "${_token_sum}") ./enrollment.sha256sum; then
+          echo "INFO: enrollment token has not changed, skipping re-enrollment" >&2
+          return 0
+        fi
+      fi
       ziti router enroll "${_config_file}" \
-        --jwt "${ZITI_ENROLL_TOKEN}" 2>&1
+          --jwt "${ZITI_ENROLL_TOKEN}" 2>&1
+      echo "${_token_sum}" | tee ./enrollment.sha256sum
     else
-      echo  "ERROR: set ZITI_ENROLL_TOKEN to enrollment token" >&2
+      echo "ERROR: ZITI_ENROLL_TOKEN=${ZITI_ENROLL_TOKEN} is a path to an empty file" >&2
       return 1
     fi
   fi
