@@ -266,7 +266,12 @@ func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	}
 
 	rootSigner := &jwtsigner.TlsJwtSigner{}
-	rootSigner.Set(rootCerts[0])
+	err := rootSigner.Set(rootCerts[0])
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
+	}
+	
 	return rootSigner
 }
 
@@ -315,7 +320,13 @@ func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
 	}
 
-	signMethod := jwtsigner.GetJwtSigningMethod(enrollmentCert)
+	var signMethod jwt.SigningMethod
+	signMethod, err = jwtsigner.GetJwtSigningMethod(enrollmentCert)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
+	}
+
 	kid := fmt.Sprintf("%x", sha1.Sum(enrollmentCert.Certificate[0]))
 	return jwtsigner.New(signMethod, enrollmentCert.PrivateKey, kid), nil
 }
@@ -1179,7 +1190,12 @@ func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 // SetClientApiDefaultCertificate configures the default JWT signer for client API operations.
 func (ae *AppEnv) SetClientApiDefaultCertificate(serverCert *tls.Certificate) {
 	newSigner := &jwtsigner.TlsJwtSigner{}
-	newSigner.Set(serverCert)
+	err := newSigner.Set(serverCert)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Panic("could not set default client api certificate")
+	}
+
 	ae.clientApiDefaultSigner = newSigner
 
 }

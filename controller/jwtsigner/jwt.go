@@ -22,10 +22,11 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/michaelquigley/pfxlog"
 )
 
 // Signer provides JWT signing capabilities with configurable signing methods and key identification.
@@ -91,11 +92,17 @@ type TlsJwtSigner struct {
 // It updates the stored certificate, determines the appropriate JWT signing method
 // based on the certificate's key type, generates a key ID (kid) from the certificate's
 // SHA1 hash, and creates a new JWT signer with these parameters.
-func (c *TlsJwtSigner) Set(cert *tls.Certificate) {
+func (c *TlsJwtSigner) Set(cert *tls.Certificate) error {
 	c.TlsCerts = cert
-	signingMethod := GetJwtSigningMethod(cert)
+	signingMethod, err := GetJwtSigningMethod(cert)
+
+	if err != nil {
+		return err
+	}
 	kid := fmt.Sprintf("%x", sha1.Sum(cert.Certificate[0]))
 	c.Signer = New(signingMethod, c.TlsCerts.PrivateKey, kid)
+
+	return nil
 }
 
 // GetJwtSigningMethod determines the appropriate JWT signing method based on the
@@ -103,9 +110,21 @@ func (c *TlsJwtSigner) Set(cert *tls.Certificate) {
 // For ECDSA keys, it selects ES256, ES384, or ES512 based on the curve bit size.
 // For RSA keys, it defaults to RS256.
 // Panics if the certificate has an unsupported key type or ECDSA curve size.
-func GetJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
+func GetJwtSigningMethod(cert *tls.Certificate) (jwt.SigningMethod, error) {
 
 	var sm jwt.SigningMethod = jwt.SigningMethodNone
+
+	if cert.Leaf == nil {
+		if len(cert.Certificate) == 0 {
+			return nil, fmt.Errorf("no certificates found")
+		}
+		var err error
+		cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+
+		if err != nil {
+			return nil, fmt.Errorf("could not parse first certificate as leaf: %w", err)
+		}
+	}
 
 	switch cert.Leaf.PublicKey.(type) {
 	case *ecdsa.PublicKey:
@@ -118,13 +137,15 @@ func GetJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
 		case jwt.SigningMethodES512.CurveBits:
 			sm = jwt.SigningMethodES512
 		default:
-			pfxlog.Logger().Panic("unsupported EC key size: ", key.Params().BitSize)
+
+			return nil, fmt.Errorf("unsupported EC key size: %d", key.Params().BitSize)
 		}
+
 	case *rsa.PublicKey:
 		sm = jwt.SigningMethodRS256
 	default:
-		pfxlog.Logger().Panic("unknown certificate type, unable to determine signing method")
+		return nil, errors.New("unknown certificate type, unable to determine signing method")
 	}
 
-	return sm
+	return sm, nil
 }
