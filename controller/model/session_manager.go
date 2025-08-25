@@ -206,7 +206,7 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		TokenType:    common.TokenTypeServiceAccess,
 	}
 
-	return self.env.GetServerJwtSigner().Generate(claims)
+	return self.env.GetRootTlsJwtSigner().Generate(claims)
 }
 
 func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {

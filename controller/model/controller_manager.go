@@ -18,6 +18,8 @@ package model
 
 import (
 	"crypto/x509"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func NewControllerManager(env Env) *ControllerManager {
@@ -162,10 +163,10 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 
 func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
 	addr, id, version := self.env.GetRaftInfo()
-	tlsConfig, _, _ := self.env.GetServerCert()
+	clientApiCert := self.env.GetRootTlsJwtSigner()
 	var leaderCerts []*x509.Certificate
 
-	for _, certBytes := range tlsConfig.Certificate {
+	for _, certBytes := range clientApiCert.TlsCerts.Certificate {
 		if cert, err := x509.ParseCertificate(certBytes); err == nil {
 			leaderCerts = append(leaderCerts, cert)
 		}

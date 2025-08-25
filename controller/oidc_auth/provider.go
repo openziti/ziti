@@ -70,8 +70,8 @@ func createIssuerSpecificOidcProvider(ctx context.Context, issuer string, config
 
 // NewNativeOnlyOP creates an OIDC Provider that allows native clients and only the AuthCode PKCE flow.
 func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Handler, error) {
-	cert, kid, method := env.GetServerCert()
-	config.Storage = NewStorage(kid, cert.Leaf.PublicKey, cert.PrivateKey, method, &config, env)
+	rootSigner := env.GetRootTlsJwtSigner()
+	config.Storage = NewStorage(rootSigner, &config, env)
 
 	openzitiClient := NativeClient(common.ClaimClientIdOpenZiti, config.RedirectURIs, config.PostLogoutURIs)
 	openzitiClient.idTokenDuration = config.IdTokenDuration

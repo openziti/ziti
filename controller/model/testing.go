@@ -19,11 +19,12 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/controller/models"
-	"testing"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -50,6 +51,16 @@ type TestContext struct {
 	closeNotify     chan struct{}
 	dispatcher      command.Dispatcher
 	eventDispatcher event.Dispatcher
+}
+
+func (ctx *TestContext) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctx *TestContext) GetClientApiDefaultTlsJwtSigner() *jwtsigner.TlsJwtSigner {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (ctx *TestContext) GetId() string {
@@ -97,11 +108,11 @@ func (ctx *TestContext) KeyId() string {
 }
 
 func (ctx *TestContext) JwtSignerKeyFunc(*jwt.Token) (interface{}, error) {
-	tlsCert, _, _ := ctx.GetServerCert()
+	tlsCert, _, _ := ctx.GetClientApiDefaultServerCert()
 	return tlsCert.Leaf.PublicKey, nil
 }
 
-func (ctx *TestContext) GetServerCert() (*tls.Certificate, string, jwt.SigningMethod) {
+func (ctx *TestContext) GetClientApiDefaultServerCert() (*tls.Certificate, string, jwt.SigningMethod) {
 	return nil, "", nil
 }
 
