@@ -112,7 +112,7 @@ func (c *TlsJwtSigner) Set(cert *tls.Certificate) error {
 // Panics if the certificate has an unsupported key type or ECDSA curve size.
 func GetJwtSigningMethod(cert *tls.Certificate) (jwt.SigningMethod, error) {
 
-	var sm jwt.SigningMethod = jwt.SigningMethodNone
+	var sm jwt.SigningMethod
 
 	if cert.Leaf == nil {
 		if len(cert.Certificate) == 0 {
