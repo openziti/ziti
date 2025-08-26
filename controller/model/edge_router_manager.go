@@ -19,6 +19,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/cert"
@@ -131,7 +132,7 @@ func (self *EdgeRouterManager) ApplyCreate(cmd *CreateEdgeRouterCmd, ctx boltz.M
 			return err
 		}
 
-		if err = enrollment.FillJwtInfo(self.env, edgeRouter.Id); err != nil {
+		if err = enrollment.FillJwtInfoForRouter(self.env, edgeRouter.Id); err != nil {
 			return err
 		}
 

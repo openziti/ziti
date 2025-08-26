@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/errorz"
@@ -26,7 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 type Enrollment struct {
@@ -43,11 +44,26 @@ type Enrollment struct {
 	Username        *string
 }
 
-func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
+// FillJwtInfoForRouter populates the JWT information for router enrollment.
+// It sets the expiration time based on the EdgeRouter enrollment duration configuration
+// and delegates to FillJwtInfoWithExpiresAt for actual JWT generation.
+func (entity *Enrollment) FillJwtInfoForRouter(env Env, subject string) error {
+	expiresAt := time.Now().Add(env.GetConfig().Edge.Enrollment.EdgeRouter.Duration).UTC()
+	return entity.FillJwtInfoWithExpiresAt(env, subject, expiresAt)
+}
+
+// FillJwtInfoForIdentity populates the JWT information for identity enrollment.
+// It sets the expiration time based on the EdgeIdentity enrollment duration configuration
+// and delegates to FillJwtInfoWithExpiresAt for actual JWT generation.
+func (entity *Enrollment) FillJwtInfoForIdentity(env Env, subject string) error {
 	expiresAt := time.Now().Add(env.GetConfig().Edge.Enrollment.EdgeIdentity.Duration).UTC()
 	return entity.FillJwtInfoWithExpiresAt(env, subject, expiresAt)
 }
 
+// FillJwtInfoWithExpiresAt generates and populates JWT enrollment information with a custom expiration time.
+// It creates enrollment JWT claims containing controller addresses, sets issued/expires timestamps,
+// generates a unique token if not already set, and signs the JWT using the environment's enrollment signer.
+// The generated JWT contains enrollment method, controller endpoints, and standard JWT claims.
 func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expiresAt time.Time) error {
 	now := time.Now().UTC()
 	expiresAt = expiresAt.UTC()

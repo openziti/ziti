@@ -42,9 +42,9 @@ edge:
       key: testdata/ca/intermediate/private/intermediate.key.decrypted.pem
       ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
     edgeIdentity:
-      duration: 5m
+      duration: 20m
     edgeRouter:
-      duration: 5m
+      duration: 60m
 
 
 web:

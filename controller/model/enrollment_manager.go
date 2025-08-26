@@ -19,6 +19,8 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -37,7 +39,6 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type EnrollmentManager struct {
@@ -454,7 +455,7 @@ func (self *EnrollmentManager) ApplyReEnrollEdgeRouter(cmd *ReEnrollEdgeRouterCm
 			EdgeRouterId: &cmd.edgeRouterId,
 		}
 
-		if err := enrollment.FillJwtInfo(self.env, cmd.edgeRouterId); err != nil {
+		if err := enrollment.FillJwtInfoForRouter(self.env, cmd.edgeRouterId); err != nil {
 			return fmt.Errorf("unable to fill jwt info for re-enrolling edge router: %v", err)
 		}
 

@@ -45,22 +45,22 @@ import (
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	sdkedge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_common"
 )
 
 var peerHeaderRequestMappings = map[uint32]uint32{
-	uint32(edge.PublicKeyHeader):        uint32(edge.PublicKeyHeader),
-	uint32(edge.CallerIdHeader):         uint32(edge.CallerIdHeader),
-	uint32(edge.AppDataHeader):          uint32(edge.AppDataHeader),
-	uint32(edge.ConnectionMarkerHeader): uint32(edge.ConnectionMarkerHeader),
-	uint32(edge.StickinessTokenHeader):  uint32(ctrl_msg.XtStickinessToken),
+	uint32(sdkedge.PublicKeyHeader):        uint32(sdkedge.PublicKeyHeader),
+	uint32(sdkedge.CallerIdHeader):         uint32(sdkedge.CallerIdHeader),
+	uint32(sdkedge.AppDataHeader):          uint32(sdkedge.AppDataHeader),
+	uint32(sdkedge.ConnectionMarkerHeader): uint32(sdkedge.ConnectionMarkerHeader),
+	uint32(sdkedge.StickinessTokenHeader):  uint32(ctrl_msg.XtStickinessToken),
 }
 
 var peerHeaderRespMappings = map[uint32]uint32{
-	ctrl_msg.XtStickinessToken: uint32(edge.StickinessTokenHeader),
+	ctrl_msg.XtStickinessToken: uint32(sdkedge.StickinessTokenHeader),
 }
 
 type listener struct {
@@ -155,7 +155,7 @@ type sdkCircuitResult struct {
 }
 
 func (listener *listener) getSdkCircuits(conn *edgeClientConn, resultCh chan *sdkCircuitResult) {
-	msg := edge.NewInspectRequest(nil, "circuits")
+	msg := sdkedge.NewInspectRequest(nil, "circuits")
 	reply, err := msg.WithTimeout(4800 * time.Millisecond).SendForReply(conn.ch.GetControlSender())
 	if err != nil {
 		listener.submitErrResponse(conn, resultCh, fmt.Errorf("unable to get circuits from identity '%s' conn '%v' (%w)",
@@ -259,10 +259,10 @@ func (listener *listener) Close() error {
 }
 
 type edgeClientConn struct {
-	msgMux       edge.MsgMux
+	msgMux       sdkedge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
-	ch           edge.SdkChannel
+	ch           sdkedge.SdkChannel
 	idSeq        uint32
 	apiSession   *state.ApiSession
 	forwarder    env.Forwarder
@@ -318,13 +318,13 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 }
 
 func (self *edgeClientConn) ContentType() int32 {
-	return edge.ContentTypeData
+	return sdkedge.ContentTypeData
 }
 
 func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
 	sessionToken := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("token", sessionToken).WithFields(edge.GetLoggerFields(req))
-	connId, found := req.GetUint32Header(edge.ConnIdHeader)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("token", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
 		return
@@ -348,7 +348,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	}
 
 	var handler connectHandler
-	if useXgToSdk, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader); useXgToSdk {
+	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
 		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
 		handler = &xgEdgeForwarder{
 			edgeClientConn: self,
@@ -374,7 +374,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		}
 	}
 
-	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
+	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
 	request := &ctrl_msg.CreateCircuitRequest{
 		ApiSessionToken:      self.apiSession.Token,
@@ -469,7 +469,7 @@ func (self *edgeClientConn) processBind(manager state.Manager, req *channel.Mess
 		errStr := "no controller available, cannot create terminator"
 		pfxlog.ContextLogger(ch.Label()).
 			WithField("token", string(req.Body)).
-			WithFields(edge.GetLoggerFields(req)).
+			WithFields(sdkedge.GetLoggerFields(req)).
 			WithField("routerId", self.listener.id.Token).
 			Error(errStr)
 		self.sendStateClosedReply(errStr, req)
@@ -489,10 +489,10 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("sessionToken", sessionToken).
-		WithFields(edge.GetLoggerFields(req)).
+		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
-	connId, found := req.GetUint32Header(edge.ConnIdHeader)
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
 		return
@@ -501,35 +501,35 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Debug("binding service")
 
 	hostData := make(map[uint32][]byte)
-	pubKey, hasKey := req.Headers[edge.PublicKeyHeader]
+	pubKey, hasKey := req.Headers[sdkedge.PublicKeyHeader]
 	if hasKey {
-		hostData[uint32(edge.PublicKeyHeader)] = pubKey
+		hostData[uint32(sdkedge.PublicKeyHeader)] = pubKey
 	}
 
 	cost := uint16(0)
-	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
+	if costBytes, hasCost := req.Headers[sdkedge.CostHeader]; hasCost {
 		cost = binary.LittleEndian.Uint16(costBytes)
 	}
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-		edgePrecedence := edge.Precedence(precedenceData[0])
-		if edgePrecedence == edge.PrecedenceRequired {
+	if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+		edgePrecedence := sdkedge.Precedence(precedenceData[0])
+		if edgePrecedence == sdkedge.PrecedenceRequired {
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-		} else if edgePrecedence == edge.PrecedenceFailed {
+		} else if edgePrecedence == sdkedge.PrecedenceFailed {
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
 	}
 
-	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
+	assignIds, _ := req.GetBoolHeader(sdkedge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
-	useSdkXgress, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader)
+	useSdkXgress, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader)
 
 	log.Debug("establishing listener")
 
 	terminator := &edgeTerminator{
-		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
+		MsgChannel:     *sdkedge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
 		token:          sessionToken,
 		assignIds:      assignIds,
@@ -544,10 +544,10 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 
 	self.listener.factory.hostedServices.PutV1(sessionToken, terminator)
 
-	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
+	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 	var terminatorIdentitySecret []byte
 	if terminatorIdentity != "" {
-		terminatorIdentitySecret = req.Headers[edge.TerminatorIdentitySecretHeader]
+		terminatorIdentitySecret = req.Headers[sdkedge.TerminatorIdentitySecretHeader]
 	}
 
 	request := &edge_ctrl_pb.CreateTerminatorRequest{
@@ -596,17 +596,17 @@ func (self *edgeClientConn) processBindV1(manager state.Manager, req *channel.Me
 	log.Debug("registered listener for terminator")
 	log.Debug("returning connection state CONNECTED to client")
 
-	msg := edge.NewStateConnectedMsg(connId)
+	msg := sdkedge.NewStateConnectedMsg(connId)
 	msg.ReplyTo(req)
 
 	if assignIds {
-		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
 	}
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
 	err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
 	}
 
 	log.Info("created terminator")
@@ -617,7 +617,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("sessionToken", sessionToken).
-		WithFields(edge.GetLoggerFields(req)).
+		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
 	if self.listener.factory.stateManager.WasSessionRecentlyRemoved(sessionToken) {
@@ -626,7 +626,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		return
 	}
 
-	connId, found := req.GetUint32Header(edge.ConnIdHeader)
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
 		return
@@ -635,48 +635,48 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 	terminatorId := idgen.MustNewUUIDString()
 	log = log.WithField("bindConnId", connId).WithField("terminatorId", terminatorId)
 
-	listenerId, _ := req.GetStringHeader(edge.ListenerId)
+	listenerId, _ := req.GetStringHeader(sdkedge.ListenerId)
 	if listenerId != "" {
 		log = log.WithField("listenerId", listenerId)
 	}
 
-	terminatorInstance, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
+	terminatorInstance, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
-	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
+	assignIds, _ := req.GetBoolHeader(sdkedge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
 	cost := uint16(0)
-	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
+	if costBytes, hasCost := req.Headers[sdkedge.CostHeader]; hasCost {
 		cost = binary.LittleEndian.Uint16(costBytes)
 	}
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-		edgePrecedence := edge.Precedence(precedenceData[0])
-		if edgePrecedence == edge.PrecedenceRequired {
+	if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+		edgePrecedence := sdkedge.Precedence(precedenceData[0])
+		if edgePrecedence == sdkedge.PrecedenceRequired {
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-		} else if edgePrecedence == edge.PrecedenceFailed {
+		} else if edgePrecedence == sdkedge.PrecedenceFailed {
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
 	}
 
 	var terminatorInstanceSecret []byte
 	if terminatorInstance != "" {
-		terminatorInstanceSecret = req.Headers[edge.TerminatorIdentitySecretHeader]
+		terminatorInstanceSecret = req.Headers[sdkedge.TerminatorIdentitySecretHeader]
 	}
 
 	hostData := make(map[uint32][]byte)
-	if pubKey, hasKey := req.Headers[edge.PublicKeyHeader]; hasKey {
-		hostData[uint32(edge.PublicKeyHeader)] = pubKey
+	if pubKey, hasKey := req.Headers[sdkedge.PublicKeyHeader]; hasKey {
+		hostData[uint32(sdkedge.PublicKeyHeader)] = pubKey
 	}
 
-	supportsInspect, _ := req.GetBoolHeader(edge.SupportsInspectHeader)
-	notifyEstablished, _ := req.GetBoolHeader(edge.SupportsBindSuccessHeader)
-	useSdkXgress, _ := req.GetBoolHeader(edge.UseXgressToSdkHeader)
+	supportsInspect, _ := req.GetBoolHeader(sdkedge.SupportsInspectHeader)
+	notifyEstablished, _ := req.GetBoolHeader(sdkedge.SupportsBindSuccessHeader)
+	useSdkXgress, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader)
 
 	terminator := &edgeTerminator{
 		terminatorId:    terminatorId,
-		MsgChannel:      *edge.NewEdgeMsgChannel(self.ch, connId),
+		MsgChannel:      *sdkedge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn:  self,
 		token:           sessionToken,
 		listenerId:      listenerId,
@@ -714,8 +714,8 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 
 	terminator.establishCallback = func(result edge_ctrl_pb.CreateTerminatorResult) {
 		if result == edge_ctrl_pb.CreateTerminatorResult_Success && notifyEstablished {
-			notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
-			notifyMsg.PutUint32Header(edge.ConnIdHeader, terminator.MsgChannel.Id())
+			notifyMsg := channel.NewMessage(sdkedge.ContentTypeBindSuccess, nil)
+			notifyMsg.PutUint32Header(sdkedge.ConnIdHeader, terminator.MsgChannel.Id())
 
 			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.GetControlSender()); err != nil {
 				log.WithError(err).Error("failed to send bind success")
@@ -729,17 +729,17 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 		}
 	}
 
-	msg := edge.NewStateConnectedMsg(connId)
+	msg := sdkedge.NewStateConnectedMsg(connId)
 	msg.ReplyTo(req)
 
 	if assignIds {
-		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
 	}
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
 	err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
 	}
 
 	if checkResult.replaceExisting {
@@ -763,7 +763,7 @@ func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Chann
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, _ channel.Channel) {
-	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 	token := string(req.Body)
 	atLeastOneTerminatorRemoved := self.listener.factory.hostedServices.unbindSession(connId, token, self)
 
@@ -790,8 +790,8 @@ func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, term
 func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channel.Message, ch channel.Channel) {
 	sessionToken := string(req.Body)
 
-	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", sessionToken).WithFields(edge.GetLoggerFields(req))
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionToken", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
 	terminators := self.listener.factory.hostedServices.getRelatedTerminators(connId, sessionToken, self)
 
 	if len(terminators) == 0 {
@@ -817,18 +817,18 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 			request.ApiSessionToken = apiSession.Token
 		}
 
-		if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
+		if costVal, hasCost := req.GetUint16Header(sdkedge.CostHeader); hasCost {
 			request.UpdateCost = true
 			request.Cost = uint32(costVal)
 		}
 
-		if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-			edgePrecedence := edge.Precedence(precedenceData[0])
+		if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+			edgePrecedence := sdkedge.Precedence(precedenceData[0])
 			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
 			request.UpdatePrecedence = true
-			if edgePrecedence == edge.PrecedenceRequired {
+			if edgePrecedence == sdkedge.PrecedenceRequired {
 				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-			} else if edgePrecedence == edge.PrecedenceFailed {
+			} else if edgePrecedence == sdkedge.PrecedenceFailed {
 				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 			}
 		}
@@ -853,7 +853,7 @@ func (self *edgeClientConn) processUpdateBind(manager state.Manager, req *channe
 
 func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *channel.Message, ch channel.Channel) {
 	sessionToken := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", sessionToken).WithFields(edge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", sessionToken).WithFields(sdkedge.GetLoggerFields(req))
 
 	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	if ctrlCh == nil {
@@ -868,7 +868,7 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 		return
 	}
 
-	checkPassed, _ := req.GetBoolHeader(edge.HealthStatusHeader)
+	checkPassed, _ := req.GetBoolHeader(sdkedge.HealthStatusHeader)
 
 	request := &edge_ctrl_pb.HealthEventRequest{
 		SessionToken: sessionToken,
@@ -893,24 +893,24 @@ func (self *edgeClientConn) processHealthEvent(manager state.Manager, req *chann
 }
 
 func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.Channel) {
-	log := pfxlog.ContextLogger(ch.Label()).WithFields(edge.GetLoggerFields(msg))
+	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(msg))
 
-	hops, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
+	hops, _ := msg.GetUint32Header(sdkedge.TraceHopCountHeader)
 	if hops > 0 {
 		hops--
-		msg.PutUint32Header(edge.TraceHopCountHeader, hops)
+		msg.PutUint32Header(sdkedge.TraceHopCountHeader, hops)
 	}
 
 	log.WithField("hops", hops).Debug("traceroute received")
 	if hops > 0 {
 		self.msgMux.HandleReceive(msg, ch)
 	} else {
-		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
-		connId, _ := msg.GetUint32Header(edge.ConnIdHeader)
-		resp := edge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress/edge", "")
+		ts, _ := msg.GetUint64Header(sdkedge.TimestampHeader)
+		connId, _ := msg.GetUint32Header(sdkedge.ConnIdHeader)
+		resp := sdkedge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress/edge", "")
 		resp.ReplyTo(msg)
-		if msgUUID := msg.Headers[edge.UUIDHeader]; msgUUID != nil {
-			resp.Headers[edge.UUIDHeader] = msgUUID
+		if msgUUID := msg.Headers[sdkedge.UUIDHeader]; msgUUID != nil {
+			resp.Headers[sdkedge.UUIDHeader] = msgUUID
 		}
 
 		if err := ch.Send(resp); err != nil {
@@ -920,16 +920,16 @@ func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.C
 }
 
 func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitResponse) {
-	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 
-	msg := edge.NewStateConnectedMsg(connId)
+	msg := sdkedge.NewStateConnectedMsg(connId)
 	msg.ReplyTo(req)
 
-	if assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
-		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	if assignIds, _ := req.GetBoolHeader(sdkedge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
 	}
 
-	msg.PutStringHeader(edge.CircuitIdHeader, response.CircuitId)
+	msg.PutStringHeader(sdkedge.CircuitIdHeader, response.CircuitId)
 
 	self.mapResponsePeerData(response.PeerData)
 	for k, v := range response.PeerData {
@@ -939,23 +939,23 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
 	}
 }
 
 func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message) {
-	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
-	msg := edge.NewStateClosedMsg(connId, message)
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
+	msg := sdkedge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
 
-	if errorCode, found := req.GetUint32Header(edge.ErrorCodeHeader); found {
-		msg.PutUint32Header(edge.ErrorCodeHeader, errorCode)
+	if errorCode, found := req.GetUint32Header(sdkedge.ErrorCodeHeader); found {
+		msg.PutUint32Header(sdkedge.ErrorCodeHeader, errorCode)
 	}
 
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
 }
 
@@ -963,7 +963,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	currentApiSession := self.listener.factory.stateManager.GetApiSessionFromCh(ch)
 
 	if currentApiSession == nil || currentApiSession.JwtToken == nil {
-		msg := edge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
+		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
 		msg.ReplyTo(req)
 		return
 	}
@@ -971,7 +971,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	newTokenStr := string(req.Body)
 
 	if !xgress_common.IsBearerToken(newTokenStr) {
-		msg := edge.NewUpdateTokenFailedMsg(errors.New("message did not contain a valid JWT bearer token"))
+		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("message did not contain a valid JWT bearer token"))
 		msg.ReplyTo(req)
 		return
 	}
@@ -979,7 +979,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	newToken, newClaims, err := self.listener.factory.stateManager.ParseJwt(newTokenStr)
 
 	if err != nil {
-		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "JWT bearer token failed to validate"))
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "JWT bearer token failed to validate"))
 		reply.ReplyTo(req)
 		if err := ch.Send(reply); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with validation failure")
@@ -989,7 +989,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 
 	newApiSession, err := state.NewApiSessionFromToken(newToken, newClaims)
 	if err != nil {
-		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
 		reply.ReplyTo(req)
 
 		if err := ch.Send(reply); err != nil {
@@ -999,7 +999,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	}
 
 	if err := self.listener.factory.stateManager.UpdateChApiSession(ch, newApiSession); err != nil {
-		reply := edge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
 		reply.ReplyTo(req)
 
 		if err := ch.Send(reply); err != nil {
@@ -1008,7 +1008,7 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		return
 	}
 
-	reply := edge.NewUpdateTokenSuccessMsg()
+	reply := sdkedge.NewUpdateTokenSuccessMsg()
 	reply.ReplyTo(req)
 
 	if err := ch.Send(reply); err != nil {
@@ -1061,9 +1061,9 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch cha
 		// pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress acknowledgement")
 
 		// send a close, since we can't forward anything
-		connId, _ := req.GetUint32Header(edge.ConnIdHeader)
-		msg := edge.NewStateClosedMsg(connId, "xgress closed")
-		msg.PutUint32Header(edge.ConnIdHeader, connId)
+		connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
+		msg := sdkedge.NewStateClosedMsg(connId, "xgress closed")
+		msg.PutUint32Header(sdkedge.ConnIdHeader, connId)
 		_, _ = self.ch.GetControlSender().TrySend(msg)
 
 		return
@@ -1121,7 +1121,7 @@ type nonXgConnectHandler struct {
 func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 	self.conn = &edgeXgressConn{
 		mux:        ctx.sdkConn.msgMux,
-		MsgChannel: *edge.NewEdgeMsgChannel(ctx.sdkConn.ch, ctx.connId),
+		MsgChannel: *sdkedge.NewEdgeMsgChannel(ctx.sdkConn.ch, ctx.connId),
 		seq:        NewMsgQueue(4),
 	}
 
@@ -1188,7 +1188,7 @@ func (self *xgEdgeForwarder) GetTags() map[string]string {
 
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {
 	msg := payload.Marshall()
-	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
 	if timeout == 0 {
 		sent, err := self.ch.GetDefaultSender().TrySend(msg)
 		if err == nil && !sent {
@@ -1220,7 +1220,7 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 
 func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) error {
 	msg := ack.Marshall()
-	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
 	sent, err := self.ch.GetDefaultSender().TrySend(msg)
 	if err == nil && !sent {
 		self.listener.droppedMsgMeter.Mark(1)
@@ -1234,7 +1234,7 @@ func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) er
 
 func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 	msg := ctrl.Marshall()
-	msg.PutUint32Header(edge.ConnIdHeader, self.connId)
+	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
 	sent, err := self.ch.GetDefaultSender().TrySend(msg)
 	if err == nil && !sent {
 		self.listener.droppedMsgMeter.Mark(1)
@@ -1272,19 +1272,19 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	self.tags = response.Tags
 	self.RegisterRouting()
 
-	connId, _ := ctx.req.GetUint32Header(edge.ConnIdHeader)
+	connId, _ := ctx.req.GetUint32Header(sdkedge.ConnIdHeader)
 
-	msg := edge.NewStateConnectedMsg(connId)
+	msg := sdkedge.NewStateConnectedMsg(connId)
 	msg.ReplyTo(ctx.req)
 
-	if assignIds, _ := ctx.req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
-		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	if assignIds, _ := ctx.req.GetBoolHeader(sdkedge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
 	}
 
-	msg.PutStringHeader(edge.CircuitIdHeader, self.circuitId)
-	msg.PutBoolHeader(edge.UseXgressToSdkHeader, true)
-	msg.PutStringHeader(edge.XgressCtrlIdHeader, ctx.ctrlCh.Id())
-	msg.PutStringHeader(edge.XgressAddressHeader, response.Address)
+	msg.PutStringHeader(sdkedge.CircuitIdHeader, self.circuitId)
+	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
+	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.ctrlCh.Id())
+	msg.PutStringHeader(sdkedge.XgressAddressHeader, response.Address)
 
 	self.mapResponsePeerData(response.PeerData)
 	for k, v := range response.PeerData {
@@ -1293,7 +1293,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
 	if err = msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetControlSender()); err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
 }
 
@@ -1302,11 +1302,11 @@ func (self *xgEdgeForwarder) Unrouted() {
 	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: complete")
 	self.xgCircuits.Remove(self.circuitId)
 
-	msg := edge.NewStateClosedMsg(self.connId, "xgress unrouted")
+	msg := sdkedge.NewStateClosedMsg(self.connId, "xgress unrouted")
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithField("circuitId", self.circuitId).
-			WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
+			WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")
 	}
 }
 
@@ -1323,7 +1323,7 @@ func (self *xgEdgeForwarder) InspectCircuit(detail *xgress.CircuitInspectDetail)
 	} else {
 		requestedValue = "circuit:" + detail.CircuitId
 	}
-	msg := edge.NewInspectRequest(&self.connId, requestedValue)
+	msg := sdkedge.NewInspectRequest(&self.connId, requestedValue)
 	reply, err := msg.WithTimeout(2 * time.Second).SendForReply(self.ch.GetControlSender())
 	if err != nil {
 		detail.AddError(fmt.Errorf("failed to get sdk xgress response, originator: %s, (%w)", self.originator.String(), err))

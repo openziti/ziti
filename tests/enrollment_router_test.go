@@ -27,18 +27,21 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/transport/v2"
-
-	identity2 "github.com/openziti/identity"
-	"github.com/pkg/errors"
 	"math/big"
 	"net"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/Jeffail/gabs"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/transport/v2"
+
+	identity2 "github.com/openziti/identity"
+	"github.com/pkg/errors"
 )
 
 func Test_RouterEnrollment(t *testing.T) {
@@ -63,6 +66,27 @@ func Test_RouterEnrollment(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			ctx.Req.True(edgeRouterDetails.ExistsP("data.enrollmentJwt"), "expected edge router to have an enrollmentJwt property")
+
+			strToken, ok := edgeRouterDetails.Path("data.enrollmentJwt").Data().(string)
+			ctx.Req.True(ok, "expected data.enrollmentJwt to be a string")
+
+			t.Run("enrollment JWT parses and expires at the expected time", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				jwtParser := jwt.NewParser()
+
+				enrollmentClaims := &ziti.EnrollmentClaims{}
+
+				token, _, err := jwtParser.ParseUnverified(strToken, enrollmentClaims)
+
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(token)
+
+				minExpires := time.Now().Add(ctx.ControllerConfig.Edge.Enrollment.EdgeRouter.Duration).Add(-1 * time.Minute)
+				maxExpires := minExpires.Add(2 * time.Minute)
+
+				ctx.Req.True(enrollmentClaims.ExpiresAt.After(minExpires), "expected token to expire at or after %v", minExpires)
+				ctx.Req.True(enrollmentClaims.ExpiresAt.Before(maxExpires), "expected token to expire at or before %v", maxExpires)
+			})
 		})
 
 		t.Run("connecting to the control channel with unsigned client cert and not enrolled fails", func(t *testing.T) {
