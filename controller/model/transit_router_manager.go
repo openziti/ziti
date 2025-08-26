@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
@@ -99,7 +100,7 @@ func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd, ctx b
 			return err
 		}
 
-		if err = enrollment.FillJwtInfo(self.env, txRouter.Id); err != nil {
+		if err = enrollment.FillJwtInfoForRouter(self.env, txRouter.Id); err != nil {
 			return err
 		}
 

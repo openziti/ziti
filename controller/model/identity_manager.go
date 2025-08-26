@@ -20,6 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
@@ -41,8 +44,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"time"
 )
 
 const (
@@ -134,7 +135,7 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 		for _, enrollment := range enrollmentsModels {
 			enrollment.IdentityId = &identityModel.Id
 
-			if err = enrollment.FillJwtInfo(self.env, identityModel.Id); err != nil {
+			if err = enrollment.FillJwtInfoForIdentity(self.env, identityModel.Id); err != nil {
 				return err
 			}
 
