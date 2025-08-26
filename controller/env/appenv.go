@@ -19,8 +19,6 @@ package env
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
@@ -113,13 +111,13 @@ type AppEnv struct {
 	InstanceId           string
 	AuthRateLimiter      rate.AdaptiveRateLimiter
 
-	serverSigner jwtsigner.Signer
-	ServerCert   *tls.Certificate
+	clientApiDefaultSigner *jwtsigner.TlsJwtSigner
 
 	TraceManager *TraceManager
 	timelineId   string
 }
 
+// GetPeerControllerAddresses returns the network addresses of peer controllers.
 func (ae *AppEnv) GetPeerControllerAddresses() []string {
 	return ae.HostController.GetPeerAddresses()
 }
@@ -145,6 +143,8 @@ func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
 	return pubKey, nil
 }
 
+// ValidateAccessToken verifies an access token and returns its claims if valid.
+// Checks token signature, audience, type, and revocation status.
 func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error) {
 	accessClaims := &common.AccessClaims{}
 
@@ -182,13 +182,15 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, err
 	}
 
-	if revocation != nil && tokenRevocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
+	if revocation != nil && revocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
 		return nil, errors.New("access token has been revoked by identity")
 	}
 
 	return accessClaims, nil
 }
 
+// ValidateServiceAccessToken verifies a service access token and returns its claims.
+// Optionally validates against a specific API session ID.
 func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string) (*common.ServiceAccessClaims, error) {
 	serviceAccessClaims := &common.ServiceAccessClaims{}
 
@@ -243,34 +245,67 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	return serviceAccessClaims, nil
 }
 
-func (ae *AppEnv) GetServerCert() (serverCert *tls.Certificate, kid string, signingMethod jwt.SigningMethod) {
-	return ae.ServerCert, ae.serverSigner.KeyId(), ae.serverSigner.SigningMethod()
+// GetClientApiDefaultTlsJwtSigner returns the default JWT signer for client API operations.
+func (ae *AppEnv) GetClientApiDefaultTlsJwtSigner() *jwtsigner.TlsJwtSigner {
+	return ae.clientApiDefaultSigner
 }
 
+// GetRootTlsJwtSigner creates and returns a JWT signer using the root server certificate.
+func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
+	rootCerts := ae.GetConfig().Id.ServerCert()
+	var rootCert *tls.Certificate
+
+	if len(rootCerts) != 0 {
+		rootCert = rootCerts[0]
+	} else {
+		rootCert = ae.GetConfig().Id.Cert()
+	}
+
+	if rootCert == nil {
+		panic(fmt.Errorf("root identity doesn't have a server cert or cert"))
+	}
+
+	rootSigner := &jwtsigner.TlsJwtSigner{}
+	err := rootSigner.Set(rootCerts[0])
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
+	}
+	
+	return rootSigner
+}
+
+// GetApiServerCsrSigner returns the certificate signer for API server CSRs.
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
 	return ae.ApiServerCsrSigner
 }
 
+// GetControlClientCsrSigner returns the certificate signer for control client CSRs.
 func (ae *AppEnv) GetControlClientCsrSigner() cert.Signer {
 	return ae.ControlClientCsrSigner
 }
 
+// GetApiClientCsrSigner returns the certificate signer for API client CSRs.
 func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
 	return ae.ApiClientCsrSigner
 }
 
+// GetHostController returns the host controller instance.
 func (ae *AppEnv) GetHostController() HostController {
 	return ae.HostController
 }
 
+// GetManagers returns the business logic managers.
 func (ae *AppEnv) GetManagers() *model.Managers {
 	return ae.Managers
 }
 
+// GetEventDispatcher returns the event dispatcher for publishing system events.
 func (ae *AppEnv) GetEventDispatcher() event.Dispatcher {
 	return ae.HostController.GetEventDispatcher()
 }
 
+// GetConfig returns the controller configuration.
 func (ae *AppEnv) GetConfig() *config.Config {
 	return ae.HostController.GetConfig()
 }
@@ -285,11 +320,18 @@ func (ae *AppEnv) GetEnrollmentJwtSigner() (jwtsigner.Signer, error) {
 		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
 	}
 
-	signMethod := getJwtSigningMethod(enrollmentCert)
+	var signMethod jwt.SigningMethod
+	signMethod, err = jwtsigner.GetJwtSigningMethod(enrollmentCert)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not determine enrollment signer: %w", err)
+	}
+
 	kid := fmt.Sprintf("%x", sha1.Sum(enrollmentCert.Certificate[0]))
 	return jwtsigner.New(signMethod, enrollmentCert.PrivateKey, kid), nil
 }
 
+// getEnrollmentTlsCert finds the TLS certificate that matches the edge API address hostname.
 func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 	host, _, err := net.SplitHostPort(ae.GetConfig().Edge.Api.Address)
 
@@ -338,6 +380,7 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s] in root controller identity nor in xweb identities", host)
 }
 
+// getCertForHostname searches for a certificate that can verify the given hostname.
 func (ae *AppEnv) getCertForHostname(tlsCerts []*tls.Certificate, hostname string) (*tls.Certificate, error) {
 	for i, tlsCert := range tlsCerts {
 		if tlsCert.Leaf == nil {
@@ -360,62 +403,72 @@ func (ae *AppEnv) getCertForHostname(tlsCerts []*tls.Certificate, hostname strin
 	return nil, fmt.Errorf("could not find a configured server certificate that matches hostname [%s]", hostname)
 }
 
-func (ae *AppEnv) GetServerJwtSigner() jwtsigner.Signer {
-	return ae.serverSigner
-}
-
+// GetDb returns the database instance.
 func (ae *AppEnv) GetDb() boltz.Db {
 	return ae.HostController.GetDb()
 }
 
+// GetStores returns the database stores.
 func (ae *AppEnv) GetStores() *db.Stores {
 	return ae.Stores
 }
 
+// GetAuthRegistry returns the authentication module registry.
 func (ae *AppEnv) GetAuthRegistry() model.AuthRegistry {
 	return ae.AuthRegistry
 }
 
+// GetEnrollRegistry returns the enrollment handler registry.
 func (ae *AppEnv) GetEnrollRegistry() model.EnrollmentRegistry {
 	return ae.EnrollRegistry
 }
 
+// IsEdgeRouterOnline checks if an edge router is currently connected.
 func (ae *AppEnv) IsEdgeRouterOnline(id string) bool {
 	return ae.Broker.IsEdgeRouterOnline(id)
 }
 
+// GetMetricsRegistry returns the metrics registry for collecting performance data.
 func (ae *AppEnv) GetMetricsRegistry() metrics.Registry {
 	return ae.HostController.GetMetricsRegistry()
 }
 
+// GetFingerprintGenerator returns the certificate fingerprint generator.
 func (ae *AppEnv) GetFingerprintGenerator() cert.FingerprintGenerator {
 	return ae.FingerprintGenerator
 }
 
+// GetRaftInfo returns Raft cluster information (node ID, leader, cluster state).
 func (ae *AppEnv) GetRaftInfo() (string, string, string) {
 	return ae.HostController.GetRaftInfo()
 }
 
+// GetApiAddresses returns the controller's API addresses and their fingerprint hash.
 func (ae *AppEnv) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 	return ae.HostController.GetApiAddresses()
 }
 
+// GetCloseNotifyChannel returns a channel that signals when the controller is shutting down.
 func (ae *AppEnv) GetCloseNotifyChannel() <-chan struct{} {
 	return ae.HostController.GetCloseNotifyChannel()
 }
 
+// GetPeerSigners returns the certificates of peer controllers for signature verification.
 func (ae *AppEnv) GetPeerSigners() []*x509.Certificate {
 	return ae.HostController.GetPeerSigners()
 }
 
+// GetCommandDispatcher returns the command dispatcher for processing control plane commands.
 func (ae *AppEnv) GetCommandDispatcher() command.Dispatcher {
 	return ae.HostController.GetCommandDispatcher()
 }
 
+// AddRouterPresenceHandler registers a handler for router connect/disconnect events.
 func (ae *AppEnv) AddRouterPresenceHandler(h model.RouterPresenceHandler) {
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(h)
 }
 
+// GetId returns the unique application identifier for this controller instance.
 func (ae *AppEnv) GetId() string {
 	return ae.HostController.GetNetwork().GetAppId()
 }
@@ -520,6 +573,7 @@ func (a authorizer) Authorize(request *http.Request, principal interface{}) erro
 	return nil
 }
 
+// ProcessZtSession validates a Ziti session token and populates the request context.
 func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string) error {
 	logger := pfxlog.Logger()
 
@@ -603,6 +657,7 @@ func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string
 	return nil
 }
 
+// ProcessJwt validates a JWT token and populates the request context with claims and identity.
 func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) error {
 	rc.SessionToken = token.Raw
 	rc.Jwt = token
@@ -682,6 +737,8 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 	return nil
 }
 
+// FillRequestContext extracts authentication information from the HTTP request
+// and populates the request context with session or JWT token data.
 func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	// do no process auth headers on authenticate request
 	if strings.HasSuffix(rc.Request.URL.Path, "/v1/authenticate") && !strings.HasSuffix(rc.Request.URL.Path, "/authenticate/mfa") {
@@ -902,11 +959,6 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 
 	ae.FingerprintGenerator = cert.NewFingerprintGenerator()
 
-	if err != nil {
-		log := pfxlog.Logger()
-		log.WithField("cause", err).Fatal("could not load schemas")
-	}
-
 	ae.Managers = model.NewManagers()
 	ae.Managers.Init(ae)
 
@@ -924,9 +976,9 @@ func (ae *AppEnv) InitPersistence() error {
 			return
 		}
 
-		if event, ok := i[0].(*db.EventualEventAdded); ok {
+		if addEvent, ok := i[0].(*db.EventualEventAdded); ok {
 			gauge := ae.GetHostController().GetMetricsRegistry().Gauge(EventualEventsGauge)
-			gauge.Update(event.Total)
+			gauge.Update(addEvent.Total)
 		} else {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument was %T expected *EventualEventAdded", EventualEventsGauge, i[0])
 		}
@@ -937,9 +989,9 @@ func (ae *AppEnv) InitPersistence() error {
 			return
 		}
 
-		if event, ok := i[0].(*db.EventualEventRemoved); ok {
+		if removeEvent, ok := i[0].(*db.EventualEventRemoved); ok {
 			gauge := ae.GetHostController().GetMetricsRegistry().Gauge(EventualEventsGauge)
-			gauge.Update(event.Total)
+			gauge.Update(removeEvent.Total)
 		} else {
 			pfxlog.Logger().Errorf("could not update metrics for %s gauge on remove, event argument was %T expected *EventualEventRemoved", EventualEventsGauge, i[0])
 		}
@@ -953,36 +1005,12 @@ func (ae *AppEnv) InitPersistence() error {
 	return err
 }
 
-func getJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
-
-	var sm jwt.SigningMethod = jwt.SigningMethodNone
-
-	switch cert.Leaf.PublicKey.(type) {
-	case *ecdsa.PublicKey:
-		key := cert.Leaf.PublicKey.(*ecdsa.PublicKey)
-		switch key.Params().BitSize {
-		case jwt.SigningMethodES256.CurveBits:
-			sm = jwt.SigningMethodES256
-		case jwt.SigningMethodES384.CurveBits:
-			sm = jwt.SigningMethodES384
-		case jwt.SigningMethodES512.CurveBits:
-			sm = jwt.SigningMethodES512
-		default:
-			pfxlog.Logger().Panic("unsupported EC key size: ", key.Params().BitSize)
-		}
-	case *rsa.PublicKey:
-		sm = jwt.SigningMethodRS256
-	default:
-		pfxlog.Logger().Panic("unknown certificate type, unable to determine signing method")
-	}
-
-	return sm
-}
-
+// getZtSessionFromRequest extracts the Ziti session token from HTTP headers.
 func (ae *AppEnv) getZtSessionFromRequest(r *http.Request) string {
 	return r.Header.Get(ZitiSession)
 }
 
+// getJwtTokenFromRequest extracts and validates JWT tokens from Authorization headers.
 func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 	headers := r.Header.Values("authorization")
 
@@ -1006,6 +1034,7 @@ func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
 	return nil
 }
 
+// ControllersKeyFunc provides public keys for JWT token verification from peer controllers.
 func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 	kidVal, ok := token.Header["kid"]
 
@@ -1028,11 +1057,13 @@ func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 	return key, nil
 }
 
+// GetControllerPublicKey retrieves a public key by key ID from peer controllers.
 func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 	signers := ae.Broker.GetPublicKeys()
 	return signers[kid]
 }
 
+// CreateRequestContext creates a new request context for handling HTTP requests.
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
 	rid := eid.New()
 
@@ -1091,6 +1122,7 @@ func getMetricTimerName(r *http.Request) string {
 	return fmt.Sprintf("%s.%s", cleanUrl, r.Method)
 }
 
+// IsAllowed creates a middleware responder that checks permissions before executing the handler.
 func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestContext), request *http.Request, entityId string, entitySubId string, permissions ...permissions.Resolver) openApiMiddleware.Responder {
 	return openApiMiddleware.ResponderFunc(func(writer http.ResponseWriter, producer runtime.Producer) {
 
@@ -1144,31 +1176,41 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 	})
 }
 
+// HandleServiceEvent processes service change events and triggers identity refreshes.
 func (ae *AppEnv) HandleServiceEvent(event *db.ServiceEvent) {
 	ae.HandleServiceUpdatedEventForIdentityId(event.IdentityId)
 }
 
+// HandleServiceUpdatedEventForIdentityId marks an identity for refresh due to service changes.
 func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 	ae.IdentityRefreshMap.Set(identityId, time.Now().UTC())
 	ae.identityRefreshMeter.Mark(1)
 }
 
-func (ae *AppEnv) SetServerCert(serverCert *tls.Certificate) {
-	ae.ServerCert = serverCert
+// SetClientApiDefaultCertificate configures the default JWT signer for client API operations.
+func (ae *AppEnv) SetClientApiDefaultCertificate(serverCert *tls.Certificate) {
+	newSigner := &jwtsigner.TlsJwtSigner{}
+	err := newSigner.Set(serverCert)
 
-	signMethod := getJwtSigningMethod(serverCert)
-	kid := fmt.Sprintf("%x", sha1.Sum(serverCert.Certificate[0]))
-	ae.serverSigner = jwtsigner.New(signMethod, serverCert.PrivateKey, kid)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Panic("could not set default client api certificate")
+	}
+
+	ae.clientApiDefaultSigner = newSigner
+
 }
 
+// OidcIssuer returns the OIDC issuer URL for this controller.
 func (ae *AppEnv) OidcIssuer() string {
 	return ae.RootIssuer() + "/oidc"
 }
 
+// RootIssuer returns the base issuer URL for this controller.
 func (ae *AppEnv) RootIssuer() string {
 	return "https://" + ae.GetConfig().Edge.Api.Address
 }
 
+// InitTimelineId sets the timeline ID during startup, panics if already set.
 func (ae *AppEnv) InitTimelineId(timelineId string) {
 	if ae.timelineId == "" {
 		ae.timelineId = timelineId
@@ -1177,10 +1219,12 @@ func (ae *AppEnv) InitTimelineId(timelineId string) {
 	}
 }
 
+// OverrideTimelineId forcibly sets the timeline ID, bypassing startup checks.
 func (ae *AppEnv) OverrideTimelineId(timelineId string) {
 	ae.timelineId = timelineId
 }
 
+// TimelineId returns the current timeline identifier for event ordering.
 func (ae *AppEnv) TimelineId() string {
 	return ae.timelineId
 }

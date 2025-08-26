@@ -18,18 +18,19 @@ package oidc_auth
 
 import (
 	"context"
-	"crypto"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-jose/go-jose/v4"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/event"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-jose/go-jose/v4"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/jwtsigner"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
@@ -65,8 +66,8 @@ type Storage interface {
 	// A change context is required for the removal of one-time TOTP recovery codes
 	VerifyTotp(ctx *change.Context, code string, id string) (*AuthRequest, error)
 
-	// StartTotpEnrollment will attempt to create a MFA record for the current in scope identity
-	// if it can. If an MFA record already exists, it will fail and CompleteTotpEnrollment or
+	// StartTotpEnrollment will attempt to create an MFA record for the current in scope identity
+	// if it can. If an MFA record already exists, it will fail, and CompleteTotpEnrollment or
 	// DeleteTotpEnrollment must be used.
 	StartTotpEnrollment(ctx *change.Context, authRequestId string) (*model.Mfa, error)
 
@@ -75,7 +76,7 @@ type Storage interface {
 	CompleteTotpEnrollment(ctx *change.Context, authRequestId, code string) error
 
 	// DeleteTotpEnrollment will delete a current MFA record for the identity in scope. If the MFA record
-	// has been verified (CompleteTotpEnrollment) a code must be supplied that passes verification. If the
+	// has been verified, a code must be supplied that passes verification. If the
 	// record has not been verified, deletion will occur without verifying the code value.
 	DeleteTotpEnrollment(ctx *change.Context, authRequestId string, code string) error
 
@@ -115,7 +116,7 @@ type HybridStorage struct {
 	signingKey key
 
 	authRequests cmap.ConcurrentMap[string, *AuthRequest] //authRequest.Id -> authRequest
-	codes        cmap.ConcurrentMap[string, string]       //code->authRequest.Id
+	codes        cmap.ConcurrentMap[string, string]       //code -> authRequest.Id
 
 	clients cmap.ConcurrentMap[string, *Client]
 
@@ -235,14 +236,14 @@ func (s *HybridStorage) AddClient(client *Client) {
 
 var _ Storage = &HybridStorage{}
 
-func NewStorage(kid string, publicKey crypto.PublicKey, privateKey crypto.PrivateKey, singingMethod jwt.SigningMethod, config *Config, env model.Env) *HybridStorage {
+func NewStorage(rootSigner *jwtsigner.TlsJwtSigner, config *Config, env model.Env) *HybridStorage {
 	store := &HybridStorage{
 		env: env,
 		signingKey: key{
-			id:         kid,
-			algorithm:  jose.SignatureAlgorithm(singingMethod.Alg()),
-			privateKey: privateKey,
-			publicKey:  publicKey,
+			id:         rootSigner.KeyId(),
+			algorithm:  jose.SignatureAlgorithm(rootSigner.SigningMethod().Alg()),
+			privateKey: rootSigner.TlsCerts.PrivateKey,
+			publicKey:  rootSigner.TlsCerts.Leaf.PublicKey,
 		},
 		authRequests: cmap.New[*AuthRequest](),
 		codes:        cmap.New[string](),
@@ -969,7 +970,7 @@ func (s *HybridStorage) createRefreshClaims(accessClaims *common.AccessClaims) (
 	claims.Expiration = oidc.Time(time.Now().Add(s.config.RefreshTokenDuration).Unix())
 	claims.Type = common.TokenTypeRefresh
 
-	token, _ := s.env.GetServerJwtSigner().Generate(claims)
+	token, _ := s.env.GetRootTlsJwtSigner().Generate(claims)
 
 	return token, claims, nil
 }
@@ -999,7 +1000,7 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 	newRefreshClaims.NotBefore = oidc.Time(now.Unix())
 	newRefreshClaims.Expiration = oidc.Time(now.Add(s.config.RefreshTokenDuration).Unix())
 
-	token, _ := s.env.GetServerJwtSigner().Generate(newRefreshClaims)
+	token, _ := s.env.GetRootTlsJwtSigner().Generate(newRefreshClaims)
 
 	return token, newRefreshClaims, err
 }
