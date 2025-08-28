@@ -23,12 +23,17 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -45,9 +50,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -308,7 +310,7 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
-		WithField("routerFingerprint", *router.Fingerprint)
+		WithField("routerFingerprint", stringz.OrEmpty(router.Fingerprint))
 
 	//connecting router has closed control channel
 	if router.Control.IsClosed() {
