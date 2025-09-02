@@ -22,6 +22,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"os"
+	"runtime/debug"
+	"slices"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -52,13 +61,6 @@ import (
 	"github.com/teris-io/shortid"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"math"
-	"runtime/debug"
-	"slices"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 const SmartRerouteAttempt = 99969996
@@ -1359,7 +1361,8 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	time.AfterFunc(5*time.Second, func() {
-		log.Fatal("database restore requires controller restart. exiting...")
+		log.Info("database restore requires controller restart. exiting...")
+		os.Exit(0)
 	})
 
 	return nil
