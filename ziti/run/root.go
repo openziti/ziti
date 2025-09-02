@@ -40,7 +40,7 @@ func (self *Options) BindFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&self.LogFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 
 	cmd.PersistentFlags().BoolVarP(&self.CliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
-	cmd.PersistentFlags().StringVar(&self.CliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.PersistentFlags().StringVar(&self.CliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.PersistentFlags().StringVar(&self.CliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 }
 
