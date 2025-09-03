@@ -56,19 +56,19 @@ require (
 	github.com/miekg/dns v1.1.68
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/agent v1.0.30
-	github.com/openziti/channel/v4 v4.2.21
+	github.com/openziti/agent v1.0.31
+	github.com/openziti/channel/v4 v4.2.28
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.47
-	github.com/openziti/foundation/v2 v2.0.70
-	github.com/openziti/identity v1.0.109
+	github.com/openziti/foundation/v2 v2.0.72
+	github.com/openziti/identity v1.0.111
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
-	github.com/openziti/runzmd v1.0.77
+	github.com/openziti/runzmd v1.0.80
 	github.com/openziti/sdk-golang v1.2.3
-	github.com/openziti/secretstream v0.1.38
-	github.com/openziti/storage v0.4.22
-	github.com/openziti/transport/v2 v2.0.183
+	github.com/openziti/secretstream v0.1.39
+	github.com/openziti/storage v0.4.26
+	github.com/openziti/transport/v2 v2.0.188
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.4
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -83,11 +83,11 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v3 v3.44.0
-	go.etcd.io/bbolt v1.4.2
+	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/crypto v0.41.0
@@ -168,8 +168,8 @@ require (
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pion/dtls/v3 v3.0.6 // indirect
-	github.com/pion/logging v0.2.3 // indirect
+	github.com/pion/dtls/v3 v3.0.7 // indirect
+	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

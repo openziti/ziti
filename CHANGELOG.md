@@ -1,3 +1,48 @@
+# Release 1.6.8
+
+## What's New
+
+* Bug fixes and library updates
+* Session Events for JWT Sessions
+* OIDC Fix when using a separate certificate for the API
+
+## Session Events for JWT sessions
+
+When using JWT sessions, instead of legacy sessions, session events will now be created.
+There is a new `provider` field in session events, whose value will either be `legacy` or `jwt`.
+
+## OIDC Fix 
+
+There was an issue where OIDC authentication would fail if the API was configured with a different 
+certificate than the controller's root identity certificate. 
+
+The v1.2.3 release of the Go SDK made OIDC the default, if the controller supported it. Since the
+quickstart uses separate certs certs, this was quickly noticed. If using the v1.2.3 release of
+the Go SDK, and affected by this issue, updating to OpenZiti controller v1.6.8 should resolve the 
+problem.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.30 -> v1.0.31](https://github.com/openziti/agent/compare/v1.0.30...v1.0.31)
+* github.com/openziti/channel/v4: [v4.2.21 -> v4.2.28](https://github.com/openziti/channel/compare/v4.2.21...v4.2.28)
+* github.com/openziti/foundation/v2: [v2.0.70 -> v2.0.72](https://github.com/openziti/foundation/compare/v2.0.70...v2.0.72)
+* github.com/openziti/identity: [v1.0.109 -> v1.0.111](https://github.com/openziti/identity/compare/v1.0.109...v1.0.111)
+* github.com/openziti/runzmd: [v1.0.77 -> v1.0.80](https://github.com/openziti/runzmd/compare/v1.0.77...v1.0.80)
+* github.com/openziti/sdk-golang: [v1.2.2 -> v1.2.3](https://github.com/openziti/sdk-golang/compare/v1.2.2...v1.2.3)
+    * [Issue #779](https://github.com/openziti/sdk-golang/issues/779) - Remove need to EnableHA flag in Go SDK
+
+* github.com/openziti/secretstream: [v0.1.38 -> v0.1.39](https://github.com/openziti/secretstream/compare/v0.1.38...v0.1.39)
+* github.com/openziti/storage: [v0.4.22 -> v0.4.26](https://github.com/openziti/storage/compare/v0.4.22...v0.4.26)
+* github.com/openziti/transport/v2: [v2.0.183 -> v2.0.188](https://github.com/openziti/transport/compare/v2.0.183...v2.0.188)
+* github.com/openziti/ziti: [v1.6.7 -> v1.6.8](https://github.com/openziti/ziti/compare/v1.6.7...v1.6.8)
+    * [Issue #3219](https://github.com/openziti/ziti/issues/3219) - AuthenticatorManager ReadByFingerprint/Username should use indexes
+    * [Issue #3225](https://github.com/openziti/ziti/issues/3225) - JWT edge sessions should generate events
+    * [Issue #3245](https://github.com/openziti/ziti/issues/3245) - Revocation time check is checking wrong entity
+    * [Issue #3231](https://github.com/openziti/ziti/issues/3231) - OIDC authentication fails if the client api has a separate cert chain
+    * [Issue #3239](https://github.com/openziti/ziti/issues/3239) - Router JWTs use Identity expiration configuration value
+    * [Issue #3226](https://github.com/openziti/ziti/issues/3226) - Only report router network interfaces if controller supports receiving those events
+    * [Issue #3164](https://github.com/openziti/ziti/issues/3164) - Router data model doesn't work correctly if the edge listener isn't enabled
+
 # Release 1.6.7
 
 ## What's New
