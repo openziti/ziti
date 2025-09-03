@@ -123,7 +123,7 @@ type AgentOptions struct {
 	appId       string
 	appType     string
 	appAlias    string
-	tcpAddr     string
+	appAddr     string
 	timeout     time.Duration
 }
 
@@ -133,7 +133,10 @@ func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&self.appId, "app-id", "i", "", "Id of host application to talk to (like controller or router id)")
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
 	cmd.Flags().StringVarP(&self.appAlias, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
-	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Address of host application to talk to (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.Flags().StringVar(&self.appAddr, "app-addr", "", "Address of host application to talk to (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	// Backwards compatibility: support old --tcp-addr flag as deprecated alias for --app-addr
+	cmd.Flags().StringVar(&self.appAddr, "tcp-addr", "", "(deprecated) use --app-addr; supports unix:/path or tcp:host:port")
+	_ = cmd.Flags().MarkDeprecated("tcp-addr", "use --app-addr instead")
 	cmd.Flags().DurationVar(&self.timeout, "timeout", 5*time.Second, "Operation timeout")
 }
 
@@ -186,8 +189,30 @@ func (self *AgentOptions) MakeChannelRequest(appId byte, f func(ch channel.Chann
 }
 
 func (self *AgentOptions) MakeRequest(signal byte, params []byte, f func(c net.Conn) error) error {
-	if self.Cmd.Flags().Changed("tcp-addr") {
-		conn, err := net.Dial("tcp", self.tcpAddr)
+	if self.Cmd.Flags().Changed("app-addr") || self.Cmd.Flags().Changed("tcp-addr") {
+		addr := self.appAddr
+		// If deprecated --tcp-addr was used and no scheme provided, default to tcp:
+		if self.Cmd.Flags().Changed("tcp-addr") && !strings.HasPrefix(addr, "tcp:") && !strings.HasPrefix(addr, "unix:") {
+			addr = "tcp:" + addr
+		}
+		var (
+			network string
+			target  string
+		)
+		switch {
+		case strings.HasPrefix(addr, "unix:"):
+			network = "unix"
+			target = strings.TrimPrefix(addr, "unix:")
+		case strings.HasPrefix(addr, "tcp:"):
+			network = "tcp"
+			target = strings.TrimPrefix(addr, "tcp:")
+		default:
+			// Default to TCP if no scheme provided
+			network = "tcp"
+			target = addr
+		}
+
+		conn, err := net.Dial(network, target)
 		if err != nil {
 			return err
 		}
