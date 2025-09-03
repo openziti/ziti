@@ -85,7 +85,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&server.service, "service", "s", "echo", "Ziti service to bind. Defaults to 'echo'")
 	cmd.Flags().BoolVar(&server.bindWithIdentity, "addressable", false, "Specify if this application should be addressable by the edge identity")
 	cmd.Flags().BoolVar(&server.cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
-	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.Flags().StringVar(&server.cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	cmd.Flags().Uint8("max-terminators", 3, "max terminators to create")
 	cmd.Flags().BoolVar(&server.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")

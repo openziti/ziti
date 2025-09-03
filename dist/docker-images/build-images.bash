@@ -28,7 +28,7 @@ docker run \
     --rm \
     --user "$UID" \
     --name=ziti-go-builder \
-    --volume=$PWD:/mnt \
+    --volume=$PWD:/mnt/ziti \
     --volume=${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build \
     --env=GOCACHE=/.cache/go-build \
     ziti-go-builder amd64

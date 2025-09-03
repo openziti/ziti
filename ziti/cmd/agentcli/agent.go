@@ -133,7 +133,7 @@ func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&self.appId, "app-id", "i", "", "Id of host application to talk to (like controller or router id)")
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
 	cmd.Flags().StringVarP(&self.appAlias, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
-	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Type of host application to talk to (like controller or router)")
+	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Address of host application to talk to (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.Flags().DurationVar(&self.timeout, "timeout", 5*time.Second, "Operation timeout")
 }
 
