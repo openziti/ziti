@@ -17,15 +17,18 @@
 package event
 
 import (
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/storage/boltz"
 	"regexp"
 	"time"
+
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/storage/boltz"
 )
 
 var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
+
+func (d DispatcherMock) AcceptSessionEvent(event *SessionEvent) {}
 
 func (d DispatcherMock) AcceptAuthenticationEvent(event *AuthenticationEvent) {}
 

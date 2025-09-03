@@ -26,6 +26,9 @@ const SessionEventNS = "session"
 const SessionEventTypeCreated = "created"
 const SessionEventTypeDeleted = "deleted"
 
+const SessionProviderLegacy = "legacy"
+const SessionProviderJwt = "jwt"
+
 // A SessionEvent is emitted when a session is created or deleted.
 //
 // Note: In version prior to 1.4.0, the namespace was `edge.sessions`
@@ -34,6 +37,10 @@ const SessionEventTypeDeleted = "deleted"
 //   - created
 //   - deleted
 //
+// Valid session provider are:
+//   - jwt
+//   - legacy
+//
 // Example: Bind Session created event
 //
 //	{
@@ -41,6 +48,7 @@ const SessionEventTypeDeleted = "deleted"
 //	 "event_src_id": "ctrl_client",
 //	 "timestamp": "2025-01-17T12:29:53.204988284-05:00",
 //	 "event_type": "created",
+//	 "provider" : "legacy",
 //	 "session_type": "Bind",
 //	 "id": "cm611bn75000jdhj9s5xrwynr",
 //	 "token": "4ed77b84-650e-4b4b-9fbb-2466c9c94abb",
@@ -56,6 +64,7 @@ const SessionEventTypeDeleted = "deleted"
 //	 "event_src_id": "ctrl_client",
 //	 "timestamp": "2025-01-17T12:30:08.593650693-05:00",
 //	 "event_type": "deleted",
+//	 "provider" : "legacy",
 //	 "session_type": "Bind",
 //	 "id": "cm611bgxa0008dhj9k3yo3vox",
 //	 "token": "f8a447a2-2bd0-4821-8142-27c1770d06ab",
@@ -74,16 +83,19 @@ type SessionEvent struct {
 	// The session type (dial or bind).
 	SessionType string `json:"session_type"`
 
+	// Type is the session provider. See above for valid values.
+	Provider string `json:"provider"`
+
 	// The session identifier.
 	Id string `json:"id"`
 
 	// The session token.
-	Token string `json:"token"`
+	Token string `json:"token,omitempty"`
 
 	// The id of the api session used to create this session.
 	ApiSessionId string `json:"api_session_id"`
 
-	// The if of the identity on whose behalf the session was created.
+	// The id of the identity on whose behalf the session was created.
 	IdentityId string `json:"identity_id"`
 
 	// The id of the service that this session is claiming access to.

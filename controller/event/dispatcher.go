@@ -17,10 +17,11 @@
 package event
 
 import (
-	"github.com/openziti/storage/boltz"
 	"io"
 	"regexp"
 	"time"
+
+	"github.com/openziti/storage/boltz"
 )
 
 // A TypeRegistrar handles registering and unregistering handlers for a given event type
@@ -138,6 +139,7 @@ type Dispatcher interface {
 	MetricsMessageHandler
 	RouterEventHandler
 	SdkEventHandler
+	SessionEventHandler
 	ServiceEventHandler
 	TerminatorEventHandler
 	UsageEventHandler

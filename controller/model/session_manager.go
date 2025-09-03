@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
@@ -30,9 +32,9 @@ import (
 	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 func NewSessionManager(env Env) *SessionManager {
@@ -206,7 +208,25 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		TokenType:    common.TokenTypeServiceAccess,
 	}
 
-	return self.env.GetRootTlsJwtSigner().Generate(claims)
+	result, err := self.env.GetRootTlsJwtSigner().Generate(claims)
+	if err != nil {
+		return "", err
+	}
+
+	self.env.GetEventDispatcher().AcceptSessionEvent(&event.SessionEvent{
+		Namespace:    event.SessionEventNS,
+		EventSrcId:   self.env.GetId(),
+		Timestamp:    time.Now(),
+		EventType:    event.SessionEventTypeCreated,
+		Provider:     event.SessionProviderJwt,
+		SessionType:  entity.Type,
+		Id:           entity.Id,
+		ApiSessionId: entity.ApiSessionId,
+		IdentityId:   entity.IdentityId,
+		ServiceId:    entity.ServiceId,
+	})
+
+	return result, nil
 }
 
 func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {
