@@ -24,6 +24,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -42,6 +43,25 @@ const (
 	DefaultDnsServiceIpRange = "100.64.0.1/10"
 )
 
+var fabricProviderF concurrenz.AtomicValue[func(env.RouterEnv, *HostedServiceRegistry) TunnelFabricProvider]
+
+// OverrideFabricProviderF allows overriding the default TunnelFabricProvider factory function
+// used by the edge tunnel v2 xgress factory. This is primarily useful for wrapping the fabric
+// provider to intercept hosting/tunnel calls for router embedders wishing to customize tunnel
+// behavior.
+//
+// The provided function will be called during CreateListener to create a TunnelFabricProvider
+// instance. If no override is set, the factory will use NewTunnelFabricProvider as the default.
+//
+// Parameters:
+//   - f: A factory function that takes a RouterEnv and HostedServiceRegistry and returns
+//     a TunnelFabricProvider instance. Pass nil to clear any existing override.
+//
+// This function is thread-safe and can be called concurrently with CreateListener.
+func OverrideFabricProviderF(f func(env.RouterEnv, *HostedServiceRegistry) TunnelFabricProvider) {
+	fabricProviderF.Store(f)
+}
+
 type Factory struct {
 	id                *identity.TokenId
 	ctrls             env.NetworkControllers
@@ -50,7 +70,7 @@ type Factory struct {
 	tunneler          *tunneler
 	metricsRegistry   metrics.UsageRegistry
 	env               env.RouterEnv
-	hostedServices    *hostedServiceRegistry
+	hostedServices    *HostedServiceRegistry
 	dialerInitialized atomic.Bool
 }
 
@@ -96,7 +116,6 @@ func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,
-		hostedServices:  newHostedServicesRegistry(env, stateManager),
 	}
 	factory.tunneler = newTunneler(factory)
 	return factory
@@ -105,13 +124,23 @@ func NewFactory(env env.RouterEnv, routerConfig *env.Config, stateManager state.
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.env.MarkRouterDataModelRequired()
-	self.hostedServices.Start()
+
+	self.hostedServices = newHostedServicesRegistry(self.env, self.stateManager)
+	self.tunneler.hostedServices = self.hostedServices
+
+	if fabricProviderFunc := fabricProviderF.Load(); fabricProviderFunc != nil {
+		self.tunneler.fabricProvider = fabricProviderFunc(self.env, self.hostedServices)
+	} else {
+		self.tunneler.fabricProvider = NewTunnelFabricProvider(self.env, self.hostedServices)
+	}
 
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
+
 	self.tunneler.listenOptions = options
+	self.tunneler.fabricProvider.SetXgressOptions(options.Options)
 
 	pfxlog.Logger().Debugf("xgress edge tunnel options: %v", options.ToLoggableString())
 
