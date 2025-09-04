@@ -17,6 +17,8 @@
 package env
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
@@ -27,7 +29,6 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/router/xlink"
-	"time"
 )
 
 type RouterEnv interface {

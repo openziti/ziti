@@ -35,6 +35,9 @@ problem.
 * github.com/openziti/storage: [v0.4.22 -> v0.4.26](https://github.com/openziti/storage/compare/v0.4.22...v0.4.26)
 * github.com/openziti/transport/v2: [v2.0.183 -> v2.0.188](https://github.com/openziti/transport/compare/v2.0.183...v2.0.188)
 * github.com/openziti/ziti: [v1.6.7 -> v1.6.8](https://github.com/openziti/ziti/compare/v1.6.7...v1.6.8)
+    * [Issue #3207](https://github.com/openziti/ziti/issues/3207) - Allow router embedders to customize config before start
+    * [Issue #3241](https://github.com/openziti/ziti/issues/3241) - Disconnecting Routers May Have Nil Fingerprint, causes panic
+    * [Issue #3248](https://github.com/openziti/ziti/issues/3248) - let cluster agent also support unix domain sockets
     * [Issue #3219](https://github.com/openziti/ziti/issues/3219) - AuthenticatorManager ReadByFingerprint/Username should use indexes
     * [Issue #3225](https://github.com/openziti/ziti/issues/3225) - JWT edge sessions should generate events
     * [Issue #3245](https://github.com/openziti/ziti/issues/3245) - Revocation time check is checking wrong entity

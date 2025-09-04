@@ -18,24 +18,12 @@ package run
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/agent"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/ziti/common"
+
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/debugops"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_transport"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
-	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func NewRunRouterCmd() *cobra.Command {
@@ -65,7 +53,6 @@ type RouterAction struct {
 	Options
 	EnableDebugOps            bool
 	ForceCertificateExtension bool
-	ConfigureCallback         func(env env.RouterEnv) error
 }
 
 func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
@@ -90,77 +77,17 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
-	xgressEdgeFactory := xgress_edge.NewFactory(config, r, r.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
-	if err := r.RegisterXrctrl(xgressEdgeFactory); err != nil {
-		logrus.WithError(err).Panic("error registering edge in framework")
-	}
-
-	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
-	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
-
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(r, config, r.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
-	if err := r.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
-		logrus.WithError(err).Panic("error registering edge tunnel in framework")
-	}
-
-	if err := r.RegisterXrctrl(r.GetStateManager()); err != nil {
-		logrus.WithError(err).Panic("error registering state manager in framework")
-	}
-
-	if self.ConfigureCallback != nil {
-		if err = self.ConfigureCallback(r); err != nil {
-			logrus.WithError(err).Panic("startup error")
-		}
-	}
-
 	if self.CliAgentEnabled {
-		options := agent.Options{
-			Addr:       self.CliAgentAddr,
-			AppId:      config.Id.Token,
-			AppType:    "router",
-			AppVersion: version.GetVersion(),
-			AppAlias:   self.CliAgentAlias,
-		}
-		if config.EnableDebugOps {
-			self.EnableDebugOps = true
-		}
-		r.RegisterDefaultAgentOps(self.EnableDebugOps)
-		debugops.RegisterEdgeRouterAgentOps(r, self.EnableDebugOps)
-
-		options.CustomOps = map[byte]func(conn net.Conn) error{
-			agent.CustomOp:      r.HandleAgentOp,
-			agent.CustomOpAsync: r.HandleAgentAsyncOp,
+		if self.EnableDebugOps {
+			config.EnableDebugOps = true
 		}
 
-		if err := agent.Listen(options); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-		}
+		r.RunCliAgent(self.CliAgentAddr, self.CliAgentAlias)
 	}
 
-	go self.waitForShutdown(r)
+	go r.ListenForShutdownSignal()
 
 	if err = r.Run(); err != nil {
 		logrus.WithError(err).Fatal("error starting")
-	}
-}
-
-func (self *RouterAction) waitForShutdown(r *router.Router) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
-
-	s := <-ch
-
-	if s == syscall.SIGQUIT {
-		fmt.Println("=== STACK DUMP BEGIN ===")
-		debugz.DumpStack()
-		fmt.Println("=== STACK DUMP CLOSE ===")
-	}
-
-	pfxlog.Logger().Info("shutting down ziti router")
-
-	if err := r.Shutdown(); err != nil {
-		pfxlog.Logger().WithError(err).Info("error encountered during shutdown")
 	}
 }

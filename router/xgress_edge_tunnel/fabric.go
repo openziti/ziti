@@ -20,6 +20,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"net"
+	"runtime"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -41,13 +49,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math"
-	"net"
-	"runtime"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func ToPtr[T any](in T) *T {
@@ -314,7 +315,7 @@ func (self *fabricProvider) tunnelServiceV2(
 		WithField("ctrlId", ctrlCh.Id())
 
 	rdm := self.factory.stateManager.RouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.factory.routerConfig.Id.Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
+	if policy, err := posture.HasAccess(rdm, self.factory.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
 		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
 	}
 

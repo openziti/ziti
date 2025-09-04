@@ -1,11 +1,11 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"errors"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -93,7 +93,9 @@ func (self *LinkStateChecker) HandleOther(msg *channel.Message, _ channel.Channe
 	//    5 = heartbeat
 	// 1007 = metrics message
 	// 1053 = LinkState
-	if msg.ContentType == -33 || msg.ContentType == 5 || msg.ContentType == 1007 || msg.ContentType == 1053 {
+	// 201415 = connect events
+	if msg.ContentType == -33 || msg.ContentType == 5 || msg.ContentType == 1007 || msg.ContentType == 1053 ||
+		msg.ContentType == 20415 {
 		logrus.Debug("ignoring heartbeats, reconnect pings and metrics")
 		return
 	}
