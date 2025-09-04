@@ -17,9 +17,15 @@
 package sync_strats
 
 import (
+	"reflect"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
@@ -28,10 +34,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"reflect"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // RouterSender represents a connection from an Edge Router to the controller. Used
@@ -248,7 +250,7 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 		WithField("routerTxId", rtx.Id).
 		WithField("routerId", rtx.Router.Id).
 		WithField("routerName", rtx.Router.Name).
-		WithField("routerFingerprint", *rtx.Router.Fingerprint).
+		WithField("routerFingerprint", stringz.OrEmpty(rtx.Router.Fingerprint)).
 		WithField("routerChannelIsOpen", !rtx.Router.Control.IsClosed())
 }
 
