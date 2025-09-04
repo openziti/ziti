@@ -17,24 +17,24 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/agent v1.0.30
-	github.com/openziti/channel/v4 v4.2.21
+	github.com/openziti/agent v1.0.31
+	github.com/openziti/channel/v4 v4.2.28
 	github.com/openziti/edge-api v0.26.47
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.70
-	github.com/openziti/identity v1.0.109
+	github.com/openziti/foundation/v2 v2.0.72
+	github.com/openziti/identity v1.0.111
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/sdk-golang v1.2.3
-	github.com/openziti/storage v0.4.22
-	github.com/openziti/transport/v2 v2.0.183
+	github.com/openziti/storage v0.4.26
+	github.com/openziti/transport/v2 v2.0.188
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
-	github.com/stretchr/testify v1.10.0
-	go.etcd.io/bbolt v1.4.2
+	github.com/stretchr/testify v1.11.1
+	go.etcd.io/bbolt v1.4.3
 	golang.org/x/net v0.43.0
 	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v2 v2.4.0
@@ -151,8 +151,8 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.77 // indirect
-	github.com/openziti/secretstream v0.1.38 // indirect
+	github.com/openziti/runzmd v1.0.80 // indirect
+	github.com/openziti/secretstream v0.1.39 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
