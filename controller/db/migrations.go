@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 41
+	CurrentDbVersion = 43
 	FieldVersion     = "version"
 )
 
@@ -188,10 +188,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
-	if step.CurrentVersion < 40 {
-		m.createInterfacesV1ConfigType(step)
-	}
-
 	if step.CurrentVersion < 41 {
 		step.SetError(m.stores.Authenticator.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
 			log := pfxlog.Logger().WithError(err)
@@ -201,6 +197,11 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 				log.Error("unfixable error during authenticator index rebuild:")
 			}
 		}))
+	}
+
+	if step.CurrentVersion < 43 {
+		m.createOrUpdateConfigType(step, interfacesConfigTypeV1)
+		m.createOrUpdateConfigType(step, proxyConfigTypeV1)
 	}
 
 	// current version
