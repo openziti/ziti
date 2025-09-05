@@ -129,6 +129,54 @@ events:
 #      noWait: false      //default:false
 #      bufferSize: 50     //default:50
 
+  # serviceBusLogger:
+  #   subscriptions:
+  #     - type: apiSession
+  #     - type: authentication
+  #     - type: circuit
+  #     - type: connect
+  #     - type: sdk
+  #     - type: entityChange
+  #       include:
+  #         - services
+  #         - identities
+  #     - type: entityCount
+  #     - type: link
+  #     - type: metrics
+  #       sourceFilter: .*
+  #       metricFilter: .*
+  #     - type: router
+  #     - type: session
+  #     - type: services
+  #     - type: terminator
+  #     - type: usage
+  #       version: 3
+  #     - type: usage
+  #       version: 2
+  #       include:
+  #         - ingress.rx
+  #         - egress.rx
+  #       interval: 5s
+  #   handler:
+  #     type: servicebus
+  #     format: json
+  #     connectionString: "Endpoint=sb://your-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your-key"
+  #     topic: "ziti-events"
+  #     bufferSize: 100
+
+# Alternative configuration with queue instead of topic
+# events:
+#   serviceBusQueueLogger:
+#     subscriptions:
+#       - type: fabric.circuits
+#       - type: edge.sessions
+#     handler:
+#       type: servicebus
+#       format: json
+#       connectionString: "Endpoint=sb://your-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your-key"
+#       queue: "ziti-events-queue"
+#       bufferSize: 50
+
 # xctrl_example
 #
 #example:

@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 )
 
@@ -309,4 +310,73 @@ func Test_OidcEvents(t *testing.T) {
 			ctx.Req.Fail("unexpected event type: %v", reflect.TypeOf(evt))
 		}
 	}
+}
+
+func Test_ServiceBusEventLogger(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+
+	ctx.StartServer()
+
+	t.Run("servicebus event handler factory", func(t *testing.T) {
+		factory := events.ServiceBusEventLoggerFactory{}
+
+		// Test valid topic configuration
+		topicConfig := map[interface{}]interface{}{
+			"connectionString": "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test-key",
+			"topic":            "test-topic",
+			"format":           "json",
+			"bufferSize":       100,
+		}
+
+		handler, err := factory.NewEventHandler(topicConfig)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(handler)
+
+		// Test valid queue configuration
+		queueConfig := map[interface{}]interface{}{
+			"connectionString": "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test-key",
+			"queue":            "test-queue",
+			"format":           "json",
+		}
+
+		handler, err = factory.NewEventHandler(queueConfig)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(handler)
+
+		// Test missing connection string
+		invalidConfig := map[interface{}]interface{}{
+			"topic":  "test-topic",
+			"format": "json",
+		}
+
+		_, err = factory.NewEventHandler(invalidConfig)
+		ctx.Req.Error(err)
+		ctx.Req.Contains(err.Error(), "unable to parse service bus config")
+	})
+
+	t.Run("servicebus configuration validation", func(t *testing.T) {
+		factory := events.ServiceBusEventLoggerFactory{}
+
+		// Test missing topic and queue
+		invalidConfig := map[interface{}]interface{}{
+			"connectionString": "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test-key",
+			"format":           "json",
+		}
+
+		_, err := factory.NewEventHandler(invalidConfig)
+		ctx.Req.Error(err)
+		ctx.Req.Contains(err.Error(), "unable to parse service bus config")
+
+		// Test invalid format
+		invalidFormatConfig := map[interface{}]interface{}{
+			"connectionString": "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test-key",
+			"topic":            "test-topic",
+			"format":           "invalid",
+		}
+
+		_, err = factory.NewEventHandler(invalidFormatConfig)
+		ctx.Req.Error(err)
+		ctx.Req.Contains(err.Error(), "invalid 'format' for event log output file")
+	})
 }

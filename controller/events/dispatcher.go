@@ -18,11 +18,12 @@ package events
 
 import (
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
-	"io"
-	"strings"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -88,6 +89,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventHandlerFactory("file", FileEventLoggerFactory{})
 	result.RegisterEventHandlerFactory("stdout", StdOutLoggerFactory{})
 	result.RegisterEventHandlerFactory("amqp", AMQPEventLoggerFactory{})
+	result.RegisterEventHandlerFactory("servicebus", ServiceBusEventLoggerFactory{})
 
 	return result
 }
