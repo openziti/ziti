@@ -18,6 +18,15 @@ package intercept
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
@@ -28,14 +37,6 @@ import (
 	"github.com/openziti/ziti/tunnel/health"
 	"github.com/pkg/errors"
 	logrus "github.com/sirupsen/logrus"
-	"net"
-	"os"
-	"os/signal"
-	"strconv"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
 )
 
 // variables for substitutions in intercept.v1 sourceIp property
@@ -272,18 +273,14 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 func (self *ServiceListener) removeService(svc *entities.Service) {
 	log := pfxlog.Logger()
 
-	previousService := self.services[*svc.ID]
-	if previousService != nil {
-		if previousService.InterceptV1Config != nil {
-			log.Infof("stopping tunnel for unavailable service: %s", *previousService.Name)
-			err := self.interceptor.StopIntercepting(*previousService.Name, self.addrTracker)
-			if err != nil {
-				log.WithError(err).Errorf("failed to stop intercepting service: %v", *previousService.Name)
-			}
-		}
+	log.Infof("stopping tunnel for unavailable service: %s", *svc.Name)
+	err := self.interceptor.StopIntercepting(*svc.Name, self.addrTracker)
+	if err != nil {
+		log.WithError(err).Errorf("failed to stop intercepting service: %v", *svc.Name)
+	}
 
+	if previousService := self.services[*svc.ID]; previousService != nil {
 		previousService.RunCleanupActions()
-
 		delete(self.services, *svc.ID)
 	}
 }

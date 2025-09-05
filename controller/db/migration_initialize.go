@@ -18,10 +18,11 @@ package db
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
 	"math"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
 )
 
 func (m *Migrations) initialize(step *boltz.MigrationStep) int {
@@ -40,9 +41,10 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.createInterceptV1ConfigType(step)
 	m.createHostV1ConfigType(step)
 	m.addProcessMultiPostureCheck(step)
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
+	m.createConfigType(step, hostV2ConfigType)
 	m.addSystemAuthPolicies(step)
-	m.createInterfacesV1ConfigType(step)
+	m.createConfigType(step, interfacesConfigTypeV1)
+	m.createConfigType(step, proxiesConfigTypeV1)
 
 	return CurrentDbVersion
 }
@@ -589,7 +591,7 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: "ziti-tunneler-server.v1",
+	Name: "interfaces.v1",
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
 		"type":                 "object",
@@ -608,6 +610,49 @@ var interfacesConfigTypeV1 = &ConfigType{
 				},
 			},
 		),
+	},
+}
+
+var ProxiesV1TypeId = "proxies.v1"
+
+var proxiesConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{
+		Id: ProxiesV1TypeId,
+	},
+	Name: "proxies.v1",
+	Schema: map[string]interface{}{
+		"$id":                  "https://netfoundry.io/schemas/proxies.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"definitions": map[string]interface{}{
+			"protocol": map[string]interface{}{
+				"type": "string",
+				"enum": []interface{}{
+					"tcp",
+					"udp",
+				},
+				"description": "Network protocol",
+			},
+		},
+		"required": []interface{}{
+			"port",
+			"protocols",
+		},
+		"properties": map[string]interface{}{
+			"port": map[string]interface{}{
+				"type":        "number",
+				"minimum":     1,
+				"maximum":     65535,
+				"description": "The port to listen on",
+			},
+			"protocols": map[string]interface{}{
+				"type":     "array",
+				"minItems": 1,
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/protocol",
+				},
+			},
+		},
 	},
 }
 
@@ -750,11 +795,11 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 
 }
 
-func (m *Migrations) createInterfacesV1ConfigType(step *boltz.MigrationStep) {
-	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), interfacesConfigTypeV1.Name)
+func (m *Migrations) createConfigType(step *boltz.MigrationStep, configType *ConfigType) {
+	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
 	if cfg == nil {
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, interfacesConfigTypeV1))
+		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
 	} else {
-		pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", interfacesConfigTypeV1.Name)
+		pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", configType.Name)
 	}
 }
