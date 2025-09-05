@@ -1,0 +1,37 @@
+{
+  "$id": "https://netfoundry.io/schemas/proxy.v1.config.json",
+  "additionalProperties": false,
+  "definitions": {
+    "protocol": {
+      "description": "Network protocol",
+      "enum": [
+        "tcp",
+        "udp"
+      ],
+      "type": "string"
+    }
+  },
+  "properties": {
+    "binding": {
+      "type": "string"
+    },
+    "port": {
+      "description": "The port to listen on",
+      "maximum": 65535,
+      "minimum": 1,
+      "type": "number"
+    },
+    "protocols": {
+      "items": {
+        "$ref": "#/definitions/protocol"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "port",
+    "protocols"
+  ],
+  "type": "object"
+}
