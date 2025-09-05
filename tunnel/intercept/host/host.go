@@ -43,5 +43,6 @@ func (p interceptor) Stop() {
 }
 
 func (p interceptor) StopIntercepting(string, intercept.AddressTracker) error {
-	return errors.New("StopIntercepting not implemented by host interceptor")
+	// host mode interceptor can't intercept services, so there's nothing to do here
+	return nil
 }
