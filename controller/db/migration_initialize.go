@@ -589,7 +589,7 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: "ziti-tunneler-server.v1",
+	Name: "interfaces.v1",
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
 		"type":                 "object",
