@@ -23,13 +23,14 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"github.com/openziti/ziti/ziti/pki/pki"
-	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/ziti/pki/pki"
+	"github.com/openziti/ziti/ziti/util"
 
 	"github.com/spf13/cobra"
 
@@ -110,10 +111,7 @@ func (o *PKICreateOptions) ObtainPKIRoot() (string, error) {
 			if err != nil {
 				return "", err
 			}
-			pkiRoot, err = util.PickValue("Required flag 'pki-root' not specified; Enter PKI Root now:", pkiRootDir, true)
-			if err != nil {
-				return "", err
-			}
+			pkiRoot = pkiRootDir // Use the default directly
 		}
 	}
 	return pkiRoot, nil
