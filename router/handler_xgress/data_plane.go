@@ -18,11 +18,12 @@ package handler_xgress
 
 import (
 	"context"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/forwarder"
-	"time"
 )
 
 type dataPlaneAdapter struct {
@@ -55,7 +56,9 @@ func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgre
 	for {
 		if err := adapter.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
-				pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
+				if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
+					pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Debug("unable to forward payload")
+				}
 				adapter.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
 				return
 			}
@@ -71,7 +74,7 @@ func (adapter *dataPlaneAdapter) RetransmitPayload(srcAddr xgress.Address, paylo
 
 func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
 	if err := adapter.forwarder.ForwardControl(x.Address(), control); err != nil {
-		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
+		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Debug("unable to forward control")
 	}
 }
 
