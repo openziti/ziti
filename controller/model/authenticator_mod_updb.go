@@ -72,7 +72,6 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	if username == "" || password == "" {
 		reason := "username and password fields are required"
 		failEvent := module.NewAuthEventFailure(context, bundle, reason)
-
 		module.DispatchEvent(failEvent)
 		return nil, errorz.NewCouldNotValidate(errors.New(reason))
 	}
@@ -154,13 +153,14 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	attempts := int64(0)
-	module.attemptsByAuthenticatorId.Upsert(bundle.Authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
+	module.attemptsByAuthenticatorId.Upsert(bundle.Authenticator.Id, 1, func(exist bool, prevAttempts int64, attemptIncrement int64) int64 {
 		if exist {
-			attempts = prevAttempts + 1
-			return attempts
+			attempts = prevAttempts + attemptIncrement
+		} else {
+			attempts = attemptIncrement
 		}
 
-		return 0
+		return attempts
 	})
 
 	if bundle.AuthPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts > bundle.AuthPolicy.Primary.Updb.MaxAttempts {
@@ -175,6 +175,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 
+		module.attemptsByAuthenticatorId.Remove(bundle.Authenticator.Id)
 		return nil, apierror.NewInvalidAuth()
 	}
 
@@ -204,6 +205,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
+	module.attemptsByAuthenticatorId.Remove(bundle.Authenticator.Id)
 	successEvent := module.NewAuthEventSuccess(context, bundle)
 	module.DispatchEvent(successEvent)
 
