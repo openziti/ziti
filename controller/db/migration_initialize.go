@@ -591,9 +591,37 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: "interfaces.v1",
+	Name: InterfacesV1TypeId,
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"definitions":          healthCheckSchema["definitions"],
+		"required": []interface{}{
+			"interfaces",
+		},
+		"properties": combine(
+			map[string]interface{}{
+				"interfaces": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "string",
+					},
+				},
+			},
+		),
+	},
+}
+
+var HostInterfacesV1TypeId = "host-interfaces.v1"
+
+var hostInterfacesConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{
+		Id: HostInterfacesV1TypeId,
+	},
+	Name: HostInterfacesV1TypeId,
+	Schema: map[string]interface{}{
+		"$id":                  "https://netfoundry.io/schemas/host-interfaces.v1.config.json",
 		"type":                 "object",
 		"additionalProperties": false,
 		"definitions":          healthCheckSchema["definitions"],

@@ -201,6 +201,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 43 {
 		m.createOrUpdateConfigType(step, interfacesConfigTypeV1)
+		m.createOrUpdateConfigType(step, hostInterfacesConfigTypeV1)
 		m.createOrUpdateConfigType(step, proxyConfigTypeV1)
 	}
 
