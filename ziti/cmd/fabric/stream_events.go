@@ -19,6 +19,9 @@ package fabric
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"
@@ -26,13 +29,12 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 type streamEventsAction struct {
 	api.Options
 	all          bool
+	alerts       bool
 	apiSessions  bool
 	circuits     bool
 	cluster      bool
@@ -71,6 +73,7 @@ func NewStreamEventsCmd(p common.OptionsProvider) *cobra.Command {
 
 	action.AddCommonFlags(streamEventsCmd)
 	streamEventsCmd.Flags().BoolVar(&action.all, "all", false, "Include all events")
+	streamEventsCmd.Flags().BoolVar(&action.alerts, "alerts", false, "Include alert events")
 	streamEventsCmd.Flags().BoolVar(&action.apiSessions, "api-sessions", false, "Include api-session events")
 	streamEventsCmd.Flags().BoolVar(&action.circuits, "circuits", false, "Include circuit events")
 	streamEventsCmd.Flags().BoolVar(&action.cluster, "cluster", false, "Include cluster events")
@@ -94,6 +97,12 @@ func NewStreamEventsCmd(p common.OptionsProvider) *cobra.Command {
 
 func (self *streamEventsAction) buildSubscriptions(cmd *cobra.Command) []*event.Subscription {
 	var subscriptions []*event.Subscription
+
+	if self.alerts || (self.all && !cmd.Flags().Changed("alerts")) {
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type: event.AlertEventNS,
+		})
+	}
 
 	if self.apiSessions || (self.all && !cmd.Flags().Changed("api-sessions")) {
 		subscriptions = append(subscriptions, &event.Subscription{

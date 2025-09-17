@@ -17,10 +17,11 @@
 package handler_ctrl
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -56,6 +57,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	})
 	log.Debug("binding router channel")
 
+	binding.AddTypedReceiveHandler(newAlertHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newCircuitRequestHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newRouteResultHandler(self.network, self.router))
 	binding.AddTypedReceiveHandler(newCircuitConfirmationHandler(self.network, self.router))

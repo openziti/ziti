@@ -17,6 +17,11 @@
 package xgress_edge_tunnel
 
 import (
+	"math"
+	"net"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/state"
@@ -27,10 +32,6 @@ import (
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
-	"math"
-	"net"
-	"strings"
-	"time"
 )
 
 type tunneler struct {
@@ -44,6 +45,7 @@ type tunneler struct {
 	fabricProvider  *fabricProvider
 	terminators     cmap.ConcurrentMap[string, *tunnelTerminator]
 	notifyReconnect chan struct{}
+	alerter         proxy.Alerter
 }
 
 func newTunneler(factory *Factory, stateManager state.Manager) *tunneler {
@@ -51,6 +53,7 @@ func newTunneler(factory *Factory, stateManager state.Manager) *tunneler {
 		stateManager:    stateManager,
 		terminators:     cmap.New[*tunnelTerminator](),
 		notifyReconnect: make(chan struct{}, 1),
+		alerter:         factory.env.GetAlerter(),
 	}
 
 	result.fabricProvider = newProvider(factory, result)
@@ -94,7 +97,7 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 			tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
 		}
 
-		if self.interceptor, err = tproxy.New(tproxyConfig); err != nil {
+		if self.interceptor, err = tproxy.New(tproxyConfig, self.alerter); err != nil {
 			return errors.Wrap(err, "failed to initialize tproxy interceptor")
 		}
 	} else if self.listenOptions.mode == "host" {
@@ -103,7 +106,7 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	} else if self.listenOptions.mode == "proxy" {
 		log.WithField("mode", self.listenOptions.mode).Info("creating proxy interceptor")
 		self.listenOptions.resolver = ""
-		if self.interceptor, err = proxy.New(net.IPv4zero, self.listenOptions.services); err != nil {
+		if self.interceptor, err = proxy.New(self.alerter, net.IPv4zero, self.listenOptions.services); err != nil {
 			return errors.Wrap(err, "failed to initialize proxy interceptor")
 		}
 	} else {

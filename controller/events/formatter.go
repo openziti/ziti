@@ -19,13 +19,14 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/pkg/errors"
 	"io"
 	"reflect"
 	"strings"
 	"sync/atomic"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/controller/event"
+	"github.com/pkg/errors"
 )
 
 type LoggingHandlerFactory interface {
@@ -93,6 +94,16 @@ func MarshalJson(v interface{}) ([]byte, error) {
 		return nil, err
 	}
 	return buf, nil
+}
+
+type JsonAlertEvent event.AlertEvent
+
+func (event *JsonAlertEvent) GetEventType() string {
+	return "alert"
+}
+
+func (event *JsonAlertEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonCircuitEvent event.CircuitEvent
@@ -269,6 +280,10 @@ func NewJsonFormatter(queueDepth int, sink event.FormattedEventSink) *JsonFormat
 
 type JsonFormatter struct {
 	BaseFormatter
+}
+
+func (formatter *JsonFormatter) AcceptAlertEvent(evt *event.AlertEvent) {
+	formatter.AcceptLoggingEvent((*JsonAlertEvent)(evt))
 }
 
 func (formatter *JsonFormatter) AcceptCircuitEvent(evt *event.CircuitEvent) {

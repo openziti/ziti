@@ -28,6 +28,12 @@ var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
 
+func (d DispatcherMock) AddAlertEventHandler(handler AlertEventHandler) {}
+
+func (d DispatcherMock) RemoveAlertEventHandler(handler AlertEventHandler) {}
+
+func (d DispatcherMock) AcceptAlertEvent(event *AlertEvent) {}
+
 func (d DispatcherMock) AcceptSessionEvent(event *SessionEvent) {}
 
 func (d DispatcherMock) AcceptAuthenticationEvent(event *AuthenticationEvent) {}
