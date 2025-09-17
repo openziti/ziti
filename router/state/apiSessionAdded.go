@@ -86,10 +86,8 @@ func (h *ApiSessionAddedHandler) HandleReceive(msg *channel.Message, ch channel.
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.AddLegacyApiSession(&ApiSessionToken{
-					ApiSession:   session,
-					ControllerId: ch.Id(),
-				})
+				newApiSession := NewApiSessionTokenFromProtobuf(session, ch.Id())
+				h.sm.AddLegacyApiSession(newApiSession)
 			}
 
 			if req.IsFullState {
@@ -131,7 +129,7 @@ func (h *ApiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 		if lastId == "" || apiSession.Id > lastId {
 			lastId = apiSession.Id
 		}
-		apiSessionTokens = append(apiSessionTokens, NewApiSessionTokenFromProtobuf(apiSession))
+		apiSessionTokens = append(apiSessionTokens, NewApiSessionTokenFromProtobuf(apiSession, tracker.ctrlCh.Id()))
 	}
 
 	h.sm.RemoveMissingApiSessions(apiSessionTokens, lastId)
@@ -169,7 +167,7 @@ func (h *ApiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithSta
 	pfxlog.Logger().Warn("using legacy sync logic some connections may be dropped")
 	apiSessionTokens := make([]*ApiSessionToken, 0, len(reqWithState.ApiSessions))
 	for _, apiSession := range reqWithState.ApiSessions {
-		apiSessionToken := NewApiSessionTokenFromProtobuf(apiSession)
+		apiSessionToken := NewApiSessionTokenFromProtobuf(apiSession, h.control.Id())
 		h.sm.AddLegacyApiSession(apiSessionToken)
 		apiSessionTokens = append(apiSessionTokens, apiSessionToken)
 	}
@@ -233,7 +231,7 @@ func (h *ApiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 			h.syncTracker.Stop()
 		}
 
-		h.syncTracker = newApiSessionSyncTracker(reqWithState.Id)
+		h.syncTracker = newApiSessionSyncTracker(reqWithState.Id, h.control)
 		h.sm.MarkSyncInProgress(h.syncTracker.syncId)
 		go h.syncTracker.StartDeadline(20*time.Second, h)
 	}
@@ -263,14 +261,16 @@ type apiSessionSyncTracker struct {
 	lock          sync.Mutex
 	startTime     time.Time
 	endTime       time.Time
+	ctrlCh        channel.Channel
 }
 
-func newApiSessionSyncTracker(id string) *apiSessionSyncTracker {
+func newApiSessionSyncTracker(id string, ctrlCh channel.Channel) *apiSessionSyncTracker {
 	return &apiSessionSyncTracker{
 		syncId:        id,
 		reqsWithState: map[int]*apiSessionAddedWithState{},
 		stop:          make(chan struct{}),
 		startTime:     time.Now(),
+		ctrlCh:        ctrlCh,
 	}
 }
 

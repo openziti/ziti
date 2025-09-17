@@ -101,12 +101,14 @@ func NewApiSessionTokenFromJwt(jwtToken *jwt.Token, accessClaims *common.AccessC
 
 // NewApiSessionTokenFromProtobuf wraps controller-synchronized session data
 // in the unified token abstraction, preserving the legacy synchronization model
-// for backwards compatibility during network upgrades.
-func NewApiSessionTokenFromProtobuf(apiSessionBuf *edge_ctrl_pb.ApiSession) *ApiSessionToken {
+// for backwards compatibility during network upgrades. Legacy API Sessions are
+// tied to a specific controller.
+func NewApiSessionTokenFromProtobuf(apiSessionBuf *edge_ctrl_pb.ApiSession, controllerId string) *ApiSessionToken {
 	result := &ApiSessionToken{
-		ApiSession: apiSessionBuf,
-		Hash:       logHash(apiSessionBuf.Token),
-		Type:       ApiSessionTokenLegacyProtobuf,
+		ApiSession:   apiSessionBuf,
+		Hash:         logHash(apiSessionBuf.Token),
+		Type:         ApiSessionTokenLegacyProtobuf,
+		ControllerId: controllerId,
 	}
 
 	return result

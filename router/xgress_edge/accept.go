@@ -134,7 +134,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	// Since data is the most common type, it gets to dispatch directly
 	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
-		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_sdkEdge.long_data_queue_time")
+		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
 		binding.AddReceiveHandlerF(conn.msgMux.ContentType(), func(m *channel.Message, ch channel.Channel) {
 			start := time.Now()
 			conn.msgMux.HandleReceive(m, ch)
@@ -178,10 +178,10 @@ func (d DebugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
 		connId, _ := m.GetUint32Header(sdkEdge.ConnIdHeader)
 		result, err := sdkEdge.UnmarshalDialResult(m)
 		if err != nil {
-			pfxlog.Logger().WithError(err).Infof("err unmarshalling dial result, seq: %d , replyTo: %d, ConnId: %d",
+			pfxlog.Logger().WithError(err).Infof("err unmarshalling dial result, seq: %d , replyTo: %d, connId: %d",
 				m.Sequence(), m.ReplyFor(), connId)
 		} else {
-			pfxlog.Logger().Infof("received dial result: seq: %d , replyTo: %d, ConnId: %d, newConnId: %d, success: %v, msg: %s",
+			pfxlog.Logger().Infof("received dial result: seq: %d , replyTo: %d, connId: %d, newConnId: %d, success: %v, msg: %s",
 				m.Sequence(), m.ReplyFor(), connId, result.NewConnId, result.Success, result.Message)
 		}
 	}

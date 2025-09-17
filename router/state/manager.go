@@ -42,7 +42,6 @@ import (
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
-	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/oidc_auth"
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/posture"
@@ -881,7 +880,7 @@ func (sm *ManagerImpl) AddLegacyApiSession(apiSessionToken *ApiSessionToken) {
 	logger := pfxlog.Logger().Entry
 	logger = apiSessionToken.AddLoggingFields(logger)
 
-	if apiSessionToken.Type == event.ApiSessionTypeLegacy {
+	if apiSessionToken.Type == ApiSessionTokenLegacyProtobuf {
 		logger.Debug("adding legacy api session")
 		//for legacy api sessions, token is a UUID
 		sm.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
@@ -898,7 +897,7 @@ func (sm *ManagerImpl) UpdateLegacyApiSession(apiSessionToken *ApiSessionToken) 
 	logger := pfxlog.Logger().Entry
 	logger = apiSessionToken.AddLoggingFields(logger)
 
-	if apiSessionToken.Type == event.ApiSessionTypeLegacy {
+	if apiSessionToken.Type == ApiSessionTokenLegacyProtobuf {
 		logger.Debug("update legacy api session")
 
 		sm.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
