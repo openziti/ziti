@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"net/netip"
 
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/health"
 	"github.com/sirupsen/logrus"
 )
@@ -23,7 +25,16 @@ type AllowConfig interface {
 	GetAllowedAddresses() []string
 }
 
+type Dialer interface {
+	Dial(network string, address string) (net.Conn, error)
+}
+
+type DialWrapper interface {
+	Dial(hostContext HostingContext, localAddr *netip.AddrPort, dialer Dialer, protocol string, address string) (net.Conn, error)
+}
+
 type HostingContext interface {
+	Service() *entities.Service
 	ServiceId() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
@@ -33,6 +44,7 @@ type HostingContext interface {
 	OnClose()
 	SetCloseCallback(func())
 	GetAllowConfig() AllowConfig
+	SetDialWrapper(listener DialWrapper)
 }
 
 type HostControl interface {
