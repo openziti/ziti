@@ -3,6 +3,7 @@
 ## What's New
 
 * proxy.v1 config type
+* Alert Events (Beta)
 
 ## New proxy.v1 Config Type
 
@@ -33,10 +34,50 @@ Configuration Properties:
 
 This config type is currently supported by the ER/T when running in either proxy or tproxy mode.
 
+## Alert Events
+
+A new alert event type has been added to allow Ziti components to emit alerts for issues that network operators can address. 
+Alert events are generated when components encounter problems such as service configuration errors or resource
+availability issues.
+
+Alert events include:
+  - Alert source type and ID (currently supports routers, with controller and SDK support planned for future releases)
+  - Severity level (currently supports error, with info and warning planned for future releases)
+  - Alert message and supporting details
+  - Related entities (router, identity, service, etc.) associated with the alert
+
+Example alert event when a router cannot bind a configured network interface:
+
+```
+  {
+    "namespace": "alert",
+    "event_src_id": "ctrl1",
+    "timestamp": "2021-11-08T14:45:45.785561479-05:00",
+    "alert_source_type": "router",
+    "alert_source_id": "DJFljCCoLs",
+    "severity": "error",
+    "message": "error starting proxy listener for service 'test'",
+    "details": [
+      "unable to bind eth0, no address"
+    ],
+    "related_entities": {
+      "router": "DJFljCCoLs",
+      "identity": "DJFljCCoLs",
+      "service": "3DPjxybDvXlo878CB0X2Zs"
+    }
+  }
+```
+
+Alert events can be consumed through the standard event system and logged to configured event handlers for monitoring and alerting purposes.
+
+These events are currently in Beta, as the format is still subject to change. Once they've been in use in production for a while
+and proven useful, they will marked as stable.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.31 -> v1.0.32](https://github.com/openziti/agent/compare/v1.0.31...v1.0.32)
-* github.com/openziti/channel/v4: [v4.2.28 -> v4.2.35](https://github.com/openziti/channel/compare/v4.2.28...v4.2.35)
+* github.com/openziti/channel/v4: [v4.2.28 -> v4.2.37](https://github.com/openziti/channel/compare/v4.2.28...v4.2.37)
+* github.com/openziti/edge-api: [v0.26.47 -> v0.26.48](https://github.com/openziti/edge-api/compare/v0.26.47...v0.26.48)
 * github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.77](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.77)
     * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
     * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
@@ -44,13 +85,18 @@ This config type is currently supported by the ER/T when running in either proxy
 * github.com/openziti/identity: [v1.0.111 -> v1.0.116](https://github.com/openziti/identity/compare/v1.0.111...v1.0.116)
     * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
 
-* github.com/openziti/runzmd: [v1.0.80 -> v1.0.82](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.82)
+* github.com/openziti/runzmd: [v1.0.80 -> v1.0.83](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.83)
 * github.com/openziti/sdk-golang: [v1.2.3 -> v1.2.4](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.2.4)
     * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
 
-* github.com/openziti/storage: [v0.4.26 -> v0.4.28](https://github.com/openziti/storage/compare/v0.4.26...v0.4.28)
-* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.193](https://github.com/openziti/transport/compare/v2.0.188...v2.0.193)
+* github.com/openziti/storage: [v0.4.26 -> v0.4.29](https://github.com/openziti/storage/compare/v0.4.26...v0.4.29)
+* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.194](https://github.com/openziti/transport/compare/v2.0.188...v2.0.194)
+* github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti: [v1.6.8 -> v1.7.0](https://github.com/openziti/ziti/compare/v1.6.8...v1.7.0)
+    * [Issue #3286](https://github.com/openziti/ziti/issues/3286) - edge-api binding doesn't have the correct path on discovery endpoints
+    * [Issue #3297](https://github.com/openziti/ziti/issues/3297) - stop promoting hotfixes downstream
+    * [Issue #3295](https://github.com/openziti/ziti/issues/3295) - make ziti tunnel service:port pairs optional
+    * [Issue #3291](https://github.com/openziti/ziti/issues/3291) - replace decommissioned bitnami/kubectl
     * [Issue #3277](https://github.com/openziti/ziti/issues/3277) - Router can deadlock on closing a connection if the incoming data channel is full
     * [Issue #3269](https://github.com/openziti/ziti/issues/3269) - Add host-interfaces config type
     * [Issue #3258](https://github.com/openziti/ziti/issues/3258) - Add config type proxy.v1 so proxies can be defined dynamically for the ER/T
