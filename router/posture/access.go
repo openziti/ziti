@@ -8,7 +8,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 )
 
-func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string, cache *Cache, policyType edge_ctrl_pb.PolicyType) (*common.ServicePolicy, error) {
+func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string, data *InstanceData, policyType edge_ctrl_pb.PolicyType) (*common.ServicePolicy, error) {
 	log := pfxlog.Logger().WithField("instance", eid.New()).WithField("identityId", identityId).WithField("serviceId", serviceId)
 
 	accessPolicies, err := rdm.GetServiceAccessPolicies(identityId, serviceId, policyType)
@@ -22,7 +22,7 @@ func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string,
 		return nil, &NoPoliciesError{}
 	}
 
-	grantingPolicy, errs := IsPassing(accessPolicies, cache)
+	grantingPolicy, errs := IsPassing(accessPolicies, data)
 
 	if errs != nil && len(*errs) > 0 {
 		log.Debug("policies provided access but posture checks failed")
@@ -33,7 +33,7 @@ func HasAccess(rdm *common.RouterDataModel, identityId string, serviceId string,
 	return grantingPolicy, nil
 }
 
-func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*common.ServicePolicy, *PolicyAccessErrors) {
+func IsPassing(accessPolicies *common.AccessPolicies, data *InstanceData) (*common.ServicePolicy, *PolicyAccessErrors) {
 	errs := &PolicyAccessErrors{}
 
 	for _, policy := range accessPolicies.Policies {
@@ -51,7 +51,7 @@ func IsPassing(accessPolicies *common.AccessPolicies, cache *Cache) (*common.Ser
 				return
 			}
 
-			if err := EvaluatePostureCheck(postureCheck, cache); err != nil {
+			if err := EvaluatePostureCheck(postureCheck, data); err != nil {
 				policyErr.Errors = append(policyErr.Errors, err)
 			}
 		})

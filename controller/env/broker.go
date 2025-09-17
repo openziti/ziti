@@ -18,6 +18,7 @@ package env
 
 import (
 	"crypto"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/storage/boltz"
@@ -30,7 +31,7 @@ import (
 )
 
 const (
-	SessionRemovedType = int32(edge_ctrl_pb.ContentType_SessionRemovedType)
+	ServiceSessionRemovedType = int32(edge_ctrl_pb.ContentType_SessionRemovedType)
 
 	ApiSessionHeartbeatType = int32(edge_ctrl_pb.ContentType_ApiSessionHeartbeatType)
 	ApiSessionRemovedType   = int32(edge_ctrl_pb.ContentType_ApiSessionRemovedType)

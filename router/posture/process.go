@@ -14,7 +14,7 @@ type ProcessCheck struct {
 	*edge_ctrl_pb.DataState_PostureCheck_ProcessMulti
 }
 
-func (p *ProcessCheck) Evaluate(cache *Cache) *CheckError {
+func (p *ProcessCheck) Evaluate(cache *InstanceData) *CheckError {
 	switch p.Semantic {
 	case db.SemanticAllOf:
 		return p.requireAll(cache)
@@ -26,7 +26,7 @@ func (p *ProcessCheck) Evaluate(cache *Cache) *CheckError {
 	}
 }
 
-func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
+func (p *ProcessCheck) requireAll(cache *InstanceData) *CheckError {
 	if cache == nil {
 		return &CheckError{
 			Id:    p.Id,
@@ -88,7 +88,7 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	return nil
 }
 
-func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
+func (p *ProcessCheck) requireOne(cache *InstanceData) *CheckError {
 	if cache == nil {
 		return &CheckError{
 			Id:    p.Id,
