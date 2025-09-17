@@ -78,7 +78,7 @@ var listenConfig = net.ListenConfig{
 	},
 }
 
-func New(config Config) (intercept.Interceptor, error) {
+func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
 	log := pfxlog.Logger()
 
 	self := &interceptor{
@@ -88,7 +88,7 @@ func New(config Config) (intercept.Interceptor, error) {
 		udpCheckInterval: config.UDPCheckInterval,
 		serviceProxies:   cmap.New[*tProxy](),
 		ipt:              nil,
-		proxyInterceptor: proxy.NewDelegate(),
+		proxyInterceptor: proxy.NewDelegate(alerter),
 	}
 
 	if self.udpIdleTimeout < 5*time.Second {

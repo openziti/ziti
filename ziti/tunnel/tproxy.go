@@ -21,6 +21,7 @@ package tunnel
 import (
 	"fmt"
 
+	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +54,7 @@ func runTProxy(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	interceptor, err = tproxy.New(tproxy.Config{LanIf: lanIf, Diverter: diverter})
+	interceptor, err = tproxy.New(tproxy.Config{LanIf: lanIf, Diverter: diverter}, proxy.DefaultAlerter{})
 	if err != nil {
 		return fmt.Errorf("failed to initialize tproxy interceptor: %v", err)
 	}
