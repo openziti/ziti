@@ -17,10 +17,11 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/router/xgress_router"
 	"runtime/debug"
 	"time"
+
+	"github.com/openziti/ziti/common/capabilities"
+	"github.com/openziti/ziti/router/xgress_router"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -79,6 +80,7 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during terminator validation operation")
 		},
+		WorkerFunction: terminatorValidatorWorker,
 	}
 
 	metrics.ConfigureGoroutinesPoolMetrics(&terminatorValidatorPoolConfig, routerEnv.GetMetricsRegistry(), "pool.terminator_validation")
@@ -95,6 +97,10 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 		terminatorValidationPool: terminatorValidationPool,
 		ctrlAddressUpdater:       ctrlAddressUpdater,
 	}, nil
+}
+
+func terminatorValidatorWorker(_ uint32, f func()) {
+	f()
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {

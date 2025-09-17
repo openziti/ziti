@@ -126,6 +126,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 				WithField(logrus.ErrorKey, err).
 				WithField("backtrace", string(debug.Stack())).Error("panic during router data model event")
 		},
+		WorkerFunction: routerDataModelWorker,
 	}
 
 	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, stateEnv.GetMetricsRegistry(), "pool.rdm.handler")
@@ -165,6 +166,10 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 	result.StartRouterModelSave(cfg.Edge.Db, cfg.Edge.DbSaveInterval)
 
 	return result
+}
+
+func routerDataModelWorker(_ uint32, f func()) {
+	f()
 }
 
 type ManagerImpl struct {
