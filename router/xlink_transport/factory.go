@@ -18,6 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
@@ -56,6 +57,7 @@ type LinkEnv interface {
 	GetXLinkRegistry() xlink.Registry
 	GetNetworkControllers() env.NetworkControllers
 	GetRateLimiterPool() goroutines.Pool
+	GetCloseNotify() <-chan struct{}
 }
 
 func NewFactory(accepter xlink.Acceptor,
@@ -96,7 +98,7 @@ func (self *factory) CreateListener(id *identity.TokenId, configData transport.C
 		tcfg:               self.transportConfig,
 		pendingLinks:       map[string]*pendingLink{},
 		xlinkRegistery:     self.env.GetXLinkRegistry(),
-		metricsRegistry:    self.env.GetMetricsRegistry(),
+		env:                self.env,
 	}, nil
 }
 

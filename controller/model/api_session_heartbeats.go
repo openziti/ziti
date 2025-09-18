@@ -17,17 +17,18 @@
 package model
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"sync/atomic"
-	"time"
 )
 
 type HeartbeatCollector struct {
 	apiSessionLastAccessedAtMap cmap.ConcurrentMap[string, *HeartbeatStatus]
 	updateInterval              time.Duration
-	closeNotify                 chan struct{}
+	closeNotify                 <-chan struct{}
 	isFlushing                  atomic.Bool
 	flushAction                 func(beats []*Heartbeat)
 	batchSize                   int
@@ -48,7 +49,7 @@ func NewHeartbeatCollector(env Env, batchSize int, updateInterval time.Duration,
 		updateInterval:              updateInterval,
 		batchSize:                   batchSize,
 		flushAction:                 action,
-		closeNotify:                 make(chan struct{}),
+		closeNotify:                 env.GetCloseNotifyChannel(),
 	}
 
 	env.GetStores().ApiSession.AddEntityIdListener(collector.Remove, boltz.EntityDeleted)
@@ -97,11 +98,6 @@ func (self *HeartbeatCollector) run() {
 			self.flush()
 		}
 	}
-}
-
-func (self *HeartbeatCollector) Stop() {
-	close(self.closeNotify)
-
 }
 
 func (self *HeartbeatCollector) flush() {

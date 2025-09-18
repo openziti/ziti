@@ -18,6 +18,10 @@ package server
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/storage/boltz"
@@ -30,9 +34,6 @@ import (
 	_ "github.com/openziti/ziti/controller/internal/routes"
 	"github.com/openziti/ziti/controller/model"
 	sync2 "github.com/openziti/ziti/controller/sync_strats"
-	"os"
-	"sync"
-	"time"
 )
 
 type Controller struct {
@@ -278,8 +279,6 @@ func (c *Controller) Shutdown() {
 		pfxlog.Logger().Info("edge controller: shutting down...")
 
 		c.AppEnv.Broker.Stop()
-
-		c.AppEnv.GetManagers().ApiSession.HeartbeatCollector.Stop()
 
 		pfxlog.Logger().Info("edge controller: stopped")
 
