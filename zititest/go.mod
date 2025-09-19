@@ -17,32 +17,36 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/agent v1.0.31
-	github.com/openziti/channel/v4 v4.2.28
+	github.com/openziti/agent v1.0.32
+	github.com/openziti/channel/v4 v4.2.35
 	github.com/openziti/edge-api v0.26.47
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.76
-	github.com/openziti/identity v1.0.111
+	github.com/openziti/foundation/v2 v2.0.77
+	github.com/openziti/identity v1.0.116
 	github.com/openziti/metrics v1.4.2
-	github.com/openziti/sdk-golang v1.2.3
-	github.com/openziti/storage v0.4.26
-	github.com/openziti/transport/v2 v2.0.188
+	github.com/openziti/sdk-golang v1.2.4
+	github.com/openziti/storage v0.4.28
+	github.com/openziti/transport/v2 v2.0.193
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/net v0.43.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.9
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.10.0 // indirect
+	github.com/Azure/go-amqp v1.4.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
@@ -151,7 +155,7 @@ require (
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.80 // indirect
+	github.com/openziti/runzmd v1.0.82 // indirect
 	github.com/openziti/secretstream v0.1.39 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
@@ -176,7 +180,7 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/spf13/pflag v1.0.7 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/spf13/viper v1.20.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
@@ -204,7 +208,7 @@ require (
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/image v0.30.0 // indirect
 	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/term v0.35.0 // indirect
