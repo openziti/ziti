@@ -41,6 +41,8 @@ import (
 
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/models"
 	env2 "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/zitirest"
@@ -66,6 +68,7 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/server"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
@@ -126,6 +129,8 @@ type TestContext struct {
 	*require.Assertions
 	ApiHost                string
 	AdminAuthenticator     *updbAuthenticator
+	TestUserAuthenticator  *updbAuthenticator
+	TestUserAuthPolicy     *model.AuthPolicy
 	AdminManagementSession *session
 	AdminClientSession     *session
 	RestClients            *zitirest.Clients
@@ -149,6 +154,24 @@ var defaultTestContext = &TestContext{
 		Username: eid.New(),
 		Password: eid.New(),
 	},
+	TestUserAuthenticator: &updbAuthenticator{
+		Username: eid.New(),
+		Password: eid.New(),
+	},
+	TestUserAuthPolicy: &model.AuthPolicy{
+		Name: "test-auth-policy",
+		Primary: model.AuthPolicyPrimary{
+			Updb: model.AuthPolicyUpdb{
+				Allowed:                true,
+				MinPasswordLength:      8,
+				RequireSpecialChar:     false,
+				RequireMixedCase:       false,
+				RequireNumberChar:      false,
+				MaxAttempts:            int64(3),
+				LockoutDurationMinutes: int64(1),
+			},
+		},
+	},
 }
 
 func NewTestContext(t *testing.T) *TestContext {
@@ -157,6 +180,24 @@ func NewTestContext(t *testing.T) *TestContext {
 		AdminAuthenticator: &updbAuthenticator{
 			Username: eid.New(),
 			Password: eid.New(),
+		},
+		TestUserAuthenticator: &updbAuthenticator{
+			Username: eid.New(),
+			Password: eid.New(),
+		},
+		TestUserAuthPolicy: &model.AuthPolicy{
+			Name: "test-auth-policy",
+			Primary: model.AuthPolicyPrimary{
+				Updb: model.AuthPolicyUpdb{
+					Allowed:                true,
+					MinPasswordLength:      8,
+					RequireSpecialChar:     false,
+					RequireMixedCase:       false,
+					RequireNumberChar:      false,
+					MaxAttempts:            int64(3),
+					LockoutDurationMinutes: int64(1),
+				},
+			},
 		},
 		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
 		Req:      require.New(t),
@@ -446,8 +487,41 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 		log.WithError(err).Warn("error during initialize admin")
 	}
 
-	logrus.Infof("username: %v", ctx.AdminAuthenticator.Username)
-	logrus.Infof("password: %v", ctx.AdminAuthenticator.Password)
+	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
+	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
+
+	authPolicyManager := ctx.EdgeController.AppEnv.Managers.AuthPolicy
+	err = authPolicyManager.Create(ctx.TestUserAuthPolicy, nil)
+	ctx.Req.NoError(err)
+
+	identityManager := ctx.EdgeController.AppEnv.Managers.Identity
+	identity := &model.Identity{
+		Name:           ctx.TestUserAuthenticator.Username,
+		IdentityTypeId: db.DefaultIdentityType,
+		IsAdmin:        false,
+		AuthPolicyId:   ctx.TestUserAuthPolicy.Id,
+	}
+
+	err = identityManager.Create(identity, nil)
+	ctx.Req.NoError(err)
+
+	authenticatorManager := ctx.EdgeController.AppEnv.Managers.Authenticator
+	testUserAuthenticator := &model.Authenticator{
+		BaseEntity: models.BaseEntity{},
+		Method:     db.MethodAuthenticatorUpdb,
+		IdentityId: identity.Id,
+		SubType: &model.AuthenticatorUpdb{
+			Username: ctx.TestUserAuthenticator.Username,
+			Password: ctx.TestUserAuthenticator.Password,
+		},
+	}
+
+	err = authenticatorManager.Create(testUserAuthenticator, nil)
+	ctx.Req.NoError(err)
+
+	logrus.Infof("Created test user: %v with custom auth policy: %v", ctx.TestUserAuthenticator.Username, ctx.TestUserAuthPolicy.Id)
+	logrus.Infof("test user - username: %v", ctx.TestUserAuthenticator.Username)
+	logrus.Infof("test user - password: %v", ctx.TestUserAuthenticator.Password)
 
 	ctx.EdgeController.Run()
 	go func() {
