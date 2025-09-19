@@ -375,18 +375,24 @@ func (tests *authUpdbTests) testAuthenticateUpdbAttemptsResetOnSuccess(t *testin
 		// Switch to correct password on the third attempt to reset attempts, then back to wrong password
 		switch attempt {
 		case 1, 2:
-			r.Equal(resp.StatusCode(), http.StatusUnauthorized)
-			r.False(testUserIdentity.Disabled)
+			t.Run("Identity must not be disabled until maxAttempts exceeded", func(t *testing.T) {
+				r.Equal(resp.StatusCode(), http.StatusUnauthorized)
+				r.False(testUserIdentity.Disabled)
+			})
 			if attempt == 2 {
 				password = tests.ctx.TestUserAuthenticator.Password
 			}
 		case 3:
-			r.Equal(resp.StatusCode(), http.StatusOK)
-			r.False(testUserIdentity.Disabled)
+			t.Run("Identity must not be disabled and login should be successful on the last allowed attempt", func(t *testing.T) {
+				r.Equal(resp.StatusCode(), http.StatusOK)
+				r.False(testUserIdentity.Disabled)
+			})
 			password = "wrong_password"
 		default:
-			r.Equal(resp.StatusCode(), http.StatusUnauthorized)
-			r.False(testUserIdentity.Disabled)
+			t.Run("Identity must not be disabled, as attempts should have been reset on last successful login", func(t *testing.T) {
+				r.Equal(resp.StatusCode(), http.StatusUnauthorized)
+				r.False(testUserIdentity.Disabled)
+			})
 		}
 	}
 }
@@ -421,7 +427,7 @@ func (tests *authUpdbTests) testAuthenticateUpdbUnlockAfterLockoutDuration(t *te
 		r.True(testUserIdentity.Disabled)
 	})
 
-	// Simulate wait for lockout duration to expire
+	// Simulate waiting for lockout duration to expire
 	time.Sleep((time.Duration(lockoutDuration) * time.Minute) + (5 * time.Second))
 
 	testUserIdentity, err = tests.ctx.EdgeController.AppEnv.Managers.Identity.ReadByName(username)
