@@ -54,7 +54,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		authenticatorsBody, err := gabs.ParseJSON(resp.Body())
 		req.NoError(err)
 
-		t.Run("can see three authenticators", func(t *testing.T) {
+		t.Run("can see four authenticators", func(t *testing.T) {
 			req := require.New(t)
 			count, err := authenticatorsBody.ArrayCount("data")
 
