@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install zsh
         shell: bash
         run: sudo apt-get update && sudo apt-get install --yes zsh 
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
 
@@ -45,11 +45,11 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
 
@@ -93,10 +93,10 @@ jobs:
       BUILD_DIR: /tmp/build  # dir is created by build step and env var used by test script to find ziti executable
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
 

@@ -23,11 +23,11 @@ jobs:
     if: github.repository_owner == 'openziti'
     steps:
       - name: Checkout ziti
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
 
