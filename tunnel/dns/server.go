@@ -30,15 +30,17 @@ import (
 var log = logrus.StandardLogger()
 
 type resolver struct {
-	server     *dns.Server
-	names      map[string]net.IP
-	ips        map[string]string
-	namesMtx   sync.Mutex
-	domains    map[string]*domainEntry
-	domainsMtx sync.Mutex
+	server         *dns.Server
+	names          map[string]net.IP
+	ips            map[string]string
+	namesMtx       sync.Mutex
+	domains        map[string]*domainEntry
+	domainsMtx     sync.Mutex
+	upstreamServer string
+	upstreamClient *dns.Client
 }
 
-func NewResolver(config string) (Resolver, error) {
+func NewResolver(config string, upstreamConfig string) (Resolver, error) {
 	flushDnsCaches()
 	if config == "" {
 		return nil, nil
@@ -53,7 +55,7 @@ func NewResolver(config string) (Resolver, error) {
 	case "", "file":
 		return NewRefCountingResolver(NewHostFile(resolverURL.Path)), nil
 	case "udp":
-		dnsResolver, err := NewDnsServer(resolverURL.Host)
+		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreamConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -129,12 +131,28 @@ func (r *resolver) getAddress(name string) (net.IP, error) {
 	return nil, errors.New("not found")
 }
 
+func (r *resolver) queryUpstream(query *dns.Msg) (*dns.Msg, error) {
+	if r.upstreamServer == "" || r.upstreamClient == nil {
+		return nil, errors.New("no upstream server configured")
+	}
+
+	log.Debugf("forwarding query to upstream server %s: %s", r.upstreamServer, query.Question[0].Name)
+	
+	response, _, err := r.upstreamClient.Exchange(query, r.upstreamServer)
+	if err != nil {
+		log.Warnf("upstream query failed: %v", err)
+		return nil, err
+	}
+
+	log.Debugf("received response from upstream server: %d answers", len(response.Answer))
+	return response, nil
+}
+
 func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	log.Tracef("received:\n%s\n", query.String())
 	msg := dns.Msg{}
 	msg.SetReply(query)
-	msg.RecursionAvailable = false
-	msg.Rcode = dns.RcodeRefused
+	msg.RecursionAvailable = r.upstreamServer != ""
 	q := query.Question[0]
 	switch q.Qtype {
 	case dns.TypeA:
@@ -148,20 +166,44 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 				A:   address,
 			}
 			msg.Answer = append(msg.Answer, answer)
+			log.Tracef("response:\n%s\n", msg.String())
+			err := w.WriteMsg(&msg)
+			if err != nil {
+				log.Errorf("write failed: %s", err)
+			}
+			return
+		} else if r.upstreamServer != "" {
+			// Try upstream recursion for IPv4 A records
+			if upstreamResp, err := r.queryUpstream(query); err == nil {
+				err := w.WriteMsg(upstreamResp)
+				if err != nil {
+					log.Errorf("write failed: %s", err)
+				}
+				return
+			}
+			// Fall through to timeout if upstream fails
+			return
 		} else {
-			msg.Rcode = dns.RcodeRefused // fail fast, and inspire resolver to query next name server in its list.
+			// No local match and no upstream configured - let it timeout
+			return
 		}
 	case dns.TypeAAAA:
-		// Always respond with NOERROR for AAAA queries (success, but empty answer)
-		msg.Authoritative = true
-		msg.Rcode = dns.RcodeSuccess
+		if r.upstreamServer != "" {
+			// Forward AAAA queries to upstream when configured
+			if upstreamResp, err := r.queryUpstream(query); err == nil {
+				err := w.WriteMsg(upstreamResp)
+				if err != nil {
+					log.Errorf("write failed: %s", err)
+				}
+				return
+			}
+			// Fall through to timeout if upstream fails
+			return
+		} else {
+			// No upstream configured - let it timeout
+			return
+		}
 	}
-	log.Tracef("response:\n%s\n", msg.String())
-	err := w.WriteMsg(&msg)
-	if err != nil {
-		log.Errorf("write failed: %s", err)
-	}
-
 }
 
 func (r *resolver) AddDomain(name string, ipCB func(string) (net.IP, error)) error {

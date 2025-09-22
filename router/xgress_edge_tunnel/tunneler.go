@@ -73,7 +73,7 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
 		log.WithField("mode", self.listenOptions.mode).Info("creating tproxy interceptor")
 
-		resolver, err = dns.NewResolver(self.listenOptions.resolver)
+		resolver, err = dns.NewResolver(self.listenOptions.resolver, "")
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
 			resolver = dns.NewDummyResolver()
