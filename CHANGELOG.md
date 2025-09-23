@@ -2,9 +2,11 @@
 
 ## What's New
 
-This release primarily contains a fix for the goroutine pooling functionality, which prevents a 
+This release contains a fix for the goroutine pooling functionality, which prevents a 
 race-condition where the pool can drop to 0 workers, when configured with 1 minimum worker. Unlike
 when the pool is configured for 0 minimum workers, the pool does not recover from this state.
+
+It also contains a fix for ER/T connections which may not fully close, causing circuits to build up.
 
 ## Component Updates and Bug Fixes
 
@@ -24,6 +26,7 @@ when the pool is configured for 0 minimum workers, the pool does not recover fro
 * github.com/openziti/storage: [v0.4.26 -> v0.4.28](https://github.com/openziti/storage/compare/v0.4.26...v0.4.28)
 * github.com/openziti/transport/v2: [v2.0.188 -> v2.0.193](https://github.com/openziti/transport/compare/v2.0.188...v2.0.193)
 * github.com/openziti/ziti: [v1.6.8 -> v1.6.9](https://github.com/openziti/ziti/compare/v1.6.8...v1.6.9)
+    * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
 
 # Release 1.6.8
 
