@@ -24,6 +24,13 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"math/big"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
+
+	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -62,11 +69,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
-	"math/big"
-	"os"
-	"strings"
-	"sync"
-	"sync/atomic"
 )
 
 type Controller struct {
@@ -97,6 +99,7 @@ type Controller struct {
 	apiDataOnce  sync.Once
 
 	xwebInitialized concurrency.InitState
+	healthChecker   gosundheit.Health
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
@@ -345,6 +348,7 @@ func (c *Controller) initWeb() {
 	if err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
+	c.healthChecker = healthChecker
 
 	if err = c.xweb.GetRegistry().Add(webapis.NewControllerHealthCheckApiFactory(c.env, healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
@@ -530,6 +534,15 @@ func (c *Controller) Shutdown() {
 			if err := c.raftController.Shutdown(); err != nil {
 				pfxlog.Logger().WithError(err).Error("failed to shutdown raft")
 			}
+		}
+
+		c.config.Id.StopWatchingFiles()
+		if c.config.Edge.Enrollment.SigningCert != nil {
+			c.config.Edge.Enrollment.SigningCert.StopWatchingFiles()
+		}
+
+		if c.healthChecker != nil {
+			c.healthChecker.DeregisterAll()
 		}
 	}
 }

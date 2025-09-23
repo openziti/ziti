@@ -1,3 +1,33 @@
+# Release 1.6.9
+
+## What's New
+
+This release contains a fix for the goroutine pooling functionality, which prevents a 
+race-condition where the pool can drop to 0 workers, when configured with 1 minimum worker. Unlike
+when the pool is configured for 0 minimum workers, the pool does not recover from this state.
+
+It also contains a fix for ER/T connections which may not fully close, causing circuits to build up.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.31 -> v1.0.32](https://github.com/openziti/agent/compare/v1.0.31...v1.0.32)
+* github.com/openziti/channel/v4: [v4.2.28 -> v4.2.35](https://github.com/openziti/channel/compare/v4.2.28...v4.2.35)
+* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.77](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.77)
+    * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
+    * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
+
+* github.com/openziti/identity: [v1.0.111 -> v1.0.116](https://github.com/openziti/identity/compare/v1.0.111...v1.0.116)
+    * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
+
+* github.com/openziti/runzmd: [v1.0.80 -> v1.0.82](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.82)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.2.4](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.2.4)
+    * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
+
+* github.com/openziti/storage: [v0.4.26 -> v0.4.28](https://github.com/openziti/storage/compare/v0.4.26...v0.4.28)
+* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.193](https://github.com/openziti/transport/compare/v2.0.188...v2.0.193)
+* github.com/openziti/ziti: [v1.6.8 -> v1.6.9](https://github.com/openziti/ziti/compare/v1.6.8...v1.6.9)
+    * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
+
 # Release 1.6.8
 
 ## What's New

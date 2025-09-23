@@ -18,19 +18,19 @@ package xlink_transport
 
 import (
 	"fmt"
+	"io"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
-	"sync"
-	"time"
 )
 
 type listener struct {
@@ -42,7 +42,7 @@ type listener struct {
 	tcfg               transport.Configuration
 	pendingLinks       map[string]*pendingLink
 	lock               sync.Mutex
-	metricsRegistry    metrics.Registry
+	env                LinkEnv
 	xlinkRegistery     xlink.Registry
 }
 
@@ -50,7 +50,7 @@ func (self *listener) Listen() error {
 	config := channel.ListenerConfig{
 		ConnectOptions:     self.config.options.ConnectOptions,
 		TransportConfig:    self.tcfg,
-		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
+		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.env.GetMetricsRegistry(), "pool.listener.link"),
 		ConnectionHandlers: []channel.ConnectionHandler{&ConnectionHandler{self.id}},
 		MessageStrategy:    channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
 	}
@@ -333,18 +333,23 @@ func (self *listener) cleanupExpiredPartialLinks() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		func() {
-			self.lock.Lock()
-			defer self.lock.Unlock()
-			now := time.Now()
-			for k, v := range self.pendingLinks {
-				if now.Sub(v.eventTime) > (30 * time.Second) {
-					_ = v.link.Close()
-					delete(self.pendingLinks, k)
+	for {
+		select {
+		case <-ticker.C:
+			func() {
+				self.lock.Lock()
+				defer self.lock.Unlock()
+				now := time.Now()
+				for k, v := range self.pendingLinks {
+					if now.Sub(v.eventTime) > (30 * time.Second) {
+						_ = v.link.Close()
+						delete(self.pendingLinks, k)
+					}
 				}
-			}
-		}()
+			}()
+		case <-self.env.GetCloseNotify():
+			return
+		}
 	}
 }
 

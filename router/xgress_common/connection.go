@@ -19,6 +19,11 @@ package xgress_common
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"os"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -27,11 +32,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream"
 	"github.com/openziti/secretstream/kx"
-	log "github.com/sirupsen/logrus"
-	"io"
-	"net"
-	"os"
-	"time"
 )
 
 const (
@@ -178,13 +178,13 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			}
 		}
 
-		if self.IsWriteClosed() {
-			<-self.writeDone
-			return nil, nil, io.EOF
+		if self.IsClosed() {
+			return nil, nil, xgress.ErrPeerClosed
 		}
 
-		if self.IsClosed() {
-			return nil, nil, io.EOF
+		if self.IsWriteClosed() {
+			<-self.writeDone
+			return nil, nil, xgress.ErrPeerClosed
 		}
 	}
 
@@ -216,9 +216,18 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 		}
 	}
 
-	if err != nil && n == 0 && errors.Is(err, io.EOF) && self.flags.IsSet(halfCloseFlag) {
-		if self.flags.CompareAndSet(sentFinFlag, false, true) {
-			return nil, GetFinHeaders(), nil
+	if err != nil && n == 0 && errors.Is(err, io.EOF) {
+		if connAliveErr := self.Conn.SetWriteDeadline(time.Time{}); connAliveErr == nil {
+			self.flags.Set(closedFlag, true)
+			pfxlog.Logger().WithError(connAliveErr).Errorf("failed to set write deadline, connection is fully closed")
+		}
+
+		if self.flags.IsSet(halfCloseFlag) {
+			if self.flags.CompareAndSet(sentFinFlag, false, true) {
+				return nil, GetFinHeaders(), nil
+			} else {
+				return nil, nil, xgress.ErrPeerClosed
+			}
 		}
 	}
 
@@ -262,7 +271,7 @@ func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, e
 		if self.receiver != nil {
 			buf, _, err = self.receiver.Pull(p)
 			if err != nil {
-				log.WithError(err).Errorf("crypto failed on msg of size=%v, headers=%+v", len(p), headers)
+				pfxlog.Logger().WithError(err).Errorf("crypto failed on msg of size=%v, headers=%+v", len(p), headers)
 				return 0, err
 			}
 		}
