@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
 	"github.com/openziti/ziti/tunnel/intercept"
+	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/udp_vconn"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -87,6 +88,7 @@ func New(config Config) (intercept.Interceptor, error) {
 		udpCheckInterval: config.UDPCheckInterval,
 		serviceProxies:   cmap.New[*tProxy](),
 		ipt:              nil,
+		proxyInterceptor: proxy.NewDelegate(),
 	}
 
 	if self.udpIdleTimeout < 5*time.Second {
@@ -161,8 +163,9 @@ type interceptor struct {
 	udpIdleTimeout   time.Duration
 	udpCheckInterval time.Duration
 
-	serviceProxies cmap.ConcurrentMap[string, *tProxy]
-	ipt            *iptables.IPTables
+	serviceProxies   cmap.ConcurrentMap[string, *tProxy]
+	ipt              *iptables.IPTables
+	proxyInterceptor intercept.Interceptor
 }
 
 func (self *interceptor) Stop() {
@@ -179,6 +182,10 @@ func (self *interceptor) Stop() {
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
+	if err := self.proxyInterceptor.Intercept(service, resolver, tracker); err != nil {
+		return err
+	}
+
 	// only attempt to intercept if the appropriate config is present
 	if service.InterceptV1Config == nil {
 		return nil
@@ -193,11 +200,12 @@ func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resol
 }
 
 func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.AddressTracker) error {
-	if proxy, found := self.serviceProxies.Get(serviceName); found {
-		proxy.Stop(tracker)
+	if serviceProxy, found := self.serviceProxies.Get(serviceName); found {
+		serviceProxy.Stop(tracker)
 		self.serviceProxies.Remove(serviceName)
 	}
-	return nil
+
+	return self.proxyInterceptor.StopIntercepting(serviceName, tracker)
 }
 
 func (self *interceptor) cleanupChains() {
