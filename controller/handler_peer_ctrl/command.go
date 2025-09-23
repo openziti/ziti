@@ -17,6 +17,8 @@
 package handler_peer_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
@@ -26,7 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/raft"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler {
@@ -39,6 +40,7 @@ func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler 
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during command processing")
 		},
+		WorkerFunction: commandHandlerWorker,
 	}
 	metrics.ConfigureGoroutinesPoolMetrics(&poolConfig, controller.GetMetricsRegistry(), "command_handler")
 	pool, err := goroutines.NewPool(poolConfig)
@@ -49,6 +51,10 @@ func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler 
 		controller: controller,
 		pool:       pool,
 	}
+}
+
+func commandHandlerWorker(_ uint32, f func()) {
+	f()
 }
 
 type commandHandler struct {

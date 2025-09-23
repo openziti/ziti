@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/router/env"
 )
 
 type eventsCollector struct {
@@ -95,7 +96,10 @@ func Test_LegacyEvents(t *testing.T) {
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
 
-	ctx.CreateEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouterWithCfgTweaks(func(config *env.Config) {
+		config.Metrics.ReportInterval = time.Second * 5
+		config.Metrics.IntervalAgeThreshold = time.Second * 6
+	})
 
 	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
@@ -172,11 +176,10 @@ func Test_LegacyEvents(t *testing.T) {
 	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
 	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
 
-	timeout := time.Minute * 2
+	timeout := time.Second * 20
 	for i := 0; i < 3; i++ {
 		evt = ec.PopNextEvent(ctx, fmt.Sprintf("usage or circuits deleted %v", i+1), timeout)
 		if usage, ok := evt.(*event.UsageEventV2); ok {
-			timeout = time.Second * 10
 			ctx.Req.Equal("usage", usage.Namespace)
 			ctx.Req.Equal(uint32(2), usage.Version)
 			ctx.Req.Equal(circuitEvent.CircuitId, usage.CircuitId)
@@ -221,7 +224,10 @@ func Test_OidcEvents(t *testing.T) {
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
 
-	ctx.CreateEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouterWithCfgTweaks(func(config *env.Config) {
+		config.Metrics.ReportInterval = time.Second * 5
+		config.Metrics.IntervalAgeThreshold = time.Second * 6
+	})
 
 	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
@@ -290,11 +296,10 @@ func Test_OidcEvents(t *testing.T) {
 	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
 	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
 
-	timeout := time.Minute * 2
+	timeout := time.Second * 20
 	for i := 0; i < 3; i++ {
 		evt = ec.PopNextEvent(ctx, fmt.Sprintf("usage or circuits deleted %v", i+1), timeout)
 		if usage, ok := evt.(*event.UsageEventV2); ok {
-			timeout = time.Second * 10
 			ctx.Req.Equal("usage", usage.Namespace)
 			ctx.Req.Equal(uint32(2), usage.Version)
 			ctx.Req.Equal(circuitEvent.CircuitId, usage.CircuitId)

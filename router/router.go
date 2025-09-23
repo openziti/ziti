@@ -115,6 +115,7 @@ type Router struct {
 	indexWatchers       env.IndexWatchers
 	xgBindHandler       xgress.BindHandler
 	xgMetrics           *routerMetrics.XgressMetrics
+	healthChecker       gosundheit.Health
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -364,6 +365,7 @@ func (self *Router) Start() error {
 	if healthChecker, err := self.initializeHealthChecks(); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	} else {
+		self.healthChecker = healthChecker
 		if err = self.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
 			logrus.WithError(err).Fatalf("failed to create health checks api factory")
 		}
@@ -425,6 +427,12 @@ func (self *Router) Shutdown() error {
 
 		for _, web := range self.xwebs {
 			go web.Shutdown()
+		}
+
+		self.config.Id.StopWatchingFiles()
+
+		if self.healthChecker != nil {
+			self.healthChecker.DeregisterAll()
 		}
 
 		close(self.shutdownDoneC)
@@ -497,6 +505,7 @@ func (self *Router) initLinkDialerPool() error {
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
 		},
+		WorkerFunction: linkDialerWorker,
 	}
 
 	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.metricsRegistry, "pool.link.dialer")
@@ -510,6 +519,10 @@ func (self *Router) initLinkDialerPool() error {
 	return nil
 }
 
+func linkDialerWorker(_ uint32, f func()) {
+	f()
+}
+
 func (self *Router) initRateLimiterPool() error {
 	rateLimiterPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(self.forwarder.Options.RateLimiter.QueueLength),
@@ -520,6 +533,7 @@ func (self *Router) initRateLimiterPool() error {
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during rate limited operation")
 		},
+		WorkerFunction: rateLimiterWorker,
 	}
 
 	fabricMetrics.ConfigureGoroutinesPoolMetrics(&rateLimiterPoolConfig, self.GetMetricsRegistry(), "pool.rate_limiter")
@@ -531,6 +545,10 @@ func (self *Router) initRateLimiterPool() error {
 
 	self.rateLimiterPool = rateLimiterPool
 	return nil
+}
+
+func rateLimiterWorker(_ uint32, f func()) {
+	f()
 }
 
 func (self *Router) GetLinkDialerPool() goroutines.Pool {

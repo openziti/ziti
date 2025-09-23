@@ -982,9 +982,18 @@ func (network *Network) Run() {
 func (network *Network) watchdog() {
 	watchdogInterval := 2 * time.Duration(network.options.CycleSeconds) * time.Second
 	consecutiveFails := 0
+
+	watchDogTicker := time.NewTicker(watchdogInterval)
+	defer watchDogTicker.Stop()
+
 	for {
 		// check every 2x cycle seconds
-		time.Sleep(watchdogInterval)
+		select {
+		case <-watchDogTicker.C:
+		case <-network.closeNotify:
+			return
+		}
+
 		select {
 		case <-network.watchdogCh:
 			consecutiveFails = 0
