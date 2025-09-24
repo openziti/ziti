@@ -241,15 +241,25 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 		r.handleUnanswerable(w, query)
 		return
 	case dns.TypeAAAA:
+		if _, err := r.getAddress(q.Name); err == nil {
+			msg.Authoritative = true
+			msg.Rcode = dns.RcodeSuccess
+			log.Tracef("response:\n%s\n", msg.String())
+			if err := w.WriteMsg(&msg); err != nil {
+				log.Errorf("write failed: %s", err)
+			}
+			return
+		}
+
 		if r.upstreamServer != "" {
 			if upstreamResp, err := r.queryUpstream(query); err == nil {
-				err := w.WriteMsg(upstreamResp)
-				if err != nil {
+				if err := w.WriteMsg(upstreamResp); err != nil {
 					log.Errorf("write failed: %s", err)
 				}
 				return
 			}
 		}
+
 		r.handleUnanswerable(w, query)
 		return
 	}
