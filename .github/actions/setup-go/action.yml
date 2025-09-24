@@ -1,0 +1,15 @@
+name: 'Setup Go'
+description: 'setup go using the current selected version'
+outputs:
+  go-version:
+    description: "The version of Go installed"
+    value: ${{ steps.setup-go.outputs.go-version }}
+runs:
+   using: "composite"
+   steps:
+      - name: Install Go
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+

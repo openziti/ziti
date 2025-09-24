@@ -44,9 +44,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -82,9 +80,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -117,9 +113,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -157,9 +151,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -188,9 +180,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -313,9 +303,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -448,9 +436,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Python
         uses: actions/setup-python@v5
