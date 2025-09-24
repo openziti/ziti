@@ -41,9 +41,7 @@ jobs:
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build ziti executable
         shell: bash
@@ -191,9 +189,7 @@ jobs:
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install nfpm
         shell: bash
@@ -236,9 +232,7 @@ jobs:
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Run the Docker Test Script
         shell: bash
@@ -257,9 +251,7 @@ jobs:
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install minikube
         uses: medyagh/setup-minikube@v0.0.19
