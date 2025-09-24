@@ -133,6 +133,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		})
 
 		if err != nil {
+			log.WithError(err).Error("failed to start CLI agent")
 		}
 	}
 
