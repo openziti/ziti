@@ -27,9 +27,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes zsh 
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build and run a quickstart container image
         shell: bash
@@ -49,9 +47,7 @@ jobs:
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build ziti executable
         shell: bash
@@ -96,9 +92,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Go Caching
         uses: actions/cache@v4
