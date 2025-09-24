@@ -42,7 +42,8 @@ const (
 	svcPollRateFlag   = "svcPollRate"
 	resolverCfgFlag   = "resolver"
 	dnsSvcIpRangeFlag = "dnsSvcIpRange"
-	dnsUpstreamFlag   = "dns-upstream"
+	dnsUpstreamFlag   = "dnsUpstream"
+	dnsUnanswerableFlag = "dnsUnanswerable"
 )
 
 var hostSpecificCmds []func() *cobra.Command
@@ -61,6 +62,7 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().Uint(svcPollRateFlag, 15, "Set poll rate for service updates (seconds). Polling in proxy mode is disabled unless this value is explicitly set")
 	root.PersistentFlags().StringP(resolverCfgFlag, "r", "udp://127.0.0.1:53", "Resolver configuration")
 	root.PersistentFlags().String(dnsUpstreamFlag, "", "Upstream DNS server for recursive queries (e.g., udp://10.96.0.10:53 or tcp://8.8.8.8:53)")
+	root.PersistentFlags().String(dnsUnanswerableFlag, "", "Disposition for unanswerable DNS queries (timeout|servfail|refused, default: refused)")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	root.PersistentFlags().StringP(dnsSvcIpRangeFlag, "d", "100.64.0.1/10", "cidr to use when assigning IPs to unresolvable intercept hostnames")
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
@@ -131,7 +133,6 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		})
 
 		if err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
 	}
 
@@ -139,13 +140,13 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 
 	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
 	upstreamConfig := cmd.Flag(dnsUpstreamFlag).Value.String()
-	resolver, err := dns.NewResolver(resolverConfig, upstreamConfig)
+	unansweredDisposition, _ := cmd.Flags().GetString(dnsUnanswerableFlag)
+	resolver, err := dns.NewResolver(resolverConfig, upstreamConfig, unansweredDisposition)
 	if err != nil {
 		log.WithError(err).Fatal("failed to start DNS resolver")
 	}
 
 	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
-
 	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
 	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
 		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)

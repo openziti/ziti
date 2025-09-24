@@ -79,7 +79,7 @@ func (self *tunneler) Start() error {
 	log := pfxlog.Logger()
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
 		log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
-		resolver, err = dns.NewResolver(self.listenOptions.resolver, "")
+		resolver, err = dns.NewResolver(self.listenOptions.resolver, self.listenOptions.dnsUpstream, self.listenOptions.dnsUnanswerable)
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
 			resolver = dns.NewDummyResolver()

@@ -29,6 +29,20 @@ import (
 
 var log = logrus.StandardLogger()
 
+type unansweredDisposition int
+
+const (
+    unansweredRefused unansweredDisposition = iota
+    unansweredServfail
+    unansweredTimeout
+)
+
+var unansweredKeywords = map[string]unansweredDisposition{
+    "refused":  unansweredRefused,
+    "servfail": unansweredServfail,
+    "timeout":  unansweredTimeout,
+}
+
 type resolver struct {
 	server         *dns.Server
 	names          map[string]net.IP
@@ -38,9 +52,22 @@ type resolver struct {
 	domainsMtx     sync.Mutex
 	upstreamServer string
 	upstreamClient *dns.Client
+	unanswered     unansweredDisposition
 }
 
-func NewResolver(config string, upstreamConfig string) (Resolver, error) {
+func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
+	if raw == "" {
+		return unansweredRefused, nil
+	}
+
+	if disp, found := unansweredKeywords[strings.ToLower(raw)]; found {
+		return disp, nil
+	}
+
+	return unansweredRefused, fmt.Errorf("invalid unanswerable response '%s': must be one of timeout, servfail, or refused", raw)
+}
+
+func NewResolver(config string, upstreamConfig string, unansweredConfig string) (Resolver, error) {
 	flushDnsCaches()
 	if config == "" {
 		return nil, nil
@@ -51,11 +78,39 @@ func NewResolver(config string, upstreamConfig string) (Resolver, error) {
 		return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", config, err)
 	}
 
+	unanswered := unansweredRefused
+	if unansweredConfig != "" {
+		unanswered, err = parseUnansweredDisposition(unansweredConfig)
+		if err != nil {
+			return nil, err
+		}
+	} else if resolverURL.RawQuery != "" {
+		values := resolverURL.Query()
+		if raw := strings.TrimSpace(values.Get("response")); raw != "" {
+			unanswered, err = parseUnansweredDisposition(raw)
+			if err != nil {
+				return nil, err
+			}
+		} else if raw := strings.TrimSpace(values.Get("unanswerable")); raw != "" {
+			unanswered, err = parseUnansweredDisposition(raw)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			for key := range values {
+				if disp, found := unansweredKeywords[strings.ToLower(key)]; found {
+					unanswered = disp
+					break
+				}
+			}
+		}
+	}
+
 	switch resolverURL.Scheme {
 	case "", "file":
 		return NewRefCountingResolver(NewHostFile(resolverURL.Path)), nil
 	case "udp":
-		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreamConfig)
+		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreamConfig, unanswered)
 		if err != nil {
 			return nil, err
 		}
@@ -172,8 +227,8 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 				log.Errorf("write failed: %s", err)
 			}
 			return
-		} else if r.upstreamServer != "" {
-			// Try upstream recursion for IPv4 A records
+		}
+		if r.upstreamServer != "" {
 			if upstreamResp, err := r.queryUpstream(query); err == nil {
 				err := w.WriteMsg(upstreamResp)
 				if err != nil {
@@ -181,15 +236,12 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 				}
 				return
 			}
-			// Fall through to timeout if upstream fails
-			return
-		} else {
-			// No local match and no upstream configured - let it timeout
-			return
 		}
+		// No local match or upstream failed
+		r.handleUnanswerable(w, query)
+		return
 	case dns.TypeAAAA:
 		if r.upstreamServer != "" {
-			// Forward AAAA queries to upstream when configured
 			if upstreamResp, err := r.queryUpstream(query); err == nil {
 				err := w.WriteMsg(upstreamResp)
 				if err != nil {
@@ -197,11 +249,36 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 				}
 				return
 			}
-			// Fall through to timeout if upstream fails
-			return
-		} else {
-			// No upstream configured - let it timeout
-			return
+		}
+		r.handleUnanswerable(w, query)
+		return
+	}
+
+	r.handleUnanswerable(w, query)
+}
+
+func (r *resolver) handleUnanswerable(w dns.ResponseWriter, query *dns.Msg) {
+	switch r.unanswered {
+	case unansweredTimeout:
+		log.Tracef("unanswerable query for %s: handling with timeout (no response)", query.Question[0].Name)
+		return
+	case unansweredServfail:
+		log.Tracef("unanswerable query for %s: responding with SERVFAIL", query.Question[0].Name)
+		resp := dns.Msg{}
+		resp.SetReply(query)
+		resp.RecursionAvailable = r.upstreamServer != ""
+		resp.Rcode = dns.RcodeServerFailure
+		if err := w.WriteMsg(&resp); err != nil {
+			log.Errorf("write failed: %s", err)
+		}
+	default:
+		log.Tracef("unanswerable query for %s: responding with REFUSED", query.Question[0].Name)
+		resp := dns.Msg{}
+		resp.SetReply(query)
+		resp.RecursionAvailable = r.upstreamServer != ""
+		resp.Rcode = dns.RcodeRefused
+		if err := w.WriteMsg(&resp); err != nil {
+			log.Errorf("write failed: %s", err)
 		}
 	}
 }

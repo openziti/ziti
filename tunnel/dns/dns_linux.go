@@ -29,7 +29,7 @@ import (
 	"time"
 )
 
-func NewDnsServer(addr string, upstreamConfig string) (Resolver, error) {
+func NewDnsServer(addr string, upstreamConfig string, unanswered unansweredDisposition) (Resolver, error) {
 	log.Infof("starting dns server...")
 	s := &dns.Server{
 		Addr: addr,
@@ -44,6 +44,7 @@ func NewDnsServer(addr string, upstreamConfig string) (Resolver, error) {
 		namesMtx:   sync.Mutex{},
 		domains:    make(map[string]*domainEntry),
 		domainsMtx: sync.Mutex{},
+		unanswered: unanswered,
 	}
 
 	// Configure upstream DNS server if provided

@@ -18,8 +18,8 @@ package xgress_edge_tunnel
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/intercept"
 	"github.com/openziti/ziti/tunnel/intercept/host"
@@ -73,7 +73,7 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
 		log.WithField("mode", self.listenOptions.mode).Info("creating tproxy interceptor")
 
-		resolver, err = dns.NewResolver(self.listenOptions.resolver, "")
+		resolver, err = dns.NewResolver(self.listenOptions.resolver, self.listenOptions.dnsUpstream, self.listenOptions.dnsUnanswerable)
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to start DNS resolver. using dummy resolver")
 			resolver = dns.NewDummyResolver()
