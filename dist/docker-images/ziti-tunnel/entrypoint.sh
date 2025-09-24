@@ -57,7 +57,7 @@ if [[ -z "${ZITI_IDENTITY_WAIT:-}" && -n "${NF_REG_WAIT:-}" ]]; then
     ZITI_IDENTITY_WAIT="${NF_REG_WAIT}"
 fi
 
-# assign default identity dir if not set in parent env; this is a writeable path within the container image
+# assign default identity dir if not set in parent env; this is a writable path within the container image
 : "${ZITI_IDENTITY_DIR:="/netfoundry"}"
 
 # if enrolled identity JSON is provided then write it to a file in the identities dir
