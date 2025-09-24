@@ -327,7 +327,7 @@ func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	msg := self.seq.Pop()
 	if msg == nil {
 		log.Debug("sequencer closed, return EOF")
-		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
+		return nil, nil, xgress.ErrPeerClosed // if the sequencer is closed, the whole conn is being closed
 	}
 
 	log = log.WithFields(edge.GetLoggerFields(msg))
@@ -409,7 +409,6 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
 	// to terminate
 	log.Debug("closing channel sequencer, which should cause xgress to close")
-	_ = self.seq.Push(edge.NewStateClosedMsg(self.Id(), "channel closed"))
 	self.seq.Close()
 
 	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting
