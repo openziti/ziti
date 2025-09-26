@@ -72,7 +72,7 @@ jobs:
     name: Build Windows binaries
     # allow fors to opt-out of time-consuming Windows builds
     if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -163,6 +163,7 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
+        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
         timeout-minutes: 10
         shell: bash
         run: |
@@ -203,6 +204,8 @@ jobs:
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
@@ -326,6 +329,8 @@ jobs:
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
@@ -479,7 +484,7 @@ jobs:
                 -print0 \
                 -path "./release/*/darwin/ziti" \
                 -o \
-                -path "./release/*/linux/ziti" \
+                -path "./release/*/linux/ziti*" \
             | xargs -0 chmod -c +x
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
