@@ -2,9 +2,10 @@ package tests
 
 import (
 	"encoding/json"
-	"github.com/openziti/edge-api/rest_model"
 	"net/http"
 	"testing"
+
+	"github.com/openziti/edge-api/rest_model"
 )
 
 // Test_Endpoints does HTTP testing against public entry URLs to ensure they continue to function.
@@ -116,14 +117,20 @@ func Test_Endpoints(t *testing.T) {
 				ctx.Req.Contains(data.APIVersions, "edge-client")
 				ctx.Req.Contains(data.APIVersions["edge-client"], "v1")
 				ctx.Req.Equal(*data.APIVersions["edge-client"]["v1"].Path, "/edge/client/v1")
+				ctx.Req.Len(data.APIVersions["edge-client"]["v1"].APIBaseUrls, 1)
+				ctx.Req.Equal(data.APIVersions["edge-client"]["v1"].APIBaseUrls[0], "https://"+ctx.ApiHost+"/edge/client/v1")
 
 				ctx.Req.Contains(data.APIVersions, "edge-management")
 				ctx.Req.Contains(data.APIVersions["edge-management"], "v1")
 				ctx.Req.Equal(*data.APIVersions["edge-management"]["v1"].Path, "/edge/management/v1")
+				ctx.Req.Len(data.APIVersions["edge-management"]["v1"].APIBaseUrls, 1)
+				ctx.Req.Equal(data.APIVersions["edge-management"]["v1"].APIBaseUrls[0], "https://"+ctx.ApiHost+"/edge/management/v1")
 
 				ctx.Req.Contains(data.APIVersions, "edge-oidc")
 				ctx.Req.Contains(data.APIVersions["edge-oidc"], "v1")
 				ctx.Req.Equal(*data.APIVersions["edge-oidc"]["v1"].Path, "/oidc")
+				ctx.Req.Len(data.APIVersions["edge-oidc"]["v1"].APIBaseUrls, 1)
+				ctx.Req.Equal(data.APIVersions["edge-oidc"]["v1"].APIBaseUrls[0], "https://"+ctx.ApiHost+"/oidc")
 
 				ctx.Req.Contains(data.APIVersions, "health-checks")
 				ctx.Req.Contains(data.APIVersions["health-checks"], "v1")

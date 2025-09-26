@@ -18,6 +18,9 @@
 package routes
 
 import (
+	"runtime"
+	"sync"
+
 	"github.com/go-openapi/runtime/middleware"
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
@@ -28,8 +31,6 @@ import (
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/webapis"
-	"runtime"
-	"sync"
 )
 
 func init() {
@@ -172,6 +173,7 @@ func apiBindingToPath(binding string) string {
 		return webapis.ClientRestApiBaseUrlV1
 	case webapis.ManagementApiBinding:
 		return webapis.ManagementRestApiBaseUrlV1
+	case webapis.OidcApiBinding: return webapis.OidcRestApiBaseUrl
 	}
 	return ""
 }
