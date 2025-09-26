@@ -14,7 +14,7 @@ cd "$DIRNAME/../.."  # the images can be built from anywhere, but the Dockerfile
 # - add a --push flag to push the images to the registry instead of loading them into the build context
 
 # define a version based on the most recent tag
-ZITI_VERSION=$(git describe --tags --always)
+: "${ZITI_VERSION:=$(git describe --tags --always)}"
 
 : build the go build env
 docker buildx build \
