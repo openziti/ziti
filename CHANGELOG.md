@@ -1,3 +1,10 @@
+# Release 1.5.5
+
+## What's New
+
+The build has been updated so this release will be created with the latest Go 1.24 release. 
+No other changes have been made
+
 # Release 1.5.4
 
 ## What's new

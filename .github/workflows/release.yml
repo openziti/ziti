@@ -55,7 +55,7 @@ jobs:
     name: Build Windows binaries
     # allow fors to opt-out of time-consuming Windows builds
     if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -156,6 +156,7 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
+        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
         timeout-minutes: 10
         shell: bash
         run: |
@@ -270,10 +271,12 @@ jobs:
 
           $(go env GOPATH)/bin/ziti-ci configure-git
 
+          # dry run to build release tarball we'll use to double-check the internal version matches the tag
           $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base "" --dry-run
 
+          # extract the release tarball and verify the internal version matches the tag
           tar xfzv ./release/ziti-linux-amd64-* -C /tmp
-          # TODO: should this compare current tag with "ziti --version" instead?
+
           $(go env GOPATH)/bin/ziti-ci verify-current-version --use-current-tag "$(/tmp/ziti version)"
 
           $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base ""
@@ -315,3 +318,30 @@ jobs:
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
+
+  repository-dispatch:
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    needs:
+      - publish
+      - call-publish-docker-images
+    name: Repository Dispatch Event
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Send repository_dispatch event
+        env:
+          # this token has fine-grained permission to send repository_dispatch events to the downstream private repo
+          GH_TOKEN: ${{ secrets.GH_FGPAT_NF_REPO_DISPATCH }}
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/netfoundry/ziti-fips/dispatches \
+            -f "event_type=ziti_release" \
+            -F "client_payload[version]=${{ needs.publish.outputs.ZITI_VERSION }}" \
+            -F "client_payload[run_id]=${{ github.run_id }}" \
+            -F "client_payload[repo]=${{ github.repository }}"
