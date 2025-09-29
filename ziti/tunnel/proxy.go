@@ -28,10 +28,9 @@ import (
 
 func NewProxyCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "proxy <service-name:port> [sevice-name:port]",
+		Use:     "proxy [service-name:port] [sevice-name:port]",
 		Short:   "Run in 'proxy' mode",
-		Long:    "The 'proxy' intercept mode creates a network listener for each service that is intercepted.",
-		Args:    cobra.MinimumNArgs(1),
+		Long:    "The 'proxy' intercept mode creates a network listener for each service that is intercepted. Service:port pairs are optional - when none are provided, proxy listeners will be created dynamically for dialable services with proxy.v1 configurations.",
 		RunE:    runProxy,
 		PostRun: rootPostRun,
 	}
