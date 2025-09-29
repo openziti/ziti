@@ -1,3 +1,64 @@
+# Release 1.7.0
+
+## What's New
+
+* proxy.v1 config type
+
+## New proxy.v1 Config Type
+
+Added support for dynamic service proxies with configurable binding and protocol options. 
+This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
+
+This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
+IP ip addresses or DNS entries to forward to a service using tproxy or tun interface, 
+depending on implementation.
+
+A proxy on the other hand will just start a regular TCP/UDP listener on the configured port, 
+so traffic will have to be configured for that destination.
+
+Example proxy.v1 Configuration:
+
+```
+  {
+    "port": 8080,
+    "protocols": ["tcp"],
+    "binding": "0.0.0.0"
+  }
+```
+
+Configuration Properties:
+  - port (required): Port number to listen on (1-65535)
+  - protocols (required): Array of supported protocols (tcp, udp)
+  - binding (optional): Interface to bind to. For the ER/T defaults to the configured lanIF config property.
+
+This config type is currently supported by the ER/T when running in either proxy or tproxy mode.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.31 -> v1.0.32](https://github.com/openziti/agent/compare/v1.0.31...v1.0.32)
+* github.com/openziti/channel/v4: [v4.2.28 -> v4.2.35](https://github.com/openziti/channel/compare/v4.2.28...v4.2.35)
+* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.77](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.77)
+    * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
+    * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
+
+* github.com/openziti/identity: [v1.0.111 -> v1.0.116](https://github.com/openziti/identity/compare/v1.0.111...v1.0.116)
+    * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
+
+* github.com/openziti/runzmd: [v1.0.80 -> v1.0.82](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.82)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.2.4](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.2.4)
+    * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
+
+* github.com/openziti/storage: [v0.4.26 -> v0.4.28](https://github.com/openziti/storage/compare/v0.4.26...v0.4.28)
+* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.193](https://github.com/openziti/transport/compare/v2.0.188...v2.0.193)
+* github.com/openziti/ziti: [v1.6.8 -> v1.7.0](https://github.com/openziti/ziti/compare/v1.6.8...v1.7.0)
+    * [Issue #3277](https://github.com/openziti/ziti/issues/3277) - Router can deadlock on closing a connection if the incoming data channel is full
+    * [Issue #3269](https://github.com/openziti/ziti/issues/3269) - Add host-interfaces config type
+    * [Issue #3258](https://github.com/openziti/ziti/issues/3258) - Add config type proxy.v1 so proxies can be defined dynamically for the ER/T
+    * [Issue #3259](https://github.com/openziti/ziti/issues/3259) - Interfaces config type not added due to wrong name
+    * [Issue #3265](https://github.com/openziti/ziti/issues/3265) - Forwarding errors should log at debug, since they are usual part of circuit teardown
+    * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
+    * [Issue #3207](https://github.com/openziti/ziti/issues/3207) - Allow router embedders to customize config before start
+
 # Release 1.6.8
 
 ## What's New
