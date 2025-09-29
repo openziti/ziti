@@ -2,10 +2,7 @@
 
 # get kubectl CLI from a source with Docker Content Trust (DCT)
 # FIXME: require DCT at build time
-FROM bitnami/kubectl:1.32 AS bitnami-kubectl
-
-# FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
-# FROM registry.access.redhat.com/openshift4/ose-cli AS openshift-cli  
+FROM portainer/kubectl-shell:2.34.0 AS portainer-kubectl
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
@@ -13,10 +10,10 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 ARG ARTIFACTS_DIR=./release
 ARG DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
-# e.g. linux
-ARG TARGETOS
 # e.g. arm64
 ARG TARGETARCH
+# e.g. linux
+ARG TARGETOS
 
 ARG ZUID=2171
 ARG ZGID=2171
@@ -43,7 +40,7 @@ RUN   INSTALL_PKGS="python3.11 python3.11-pip tar bash-completion vim-minimal le
 # COPY --from=openshift-cli  /path/to/oc /usr/local/bin/oc
 
 ### install Kubernetes CLI
-COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
+COPY --from=portainer-kubectl /usr/local/bin/kubectl /usr/local/bin/
 
 ### add license in the path prescribed by OpenShift
 RUN mkdir -p -m0755 /licenses
