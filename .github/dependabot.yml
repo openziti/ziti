@@ -59,7 +59,7 @@ updates:
     interval: weekly
   open-pull-requests-limit: 10
   allow:
-    - dependency-name: bitnami/kubectl
+    - dependency-name: portainer/kubectl-shell
   groups:
     all:
       applies-to: version-updates
