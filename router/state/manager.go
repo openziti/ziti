@@ -334,7 +334,7 @@ func (sm *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 
 			var closeErr error
 			if err != nil {
-				closeErr = edgeConn.CloseConn(connId, fmt.Sprintf("could not determine access, ecountered error: %s", err))
+				closeErr = edgeConn.CloseConn(connId, fmt.Sprintf("could not determine access, encountered error: %s", err))
 			} else if policy == nil {
 				closeErr = edgeConn.CloseConn(connId, "access revoked, not granting policies found")
 			}
@@ -1059,7 +1059,7 @@ func (sm *ManagerImpl) MarkLegacyServiceSessionRecentlyRemoved(token string) {
 // immediately triggering cleanup callbacks when controller synchronization
 // indicates session removal.
 func (sm *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToken *ServiceSessionToken, callBack func(serviceSessionToken *ServiceSessionToken)) RemoveListener {
-	// only legacy service sessions will emit these events as newer controllers ues JWTs or raw service ids and
+	// only legacy service sessions will emit these events as newer controllers use JWTs or raw service ids and
 	// do not rely on service session syncs from the controller
 	if !serviceSessionToken.Claims.IsLegacy {
 		return func() {}
