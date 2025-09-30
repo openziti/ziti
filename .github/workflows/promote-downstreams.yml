@@ -12,9 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
-env:
-  RELEASE_REF: ${{ github.ref}}
-
 jobs:
   wait_for_release:
     name: Wait for Release Builds to Succeed
@@ -26,32 +23,75 @@ jobs:
       - name: Wait for all checks on this rev
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
-          ref: ${{ env.RELEASE_REF }}
+          ref: ${{ github.ref_name }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           # seconds between polling the checks api for job statuses
           wait-interval: 30
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
           running-workflow-name: Wait for Release Builds to Succeed
           # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest
+          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job
 
-  parse_version:
-    needs: wait_for_release
-    name: Parse Release Version
-    runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.parse.outputs.version }}
-    steps:
-      - name: Parse Release Version
-        id: parse
+      - name: Git Checkout
+        if: failure()
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diagnose Failed "Wait for Release Builds to Succeed"
+        if: failure()
         shell: bash
         run: |
-          if [[ "${RELEASE_REF}" =~ ^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "RELEASE_REF=${RELEASE_REF} is a semver release ref"
-            echo "version=${RELEASE_REF#refs/tags/v}" | tee -a $GITHUB_OUTPUT
+          set -o pipefail
+          set -o xtrace
+
+          COMMIT_SHA=$(git rev-parse ${GITHUB_REF_NAME}^{commit})
+          for STATUS in cancelled failure
+          do
+            gh run list --repo "${GITHUB_REPOSITORY}" --status "${STATUS}" --commit "${COMMIT_SHA}"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
+  parse_version:
+    needs: wait_for_release
+    name: Parse Tag Regex
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+      highest: ${{ steps.compare.outputs.highest }}
+    steps:
+      - name: Validate the Release Tag is a Stable Release Ref
+        id: validate
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "RELEASE_REF=${RELEASE_REF} is not a semver release ref" >&2
+            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
             exit 1
+          fi
+
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare with Highest Version
+        id: compare
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+          
+          HIGHEST_VERSION=$(git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          CURRENT_VERSION="${GITHUB_REF_NAME}"
+          
+          if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
+            echo "highest=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
 
   promote_docker:
@@ -74,6 +114,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
+        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
@@ -95,8 +136,8 @@ jobs:
             rpm: x86_64
           - deb: arm64
             rpm: aarch64
-          - deb: armv7
-            rpm: armv7
+          - deb: armhf
+            rpm: armv7hl
         packager:
           - rpm
           - deb
@@ -119,7 +160,8 @@ jobs:
           jf rt copy
           --recursive=false
           --flat=true
-          ${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}.${{ matrix.arch.rpm }}.rpm
+          --fail-no-op=true
+          ${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}-1.${{ matrix.arch.rpm }}.rpm
           ${{ env.ZITI_RPM_PROD_REPO }}/redhat/${{ matrix.arch.rpm }}/
 
       - name: Copy DEB from test repo to stable repo with jFrog CLI
@@ -129,5 +171,33 @@ jobs:
           jf rt copy
           --recursive=false
           --flat=true
+          --fail-no-op=true
           ${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/${{ matrix.package_name }}_${{ needs.parse_version.outputs.version }}_${{ matrix.arch.deb }}.deb
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
+
+  repository-dispatch:
+    if: github.repository_owner == 'openziti'
+    needs:
+      - parse_version
+      - promote_docker
+    name: Repository Dispatch Event
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Send repository_dispatch event
+        env:
+          # this token has fine-grained permission to send repository_dispatch events to the downstream private repo
+          GH_TOKEN: ${{ secrets.GH_FGPAT_NF_REPO_DISPATCH }}
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/netfoundry/ziti-fips/dispatches \
+            -f "event_type=ziti_promote_stable" \
+            -F "client_payload[version]=${{ needs.parse_version.outputs.version }}" \
+            -F "client_payload[run_id]=${{ github.run_id }}" \
+            -F "client_payload[repo]=${{ github.repository }}"
