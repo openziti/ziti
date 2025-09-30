@@ -176,6 +176,7 @@ jobs:
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
 
   repository-dispatch:
+    if: github.repository_owner == 'openziti'
     needs:
       - parse_version
       - promote_docker

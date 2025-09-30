@@ -320,7 +320,7 @@ jobs:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   repository-dispatch:
-    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    if: ${{ !cancelled() && needs.publish.result == 'success' && github.repository_owner == 'openziti'}}
     needs:
       - publish
       - call-publish-docker-images
