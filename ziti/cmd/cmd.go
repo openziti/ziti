@@ -20,6 +20,11 @@ import (
 	"context"
 	goflag "flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
@@ -29,10 +34,6 @@ import (
 	"github.com/openziti/ziti/ziti/enroll"
 	"github.com/openziti/ziti/ziti/run"
 	"github.com/sirupsen/logrus"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
@@ -205,12 +206,15 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 				NewDumpCliCmd(),
 			},
 		},
-		{
+	}
+
+	if demoCmd != nil {
+		groups = append(groups, templates.CommandGroup{
 			Message: "Learning Ziti",
 			Commands: []*cobra.Command{
 				demoCmd,
 			},
-		},
+		})
 	}
 
 	groups.Add(cmd)
@@ -316,12 +320,15 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 				NewDumpCliCmd(),
 			},
 		},
-		{
+	}
+
+	if demoCmd != nil {
+		groups = append(groups, templates.CommandGroup{
 			Message: "Learning Ziti",
 			Commands: []*cobra.Command{
 				demoCmd,
 			},
-		},
+		})
 	}
 
 	groups.Add(cmd)

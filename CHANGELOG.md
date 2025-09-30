@@ -1,3 +1,9 @@
+# Release 1.5.6
+
+## What's New
+
+* Update several dependencies that had CVEs
+
 # Release 1.5.5
 
 ## What's New
