@@ -23,7 +23,7 @@ jobs:
     name: POST Webhook
     if: github.actor != 'dependabot[bot]'
     steps:
-      - uses: openziti/ziti-mattermost-action-py@main
+      - uses: openziti/ziti-mattermost-action-py@debug-py-action
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
