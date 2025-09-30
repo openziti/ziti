@@ -1228,7 +1228,7 @@ func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 
 		for _, session := range sm.legacyApiSessionsByToken.Items() {
 			i++
-			val := fmt.Sprintf("%v: id: %v, token: %v\n", i, session.Id, session.Token)
+			val := fmt.Sprintf("%v: id: %v, token: %v\n", i, session.Id, session.Token())
 			select {
 			case ch <- val:
 			case <-deadline:
