@@ -2,7 +2,7 @@
 
 ## What's New
 
-* Update several dependendies that had CVEs
+* Update several dependencies that had CVEs
 
 # Release 1.5.5
 
