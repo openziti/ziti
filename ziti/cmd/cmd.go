@@ -39,7 +39,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/create"
-	"github.com/openziti/ziti/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/pki"
@@ -152,7 +151,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	edgeCommand := edge.NewCmdEdge(out, err, p)
 	edgeCommand.AddCommand(run.NewQuickStartCmd(out, err, context.Background()))
 
-	demoCmd := demo.NewDemoCmd(p)
+	demoCmdGroup := DemoCommandGroup(p)
 	enrollCmd := enroll.NewEnrollCmd(p)
 	enrollCmd.Hidden = true
 
@@ -205,12 +204,10 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 				NewDumpCliCmd(),
 			},
 		},
-		{
-			Message: "Learning Ziti",
-			Commands: []*cobra.Command{
-				demoCmd,
-			},
-		},
+	}
+
+	if len(demoCmdGroup) > 0 {
+		groups = append(groups, demoCmdGroup...)
 	}
 
 	groups.Add(cmd)
@@ -266,7 +263,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	edgeCommand := edge.NewCmdEdge(out, err, p)
 	edgeCommand.AddCommand(run.NewQuickStartCmd(out, err, context.Background()))
 
-	demoCmd := demo.NewDemoCmd(p)
+	demoCmdGroup := DemoCommandGroup(p)
 	enrollCmd := enroll.NewEnrollCmd(p)
 	runCmd := run.NewRunCmd(out, err)
 
@@ -316,12 +313,10 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 				NewDumpCliCmd(),
 			},
 		},
-		{
-			Message: "Learning Ziti",
-			Commands: []*cobra.Command{
-				demoCmd,
-			},
-		},
+	}
+
+	if len(demoCmdGroup) > 0 {
+		groups = append(groups, demoCmdGroup...)
 	}
 
 	groups.Add(cmd)
