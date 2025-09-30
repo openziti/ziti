@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 )
@@ -46,27 +47,27 @@ var headersFromFabric = map[uint8]int32{
 
 type edgeTerminator struct {
 	edge.MsgChannel
-	edgeClientConn    *edgeClientConn
-	terminatorId      string
-	listenerId        string
-	token             string
-	instance          string
-	instanceSecret    []byte
-	cost              uint16
-	precedence        edge_ctrl_pb.TerminatorPrecedence
-	hostData          map[uint32][]byte
-	assignIds         bool
-	useSdkXgress      bool
-	onClose           func()
-	v2                bool
-	state             concurrenz.AtomicValue[xgress_common.TerminatorState]
-	supportsInspect   bool
-	operationActive   atomic.Bool
-	createTime        time.Time
-	lastAttempt       time.Time
-	establishCallback func(result edge_ctrl_pb.CreateTerminatorResult)
-	lock              sync.Mutex
-	rateLimitCallback rate.RateLimitControl
+	edgeClientConn      *edgeClientConn
+	terminatorId        string
+	listenerId          string
+	serviceSessionToken *state.ServiceSessionToken
+	instance            string
+	instanceSecret      []byte
+	cost                uint16
+	precedence          edge_ctrl_pb.TerminatorPrecedence
+	hostData            map[uint32][]byte
+	assignIds           bool
+	useSdkXgress        bool
+	onClose             func()
+	v2                  bool
+	state               concurrenz.AtomicValue[xgress_common.TerminatorState]
+	supportsInspect     bool
+	operationActive     atomic.Bool
+	createTime          time.Time
+	lastAttempt         time.Time
+	establishCallback   func(result edge_ctrl_pb.CreateTerminatorResult)
+	lock                sync.Mutex
+	rateLimitCallback   rate.RateLimitControl
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -189,7 +190,7 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk bool, notifyCtrl bool, reason string) {
 	logger := pfxlog.Logger().
 		WithField("terminatorId", self.terminatorId).
-		WithField("token", self.token).
+		WithField("tokenId", self.serviceSessionToken.TokenId()).
 		WithField("reason", reason)
 
 	if notifySdk && !self.GetChannel().IsClosed() {
@@ -212,11 +213,11 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 			if self.terminatorId != "" {
 				logger.Info("removing terminator on controller")
 
-				ctrlCh := self.edgeClientConn.apiSession.SelectCtrlCh(self.edgeClientConn.listener.factory.ctrls)
+				ctrlCh := self.edgeClientConn.apiSessionToken.SelectCtrlCh(self.edgeClientConn.listener.factory.ctrls)
 
 				if ctrlCh == nil {
 					logger.Error("no controller available, unable to remove terminator")
-				} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.token, self.terminatorId); err != nil {
+				} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self.serviceSessionToken.TokenId(), self.terminatorId); err != nil {
 					logger.WithError(err).Error("failed to remove terminator")
 				} else {
 					logger.Info("successfully removed terminator")
@@ -227,7 +228,7 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 		}
 
 		logger.Info("terminator removed from router set")
-		self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
+		self.edgeClientConn.listener.factory.hostedServices.Delete(self.serviceSessionToken.TokenId())
 	}
 
 	if self.onClose != nil {
@@ -243,7 +244,7 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 		seq:        NewMsgQueue(4),
 	}
 
-	if err := mux.AddMsgSink(result); err != nil {
+	if err := mux.Add(result); err != nil {
 		return nil, err
 	}
 
@@ -266,11 +267,21 @@ func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl
 
 type edgeXgressConn struct {
 	edge.MsgChannel
-	mux     edge.MsgMux
+	mux     edge.ConnMux[*state.ConnState]
 	seq     MsgQueue
 	onClose func()
 	closed  atomic.Bool
 	ctrlRx  xgress.ControlReceiver
+
+	data atomic.Pointer[state.ConnState]
+}
+
+func (self *edgeXgressConn) GetData() *state.ConnState {
+	return self.data.Load()
+}
+
+func (self *edgeXgressConn) SetData(data *state.ConnState) {
+	self.data.Store(data)
 }
 
 func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
@@ -403,7 +414,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
-	self.mux.RemoveMsgSink(self)
+	self.mux.Remove(self)
 
 	// When nextSeq is closed, GetNext in Read() will return a nil.
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that

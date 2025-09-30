@@ -2,6 +2,9 @@ package xgress_edge
 
 import (
 	"crypto/x509"
+	"testing"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
@@ -13,11 +16,10 @@ import (
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/ziti/router/handler_xgress"
 	metrics2 "github.com/openziti/ziti/router/metrics"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func newMirrorLink(fwd *forwarder.Forwarder) *mirrorLink {
@@ -115,11 +117,11 @@ func (link *mirrorLink) Close() error {
 }
 
 func Benchmark_CowMapWritePerf(b *testing.B) {
-	mux := edge.NewMapMsgMux()
+	mux := edge.NewChannelConnMapMux[*state.ConnState]()
 	writePerf(b, mux)
 }
 
-func writePerf(b *testing.B, mux edge.MsgMux) {
+func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	testChannel := &NoopTestChannel{}
 	sdkChannel := edge.NewSingleSdkChannel(testChannel)
 	listener := &listener{}
@@ -137,7 +139,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	}
 
 	req := require.New(b)
-	req.NoError(mux.AddMsgSink(conn))
+	req.NoError(mux.Add(conn))
 
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)

@@ -35,7 +35,7 @@ func NewSessionRemovedHandler(sm Manager) *sessionRemovedHandler {
 }
 
 func (h *sessionRemovedHandler) ContentType() int32 {
-	return env.SessionRemovedType
+	return env.ServiceSessionRemovedType
 }
 
 func (h *sessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
@@ -49,11 +49,14 @@ func (h *sessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel.Ch
 				if hasIds {
 					id = req.Ids[i]
 				}
-				pfxlog.Logger().
-					WithField("sessionToken", token).
-					WithField("sessionId", id).
-					Debugf("removing session [token: %s] [id: %s]", token, id)
-				h.sm.RemoveEdgeSession(token)
+
+				serviceSessionToken := NewServiceSessionTokenFromId(id)
+
+				logger := pfxlog.Logger().Entry
+				logger = serviceSessionToken.AddLoggingFields(logger)
+				logger.Debugf("removing session [token: %s] [id: %s]", token, id)
+
+				h.sm.RemoveLegacyServiceSession(serviceSessionToken)
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as network session removed")

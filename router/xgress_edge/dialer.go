@@ -18,17 +18,17 @@ package xgress_edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/router/xgress_router"
 	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
@@ -52,7 +52,7 @@ func (dialer *dialer) InspectTerminator(id string, destination string, fixInvali
 		if err != nil {
 			return true, err.Error()
 		}
-		return result.Type == edge.ConnTypeBind, result.Detail
+		return result.Type == edgeSdk.ConnTypeBind, result.Detail
 	}
 
 	return false, "terminator not found"
@@ -93,32 +93,32 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 
 	callerId := ""
 	if circuitId.Data != nil {
-		if callerIdBytes, found := circuitId.Data[uint32(edge.CallerIdHeader)]; found {
+		if callerIdBytes, found := circuitId.Data[uint32(edgeSdk.CallerIdHeader)]; found {
 			callerId = string(callerIdBytes)
 		}
 	}
 
 	log.Debug("dialing sdk client hosting service")
-	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
-	dialRequest.PutStringHeader(edge.CircuitIdHeader, params.GetCircuitId().Token)
+	dialRequest := edgeSdk.NewDialMsg(terminator.Id(), terminator.serviceSessionToken.JwtToken.Raw, callerId)
+	dialRequest.PutStringHeader(edgeSdk.CircuitIdHeader, params.GetCircuitId().Token)
 
-	if pk, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
-		dialRequest.Headers[edge.PublicKeyHeader] = pk
+	if pk, ok := circuitId.Data[uint32(edgeSdk.PublicKeyHeader)]; ok {
+		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
 	}
 
-	if marker, ok := circuitId.Data[uint32(edge.ConnectionMarkerHeader)]; ok {
-		dialRequest.Headers[edge.ConnectionMarkerHeader] = marker
+	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
+		dialRequest.Headers[edgeSdk.ConnectionMarkerHeader] = marker
 	}
 
-	appData, hasAppData := circuitId.Data[uint32(edge.AppDataHeader)]
+	appData, hasAppData := circuitId.Data[uint32(edgeSdk.AppDataHeader)]
 	if hasAppData {
-		dialRequest.Headers[edge.AppDataHeader] = appData
+		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
 	}
 
 	connId := terminator.nextDialConnId()
 	log = log.WithField("connId", connId)
 	log.Debugf("router assigned connId %v for dial", connId)
-	dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
+	dialRequest.PutUint32Header(edgeSdk.RouterProvidedConnId, connId)
 
 	conn, err := terminator.newConnection(connId)
 	if err != nil {
@@ -146,7 +146,7 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		x.Close()
 		return nil, err
 	}
-	result, err := edge.UnmarshalDialResult(reply)
+	result, err := edgeSdk.UnmarshalDialResult(reply)
 
 	if err != nil {
 		conn.close(false, err.Error())
@@ -176,35 +176,35 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 
 	callerId := ""
 	if circuitId.Data != nil {
-		if callerIdBytes, found := circuitId.Data[uint32(edge.CallerIdHeader)]; found {
+		if callerIdBytes, found := circuitId.Data[uint32(edgeSdk.CallerIdHeader)]; found {
 			callerId = string(callerIdBytes)
 		}
 	}
 
 	log.Debug("dialing sdk client hosting service")
-	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
-	dialRequest.PutStringHeader(edge.CircuitIdHeader, params.GetCircuitId().Token)
-	dialRequest.PutBoolHeader(edge.UseXgressToSdkHeader, true)
-	dialRequest.PutStringHeader(edge.XgressCtrlIdHeader, params.GetCtrlId())
-	dialRequest.PutStringHeader(edge.XgressAddressHeader, string(params.GetAddress()))
+	dialRequest := edgeSdk.NewDialMsg(terminator.Id(), terminator.serviceSessionToken.JwtToken.Raw, callerId)
+	dialRequest.PutStringHeader(edgeSdk.CircuitIdHeader, params.GetCircuitId().Token)
+	dialRequest.PutBoolHeader(edgeSdk.UseXgressToSdkHeader, true)
+	dialRequest.PutStringHeader(edgeSdk.XgressCtrlIdHeader, params.GetCtrlId())
+	dialRequest.PutStringHeader(edgeSdk.XgressAddressHeader, string(params.GetAddress()))
 
-	if pk, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
-		dialRequest.Headers[edge.PublicKeyHeader] = pk
+	if pk, ok := circuitId.Data[uint32(edgeSdk.PublicKeyHeader)]; ok {
+		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
 	}
 
-	if marker, ok := circuitId.Data[uint32(edge.ConnectionMarkerHeader)]; ok {
-		dialRequest.Headers[edge.ConnectionMarkerHeader] = marker
+	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
+		dialRequest.Headers[edgeSdk.ConnectionMarkerHeader] = marker
 	}
 
-	appData, hasAppData := circuitId.Data[uint32(edge.AppDataHeader)]
+	appData, hasAppData := circuitId.Data[uint32(edgeSdk.AppDataHeader)]
 	if hasAppData {
-		dialRequest.Headers[edge.AppDataHeader] = appData
+		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
 	}
 
 	connId := terminator.nextDialConnId()
 	log = log.WithField("connId", connId)
 	log.Debugf("router assigned connId %v for dial", connId)
-	dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
+	dialRequest.PutUint32Header(edgeSdk.RouterProvidedConnId, connId)
 
 	edgeForwarder := &xgEdgeForwarder{
 		edgeClientConn: terminator.edgeClientConn,
@@ -232,7 +232,7 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 		edgeForwarder.UnregisterRouting()
 		return nil, err
 	}
-	result, err := edge.UnmarshalDialResult(reply)
+	result, err := edgeSdk.UnmarshalDialResult(reply)
 
 	if err != nil {
 		edgeForwarder.UnregisterRouting()
@@ -264,26 +264,26 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 
 	callerId := ""
 	if circuitId.Data != nil {
-		if callerIdBytes, found := circuitId.Data[uint32(edge.CallerIdHeader)]; found {
+		if callerIdBytes, found := circuitId.Data[uint32(edgeSdk.CallerIdHeader)]; found {
 			callerId = string(callerIdBytes)
 		}
 	}
 
 	log.Debug("dialing sdk client hosting service")
-	dialRequest := edge.NewDialMsg(terminator.Id(), terminator.token, callerId)
-	dialRequest.PutStringHeader(edge.CircuitIdHeader, params.GetCircuitId().Token)
+	dialRequest := edgeSdk.NewDialMsg(terminator.Id(), terminator.serviceSessionToken.JwtToken.Raw, callerId)
+	dialRequest.PutStringHeader(edgeSdk.CircuitIdHeader, params.GetCircuitId().Token)
 
-	if pk, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
-		dialRequest.Headers[edge.PublicKeyHeader] = pk
+	if pk, ok := circuitId.Data[uint32(edgeSdk.PublicKeyHeader)]; ok {
+		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
 	}
 
-	if marker, ok := circuitId.Data[uint32(edge.ConnectionMarkerHeader)]; ok {
-		dialRequest.Headers[edge.ConnectionMarkerHeader] = marker
+	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
+		dialRequest.Headers[edgeSdk.ConnectionMarkerHeader] = marker
 	}
 
-	appData, hasAppData := circuitId.Data[uint32(edge.AppDataHeader)]
+	appData, hasAppData := circuitId.Data[uint32(edgeSdk.AppDataHeader)]
 	if hasAppData {
-		dialRequest.Headers[edge.AppDataHeader] = appData
+		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
 	}
 
 	log.Debug("router not assigning connId for dial")
@@ -292,7 +292,7 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 		return nil, err
 	}
 
-	result, err := edge.UnmarshalDialResult(reply)
+	result, err := edgeSdk.UnmarshalDialResult(reply)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +303,7 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 
 	conn, err := terminator.newConnection(result.NewConnId)
 	if err != nil {
-		startFail := edge.NewStateConnectedMsg(result.ConnId)
+		startFail := edgeSdk.NewStateConnectedMsg(result.ConnId)
 		startFail.ReplyTo(reply)
 
 		if sendErr := terminator.SendState(startFail); sendErr != nil {
@@ -318,7 +318,7 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 	conn.ctrlRx = x
 	x.Start()
 
-	start := edge.NewStateConnectedMsg(result.ConnId)
+	start := edgeSdk.NewStateConnectedMsg(result.ConnId)
 	start.ReplyTo(reply)
 	return nil, terminator.SendState(start)
 }
