@@ -1,3 +1,22 @@
+# Release 1.5.7
+
+## What's New
+
+* Additional library updates to resolve CVEs in dependencies
+* GitHub Actions release workflow fix
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/foundation/v2: [v2.0.59 -> v2.0.77](https://github.com/openziti/foundation/compare/v2.0.59...v2.0.77)
+    * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
+    * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
+    * [Issue #443](https://github.com/openziti/foundation/issues/443) - Allow injecting custom method into go-routine pools, to allow identifying them in stack dumps
+
+* github.com/openziti/runzmd: [v1.0.67 -> v1.0.83](https://github.com/openziti/runzmd/compare/v1.0.67...v1.0.83)
+* github.com/openziti/go-term-markdown: v1.0.1 (new)
+* github.com/openziti/ziti: [v1.5.6 -> v1.5.7](https://github.com/openziti/ziti/compare/v1.5.6...v1.5.7)
+    * [Issue #3291](https://github.com/openziti/ziti/issues/3291) - replace decommissioned bitnami/kubectl
+
 # Release 1.5.6
 
 ## What's New
