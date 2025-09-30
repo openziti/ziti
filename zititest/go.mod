@@ -1,6 +1,6 @@
 module github.com/openziti/ziti/zititest
 
-go 1.24.1
+go 1.24.7
 
 // use parent project
 replace github.com/openziti/ziti => ../
