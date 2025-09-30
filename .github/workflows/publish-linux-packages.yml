@@ -48,10 +48,10 @@ jobs:
       NFPM_VERSION: "2.38.0"
     steps:
       - name: Checkout Workspace
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
