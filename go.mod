@@ -18,7 +18,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v1.1.0
-	github.com/go-acme/lego/v4 v4.22.2
+	github.com/go-acme/lego/v4 v4.25.2
 	github.com/go-openapi/errors v0.22.1
 	github.com/go-openapi/loads v0.22.0
 	github.com/go-openapi/runtime v0.28.0
@@ -47,7 +47,7 @@ require (
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.2
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/miekg/dns v1.1.64
+	github.com/miekg/dns v1.1.67
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.26
@@ -83,13 +83,13 @@ require (
 	github.com/zitadel/oidc/v2 v2.12.2
 	go.etcd.io/bbolt v1.4.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.40.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.37.0
-	golang.org/x/oauth2 v0.28.0
-	golang.org/x/sync v0.12.0
-	golang.org/x/sys v0.31.0
-	golang.org/x/text v0.23.0
+	golang.org/x/net v0.42.0
+	golang.org/x/oauth2 v0.30.0
+	golang.org/x/sync v0.16.0
+	golang.org/x/sys v0.34.0
+	golang.org/x/text v0.27.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
@@ -111,7 +111,7 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
@@ -119,8 +119,8 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -189,15 +189,14 @@ require (
 	go.mongodb.org/mongo-driver v1.17.3 // indirect
 	go.mozilla.org/pkcs7 v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel v1.35.0 // indirect
-	go.opentelemetry.io/otel/metric v1.35.0 // indirect
-	go.opentelemetry.io/otel/trace v1.35.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
+	go.opentelemetry.io/otel v1.36.0 // indirect
+	go.opentelemetry.io/otel/metric v1.36.0 // indirect
+	go.opentelemetry.io/otel/trace v1.36.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/tools v0.31.0 // indirect
+	golang.org/x/mod v0.25.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
+	golang.org/x/tools v0.34.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
 )
