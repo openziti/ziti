@@ -54,11 +54,11 @@ require (
 	github.com/openziti/channel/v3 v3.0.39
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.42
-	github.com/openziti/foundation/v2 v2.0.59
+	github.com/openziti/foundation/v2 v2.0.77
 	github.com/openziti/identity v1.0.100
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.3.0
-	github.com/openziti/runzmd v1.0.67
+	github.com/openziti/runzmd v1.0.83
 	github.com/openziti/sdk-golang v0.25.1
 	github.com/openziti/secretstream v0.1.32
 	github.com/openziti/storage v0.4.7
@@ -77,7 +77,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v2 v2.12.2
@@ -100,7 +100,6 @@ require (
 )
 
 require (
-	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
@@ -111,13 +110,12 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
-	github.com/dlclark/regexp2 v1.10.0 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
@@ -142,13 +140,12 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
-	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
-	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/kyokomi/emoji/v2 v2.2.13 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
@@ -160,6 +157,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openziti-incubator/cf v0.0.3 // indirect
 	github.com/openziti/dilithium v0.3.5 // indirect
+	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pion/dtls/v3 v3.0.5 // indirect
@@ -168,7 +166,6 @@ require (
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -193,7 +190,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/image v0.31.0 // indirect
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/term v0.35.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
