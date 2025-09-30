@@ -190,6 +190,7 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		entities.InterceptV1,
 		entities.HostConfigV1,
 		entities.HostConfigV2,
+		entities.ProxyV1,
 	}
 
 	zitiCfg.MaxControlConnections = uint32(maxControlConnections)
