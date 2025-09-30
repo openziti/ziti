@@ -59,17 +59,39 @@ jobs:
     name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
-      version: ${{ steps.parse.outputs.version }}
+      version: ${{ steps.validate.outputs.version }}
+      highest: ${{ steps.compare.outputs.highest }}
     steps:
-      - name: Parse the Semantic Version from the Tag
-        id: parse
+      - name: Validate the Release Tag is a Stable Release Ref
+        id: validate
         shell: bash
         run: |
           if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "${GITHUB_REF_NAME} is not a semver release ref" >&2
+            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
             exit 1
+          fi
+
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare with Highest Version
+        id: compare
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+          
+          HIGHEST_VERSION=$(git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          CURRENT_VERSION="${GITHUB_REF_NAME}"
+          
+          if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
+            echo "highest=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
 
   promote_docker:
@@ -92,6 +114,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
+        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
