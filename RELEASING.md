@@ -78,6 +78,10 @@ release as not a prerelease makes it a stable release. There can be one stable r
 1. After an arbitrary burn-in period, unmark "prerelease" in GitHub Releases (`isPrerelease: false`). This will automatically promote and advertise the downstreams.
    Note: the downstreams workflow trigger ignores `isLatest`, can only be triggered once for a release, and waits for all other checks on the same revision.
 
+## Hotfixes
+
+A hotfix is released from a prior release, so it has a lower version than the highest release version. A hotfix can be marked stable (not a prerelease) like any other version, but is handled differently during stable promotion because it is not the highest release: Docker images are not tagged `:latest`, avoiding clobbering of the highest version. That is, the highest version should remain tagged `:latest` (the default image for consumers), not the newer hotfix.
+
 ## Downstreams
 
 These downstreams are built on push to the default branch **main** and release tags.
