@@ -350,14 +350,16 @@ func (sm *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 // current posture data and policy configuration, providing comprehensive
 // authorization decisions that incorporate real-time device compliance.
 func (sm *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, policyType edge_ctrl_pb.PolicyType) (*common.ServicePolicy, error) {
+	var data *posture.InstanceData
 	rdm := sm.routerDataModel.Load()
+
 	instance := sm.postureCache.GetInstance(apiSessionId)
 
-	if instance == nil {
-		return nil, errors.New("no posture instance found for api session")
+	if instance != nil {
+		data = &instance.InstanceData
 	}
 
-	return posture.HasAccess(rdm, identityId, serviceId, &instance.InstanceData, policyType)
+	return posture.HasAccess(rdm, identityId, serviceId, data, policyType)
 }
 
 func routerDataModelWorker(_ uint32, f func()) {

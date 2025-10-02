@@ -216,18 +216,22 @@ func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, e
 		return "", err
 	}
 
-	self.env.GetEventDispatcher().AcceptSessionEvent(&event.SessionEvent{
-		Namespace:    event.SessionEventNS,
-		EventSrcId:   self.env.GetId(),
-		Timestamp:    time.Now(),
-		EventType:    event.SessionEventTypeCreated,
-		Provider:     event.SessionProviderJwt,
-		SessionType:  entity.Type,
-		Id:           entity.Id,
-		ApiSessionId: entity.ApiSessionId,
-		IdentityId:   entity.IdentityId,
-		ServiceId:    entity.ServiceId,
-	})
+	if !isLegacy {
+		// legacy events will be output during db write, non-legacy events are output here as they aren't stored durably
+		self.env.GetEventDispatcher().AcceptSessionEvent(&event.SessionEvent{
+			Namespace:    event.SessionEventNS,
+			EventSrcId:   self.env.GetId(),
+			Timestamp:    time.Now(),
+			EventType:    event.SessionEventTypeCreated,
+			Provider:     event.SessionProviderJwt,
+			SessionType:  entity.Type,
+			Id:           entity.Id,
+			ApiSessionId: entity.ApiSessionId,
+			IdentityId:   entity.IdentityId,
+			ServiceId:    entity.ServiceId,
+			Token:        entity.Id,
+		})
+	}
 
 	return result, nil
 }

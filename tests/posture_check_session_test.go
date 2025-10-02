@@ -97,8 +97,8 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 
 		t.Run("can authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			//err := clientContext.Authenticate()
-			//ctx.Req.NoError(err)
+			err := clientContext.Authenticate()
+			ctx.Req.NoError(err)
 		})
 
 		t.Run("can provide valid posture data and dial the service", func(t *testing.T) {

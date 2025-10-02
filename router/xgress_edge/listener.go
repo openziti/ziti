@@ -442,19 +442,22 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	connectCtx.ServiceSessionToken = serviceSessionToken
 
-	grantingPolicy, err := self.listener.factory.stateManager.HasDialAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
+	if self.apiSessionToken.IsOidc() {
+		//if oidc we check on the router, legacy tokens are checked in the controller during circuit creation
+		grantingPolicy, err := self.listener.factory.stateManager.HasDialAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
 
-	if err != nil {
-		errStr := err.Error()
-		log.Error(err)
-		self.sendStateClosedReply(errStr, req)
-	}
+		if err != nil {
+			errStr := err.Error()
+			log.Error(err)
+			self.sendStateClosedReply(errStr, req)
+		}
 
-	if grantingPolicy == nil {
-		errStr := "no access to service, failed dial access check"
-		log.Error(errStr)
-		self.sendStateClosedReply(errStr, req)
-		return
+		if grantingPolicy == nil {
+			errStr := "no access to service, failed bind access check"
+			log.Error(errStr)
+			self.sendStateClosedReply(errStr, req)
+			return
+		}
 	}
 
 	var handler connectHandler
@@ -562,6 +565,10 @@ func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircu
 }
 
 func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
 	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
 
 	if ctrlCh == nil {
@@ -575,30 +582,17 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
-	if supportsCreateTerminatorV2 {
-		self.processBindV2(req, ch, ctrlCh)
-	} else {
-		self.processBindV1(req, ch, ctrlCh)
-	}
-}
-
-func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
 	sessionTokenStr := string(req.Body)
 
-	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
-
-	log := pfxlog.ContextLogger(ch.Label()).
-		WithFields(sdkedge.GetLoggerFields(req)).
-		WithField("routerId", self.listener.id.Token)
-
-	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
+	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, self.apiSessionToken)
 
 	if err != nil {
-		log.WithError(err).Warn("unable to verify service session token")
+		log.WithError(err).Error("unable to verify service session token")
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
+
+	log = serviceSessionToken.AddLoggingFields(log)
 
 	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
 		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
@@ -606,6 +600,39 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 		self.sendStateClosedReply(msg, req)
 		return
 	}
+
+	if self.apiSessionToken.IsOidc() {
+		//if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
+		grantingPolicy, err := self.listener.factory.stateManager.HasBindAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
+
+		if err != nil {
+			errStr := err.Error()
+			log.Error(err)
+			self.sendStateClosedReply(errStr, req)
+		}
+
+		if grantingPolicy == nil {
+			errStr := "no access to service, failed dial access check"
+			log.Error(errStr)
+			self.sendStateClosedReply(errStr, req)
+			return
+		}
+	}
+
+	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
+	if supportsCreateTerminatorV2 {
+		self.processBindV2(serviceSessionToken, req, ch, ctrlCh)
+	} else {
+		self.processBindV1(serviceSessionToken, req, ch, ctrlCh)
+	}
+}
+
+func (self *edgeClientConn) processBindV1(serviceSessionToken *state.ServiceSessionToken, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
+
+	log = serviceSessionToken.AddLoggingFields(log)
 
 	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
@@ -718,29 +745,13 @@ func (self *edgeClientConn) processBindV1(req *channel.Message, ch channel.Chann
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-	sessionTokenStr := string(req.Body)
-
-	apiSessionToken := state.GetApiSessionTokenFromCh(ch)
+func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSessionToken, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
 
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
 
-	serviceSessionToken, err := self.listener.factory.stateManager.ParseServiceSessionJwt(sessionTokenStr, apiSessionToken)
-
-	if err != nil {
-		log.WithError(err).Warn("unable to verify service session token")
-		self.sendStateClosedReply(err.Error(), req)
-		return
-	}
-
-	if serviceSessionToken.Claims.Type != common.ServiceSessionTypeBind {
-		msg := fmt.Sprintf("rejecting bind, invalid session type. expected %v, got %v", common.ServiceSessionTypeBind, serviceSessionToken.Claims.Type)
-		log.Error(msg)
-		self.sendStateClosedReply(msg, req)
-		return
-	}
+	log = serviceSessionToken.AddLoggingFields(log)
 
 	if serviceSessionToken.Claims.IsLegacy && self.listener.factory.stateManager.WasLegacyServiceSessionRecentlyRemoved(serviceSessionToken.Token()) {
 		log.Info("invalid session, not establishing terminator")

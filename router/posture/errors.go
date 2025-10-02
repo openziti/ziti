@@ -2,6 +2,7 @@ package posture
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 )
@@ -159,6 +160,6 @@ func (s Str) String() string {
 	return string(s)
 }
 
-var NilStateError = errors.New("posture state was nil")
+var NilStateError = errors.New("posture state was nil, no posture data has been sent")
 
 var NotEqualError = errors.New("the values were not equal")

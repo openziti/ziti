@@ -222,6 +222,16 @@ func (a *ApiSessionToken) Token() string {
 	return "unknown"
 }
 
+// IsOidc returns true if this API session token uses OIDC authentication
+// JWT access tokens rather than legacy UUID tokens
+func (a *ApiSessionToken) IsOidc() bool {
+	if a.Type == ApiSessionTokenJwt {
+		return true
+	}
+
+	return false
+}
+
 // IsLegacy returns true if this API session token uses legacy authentication
 // formats (UUID-based tokens or protobuf sessions) rather than modern JWT tokens.
 func (a *ApiSessionToken) IsLegacy() bool {
