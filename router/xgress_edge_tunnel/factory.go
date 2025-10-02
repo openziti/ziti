@@ -40,6 +40,8 @@ const (
 	DefaultServicePollRate   = 15 * time.Second
 	DefaultDnsResolver       = "udp://127.0.0.1:53"
 	DefaultDnsServiceIpRange = "100.64.0.1/10"
+	DefaultDnsUpstream       = ""
+	DefaultDnsUnanswerable   = "refused"
 )
 
 type Factory struct {
@@ -141,6 +143,8 @@ type Options struct {
 	svcPollRate      time.Duration
 	resolver         string
 	dnsSvcIpRange    string
+	dnsUpstream      string
+	dnsUnanswerable  string
 	lanIf            string
 	services         []string
 	udpIdleTimeout   time.Duration
@@ -152,6 +156,8 @@ func (options *Options) load(data xgress.OptionsData) error {
 	options.svcPollRate = DefaultServicePollRate
 	options.resolver = DefaultDnsResolver
 	options.dnsSvcIpRange = DefaultDnsServiceIpRange
+	options.dnsUpstream = DefaultDnsUpstream
+	options.dnsUnanswerable = DefaultDnsUnanswerable
 
 	var err error
 	options.Options, err = xgress.LoadOptions(data)
@@ -187,6 +193,22 @@ func (options *Options) load(data xgress.OptionsData) error {
 				options.dnsSvcIpRange = strVal
 			} else {
 				return errors.Errorf("invalid value '%v' for dnsSvcIpRange, must be string value", value)
+			}
+		}
+
+		if value, found := data["dnsUpstream"]; found {
+			if strVal, ok := value.(string); ok {
+				options.dnsUpstream = strVal
+			} else {
+				return errors.Errorf("invalid value '%v' for dnsUpstream, must be string value", value)
+			}
+		}
+
+		if value, found := data["dnsUnanswerable"]; found {
+			if strVal, ok := value.(string); ok {
+				options.dnsUnanswerable = strVal
+			} else {
+				return errors.Errorf("invalid value '%v' for dnsUnanswerable, must be string value", value)
 			}
 		}
 
