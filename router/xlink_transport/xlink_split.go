@@ -17,6 +17,10 @@
 package xlink_transport
 
 import (
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
@@ -24,9 +28,6 @@ import (
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type splitImpl struct {
