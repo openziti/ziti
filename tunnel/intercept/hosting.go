@@ -36,7 +36,6 @@ import (
 	"github.com/openziti/ziti/tunnel/router"
 	"github.com/openziti/ziti/tunnel/utils"
 	"github.com/pkg/errors"
-	"golang.org/x/net/proxy"
 )
 
 type healthChecksProvider interface {
@@ -163,6 +162,15 @@ type hostingContext struct {
 	onClose          func()
 	addrTracker      AddressTracker
 	addrTranslations []addrTranslation
+	dialWrapper      tunnel.DialWrapper
+}
+
+func (self *hostingContext) SetDialWrapper(dialWrapper tunnel.DialWrapper) {
+	self.dialWrapper = dialWrapper
+}
+
+func (self *hostingContext) Service() tunnel.HostedService {
+	return self.service
 }
 
 func (self *hostingContext) ServiceName() string {
@@ -193,7 +201,9 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 	var conn net.Conn
 	var err error
 
-	var dialer proxy.Dialer
+	var dialer tunnel.Dialer
+
+	var srcAddrPort *netip.AddrPort
 
 	if sourceAddr != "" {
 		sourceIp := sourceAddr
@@ -211,9 +221,15 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 		var localAddr net.Addr
 
 		if isUdp {
-			localAddr = &net.UDPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+			addr := &net.UDPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+			localAddr = addr
+			addrPort := addr.AddrPort()
+			srcAddrPort = &addrPort
 		} else if isTcp {
-			localAddr = &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+			addr := &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+			localAddr = addr
+			addrPort := addr.AddrPort()
+			srcAddrPort = &addrPort
 		} else {
 			return nil, false, errors.Errorf("unsupported protocol for source address '%v'", protocol)
 		}
@@ -231,7 +247,11 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 		}
 	}
 
-	conn, err = dialer.Dial(protocol, address)
+	if self.dialWrapper != nil {
+		conn, err = self.dialWrapper.Dial(self, srcAddrPort, dialer, protocol, address)
+	} else {
+		conn, err = dialer.Dial(protocol, address)
+	}
 
 	return conn, enableHalfClose, err
 }

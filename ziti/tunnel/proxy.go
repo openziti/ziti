@@ -45,7 +45,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		_ = flag.Value.Set("")
 	}
 	var err error
-	if interceptor, err = proxy.New(net.IPv4zero, args); err != nil {
+	if interceptor, err = proxy.New(proxy.DefaultAlerter{}, net.IPv4zero, args); err != nil {
 		return errors.Wrap(err, "failed to initialize proxy interceptor")
 	}
 	return nil

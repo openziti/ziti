@@ -21,6 +21,7 @@ package tunnel
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/tunnel/intercept"
+	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/openziti/ziti/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +50,7 @@ func run(cmd *cobra.Command, args []string) {
 		_ = cmd.Flag("identity").Value.Set(args[0])
 	}
 
-	tProxyInterceptor, err = tproxy.New(tproxy.Config{})
+	tProxyInterceptor, err = tproxy.New(tproxy.Config{}, proxy.DefaultAlerter{})
 	if err != nil {
 		log.Infof("tproxy initialization failed: %v", err)
 	} else {

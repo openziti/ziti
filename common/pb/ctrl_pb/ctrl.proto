@@ -45,6 +45,8 @@ enum ContentType {
 
   UpdateRouterInterfaces = 1052;
   LinkState = 1053;
+
+  AlertsType = 1054;
 }
 
 enum ControlHeaders {
@@ -320,4 +322,18 @@ message LinkStateUpdate {
   string linkId = 1;
   uint32 linkIteration = 2;
   LinkConnState connState = 3;
+}
+
+message Alert {
+  string sourceType = 1;
+  string sourceId = 2;
+  int64 timestamp = 3;
+  string severity = 4;
+  string message = 5;
+  repeated string details = 6;
+  map<string, string> relatedEntities = 7;
+}
+
+message Alerts {
+  repeated Alert alerts = 1;
 }
