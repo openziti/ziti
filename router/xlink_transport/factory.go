@@ -31,15 +31,15 @@ import (
 type channelType byte
 
 const (
-	LinkHeaderConnId        = 0
-	LinkHeaderType          = 1
-	LinkHeaderRouterId      = 2
-	LinkHeaderRouterVersion = 3
-	LinkHeaderBinding       = 4
-	LinkHeaderIteration     = 5
-
-	PayloadChannel channelType = 1
-	AckChannel     channelType = 2
+	LinkHeaderConnId                    = 0
+	LinkHeaderType                      = 1
+	LinkHeaderRouterId                  = 2
+	LinkHeaderRouterVersion             = 3
+	LinkHeaderBinding                   = 4
+	LinkHeaderIteration                 = 5
+	LinkDialedRouterId                  = 6
+	PayloadChannel          channelType = 1
+	AckChannel              channelType = 2
 )
 
 func (self channelType) String() string {
@@ -58,6 +58,7 @@ type LinkEnv interface {
 	GetNetworkControllers() env.NetworkControllers
 	GetRateLimiterPool() goroutines.Pool
 	GetCloseNotify() <-chan struct{}
+	GetRouterId() *identity.TokenId
 }
 
 func NewFactory(accepter xlink.Acceptor,
