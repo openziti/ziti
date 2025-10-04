@@ -7,7 +7,7 @@ ziti pki create intermediate --pki-root ./pki --ca-name ca --intermediate-file c
 # Create the controller 1 server cert
 ziti pki create server --pki-root ./pki --ca-name ctrl1 --dns localhost --ip 127.0.0.1 --server-name ctrl1 --spiffe-id 'controller/ctrl1'
 
-# Create the controller 1 server cert
+# Create the controller 1 client cert
 ziti pki create client --pki-root ./pki --ca-name ctrl1 --client-name ctrl1 --spiffe-id 'controller/ctrl1'
 
 # Create the controller 2 intermediate/signing cert
