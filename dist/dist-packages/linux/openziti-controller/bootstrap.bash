@@ -706,18 +706,16 @@ EOF
 
 # inherit vars and set answers
 loadEnvVars() {
-  for line in $(set | grep -e "^ZITI_" | sort); do
-    # shellcheck disable=SC2013
+  while IFS= read -r line; do
     setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
-  done
+  done < <(set | grep -e "^ZITI_" | sort)
 }
 
 # make ziti vars available in child processes
 exportZitiVars() {
-  for line in $(set | grep -e "^ZITI_" | sort); do
-    # shellcheck disable=SC2013
+  while IFS= read -r line; do
     export "${line%=*}"
-  done
+  done < <(set | grep -e "^ZITI_" | sort)
 }
 
 # Docker passes the "run" command to entrypoint.bash, and this function is then called in-line to ensure that the PKI, config file, and database are created if they don't exist, and calls issueLeafCerts() directly if the config file exists; on Linux, this function is only called by the running bootstrap.bash directly, and the system service passes "check" to entrypoint.bash, which only performs a preflight check for PKI, config file, and database before calling issueLeafCerts()
