@@ -232,7 +232,7 @@ func overlayListener(bindPoint xweb.BindPointConfig) (net.Listener, error) {
 		return nil, err
 	}
 
-	listener, err := ctx.ListenWithOptions(i.Service, &i.Opts)
+	listener, err := ctx.Listen(i.Service)
 	if err != nil {
 		return nil, err
 	}
