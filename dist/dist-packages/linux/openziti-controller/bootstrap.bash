@@ -37,10 +37,25 @@ issueRootCert(){
     else
       # generate private key and issue self-signed root CA cert for new cluster PKI
       echo "DEBUG: generating new cluster PKI" >&3
-      ziti pki create ca \
-        --pki-root "${ZITI_PKI_ROOT}" \
-        --ca-file "${ZITI_CA_FILE}" \
+      local -a _ca_cmd=(
+        ziti pki create ca
+        --pki-root "${ZITI_PKI_ROOT}"
+        --ca-file "${ZITI_CA_FILE}"
+        --ca-name "${ZITI_CA_NAME}"
         --trust-domain "$(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})"
+        --pki-country "${ZITI_PKI_COUNTRY}"
+        --pki-province "${ZITI_PKI_PROVINCE}"
+        --pki-locality "${ZITI_PKI_LOCALITY}"
+        --pki-organization "${ZITI_PKI_ORGANIZATION}"
+        --pki-organizational-unit "${ZITI_PKI_ORGANIZATIONAL_UNIT}"
+        --expire-limit "${ZITI_PKI_EXPIRE_LIMIT}"
+        --private-key-size "${ZITI_PKI_PRIVATE_KEY_SIZE}"
+        --max-path-len "${ZITI_PKI_CA_MAX_PATH_LEN}"
+      )
+      if [[ -n "${ZITI_PKI_CURVE}" ]]; then
+        _ca_cmd+=(--curve "${ZITI_PKI_CURVE}")
+      fi
+      "${_ca_cmd[@]}"
     fi
   fi
 }
@@ -67,11 +82,27 @@ issueSignerCert() {
     ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
     if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
       echo "DEBUG: generating new signer certificate" >&3
-      ziti pki create intermediate \
-        --pki-root "${ZITI_PKI_ROOT}" \
-        --ca-name "${ZITI_CA_FILE}" \
-        --intermediate-file "${ZITI_INTERMEDIATE_FILE}" \
+      local -a _intermediate_cmd=(
+        ziti pki create intermediate
+        --pki-root "${ZITI_PKI_ROOT}"
+        --ca-name "${ZITI_CA_FILE}"
+        --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
         --intermediate-name "Ziti Edge Signer for $(normalizeTrustDomain ${ZITI_CLUSTER_TRUST_DOMAIN})/controller/${ZITI_CLUSTER_NODE_NAME}"
+        --pki-country "${ZITI_PKI_COUNTRY}"
+        --pki-province "${ZITI_PKI_PROVINCE}"
+        --pki-locality "${ZITI_PKI_LOCALITY}"
+        --pki-organization "${ZITI_PKI_ORGANIZATION}"
+        --pki-organizational-unit "${ZITI_PKI_ORGANIZATIONAL_UNIT}"
+        --expire-limit "${ZITI_PKI_EXPIRE_LIMIT}"
+        --private-key-size "${ZITI_PKI_PRIVATE_KEY_SIZE}"
+      )
+      if [[ -n "${ZITI_PKI_CURVE}" ]]; then
+        _intermediate_cmd+=(--curve "${ZITI_PKI_CURVE}")
+      fi
+      if [[ -n "${ZITI_PKI_INTERMEDIATE_MAX_PATH_LEN}" ]]; then
+        _intermediate_cmd+=(--max-path-len "${ZITI_PKI_INTERMEDIATE_MAX_PATH_LEN}")
+      fi
+      "${_intermediate_cmd[@]}"
     elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
       echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
       return 1
@@ -805,11 +836,26 @@ trap exitHandler EXIT SIGINT SIGTERM
 
 # defaults
 : "${ZITI_CA_FILE:=root}"  # relative to ZITI_PKI_ROOT
+: "${ZITI_CA_NAME:=NetFoundry Inc. Certificate Authority}"  # CA common name
+: "${ZITI_INTERMEDIATE_FILE:=intermediate}"  # relative to ZITI_PKI_ROOT
+: "${ZITI_INTERMEDIATE_NAME:=NetFoundry Inc. Intermediate CA}"  # Intermediate CA common name
 : "${ZITI_SERVER_FILE:=server}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
 : "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
+
+# PKI defaults (shared by CA and Intermediate)
+: "${ZITI_PKI_CURVE:=}"  # EC curve (P224, P256, P384, P521), if set RSA is not used
+: "${ZITI_PKI_PRIVATE_KEY_SIZE:=4096}"  # RSA private key size, ignored if ZITI_PKI_CURVE is set
+: "${ZITI_PKI_EXPIRE_LIMIT:=3650}"  # Expiration limit in days
+: "${ZITI_PKI_COUNTRY:=US}"  # Country
+: "${ZITI_PKI_PROVINCE:=NC}"  # Province/State
+: "${ZITI_PKI_LOCALITY:=Charlotte}"  # Locality/Location
+: "${ZITI_PKI_ORGANIZATION:=NetFoundry}"  # Organization
+: "${ZITI_PKI_ORGANIZATIONAL_UNIT:=ADV-DEV}"  # Organization unit
+: "${ZITI_PKI_CA_MAX_PATH_LEN:=-1}"  # CA maximum path length
+: "${ZITI_PKI_INTERMEDIATE_MAX_PATH_LEN:=}"  # Intermediate maximum path length (empty = not set)
 
 #constants
 ZITI_PKI_ROOT="./pki"  # relative to working directory
