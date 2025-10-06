@@ -20,11 +20,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	cryptoTls "crypto/tls"
+	gotls "crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	stderr "errors"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -38,9 +40,11 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
+	transporttls "github.com/openziti/transport/v2/tls"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/concurrency"
@@ -215,6 +219,55 @@ func (c *Controller) GetEnv() *env.AppEnv {
 	return c.env
 }
 
+func overlayListener(bindPoint xweb.BindPointConfig) (net.Listener, error) {
+	i := bindPoint.Identity
+	cfg := ziti.Config{}
+	err := json.Unmarshal(i.Identity, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, err := ziti.NewContext(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	listener, err := ctx.ListenWithOptions(i.Service, &i.Opts)
+	if err != nil {
+		return nil, err
+	}
+	return listener, nil
+}
+
+type ControllerConnectionFactory struct{}
+
+func (f *ControllerConnectionFactory) New(bindPoint *xweb.BindPointConfig, serverName string, tlsConfig *gotls.Config) (net.Listener, error) {
+	var listener net.Listener
+	if len(bindPoint.Identity.Identity) > 0 {
+		ol, err := overlayListener(*bindPoint)
+		if err != nil {
+			return nil, fmt.Errorf("error listening on overlay: %s", err)
+		}
+
+		if bindPoint.Identity.ServeTLS {
+			listener = gotls.NewListener(ol, tlsConfig)
+			if tlsConfig.ClientAuth < gotls.VerifyClientCertIfGiven {
+				pfxlog.Logger().WithError(err).Warnf("The configured certificate verification method [%d] will not support mutual TLS", tlsConfig.ClientAuth)
+			}
+		} else {
+			pfxlog.Logger().Warn("Management API not configured for TLS - use with caution")
+			listener = ol
+		}
+	} else {
+		ln, err := transporttls.ListenTLS(bindPoint.InterfaceAddress, serverName, tlsConfig)
+		if err != nil {
+			return nil, fmt.Errorf("error listening: %s", err)
+		}
+		listener = ln
+	}
+	return listener, nil
+}
+
 func NewController(cfg *config.Config, versionProvider versions.VersionProvider) (*Controller, error) {
 	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
 
@@ -239,8 +292,10 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 			var errs []error
 			for i, serverConfig := range config.ServerConfigs {
 				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
-						errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
+					if bp.Identity.Identity == nil {
+						if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
+						}
 					}
 				}
 			}
@@ -276,6 +331,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 				return nil
 			},
 		},
+		ListenerFactory: &ControllerConnectionFactory{},
 	}
 
 	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwebInstanceOptions)
