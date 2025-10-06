@@ -255,7 +255,7 @@ func (f *ControllerConnectionFactory) New(bindPoint *xweb.BindPointConfig, serve
 				pfxlog.Logger().WithError(err).Warnf("The configured certificate verification method [%d] will not support mutual TLS", tlsConfig.ClientAuth)
 			}
 		} else {
-			pfxlog.Logger().Warn("Management API not configured for TLS - use with caution")
+			pfxlog.Logger().Warn("API not configured for TLS - use with caution")
 			listener = ol
 		}
 	} else {
