@@ -57,6 +57,7 @@ const (
 	TokenTypeAccess        = "a"
 	TokenTypeRefresh       = "r"
 	TokenTypeServiceAccess = "s"
+	TokenTypeTotp          = "t"
 
 	ServiceSessionTypeBind = "Bind"
 	ServiceSessionTypeDial = "Dial"
@@ -298,5 +299,36 @@ func (c *IdTokenClaims) TotpComplete() bool {
 		}
 	}
 
+	return false
+}
+
+// TotpClaims is a set of claims used to define TOTP JWT tokens that signify the last time a client
+// has successfully performed a TOTP code submission. They have no expiration date, but are tied to
+// and API Sesion via the ApiSessionId/z_asid claim. A valid, unexpired Api Session token is required
+// to be used in conjunction with a TOTP token - making the TOTP token scoped to the API Session's expiration and
+// validity.
+//
+// As these are expected for HA systems only, they do require OIDC authentication to be issued and can
+// be obtained via the /[edge|management]/v1/tokens/totp endpoint. Ensure your current API Session bearer
+// token is valid and is set in the authorization header of the request.
+//
+// Claims:
+//   - z_asid: the id of the api session that the token is scoped to
+//   - z_t: the type of token, always "t"
+//   - sub: the identity id of the identity that the token is scoped to
+//   - iss: the controller that issued the token
+//   - issued_at: the time the token was issued, also indicated when the TOTP code was submitted and verified
+type TotpClaims struct {
+	jwt.RegisteredClaims
+	ApiSessionId string `json:"z_asid,omitempty"`
+	Type         string `json:"z_t"`
+}
+
+func (t *TotpClaims) HasAudience(targetAud string) bool {
+	for _, aud := range t.Audience {
+		if aud == targetAud {
+			return true
+		}
+	}
 	return false
 }

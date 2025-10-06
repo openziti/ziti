@@ -962,6 +962,10 @@ func (ctx *TestContext) shutdownRouters() {
 	ctx.routers = nil
 }
 
+func (ctx *TestContext) NewAdminCredentials() *edge_apis.UpdbCredentials {
+	return edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+}
+
 type TestConn struct {
 	edge.Conn
 	ctx *TestContext

@@ -153,4 +153,7 @@ type Env interface {
 	// GetId provides the unique controller instance identifier for cluster
 	// coordination and distributed system operations.
 	GetId() string
+
+	// CreateTotpTokenFromAccessClaims creates a new TOTP JWT for the given access claims
+	CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error)
 }

@@ -56,6 +56,8 @@ func Test_SDK_Events(t *testing.T) {
 		}
 
 		ztx, err := ziti.NewContext(cfg)
+		ztx.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
+		ztx.(*ziti.ContextImpl).CtrlClt.SetUseOidc(false)
 
 		defer func() {
 			ztx.Close()
@@ -126,8 +128,10 @@ func Test_SDK_Events(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			ztxPostMfa, err := ziti.NewContext(cfg)
+
 			// This is testing MFA in legacy/non-oidc context, so we need to disable OIDC here
 			ztxPostMfa.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
+			ztxPostMfa.(*ziti.ContextImpl).CtrlClt.SetUseOidc(false)
 			ctx.Req.NoError(err)
 
 			defer func() {

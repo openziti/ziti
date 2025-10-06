@@ -17,17 +17,19 @@
 package routes
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"net/http"
-	"time"
 )
 
 func init() {
@@ -70,6 +72,12 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(router.DeleteCertificate, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
+	ae.ClientApi.CurrentAPISessionCreateTotpTokenHandler = clientCurrentApiSession.CreateTotpTokenHandlerFunc(func(params clientCurrentApiSession.CreateTotpTokenParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			router.CreateTotpToken(ae, rc, params.MfaValidation)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
 	// Session Updates
 	ae.ClientApi.CurrentAPISessionListServiceUpdatesHandler = clientCurrentApiSession.ListServiceUpdatesHandlerFunc(func(params clientCurrentApiSession.ListServiceUpdatesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.ListServiceUpdates, params.HTTPRequest, "", "", permissions.IsAuthenticated())
@@ -82,6 +90,12 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.CurrentAPISessionDeleteCurrentAPISessionHandler = managementCurrentApiSession.DeleteCurrentAPISessionHandlerFunc(func(params managementCurrentApiSession.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
+	})
+
+	ae.ManagementApi.CurrentAPISessionCreateTotpTokenHandler = managementCurrentApiSession.CreateTotpTokenHandlerFunc(func(params managementCurrentApiSession.CreateTotpTokenParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			router.CreateTotpToken(ae, rc, params.MfaValidation)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
 
@@ -196,6 +210,59 @@ func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *respo
 		LastChangeAt: &now,
 	}
 	rc.RespondWithOk(data, &rest_model.Meta{})
+}
+
+func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response.RequestContext, totpCode *rest_model.MfaCode) {
+	if !rc.IsJwtToken {
+		rc.RespondWithApiError(apierror.NewInvalidBackingTokenTypeError())
+		return
+	}
+
+	if totpCode == nil || totpCode.Code == nil || *totpCode.Code == "" {
+		rc.RespondWithApiError(apierror.NewInvalidMfaTokenError())
+		return
+	}
+
+	mfa, err := ae.GetManagers().Mfa.ReadOneByIdentityId(rc.Identity.Id)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if mfa == nil {
+		rc.RespondWithApiError(apierror.NewMfaNotEnrolledError())
+		return
+	}
+
+	//totp codes only, no recovery
+	ok, err := ae.GetManagers().Mfa.VerifyTOTP(mfa, *totpCode.Code)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if !ok {
+		rc.RespondWithApiError(apierror.NewInvalidMfaTokenError())
+		return
+	}
+
+	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), rc.Claims)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	issuedAt := strfmt.DateTime(tokenClaims.IssuedAt.Time)
+	
+	data := &rest_model.TotpToken{
+		Token:    &tokenStr,
+		IssuedAt: &issuedAt,
+	}
+
+	rc.RespondWithOk(data, nil)
 }
 
 type ApiSessionCertificateCreateResponder struct {

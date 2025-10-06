@@ -5,8 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"golang.org/x/exp/slices"
@@ -17,18 +19,23 @@ type Cache struct {
 	apiSessionInstances       cmap.ConcurrentMap[string, *Instance]
 	apiSessionInstanceHistory cmap.ConcurrentMap[string, []*InstanceData]
 	updateListeners           []func(data *InstanceData)
+	totpParser                TotpTokenParser
 }
 
 // NewCache creates a new posture data cache for managing device state information
 // across API sessions. The cache maintains both current posture data and historical
 // snapshots to support policy evaluation and audit requirements.
 //
+// Parameters:
+//   - parser: A TOTP token parser implementation, used to verify ToTP tokens on posture response
+//
 // Returns:
 //   - *Cache: A new cache instance ready for storing posture responses
-func NewCache() *Cache {
+func NewCache(parser TotpTokenParser) *Cache {
 	return &Cache{
 		apiSessionInstances:       cmap.New[*Instance](),
 		apiSessionInstanceHistory: cmap.New[[]*InstanceData](),
+		totpParser:                parser,
 	}
 }
 
@@ -47,7 +54,7 @@ func (cache *Cache) saveHistory(data *InstanceData) {
 	})
 }
 
-// AddResponse processes a posture response from an SDK client and updates the cache.
+// AddResponses processes a posture responses from an SDK client and updates the cache.
 // This function either creates a new posture instance or updates an existing one
 // with the new device state information. When posture data changes, registered
 // listeners are automatically notified to trigger policy re-evaluation.
@@ -59,8 +66,7 @@ func (cache *Cache) saveHistory(data *InstanceData) {
 //   - identityId: The identity associated with this posture data
 //   - apiSessionId: The API session ID for this posture instance
 //   - response: The posture response containing device state information
-func (cache *Cache) AddResponse(identityId, apiSessionId string, response *edge_client_pb.PostureResponse) {
-
+func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edge_client_pb.PostureResponses) {
 	instance := cache.apiSessionInstances.Upsert(apiSessionId, nil, func(exist bool, valueInMap *Instance, newValue *Instance) *Instance {
 		if !exist {
 			valueInMap = newInstance()
@@ -72,7 +78,15 @@ func (cache *Cache) AddResponse(identityId, apiSessionId string, response *edge_
 		return valueInMap
 	})
 
-	instance.Apply(response)
+	updated := false
+	for _, response := range responses.Responses {
+		next := instance.Apply(response, cache.totpParser)
+		updated = updated || next
+	}
+
+	if updated {
+		instance.emitUpdated()
+	}
 }
 
 func (cache *Cache) emitUpdate(data *InstanceData) {
@@ -128,6 +142,10 @@ func newInstance() *Instance {
 	}
 }
 
+type TotpTokenParser interface {
+	ParseTotpToken(string) (*common.TotpClaims, error)
+}
+
 // Apply updates the posture instance with new device state information from a posture response.
 // This function merges the incoming posture data with existing data, only updating fields
 // that are present in the response. Changes are detected by comparing new values with
@@ -138,63 +156,95 @@ func newInstance() *Instance {
 //
 // Parameters:
 //   - response: The posture response containing updated device state information
-func (instance *Instance) Apply(response *edge_client_pb.PostureResponse) {
+//   - parser: A TOTP token parser implementation, used to verify ToTP tokens on posture response
+//
+// Returns:
+//   - bool: True if the posture instance was updated, false if no changes were detected
+func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser TotpTokenParser) bool {
 	instance.lock.Lock()
 	defer instance.lock.Unlock()
 
 	updated := false
 
 	if os := response.GetOs(); os != nil {
-		instance.Os.Os = os
-		updated = true
-	}
-
-	if domain := response.GetDomain(); domain != nil {
+		if isOsDifferent(instance.Os, os) {
+			if instance.Os == nil {
+				instance.Os = &edge_client_pb.PostureResponse_Os{}
+			}
+			instance.Os.Os = os
+			updated = true
+		}
+	} else if domain := response.GetDomain(); domain != nil {
 		if instance.Domain == nil || instance.Domain.Name != domain.Name {
 			instance.Domain = domain
 			updated = true
 		}
-	}
-
-	if macs := response.GetMacs(); macs != nil {
-		if instance.Macs == nil || slices.Equal(macs.Addresses, instance.Macs.Addresses) {
+	} else if macs := response.GetMacs(); macs != nil {
+		if instance.Macs == nil || !slices.Equal(macs.Addresses, instance.Macs.Addresses) {
 			instance.Macs = macs
 			updated = true
 		}
-	}
-
-	if unlocked := response.GetUnlocked(); unlocked != nil {
+	} else if unlocked := response.GetUnlocked(); unlocked != nil {
 		if instance.Unlocked == nil || instance.Unlocked.Time.AsTime().Before(unlocked.GetTime().AsTime()) {
 			instance.Unlocked = unlocked
 			updated = true
 		}
-	}
-
-	if woken := response.GetWoken(); woken != nil {
+	} else if woken := response.GetWoken(); woken != nil {
 		if instance.Woken == nil || instance.Woken.Time.AsTime().Before(woken.GetTime().AsTime()) {
 			instance.Woken = woken
 			updated = true
 		}
-	}
-
-	if processList := response.GetProcessList(); isProcessListDifferent(instance.ProcessList, processList) {
+	} else if processList := response.GetProcessList(); isProcessListDifferent(instance.ProcessList, processList) {
 		instance.ProcessList = processList
 		updated = true
+	} else if totpToken := response.GetTotpToken(); totpToken != nil {
+		if totpToken.Token == "" {
+			pfxlog.Logger().Error("received empty totp token for posture response")
+		}
+
+		totpClaims, err := parser.ParseTotpToken(totpToken.Token)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("error parsing totp token")
+		} else if totpClaims.IssuedAt == nil {
+			pfxlog.Logger().Error("received totp token with no issued at time")
+		} else {
+
+			if totpClaims.ApiSessionId == instance.ApiSessionId {
+				passedAt := totpClaims.IssuedAt.Time
+				if instance.PassedMfaAt == nil || instance.PassedMfaAt.Before(passedAt) {
+					instance.PassedMfaAt = &passedAt
+					updated = true
+				}
+			} else {
+				pfxlog.Logger().Errorf("received totp token for api session %s, but instance is for %s", totpClaims.ApiSessionId, instance.ApiSessionId)
+			}
+		}
+	} else {
+		pfxlog.Logger().Warnf("received unknown posture response type: no fields updated, type: %T", response.GetType())
 	}
 
-	if updated {
-		instance.emitUpdated()
-	}
+	return updated
 }
 
-func (instance *Instance) ApplyMfa(mfaAt time.Time) {
-	instance.lock.Lock()
-	defer instance.lock.Unlock()
-
-	if instance.PassedMfaAt == nil || instance.PassedMfaAt.Before(mfaAt) {
-		instance.PassedMfaAt = &mfaAt
-		instance.emitUpdated()
+func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.PostureResponse_OperatingSystem) bool {
+	if old == nil || old.Os == nil {
+		return true
 	}
+
+	if old.Os.Type != new.Type {
+		return true
+	}
+
+	if old.Os.Version != new.Version {
+		return true
+	}
+
+	if old.Os.Build != new.Build {
+		return true
+	}
+
+	return false
 }
 
 func (instance *Instance) emitUpdated() {
@@ -205,7 +255,6 @@ func (instance *Instance) emitUpdated() {
 	for _, listener := range instance.updatedListeners {
 		listener(&instanceFieldCopy)
 	}
-
 }
 
 type Checker interface {
@@ -260,6 +309,18 @@ func CtrlCheckToLogic(postureCheck *edge_ctrl_pb.DataState_PostureCheck) Checker
 }
 
 func isProcessListDifferent(listA *edge_client_pb.PostureResponse_ProcessList, listB *edge_client_pb.PostureResponse_ProcessList) bool {
+
+	listAEmpty := listA == nil || len(listA.Processes) == 0
+	listBEmpty := listB == nil || len(listB.Processes) == 0
+
+	if listAEmpty && listBEmpty {
+		return false
+	}
+
+	if listAEmpty != listBEmpty {
+		return true
+	}
+
 	procAs := map[string]*edge_client_pb.PostureResponse_Process{}
 	for _, proc := range listA.Processes {
 		procAs[proc.Path] = proc

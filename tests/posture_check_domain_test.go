@@ -19,11 +19,12 @@
 package tests
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/ziti/common/eid"
-	"net/http"
-	"testing"
 )
 
 func Test_PostureChecks_Domain(t *testing.T) {

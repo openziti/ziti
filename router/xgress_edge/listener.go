@@ -453,7 +453,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		}
 
 		if grantingPolicy == nil {
-			errStr := "no access to service, failed bind access check"
+			errStr := "no access to service, failed dial access check"
 			log.Error(errStr)
 			self.sendStateClosedReply(errStr, req)
 			return
@@ -612,7 +612,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		}
 
 		if grantingPolicy == nil {
-			errStr := "no access to service, failed dial access check"
+			errStr := "no access to service, failed bind access check"
 			log.Error(errStr)
 			self.sendStateClosedReply(errStr, req)
 			return
@@ -1144,13 +1144,13 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 
 func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch channel.Channel) {
 	if msg.ContentType == int32(edge_client_pb.ContentType_PostureResponseType) {
-		postureResponse := &edge_client_pb.PostureResponse{}
+		postureResponses := &edge_client_pb.PostureResponses{}
 
-		if err := proto.Unmarshal(msg.Body, postureResponse); err != nil {
-			pfxlog.Logger().WithError(err).Error("failed to unmarshal posture response")
+		if err := proto.Unmarshal(msg.Body, postureResponses); err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to unmarshal posture responses")
 		}
 
-		go self.listener.factory.stateManager.ProcessPostureResponse(ch, postureResponse)
+		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 
 	}
 }

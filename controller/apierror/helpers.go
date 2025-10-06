@@ -18,6 +18,7 @@ package apierror
 
 import (
 	"fmt"
+
 	"github.com/openziti/foundation/v2/errorz"
 )
 
@@ -325,6 +326,14 @@ func NewInvalidMfaTokenError() *errorz.ApiError {
 		Code:    MfaInvalidTokenCode,
 		Message: MfaInvalidTokenMessage,
 		Status:  MfaInvalidTokenStatus,
+	}
+}
+
+func NewInvalidBackingTokenTypeError() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidBackingTokenTypeCode,
+		Message: InvalidBackingTokenTypeMessage,
+		Status:  InvalidBackingTokenTypeStatus,
 	}
 }
 

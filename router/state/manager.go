@@ -209,9 +209,9 @@ type Manager interface {
 	// falling back to an empty model if the file doesn't exist.
 	LoadRouterModel(filePath string)
 
-	// ProcessPostureResponse handles incoming posture data from SDK clients and updates
+	// ProcessPostureResponses handles incoming posture data from SDK clients and updates
 	// the router's posture cache.
-	ProcessPostureResponse(ch channel.Channel, response *edge_client_pb.PostureResponse)
+	ProcessPostureResponses(ch channel.Channel, responser *edge_client_pb.PostureResponses)
 
 	// GetEnv returns the router environment instance.
 	GetEnv() env.RouterEnv
@@ -236,6 +236,8 @@ type Manager interface {
 
 	// HasBindAccess evaluates service binding authorization for an identity.
 	HasBindAccess(identityId, apiSessionId, serviceId string) (*common.ServicePolicy, error)
+
+	ParseTotpToken(token string) (*common.TotpClaims, error)
 }
 
 // ConnectionTracker provides visibility into active channel connections,
@@ -279,12 +281,12 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		legacyApiSessionsByToken: cmap.New[*ApiSessionToken](),
 		recentlyRemovedSessions:  cmap.New[time.Time](),
 		certCache:                cmap.New[*x509.Certificate](),
-		postureCache:             posture.NewCache(),
 		env:                      stateEnv,
 		routerDataModelPool:      routerDataModelPool,
 		endpointsChanged:         make(chan env.CtrlEvent, 10),
 		modelChanged:             make(chan struct{}, 1),
 	}
+	result.postureCache = posture.NewCache(result)
 
 	result.postureCache.AddUpdateListener(result.onPostureDataUpdate)
 	cfg := stateEnv.GetConfig()
@@ -414,6 +416,29 @@ type ManagerImpl struct {
 	postureCache *posture.Cache
 
 	connectionTracker ConnectionTracker
+}
+
+func (sm *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error) {
+	totpClaims := &common.TotpClaims{}
+	token, err := jwt.ParseWithClaims(jwtStr, totpClaims, sm.pubKeyLookup)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !totpClaims.HasAudience(common.ClaimAudienceOpenZiti) && !totpClaims.HasAudience(common.ClaimLegacyNative) {
+		return nil, fmt.Errorf("provided a totp token with invalid audience '%s' of type [%T], expected: %s or %s", totpClaims.Audience, totpClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
+	}
+
+	if totpClaims.Type != common.TokenTypeTotp {
+		return nil, fmt.Errorf("provided a totp token with invalid type '%s' expected '%s'", totpClaims.Type, common.TokenTypeTotp)
+	}
+
+	if token.Valid == false {
+		return nil, fmt.Errorf("provided totp token that is not valid")
+	}
+
+	return totpClaims, nil
 }
 
 // SetConnectionTracker registers the connection tracking implementation with the state manager.
@@ -554,7 +579,7 @@ func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
 	return sm.routerDataModelPool
 }
 
-// ProcessPostureResponse handles incoming posture data from SDK clients and updates
+// ProcessPostureResponses handles incoming posture data from SDK clients and updates
 // the router's posture cache. Posture responses contain information about the client's
 // device state such as operating system details, domain membership, MAC addresses,
 // running processes, and MFA status. This data is used to evaluate whether the client
@@ -567,9 +592,9 @@ func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
 // Parameters:
 //   - ch: The channel the posture response was received on
 //   - response: The posture response containing device state information
-func (sm *ManagerImpl) ProcessPostureResponse(ch channel.Channel, response *edge_client_pb.PostureResponse) {
+func (sm *ManagerImpl) ProcessPostureResponses(ch channel.Channel, responses *edge_client_pb.PostureResponses) {
 	apiSessionToken := GetApiSessionTokenFromCh(ch)
-	sm.postureCache.AddResponse(apiSessionToken.Id, apiSessionToken.IdentityId, response)
+	sm.postureCache.AddResponses(apiSessionToken.IdentityId, apiSessionToken.Id, responses)
 }
 
 // HandleClientApiSessionTokenUpdate propagates JWT token updates to active client
@@ -728,7 +753,11 @@ func (sm *ManagerImpl) ParseServiceSessionJwt(jwtStr string, apiSessionToken *Ap
 		return NewServiceSessionToken(jwtToken, serviceAccessClaims, apiSessionToken)
 	}
 
-	return nil, fmt.Errorf("invalid service token type: %s", serviceAccessClaims.Type)
+	if jwtToken.Valid == false {
+		return nil, fmt.Errorf("provided service session token that is not valid")
+	}
+
+	return nil, fmt.Errorf("invalid service session token type: %s", serviceAccessClaims.Type)
 }
 
 // GetServiceSessionToken creates service session tokens from either JWT strings
@@ -772,11 +801,15 @@ func (sm *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, erro
 	}
 
 	if !accessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !accessClaims.HasAudience(common.ClaimLegacyNative) {
-		return nil, fmt.Errorf("provided a token with invalid audience '%s' of type [%T], expected: %s or %s", accessClaims.Audience, accessClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
+		return nil, fmt.Errorf("provided an api session token with invalid audience '%s' of type [%T], expected: %s or %s", accessClaims.Audience, accessClaims.Audience, common.ClaimAudienceOpenZiti, common.ClaimLegacyNative)
 	}
 
 	if accessClaims.Type != common.TokenTypeAccess {
-		return nil, fmt.Errorf("provided a token with invalid type '%s'", accessClaims.Type)
+		return nil, fmt.Errorf("provided an api session token with invalid type '%s'", accessClaims.Type)
+	}
+
+	if jwtToken.Valid == false {
+		return nil, fmt.Errorf("provided an api session token that is not valid")
 	}
 
 	return NewApiSessionTokenFromJwt(jwtToken, accessClaims)

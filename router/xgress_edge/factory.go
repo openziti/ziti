@@ -168,8 +168,9 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 	}
 
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader:     versionHeader,
-		edge.SupportsBindSuccessHeader: {1},
+		channel.HelloVersionHeader:       versionHeader,
+		edge.SupportsBindSuccessHeader:   {1},
+		edge.SupportsPostureChecksHeader: {1},
 	}
 
 	return newListener(factory.env.GetRouterId(), factory, options, headers), nil

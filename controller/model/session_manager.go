@@ -178,11 +178,15 @@ func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, e
 		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
+	if isLegacy {
+		policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
 
-	if !policyResult.Passed {
-		self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
-		return "", apierror.NewInvalidPosture(policyResult.Cause)
+		if !policyResult.Passed {
+			self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
+			return "", apierror.NewInvalidPosture(policyResult.Cause)
+		}
+
+		entity.ServicePolicies = policyResult.PassingPolicyIds
 	}
 
 	edgeRouterAvailable, err := self.GetEnv().GetManagers().EdgeRouter.IsSharedEdgeRouterPresent(entity.IdentityId, entity.ServiceId)
@@ -193,7 +197,6 @@ func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, e
 	if !edgeRouterAvailable {
 		return "", apierror.NewNoEdgeRoutersAvailable()
 	}
-	entity.ServicePolicies = policyResult.PassingPolicyIds
 
 	claims := common.ServiceAccessClaims{
 		RegisteredClaims: jwt.RegisteredClaims{

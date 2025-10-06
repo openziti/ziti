@@ -62,7 +62,7 @@ type Storage interface {
 	// Authenticate attempts to perform authentication on supplied credentials for all known authentication methods
 	Authenticate(authCtx model.AuthContext, id string, configTypes []string) (*AuthRequest, error)
 
-	// VerifyTotp will verify the supplied code for the current authentication request's subject
+	// VerifyTotpForAuthRequest will verify the supplied code for the current authentication request's subject
 	// A change context is required for the removal of one-time TOTP recovery codes
 	VerifyTotp(ctx *change.Context, code string, id string) (*AuthRequest, error)
 
@@ -433,7 +433,6 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 	authRequest.AddAmr(AuthMethodSecondaryTotp)
 
 	return authRequest, nil
-
 }
 
 // CreateAuthRequest creates a new AuthRequest based on an incoming request, implements the op.Storage interface
