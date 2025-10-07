@@ -848,7 +848,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandleServicePolicyEvent(newEvent, newModel)
+		rdm.HandleServicePolicyEvent(strategy.indexProvider.CurrentIndex(), newEvent, newModel)
 
 		result := strategy.ae.GetManagers().ServicePolicy.ListAssociatedIds(tx, storeModel.Id)
 
@@ -1065,7 +1065,9 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 		policyList := strategy.ae.GetStores().Identity.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeServicePolicies)
 		policySet := genext.SliceToSet(policyList)
 
-		result = diffSets("identity", t.Id, "service policy", policySet, common.CMapToMap(v.ServicePolicies), result)
+		v.WithLock(func() {
+			result = diffSets("identity", t.Id, "service policy", policySet, v.ServicePolicies, result)
+		})
 
 		return result
 	})
