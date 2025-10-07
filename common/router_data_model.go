@@ -22,6 +22,12 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"os"
+	"sort"
+	"sync"
+	"sync/atomic"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
@@ -30,10 +36,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"os"
-	"sort"
-	"sync/atomic"
 )
 
 // RouterDataModelConfig contains the configuration values for a RouterDataModel
@@ -53,13 +55,122 @@ type AccessPolicies struct {
 	PostureChecks map[string]*edge_ctrl_pb.DataState_PostureCheck
 }
 
+type serviceAccess struct {
+	Dial int32
+	Bind int32
+}
+
+func (self *serviceAccess) updateServiceCount(servicePolicy *ServicePolicy, increment int32) {
+	if servicePolicy.PolicyType == edge_ctrl_pb.PolicyType_DialPolicy {
+		self.Dial += increment
+	} else if servicePolicy.PolicyType == edge_ctrl_pb.PolicyType_BindPolicy {
+		self.Bind += increment
+	}
+}
+
 type DataStateIdentity = edge_ctrl_pb.DataState_Identity
 
 type Identity struct {
 	*DataStateIdentity
-	ServicePolicies cmap.ConcurrentMap[string, struct{}] `json:"servicePolicies"`
+	lock            sync.Mutex
+	ServicePolicies map[string]struct{}
+	Services        map[string]serviceAccess
+	PostureChecks   map[string]int32
 	identityIndex   uint64
 	serviceSetIndex uint64
+}
+
+func (self *Identity) IterateServicePolicies(f func(servicePolicyId string)) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	for servicePolicyId := range self.ServicePolicies {
+		f(servicePolicyId)
+	}
+}
+
+func (self *Identity) NotifyServiceChange(rdm *RouterDataModel, index uint64) {
+	updateIndex(&self.serviceSetIndex, index)
+	rdm.queueSyncCheck(self.Id)
+}
+
+func (self *Identity) updateServiceCount(policy *ServicePolicy, serviceId string, increment int32) {
+	current := self.Services[serviceId]
+	current.updateServiceCount(policy, increment)
+	if current.Bind+current.Dial < 1 {
+		delete(self.Services, serviceId)
+	} else {
+		self.Services[serviceId] = current
+	}
+}
+
+func (self *Identity) decrementUseCount(m map[string]int32, id string) {
+	currentValue, ok := m[id]
+	if ok {
+		currentValue--
+		if currentValue < 1 {
+			delete(m, id)
+		} else {
+			m[id] = currentValue
+		}
+	}
+}
+
+func (self *Identity) addedToPolicy(policy *ServicePolicy) {
+	if _, ok := self.ServicePolicies[policy.Id]; !ok {
+		self.ServicePolicies[policy.Id] = struct{}{}
+		policy.Services.IterCb(func(serviceId string, _ struct{}) {
+			self.updateServiceCount(policy, serviceId, 1)
+		})
+
+		policy.PostureChecks.IterCb(func(key string, _ struct{}) {
+			self.PostureChecks[key]++
+		})
+	}
+}
+
+func (self *Identity) removedFromPolicy(policy *ServicePolicy) {
+	if _, ok := self.ServicePolicies[policy.Id]; ok {
+		delete(self.ServicePolicies, policy.Id)
+		policy.Services.IterCb(func(serviceId string, _ struct{}) {
+			self.updateServiceCount(policy, serviceId, -1)
+		})
+
+		policy.PostureChecks.IterCb(func(postureCheckId string, _ struct{}) {
+			self.decrementUseCount(self.PostureChecks, postureCheckId)
+		})
+	}
+}
+
+func (self *Identity) servicesAddedToPolicy(policy *ServicePolicy, serviceIds []string) {
+	if _, ok := self.ServicePolicies[policy.Id]; ok {
+		for _, serviceId := range serviceIds {
+			self.updateServiceCount(policy, serviceId, 1)
+		}
+	}
+}
+
+func (self *Identity) servicesRemovedFromPolicy(policy *ServicePolicy, serviceIds []string) {
+	if _, ok := self.ServicePolicies[policy.Id]; ok {
+		for _, serviceId := range serviceIds {
+			self.updateServiceCount(policy, serviceId, -1)
+		}
+	}
+}
+
+func (self *Identity) postureChecksAddedToPolicy(policy *ServicePolicy, postureCheckIds []string) {
+	if _, ok := self.ServicePolicies[policy.Id]; ok {
+		for _, postureCheckId := range postureCheckIds {
+			self.PostureChecks[postureCheckId]++
+		}
+	}
+}
+
+func (self *Identity) postureChecksRemovedFromPolicy(policy *ServicePolicy, postureCheckIds []string) {
+	if _, ok := self.ServicePolicies[policy.Id]; ok {
+		for _, postureCheckId := range postureCheckIds {
+			self.decrementUseCount(self.PostureChecks, postureCheckId)
+		}
+	}
 }
 
 func (self *Identity) Equals(other *Identity) bool {
@@ -133,10 +244,15 @@ type DataStateConfig = edge_ctrl_pb.DataState_Config
 
 type Config struct {
 	*DataStateConfig
-	index uint64
+	Services cmap.ConcurrentMap[string, struct{}] `json:"services"`
+	index    uint64
 }
 
 func (self *Config) Equals(other *Config) bool {
+	if other == nil {
+		return self == nil
+	}
+
 	if self.Name != other.Name {
 		return false
 	}
@@ -152,11 +268,35 @@ func (self *Config) Equals(other *Config) bool {
 	return true
 }
 
+func updateIndex(index *uint64, newIndex uint64) {
+	currentIndex := atomic.LoadUint64(index)
+	for currentIndex < newIndex {
+		if atomic.CompareAndSwapUint64(index, currentIndex, newIndex) {
+			return
+		}
+		currentIndex = atomic.LoadUint64(index)
+	}
+}
+
 type DataStateService = edge_ctrl_pb.DataState_Service
 
 type Service struct {
 	*DataStateService
-	index uint64
+	ServicePolicies cmap.ConcurrentMap[string, struct{}] `json:"servicePolicies"`
+	index           uint64
+}
+
+func (self *Service) GetIndex() uint64 {
+	return atomic.LoadUint64(&self.index)
+}
+
+func (self *Service) NotifyChange(rdm *RouterDataModel, index uint64) {
+	updateIndex(&self.index, index)
+	self.ServicePolicies.IterCb(func(key string, _ struct{}) {
+		if servicePolicy, _ := rdm.ServicePolicies.Get(key); servicePolicy != nil {
+			servicePolicy.NotifyChange(rdm, index)
+		}
+	})
 }
 
 type DataStatePostureCheck = edge_ctrl_pb.DataState_PostureCheck
@@ -170,8 +310,19 @@ type DataStateServicePolicy = edge_ctrl_pb.DataState_ServicePolicy
 
 type ServicePolicy struct {
 	*DataStateServicePolicy
-	Services      cmap.ConcurrentMap[string, struct{}] `json:"services"`
+	Services      cmap.ConcurrentMap[string, struct{}] `json:"Services"`
 	PostureChecks cmap.ConcurrentMap[string, struct{}] `json:"postureChecks"`
+	Identities    cmap.ConcurrentMap[string, struct{}] `json:"identities"`
+	index         uint64
+}
+
+func (self *ServicePolicy) NotifyChange(rdm *RouterDataModel, index uint64) {
+	updateIndex(&self.index, index)
+	self.Identities.IterCb(func(key string, _ struct{}) {
+		if identity, _ := rdm.Identities.Get(key); identity != nil {
+			identity.NotifyServiceChange(rdm, index)
+		}
+	})
 }
 
 // RouterDataModel represents a sub-set of a controller's data model. Enough to validate an identities access to dial/bind
@@ -186,7 +337,7 @@ type RouterDataModel struct {
 	ConfigTypes      cmap.ConcurrentMap[string, *ConfigType]                        `json:"configTypes"`
 	Configs          cmap.ConcurrentMap[string, *Config]                            `json:"configs"`
 	Identities       cmap.ConcurrentMap[string, *Identity]                          `json:"identities"`
-	Services         cmap.ConcurrentMap[string, *Service]                           `json:"services"`
+	Services         cmap.ConcurrentMap[string, *Service]                           `json:"Services"`
 	ServicePolicies  cmap.ConcurrentMap[string, *ServicePolicy]                     `json:"servicePolicies"`
 	PostureChecks    cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
 	PublicKeys       cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
@@ -198,11 +349,17 @@ type RouterDataModel struct {
 	listenerBufferSize uint
 	lastSaveIndex      *uint64
 
-	subscriptions cmap.ConcurrentMap[string, *IdentitySubscription]
-	events        chan subscriberEvent
-	closeNotify   <-chan struct{}
-	stopNotify    chan struct{}
-	stopped       atomic.Bool
+	isReceiver               bool
+	subscriptions            cmap.ConcurrentMap[string, *IdentitySubscription]
+	updatedIdentities        cmap.ConcurrentMap[string, struct{}]
+	subscriptionUpdateNotify chan struct{}
+
+	events         chan subscriberEvent
+	scanSubsNotify chan struct{}
+
+	closeNotify <-chan struct{}
+	stopNotify  chan struct{}
+	stopped     atomic.Bool
 
 	// timelineId identifies the database that events are flowing from. This will be reset whenever we change the
 	// underlying datastore
@@ -248,21 +405,25 @@ func NewSenderRouterDataModel(timelineId string, logSize uint64, listenerBufferS
 // buffer size of channels returned to listeners of the data model.
 func NewReceiverRouterDataModel(listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
-		EventCache:         NewForgetfulEventCache(),
-		ConfigTypes:        cmap.New[*ConfigType](),
-		Configs:            cmap.New[*Config](),
-		Identities:         cmap.New[*Identity](),
-		Services:           cmap.New[*Service](),
-		ServicePolicies:    cmap.New[*ServicePolicy](),
-		PostureChecks:      cmap.New[*PostureCheck](),
-		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
-		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
-		listenerBufferSize: listenerBufferSize,
-		subscriptions:      cmap.New[*IdentitySubscription](),
-		events:             make(chan subscriberEvent),
-		closeNotify:        closeNotify,
-		stopNotify:         make(chan struct{}),
-		terminatorIdCache:  cmap.New[string](),
+		isReceiver:               true,
+		EventCache:               NewForgetfulEventCache(),
+		ConfigTypes:              cmap.New[*ConfigType](),
+		Configs:                  cmap.New[*Config](),
+		Identities:               cmap.New[*Identity](),
+		Services:                 cmap.New[*Service](),
+		ServicePolicies:          cmap.New[*ServicePolicy](),
+		PostureChecks:            cmap.New[*PostureCheck](),
+		PublicKeys:               cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
+		Revocations:              cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+		listenerBufferSize:       listenerBufferSize,
+		subscriptions:            cmap.New[*IdentitySubscription](),
+		updatedIdentities:        cmap.New[struct{}](),
+		subscriptionUpdateNotify: make(chan struct{}, 1),
+		events:                   make(chan subscriberEvent, 250),
+		scanSubsNotify:           make(chan struct{}, 1),
+		closeNotify:              closeNotify,
+		stopNotify:               make(chan struct{}),
+		terminatorIdCache:        cmap.New[string](),
 	}
 	go result.processSubscriberEvents()
 	return result
@@ -272,22 +433,26 @@ func NewReceiverRouterDataModel(listenerBufferSize uint, closeNotify <-chan stru
 // buffer size of channels returned to listeners of the data model.
 func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
-		EventCache:         NewForgetfulEventCache(),
-		ConfigTypes:        cmap.New[*ConfigType](),
-		Configs:            cmap.New[*Config](),
-		Identities:         cmap.New[*Identity](),
-		Services:           cmap.New[*Service](),
-		ServicePolicies:    cmap.New[*ServicePolicy](),
-		PostureChecks:      cmap.New[*PostureCheck](),
-		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
-		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
-		listenerBufferSize: listenerBufferSize,
-		subscriptions:      cmap.New[*IdentitySubscription](),
-		events:             make(chan subscriberEvent),
-		closeNotify:        closeNotify,
-		stopNotify:         make(chan struct{}),
-		timelineId:         dataState.TimelineId,
-		terminatorIdCache:  cmap.New[string](),
+		isReceiver:               true,
+		EventCache:               NewForgetfulEventCache(),
+		ConfigTypes:              cmap.New[*ConfigType](),
+		Configs:                  cmap.New[*Config](),
+		Identities:               cmap.New[*Identity](),
+		Services:                 cmap.New[*Service](),
+		ServicePolicies:          cmap.New[*ServicePolicy](),
+		PostureChecks:            cmap.New[*PostureCheck](),
+		PublicKeys:               cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
+		Revocations:              cmap.New[*edge_ctrl_pb.DataState_Revocation](),
+		listenerBufferSize:       listenerBufferSize,
+		subscriptions:            cmap.New[*IdentitySubscription](),
+		updatedIdentities:        cmap.New[struct{}](),
+		subscriptionUpdateNotify: make(chan struct{}, 1),
+		events:                   make(chan subscriberEvent, 250),
+		scanSubsNotify:           make(chan struct{}, 1),
+		closeNotify:              closeNotify,
+		stopNotify:               make(chan struct{}),
+		timelineId:               dataState.TimelineId,
+		terminatorIdCache:        cmap.New[string](),
 	}
 
 	if tIdCache, ok := dataState.Caches[edge_ctrl_pb.CacheType_TerminatorIds.String()]; ok && tIdCache != nil && tIdCache.Data != nil {
@@ -312,23 +477,27 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 // buffer size of channels returned to listeners of the data model.
 func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, listenerBufferSize uint, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
-		EventCache:         NewForgetfulEventCache(),
-		ConfigTypes:        existing.ConfigTypes,
-		Configs:            existing.Configs,
-		Identities:         existing.Identities,
-		Services:           existing.Services,
-		ServicePolicies:    existing.ServicePolicies,
-		PostureChecks:      existing.PostureChecks,
-		PublicKeys:         existing.PublicKeys,
-		cachedPublicKeys:   existing.cachedPublicKeys,
-		Revocations:        existing.Revocations,
-		listenerBufferSize: listenerBufferSize,
-		subscriptions:      cmap.New[*IdentitySubscription](),
-		events:             make(chan subscriberEvent),
-		closeNotify:        closeNotify,
-		stopNotify:         make(chan struct{}),
-		timelineId:         existing.timelineId,
-		terminatorIdCache:  existing.terminatorIdCache,
+		isReceiver:               true,
+		EventCache:               NewForgetfulEventCache(),
+		ConfigTypes:              existing.ConfigTypes,
+		Configs:                  existing.Configs,
+		Identities:               existing.Identities,
+		Services:                 existing.Services,
+		ServicePolicies:          existing.ServicePolicies,
+		PostureChecks:            existing.PostureChecks,
+		PublicKeys:               existing.PublicKeys,
+		cachedPublicKeys:         existing.cachedPublicKeys,
+		Revocations:              existing.Revocations,
+		listenerBufferSize:       listenerBufferSize,
+		subscriptions:            cmap.New[*IdentitySubscription](),
+		updatedIdentities:        cmap.New[struct{}](),
+		subscriptionUpdateNotify: make(chan struct{}, 1),
+		events:                   make(chan subscriberEvent, 250),
+		scanSubsNotify:           make(chan struct{}, 1),
+		closeNotify:              closeNotify,
+		stopNotify:               make(chan struct{}),
+		timelineId:               existing.timelineId,
+		terminatorIdCache:        existing.terminatorIdCache,
 	}
 	currentIndex, _ := existing.CurrentIndex()
 	result.SetCurrentIndex(currentIndex)
@@ -376,6 +545,11 @@ func (rdm *RouterDataModel) processSubscriberEvents() {
 			return
 		case evt := <-rdm.events:
 			evt.process(rdm)
+		case <-rdm.scanSubsNotify:
+			pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).Info("sync all pending subscribers")
+			for entry := range rdm.updatedIdentities.IterBuffered() {
+				rdm.syncSubscriptionIfRequired(entry.Key)
+			}
 		}
 	}
 }
@@ -462,7 +636,7 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 	case *edge_ctrl_pb.DataState_Event_Service:
 		rdm.HandleServiceEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicy:
-		rdm.HandleServicePolicyEvent(event, typedModel)
+		rdm.HandleServicePolicyEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_PostureCheck:
 		rdm.HandlePostureCheckEvent(index, event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_PublicKey:
@@ -483,10 +657,20 @@ func (rdm *RouterDataModel) queueEvent(event subscriberEvent) {
 	}
 }
 
-func (rdm *RouterDataModel) SyncAllSubscribers() {
-	if rdm.events != nil {
-		rdm.events <- syncAllSubscribersEvent{}
+func (rdm *RouterDataModel) waitForQueueEmpty() {
+	evt := &waitForQueueEmptyEvent{
+		c: make(chan struct{}),
 	}
+	rdm.queueEvent(evt)
+	<-evt.c
+}
+
+func (rdm *RouterDataModel) SyncAllSubscribers() {
+	rdm.queueEvent(syncAllSubscribersEvent{})
+}
+
+func (rdm *RouterDataModel) SyncUpdatedSubscribers() {
+	rdm.queueEvent(syncUpdatedSubscribersEvent{})
 }
 
 // HandleIdentityEvent will apply the delta event to the router data model. It is not restricted by index calculations.
@@ -502,13 +686,17 @@ func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_p
 			if valueInMap == nil {
 				identity = &Identity{
 					DataStateIdentity: model.Identity,
-					ServicePolicies:   cmap.New[struct{}](),
+					ServicePolicies:   map[string]struct{}{},
+					Services:          map[string]serviceAccess{},
+					PostureChecks:     map[string]int32{},
 					identityIndex:     index,
 				}
 			} else {
 				identity = &Identity{
 					DataStateIdentity: model.Identity,
 					ServicePolicies:   valueInMap.ServicePolicies,
+					Services:          valueInMap.Services,
+					PostureChecks:     valueInMap.PostureChecks,
 					identityIndex:     index,
 					serviceSetIndex:   valueInMap.serviceSetIndex,
 				}
@@ -528,17 +716,114 @@ func (rdm *RouterDataModel) HandleIdentityEvent(index uint64, event *edge_ctrl_p
 // Use ApplyServiceEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
 func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Service) {
+	removeFromConfigs := func(configIds []string) {
+		for _, configId := range configIds {
+			if config, _ := rdm.Configs.Get(configId); config != nil {
+				config.Services.Remove(model.Service.Id)
+			}
+		}
+	}
+
+	addToConfigs := func(configIds []string) {
+		for _, configId := range configIds {
+			if config, _ := rdm.Configs.Get(configId); config != nil {
+				config.Services.Set(model.Service.Id, struct{}{})
+			}
+		}
+	}
+
 	if event.Action == edge_ctrl_pb.DataState_Delete {
-		rdm.Services.Remove(model.Service.Id)
-		rdm.ServicePolicies.IterCb(func(key string, v *ServicePolicy) {
-			v.Services.Remove(model.Service.Id)
+		rdm.Services.RemoveCb(model.Service.Id, func(key string, v *Service, exists bool) bool {
+			if exists {
+				removeFromConfigs(v.Configs)
+
+				v.ServicePolicies.IterCb(func(key string, _ struct{}) {
+					if servicePolicy, _ := rdm.ServicePolicies.Get(key); servicePolicy != nil {
+						removed := servicePolicy.Services.RemoveCb(model.Service.Id, func(key string, v struct{}, exists bool) bool {
+							return exists
+						})
+
+						if removed {
+							servicePolicy.NotifyChange(rdm, index)
+						}
+					}
+				})
+			}
+			return exists
 		})
 	} else {
 		rdm.Services.Set(model.Service.Id, &Service{
 			DataStateService: model.Service,
 			index:            index,
 		})
+
+		updatedService := &Service{
+			DataStateService: model.Service,
+			index:            index,
+		}
+
+		rdm.Services.Upsert(model.Service.Id, updatedService, func(exist bool, valueInMap *Service, newValue *Service) *Service {
+			var configsToRemove []string
+			var configsToAdd []string
+
+			if !exist {
+				configsToAdd = newValue.Configs
+			} else {
+				configsToRemove, configsToAdd = diffStringSlices(valueInMap.Configs, newValue.Configs)
+			}
+
+			removeFromConfigs(configsToRemove)
+			addToConfigs(configsToAdd)
+
+			if valueInMap != nil {
+				valueInMap.ServicePolicies.IterCb(func(key string, _ struct{}) {
+					if servicePolicy, _ := rdm.ServicePolicies.Get(key); servicePolicy != nil {
+						servicePolicy.NotifyChange(rdm, index)
+					}
+				})
+			}
+
+			return newValue
+		})
 	}
+}
+
+func diffStringSlices(slice1, slice2 []string) (onlyInFirst, onlyInSecond []string) {
+	// Sort both slices
+	sort.Strings(slice1)
+	sort.Strings(slice2)
+
+	i, j := 0, 0
+
+	for i < len(slice1) && j < len(slice2) {
+		if slice1[i] < slice2[j] {
+			// Element only in first slice
+			onlyInFirst = append(onlyInFirst, slice1[i])
+			i++
+		} else if slice1[i] > slice2[j] {
+			// Element only in second slice
+			onlyInSecond = append(onlyInSecond, slice2[j])
+			j++
+		} else {
+			// Element in both slices, skip
+			i++
+			j++
+		}
+	}
+
+	// Add remaining elements from first slice
+	for i < len(slice1) {
+		onlyInFirst = append(onlyInFirst, slice1[i])
+		i++
+	}
+
+	// Add remaining elements from second slice
+	for j < len(slice2) {
+		onlyInSecond = append(onlyInSecond, slice2[j])
+		j++
+	}
+
+	return onlyInFirst, onlyInSecond
 }
 
 // HandleConfigTypeEvent will apply the delta event to the router data model. It is not restricted by index calculations.
@@ -560,16 +845,42 @@ func (rdm *RouterDataModel) HandleConfigTypeEvent(index uint64, event *edge_ctrl
 // during startup.
 func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Config) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
-		rdm.Configs.Remove(model.Config.Id)
+		rdm.Configs.RemoveCb(model.Config.Id, func(key string, v *Config, exists bool) bool {
+			if v != nil {
+				v.Services.IterCb(func(key string, _ struct{}) {
+					if service, _ := rdm.Services.Get(key); service != nil {
+						service.NotifyChange(rdm, index)
+					}
+				})
+			}
+			return exists
+		})
 	} else {
-		rdm.Configs.Set(model.Config.Id, &Config{
-			DataStateConfig: model.Config,
-			index:           index,
+		rdm.Configs.Upsert(model.Config.Id, nil, func(exist bool, valueInMap *Config, newValue *Config) *Config {
+			result := &Config{
+				DataStateConfig: model.Config,
+				Services:        cmap.New[struct{}](),
+				index:           index,
+			}
+
+			if valueInMap != nil {
+				result.Services = valueInMap.Services
+			}
+
+			if !result.Equals(valueInMap) {
+				result.Services.IterCb(func(key string, _ struct{}) {
+					if service, _ := rdm.Services.Get(key); service != nil {
+						service.NotifyChange(rdm, index)
+					}
+				})
+			}
+
+			return result
 		})
 	}
 }
 
-func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(index uint64, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	servicePolicy := model.ServicePolicy
 	rdm.ServicePolicies.Upsert(servicePolicy.Id, nil, func(exist bool, valueInMap *ServicePolicy, newValue *ServicePolicy) *ServicePolicy {
 		if valueInMap == nil {
@@ -577,33 +888,55 @@ func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(model *edge_ctrl_pb.Da
 				DataStateServicePolicy: servicePolicy,
 				Services:               cmap.New[struct{}](),
 				PostureChecks:          cmap.New[struct{}](),
+				Identities:             cmap.New[struct{}](),
+				index:                  index,
 			}
 		} else {
+			// TODO: fixup denorm data
+			if valueInMap.PolicyType != servicePolicy.PolicyType {
+				valueInMap.Identities.IterCb(func(key string, _ struct{}) {
+					if identity, _ := rdm.Identities.Get(key); identity != nil {
+						identity.NotifyServiceChange(rdm, index)
+					}
+				})
+			}
 			return &ServicePolicy{
 				DataStateServicePolicy: servicePolicy,
 				Services:               valueInMap.Services,
 				PostureChecks:          valueInMap.PostureChecks,
+				Identities:             valueInMap.Identities,
+				index:                  index,
 			}
 		}
 	})
 }
 
-func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
-	rdm.ServicePolicies.Remove(model.ServicePolicy.Id)
+func (rdm *RouterDataModel) applyDeleteServicePolicyEvent(index uint64, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+	rdm.ServicePolicies.RemoveCb(model.ServicePolicy.Id, func(key string, v *ServicePolicy, exists bool) bool {
+		if v != nil {
+			// TODO: fixup denorm data
+			v.Identities.IterCb(func(key string, _ struct{}) {
+				if identity, _ := rdm.Identities.Get(key); identity != nil {
+					identity.NotifyServiceChange(rdm, index)
+				}
+			})
+		}
+		return true
+	})
 }
 
 // HandleServicePolicyEvent will apply the delta event to the router data model. It is not restricted by index calculations.
 // Use ApplyServicePolicyEvent for event logged event handling. This method is generally meant for bulk loading of data
 // during startup.
-func (rdm *RouterDataModel) HandleServicePolicyEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
+func (rdm *RouterDataModel) HandleServicePolicyEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {
 	pfxlog.Logger().WithField("policyId", model.ServicePolicy.Id).WithField("action", event.Action).Debug("applying service policy event")
 	switch event.Action {
 	case edge_ctrl_pb.DataState_Create:
-		rdm.applyUpdateServicePolicyEvent(model)
+		rdm.applyUpdateServicePolicyEvent(index, model)
 	case edge_ctrl_pb.DataState_Update:
-		rdm.applyUpdateServicePolicyEvent(model)
+		rdm.applyUpdateServicePolicyEvent(index, model)
 	case edge_ctrl_pb.DataState_Delete:
-		rdm.applyDeleteServicePolicyEvent(model)
+		rdm.applyDeleteServicePolicyEvent(index, model)
 	}
 }
 
@@ -645,64 +978,105 @@ func (rdm *RouterDataModel) HandleRevocationEvent(event *edge_ctrl_pb.DataState_
 }
 
 func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_ctrl_pb.DataState_ServicePolicyChange) {
-	pfxlog.Logger().
+	log := pfxlog.Logger().
 		WithField("policyId", model.PolicyId).
 		WithField("isAdd", model.Add).
 		WithField("relatedEntityType", model.RelatedEntityType).
-		WithField("relatedEntityIds", model.RelatedEntityIds).
-		Debug("applying service policy change event")
+		WithField("relatedEntityIds", model.RelatedEntityIds)
+	log.Debug("applying service policy change event")
 
-	if model.RelatedEntityType == edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity {
+	servicePolicy, _ := rdm.ServicePolicies.Get(model.PolicyId)
+
+	if servicePolicy == nil {
+		log.Error("service policy not present in router data model")
+		return
+	}
+
+	var additionalIdentitiesToUpdate []string
+
+	switch model.RelatedEntityType {
+	case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity:
 		for _, identityId := range model.RelatedEntityIds {
-			rdm.Identities.Upsert(identityId, nil, func(exist bool, valueInMap *Identity, newValue *Identity) *Identity {
-				if valueInMap != nil {
-					if model.Add {
-						valueInMap.ServicePolicies.Set(model.PolicyId, struct{}{})
-					} else {
-						valueInMap.ServicePolicies.Remove(model.PolicyId)
-					}
-					valueInMap.serviceSetIndex = index
+			rdm.withLockedIdentity(!model.Add, identityId, func(identity *Identity) {
+				if model.Add {
+					servicePolicy.Identities.Set(identityId, struct{}{})
+					identity.addedToPolicy(servicePolicy)
+				} else {
+					servicePolicy.Identities.Remove(identityId)
+					identity.removedFromPolicy(servicePolicy)
 				}
-				return valueInMap
 			})
 		}
-		return
-	}
 
-	if !rdm.ServicePolicies.Has(model.PolicyId) {
-		return
-	}
-
-	rdm.ServicePolicies.Upsert(model.PolicyId, nil, func(exist bool, valueInMap *ServicePolicy, newValue *ServicePolicy) *ServicePolicy {
-		if valueInMap == nil {
-			return nil
+		if !model.Add {
+			additionalIdentitiesToUpdate = model.RelatedEntityIds
 		}
 
-		switch model.RelatedEntityType {
-		case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService:
-			if model.Add {
-				for _, serviceId := range model.RelatedEntityIds {
-					valueInMap.Services.Set(serviceId, struct{}{})
+	case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService:
+		servicePolicy.Identities.IterCb(func(identityId string, _ struct{}) {
+			rdm.withLockedIdentity(!model.Add, identityId, func(identity *Identity) {
+				if model.Add {
+					identity.servicesAddedToPolicy(servicePolicy, model.RelatedEntityIds)
+				} else {
+					identity.servicesRemovedFromPolicy(servicePolicy, model.RelatedEntityIds)
 				}
-			} else {
-				for _, serviceId := range model.RelatedEntityIds {
-					valueInMap.Services.Remove(serviceId)
-				}
+			})
+		})
+
+		if model.Add {
+			for _, serviceId := range model.RelatedEntityIds {
+				servicePolicy.Services.Set(serviceId, struct{}{})
 			}
-		case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck:
-			if model.Add {
-				for _, postureCheckId := range model.RelatedEntityIds {
-					valueInMap.PostureChecks.Set(postureCheckId, struct{}{})
-				}
-			} else {
-				for _, postureCheckId := range model.RelatedEntityIds {
-					valueInMap.PostureChecks.Remove(postureCheckId)
-				}
+		} else {
+			for _, serviceId := range model.RelatedEntityIds {
+				servicePolicy.Services.Remove(serviceId)
 			}
 		}
+	case edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck:
+		servicePolicy.Identities.IterCb(func(identityId string, _ struct{}) {
+			rdm.withLockedIdentity(!model.Add, identityId, func(identity *Identity) {
+				if model.Add {
+					identity.postureChecksAddedToPolicy(servicePolicy, model.RelatedEntityIds)
+				} else {
+					identity.postureChecksRemovedFromPolicy(servicePolicy, model.RelatedEntityIds)
+				}
+			})
+		})
 
-		return valueInMap
+		if model.Add {
+			for _, postureCheckId := range model.RelatedEntityIds {
+				servicePolicy.PostureChecks.Set(postureCheckId, struct{}{})
+			}
+		} else {
+			for _, postureCheckId := range model.RelatedEntityIds {
+				servicePolicy.PostureChecks.Remove(postureCheckId)
+			}
+		}
+	}
+
+	rdm.ServicePolicies.Set(model.PolicyId, &ServicePolicy{
+		DataStateServicePolicy: servicePolicy.DataStateServicePolicy,
+		Services:               servicePolicy.Services,
+		PostureChecks:          servicePolicy.PostureChecks,
+		Identities:             servicePolicy.Identities,
+		index:                  index,
 	})
+
+	servicePolicy.Identities.IterCb(func(identityId string, _ struct{}) {
+		if identity, _ := rdm.Identities.Get(identityId); identity != nil {
+			if rdm.subscriptions.Has(identityId) {
+				rdm.updatedIdentities.Set(identityId, struct{}{})
+			}
+		}
+	})
+
+	for _, identityId := range additionalIdentitiesToUpdate {
+		if identity, _ := rdm.Identities.Get(identityId); identity != nil {
+			if rdm.subscriptions.Has(identityId) {
+				rdm.updatedIdentities.Set(identityId, struct{}{})
+			}
+		}
+	}
 }
 
 func (rdm *RouterDataModel) GetPublicKeys() map[string]crypto.PublicKey {
@@ -784,7 +1158,7 @@ func (rdm *RouterDataModel) getDataStateAlreadyLocked(index uint64) *edge_ctrl_p
 		}
 		events = append(events, newEvent)
 
-		v.ServicePolicies.IterCb(func(policyId string, _ struct{}) {
+		v.IterateServicePolicies(func(policyId string) {
 			change := servicePolicyIdentities[policyId]
 			if change == nil {
 				change = &edge_ctrl_pb.DataState_ServicePolicyChange{
@@ -964,7 +1338,7 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 
 	postureChecks := map[string]*edge_ctrl_pb.DataState_PostureCheck{}
 
-	identity.ServicePolicies.IterCb(func(servicePolicyId string, _ struct{}) {
+	identity.IterateServicePolicies(func(servicePolicyId string) {
 		servicePolicy, ok := rdm.ServicePolicies.Get(servicePolicyId)
 
 		if ok && servicePolicy.PolicyType != policyType {
@@ -997,10 +1371,22 @@ func CloneMap[V any](m cmap.ConcurrentMap[string, V]) cmap.ConcurrentMap[string,
 	return result
 }
 
-func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, isRouterIdentity bool) error {
+func (rdm *RouterDataModel) withLockedIdentity(panicOnNil bool, identityId string, f func(identity *Identity)) {
+	if identity, _ := rdm.Identities.Get(identityId); identity != nil {
+		identity.lock.Lock()
+		defer identity.lock.Unlock()
+		f(identity)
+	} else if panicOnNil {
+		panic(fmt.Errorf("identity '%s' not found", identityId))
+	} else {
+		f(nil)
+	}
+}
+
+func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, isRecreatableIdentity bool) error {
 	pfxlog.Logger().WithField("identityId", identityId).Debug("subscribing to changes for identity")
 	identity, ok := rdm.Identities.Get(identityId)
-	if !ok && !isRouterIdentity {
+	if !ok && !isRecreatableIdentity {
 		return fmt.Errorf("identity %s not found", identityId)
 	}
 
@@ -1010,7 +1396,8 @@ func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscr
 			return valueInMap
 		}
 		result := &IdentitySubscription{
-			IdentityId: identityId,
+			IdentityId:    identityId,
+			IsRecreatable: isRecreatableIdentity,
 		}
 		result.listeners.Append(subscriber)
 		return result
@@ -1034,12 +1421,47 @@ func (rdm *RouterDataModel) InheritLocalData(other *RouterDataModel) {
 	})
 }
 
+func (rdm *RouterDataModel) buildServiceListUsingDenormalizedData(sub *IdentitySubscription) (map[string]*IdentityService, map[string]*PostureCheck) {
+	log := pfxlog.Logger().WithField("identityId", sub.IdentityId)
+	services := map[string]*IdentityService{}
+	postureChecks := map[string]*PostureCheck{}
+
+	rdm.withLockedIdentity(false, sub.IdentityId, func(identity *Identity) {
+		for serviceId, access := range identity.Services {
+			if service, _ := rdm.Services.Get(serviceId); service != nil {
+				identityService := &IdentityService{
+					Service:     service,
+					Configs:     map[string]*IdentityConfig{},
+					Checks:      map[string]struct{}{},
+					DialAllowed: access.Dial > 0,
+					BindAllowed: access.Bind > 0,
+				}
+
+				services[serviceId] = identityService
+				rdm.loadServiceConfigs(sub.Identity, identityService)
+			} else {
+				log.WithField("serviceId", serviceId).Panic("service not found by id")
+			}
+		}
+
+		for postureCheckId := range identity.PostureChecks {
+			check, ok := rdm.PostureChecks.Get(postureCheckId)
+			if !ok {
+				log.WithField("postureCheckId", postureCheckId).Panic("posture check reference but not found by id")
+			}
+			postureChecks[postureCheckId] = check
+		}
+	})
+
+	return services, postureChecks
+}
+
 func (rdm *RouterDataModel) buildServiceList(sub *IdentitySubscription) (map[string]*IdentityService, map[string]*PostureCheck) {
 	log := pfxlog.Logger().WithField("identityId", sub.IdentityId)
 	services := map[string]*IdentityService{}
 	postureChecks := map[string]*PostureCheck{}
 
-	sub.Identity.ServicePolicies.IterCb(func(policyId string, _ struct{}) {
+	sub.Identity.IterateServicePolicies(func(policyId string) {
 		policy, ok := rdm.ServicePolicies.Get(policyId)
 		if !ok {
 			log.WithField("policyId", policyId).Error("could not find service policy")
@@ -1147,7 +1569,7 @@ func (rdm *RouterDataModel) GetEntityCounts() map[string]uint32 {
 		"configType":         uint32(rdm.ConfigTypes.Count()),
 		"configs":            uint32(rdm.Configs.Count()),
 		"identities":         uint32(rdm.Identities.Count()),
-		"services":           uint32(rdm.Services.Count()),
+		"Services":           uint32(rdm.Services.Count()),
 		"service-policies":   uint32(rdm.ServicePolicies.Count()),
 		"posture-checks":     uint32(rdm.PostureChecks.Count()),
 		"public-keys":        uint32(rdm.PublicKeys.Count()),
@@ -1159,6 +1581,36 @@ func (rdm *RouterDataModel) GetEntityCounts() map[string]uint32 {
 
 func (rdm *RouterDataModel) GetTerminatorIdCache() cmap.ConcurrentMap[string, string] {
 	return rdm.terminatorIdCache
+}
+
+func (rdm *RouterDataModel) queueSyncCheck(identityId string) {
+	if !rdm.isReceiver {
+		return
+	}
+
+	if rdm.subscriptions.Has(identityId) {
+		rdm.updatedIdentities.Set(identityId, struct{}{})
+		select {
+		case rdm.events <- checkForIdentityChangesEvent{identityId: identityId}:
+		default:
+			select {
+			case rdm.scanSubsNotify <- struct{}{}:
+			default:
+			}
+		}
+	}
+}
+
+func (rdm *RouterDataModel) syncSubscriptionIfRequired(identityId string) {
+	if subscription, _ := rdm.subscriptions.Get(identityId); subscription != nil {
+		requiresSync := rdm.updatedIdentities.RemoveCb(identityId, func(key string, v struct{}, exists bool) bool {
+			return exists
+		})
+
+		if requiresSync {
+			subscription.checkForChanges(rdm)
+		}
+	}
 }
 
 type DiffType string
@@ -1174,7 +1626,7 @@ type DiffSink func(entityType string, id string, diffType DiffType, detail strin
 func (rdm *RouterDataModel) Validate(correct *RouterDataModel, sink DiffSink) {
 	correct.Diff(rdm, sink)
 	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
-		v.Diff(rdm, sink)
+		v.Diff(rdm, false, sink)
 	})
 }
 
@@ -1323,4 +1775,196 @@ func (self *compareReporter) Report(result cmp.Result) {
 
 func (self *compareReporter) PopStep() {
 	self.steps = self.steps[:len(self.steps)-1]
+}
+
+// ToJson returns a map representation of the RouterDataModel with recursively exported data
+func (rdm *RouterDataModel) ToJson() map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Export config types
+	configTypes := make(map[string]interface{})
+	rdm.ConfigTypes.IterCb(func(key string, v *ConfigType) {
+		configTypes[key] = map[string]interface{}{
+			"id":    v.Id,
+			"name":  v.Name,
+			"index": v.index,
+		}
+	})
+	result["configTypes"] = configTypes
+
+	// Export configs
+	configs := make(map[string]interface{})
+	rdm.Configs.IterCb(func(key string, v *Config) {
+		services := make([]string, 0)
+		v.Services.IterCb(func(serviceId string, _ struct{}) {
+			services = append(services, serviceId)
+		})
+		configs[key] = map[string]interface{}{
+			"id":       v.Id,
+			"name":     v.Name,
+			"typeId":   v.TypeId,
+			"dataJson": v.DataJson,
+			"services": services,
+			"index":    v.index,
+		}
+	})
+	result["configs"] = configs
+
+	// Export identities
+	identities := make(map[string]interface{})
+	rdm.Identities.IterCb(func(key string, v *Identity) {
+		servicePolicies := make([]string, 0)
+		v.IterateServicePolicies(func(servicePolicyId string) {
+			servicePolicies = append(servicePolicies, servicePolicyId)
+		})
+
+		services := make(map[string]interface{})
+		v.lock.Lock()
+		for serviceId, access := range v.Services {
+			services[serviceId] = map[string]interface{}{
+				"dial": access.Dial,
+				"bind": access.Bind,
+			}
+		}
+
+		postureChecks := make(map[string]int32)
+		for checkId, count := range v.PostureChecks {
+			postureChecks[checkId] = count
+		}
+		v.lock.Unlock()
+
+		identities[key] = map[string]interface{}{
+			"id":                        v.Id,
+			"name":                      v.Name,
+			"disabled":                  v.Disabled,
+			"appDataJson":               string(v.AppDataJson),
+			"defaultHostingPrecedence":  v.DefaultHostingPrecedence,
+			"defaultHostingCost":        v.DefaultHostingCost,
+			"serviceHostingPrecedences": v.ServiceHostingPrecedences,
+			"serviceHostingCosts":       v.ServiceHostingCosts,
+			"serviceConfigs":            v.ServiceConfigs,
+			"servicePolicies":           servicePolicies,
+			"services":                  services,
+			"postureChecks":             postureChecks,
+			"identityIndex":             v.identityIndex,
+			"serviceSetIndex":           v.serviceSetIndex,
+		}
+	})
+	result["identities"] = identities
+
+	// Export services
+	services := make(map[string]interface{})
+	rdm.Services.IterCb(func(key string, v *Service) {
+		servicePolicies := make([]string, 0)
+		v.ServicePolicies.IterCb(func(policyId string, _ struct{}) {
+			servicePolicies = append(servicePolicies, policyId)
+		})
+
+		services[key] = map[string]interface{}{
+			"id":                 v.Id,
+			"name":               v.Name,
+			"encryptionRequired": v.EncryptionRequired,
+			"configs":            v.Configs,
+			"servicePolicies":    servicePolicies,
+			"index":              v.index,
+		}
+	})
+	result["services"] = services
+
+	// Export service policies
+	servicePolicies := make(map[string]interface{})
+	rdm.ServicePolicies.IterCb(func(key string, v *ServicePolicy) {
+		policyServices := make([]string, 0)
+		v.Services.IterCb(func(serviceId string, _ struct{}) {
+			policyServices = append(policyServices, serviceId)
+		})
+
+		postureChecks := make([]string, 0)
+		v.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			postureChecks = append(postureChecks, checkId)
+		})
+
+		identitiesList := make([]string, 0)
+		v.Identities.IterCb(func(identityId string, _ struct{}) {
+			identitiesList = append(identitiesList, identityId)
+		})
+
+		servicePolicies[key] = map[string]interface{}{
+			"id":            v.Id,
+			"name":          v.Name,
+			"policyType":    v.PolicyType.String(),
+			"services":      policyServices,
+			"postureChecks": postureChecks,
+			"identities":    identitiesList,
+			"index":         v.index,
+		}
+	})
+	result["servicePolicies"] = servicePolicies
+
+	// Export posture checks
+	postureChecks := make(map[string]interface{})
+	rdm.PostureChecks.IterCb(func(key string, v *PostureCheck) {
+		postureChecks[key] = map[string]interface{}{
+			"id":     v.Id,
+			"name":   v.Name,
+			"typeId": v.TypeId,
+			"index":  v.index,
+		}
+	})
+	result["postureChecks"] = postureChecks
+
+	// Export subscriptions
+	subscriptions := make(map[string]interface{})
+	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
+		v.Lock()
+		defer v.Unlock()
+
+		// Export services within subscription
+		subServices := make(map[string]interface{})
+		for serviceId, identityService := range v.Services {
+			checks := make([]string, 0)
+			for checkId := range identityService.Checks {
+				checks = append(checks, checkId)
+			}
+
+			configsMap := make(map[string]interface{})
+			for configTypeName, identityConfig := range identityService.Configs {
+				configsMap[configTypeName] = map[string]interface{}{
+					"configId":     identityConfig.Config.Id,
+					"configName":   identityConfig.Config.Name,
+					"configTypeId": identityConfig.ConfigType.Id,
+					"dataJson":     identityConfig.Config.DataJson,
+				}
+			}
+
+			subServices[serviceId] = map[string]interface{}{
+				"serviceId":   identityService.Service.Id,
+				"serviceName": identityService.Service.Name,
+				"dialAllowed": identityService.DialAllowed,
+				"bindAllowed": identityService.BindAllowed,
+				"checks":      checks,
+				"configs":     configsMap,
+			}
+		}
+
+		// Export posture checks within subscription
+		subChecks := make(map[string]interface{})
+		for checkId, check := range v.Checks {
+			subChecks[checkId] = map[string]interface{}{
+				"id":     check.Id,
+				"name":   check.Name,
+				"typeId": check.TypeId,
+			}
+		}
+
+		subscriptions[key] = map[string]interface{}{
+			"identityId":    v.IdentityId,
+			"isRecreatable": v.IsRecreatable,
+			"services":      subServices,
+			"postureChecks": subChecks,
+		}
+	})
+	result["subscriptions"] = subscriptions
+
+	return result
 }

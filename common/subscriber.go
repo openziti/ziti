@@ -18,13 +18,16 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
+	"sync"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"sync"
 )
 
 type IdentityConfig struct {
@@ -68,44 +71,49 @@ func (self *IdentityService) GetConfig(configTypeName string, v any) (bool, erro
 
 func (self *IdentityService) Equals(other *IdentityService) bool {
 	log := pfxlog.Logger().WithField("serviceId", other.Service.Id).WithField("serviceName", other.Service.Name)
+
+	if self.Service.GetIndex() == other.Service.GetIndex() {
+		return true
+	}
+
 	if self.Service.Name != other.Service.Name {
-		log.WithField("field", "name").Info("service updated")
+		log.WithField("field", "name").Debug("service updated")
 		return false
 	}
 
 	if self.Service.EncryptionRequired != other.Service.EncryptionRequired {
-		log.WithField("field", "encryptionRequired").Info("service updated")
+		log.WithField("field", "encryptionRequired").Debug("service updated")
 		return false
 	}
 
 	if len(self.Service.Configs) != len(other.Service.Configs) {
-		log.WithField("field", "configs.len").Info("service updated")
+		log.WithField("field", "configs.len").Debug("service updated")
 		return false
 	}
 
 	if len(self.Checks) != len(other.Checks) {
-		log.WithField("field", "checks.len").Info("service updated")
+		log.WithField("field", "checks.len").Debug("service updated")
 		return false
 	}
 
 	if len(self.Configs) != len(other.Configs) {
-		log.WithField("field", "identity.configs.len").Info("service updated")
+		log.WithField("field", "identity.configs.len").Debug("service updated")
 		return false
 	}
 
 	if self.DialAllowed != other.DialAllowed {
-		log.WithField("field", "dialAllowed").Info("service updated")
+		log.WithField("field", "dialAllowed").Debug("service updated")
 		return false
 	}
 
 	if self.BindAllowed != other.BindAllowed {
-		log.WithField("field", "bindAllowed").Info("service updated")
+		log.WithField("field", "bindAllowed").Debug("service updated")
 		return false
 	}
 
 	for id := range self.Checks {
 		if _, ok := other.Checks[id]; !ok {
-			log.WithField("field", "checks").Info("service updated")
+			log.WithField("field", "checks").Debug("service updated")
 			return false
 		}
 	}
@@ -113,18 +121,18 @@ func (self *IdentityService) Equals(other *IdentityService) bool {
 	for id, config := range self.Configs {
 		otherConfig, ok := other.Configs[id]
 		if !ok {
-			log.WithField("field", "identity.configs").Info("service updated")
+			log.WithField("field", "identity.configs").Debug("service updated")
 			return false
 		}
 		if !config.Equals(otherConfig) {
-			log.WithField("field", "identity.configs").Info("service updated")
+			log.WithField("field", "identity.configs").Debug("service updated")
 			return false
 		}
 	}
 
 	for idx, v := range self.Service.Configs {
 		if other.Service.Configs[idx] != v {
-			log.WithField("field", "configs").Info("service updated")
+			log.WithField("field", "configs").Debug("service updated")
 			return false
 		}
 	}
@@ -135,19 +143,29 @@ func (self *IdentityService) Equals(other *IdentityService) bool {
 type IdentitySubscription struct {
 	IdentityId string
 	Identity   *Identity
-	Services   map[string]*IdentityService
-	Checks     map[string]*PostureCheck
+	// Some identities, like router identities, may be deleted and recreated, as the tunneler flag is toggled
+	// If IsRecreatable is true then the subscription should remain active when the identity is deleted
+	IsRecreatable bool
+	Services      map[string]*IdentityService
+	Checks        map[string]*PostureCheck
 
 	listeners concurrenz.CopyOnWriteSlice[IdentityEventSubscriber]
 
 	sync.Mutex
 }
 
-func (self *IdentitySubscription) Diff(rdm *RouterDataModel, sink DiffSink) {
-	currentState := &IdentitySubscription{IdentityId: self.IdentityId}
+func (self *IdentitySubscription) Diff(rdm *RouterDataModel, useDenormData bool, sink DiffSink) {
+	currentState := &IdentitySubscription{
+		IdentityId:    self.IdentityId,
+		IsRecreatable: self.IsRecreatable,
+	}
 	identity, found := rdm.Identities.Get(currentState.IdentityId)
 	if found {
-		currentState.initialize(rdm, identity)
+		if useDenormData {
+			currentState.initializeWithDenorm(rdm, identity)
+		} else {
+			currentState.initialize(rdm, identity)
+		}
 	}
 
 	diffReporter := &compareReporter{
@@ -248,6 +266,21 @@ func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Ide
 	return self.getState(), wasInitialized
 }
 
+func (self *IdentitySubscription) initializeWithDenorm(rdm *RouterDataModel, identity *Identity) (*IdentityState, bool) {
+	self.Lock()
+	defer self.Unlock()
+	wasInitialized := false
+	if self.Identity == nil {
+		self.Identity = identity
+		if self.Services == nil {
+			self.Services, self.Checks = rdm.buildServiceListUsingDenormalizedData(self)
+		}
+	} else {
+		wasInitialized = true
+	}
+	return self.getState(), wasInitialized
+}
+
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	idx, _ := rdm.CurrentIndex()
 	log := pfxlog.Logger().
@@ -262,7 +295,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	oldChecks := self.Checks
 	self.Identity = newIdentity
 	if ok {
-		self.Services, self.Checks = rdm.buildServiceList(self)
+		self.Services, self.Checks = rdm.buildServiceListUsingDenormalizedData(self)
 	}
 	newServices := self.Services
 	newChecks := self.Checks
@@ -416,6 +449,9 @@ type identityRemoveEvent struct {
 func (self identityRemoveEvent) process(rdm *RouterDataModel) {
 	if sub, found := rdm.subscriptions.Get(self.identityId); found {
 		sub.identityRemoved()
+		if !sub.IsRecreatable {
+			rdm.subscriptions.Remove(self.identityId)
+		}
 	}
 }
 
@@ -451,11 +487,51 @@ func (self identityUpdatedEvent) process(rdm *RouterDataModel) {
 	}
 }
 
+type checkForIdentityChangesEvent struct {
+	identityId string
+}
+
+func (self checkForIdentityChangesEvent) process(rdm *RouterDataModel) {
+	rdm.syncSubscriptionIfRequired(self.identityId)
+}
+
 type syncAllSubscribersEvent struct{}
 
 func (self syncAllSubscribersEvent) process(rdm *RouterDataModel) {
-	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).Info("sync all subscribers")
+	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
+		WithField("updatedIdentities", rdm.updatedIdentities.Count()).
+		Info("sync all subscribers: start")
 	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
+		rdm.updatedIdentities.Remove(key)
 		v.checkForChanges(rdm)
 	})
+	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).Info("sync all subscribers: done")
+}
+
+type syncUpdatedSubscribersEvent struct{}
+
+func (self syncUpdatedSubscribersEvent) process(rdm *RouterDataModel) {
+	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
+		WithField("updatedIdentities", rdm.updatedIdentities.Count()).
+		Info("sync updated subscribers: start")
+	for entry := range rdm.updatedIdentities.IterBuffered() {
+		rdm.syncSubscriptionIfRequired(entry.Key)
+	}
+	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).Info("sync updated subscribers: done")
+}
+
+type waitForQueueEmptyEvent struct {
+	c chan struct{}
+}
+
+func (self *waitForQueueEmptyEvent) process(rdm *RouterDataModel) {
+	if rdm.updatedIdentities.Count() == 0 {
+		close(self.c)
+	} else {
+		fmt.Printf("updated identities count is %d\n", rdm.updatedIdentities.Count())
+		time.Sleep(time.Second * 10)
+		go func() {
+			rdm.events <- self
+		}()
+	}
 }
