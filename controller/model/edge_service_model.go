@@ -18,12 +18,13 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 type EdgeService struct {
@@ -67,17 +68,17 @@ func (entity *EdgeService) validateConfigs(tx *bbolt.Tx, env Env) error {
 		if config == nil {
 			return boltz.NewNotFoundError(db.EntityTypeConfigs, "id", id)
 		}
-		conflictConfig, found := typeMap[config.Type]
+		conflictConfig, found := typeMap[config.TypeId]
 		if found {
 			configTypeName := "<not found>"
-			if configType, _ := env.GetStores().ConfigType.LoadById(tx, config.Type); configType != nil {
+			if configType, _ := env.GetStores().ConfigType.LoadById(tx, config.TypeId); configType != nil {
 				configTypeName = configType.Name
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
 				conflictConfig.Name, config.Name, configTypeName)
 			return errorz.NewFieldError(msg, "configs", entity.Configs)
 		}
-		typeMap[config.Type] = config
+		typeMap[config.TypeId] = config
 	}
 	return nil
 }

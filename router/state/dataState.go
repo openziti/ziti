@@ -24,13 +24,23 @@ func (*DataStateHandler) ContentType() int32 {
 }
 
 func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
-	currentCtrlId := self.state.GetCurrentDataModelSource()
+	currentSubscription := self.state.GetCurrentDataModelSubscription()
+
+	logger := pfxlog.Logger().
+		WithField("ctrlId", ch.Id()).
+		WithField("subscribedCtrlId", currentSubscription.CtrlId).
+		WithField("subscriptionId", currentSubscription.SubscriptionId)
 
 	// ignore state from controllers we are not currently subscribed to
-	if currentCtrlId != ch.Id() {
-		logger.WithField("dataModelSrcId", currentCtrlId).Info("data state received from ctrl other than the one currently subscribed to")
+	if !currentSubscription.IsCurrentController(ch.Id()) {
+		logger.Info("data state received from ctrl other than the one currently subscribed to")
 		return
+	}
+
+	subscriptionId, ok := msg.GetStringHeader(int32(edge_ctrl_pb.Header_RouterDataModelSubscriptionId))
+	if ok && subscriptionId != currentSubscription.SubscriptionId {
+		logger.WithField("eventSubscriptionId", subscriptionId).
+			Info("data state received from inactive or invalid subscription")
 	}
 
 	err := self.state.GetRouterDataModelPool().Queue(func() {
@@ -42,7 +52,7 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 
 		logger.WithField("index", newState.EndIndex).Info("received full router data model state")
 
-		model := common.NewReceiverRouterDataModelFromDataState(newState, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
+		model := common.NewReceiverRouterDataModelFromDataState(newState, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, false)
 
 		logger.WithField("index", newState.EndIndex).Info("finished processing full router data model state")

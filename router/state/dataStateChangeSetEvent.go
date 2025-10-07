@@ -19,9 +19,12 @@ func NewDataStateEventHandler(state Manager) channel.TypedReceiveHandler {
 }
 
 func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	currentCtrlId := eventHandler.state.GetCurrentDataModelSource()
+	currentSubscription := eventHandler.state.GetCurrentDataModelSubscription()
 
-	logger := pfxlog.Logger().WithField("ctrlId", ch.Id())
+	logger := pfxlog.Logger().
+		WithField("ctrlId", ch.Id()).
+		WithField("subscribedCtrlId", currentSubscription.CtrlId).
+		WithField("subscriptionId", currentSubscription.SubscriptionId)
 
 	newEvent := &edge_ctrl_pb.DataState_ChangeSet{}
 	if err := proto.Unmarshal(msg.Body, newEvent); err != nil {
@@ -32,19 +35,27 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 	logger = logger.WithField("index", newEvent.Index).WithField("synthetic", newEvent.IsSynthetic)
 
 	// ignore state from controllers we are not currently subscribed to
-	if currentCtrlId != ch.Id() {
-		logger.WithField("dataModelSrcId", currentCtrlId).Debug("data state received from ctrl other than the one currently subscribed to")
+	if !currentSubscription.IsCurrentController(ch.Id()) {
+		logger.Info("data state change received from ctrl other than the one currently subscribed to")
 		return
+	}
+
+	subscriptionId, ok := msg.GetStringHeader(int32(edge_ctrl_pb.Header_RouterDataModelSubscriptionId))
+	if ok && subscriptionId != currentSubscription.SubscriptionId {
+		logger.WithField("eventSubscriptionId", subscriptionId).
+			Info("data state change received from inactive or invalid subscription")
 	}
 
 	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
 		model := eventHandler.state.RouterDataModel()
-		logger.Debug("received data state change set")
+		logger.Info("received data state change set")
 		model.ApplyChangeSet(newEvent)
 	})
 
 	if err != nil {
-		logger.WithError(err).Errorf("could not queue processing data state change set message")
+		logger.WithError(err).Errorf("could not queue processing data state change set message, resyncing full router data model")
+		// because we were unable to accept events, we're out of sync and will have to completely resync
+		eventHandler.state.ResyncRouterDataModel()
 	}
 }
 

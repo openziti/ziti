@@ -83,6 +83,7 @@ enum Header {
   CheckPassed = 1023;
   RouterDataModel = 1024;
   RouterDataModelIndex = 1025;
+  RouterDataModelSubscriptionId = 1026;
 }
 
 enum CacheType {
@@ -615,4 +616,5 @@ message SubscribeToDataModelRequest {
   uint32 subscriptionDurationSeconds = 2;
   bool renew = 3;
   string timelineId = 4;
+  string subscriptionId = 5;
 }

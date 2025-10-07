@@ -18,6 +18,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -239,6 +240,13 @@ func (store *edgeRouterStoreImpl) cleanupEdgeRouter(ctx boltz.MutateContext, id 
 		// Remove entity from EdgeRouterRoles in service edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
+		}
+
+		if len(entity.RoleAttributes) != 0 {
+			entity.RoleAttributes = nil
+			if err := store.Update(ctx, entity, nil); err != nil {
+				return fmt.Errorf("could not clear role attributes for router '%s' before deletion (%w)", id, err)
+			}
 		}
 
 		// Remove outstanding enrollments

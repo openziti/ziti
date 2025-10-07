@@ -17,6 +17,7 @@
 package sync_strats
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -34,6 +35,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 // RouterSender represents a connection from an Edge Router to the controller. Used
@@ -43,9 +45,10 @@ type RouterSender struct {
 	Id               string
 	EdgeRouter       *model.EdgeRouter
 	Router           *model.Router
+	ae               *env.AppEnv
 	send             chan *channel.Message
 	closeNotify      chan struct{}
-	routerDataModel  *common.RouterDataModel
+	routerDataModel  *common.RouterDataModelSender
 	requestModelSync chan *edge_ctrl_pb.SubscribeToDataModelRequest
 	modelChange      chan struct{}
 	currentIndex     uint64
@@ -53,17 +56,19 @@ type RouterSender struct {
 	lastIndexSent    uint64
 	running          atomic.Bool
 	timelineId       string
+	subscriptionId   string
 
 	SupportsRouterModel bool
 
 	sync.Mutex
 }
 
-func newRouterSender(edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModel) *RouterSender {
+func newRouterSender(ae *env.AppEnv, edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
 	rtx := &RouterSender{
 		Id:               eid.New(),
 		EdgeRouter:       edgeRouter,
 		Router:           router,
+		ae:               ae,
 		send:             make(chan *channel.Message, sendBufferSize),
 		requestModelSync: make(chan *edge_ctrl_pb.SubscribeToDataModelRequest, 1),
 		modelChange:      make(chan struct{}, 1),
@@ -124,8 +129,8 @@ func (rtx *RouterSender) sendRouterDataModelIndex() {
 		return
 	}
 
-	idx, ok := rtx.routerDataModel.CurrentIndex()
-	if !ok || idx <= rtx.lastIndexSent {
+	idx := rtx.routerDataModel.CurrentIndex()
+	if idx <= rtx.lastIndexSent {
 		return
 	}
 
@@ -164,7 +169,7 @@ func (rtx *RouterSender) subscribe(request *edge_ctrl_pb.SubscribeToDataModelReq
 }
 
 func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataModelRequest) {
-	if !req.Renew {
+	if !req.Renew || req.SubscriptionId != rtx.subscriptionId {
 		rtx.currentIndex = req.CurrentIndex
 	}
 
@@ -177,6 +182,7 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 	}
 
 	rtx.timelineId = req.TimelineId
+	rtx.subscriptionId = req.SubscriptionId
 
 	rtx.syncRdmUntil = time.Now().Add(time.Duration(req.SubscriptionDurationSeconds) * time.Second)
 	pfxlog.Logger().WithField("routerId", rtx.Router.Id).
@@ -186,6 +192,7 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		WithField("renew", req.Renew).
 		WithField("subscriptionDuration", rtx.syncRdmUntil.String()).
 		WithField("timelineId", rtx.timelineId).
+		WithField("subscriptionId", rtx.subscriptionId).
 		Info("data model subscription started")
 
 	rtx.handleModelChange()
@@ -202,32 +209,54 @@ func (rtx *RouterSender) handleModelChange() {
 		WithField("ctrlTimelineId", rtx.routerDataModel.GetTimelineId())
 
 	var events []*edge_ctrl_pb.DataState_ChangeSet
-	var ok bool
+	replayResult := common.ReplayResultFullSyncRequired
+
 	if rtx.currentIndex > 0 && rtx.timelineId == rtx.routerDataModel.GetTimelineId() {
-		events, ok = rtx.routerDataModel.ReplayFrom(rtx.currentIndex + 1)
+		events, replayResult = rtx.routerDataModel.ReplayFrom(rtx.currentIndex + 1)
 	}
 
 	var err error
 
-	logger.Debugf("event retrieval ok? %v, event count: %d for replay to router", ok, len(events))
+	logger.Debugf("event retrieval ok? %s, event count: %d for replay to router", replayResult.String(), len(events))
 
-	if ok {
+	if replayResult == common.ReplayResultSuccess {
 		for _, curEvent := range events {
-			if err = protobufs.MarshalTyped(curEvent).Send(rtx.Router.Control); err != nil {
+			var msg *channel.Message
+			if msg, err = rtx.marshal(curEvent); err == nil {
+				err = rtx.Router.Control.Send(msg)
+			}
+
+			if err != nil {
 				logger.WithError(err).
 					WithField("eventIndex", curEvent.Index).
-					WithField("evenType", reflect.TypeOf(curEvent).String()).
-					WithField("eventIsSynthetic", curEvent.IsSynthetic).
+					WithField("eventType", reflect.TypeOf(curEvent).String()).
+					WithField("synthetic", curEvent.IsSynthetic).
 					Error("could not send data state event")
 				break
 			}
+			logger.
+				WithField("eventIndex", curEvent.Index).
+				WithField("eventType", reflect.TypeOf(curEvent).String()).
+				WithField("synthetic", curEvent.IsSynthetic).
+				Info("data state event sent to router")
 			rtx.currentIndex = curEvent.Index
 		}
 	}
 
-	if !ok || err != nil {
-		logger.Info("could not send events for router sync, attempting full state")
+	var fullSync bool
 
+	if err != nil {
+		fullSync = true
+		logger.Info("could not send events for router sync, attempting full state sync")
+	} else if replayResult == common.ReplayResultFullSyncRequired {
+		fullSync = true
+		logger.Info("required sync events not found in event cache, attempting full state sync")
+	} else if rtx.ae.GetCommandDispatcher().IsLeader() && replayResult == common.ReplayResultRequestFromFuture {
+		fullSync = true
+		logger.Info("index is in future, and this node is the leader, attempting full state sync")
+	}
+
+	if fullSync {
 		//full sync
 		dataState := rtx.routerDataModel.GetDataState()
 
@@ -235,7 +264,12 @@ func (rtx *RouterSender) handleModelChange() {
 			return
 		}
 
-		if err = protobufs.MarshalTyped(dataState).Send(rtx.Router.Control); err != nil {
+		var msg *channel.Message
+		if msg, err = rtx.marshal(dataState); err == nil {
+			err = rtx.Router.Control.Send(msg)
+		}
+
+		if err != nil {
 			logger.WithError(err).Error("failure sending full data state")
 		} else {
 			rtx.currentIndex = dataState.EndIndex
@@ -243,6 +277,18 @@ func (rtx *RouterSender) handleModelChange() {
 			logger.Infof("router synced data model to index %d with on timeline: %s", rtx.currentIndex, rtx.timelineId)
 		}
 	}
+}
+
+func (rtx *RouterSender) marshal(message protobufs.TypedMessage) (*channel.Message, error) {
+	b, err := proto.Marshal(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal %v (%w)", reflect.TypeOf(message), err)
+	}
+	result := channel.NewMessage(message.GetContentType(), b)
+	if rtx.subscriptionId != "" {
+		result.PutStringHeader(int32(edge_ctrl_pb.Header_RouterDataModelSubscriptionId), rtx.subscriptionId)
+	}
+	return result, nil
 }
 
 func (rtx *RouterSender) logger() *logrus.Entry {

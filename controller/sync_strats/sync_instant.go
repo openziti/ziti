@@ -108,10 +108,19 @@ type InstantStrategy struct {
 
 	stopNotify chan struct{}
 	stopped    atomic.Bool
-	*common.RouterDataModel
+	*common.RouterDataModelSender
 
 	changeSetLock sync.Mutex
 	changeSets    map[uint64]*edge_ctrl_pb.DataState_ChangeSet
+}
+
+func (strategy *InstantStrategy) ContextIndex(ctx boltz.MutateContext) *uint64 {
+	return strategy.indexProvider.ContextIndex(ctx)
+}
+
+// NextIndex provides an index for the supplied MutateContext.
+func (strategy *InstantStrategy) NextIndex(ctx boltz.MutateContext) (uint64, error) {
+	return strategy.indexProvider.NextIndex(ctx)
 }
 
 func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
@@ -128,26 +137,28 @@ func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
 
 // Initialize implements RouterDataModelCache
 func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
-	strategy.RouterDataModel = common.NewSenderRouterDataModel(strategy.ae.TimelineId(), logSize, bufferSize)
+	strategy.RouterDataModelSender = common.NewRouterDataModelSender(strategy.ae.TimelineId(), logSize, bufferSize)
 	pfxlog.Logger().WithField("logSize", logSize).WithField("listenerBufferSizes", bufferSize).
 		Info("initialized controller router data model")
 	if strategy.ae.HostController.IsRaftEnabled() {
 		strategy.indexProvider = &RaftIndexProvider{
-			index: strategy.ae.GetHostController().GetRaftIndex(),
+			index: strategy.ae.GetHostController().GetStartRaftIndex(),
 		}
 	} else {
-		strategy.indexProvider = &NonHaIndexProvider{
+		nonHaIndexProvider := &NonHaIndexProvider{
 			ae: strategy.ae,
 		}
+		nonHaIndexProvider.load()
+		strategy.indexProvider = nonHaIndexProvider
 	}
 
-	err := strategy.BuildAll(strategy.RouterDataModel)
+	err := strategy.BuildAll(strategy.RouterDataModelSender)
 
 	if err != nil {
 		return err
 	}
 
-	go strategy.handleRouterModelEvents(strategy.RouterDataModel.NewListener())
+	go strategy.handleRouterModelEvents(strategy.RouterDataModelSender.NewListener())
 
 	//policy create/delete/update
 	servicePolicyHandler := &constraintToIndexedEvents[*db.ServicePolicy]{
@@ -270,26 +281,34 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		changeSets:               map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}
 
-	err := strategy.Initialize(ae.GetConfig().RouterDataModel.LogSize, ae.GetConfig().RouterDataModel.ListenerBufferSize)
-
-	if err != nil {
-		pfxlog.Logger().WithError(err).Fatal("could not build initial data model for router synchronization")
-	}
-
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)
 	strategy.resyncHandler = handler_edge_ctrl.NewResyncHandler(ae, strategy.ReceiveResync)
 	strategy.subHandler = handler_edge_ctrl.NewSubscribeToDataModelHandler(ae, strategy.receiveSubscribeRequest)
-	for i := int32(0); i < options.RouterConnectWorkerCount; i++ {
-		go strategy.startHandleRouterConnectWorker()
-	}
-
-	for i := int32(0); i < options.SyncWorkerCount; i++ {
-		go strategy.startSynchronizeWorker()
-	}
 
 	ae.GetHostController().GetNetwork().AddInspectTarget(strategy.inspect)
 
 	return strategy
+}
+
+func (strategy *InstantStrategy) Start() {
+	err := strategy.Initialize(strategy.ae.GetConfig().RouterDataModel.LogSize, strategy.ae.GetConfig().RouterDataModel.ListenerBufferSize)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Fatal("could not build initial data model for router synchronization")
+	}
+
+	strategy.ae.GetHostController().GetDb().SetContextDecorator(func(ctx boltz.MutateContext) {
+		ctx.UpdateContext(func(ctx context.Context) context.Context {
+			return context.WithValue(ctx, db.AppEnvKey, strategy.ae)
+		})
+	})
+
+	for i := int32(0); i < strategy.InstantStrategyOptions.RouterConnectWorkerCount; i++ {
+		go strategy.startHandleRouterConnectWorker()
+	}
+
+	for i := int32(0); i < strategy.InstantStrategyOptions.SyncWorkerCount; i++ {
+		go strategy.startSynchronizeWorker()
+	}
 }
 
 func (strategy *InstantStrategy) GetEdgeRouterState(id string) env.RouterStateValues {
@@ -326,7 +345,7 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 		return
 	}
 
-	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
+	rtx := newRouterSender(strategy.ae, edgeRouter, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
 	rtx.SetSyncStatus(env.RouterSyncQueued)
 	rtx.SetIsOnline(true)
 
@@ -671,7 +690,7 @@ func (strategy *InstantStrategy) ReceiveClientHello(routerId string, msg *channe
 
 	serverVersion := build.GetBuildInfo().Version()
 
-	currentIndex, _ := strategy.CurrentIndex()
+	currentIndex := strategy.CurrentIndex()
 	logger.WithField("routerIndex", routerDataModelIndex).
 		WithField("dataModelIndex", currentIndex).
 		WithField("routerVersion", respHello.Version).
@@ -751,7 +770,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 
 	if rtx.SupportsRouterModel {
 		var pks []*edge_ctrl_pb.DataState_PublicKey
-		strategy.RouterDataModel.PublicKeys.IterCb(func(_ string, v *edge_ctrl_pb.DataState_PublicKey) {
+		strategy.RouterDataModelSender.PublicKeys.IterCb(func(_ string, v *edge_ctrl_pb.DataState_PublicKey) {
 			pks = append(pks, v)
 		})
 
@@ -831,7 +850,7 @@ type InstantSyncState struct {
 	Sequence int    `json:"sequence"` //increasing id from 0 per id for the
 }
 
-func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().ServicePolicy.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -860,7 +879,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.
 			Add:               true,
 		}
 
-		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addServicesEvent)
+		rdm.HandleServicePolicyChange(addServicesEvent)
 
 		addIdentitiesEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
 			PolicyId:          currentId,
@@ -868,7 +887,7 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.
 			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity,
 			Add:               true,
 		}
-		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addIdentitiesEvent)
+		rdm.HandleServicePolicyChange(addIdentitiesEvent)
 
 		addPostureChecksEvent := &edge_ctrl_pb.DataState_ServicePolicyChange{
 			PolicyId:          currentId,
@@ -876,13 +895,13 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.
 			RelatedEntityType: edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck,
 			Add:               true,
 		}
-		rdm.HandleServicePolicyChange(strategy.indexProvider.CurrentIndex(), addPostureChecksEvent)
+		rdm.HandleServicePolicyChange(addPostureChecksEvent)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	serverTls := strategy.ae.HostController.Identity().ServerCert()
 
 	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, []edge_ctrl_pb.DataState_PublicKey_Usage{edge_ctrl_pb.DataState_PublicKey_JWTValidation, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation})}
@@ -960,7 +979,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModelSender) error {
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		index := strategy.indexProvider.CurrentIndex()
 		if err := strategy.BuildConfigTypes(index, tx, rdm); err != nil {
@@ -999,7 +1018,7 @@ func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModel) error {
 	return err
 }
 
-func (strategy *InstantStrategy) BuildConfigTypes(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildConfigTypes(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().ConfigType.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1015,22 +1034,22 @@ func (strategy *InstantStrategy) BuildConfigTypes(index uint64, tx *bbolt.Tx, rd
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandleConfigTypeEvent(index, newEvent, newModel)
+		rdm.HandleConfigTypeEvent(newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) ValidateConfigTypes(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().ConfigType, rdm.ConfigTypes, func(t *db.ConfigType, v *common.ConfigType) []error {
+func (strategy *InstantStrategy) ValidateConfigTypes(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().ConfigType, rdm.ConfigTypes, func(t *db.ConfigType, v *edge_ctrl_pb.DataState_ConfigType) []error {
 		var result []error
 		result = diffVals("config type", t.Id, "name", t.Name, v.Name, result)
 		return result
 	})
 }
 
-func (strategy *InstantStrategy) ValidateConfigs(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().Config, rdm.Configs, func(t *db.Config, v *common.Config) []error {
+func (strategy *InstantStrategy) ValidateConfigs(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Config, rdm.Configs, func(t *db.Config, v *edge_ctrl_pb.DataState_Config) []error {
 		var result []error
 		result = diffVals("config", t.Id, "name", t.Name, v.Name, result)
 
@@ -1044,8 +1063,8 @@ func (strategy *InstantStrategy) ValidateConfigs(tx *bbolt.Tx, rdm *common.Route
 	})
 }
 
-func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().Identity, rdm.Identities, func(t *db.Identity, v *common.Identity) []error {
+func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Identity, rdm.Identities, func(t *db.Identity, v *common.SenderIdentity) []error {
 		var result []error
 
 		serviceConfigs := v.GetServiceConfigsAsMap()
@@ -1072,8 +1091,8 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 	})
 }
 
-func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().EdgeService, rdm.Services, func(t *db.EdgeService, v *common.Service) []error {
+func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().EdgeService, rdm.Services, func(t *db.EdgeService, v *edge_ctrl_pb.DataState_Service) []error {
 		var result []error
 		result = diffVals("service", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("service", t.Id, "encryption required", t.EncryptionRequired, v.EncryptionRequired, result)
@@ -1082,8 +1101,8 @@ func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.Rout
 	})
 }
 
-func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().PostureCheck, rdm.PostureChecks, func(t *db.PostureCheck, v *common.PostureCheck) []error {
+func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().PostureCheck, rdm.PostureChecks, func(t *db.PostureCheck, v *edge_ctrl_pb.DataState_PostureCheck) []error {
 		var result []error
 		result = diffVals("posture check", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("posture check", t.Id, "type", t.TypeId, v.TypeId, result)
@@ -1157,8 +1176,8 @@ func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common
 	})
 }
 
-func (strategy *InstantStrategy) ValidateServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModel) []error {
-	return ValidateType(tx, strategy.ae.GetStores().ServicePolicy, rdm.ServicePolicies, func(t *db.ServicePolicy, v *common.ServicePolicy) []error {
+func (strategy *InstantStrategy) ValidateServicePolicies(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().ServicePolicy, rdm.ServicePolicies, func(t *db.ServicePolicy, v *common.SenderServicePolicy) []error {
 		var result []error
 
 		result = diffVals("service policy", t.Id, "name", t.Name, v.Name, result)
@@ -1256,7 +1275,7 @@ func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m c
 	return result
 }
 
-func (strategy *InstantStrategy) BuildConfigs(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildConfigs(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().Config.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1272,13 +1291,13 @@ func (strategy *InstantStrategy) BuildConfigs(index uint64, tx *bbolt.Tx, rdm *c
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandleConfigEvent(index, newEvent, newModel)
+		rdm.HandleConfigEvent(newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().Identity.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1295,13 +1314,13 @@ func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandleIdentityEvent(index, newEvent, newModel)
+		rdm.HandleIdentityEvent(newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().EdgeService.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1317,13 +1336,13 @@ func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandleServiceEvent(index, newEvent, newModel)
+		rdm.HandleServiceEvent(newEvent, newModel)
 	}
 
 	return nil
 }
 
-func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModel) error {
+func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	for cursor := strategy.ae.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		currentBytes := cursor.Current()
 		currentId := string(currentBytes)
@@ -1339,20 +1358,20 @@ func (strategy *InstantStrategy) BuildPostureChecks(index uint64, tx *bbolt.Tx, 
 			Action: edge_ctrl_pb.DataState_Create,
 			Model:  newModel,
 		}
-		rdm.HandlePostureCheckEvent(index, newEvent, newModel)
+		rdm.HandlePostureCheckEvent(newEvent, newModel)
 	}
 	return nil
 }
 
-func (strategy *InstantStrategy) GetRouterDataModel() *common.RouterDataModel {
-	return strategy.RouterDataModel
+func (strategy *InstantStrategy) GetRouterDataModel() *common.RouterDataModelSender {
+	return strategy.RouterDataModelSender
 }
 
 func (strategy *InstantStrategy) Validate() []error {
-	return strategy.ValidateAll(strategy.RouterDataModel)
+	return strategy.ValidateAll(strategy.RouterDataModelSender)
 }
 
-func (strategy *InstantStrategy) ValidateAll(rdm *common.RouterDataModel) []error {
+func (strategy *InstantStrategy) ValidateAll(rdm *common.RouterDataModelSender) []error {
 	var result []error
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		if errs := strategy.ValidateConfigTypes(tx, rdm); len(errs) > 0 {
@@ -1497,7 +1516,7 @@ func newConfig(entity *db.Config) (*edge_ctrl_pb.DataState_Config, error) {
 
 	return &edge_ctrl_pb.DataState_Config{
 		Id:       entity.Id,
-		TypeId:   entity.Type,
+		TypeId:   entity.TypeId,
 		Name:     entity.Name,
 		DataJson: string(jsonData),
 	}, nil
@@ -1845,6 +1864,21 @@ func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl
 	})
 }
 
+func (strategy *InstantStrategy) HandleServicePolicyChange(ctx boltz.MutateContext, policyChange *edge_ctrl_pb.DataState_ServicePolicyChange) {
+	index, err := strategy.indexProvider.NextIndex(ctx)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("could not process post commit service policy change, could not acquire index")
+		return
+	}
+
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
+		Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
+			ServicePolicyChange: policyChange,
+		},
+	})
+}
+
 func (strategy *InstantStrategy) addToChangeSet(index uint64, event *edge_ctrl_pb.DataState_Event) {
 	strategy.changeSetLock.Lock()
 	defer strategy.changeSetLock.Unlock()
@@ -1857,6 +1891,8 @@ func (strategy *InstantStrategy) addToChangeSet(index uint64, event *edge_ctrl_p
 		strategy.changeSets[index] = changeSet
 	}
 	changeSet.Changes = append(changeSet.Changes, event)
+
+	fmt.Printf("ADDING TO CHANGESET (new? %v): %T - %s\n", !found, event, event.Summarize())
 }
 
 func (strategy *InstantStrategy) completeChangeSet(ctx boltz.MutateContext) {
@@ -1876,26 +1912,6 @@ func (strategy *InstantStrategy) completeChangeSet(ctx boltz.MutateContext) {
 		}
 	}
 
-	v := ctx.Context().Value(db.ServicePolicyEventsKey)
-	if v != nil {
-		policyEvents := v.([]*edge_ctrl_pb.DataState_ServicePolicyChange)
-		if len(policyEvents) > 0 {
-			if changeSet == nil {
-				changeSet = &edge_ctrl_pb.DataState_ChangeSet{
-					Index: index,
-				}
-			}
-			for _, policyEvent := range policyEvents {
-				changeSet.Changes = append(changeSet.Changes, &edge_ctrl_pb.DataState_Event{
-					Action: 0,
-					Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
-						ServicePolicyChange: policyEvent,
-					},
-				})
-			}
-		}
-	}
-
 	if changeSet != nil {
 		strategy.ApplyChangeSet(changeSet)
 	}
@@ -1912,12 +1928,12 @@ func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
 	}
 
 	if val == "router-data-model" {
-		return marshalResult(strategy.RouterDataModel)
+		return marshalResult(strategy.RouterDataModelSender)
 	}
 	if val == "router-data-model-index" {
-		idx, _ := strategy.RouterDataModel.CurrentIndex()
+		idx := strategy.RouterDataModelSender.CurrentIndex()
 		data := map[string]any{
-			"timeline": strategy.RouterDataModel.GetTimelineId(),
+			"timeline": strategy.RouterDataModelSender.GetTimelineId(),
 			"index":    idx,
 		}
 		return marshalResult(data)
@@ -1948,9 +1964,8 @@ type nonHahIndexKeyType string
 const nonHaIndexKey = nonHahIndexKeyType("non-ha.index")
 
 type NonHaIndexProvider struct {
-	ae          *env.AppEnv
-	initialLoad sync.Once
-	index       uint64
+	ae    *env.AppEnv
+	index uint64
 
 	lock sync.Mutex
 }
@@ -1987,8 +2002,6 @@ func (p *NonHaIndexProvider) load() {
 }
 
 func (p *NonHaIndexProvider) NextIndex(ctx boltz.MutateContext) (uint64, error) {
-	p.initialLoad.Do(p.load)
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -2026,8 +2039,6 @@ func (p *NonHaIndexProvider) NextIndex(ctx boltz.MutateContext) (uint64, error) 
 }
 
 func (p *NonHaIndexProvider) CurrentIndex() uint64 {
-	p.initialLoad.Do(p.load)
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

@@ -249,7 +249,7 @@ func createService(t *testing.T, client *rest_management_api_client.ZitiEdgeMana
 	serviceParams.SetTimeout(30 * time.Second)
 	resp, err := client.Service.CreateService(serviceParams, nil)
 	if err != nil {
-		t.Fatal("Failed to create " + name + " service")
+		t.Fatal("Failed to create "+name+" service (%v)", err)
 	}
 	return *resp.GetPayload().Data
 }

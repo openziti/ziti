@@ -18,12 +18,15 @@ package env
 
 import (
 	"crypto"
+	"sync"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
-	"sync"
 )
 
 // RouterSyncStrategyType aliased type for router strategies
@@ -63,7 +66,9 @@ type RouterSyncStrategy interface {
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
 	Validate() []error
-	GetRouterDataModel() *common.RouterDataModel
+	GetRouterDataModel() *common.RouterDataModelSender
+	ContextIndex(ctx boltz.MutateContext) *uint64
+	NextIndex(ctx boltz.MutateContext) (uint64, error)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.
@@ -81,6 +86,7 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionUpdated(apiSession *db.ApiSession, apiSessionCert *db.ApiSessionCertificate)
 	ApiSessionDeleted(apiSession *db.ApiSession)
 	SessionDeleted(session *db.Session)
+	HandleServicePolicyChange(ctx boltz.MutateContext, policyChange *edge_ctrl_pb.DataState_ServicePolicyChange)
 }
 
 // RouterState provides a thread save mechanism to access and set router status information that may be influx
@@ -203,13 +209,13 @@ func (r *LockingRouterState) Protocols() map[string]string {
 	defer r.lock.Unlock()
 
 	//to return empty, not nil
-	copy := map[string]string{}
+	m := map[string]string{}
 
 	for k, v := range r.internal.Protocols {
-		copy[k] = v
+		m[k] = v
 	}
 
-	return copy
+	return m
 }
 
 func (r *LockingRouterState) SetSyncStatus(syncStatus RouterSyncStatus) {

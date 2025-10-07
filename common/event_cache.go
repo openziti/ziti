@@ -18,9 +18,30 @@ package common
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"sync"
-	"sync/atomic"
+
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+)
+
+type ReplayResult int
+
+func (r ReplayResult) String() string {
+	switch r {
+	case ReplayResultSuccess:
+		return "Success"
+	case ReplayResultFullSyncRequired:
+		return "FullSyncRequired"
+	case ReplayResultRequestFromFuture:
+		return "RequestFromFuture"
+	default:
+		return "Unknown"
+	}
+}
+
+const (
+	ReplayResultSuccess           = ReplayResult(1)
+	ReplayResultFullSyncRequired  = ReplayResult(2)
+	ReplayResultRequestFromFuture = ReplayResult(3)
 )
 
 type OnStoreSuccess func(index uint64, event *edge_ctrl_pb.DataState_ChangeSet)
@@ -31,94 +52,36 @@ type EventCache interface {
 	Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error
 
 	// CurrentIndex returns the latest event index applied. This function is blocking.
-	CurrentIndex() (uint64, bool)
+	CurrentIndex() uint64
 
 	// ReplayFrom returns an array of events from startIndex and true if the replay may be facilitated.
 	// An empty slice and true is returned in cases where the requested startIndex is greater than the current index.
 	// An empty slice and false is returned in cases where the replay cannot be facilitated.
 	// This function is blocking.
-	ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool)
+	ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, ReplayResult)
 
 	// WhileLocked allows the execution of arbitrary functionality while the event cache is locked. This function
 	// is blocking.
-	WhileLocked(func(uint64, bool))
+	WhileLocked(func(uint64))
 
 	// SetCurrentIndex sets the current index to the supplied value. All event log history may be lost.
 	SetCurrentIndex(uint64)
 }
 
-// ForgetfulEventCache does not store events or support replaying. It tracks
-// the event index and that is it. It is a stand in for LoggingEventCache
-// when replaying events is not expected (i.e. in routers)
-type ForgetfulEventCache struct {
-	lock  sync.Mutex
-	index uint64
-}
-
-func NewForgetfulEventCache() *ForgetfulEventCache {
-	return &ForgetfulEventCache{}
-}
-
-func (cache *ForgetfulEventCache) SetCurrentIndex(index uint64) {
-	cache.index = index
-}
-
-func (cache *ForgetfulEventCache) WhileLocked(callback func(uint64, bool)) {
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
-
-	callback(cache.currentIndex())
-}
-
-func (cache *ForgetfulEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
-
-	// Synthetic events are not backed by any kind of data store that provides and index. They are not stored and
-	// trigger the on success callback immediately.
-	if event.IsSynthetic {
-		onSuccess(event.Index, event)
-		return nil
-	}
-
-	if cache.index > 0 && cache.index >= event.Index {
-		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", cache.index, event.Index, cache)
-	}
-
-	cache.index = event.Index
-
-	if onSuccess != nil {
-		onSuccess(cache.index, event)
-	}
-
-	return nil
-}
-
-func (cache *ForgetfulEventCache) ReplayFrom(_ uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool) {
-	return nil, false
-}
-
-func (cache *ForgetfulEventCache) CurrentIndex() (uint64, bool) {
-	return cache.currentIndex()
-}
-
-func (cache *ForgetfulEventCache) currentIndex() (uint64, bool) {
-	return atomic.LoadUint64(&cache.index), true
-}
-
 // LoggingEventCache stores events in order to support replaying (i.e. in controllers).
 type LoggingEventCache struct {
-	lock         sync.Mutex
-	HeadLogIndex uint64                                       `json:"-"`
-	LogSize      uint64                                       `json:"-"`
-	Log          []uint64                                     `json:"-"`
-	Events       map[uint64]*edge_ctrl_pb.DataState_ChangeSet `json:"-"`
+	lock          sync.Mutex
+	HeadLogIndex  int                                          `json:"-"`
+	MinEntryIndex uint64                                       `json:"-"`
+	LogSize       int                                          `json:"-"`
+	Log           []uint64                                     `json:"-"`
+	Events        map[uint64]*edge_ctrl_pb.DataState_ChangeSet `json:"-"`
 }
 
 func NewLoggingEventCache(logSize uint64) *LoggingEventCache {
 	return &LoggingEventCache{
 		HeadLogIndex: 0,
-		LogSize:      logSize,
+		LogSize:      int(logSize),
 		Log:          make([]uint64, logSize),
 		Events:       map[uint64]*edge_ctrl_pb.DataState_ChangeSet{},
 	}
@@ -134,7 +97,7 @@ func (cache *LoggingEventCache) SetCurrentIndex(index uint64) {
 	cache.Events = map[uint64]*edge_ctrl_pb.DataState_ChangeSet{}
 }
 
-func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
+func (cache *LoggingEventCache) WhileLocked(callback func(uint64)) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -144,7 +107,10 @@ func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
 func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
+	return cache.storeLocked(event, onSuccess)
+}
 
+func (cache *LoggingEventCache) storeLocked(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	// Synthetic events are not backed by any kind of data store that provides and index. They are not stored and
 	// trigger the on success callback immediately.
 	if event.IsSynthetic {
@@ -152,76 +118,97 @@ func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, o
 		return nil
 	}
 
-	currentIndex, ok := cache.currentIndex()
+	currentIndex := cache.currentIndex()
 
-	if ok && currentIndex >= event.Index {
+	if currentIndex >= event.Index {
 		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", currentIndex, event.Index, cache)
 	}
 
-	targetLogIndex := uint64(0)
-	targetLogIndex = (cache.HeadLogIndex + 1) % cache.LogSize
+	targetLogIndex := (cache.HeadLogIndex + 1) % cache.LogSize
 
 	// delete old value if we have looped
-	prevKey := cache.Log[targetLogIndex]
+	prevCachedIndex := cache.Log[targetLogIndex]
 
-	if prevKey != 0 {
-		delete(cache.Events, prevKey)
+	if prevCachedIndex != 0 {
+		delete(cache.Events, prevCachedIndex)
+		cache.MinEntryIndex = prevCachedIndex + 1
 	}
 
 	// add new values
 	cache.Log[targetLogIndex] = event.Index
 	cache.Events[event.Index] = event
 
-	//update head
+	// update head
 	cache.HeadLogIndex = targetLogIndex
+	if cache.MinEntryIndex == 0 {
+		cache.MinEntryIndex = event.Index
+	}
 
 	onSuccess(event.Index, event)
 	return nil
 }
 
-func (cache *LoggingEventCache) CurrentIndex() (uint64, bool) {
+func (cache *LoggingEventCache) CurrentIndex() uint64 {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
 	return cache.currentIndex()
 }
 
-func (cache *LoggingEventCache) currentIndex() (uint64, bool) {
-	if len(cache.Log) == 0 {
-		return 0, false
-	}
-
-	return cache.Log[cache.HeadLogIndex], true
+func (cache *LoggingEventCache) currentIndex() uint64 {
+	return cache.Log[cache.HeadLogIndex]
 }
 
-func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, bool) {
+func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.DataState_ChangeSet, ReplayResult) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
 	_, eventFound := cache.Events[startIndex]
+	headIndex := cache.Log[cache.HeadLogIndex]
 
-	if !eventFound {
+	for !eventFound {
 		// if we're asked to replay an index we haven't reached yet, return an empty list
-		headIndex := cache.Log[cache.HeadLogIndex]
-		if headIndex < startIndex {
-			return nil, true
+		if startIndex > headIndex {
+			return nil, ReplayResultRequestFromFuture
 		}
 
-		return nil, false
+		if startIndex < cache.MinEntryIndex {
+			return nil, ReplayResultFullSyncRequired
+		}
+
+		startIndex++
+		if startIndex > headIndex {
+			return nil, ReplayResultFullSyncRequired
+		}
+		_, eventFound = cache.Events[startIndex]
 	}
 
-	var startLogIndex *uint64
+	var startLogIndex *int
 
-	for logIndex, eventIndex := range cache.Log {
-		if eventIndex == startIndex {
-			tmp := uint64(logIndex)
-			startLogIndex = &tmp
+	tryOffset := int(headIndex - startIndex)
+	var tryStartIndex int
+	if cache.HeadLogIndex-tryOffset >= 0 {
+		tryStartIndex = cache.HeadLogIndex - tryOffset
+	}
+
+	for i := tryStartIndex; i < len(cache.Log); i++ {
+		if cache.Log[i] == startIndex {
+			startLogIndex = &i
 			break
 		}
 	}
 
+	if startLogIndex == nil && tryStartIndex > 0 {
+		for i := 0; i < tryStartIndex; i++ {
+			if cache.Log[i] == startIndex {
+				startLogIndex = &i
+				break
+			}
+		}
+	}
+
 	if startLogIndex == nil {
-		return nil, false
+		return nil, ReplayResultFullSyncRequired
 	}
 
 	// replay, no loop required
@@ -230,7 +217,7 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 		for _, key := range cache.Log[*startLogIndex : cache.HeadLogIndex+1] {
 			result = append(result, cache.Events[key])
 		}
-		return result, true
+		return result, ReplayResultSuccess
 	}
 
 	// looping replay
@@ -243,5 +230,5 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 		result = append(result, cache.Events[key])
 	}
 
-	return result, true
+	return result, ReplayResultSuccess
 }

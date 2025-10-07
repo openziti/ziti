@@ -191,6 +191,11 @@ func (self *Router) GetRouterDataModel() *common.RouterDataModel {
 	return self.stateManager.RouterDataModel()
 }
 
+// WithRouterDataModel passes the current router data model into the provide function
+func (self *Router) WithRouterDataModel(f func(*common.RouterDataModel) error) error {
+	return self.stateManager.WithRouterDataModel(f)
+}
+
 func (self *Router) IsRouterDataModelEnabled() bool {
 	return self.rdmEnabled.Load()
 }

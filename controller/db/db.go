@@ -18,15 +18,20 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
+
+type appEnvKey string
 
 const (
 	RootBucket     = "ziti"
 	MetadataBucket = "metadata"
 	FieldRaftIndex = "raftIndex"
 	FieldClusterId = "clusterId"
+
+	AppEnvKey = appEnvKey("AppEnvKey")
 )
 
 func Open(path string) (boltz.Db, error) {

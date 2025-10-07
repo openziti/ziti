@@ -21,6 +21,12 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"sync/atomic"
+	"time"
+
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
@@ -31,11 +37,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bbolterrors "go.etcd.io/bbolt/errors"
-	"io"
-	"os"
-	"path"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -65,6 +66,7 @@ type BoltDbFsm struct {
 	indexTracker    IndexTracker
 	eventDispatcher event2.Dispatcher
 	currentState    atomic.Pointer[ServersWithIndex]
+	startIndex      uint64
 	index           uint64
 	dbReferenced    atomic.Bool
 }
@@ -79,13 +81,13 @@ func (self *BoltDbFsm) Init() error {
 		return err
 	}
 
-	index, err := self.loadCurrentIndex()
+	startIndex, err := self.loadCurrentIndex()
 	if err != nil {
 		return err
 	}
 
-	self.index = index
-	self.indexTracker.NotifyOfIndex(index)
+	self.index = startIndex
+	self.indexTracker.NotifyOfIndex(startIndex)
 
 	if err = self.loadServers(); err != nil {
 		return err
@@ -101,6 +103,10 @@ func (self *BoltDbFsm) Close() error {
 func (self *BoltDbFsm) GetDb() boltz.Db {
 	self.dbReferenced.Store(true)
 	return self.db
+}
+
+func (self *BoltDbFsm) GetStartIndex() uint64 {
+	return self.startIndex
 }
 
 func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {

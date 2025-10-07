@@ -1,13 +1,14 @@
 package db
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/change"
 	"go.etcd.io/bbolt"
-	"testing"
 )
 
 func Test_IdentityStore(t *testing.T) {
@@ -61,8 +62,8 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		identity.ServiceConfigs = map[string]map[string]string{
 			service1.Id: {
-				config.Type:  config.Id,
-				config3.Type: config3.Id,
+				config.TypeId:  config.Id,
+				config3.TypeId: config3.Id,
 			},
 		}
 		return ctx.stores.Identity.Update(mutateCtx, identity, boltz.MapFieldChecker{
@@ -79,11 +80,11 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		serviceMap, ok := serviceConfigs[service1.Id]
 		ctx.True(ok)
 		ctx.Equal(2, len(serviceMap))
-		cfg, ok := serviceMap[config.Type]
+		cfg, ok := serviceMap[config.TypeId]
 		ctx.True(ok)
 		ctx.Equal(config.Data, cfg)
 
-		cfg, ok = serviceMap[config3.Type]
+		cfg, ok = serviceMap[config3.TypeId]
 		ctx.True(ok)
 		ctx.Equal(config3.Data, cfg)
 
@@ -94,8 +95,8 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		identity.ServiceConfigs = map[string]map[string]string{
 			service2.Id: {
-				config.Type:  config.Id,
-				config3.Type: config3.Id,
+				config.TypeId:  config.Id,
+				config3.TypeId: config3.Id,
 			},
 		}
 
@@ -114,11 +115,11 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		serviceMap, ok := serviceConfigs[service2.Id]
 		ctx.True(ok)
 		ctx.Equal(2, len(serviceMap))
-		cfg, ok := serviceMap[config.Type]
+		cfg, ok := serviceMap[config.TypeId]
 		ctx.True(ok)
 		ctx.Equal(config.Data, cfg)
 
-		cfg, ok = serviceMap[config3.Type]
+		cfg, ok = serviceMap[config3.TypeId]
 		ctx.True(ok)
 		ctx.Equal(config3.Data, cfg)
 
@@ -130,7 +131,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		identity.ServiceConfigs = map[string]map[string]string{
 			service2.Id: {
-				config.Type: config2.Id,
+				config.TypeId: config2.Id,
 			},
 		}
 
@@ -148,7 +149,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		serviceMap, ok := serviceConfigs[service2.Id]
 		ctx.True(ok)
 		ctx.Equal(1, len(serviceMap))
-		cfg, ok := serviceMap[config.Type]
+		cfg, ok := serviceMap[config.TypeId]
 		ctx.True(ok)
 		ctx.Equal(config2.Data, cfg)
 

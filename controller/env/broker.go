@@ -90,8 +90,12 @@ func (broker *Broker) ValidateRouterDataModel() []error {
 	return broker.routerSyncStrategy.Validate()
 }
 
-func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
+func (broker *Broker) GetRouterDataModel() *common.RouterDataModelSender {
 	return broker.routerSyncStrategy.GetRouterDataModel()
+}
+
+func (broker *Broker) GetRouterSyncStrategy() RouterSyncStrategy {
+	return broker.routerSyncStrategy
 }
 
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {

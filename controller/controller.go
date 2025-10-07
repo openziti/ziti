@@ -181,6 +181,10 @@ func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.Raft.LastIndex()
 }
 
+func (c *Controller) GetStartRaftIndex() uint64 {
+	return c.raftController.Fsm.GetStartIndex()
+}
+
 func (c *Controller) GetRaftInfo() (string, string, string) {
 	id := c.config.Id.Token
 	addr := c.raftController.Mesh.Addr().String()

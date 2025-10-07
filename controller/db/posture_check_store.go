@@ -17,6 +17,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
@@ -163,7 +165,7 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldPostureCheckMfaPromptOnWake, ast.NodeTypeBool, PostureCheckTypeMFA)
 	store.AddSymbol(FieldPostureCheckTypeId, ast.NodeTypeString)
 
-	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+	store.symbolRoleAttributes = store.AddPublicSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.symbolBindServices = store.AddFkSetSymbol(FieldPostureCheckBindServices, store.stores.edgeService)
@@ -190,6 +192,13 @@ func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id strin
 		// Remove entity from PostureCheckRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolPostureCheckRoles); err != nil {
 			return err
+		}
+
+		if len(entity.RoleAttributes) != 0 {
+			entity.RoleAttributes = nil
+			if err := store.Update(ctx, entity, nil); err != nil {
+				return fmt.Errorf("could not clear role attributes for posture-check '%s' before deletion (%w)", id, err)
+			}
 		}
 	}
 

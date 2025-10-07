@@ -3,6 +3,10 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -26,9 +30,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""

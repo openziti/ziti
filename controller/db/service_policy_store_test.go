@@ -2,15 +2,16 @@ package db
 
 import (
 	"fmt"
+	"math/rand"
+	"sort"
+	"testing"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/common/eid"
 	"go.etcd.io/bbolt"
-	"math/rand"
-	"sort"
-	"testing"
 )
 
 func Test_ServicePolicyStore(t *testing.T) {
@@ -177,6 +178,21 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
 	ctx.Equal(0, len(policy.ServiceRoles), "service name should have been removed from service roles")
+
+	service = newEdgeService(eid.New())
+	service.RoleAttributes = []string{"test"}
+	boltztest.RequireCreate(ctx, service)
+
+	policy.ServiceRoles = []string{roleRef("test")}
+	boltztest.RequireUpdate(ctx, policy)
+	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+
+	boltztest.RequireDelete(ctx, service)
+	boltztest.RequireReload(ctx, policy)
+	ctx.Equal(1, len(policy.ServiceRoles), "service roles should be unchanged")
+	ctx.validateServicePolicyServices(nil, []*ServicePolicy{policy})
+	boltztest.ValidateDeleted(ctx, service.Id)
+
 }
 
 func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {

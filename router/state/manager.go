@@ -39,6 +39,7 @@ import (
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/common/runner"
@@ -58,8 +59,7 @@ const (
 	EventUpdatedApiSession = "UpdatedApiSession"
 	EventRemovedApiSession = "RemovedApiSession"
 
-	RouterDataModelListerBufferSize = 100
-	DefaultSubscriptionTimeout      = 5 * time.Minute
+	DefaultSubscriptionTimeout = 5 * time.Minute
 )
 
 type RemoveListener func()
@@ -85,6 +85,27 @@ type ConnProvider interface {
 // consistent authentication context access patterns.
 type ApiSessionTokenProvider interface {
 	GetApiSessionToken() *ApiSessionToken
+}
+
+// DataModelSubscription tracks to which controller and with which subscription id
+// the router is currently subscribed to router data model changes.
+// A subscriptionId is necessary to avoid the following sequence of events:
+//
+// 1. subscribe to controller 1
+// 2. controller starts sending events
+// 3. before receiving any events, controller change event is triggered and we re-subscribe to controller 1
+// 4. controller restarts event stream
+// 5. the resubscribe temporarily reset the current controller to ""
+// 6. in that state we received event 1 from the first stream of events from the controller and discarded it
+// 7. we then were resubscribed and got event 2 from the first stream and processed it
+// 8. At some point we get event 1 again from the second stream, but because it's no longer in order, we discard it
+type DataModelSubscription struct {
+	CtrlId         string
+	SubscriptionId string
+}
+
+func (self DataModelSubscription) IsCurrentController(controllerId string) bool {
+	return self.CtrlId != "" && self.CtrlId == controllerId
 }
 
 // Manager provides the central interface for router state management, encompassing
@@ -169,6 +190,9 @@ type Manager interface {
 	// network topology and policy information.
 	RouterDataModel() *common.RouterDataModel
 
+	// WithRouterDataModel passes the current router data model into the provide function
+	WithRouterDataModel(f func(*common.RouterDataModel) error) error
+
 	// SetRouterDataModel replaces the current router data model with a new one,
 	// optionally resetting the controller subscription.
 	SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool)
@@ -176,6 +200,11 @@ type Manager interface {
 	// GetRouterDataModelPool returns the goroutine pool used for processing
 	// router data model events and updates.
 	GetRouterDataModelPool() goroutines.Pool
+
+	// ResyncRouterDataModel will initiate a fully resync of the router data model from
+	// a controller. Used when there's an indication that the router data model has gotten
+	// out of sync
+	ResyncRouterDataModel()
 
 	// StartHeartbeat initiates periodic transmission of active legacy session tokens
 	// to controllers, enabling distributed session state synchronization.
@@ -220,9 +249,8 @@ type Manager interface {
 	// connections during token rotation.
 	HandleClientApiSessionTokenUpdate(*ApiSessionToken) error
 
-	// GetCurrentDataModelSource returns the ID of the controller currently providing
-	// the router data model subscription.
-	GetCurrentDataModelSource() string
+	// GetCurrentDataModelSubscription returns the current the router data model subscription information.
+	GetCurrentDataModelSubscription() DataModelSubscription
 
 	// SetConnectionTracker registers the connection tracking implementation with the state manager.
 	SetConnectionTracker(tracker ConnectionTracker)
@@ -318,9 +346,9 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 //
 // Parameters:
 //   - data: The updated posture instance data containing current device state
-func (sm *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
-	rdm := sm.routerDataModel.Load()
-	channels := sm.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
+func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
+	rdm := self.routerDataModel.Load()
+	channels := self.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
 
 	for _, ch := range channels {
 		edgeConn, connIdToSink := GetConnProviderAndSinksFromCh(ch)
@@ -351,11 +379,11 @@ func (sm *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 // HasAccess evaluates whether an identity has access to a service based on
 // current posture data and policy configuration, providing comprehensive
 // authorization decisions that incorporate real-time device compliance.
-func (sm *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, policyType edge_ctrl_pb.PolicyType) (*common.ServicePolicy, error) {
+func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, policyType edge_ctrl_pb.PolicyType) (*common.ServicePolicy, error) {
 	var data *posture.InstanceData
-	rdm := sm.routerDataModel.Load()
+	rdm := self.routerDataModel.Load()
 
-	instance := sm.postureCache.GetInstance(apiSessionId)
+	instance := self.postureCache.GetInstance(apiSessionId)
 
 	if instance != nil {
 		data = &instance.InstanceData
@@ -370,14 +398,14 @@ func routerDataModelWorker(_ uint32, f func()) {
 
 // HasBindAccess evaluates service binding authorization, determining if an
 // identity can host connections for a specific service based on policy and posture.
-func (sm *ManagerImpl) HasBindAccess(identityId, apiSessionId, serviceId string) (*common.ServicePolicy, error) {
-	return sm.HasAccess(identityId, apiSessionId, serviceId, edge_ctrl_pb.PolicyType_BindPolicy)
+func (self *ManagerImpl) HasBindAccess(identityId, apiSessionId, serviceId string) (*common.ServicePolicy, error) {
+	return self.HasAccess(identityId, apiSessionId, serviceId, edge_ctrl_pb.PolicyType_BindPolicy)
 }
 
 // HasDialAccess evaluates service dialing authorization, determining if an
 // identity can initiate connections to a specific service based on policy and posture.
-func (sm *ManagerImpl) HasDialAccess(identityId, apiSessionId, serviceId string) (*common.ServicePolicy, error) {
-	return sm.HasAccess(identityId, apiSessionId, serviceId, edge_ctrl_pb.PolicyType_DialPolicy)
+func (self *ManagerImpl) HasDialAccess(identityId, apiSessionId, serviceId string) (*common.ServicePolicy, error) {
+	return self.HasAccess(identityId, apiSessionId, serviceId, edge_ctrl_pb.PolicyType_DialPolicy)
 }
 
 type ManagerImpl struct {
@@ -403,24 +431,26 @@ type ManagerImpl struct {
 	heartbeatOperation *heartbeatOperation
 	currentSync        string
 	syncLock           sync.Mutex
+	rdmLock            sync.RWMutex
 
 	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
 
-	endpointsChanged    chan env.CtrlEvent
-	modelChanged        chan struct{}
-	dataModelSubCtrlId  concurrenz.AtomicValue[string]
-	dataModelSubTimeout time.Time
+	resyncRouterDataModel atomic.Bool
+	endpointsChanged      chan env.CtrlEvent
+	modelChanged          chan struct{}
+	dataModelSubscription concurrenz.AtomicValue[DataModelSubscription]
+	dataModelSubTimeout   time.Time
 
 	postureCache *posture.Cache
 
 	connectionTracker ConnectionTracker
 }
 
-func (sm *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error) {
+func (self *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error) {
 	totpClaims := &common.TotpClaims{}
-	token, err := jwt.ParseWithClaims(jwtStr, totpClaims, sm.pubKeyLookup)
+	token, err := jwt.ParseWithClaims(jwtStr, totpClaims, self.pubKeyLookup)
 
 	if err != nil {
 		return nil, err
@@ -449,14 +479,13 @@ func (sm *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error)
 //
 // Parameters:
 //   - tracker: The ConnectionTracker implementation to use for connection queries
-func (sm *ManagerImpl) SetConnectionTracker(tracker ConnectionTracker) {
-	sm.connectionTracker = tracker
+func (self *ManagerImpl) SetConnectionTracker(tracker ConnectionTracker) {
+	self.connectionTracker = tracker
 }
 
-// GetCurrentDataModelSource returns the ID of the controller currently providing
-// the router data model subscription.
-func (self *ManagerImpl) GetCurrentDataModelSource() string {
-	return self.dataModelSubCtrlId.Load()
+// GetCurrentDataModelSubscription return the current router data model subscription information
+func (self *ManagerImpl) GetCurrentDataModelSubscription() DataModelSubscription {
+	return self.dataModelSubscription.Load()
 }
 
 // manageRouterDataModelSubscription handles automatic subscription management
@@ -476,10 +505,10 @@ func (self *ManagerImpl) manageRouterDataModelSubscription() {
 			return
 		case endpointChangedEvent := <-self.endpointsChanged:
 			// if the controller we're subscribed to has changed, resubscribe
-			if endpointChangedEvent.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+			if self.GetCurrentDataModelSubscription().IsCurrentController(endpointChangedEvent.Controller.Channel().Id()) {
 				pfxlog.Logger().WithField("ctrlId", endpointChangedEvent.Controller.Channel().Id()).WithField("change", endpointChangedEvent.Type).
 					Info("currently subscribed controller has changed, resubscribing")
-				self.dataModelSubCtrlId.Store("")
+				self.dataModelSubscription.Store(DataModelSubscription{})
 			}
 		case <-ticker.C:
 		case <-self.modelChanged:
@@ -490,10 +519,10 @@ func (self *ManagerImpl) manageRouterDataModelSubscription() {
 			select {
 			case endpointChangedEvent := <-self.endpointsChanged:
 				// if the controller we're subscribed to has changed, resubscribe
-				if endpointChangedEvent.Controller.Channel().Id() == self.GetCurrentDataModelSource() {
+				if self.GetCurrentDataModelSubscription().IsCurrentController(endpointChangedEvent.Controller.Channel().Id()) {
 					pfxlog.Logger().WithField("ctrlId", endpointChangedEvent.Controller.Channel().Id()).WithField("change", endpointChangedEvent.Type).
 						Info("currently subscribed controller has changed, resubscribing")
-					self.dataModelSubCtrlId.Store("")
+					self.dataModelSubscription.Store(DataModelSubscription{})
 				}
 			default:
 				allEndpointChangesProcessed = true
@@ -511,10 +540,14 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 		return
 	}
 
-	ctrl := self.env.GetNetworkControllers().GetNetworkController(self.dataModelSubCtrlId.Load())
-	if ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
+	currentSubscription := self.GetCurrentDataModelSubscription()
+	ctrl := self.env.GetNetworkControllers().GetNetworkController(currentSubscription.CtrlId)
+	if currentSubscription.CtrlId == "" || ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
 		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {
-			logger := pfxlog.Logger().WithField("ctrlId", bestCtrl.Id()).WithField("prevCtrlId", self.dataModelSubCtrlId.Load())
+			logger := pfxlog.Logger().
+				WithField("ctrlId", bestCtrl.Id()).
+				WithField("subscriptionId", currentSubscription.SubscriptionId).
+				WithField("prevCtrlId", self.dataModelSubscription.Load().CtrlId)
 			if ctrl == nil {
 				logger.Info("no current data model subscription active, subscribing")
 			} else {
@@ -525,8 +558,10 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 	} else if !ctrl.IsConnected() || ctrl.TimeSinceLastContact() > 30*time.Second {
 		bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel()
 		if bestCtrl != nil && bestCtrl.Id() != ctrl.Channel().Id() {
-			pfxlog.Logger().WithField("ctrlId", bestCtrl.Id()).
-				WithField("prevCtrlId", self.dataModelSubCtrlId.Load()).
+			pfxlog.Logger().
+				WithField("ctrlId", bestCtrl.Id()).
+				WithField("subscriptionId", currentSubscription.SubscriptionId).
+				WithField("prevCtrlId", currentSubscription.CtrlId).
 				Info("current data model subscription source unreliable, changing subscription")
 			self.subscribeToDataModelUpdates(bestCtrl)
 		}
@@ -536,14 +571,23 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 // subscribeToDataModelUpdates sends subscription requests to controllers
 // for router data model changes.
 func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
-	renew := self.dataModelSubCtrlId.Load() == ch.Id()
+	currentSubscription := self.GetCurrentDataModelSubscription()
+	renew := !self.resyncRouterDataModel.Load() && currentSubscription.CtrlId == ch.Id() && currentSubscription.CtrlId != ""
 
 	// if we store after success, we may miss an update because the ids don't match yet
-	self.dataModelSubCtrlId.Store(ch.Id())
+	if !renew {
+		currentSubscription = DataModelSubscription{
+			CtrlId:         ch.Id(),
+			SubscriptionId: eid.New(),
+		}
+		self.dataModelSubscription.Store(currentSubscription)
+	}
 
 	var currentIndex uint64
-	if rdm := self.routerDataModel.Load(); rdm != nil {
-		currentIndex, _ = rdm.CurrentIndex()
+	if !self.resyncRouterDataModel.Load() {
+		if rdm := self.routerDataModel.Load(); rdm != nil {
+			currentIndex = rdm.CurrentIndex()
+		}
 	}
 
 	timelineId := ""
@@ -557,26 +601,29 @@ func (self *ManagerImpl) subscribeToDataModelUpdates(ch channel.Channel) {
 		SubscriptionDurationSeconds: uint32(DefaultSubscriptionTimeout.Seconds()),
 		Renew:                       renew,
 		TimelineId:                  timelineId,
+		SubscriptionId:              currentSubscription.SubscriptionId,
 	}
 
 	logger := pfxlog.Logger().
 		WithField("ctrlId", ch.Id()).
 		WithField("currentIndex", req.CurrentIndex).
-		WithField("renew", req.Renew)
+		WithField("renew", req.Renew).
+		WithField("subscriptionId", currentSubscription.SubscriptionId)
 
 	if err := protobufs.MarshalTyped(req).WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).SendAndWaitForWire(ch); err != nil {
-		self.dataModelSubCtrlId.Store("")
+		self.dataModelSubscription.Store(DataModelSubscription{})
 		logger.WithError(err).Error("error to subscribing to router data model changes")
 	} else {
 		logger.Info("subscribed to new controller for router data model changes")
 		self.dataModelSubTimeout = subTimeout
+		self.resyncRouterDataModel.Store(false)
 	}
 }
 
 // GetRouterDataModelPool returns the goroutine pool used for processing
 // router data model events and updates.
-func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
-	return sm.routerDataModelPool
+func (self *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
+	return self.routerDataModelPool
 }
 
 // ProcessPostureResponses handles incoming posture data from SDK clients and updates
@@ -592,15 +639,15 @@ func (sm *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
 // Parameters:
 //   - ch: The channel the posture response was received on
 //   - response: The posture response containing device state information
-func (sm *ManagerImpl) ProcessPostureResponses(ch channel.Channel, responses *edge_client_pb.PostureResponses) {
+func (self *ManagerImpl) ProcessPostureResponses(ch channel.Channel, responses *edge_client_pb.PostureResponses) {
 	apiSessionToken := GetApiSessionTokenFromCh(ch)
-	sm.postureCache.AddResponses(apiSessionToken.IdentityId, apiSessionToken.Id, responses)
+	self.postureCache.AddResponses(apiSessionToken.IdentityId, apiSessionToken.Id, responses)
 }
 
 // HandleClientApiSessionTokenUpdate propagates JWT token updates to active client
 // connections, ensuring all channels associated with an identity receive the
 // refreshed authentication credentials during token rotation.
-func (sm *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSessionToken) error {
+func (self *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSessionToken) error {
 	if newApiSession == nil {
 		return errors.New("nil api session")
 	}
@@ -613,7 +660,7 @@ func (sm *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSessi
 		return fmt.Errorf("bearer token is of invalid type: expected %s, got: %s", common.TokenTypeAccess, newApiSession.Claims.Type)
 	}
 
-	channels := sm.connectionTracker.GetChannelsByIdentityId(newApiSession.IdentityId)
+	channels := self.connectionTracker.GetChannelsByIdentityId(newApiSession.IdentityId)
 
 	for _, ch := range channels {
 		anyData := ch.GetUserData()
@@ -635,20 +682,20 @@ func (sm *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSessi
 }
 
 // GetEnv returns the router environment instance.
-func (sm *ManagerImpl) GetEnv() env.RouterEnv {
-	return sm.env
+func (self *ManagerImpl) GetEnv() env.RouterEnv {
+	return self.env
 }
 
 // StartRouterModelSave begins periodic saving of the router data model
 // to disk at the specified interval.
-func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Duration) {
+func (self *ManagerImpl) StartRouterModelSave(filePath string, duration time.Duration) {
 	go func() {
 		for {
 			select {
-			case <-sm.env.GetCloseNotify():
+			case <-self.env.GetCloseNotify():
 				return
 			case <-time.After(duration):
-				sm.RouterDataModel().Save(filePath)
+				self.RouterDataModel().Save(filePath)
 			}
 		}
 	}()
@@ -656,8 +703,8 @@ func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Durat
 
 // LoadRouterModel initializes the router data model from a saved file,
 // falling back to an empty model if the file doesn't exist.
-func (sm *ManagerImpl) LoadRouterModel(filePath string) {
-	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
+func (self *ManagerImpl) LoadRouterModel(filePath string) {
+	model, err := common.NewReceiverRouterDataModelFromFile(filePath, self.env.GetCloseNotify())
 
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -665,13 +712,13 @@ func (sm *ManagerImpl) LoadRouterModel(filePath string) {
 		} else {
 			pfxlog.Logger().Infof("router data model file does not exist [%s]", filePath)
 		}
-		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
+		model = common.NewReceiverRouterDataModel(self.env.GetCloseNotify())
 	} else {
-		index, _ := model.CurrentIndex()
+		index := model.CurrentIndex()
 		pfxlog.Logger().WithField("path", filePath).WithField("index", index).Info("loaded router model from file")
 	}
 
-	sm.SetRouterDataModel(model, false)
+	self.SetRouterDataModel(model, false)
 }
 
 // contains is a generic utility function for slice membership testing.
@@ -686,8 +733,8 @@ func contains[T comparable](values []T, element T) bool {
 }
 
 // getX509FromData parses and caches X.509 certificates by key ID.
-func (sm *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certificate, error) {
-	if cert, found := sm.certCache.Get(kid); found {
+func (self *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certificate, error) {
+	if cert, found := self.certCache.Get(kid); found {
 		return cert, nil
 	}
 
@@ -697,7 +744,7 @@ func (sm *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certifica
 		return nil, err
 	}
 
-	sm.certCache.Set(kid, cert)
+	self.certCache.Set(kid, cert)
 
 	return cert, nil
 }
@@ -705,15 +752,15 @@ func (sm *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certifica
 // VerifyClientCert validates client certificates against the router's trusted
 // certificate authorities, ensuring only properly signed certificates can
 // establish authenticated connections.
-func (sm *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
+func (self *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
 
 	rootPool := x509.NewCertPool()
 
-	rdm := sm.routerDataModel.Load()
+	rdm := self.routerDataModel.Load()
 
 	for keysTuple := range rdm.PublicKeys.IterBuffered() {
 		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
-			cert, err := sm.getX509FromData(keysTuple.Val.Kid, keysTuple.Val.GetData())
+			cert, err := self.getX509FromData(keysTuple.Val.Kid, keysTuple.Val.GetData())
 
 			if err != nil {
 				pfxlog.Logger().WithField("kid", keysTuple.Val.Kid).WithError(err).Error("could not parse x509 certificate data")
@@ -741,9 +788,9 @@ func (sm *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
 // ParseServiceSessionJwt validates and extracts service session tokens from JWT
 // strings, ensuring cryptographic integrity and claim validation while binding
 // the service session to its parent API session context.
-func (sm *ManagerImpl) ParseServiceSessionJwt(jwtStr string, apiSessionToken *ApiSessionToken) (*ServiceSessionToken, error) {
+func (self *ManagerImpl) ParseServiceSessionJwt(jwtStr string, apiSessionToken *ApiSessionToken) (*ServiceSessionToken, error) {
 	serviceAccessClaims := &common.ServiceAccessClaims{}
-	jwtToken, err := jwt.ParseWithClaims(jwtStr, serviceAccessClaims, sm.pubKeyLookup)
+	jwtToken, err := jwt.ParseWithClaims(jwtStr, serviceAccessClaims, self.pubKeyLookup)
 
 	if err != nil {
 		return nil, err
@@ -763,9 +810,9 @@ func (sm *ManagerImpl) ParseServiceSessionJwt(jwtStr string, apiSessionToken *Ap
 // GetServiceSessionToken creates service session tokens from either JWT strings
 // or service IDs, providing a unified interface that handles both modern JWT-based
 // service access and legacy service ID lookups from the router data model.
-func (sm *ManagerImpl) GetServiceSessionToken(token string, apiSessionToken *ApiSessionToken) (*ServiceSessionToken, error) {
+func (self *ManagerImpl) GetServiceSessionToken(token string, apiSessionToken *ApiSessionToken) (*ServiceSessionToken, error) {
 	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
-		serviceSessionToken, err := sm.ParseServiceSessionJwt(token, apiSessionToken)
+		serviceSessionToken, err := self.ParseServiceSessionJwt(token, apiSessionToken)
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create service token from JWT: %w", err)
@@ -774,7 +821,7 @@ func (sm *ManagerImpl) GetServiceSessionToken(token string, apiSessionToken *Api
 	}
 
 	// if we don't have a service session JWT, it might be by service id instead, hydrate from context
-	rdm := sm.routerDataModel.Load()
+	rdm := self.routerDataModel.Load()
 	service, ok := rdm.Services.Get(token)
 
 	if !ok {
@@ -792,9 +839,9 @@ func (sm *ManagerImpl) GetServiceSessionToken(token string, apiSessionToken *Api
 // ParseApiSessionJwt validates and extracts API session tokens from JWT strings,
 // performing cryptographic signature verification and audience validation to
 // ensure token authenticity and proper scope for Ziti network access.
-func (sm *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, error) {
+func (self *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, error) {
 	accessClaims := &common.AccessClaims{}
-	jwtToken, err := jwt.ParseWithClaims(jwtStr, accessClaims, sm.pubKeyLookup)
+	jwtToken, err := jwt.ParseWithClaims(jwtStr, accessClaims, self.pubKeyLookup)
 
 	if err != nil {
 		return nil, err
@@ -817,7 +864,7 @@ func (sm *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, erro
 
 // pubKeyLookup retrieves public keys for JWT signature verification
 // from the router data model.
-func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
+func (self *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 	kidVal, ok := token.Header["kid"]
 
 	if !ok {
@@ -832,13 +879,13 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 
 	kid = strings.TrimSpace(kid)
 
-	rdm := sm.routerDataModel.Load()
+	rdm := self.routerDataModel.Load()
 	publicKeys := rdm.PublicKeys.IterBuffered()
 	for keysTuple := range publicKeys {
 		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_JWTValidation) {
 
 			if kid == keysTuple.Val.Kid {
-				return sm.parsePublicKey(keysTuple.Val)
+				return self.parsePublicKey(keysTuple.Val)
 			}
 		}
 	}
@@ -848,31 +895,34 @@ func (sm *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 
 // RouterDataModel returns the current router data model containing
 // network topology and policy information.
-func (sm *ManagerImpl) RouterDataModel() *common.RouterDataModel {
-	return sm.routerDataModel.Load()
+func (self *ManagerImpl) RouterDataModel() *common.RouterDataModel {
+	return self.routerDataModel.Load()
 }
 
 // SetRouterDataModel replaces the current router data model with a new one,
 // optionally resetting the controller subscription.
-func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool) {
-	index, _ := model.CurrentIndex()
+func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool) {
+	self.rdmLock.Lock()
+	defer self.rdmLock.Unlock()
+
+	index := model.CurrentIndex()
 	logger := pfxlog.Logger().WithField("index", index)
 
 	publicKeys := model.PublicKeys.Items()
 	logger.Debugf("number of public keys in rdm: %d", len(publicKeys))
 
 	if resetSubscription {
-		sm.dataModelSubCtrlId.Store("")
+		self.dataModelSubscription.Store(DataModelSubscription{})
 	}
 	logger.Info("replacing router data model")
-	existing := sm.routerDataModel.Swap(model)
+	existing := self.routerDataModel.Swap(model)
 	if existing != nil {
 		existing.Stop()
 		model.InheritLocalData(existing)
-		existingIndex, _ := existing.CurrentIndex()
+		existingIndex := existing.CurrentIndex()
 		logger = logger.WithField("existingIndex", existingIndex)
 		if index < existingIndex {
-			sm.env.GetIndexWatchers().NotifyOfIndexReset()
+			self.env.GetIndexWatchers().NotifyOfIndexReset()
 		}
 	}
 	model.SyncAllSubscribers()
@@ -880,7 +930,7 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSu
 	if resetSubscription {
 		// notify subscription manager code to resubscribe with updated model and index
 		select {
-		case sm.modelChanged <- struct{}{}:
+		case self.modelChanged <- struct{}{}:
 		default:
 		}
 	}
@@ -888,43 +938,60 @@ func (sm *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSu
 	logger.Infof("router data model replacement complete, old: %p, new: %p", existing, model)
 }
 
+func (self *ManagerImpl) ResyncRouterDataModel() {
+	self.resyncRouterDataModel.Store(true)
+	self.dataModelSubscription.Store(DataModelSubscription{})
+
+	// notify subscription manager code to resubscribe with updated model and index
+	select {
+	case self.modelChanged <- struct{}{}:
+	default:
+	}
+}
+
+func (self *ManagerImpl) WithRouterDataModel(f func(rdm *common.RouterDataModel) error) error {
+	self.rdmLock.RLock()
+	defer self.rdmLock.RUnlock()
+	return f(self.routerDataModel.Load())
+}
+
 // MarkSyncInProgress sets the current synchronization tracker ID.
-func (sm *ManagerImpl) MarkSyncInProgress(trackerId string) {
-	sm.syncLock.Lock()
-	defer sm.syncLock.Unlock()
-	sm.currentSync = trackerId
+func (self *ManagerImpl) MarkSyncInProgress(trackerId string) {
+	self.syncLock.Lock()
+	defer self.syncLock.Unlock()
+	self.currentSync = trackerId
 }
 
 // MarkSyncStopped clears the synchronization tracker if it matches
 // the provided ID.
-func (sm *ManagerImpl) MarkSyncStopped(trackerId string) {
-	sm.syncLock.Lock()
-	defer sm.syncLock.Unlock()
-	if sm.currentSync == trackerId {
-		sm.currentSync = ""
+func (self *ManagerImpl) MarkSyncStopped(trackerId string) {
+	self.syncLock.Lock()
+	defer self.syncLock.Unlock()
+	if self.currentSync == trackerId {
+		self.currentSync = ""
 	}
 }
 
 // IsSyncInProgress returns whether a synchronization operation
 // is currently active.
-func (sm *ManagerImpl) IsSyncInProgress() bool {
-	sm.syncLock.Lock()
-	defer sm.syncLock.Unlock()
-	return sm.currentSync != ""
+func (self *ManagerImpl) IsSyncInProgress() bool {
+	self.syncLock.Lock()
+	defer self.syncLock.Unlock()
+	return self.currentSync != ""
 }
 
 // AddLegacyApiSession registers controller-synchronized API sessions in the legacy
 // tracking store, specifically handling protobuf-based sessions that require
 // controller state synchronization rather than self-contained JWT tokens.
-func (sm *ManagerImpl) AddLegacyApiSession(apiSessionToken *ApiSessionToken) {
+func (self *ManagerImpl) AddLegacyApiSession(apiSessionToken *ApiSessionToken) {
 	logger := pfxlog.Logger().Entry
 	logger = apiSessionToken.AddLoggingFields(logger)
 
 	if apiSessionToken.Type == ApiSessionTokenLegacyProtobuf {
 		logger.Debug("adding legacy api session")
 		//for legacy api sessions, token is a UUID
-		sm.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
-		sm.Emit(EventAddedApiSession, apiSessionToken)
+		self.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
+		self.Emit(EventAddedApiSession, apiSessionToken)
 	} else {
 		logger.Debug("attempted to add a non-legacy api session to legacy tracking")
 	}
@@ -933,15 +1000,15 @@ func (sm *ManagerImpl) AddLegacyApiSession(apiSessionToken *ApiSessionToken) {
 // UpdateLegacyApiSession refreshes controller-synchronized API session state
 // for legacy sessions, maintaining backwards compatibility with pre-JWT
 // authentication systems that rely on centralized session management.
-func (sm *ManagerImpl) UpdateLegacyApiSession(apiSessionToken *ApiSessionToken) {
+func (self *ManagerImpl) UpdateLegacyApiSession(apiSessionToken *ApiSessionToken) {
 	logger := pfxlog.Logger().Entry
 	logger = apiSessionToken.AddLoggingFields(logger)
 
 	if apiSessionToken.Type == ApiSessionTokenLegacyProtobuf {
 		logger.Debug("update legacy api session")
 
-		sm.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
-		sm.Emit(EventUpdatedApiSession, apiSessionToken)
+		self.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
+		self.Emit(EventUpdatedApiSession, apiSessionToken)
 	} else {
 		logger.Debug("attempted to update a non-legacy api session to legacy tracking")
 	}
@@ -950,17 +1017,17 @@ func (sm *ManagerImpl) UpdateLegacyApiSession(apiSessionToken *ApiSessionToken) 
 // RemoveLegacyApiSession removes controller-synchronized API sessions from
 // legacy tracking stores, handling cleanup for sessions that originated from
 // pre-JWT authentication systems requiring centralized state management.
-func (sm *ManagerImpl) RemoveLegacyApiSession(apiSessionToken *ApiSessionToken) {
+func (self *ManagerImpl) RemoveLegacyApiSession(apiSessionToken *ApiSessionToken) {
 	logger := pfxlog.Logger().Entry
 	logger = apiSessionToken.AddLoggingFields(logger)
 
-	if ns, ok := sm.legacyApiSessionsByToken.Get(apiSessionToken.Token()); ok {
+	if ns, ok := self.legacyApiSessionsByToken.Get(apiSessionToken.Token()); ok {
 		logger.Debug("removing legacy api session")
-		sm.legacyApiSessionsByToken.Remove(apiSessionToken.Token())
+		self.legacyApiSessionsByToken.Remove(apiSessionToken.Token())
 		eventName := apiSessionToken.RemovedEventName()
-		sm.Emit(eventName)
-		sm.RemoveAllListeners(eventName)
-		sm.Emit(EventRemovedApiSession, ns)
+		self.Emit(eventName)
+		self.RemoveAllListeners(eventName)
+		self.Emit(EventRemovedApiSession, ns)
 	} else {
 		logger.Debug("could not remove legacy api session, not found")
 	}
@@ -974,21 +1041,21 @@ func (sm *ManagerImpl) RemoveLegacyApiSession(apiSessionToken *ApiSessionToken) 
 // beforeSessionId parameter enables monotonic comparison to avoid removing sessions
 // created after the synchronization snapshot, preventing race conditions during
 // high-frequency session creation scenarios.
-func (sm *ManagerImpl) RemoveMissingApiSessions(knownApiSessions []*ApiSessionToken, beforeSessionId string) {
+func (self *ManagerImpl) RemoveMissingApiSessions(knownApiSessions []*ApiSessionToken, beforeSessionId string) {
 	validTokens := map[string]bool{}
 	for _, apiSession := range knownApiSessions {
 		validTokens[apiSession.Token()] = true
 	}
 
 	var tokensToRemove []*ApiSessionToken
-	sm.legacyApiSessionsByToken.IterCb(func(token string, apiSessionToken *ApiSessionToken) {
+	self.legacyApiSessionsByToken.IterCb(func(token string, apiSessionToken *ApiSessionToken) {
 		if _, ok := validTokens[token]; !ok && (beforeSessionId == "" || apiSessionToken.Id <= beforeSessionId) {
 			tokensToRemove = append(tokensToRemove, apiSessionToken)
 		}
 	})
 
 	for _, token := range tokensToRemove {
-		sm.RemoveLegacyApiSession(token)
+		self.RemoveLegacyApiSession(token)
 	}
 }
 
@@ -997,17 +1064,17 @@ func (sm *ManagerImpl) RemoveMissingApiSessions(knownApiSessions []*ApiSessionTo
 // not only removes the session from tracking but also proactively closes all network
 // connections using the session, ensuring clients receive immediate notification rather
 // than encountering authorization failures on subsequent requests.
-func (sm *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *ServiceSessionToken) {
+func (self *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *ServiceSessionToken) {
 	logger := pfxlog.Logger().Entry
 	logger = serviceSessionToken.AddLoggingFields(logger)
 
 	logger.Debug("removing network session")
 
 	eventName := serviceSessionToken.RemovedEventName()
-	sm.Emit(eventName)
-	sm.RemoveAllListeners(eventName)
+	self.Emit(eventName)
+	self.RemoveAllListeners(eventName)
 
-	activeChannels := sm.connectionTracker.GetChannelsByIdentityId(serviceSessionToken.Claims.IdentityId)
+	activeChannels := self.connectionTracker.GetChannelsByIdentityId(serviceSessionToken.Claims.IdentityId)
 
 	for _, activeChannel := range activeChannels {
 		edgeConn, connIdToSink := GetConnProviderAndSinksFromCh(activeChannel)
@@ -1023,7 +1090,7 @@ func (sm *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *ServiceSe
 		}
 	}
 
-	sm.recentlyRemovedSessions.Set(serviceSessionToken.TokenId(), time.Now())
+	self.recentlyRemovedSessions.Set(serviceSessionToken.TokenId(), time.Now())
 }
 
 // GetApiSessionTokenWithTimeout implements eventual consistency for session lookups
@@ -1031,15 +1098,15 @@ func (sm *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *ServiceSe
 // This addresses race conditions where clients attempt to use newly created sessions
 // before synchronization completes, using exponential backoff to balance responsiveness
 // with system load during high session creation rates.
-func (sm *ManagerImpl) GetApiSessionTokenWithTimeout(token string, timeout time.Duration) *ApiSessionToken {
+func (self *ManagerImpl) GetApiSessionTokenWithTimeout(token string, timeout time.Duration) *ApiSessionToken {
 	deadline := time.Now().Add(timeout)
-	session := sm.GetApiSessionToken(token)
+	session := self.GetApiSessionToken(token)
 
 	if session == nil {
 		//convert this to return a channel instead of sleeping
 		waitTime := time.Millisecond
 		for time.Now().Before(deadline) {
-			session = sm.GetApiSessionToken(token)
+			session = self.GetApiSessionToken(token)
 			if session != nil {
 				return session
 			}
@@ -1054,9 +1121,9 @@ func (sm *ManagerImpl) GetApiSessionTokenWithTimeout(token string, timeout time.
 
 // GetApiSessionToken retrieves API session tokens from either JWT strings or
 // legacy token lookups, abstracting the underlying token format from callers.
-func (sm *ManagerImpl) GetApiSessionToken(token string) *ApiSessionToken {
+func (self *ManagerImpl) GetApiSessionToken(token string) *ApiSessionToken {
 	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
-		apiSessionToken, err := sm.ParseApiSessionJwt(token)
+		apiSessionToken, err := self.ParseApiSessionJwt(token)
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to create api session from JWT")
@@ -1065,7 +1132,7 @@ func (sm *ManagerImpl) GetApiSessionToken(token string) *ApiSessionToken {
 		return apiSessionToken
 	}
 
-	if apiSession, ok := sm.legacyApiSessionsByToken.Get(token); ok {
+	if apiSession, ok := self.legacyApiSessionsByToken.Get(token); ok {
 		return apiSession
 	}
 	return nil
@@ -1076,16 +1143,16 @@ func (sm *ManagerImpl) GetApiSessionToken(token string) *ApiSessionToken {
 // challenge where session removal notifications may arrive out-of-order or be delayed,
 // allowing the router to provide immediate feedback rather than expensive controller
 // round-trips for sessions known to be invalid.
-func (sm *ManagerImpl) WasLegacyServiceSessionRecentlyRemoved(token string) bool {
-	return sm.recentlyRemovedSessions.Has(token)
+func (self *ManagerImpl) WasLegacyServiceSessionRecentlyRemoved(token string) bool {
+	return self.recentlyRemovedSessions.Has(token)
 }
 
 // MarkLegacyServiceSessionRecentlyRemoved adds session invalidation timestamps
 // to enable fast-path rejection of connection attempts using recently removed
 // sessions. This optimization reduces controller query load and improves client
 // error response times during session cleanup scenarios.
-func (sm *ManagerImpl) MarkLegacyServiceSessionRecentlyRemoved(token string) {
-	sm.recentlyRemovedSessions.Set(token, time.Now())
+func (self *ManagerImpl) MarkLegacyServiceSessionRecentlyRemoved(token string) {
+	self.recentlyRemovedSessions.Set(token, time.Now())
 }
 
 // AddLegacyServiceSessionRemovedListener enables connection cleanup coordination
@@ -1093,7 +1160,7 @@ func (sm *ManagerImpl) MarkLegacyServiceSessionRecentlyRemoved(token string) {
 // architecture prevents connections from persisting with stale authorization,
 // immediately triggering cleanup callbacks when controller synchronization
 // indicates session removal.
-func (sm *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToken *ServiceSessionToken, callBack func(serviceSessionToken *ServiceSessionToken)) RemoveListener {
+func (self *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToken *ServiceSessionToken, callBack func(serviceSessionToken *ServiceSessionToken)) RemoveListener {
 	// only legacy service sessions will emit these events as newer controllers use JWTs or raw service ids and
 	// do not rely on service session syncs from the controller
 	if !serviceSessionToken.Claims.IsLegacy {
@@ -1101,7 +1168,7 @@ func (sm *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToke
 	}
 
 	// service session has already been removed, immediately trigger callback
-	if sm.recentlyRemovedSessions.Has(serviceSessionToken.TokenId()) {
+	if self.recentlyRemovedSessions.Has(serviceSessionToken.TokenId()) {
 		go callBack(serviceSessionToken)
 		return func() {}
 	}
@@ -1111,12 +1178,12 @@ func (sm *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToke
 	listener := func(args ...interface{}) {
 		go callBack(serviceSessionToken)
 	}
-	sm.AddListener(eventName, listener)
+	self.AddListener(eventName, listener)
 
 	once := &sync.Once{}
 	return func() {
 		once.Do(func() {
-			go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
+			go self.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
 		})
 	}
 }
@@ -1124,15 +1191,15 @@ func (sm *ManagerImpl) AddLegacyServiceSessionRemovedListener(serviceSessionToke
 // AddApiSessionRemovedListener provides event notification for API session
 // invalidation, enabling dependent resources to perform coordinated cleanup.
 // This decouples session lifecycle management from connection handling logic.
-func (sm *ManagerImpl) AddApiSessionRemovedListener(apiSessionToken *ApiSessionToken, callBack func(apiSessionToken *ApiSessionToken)) RemoveListener {
+func (self *ManagerImpl) AddApiSessionRemovedListener(apiSessionToken *ApiSessionToken, callBack func(apiSessionToken *ApiSessionToken)) RemoveListener {
 	eventName := apiSessionToken.RemovedEventName()
 	listener := func(args ...interface{}) {
 		callBack(apiSessionToken)
 	}
-	sm.AddListener(eventName, listener)
+	self.AddListener(eventName, listener)
 
 	return func() {
-		go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
+		go self.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
 	}
 }
 
@@ -1140,11 +1207,11 @@ func (sm *ManagerImpl) AddApiSessionRemovedListener(apiSessionToken *ApiSessionT
 // to controllers, enabling distributed session state synchronization. This mechanism
 // allows controllers to detect router failures and perform session cleanup, while
 // also serving as a distributed liveness check for the router infrastructure.
-func (sm *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, closeNotify <-chan struct{}) {
-	sm.heartbeatOperation = newHeartbeatOperation(env, time.Duration(intervalSeconds)*time.Second, sm)
+func (self *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, closeNotify <-chan struct{}) {
+	self.heartbeatOperation = newHeartbeatOperation(env, time.Duration(intervalSeconds)*time.Second, self)
 
 	var err error
-	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner.Operation) {
+	self.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner.Operation) {
 		pfxlog.Logger().WithError(err).Error("error during heartbeat runner")
 	})
 
@@ -1152,11 +1219,11 @@ func (sm *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, cl
 		pfxlog.Logger().WithError(err).Panic("could not create heartbeat runner")
 	}
 
-	if err := sm.heartbeatRunner.AddOperation(sm.heartbeatOperation); err != nil {
+	if err := self.heartbeatRunner.AddOperation(self.heartbeatOperation); err != nil {
 		pfxlog.Logger().WithError(err).Panic("could not add heartbeat operation to runner")
 	}
 
-	if err := sm.heartbeatRunner.Start(closeNotify); err != nil {
+	if err := self.heartbeatRunner.Start(closeNotify); err != nil {
 		pfxlog.Logger().WithError(err).Panic("could not start heartbeat runner")
 	}
 
@@ -1166,8 +1233,8 @@ func (sm *ManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, cl
 // ActiveServiceSessionTokens gathers all service session tokens from active
 // connections, enabling session validation and cleanup operations across
 // the router's connection pool.
-func (sm *ManagerImpl) ActiveServiceSessionTokens() []*ServiceSessionToken {
-	identityToChannels := sm.connectionTracker.GetChannels()
+func (self *ManagerImpl) ActiveServiceSessionTokens() []*ServiceSessionToken {
+	identityToChannels := self.connectionTracker.GetChannels()
 
 	activeTokens := map[string]*ServiceSessionToken{}
 
@@ -1198,8 +1265,8 @@ func (sm *ManagerImpl) ActiveServiceSessionTokens() []*ServiceSessionToken {
 // ActiveApiSessionTokens collects all API session tokens currently in use
 // across active client connections, providing visibility into live sessions
 // for heartbeat and synchronization operations.
-func (sm *ManagerImpl) ActiveApiSessionTokens() []*ApiSessionToken {
-	identityToChannels := sm.connectionTracker.GetChannels()
+func (self *ManagerImpl) ActiveApiSessionTokens() []*ApiSessionToken {
+	identityToChannels := self.connectionTracker.GetChannels()
 
 	activeTokens := map[string]*ApiSessionToken{}
 
@@ -1229,24 +1296,24 @@ func (sm *ManagerImpl) ActiveApiSessionTokens() []*ApiSessionToken {
 
 // flushRecentlyRemoved cleans up expired entries from the recently
 // removed sessions tracking cache.
-func (sm *ManagerImpl) flushRecentlyRemoved() {
+func (self *ManagerImpl) flushRecentlyRemoved() {
 	now := time.Now()
 	var toRemove []string
-	sm.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
+	self.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
 		if now.Sub(t) >= 5*time.Minute {
 			toRemove = append(toRemove, key)
 		}
 	})
 
 	for _, key := range toRemove {
-		sm.recentlyRemovedSessions.Remove(key)
+		self.recentlyRemovedSessions.Remove(key)
 	}
 }
 
 // DumpApiSessions provides diagnostic output of all tracked API sessions
 // for operational debugging and system health monitoring. The implementation
 // includes timeout protection to prevent blocking during high session volumes.
-func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
+func (self *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 	ch := make(chan string, 15)
 
 	go func() {
@@ -1255,7 +1322,7 @@ func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 		deadline := time.After(time.Second)
 		timedOut := false
 
-		for _, session := range sm.legacyApiSessionsByToken.Items() {
+		for _, session := range self.legacyApiSessionsByToken.Items() {
 			i++
 			val := fmt.Sprintf("%v: id: %v, token: %v\n", i, session.Id, session.Token())
 			select {
@@ -1293,9 +1360,9 @@ func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 // controller state, enabling detection of sessions that have been revoked or expired.
 // The chunked approach with randomized intervals prevents thundering herd effects
 // while maintaining reasonable validation latency for large session volumes.
-func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
+func (self *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
 
-	sessionTokens := sm.ActiveServiceSessionTokens()
+	sessionTokens := self.ActiveServiceSessionTokens()
 
 	legacySessionTokens := make([]*ServiceSessionToken, 0, len(sessionTokens))
 	for _, sessionToken := range sessionTokens {
@@ -1352,7 +1419,7 @@ func (sm *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, mi
 
 // parsePublicKey converts protobuf public key data into Go crypto types
 // based on the specified format.
-func (sm *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKey) (crypto.PublicKey, error) {
+func (self *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKey) (crypto.PublicKey, error) {
 	switch publicKey.Format {
 	case edge_ctrl_pb.DataState_PublicKey_X509CertDer:
 		certs, err := x509.ParseCertificates(publicKey.Data)
@@ -1374,47 +1441,47 @@ func (sm *ManagerImpl) parsePublicKey(publicKey *edge_ctrl_pb.DataState_PublicKe
 
 // LoadConfig satisfies the configuration interface but performs no operations
 // as the state manager's configuration is handled during initialization.
-func (sm *ManagerImpl) LoadConfig(_ map[interface{}]interface{}) error {
+func (self *ManagerImpl) LoadConfig(_ map[interface{}]interface{}) error {
 	return nil
 }
 
 // BindChannel registers message handlers for controller communication protocols,
 // establishing the router's ability to receive session updates, data model changes,
 // and other control plane messages essential for distributed operation.
-func (sm *ManagerImpl) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(NewHelloHandler(sm, sm.env.GetConfig().Edge.EdgeListeners))
-	binding.AddTypedReceiveHandler(NewExtendEnrollmentCertsHandler(sm.env))
+func (self *ManagerImpl) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(NewHelloHandler(self, self.env.GetConfig().Edge.EdgeListeners))
+	binding.AddTypedReceiveHandler(NewExtendEnrollmentCertsHandler(self.env))
 
-	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(sm))
-	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(sm, binding))
-	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(sm))
-	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(sm))
-	binding.AddTypedReceiveHandler(NewDataStateHandler(sm))
-	binding.AddTypedReceiveHandler(NewDataStateEventHandler(sm))
-	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(sm, sm.env))
+	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(self))
+	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(self, binding))
+	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(self))
+	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(self))
+	binding.AddTypedReceiveHandler(NewDataStateHandler(self))
+	binding.AddTypedReceiveHandler(NewDataStateEventHandler(self))
+	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(self, self.env))
 	return nil
 }
 
 // Enabled indicates this component is always active in router operation.
-func (sm *ManagerImpl) Enabled() bool {
+func (self *ManagerImpl) Enabled() bool {
 	return true
 }
 
 // Run satisfies the component interface but performs no ongoing operations
 // as state management is event-driven rather than polling-based.
-func (sm *ManagerImpl) Run(env.RouterEnv) error {
+func (self *ManagerImpl) Run(env.RouterEnv) error {
 	return nil
 }
 
 // NotifyOfReconnect handles controller reconnection events but currently
 // performs no specific actions as session resynchronization is handled
 // through other mechanisms.
-func (sm *ManagerImpl) NotifyOfReconnect(_ channel.Channel) {
+func (self *ManagerImpl) NotifyOfReconnect(_ channel.Channel) {
 }
 
 // GetTraceDecoders returns message decoders for debugging and monitoring
 // purposes, currently returning nil as no specialized tracing is implemented.
-func (sm *ManagerImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
+func (self *ManagerImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
