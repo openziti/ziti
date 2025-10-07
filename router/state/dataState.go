@@ -1,6 +1,10 @@
 package state
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common"
@@ -42,7 +46,11 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 
 		logger.WithField("index", newState.EndIndex).Info("received full router data model state")
 
-		model := common.NewReceiverRouterDataModelFromDataState(newState, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
+		model := common.NewReceiverRouterDataModelFromDataState(newState, self.state.GetEnv().GetCloseNotify())
+
+		fileName := fmt.Sprintf("/tmp/model-%s-%d.json", ch.Id(), newState.EndIndex)
+		output, _ := json.Marshal(model.ToJson())
+		_ = os.WriteFile(fileName, output, 0644)
 		self.state.SetRouterDataModel(model, false)
 
 		logger.WithField("index", newState.EndIndex).Info("finished processing full router data model state")

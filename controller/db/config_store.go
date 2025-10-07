@@ -18,12 +18,13 @@ package db
 
 import (
 	"fmt"
+	"slices"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"go.etcd.io/bbolt"
-	"slices"
 )
 
 const (
@@ -36,16 +37,16 @@ func newConfig(name string, configType string, data map[string]interface{}) *Con
 	return &Config{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
-		Type:          configType,
+		TypeId:        configType,
 		Data:          data,
 	}
 }
 
 type Config struct {
 	boltz.BaseExtEntity
-	Name string                 `json:"name"`
-	Type string                 `json:"type"`
-	Data map[string]interface{} `json:"data"`
+	Name   string                 `json:"name"`
+	TypeId string                 `json:"type"`
+	Data   map[string]interface{} `json:"data"`
 }
 
 func (entity *Config) GetName() string {
@@ -106,14 +107,14 @@ func (store *configStoreImpl) NewEntity() *Config {
 func (store *configStoreImpl) FillEntity(entity *Config, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Type = bucket.GetStringOrError(FieldConfigType)
+	entity.TypeId = bucket.GetStringOrError(FieldConfigType)
 	entity.Data = bucket.GetMap(FieldConfigData)
 }
 
 func (store *configStoreImpl) PersistEntity(entity *Config, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldConfigType, entity.Type)
+	ctx.SetString(FieldConfigType, entity.TypeId)
 	ctx.SetMap(FieldConfigData, entity.Data)
 
 	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
