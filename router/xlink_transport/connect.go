@@ -19,15 +19,18 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"errors"
+	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	log "github.com/sirupsen/logrus"
 )
 
 type ConnectionHandler struct {
-	routerId identity.Identity
+	routerId *identity.TokenId
 }
 
-func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates []*x509.Certificate) error {
+func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	if len(certificates) == 0 {
 		return errors.New("no certificates provided, unable to verify dialer")
 	}
@@ -38,6 +41,17 @@ func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates [
 		Roots:         config.RootCAs,
 		Intermediates: x509.NewCertPool(),
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+
+	dialedRouterId, ok := hello.Headers[LinkDialedRouterId]
+
+	if ok {
+		if self.routerId.Token != string(dialedRouterId) {
+			log.WithField("routerId", self.routerId.Token).
+				WithField("dialedRouterId", string(dialedRouterId)).
+				Error("router id mismatch on incoming link dial, dropping link connection")
+			return fmt.Errorf("received a link dial meant for a different router: '%s', closing connection", dialedRouterId)
+		}
 	}
 
 	var errorList []error

@@ -3,12 +3,13 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/metrics"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/metrics"
+	"github.com/stretchr/testify/assert"
 )
 
 type testUnderlay struct {
