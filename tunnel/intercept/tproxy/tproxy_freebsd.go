@@ -18,9 +18,10 @@ package tproxy
 
 import (
 	"github.com/openziti/ziti/tunnel/intercept"
+	"github.com/openziti/ziti/tunnel/intercept/proxy"
 	"github.com/pkg/errors"
 )
 
-func New(config Config) (intercept.Interceptor, error) {
+func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
 	return nil, errors.New("tproxy not supported on FreeBSD")
 }
