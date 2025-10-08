@@ -20,8 +20,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/enroll"
 	"io"
 	"net"
 	"net/http"
@@ -34,6 +32,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/ziti/enroll"
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -115,7 +116,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 			options.InstanceID = "quickstart"
 			err := options.run(context)
 			if err != nil {
-				logrus.Fatal(err)
+				logrus.Error(err)
 			}
 		},
 	}
@@ -328,7 +329,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
 
 	c := make(chan error)
-	timeout, _ := time.ParseDuration("30s")
+	timeout := 30 * time.Second
 	go waitForController(ctrlUrl, c)
 	select {
 	case <-c:
