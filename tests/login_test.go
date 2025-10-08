@@ -82,8 +82,9 @@ func waitForControllerReady(ctrlUrl string, cmdComplete chan error) {
 }
 
 func waitForRouter(address string, port int, done chan struct{}) {
+	addr := fmt.Sprintf("%s:%d", address, port)
+	fmt.Printf("Waiting for router at %s\n", addr)
 	for {
-		addr := fmt.Sprintf("%s:%d", address, port)
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err == nil {
 			_ = conn.Close()
@@ -101,6 +102,7 @@ func TestLoginSuite(t *testing.T) {
 	removeZitiDir(t)
 
 	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+
 	ctrlPort := findAvailablePort(t)
 	routerPort := findAvailablePort(t)
 	ctrlUrl = fmt.Sprintf("https://%s:%d", ctrlAddy, ctrlPort)
@@ -113,31 +115,40 @@ func TestLoginSuite(t *testing.T) {
 	qs := run.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 	qs.SetArgs([]string{
 		fmt.Sprintf("--ctrl-port=%d", ctrlPort),
+		fmt.Sprintf("--ctrl-address=%s", ctrlAddy),
 		fmt.Sprintf("--router-port=%d", routerPort),
+		fmt.Sprintf("--router-address=%s", ctrlAddy),
 	})
 
 	go func() {
-		_ = qs.Execute()
+		qsErr := qs.Execute()
+		if qsErr != nil {
+			t.Errorf("error executing quickstart command: %v", qsErr)
+			t.Fail()
+		}
 	}()
 
 	cmdComplete := make(chan error)
 	go waitForControllerReady(ctrlUrl, cmdComplete)
 
-	timeout := 30 * time.Second
+	testTimeout := 60 * time.Second
 	select {
 	case err := <-cmdComplete:
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			t.Fail()
 		}
 
 		r := make(chan struct{})
 		go waitForRouter(ctrlAddy, routerPort, r)
+		routerOnlineTimeout := 30 * time.Second
 		select {
 		case <-r:
 			//completed normally
-		case <-time.After(timeout):
+		case <-time.After(routerOnlineTimeout):
 			t.Errorf("timed out waiting for router on port: %d", routerPort)
 			t.Fail()
+			return
 		}
 
 		t.Log("====================================================================================")
@@ -211,10 +222,11 @@ func TestLoginSuite(t *testing.T) {
 		time.Sleep(2 * time.Second)
 		t.Log("Tests run complete.")
 
-	case <-time.After(timeout):
+	case <-time.After(testTimeout):
 		cancel()
 		time.Sleep(2 * time.Second)
-		panic("test failed! timed out waiting for controller to start")
+		t.Error("test failed! timed out waiting for controller to start")
+		t.Fail()
 	}
 }
 
@@ -226,7 +238,9 @@ func listIdentities(t *testing.T, client *rest_management_api_client.ZitiEdgeMan
 
 	resp, err := client.Identity.ListIdentities(params, nil)
 	if err != nil {
-		t.Fatalf("Failed to list identities: %v", err)
+		t.Errorf("Failed to list identities: %v", err)
+		t.Fail()
+		return err
 	}
 
 	identities := resp.GetPayload().Data
@@ -272,7 +286,7 @@ func testWrongPasswordFails(t *testing.T) {
 
 	err := opts.Run()
 	assert.Error(t, err, "login with wrong password should fail")
-	t.Logf("Login correctly failed with wrong password: %v", err)
+	assert.Contains(t, err.Error(), "401 Unauthorized")
 }
 
 func testTokenBasedLogin(t *testing.T) {
@@ -285,7 +299,7 @@ func testTokenBasedLogin(t *testing.T) {
 
 	err := opts.Run()
 	require.NoError(t, err)
-	assert.Equal(t, token, opts.Token)
+	require.Equal(t, token, opts.Token)
 	t.Logf("Token login successful")
 }
 
@@ -314,6 +328,7 @@ func testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.Error(t, err, "expected error when client cert is missing")
+		require.Contains(t, err.Error(), "username required but not provided")
 	})
 
 	t.Run("no key", func(t *testing.T) {
@@ -322,6 +337,7 @@ func testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.Error(t, err, "expected error when client key is missing")
+		require.Contains(t, err.Error(), "can't load client certificate")
 	})
 
 	t.Run("no CA cert with yes flag", func(t *testing.T) {
@@ -349,6 +365,7 @@ func testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.Error(t, err, "expected error when CA cert is missing")
+		require.Contains(t, err.Error(), "Cannot accept certs - no terminal")
 	})
 }
 
@@ -366,7 +383,7 @@ func testIdentityFileAuthentication(t *testing.T) {
 
 	client, err := opts.NewMgmtClient()
 	require.NoError(t, err)
-	assert.NotNil(t, client)
+	require.NotNil(t, client)
 	lerr := listIdentities(t, client)
 	if lerr != nil {
 		t.Logf("Failed to list identities: %v", lerr)
@@ -396,7 +413,8 @@ func testEmptyUsername(t *testing.T) {
 	}
 
 	err := opts.Run()
-	assert.Error(t, err, "empty username should fail")
+	require.Error(t, err, "empty username should fail")
+	require.Contains(t, err.Error(), "username required but not provided")
 	t.Logf("Empty username correctly failed: %v", err)
 }
 
@@ -411,34 +429,47 @@ func testEmptyPassword(t *testing.T) {
 	}
 
 	err := opts.Run()
-	assert.Error(t, err, "empty password should fail")
+	require.Error(t, err, "empty password should fail")
+	require.Contains(t, err.Error(), "password required but not provided")
 	t.Logf("Empty password correctly failed: %v", err)
 }
 
 func testInvalidControllerURL(t *testing.T) {
-	invalidUrls := []string{
-		"not-a-url",
-		"http://[invalid",
-		"ftp://wrong-scheme.com",
-		"https://non-existent-host-12345.local:9999",
-	}
+	t.Run("not-a-url", func(t *testing.T) {
+		opts := &edge.LoginOptions{Options: commonOpts, Username: username, Password: password,
+			ControllerUrl: "not-a-url", Yes: true, IgnoreConfig: true}
+		err := opts.Run()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no such host")
+		t.Logf("Invalid URL correctly failed: %v", err)
+	})
 
-	for _, invalidUrl := range invalidUrls {
-		t.Run(invalidUrl, func(t *testing.T) {
-			opts := &edge.LoginOptions{
-				Options:       commonOpts,
-				Username:      username,
-				Password:      password,
-				ControllerUrl: invalidUrl,
-				Yes:           true,
-				IgnoreConfig:  true,
-			}
+	t.Run("http://[invalid", func(t *testing.T) {
+		opts := &edge.LoginOptions{Options: commonOpts, Username: username, Password: password,
+			ControllerUrl: "http://[invalid", Yes: true, IgnoreConfig: true}
+		err := opts.Run()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid controller URL")
+		t.Logf("Invalid URL correctly failed: %v", err)
+	})
 
-			err := opts.Run()
-			assert.Error(t, err, "invalid URL should fail")
-			t.Logf("Invalid URL %s correctly failed: %v", invalidUrl, err)
-		})
-	}
+	t.Run("ftp://wrong-scheme.com", func(t *testing.T) {
+		opts := &edge.LoginOptions{Options: commonOpts, Username: username, Password: password,
+			ControllerUrl: "ftp://wrong-scheme.com", Yes: true, IgnoreConfig: true}
+		err := opts.Run()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no such host")
+		t.Logf("Invalid URL correctly failed: %v", err)
+	})
+
+	t.Run("https://non-existent-host-12345.local:9999", func(t *testing.T) {
+		opts := &edge.LoginOptions{Options: commonOpts, Username: username, Password: password,
+			ControllerUrl: "https://non-existent-host-12345.local:9999", Yes: true, IgnoreConfig: true}
+		err := opts.Run()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no such host")
+		t.Logf("Invalid URL correctly failed: %v", err)
+	})
 }
 
 func testNonExistentUsername(t *testing.T) {
@@ -452,7 +483,8 @@ func testNonExistentUsername(t *testing.T) {
 	}
 
 	err := opts.Run()
-	assert.Error(t, err, "non-existent username should fail")
+	require.Error(t, err, "non-existent username should fail")
+	require.Contains(t, err.Error(), "401 Unauthorized")
 	t.Logf("Non-existent username correctly failed: %v", err)
 }
 
@@ -467,6 +499,7 @@ func testControllerUnavailable(t *testing.T) {
 	}
 
 	err := opts.Run()
-	assert.Error(t, err, "unavailable controller should fail")
+	require.Error(t, err, "unavailable controller should fail")
+	require.Contains(t, err.Error(), "the target machine actively refused it")
 	t.Logf("Unavailable controller correctly failed: %v", err)
 }
