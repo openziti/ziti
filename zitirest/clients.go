@@ -22,6 +22,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
 	openApiRuntime "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -38,13 +46,6 @@ import (
 	fabricRestClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
-	"io"
-	"net"
-	"net/http"
-	"net/url"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Clients struct {
@@ -159,7 +160,7 @@ func (self *Clients) LoadWellKnownCerts() error {
 		self.host = "https://" + self.host
 	}
 
-	wellKnownCerts, _, err := util.GetWellKnownCerts(self.host)
+	wellKnownCerts, _, err := util.GetWellKnownCerts(self.host, http.Client{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", self.host)
 	}

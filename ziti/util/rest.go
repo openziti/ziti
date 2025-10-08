@@ -47,6 +47,15 @@ func NewClient() *resty.Client {
 		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 }
 
+// Use a 2-second timeout with a retry count of 5
+func NewClientWithClient(client *http.Client) *resty.Client {
+	return resty.
+		NewWithClient(client).
+		SetTimeout(2 * time.Second).
+		SetRetryCount(5).
+		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
+}
+
 func PrettyPrintResponse(resp *resty.Response) string {
 	out := resp.String()
 	var prettyJSON bytes.Buffer
@@ -506,9 +515,13 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	return jsonParsed, nil
 }
 
-func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool) string {
-	client := NewClient()
-
+func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 	client.SetHostURL(host)
 
 	if caPool != nil {
@@ -593,8 +606,13 @@ func getManagementApiBasePath(host string, client *resty.Client) string {
 // determine the proper path that should be used to access the Edge Management API. Depending
 // on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
 // `/edge/management/<version>` and `/edge/client/<version>`.
-func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
-	client := NewClient()
+func EdgeControllerGetManagementApiBasePath(host string, cert string, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 
 	client.SetHostURL(host)
 
