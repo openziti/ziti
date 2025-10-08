@@ -4,7 +4,7 @@ package tests
 
 import (
 	"context"
-	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ops"
 	"github.com/openziti/ziti/ziti/run"
 	"github.com/openziti/ziti/ziti/util"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +63,8 @@ func removeZitiDir(t *testing.T) {
 	t.Logf("Removed ziti dir from: %s", zitiDir)
 }
 
-func waitForControllerReady(ctrlUrl string, cmdComplete chan error) {
+func waitForControllerReady(t *testing.T, ctrlUrl string, cmdComplete chan error) {
+	t.Logf("Waiting for controller at %s\n", ctrlUrl)
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -73,7 +73,7 @@ func waitForControllerReady(ctrlUrl string, cmdComplete chan error) {
 		case <-ticker.C:
 			_, err := rest_util.GetControllerWellKnownCas(ctrlUrl)
 			if err == nil {
-				logrus.Infof("Controller ready at %s", ctrlUrl)
+				t.Logf("Controller ready at %s", ctrlUrl)
 				cmdComplete <- nil
 				return
 			}
@@ -81,14 +81,14 @@ func waitForControllerReady(ctrlUrl string, cmdComplete chan error) {
 	}
 }
 
-func waitForRouter(address string, port int, done chan struct{}) {
+func waitForRouter(t *testing.T, address string, port int, done chan struct{}) {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	fmt.Printf("Waiting for router at %s\n", addr)
 	for {
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err == nil {
 			_ = conn.Close()
-			fmt.Printf("Router is available on %s:%d\n", address, port)
+			t.Logf("Router is available on %s:%d\n", address, port)
 			close(done)
 			return
 		}
@@ -99,12 +99,14 @@ func waitForRouter(address string, port int, done chan struct{}) {
 func TestLoginSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	print(ctx)
 	removeZitiDir(t)
 
 	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
 
 	ctrlPort := findAvailablePort(t)
 	routerPort := findAvailablePort(t)
+
 	ctrlUrl = fmt.Sprintf("https://%s:%d", ctrlAddy, ctrlPort)
 
 	t.Logf("Controller starting at: %s", ctrlUrl)
@@ -129,7 +131,7 @@ func TestLoginSuite(t *testing.T) {
 	}()
 
 	cmdComplete := make(chan error)
-	go waitForControllerReady(ctrlUrl, cmdComplete)
+	go waitForControllerReady(t, ctrlUrl, cmdComplete)
 
 	testTimeout := 60 * time.Second
 	select {
@@ -140,7 +142,7 @@ func TestLoginSuite(t *testing.T) {
 		}
 
 		r := make(chan struct{})
-		go waitForRouter(ctrlAddy, routerPort, r)
+		go waitForRouter(t, ctrlAddy, routerPort, r)
 		routerOnlineTimeout := 30 * time.Second
 		select {
 		case <-r:
@@ -155,26 +157,27 @@ func TestLoginSuite(t *testing.T) {
 		t.Log("=========================== quickstart ready tests begin ===========================")
 		t.Log("====================================================================================")
 
-		// Get CA certs
-		caCerts, err := rest_util.GetControllerWellKnownCas(ctrlUrl)
-		require.NoError(t, err)
-
-		caPool := x509.NewCertPool()
-		for _, ca := range caCerts {
-			caPool.AddCert(ca)
+		initialLogin := &edge.LoginOptions{
+			Options:       commonOpts,
+			Username:      username,
+			Password:      password,
+			ControllerUrl: ctrlUrl,
+			Yes:           true,
 		}
-
-		// Authentication Methods
-		// do not move this test...
-		t.Run("correct password succeeds", testCorrectPasswordSucceeds) // this test MUST be first as it sets the token for reuse later
-		// do not move the test above!
+		loginErr := initialLogin.Run()
+		if loginErr != nil {
+			t.Errorf("Could not login? %v: ", loginErr)
+			t.Fail()
+			return
+		}
 
 		p := common.NewOptionsProvider(os.Stdout, os.Stderr)
 		tmpDir = os.TempDir()
 
-		jwtPath := filepath.Join(tmpDir, "test-admin.jwt")
+		initialIdName := fmt.Sprintf("test-admin-%s", time.Now().Format("150405"))
+		jwtPath := filepath.Join(tmpDir, initialIdName+".jwt")
 		zitiCmd := edge.NewCmdEdge(os.Stdout, os.Stderr, p)
-		zitiCmd.SetArgs([]string{"create", "identity", "test-admin", "-o", jwtPath, "--admin"})
+		zitiCmd.SetArgs([]string{"create", "identity", initialIdName, "-o", jwtPath, "--admin"})
 		zitiCmdErr := zitiCmd.Execute()
 		if zitiCmdErr != nil {
 			t.Errorf("unable to create identity: %v", zitiCmdErr)
@@ -204,6 +207,8 @@ func TestLoginSuite(t *testing.T) {
 		t.Logf("caFile should exist at: %v", caFile)
 		t.Logf("keyFile should exist at: %v", keyFile)
 
+		// Authentication Methods
+		t.Run("correct password succeeds", testCorrectPasswordSucceeds)
 		t.Run("wrong password fails", testWrongPasswordFails)
 		t.Run("token based login", testTokenBasedLogin)
 		t.Run("client cert authentication - no ca", testClientCertAuthentication)
@@ -245,7 +250,9 @@ func listIdentities(t *testing.T, client *rest_management_api_client.ZitiEdgeMan
 
 	identities := resp.GetPayload().Data
 	t.Logf("Successfully listed %d identities", len(identities))
-
+	if len(identities) < 1 {
+		return errors.New("no identities found, this is unexpected")
+	}
 	return nil
 }
 
@@ -257,7 +264,7 @@ func testCorrectPasswordSucceeds(t *testing.T) {
 		Password:      password,
 		ControllerUrl: ctrlUrl,
 		Yes:           true,
-		IgnoreConfig:  true,
+		IgnoreConfig:  false,
 	}
 
 	err := opts.Run()
@@ -319,7 +326,7 @@ func testClientCertAuthentication(t *testing.T) {
 		opts := baseOpts
 
 		err := opts.Run()
-		require.NoError(t, err, "login with cert should succeed")
+		require.NoError(t, err, "login with cert/key/ca when all present should succeed")
 	})
 
 	t.Run("no cert", func(t *testing.T) {

@@ -411,13 +411,13 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	}
 
 	if !isServerTrusted && o.CaCert == "" {
-		var httpClient http.Client
+		var httpClient *http.Client
 		if o.client != nil {
-			httpClient = *o.client
+			httpClient = o.client
 		} else {
-			httpClient = *http.DefaultClient
+			httpClient = http.DefaultClient
 		}
-		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
+		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, *httpClient)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
 		}
@@ -493,14 +493,14 @@ func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
 }
 
 func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
+	if !xterm.IsTerminal(int(os.Stdin.Fd())) {
+		return "", errors.New("Cannot accept certs - no terminal")
+	}
+
 	for {
 		val, err := term.Prompt(prompt)
 		if err != nil {
-			if xterm.IsTerminal(int(os.Stdin.Fd())) {
-				return "", err
-			} else {
-				return "", errors.New("Cannot accept certs - no terminal")
-			}
+			return "", err
 		}
 		val = strings.TrimSpace(val)
 		if f(val) {

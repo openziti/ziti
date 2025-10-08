@@ -478,19 +478,21 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 	}
 
 	if !o.AlreadyInitialized {
-		loginCmd := edge.NewLoginCmd(o.out, o.errOut)
-		loginCmd.SetArgs([]string{
-			ctrlUrl,
-			fmt.Sprintf("--username=%s", o.Username),
-			fmt.Sprintf("--password=%s", o.Password),
-			"-y",
-		})
-		if o.joinCommand {
-			o.waitForLeader()
+		lo := edge.LoginOptions{
+			ControllerUrl: ctrlUrl,
+			Username:      o.Username,
+			Password:      o.Password,
+			Yes:           true,
+			Options: api.Options{
+				CommonOptions: common.CommonOptions{
+					Out: os.Stdout,
+					Err: os.Stderr,
+				},
+			},
 		}
-		loginErr := loginCmd.Execute()
+		loginErr := lo.Run()
 		if loginErr != nil {
-			logrus.Fatal(loginErr)
+			return loginErr
 		}
 
 		o.configureOverlay()
