@@ -22,6 +22,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	openApiRuntime "github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
@@ -29,18 +36,21 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"gopkg.in/resty.v1"
-	"io"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"time"
 )
 
 // Use a 2-second timeout with a retry count of 5
 func NewClient() *resty.Client {
 	return resty.
 		New().
+		SetTimeout(2 * time.Second).
+		SetRetryCount(5).
+		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
+}
+
+// Use a 2-second timeout with a retry count of 5
+func NewClientWithClient(client *http.Client) *resty.Client {
+	return resty.
+		NewWithClient(client).
 		SetTimeout(2 * time.Second).
 		SetRetryCount(5).
 		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
@@ -505,9 +515,13 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	return jsonParsed, nil
 }
 
-func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool) string {
-	client := NewClient()
-
+func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 	client.SetHostURL(host)
 
 	if caPool != nil {
@@ -592,8 +606,13 @@ func getManagementApiBasePath(host string, client *resty.Client) string {
 // determine the proper path that should be used to access the Edge Management API. Depending
 // on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
 // `/edge/management/<version>` and `/edge/client/<version>`.
-func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
-	client := NewClient()
+func EdgeControllerGetManagementApiBasePath(host string, cert string, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 
 	client.SetHostURL(host)
 
