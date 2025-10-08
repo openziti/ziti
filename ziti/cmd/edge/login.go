@@ -45,6 +45,7 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	xterm "golang.org/x/term"
 	"gopkg.in/resty.v1"
 )
 
@@ -331,19 +332,27 @@ func (o *LoginOptions) Run() error {
 	body := "{}"
 	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
-			var err error
-			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
-				o.Username = defaultId.Username
-				o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
-			} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				var err error
+				if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
+					o.Username = defaultId.Username
+					o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
+				} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("username required but not provided")
 			}
 		}
 
 		if o.Password == "" {
 			var err error
-			if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("password required but not provided")
 			}
 		}
 
@@ -487,7 +496,11 @@ func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
 	for {
 		val, err := term.Prompt(prompt)
 		if err != nil {
-			return "", err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				return "", err
+			} else {
+				return "", errors.New("Cannot accept certs - no terminal")
+			}
 		}
 		val = strings.TrimSpace(val)
 		if f(val) {
