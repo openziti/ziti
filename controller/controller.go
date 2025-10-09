@@ -22,11 +22,9 @@ import (
 	cryptoTls "crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	stderr "errors"
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -235,17 +233,21 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		xwebInitialized:     concurrency.NewInitState(),
 	}
 	xwebInstanceOptions := xweb.InstanceOptions{
-		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
-			var errs []error
-			for i, serverConfig := range config.ServerConfigs {
-				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
-						errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
-					}
-				}
-			}
-			return stderr.Join(errs...)
-		}},
+		//InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
+		//	var errs []error
+		//	for i, serverConfig := range config.ServerConfigs {
+		//		for _, bp := range serverConfig.BindPoints {
+		//			/* validation xxxx
+		//			if bp.Identity.Identity == nil {
+		//				if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+		//					errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
+		//				}
+		//			}
+		//			*/
+		//		}
+		//	}
+		//	return stderr.Join(errs...)
+		//}},
 		DefaultIdentity:        c.config.Id,
 		DefaultIdentitySection: xweb.DefaultIdentitySection,
 		DefaultConfigSection:   xweb.DefaultConfigSection,
@@ -276,6 +278,12 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 				return nil
 			},
 		},
+	}
+	if err := xweb.BindPointFactories.Register(&UnderlayBindPointFactory{}); err != nil {
+		return nil, err
+	}
+	if err := xweb.BindPointFactories.Register(&OverlayBindPointFactory{}); err != nil {
+		return nil, err
 	}
 
 	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwebInstanceOptions)
@@ -844,8 +852,8 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 			for _, bindPoint := range serverConfig.BindPoints {
 				for _, api := range serverConfig.APIs {
 					apiData[api.Binding()] = append(apiData[api.Binding()], event.ApiAddress{
-						Url:     "https://" + bindPoint.Address + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
-						Version: "v1",                                                       //TODO: temp till xweb supports reporting versions via api.Version()
+						Url:     "https://" + bindPoint.ServerAddress() + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
+						Version: "v1",                                                               //TODO: temp till xweb supports reporting versions via api.Version()
 					})
 				}
 			}
@@ -866,4 +874,52 @@ func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
 
 	provider := mesh.HeaderProviderFunc(providerFunc)
 	return []mesh.HeaderProvider{provider}
+}
+
+type UnderlayBindPointFactory struct{}
+
+func (u *UnderlayBindPointFactory) Binding() string {
+	return "underlay"
+}
+
+func (u *UnderlayBindPointFactory) FactoryForConfig(config []interface{}) bool {
+	for _, v := range config {
+		if m, ok := v.(map[interface{}]interface{}); ok {
+			if m["interface"] != nil || m["address"] != nil || m["newAddress"] != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (u *UnderlayBindPointFactory) New(config []interface{}) (xweb.BindPoint, error) {
+	ubp := &UnderlayBindPoint{}
+	if err := ubp.Configure(config); err != nil {
+		return nil, errors.Wrap(err, "unable to configure underlay bind point")
+	}
+	return ubp, nil
+}
+
+type OverlayBindPointFactory struct{}
+
+func (o *OverlayBindPointFactory) Binding() string {
+	return "overlay"
+}
+
+func (o *OverlayBindPointFactory) FactoryForConfig(config []interface{}) bool {
+	for _, v := range config {
+		if m, ok := v.(map[interface{}]interface{}); ok && m["identity"] != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (o *OverlayBindPointFactory) New(config []interface{}) (xweb.BindPoint, error) {
+	obp := &OverlayBindPoint{}
+	if err := obp.Configure(config); err != nil {
+		return nil, errors.Wrap(err, "unable to configure underlay bind point")
+	}
+	return obp, nil
 }

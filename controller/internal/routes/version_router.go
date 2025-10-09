@@ -112,7 +112,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				}
 
 				for _, bindPoint := range webListener.BindPoints {
-					apiBaseUrl := bindPoint.Address + apiBindingToPath(api.Binding())
+					apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
 					apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
 				}
 			}
@@ -173,7 +173,8 @@ func apiBindingToPath(binding string) string {
 		return webapis.ClientRestApiBaseUrlV1
 	case webapis.ManagementApiBinding:
 		return webapis.ManagementRestApiBaseUrlV1
-	case webapis.OidcApiBinding: return webapis.OidcRestApiBaseUrl
+	case webapis.OidcApiBinding:
+		return webapis.OidcRestApiBaseUrl
 	}
 	return ""
 }

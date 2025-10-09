@@ -17,9 +17,19 @@
 package edge
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_client"
@@ -35,13 +45,8 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
+	xterm "golang.org/x/term"
+	"gopkg.in/resty.v1"
 )
 
 // LoginOptions are the flags for login commands
@@ -60,8 +65,11 @@ type LoginOptions struct {
 	ExtJwtToken   string
 	File          string
 	ControllerUrl string
+	ServiceName   string
+	NetworkId     string
 
 	FileCertCreds *edge_apis.IdentityCredentials
+	client        *http.Client
 }
 
 const LoginFlagKey = "login"
@@ -96,6 +104,10 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 	addLoginAnnotation(cmd, "file")
+	cmd.Flags().StringVarP(&options.ServiceName, "service", "s", "", "The service name to use. When set the file will be used to create a zitified connection")
+	addLoginAnnotation(cmd, "service")
+	cmd.Flags().StringVarP(&options.NetworkId, "networkIdentity", "n", "", "The identity to use to connect to the OpenZiti overlay")
+	addLoginAnnotation(cmd, "networkIdentity")
 
 	options.AddCommonFlags(cmd)
 }
@@ -191,6 +203,29 @@ func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeMana
 	return c, nil
 }
 
+func createZitifiedHttpClient(cfg *ziti.Config) (*http.Client, error) {
+	zitiContext, err := ziti.NewContext(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	zitiContexts := ziti.DefaultCollection
+	//ziti.NewSdkCollection()
+	zitiContexts.Add(zitiContext)
+
+	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
+	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialer := zitiContexts.NewDialer()
+		return dialer.Dial(network, addr)
+	}
+
+	_, se := zitiContext.GetServices()
+	if se != nil {
+		return nil, se
+	}
+	return &http.Client{Transport: zitiTransport}, nil
+}
+
 // Run implements this command
 func (o *LoginOptions) Run() error {
 	var host string
@@ -200,17 +235,24 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
+	if o.NetworkId != "" {
+		cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
+		if ce != nil {
+			return ce
+		}
+		cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
+		o.client, ce = createZitifiedHttpClient(cfg)
+	}
+
 	if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
-
 		if err != nil {
 			return fmt.Errorf("could not read file %s: %w", o.File, err)
 		}
 
-		if !o.IgnoreConfig {
-			idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
-			o.FileCertCreds = idCredentials
-		}
+		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+		o.FileCertCreds = idCredentials
+
 		ztAPI := cfg.ZtAPI
 
 		// override with the first HA client API URL if defined
@@ -223,7 +265,11 @@ func (o *LoginOptions) Run() error {
 			return fmt.Errorf("could not parse ztAPI '%s' as a URL", ztAPI)
 		}
 
-		host = parsedZtAPI.Host
+		if o.ControllerUrl == "" {
+			host = parsedZtAPI.Host
+		} else {
+			host = o.ControllerUrl
+		}
 	}
 
 	id := config.GetIdentity()
@@ -270,9 +316,9 @@ func (o *LoginOptions) Run() error {
 
 	if ctrlUrl.Path == "" {
 		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool)
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, o.client)
 		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert)
+			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, o.client)
 		}
 	} else {
 		host = host + ctrlUrl.Path
@@ -286,19 +332,27 @@ func (o *LoginOptions) Run() error {
 	body := "{}"
 	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
-			var err error
-			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
-				o.Username = defaultId.Username
-				o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
-			} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				var err error
+				if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
+					o.Username = defaultId.Username
+					o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
+				} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("username required but not provided")
 			}
 		}
 
 		if o.Password == "" {
 			var err error
-			if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("password required but not provided")
 			}
 		}
 
@@ -310,7 +364,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if o.Token == "" {
-		jsonParsed, err := login(o, host, body)
+		jsonParsed, err := login(o, host, body, o.client)
 
 		if err != nil {
 			return err
@@ -351,13 +405,19 @@ func (o *LoginOptions) Run() error {
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
-	isServerTrusted, err := util.IsServerTrusted(host)
+	isServerTrusted, err := util.IsServerTrusted(host, o.client)
 	if err != nil {
 		return err
 	}
 
 	if !isServerTrusted && o.CaCert == "" {
-		wellKnownCerts, certs, err := util.GetWellKnownCerts(host)
+		var httpClient *http.Client
+		if o.client != nil {
+			httpClient = o.client
+		} else {
+			httpClient = http.DefaultClient
+		}
+		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, *httpClient)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
 		}
@@ -433,6 +493,10 @@ func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
 }
 
 func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
+	if !xterm.IsTerminal(int(os.Stdin.Fd())) {
+		return "", errors.New("Cannot accept certs - no terminal")
+	}
+
 	for {
 		val, err := term.Prompt(prompt)
 		if err != nil {
@@ -465,8 +529,13 @@ func (self *yesNoFilter) Accept(s string) bool {
 }
 
 // EdgeControllerLogin will authenticate to the given Edge Controller
-func login(o *LoginOptions, url string, authentication string) (*gabs.Container, error) {
-	client := util.NewClient()
+func login(o *LoginOptions, url string, authentication string, httpClient *http.Client) (*gabs.Container, error) {
+	var client *resty.Client
+	if httpClient != nil {
+		client = util.NewClientWithClient(httpClient)
+	} else {
+		client = util.NewClient()
+	}
 	cert := o.CaCert
 	out := o.Out
 	logJSON := o.OutputJSONResponse
