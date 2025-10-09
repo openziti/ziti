@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -96,39 +97,49 @@ func waitForRouter(t *testing.T, address string, port int, done chan struct{}) {
 	}
 }
 
+func startOverlay(t *testing.T, ctx context.Context) (string, int, string, int) {
+	ctrlAddy := helpers.GetCtrlAdvertisedAddress()
+	ctrlPort, _ := strconv.ParseInt(helpers.GetCtrlEdgeAdvertisedPort(), 10, 16)
+	routerAddy := helpers.GetRouterAdvertisedAddress()
+	routerPort, _ := strconv.ParseInt(helpers.GetZitiEdgeRouterPort(), 10, 16)
+	useExternal, _ := strconv.ParseBool(os.Getenv("ZITI_LOGIN_TEST_USE_EXISTING_CONTROLLER"))
+	if useExternal {
+		//skip the quickstart...
+	} else {
+		ctrlPort = int64(findAvailablePort(t))
+		routerPort = int64(findAvailablePort(t))
+		qs := run.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
+		qs.SetArgs([]string{
+			fmt.Sprintf("--ctrl-port=%d", ctrlPort),
+			fmt.Sprintf("--ctrl-address=%s", ctrlAddy),
+			fmt.Sprintf("--router-port=%d", routerPort),
+			fmt.Sprintf("--router-address=%s", ctrlAddy),
+		})
+
+		go func() {
+			qsErr := qs.Execute()
+			if qsErr != nil {
+				t.Errorf("error executing quickstart command: %v", qsErr)
+				t.Fail()
+			}
+		}()
+	}
+
+	return ctrlAddy, int(ctrlPort), routerAddy, int(routerPort)
+}
+
 func TestLoginSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	print(ctx)
 	removeZitiDir(t)
 
-	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
-
-	ctrlPort := findAvailablePort(t)
-	routerPort := findAvailablePort(t)
-
+	ctrlAddy, ctrlPort, routerAddy, routerPort := startOverlay(t, ctx)
 	ctrlUrl = fmt.Sprintf("https://%s:%d", ctrlAddy, ctrlPort)
+	routerUrl := fmt.Sprintf("https://%s:%d", routerAddy, routerPort)
 
 	t.Logf("Controller starting at: %s", ctrlUrl)
-	t.Logf("Controller address: %s", ctrlAddy)
-	t.Logf("Controller port: %d", ctrlPort)
-	t.Logf("Router port: %d", routerPort)
-
-	qs := run.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
-	qs.SetArgs([]string{
-		fmt.Sprintf("--ctrl-port=%d", ctrlPort),
-		fmt.Sprintf("--ctrl-address=%s", ctrlAddy),
-		fmt.Sprintf("--router-port=%d", routerPort),
-		fmt.Sprintf("--router-address=%s", ctrlAddy),
-	})
-
-	go func() {
-		qsErr := qs.Execute()
-		if qsErr != nil {
-			t.Errorf("error executing quickstart command: %v", qsErr)
-			t.Fail()
-		}
-	}()
+	t.Logf("Router starting at: %s", routerUrl)
 
 	cmdComplete := make(chan error)
 	go waitForControllerReady(t, ctrlUrl, cmdComplete)
@@ -142,7 +153,7 @@ func TestLoginSuite(t *testing.T) {
 		}
 
 		r := make(chan struct{})
-		go waitForRouter(t, ctrlAddy, routerPort, r)
+		go waitForRouter(t, routerAddy, routerPort, r)
 		routerOnlineTimeout := 30 * time.Second
 		select {
 		case <-r:
@@ -154,7 +165,7 @@ func TestLoginSuite(t *testing.T) {
 		}
 
 		t.Log("====================================================================================")
-		t.Log("=========================== quickstart ready tests begin ===========================")
+		t.Log("============================ overlay ready tests begin =============================")
 		t.Log("====================================================================================")
 
 		initialLogin := &edge.LoginOptions{
