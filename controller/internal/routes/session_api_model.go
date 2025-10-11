@@ -17,7 +17,7 @@
 package routes
 
 import (
-	"github.com/google/uuid"
+	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
@@ -48,11 +48,15 @@ func (factory *SessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Li
 }
 
 func MapCreateSessionToModel(identityId, apiSessionId string, session *rest_model.SessionCreate) *model.Session {
+	id := cuid.New()
+
 	ret := &model.Session{
 		BaseEntity: models.BaseEntity{
+			Id:   id,
 			Tags: TagsOrDefault(session.Tags),
 		},
-		Token:           uuid.New().String(),
+		//token is redundant now as these are encoded as JWTs, filled for existing subsystem compatibility
+		Token:           id,
 		ApiSessionId:    apiSessionId,
 		ServiceId:       session.ServiceID,
 		IdentityId:      identityId,

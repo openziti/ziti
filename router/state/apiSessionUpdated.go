@@ -24,29 +24,27 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type apiSessionUpdatedHandler struct {
+type ApiSessionUpdatedHandler struct {
 	sm Manager
 }
 
-func NewApiSessionUpdatedHandler(sm Manager) *apiSessionUpdatedHandler {
-	return &apiSessionUpdatedHandler{
+func NewApiSessionUpdatedHandler(sm Manager) *ApiSessionUpdatedHandler {
+	return &ApiSessionUpdatedHandler{
 		sm: sm,
 	}
 }
 
-func (h *apiSessionUpdatedHandler) ContentType() int32 {
+func (h *ApiSessionUpdatedHandler) ContentType() int32 {
 	return env.ApiSessionUpdatedType
 }
 
-func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (h *ApiSessionUpdatedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionUpdated{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			for _, session := range req.ApiSessions {
-				h.sm.UpdateApiSession(&ApiSession{
-					ApiSession:   session,
-					ControllerId: ch.Id(),
-				})
+				newApiSessionToken := NewApiSessionTokenFromProtobuf(session, ch.Id())
+				h.sm.UpdateLegacyApiSession(newApiSessionToken)
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as network session updated")

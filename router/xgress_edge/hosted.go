@@ -18,6 +18,9 @@ package xgress_edge
 
 import (
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -34,8 +37,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"sync/atomic"
-	"time"
 )
 
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
@@ -127,7 +128,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 		log := logrus.
 			WithField("terminatorId", terminator.terminatorId).
 			WithField("state", terminator.state.Load()).
-			WithField("token", terminator.token)
+			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId())
 
 		if terminator.edgeClientConn.ch.GetChannel().IsClosed() {
 			self.Remove(terminator, "sdk connection is closed")
@@ -181,7 +182,7 @@ func (self *hostedServiceRegistry) evaluateDeleteQueue() {
 		log := logrus.
 			WithField("terminatorId", terminator.terminatorId).
 			WithField("state", terminator.state.Load()).
-			WithField("token", terminator.token)
+			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId())
 
 		delete(self.deleteSet, terminatorId)
 
@@ -446,8 +447,8 @@ func (self *hostedServiceRegistry) scanForRetries() {
 	}
 }
 
-func (self *hostedServiceRegistry) PutV1(token string, terminator *edgeTerminator) {
-	self.terminators.Set(token, terminator)
+func (self *hostedServiceRegistry) PutV1(serviceSessionToken *state.ServiceSessionToken, terminator *edgeTerminator) {
+	self.terminators.Set(serviceSessionToken.TokenId(), terminator)
 }
 
 func (self *hostedServiceRegistry) Put(terminator *edgeTerminator) {
@@ -483,7 +484,7 @@ func (self *hostedServiceRegistry) cleanupServices(ch channel.Channel) {
 func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	var toClose []*edgeTerminator
 	self.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator != newest && newest.token == terminator.token && newest.instance == terminator.instance {
+		if terminator != newest && newest.serviceSessionToken.TokenId() == terminator.serviceSessionToken.TokenId() && newest.instance == terminator.instance {
 			toClose = append(toClose, terminator)
 		}
 	})
@@ -491,7 +492,7 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	for _, terminator := range toClose {
 		terminator.close(self, false, true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
-			WithField("token", terminator.token).
+			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId()).
 			WithField("instance", terminator.instance).
 			WithField("terminatorId", terminator.terminatorId).
 			WithField("duplicateOf", newest.terminatorId).
@@ -499,10 +500,10 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	}
 }
 
-func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken string, proxy *edgeClientConn) bool {
+func (self *hostedServiceRegistry) unbindSession(connId uint32, serviceSessionToken *state.ServiceSessionToken, proxy *edgeClientConn) bool {
 	var toClose []*edgeTerminator
 	self.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.MsgChannel.Id() == connId && terminator.token == sessionToken && terminator.edgeClientConn == proxy {
+		if terminator.MsgChannel.Id() == connId && terminator.serviceSessionToken.TokenId() == serviceSessionToken.TokenId() && terminator.edgeClientConn == proxy {
 			toClose = append(toClose, terminator)
 		}
 	})
@@ -511,7 +512,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken str
 	for _, terminator := range toClose {
 		terminator.close(self, false, true, "unbind successful") // don't notify, sdk asked us to unbind
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
-			WithField("token", sessionToken).
+			WithField("serviceSessionTokenId", serviceSessionToken.TokenId()).
 			WithField("connId", connId).
 			WithField("terminatorId", terminator.terminatorId).
 			Info("terminator removed")
@@ -520,10 +521,10 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, sessionToken str
 	return atLeastOneRemoved
 }
 
-func (self *hostedServiceRegistry) getRelatedTerminators(connId uint32, sessionToken string, proxy *edgeClientConn) []*edgeTerminator {
+func (self *hostedServiceRegistry) getRelatedTerminators(connId uint32, serviceSessionToken *state.ServiceSessionToken, proxy *edgeClientConn) []*edgeTerminator {
 	var related []*edgeTerminator
 	self.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.MsgChannel.Id() == connId && terminator.token == sessionToken && terminator.edgeClientConn == proxy {
+		if terminator.MsgChannel.Id() == connId && terminator.serviceSessionToken.TokenId() == serviceSessionToken.TokenId() && terminator.edgeClientConn == proxy {
 			related = append(related, terminator)
 		}
 	})
@@ -536,31 +537,32 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 
 	log := pfxlog.Logger().
 		WithField("routerId", factory.env.GetRouterId().Token).
-		WithField("terminatorId", terminator.terminatorId).
-		WithField("token", terminator.token)
+		WithField("terminatorId", terminator.terminatorId)
+	log = terminator.serviceSessionToken.AddLoggingFields(log)
 
 	request := &edge_ctrl_pb.CreateTerminatorV2Request{
-		Address:        terminator.terminatorId,
-		SessionToken:   terminator.token,
-		Fingerprints:   terminator.edgeClientConn.fingerprints.Prints(),
-		PeerData:       terminator.hostData,
-		Cost:           uint32(terminator.cost),
-		Precedence:     terminator.precedence,
-		InstanceId:     terminator.instance,
-		InstanceSecret: terminator.instanceSecret,
+		Address:         terminator.terminatorId,
+		SessionToken:    terminator.serviceSessionToken.Token(),
+		ApiSessionToken: terminator.serviceSessionToken.ApiSessionToken.Token(),
+		Fingerprints:    terminator.edgeClientConn.fingerprints.Prints(),
+		PeerData:        terminator.hostData,
+		Cost:            uint32(terminator.cost),
+		Precedence:      terminator.precedence,
+		InstanceId:      terminator.instance,
+		InstanceSecret:  terminator.instanceSecret,
 	}
 
 	if xgress_common.IsBearerToken(request.SessionToken) {
-		apiSession := self.stateManager.GetApiSessionFromCh(terminator.GetChannel())
+		apiSession := state.GetApiSessionTokenFromCh(terminator.GetChannel())
 
 		if apiSession == nil {
 			return errors.New("could not find api session for channel, unable to process bind message")
 		}
 
-		request.ApiSessionToken = apiSession.Token
+		request.ApiSessionToken = apiSession.Token()
 	}
 
-	ctrlCh := terminator.edgeClientConn.apiSession.SelectModelUpdateCtrlCh(factory.ctrls)
+	ctrlCh := terminator.edgeClientConn.apiSessionToken.SelectModelUpdateCtrlCh(factory.ctrls)
 
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
@@ -754,7 +756,7 @@ func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 			Key:             key,
 			Id:              terminator.terminatorId,
 			State:           terminator.state.Load().String(),
-			Token:           terminator.token,
+			Token:           terminator.serviceSessionToken.Token(),
 			ListenerId:      terminator.listenerId,
 			Instance:        terminator.instance,
 			Cost:            terminator.cost,
@@ -840,7 +842,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 	}
 
 	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.GetChannel().Label()).
-		WithField("token", self.terminator.token).
+		WithField("token", self.terminator.serviceSessionToken).
 		WithField("routerId", self.terminator.edgeClientConn.listener.id.Token).
 		WithField("listenerId", self.terminator.listenerId).
 		WithField("connId", self.terminator.MsgChannel.Id()).
@@ -848,7 +850,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 
 	for _, existing := range existingList {
 		matches := self.terminator.edgeClientConn == existing.edgeClientConn &&
-			self.terminator.token == existing.token &&
+			self.terminator.serviceSessionToken == existing.serviceSessionToken &&
 			self.terminator.MsgChannel.Id() == existing.MsgChannel.Id() &&
 			existing.state.Load() != xgress_common.TerminatorStateDeleting
 

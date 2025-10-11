@@ -58,7 +58,8 @@ func (h *apiSessionRemovedHandler) HandleReceive(msg *channel.Message, ch channe
 					WithField("ctrlId", ch.Id()).
 					Debugf("removing api session [token: %s] [id: %s]", token, id)
 
-				h.sm.RemoveApiSession(token)
+				apiSessionToken := NewApiSessionTokenFromLegacyToken(token)
+				h.sm.RemoveLegacyApiSession(apiSessionToken)
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as session removed")

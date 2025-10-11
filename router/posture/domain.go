@@ -9,7 +9,7 @@ type DomainCheck struct {
 	*edge_ctrl_pb.DataState_PostureCheck_Domains
 }
 
-func (m *DomainCheck) Evaluate(state *Cache) *CheckError {
+func (m *DomainCheck) Evaluate(state *InstanceData) *CheckError {
 	if state == nil {
 		return &CheckError{
 			Id:    m.Id,
