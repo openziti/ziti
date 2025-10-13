@@ -37,7 +37,7 @@ jobs:
           - deb
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
@@ -125,7 +125,7 @@ jobs:
             rpm: x86_64
     steps:
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: "*-${{ matrix.arch.gox }}-${{ matrix.distro.type }}"
           merge-multiple: true
@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
@@ -228,7 +228,7 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
@@ -247,14 +247,14 @@ jobs:
       ZITI_NAMESPACE: zititest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
         uses: ./.github/actions/setup-go
 
       - name: Install minikube
-        uses: medyagh/setup-minikube@v0.0.19
+        uses: medyagh/setup-minikube@v0.0.20
         with:
           start: false
 
