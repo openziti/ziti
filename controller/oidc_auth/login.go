@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/jsonutils"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -395,7 +395,7 @@ func (m *JsonMap) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
-	return swag.WriteJSON(m)
+	return jsonutils.WriteJSON(m)
 }
 
 func (l *login) deleteEnrollTotp(w http.ResponseWriter, r *http.Request) {
