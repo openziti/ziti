@@ -304,7 +304,7 @@ func (c *IdTokenClaims) TotpComplete() bool {
 
 // TotpClaims is a set of claims used to define TOTP JWT tokens that signify the last time a client
 // has successfully performed a TOTP code submission. They have no expiration date, but are tied to
-// and API Sesion via the ApiSessionId/z_asid claim. A valid, unexpired Api Session token is required
+// and API Session via the ApiSessionId/z_asid claim. A valid, unexpired Api Session token is required
 // to be used in conjunction with a TOTP token - making the TOTP token scoped to the API Session's expiration and
 // validity.
 //
