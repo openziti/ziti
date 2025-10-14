@@ -211,7 +211,7 @@ type Manager interface {
 
 	// ProcessPostureResponses handles incoming posture data from SDK clients and updates
 	// the router's posture cache.
-	ProcessPostureResponses(ch channel.Channel, responser *edge_client_pb.PostureResponses)
+	ProcessPostureResponses(ch channel.Channel, response *edge_client_pb.PostureResponses)
 
 	// GetEnv returns the router environment instance.
 	GetEnv() env.RouterEnv
