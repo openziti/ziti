@@ -18,6 +18,8 @@ package xlink_transport
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 var minMultiUnderlayVersion versions.SemVer
@@ -132,6 +133,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderType:          {byte(PayloadChannel)},
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
+		LinkDialedRouterId:      []byte(dial.GetRouterId()),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
@@ -194,6 +196,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
+		LinkDialedRouterId:      []byte(dial.GetRouterId()),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
@@ -241,6 +244,7 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
+		LinkDialedRouterId:      []byte(dial.GetRouterId()),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 	headers.PutBoolHeader(channel.IsGroupedHeader, true)
