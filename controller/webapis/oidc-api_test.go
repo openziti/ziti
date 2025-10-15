@@ -132,7 +132,7 @@ func Test_getPossibleIssuers(t *testing.T) {
 			bindPoint2Address = "test2.example.com:443"
 		)
 
-		bindPoints := []*xweb.BindPointConfig{
+		bindPoints := []*xweb.UnderlayBindPoint{
 			{
 				Address: bindPoint1Address,
 			},
