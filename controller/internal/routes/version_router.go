@@ -86,9 +86,10 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			RuntimeVersion: runtime.Version(),
 			Version:        buildInfo.Version(),
 			APIVersions: map[string]map[string]rest_model.APIVersion{
-				webapis.ClientApiBinding:     {webapis.VersionV1: mapApiVersionToRestModel(webapis.ClientRestApiBaseUrlV1)},
-				webapis.ManagementApiBinding: {webapis.VersionV1: mapApiVersionToRestModel(webapis.ManagementRestApiBaseUrlV1)},
-				webapis.OidcApiBinding:       {webapis.VersionV1: mapApiVersionToRestModel(webapis.OidcRestApiBaseUrl)},
+				webapis.ClientApiBinding:                {webapis.VersionV1: mapApiVersionToRestModel(webapis.ClientRestApiBaseUrlV1)},
+				webapis.ManagementApiBinding:            {webapis.VersionV1: mapApiVersionToRestModel(webapis.ManagementRestApiBaseUrlV1)},
+				webapis.OidcApiBinding:                  {webapis.VersionV1: mapApiVersionToRestModel(webapis.OidcRestApiBaseUrl)},
+				webapis.ControllerHealthCheckApiBinding: {webapis.VersionV1: mapApiVersionToRestModel(webapis.ControllerHealthCheckApiBaseUrlV1)},
 			},
 			Capabilities: []string{},
 		}
@@ -173,7 +174,10 @@ func apiBindingToPath(binding string) string {
 		return webapis.ClientRestApiBaseUrlV1
 	case webapis.ManagementApiBinding:
 		return webapis.ManagementRestApiBaseUrlV1
-	case webapis.OidcApiBinding: return webapis.OidcRestApiBaseUrl
+	case webapis.OidcApiBinding:
+		return webapis.OidcRestApiBaseUrl
+	case webapis.ControllerHealthCheckApiBinding:
+		return webapis.ControllerHealthCheckApiBaseUrlV1
 	}
 	return ""
 }
