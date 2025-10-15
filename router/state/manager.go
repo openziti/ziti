@@ -434,7 +434,7 @@ func (sm *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error)
 		return nil, fmt.Errorf("provided a totp token with invalid type '%s' expected '%s'", totpClaims.Type, common.TokenTypeTotp)
 	}
 
-	if token.Valid == false {
+	if !token.Valid {
 		return nil, fmt.Errorf("provided totp token that is not valid")
 	}
 
@@ -753,7 +753,7 @@ func (sm *ManagerImpl) ParseServiceSessionJwt(jwtStr string, apiSessionToken *Ap
 		return NewServiceSessionToken(jwtToken, serviceAccessClaims, apiSessionToken)
 	}
 
-	if jwtToken.Valid == false {
+	if !jwtToken.Valid {
 		return nil, fmt.Errorf("provided service session token that is not valid")
 	}
 
@@ -808,7 +808,7 @@ func (sm *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, erro
 		return nil, fmt.Errorf("provided an api session token with invalid type '%s'", accessClaims.Type)
 	}
 
-	if jwtToken.Valid == false {
+	if !jwtToken.Valid {
 		return nil, fmt.Errorf("provided an api session token that is not valid")
 	}
 

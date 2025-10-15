@@ -223,9 +223,9 @@ func (self *connectionTracker) GetChannels() map[string][]channel.Channel {
 
 		idState.Lock()
 		result[identityId] = []channel.Channel{}
-		for _, ch := range idState.connections {
-			result[identityId] = append(result[identityId], ch)
-		}
+
+		result[identityId] = append(result[identityId], idState.connections...)
+
 		idState.Unlock()
 	}
 
@@ -253,9 +253,7 @@ func (self *connectionTracker) GetChannelsByIdentityId(identityId string) []chan
 
 	idState.Lock()
 
-	for _, ch := range idState.connections {
-		result = append(result, ch)
-	}
+	result = append(result, idState.connections...)
 
 	defer idState.Unlock()
 

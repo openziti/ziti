@@ -167,7 +167,7 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		return result
 	}
 
-	if strings.ToLower(valid.OsType) != strings.ToLower(osType) {
+	if strings.EqualFold(strings.ToLower(valid.OsType), strings.ToLower(osType)) {
 		result.Reason = fmt.Errorf("os types do not match, given %s, expected: %s", osType, valid.OsType)
 		return result
 	}
