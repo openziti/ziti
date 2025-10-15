@@ -66,6 +66,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions("fabric.usage", result.registerUsageEventHandler, result.unregisterUsageEventHandler)
 	result.RegisterEventTypeFunctions("edge.authentications", result.registerAuthenticationEventHandler, result.unregisterAuthenticationEventHandler)
 
+	result.RegisterEventTypeFunctions(event.AlertEventNS, result.registerAlertEventHandler, result.unregisterAlertEventHandler)
 	result.RegisterEventTypeFunctions(event.ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
 	result.RegisterEventTypeFunctions(event.AuthenticationEventNS, result.registerAuthenticationEventHandler, result.unregisterAuthenticationEventHandler)
 	result.RegisterEventTypeFunctions(event.CircuitEventNS, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
@@ -98,6 +99,7 @@ var _ event.Dispatcher = (*Dispatcher)(nil)
 
 type Dispatcher struct {
 	ctrlId                    string
+	alertEventHandlers        concurrenz.CopyOnWriteSlice[event.AlertEventHandler]
 	circuitEventHandlers      concurrenz.CopyOnWriteSlice[event.CircuitEventHandler]
 	entityChangeEventHandlers concurrenz.CopyOnWriteSlice[event.EntityChangeEventHandler]
 	linkEventHandlers         concurrenz.CopyOnWriteSlice[event.LinkEventHandler]

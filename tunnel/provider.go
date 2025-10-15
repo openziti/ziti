@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"net/netip"
+	"time"
 
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
@@ -23,7 +25,24 @@ type AllowConfig interface {
 	GetAllowedAddresses() []string
 }
 
+type Dialer interface {
+	Dial(network string, address string) (net.Conn, error)
+}
+
+type DialWrapper interface {
+	Dial(hostContext HostingContext, localAddr *netip.AddrPort, dialer Dialer, protocol string, address string) (net.Conn, error)
+}
+
+type HostedService interface {
+	GetName() string
+	GetId() string
+	IsEncryptionRequired() bool
+	GetDialTimeout() time.Duration
+	GetConfigOfType(configType string, target interface{}) (bool, error)
+}
+
 type HostingContext interface {
+	Service() HostedService
 	ServiceId() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
@@ -33,6 +52,7 @@ type HostingContext interface {
 	OnClose()
 	SetCloseCallback(func())
 	GetAllowConfig() AllowConfig
+	SetDialWrapper(listener DialWrapper)
 }
 
 type HostControl interface {

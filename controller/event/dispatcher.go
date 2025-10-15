@@ -80,6 +80,9 @@ type Dispatcher interface {
 	ProcessSubscriptions(handler interface{}, subscriptions []*Subscription) error
 	RemoveAllSubscriptions(handler interface{})
 
+	AddAlertEventHandler(handler AlertEventHandler)
+	RemoveAlertEventHandler(handler AlertEventHandler)
+
 	AddCircuitEventHandler(handler CircuitEventHandler)
 	RemoveCircuitEventHandler(handler CircuitEventHandler)
 
@@ -128,6 +131,7 @@ type Dispatcher interface {
 	AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool)
 	RemoveEntityCountEventHandler(handler EntityCountEventHandler)
 
+	AlertEventHandler
 	ApiSessionEventHandler
 	AuthenticationEventHandler
 	CircuitEventHandler

@@ -58,7 +58,7 @@ const (
 //	 "timestamp": "2024-10-02T12:17:40.501821249-04:00"
 //	}
 //
-// Example: SDK identit is offline
+// Example: SDK identity is offline
 //
 //	{
 //	 "namespace": "sdk",

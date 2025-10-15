@@ -59,6 +59,11 @@ type RouterEnv interface {
 	GetForwarder() Forwarder
 	GetXgressMetrics() XgressMetrics
 	NotifyCertsUpdated()
+	GetAlerter() Alerter
+}
+
+type Alerter interface {
+	ReportError(message string, details []string, relatedEntities map[string]string)
 }
 
 type ConnectEventsConfig struct {

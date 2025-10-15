@@ -50,6 +50,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/common/alert"
 	"github.com/openziti/ziti/common/config"
 	"github.com/openziti/ziti/common/health"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
@@ -116,6 +117,7 @@ type Router struct {
 	xgBindHandler       xgress.BindHandler
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
+	alertReporter       *alert.Reporter
 }
 
 func (self *Router) GetRouterId() *identity.TokenId {
@@ -248,6 +250,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router)
+	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
@@ -269,6 +272,10 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	return router
+}
+
+func (self *Router) GetAlerter() env.Alerter {
+	return self.alertReporter
 }
 
 func (self *Router) createDataPlaneAdapter() xgress.DataPlaneAdapter {

@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/mempool"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/common/alert"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/openziti/ziti/tunnel/dns"
 	"github.com/openziti/ziti/tunnel/entities"
@@ -73,16 +74,28 @@ type interceptor struct {
 	interceptIP net.IP
 	services    map[string]*Service
 	lock        sync.Mutex
+	alerter     Alerter
 }
 
-func NewDelegate() intercept.Interceptor {
+type Alerter interface {
+	ReportError(message string, details []string, relatedEntities map[string]string)
+}
+
+type DefaultAlerter struct{}
+
+func (d DefaultAlerter) ReportError(message string, details []string, relatedEntities map[string]string) {
+	pfxlog.Logger().WithField("details", details).WithField("relatedEntities", relatedEntities).Errorf("alert: %s", message)
+}
+
+func NewDelegate(alerter Alerter) intercept.Interceptor {
 	return &interceptor{
 		interceptIP: net.IPv4(127, 0, 0, 1),
 		services:    map[string]*Service{},
+		alerter:     alerter,
 	}
 }
 
-func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
+func New(alerter Alerter, ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 	services := make(map[string]*Service, len(serviceList))
 
 	for _, arg := range serviceList {
@@ -122,6 +135,7 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 	p := interceptor{
 		interceptIP: ip,
 		services:    services,
+		alerter:     alerter,
 	}
 	return &p, nil
 }
@@ -195,6 +209,14 @@ func (p *interceptor) runServiceListener(service *Service) error {
 			}
 		}
 	}
+
+	if len(errList) > 0 {
+		p.alerter.ReportError("unable to proxy service", alert.ErrListToDetailList(errList), map[string]string{
+			alert.EntityTypeService: service.TunnelService.GetId(),
+			alert.EntityTypeSelf:    alert.EntityTypeSelfErt,
+		})
+	}
+
 	return errors.Join(errList...)
 }
 
@@ -205,7 +227,8 @@ func (p *interceptor) handleTCP(service *Service) error {
 	if service.Binding != "" {
 		binding, err := transport.ResolveLocalBinding(service.Binding)
 		if err != nil {
-			return fmt.Errorf("unable to resolve service binding '%s' (%w)", service.Name, err)
+			return fmt.Errorf("unable to resolve binding '%s' on service '%s' for tcp proxy (%w)",
+				service.Binding, service.Name, err)
 		}
 		serviceBinding = binding
 	}
@@ -247,7 +270,7 @@ func (p *interceptor) handleUDP(service *Service) error {
 	if service.Binding != "" {
 		binding, err := transport.ResolveLocalBinding(service.Binding)
 		if err != nil {
-			return fmt.Errorf("unable to resolve service binding '%s' (%w)", service.Name, err)
+			return fmt.Errorf("unable to resolve binding '%s' on service '%s' for udp proxy (%w)", service.Binding, service.Name, err)
 		}
 		serviceBinding = binding
 	}

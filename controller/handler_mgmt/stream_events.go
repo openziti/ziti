@@ -19,13 +19,14 @@ package handler_mgmt
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/handler_common"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/network"
-	"io"
 )
 
 type StreamEventsRequest struct {
