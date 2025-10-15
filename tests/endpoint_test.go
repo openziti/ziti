@@ -135,6 +135,8 @@ func Test_Endpoints(t *testing.T) {
 				ctx.Req.Contains(data.APIVersions, "health-checks")
 				ctx.Req.Contains(data.APIVersions["health-checks"], "v1")
 				ctx.Req.Equal(*data.APIVersions["health-checks"]["v1"].Path, "/health-checks/v1")
+				ctx.Req.Len(data.APIVersions["health-checks"]["v1"].APIBaseUrls, 1)
+				ctx.Req.Equal(data.APIVersions["health-checks"]["v1"].APIBaseUrls[0], "https://"+ctx.ApiHost+"/health-checks/v1")
 			})
 
 			t.Run("responds on /edge/client/v1/version", func(t *testing.T) {
