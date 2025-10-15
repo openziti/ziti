@@ -106,10 +106,12 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 		apiToBaseUrls := map[string]map[string]struct{}{} //api -> webListener addresses + path
 
+		activeBindings := map[string]struct{}{}
 		for _, webListener := range xwebContext.Config.ServerConfigs {
 			for _, api := range webListener.APIs {
 				if _, ok := apiToBaseUrls[api.Binding()]; !ok {
 					apiToBaseUrls[api.Binding()] = map[string]struct{}{}
+					activeBindings[api.Binding()] = struct{}{}
 				}
 
 				for _, bindPoint := range webListener.BindPoints {
@@ -134,12 +136,21 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			}
 		}
 
+		var apiToRemove []string
 		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
-			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
-				apiVersion := apiVersionMap["v1"]
-				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
-				apiVersionMap["v1"] = apiVersion
+			if _, ok := activeBindings[apiBinding]; ok {
+				for apiBaseUrl := range apiToBaseUrls[apiBinding] {
+					apiVersion := apiVersionMap["v1"]
+					apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
+					apiVersionMap["v1"] = apiVersion
+				}
+			} else {
+				apiToRemove = append(apiToRemove, apiBinding)
 			}
+		}
+
+		for _, toRemove := range apiToRemove {
+			delete(ir.cachedVersions.APIVersions, toRemove)
 		}
 
 		ir.cachedVersions.APIVersions[webapis.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[webapis.ClientApiBinding]

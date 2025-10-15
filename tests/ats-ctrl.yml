@@ -54,6 +54,7 @@ web:
         address: 127.0.0.1:1281
     options: {}
     apis:
+      - binding: health-checks
       - binding: fabric
       - binding: edge-management
       - binding: edge-client
