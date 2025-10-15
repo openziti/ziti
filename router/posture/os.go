@@ -27,7 +27,7 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 
 	var foundOs *edge_ctrl_pb.DataState_PostureCheck_Os = nil
 	for _, os := range m.OsList {
-		if strings.EqualFold(strings.ToLower(os.OsType), strings.ToLower(data.Os.Os.Type)) {
+		if !strings.EqualFold(strings.ToLower(os.OsType), strings.ToLower(data.Os.Os.Type)) {
 			osTypeFailure.ValidValues = append(osTypeFailure.ValidValues, Str(os.OsType))
 		} else {
 			foundOs = os
