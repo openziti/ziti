@@ -30,6 +30,7 @@ require (
 	github.com/go-openapi/spec v0.22.0
 	github.com/go-openapi/strfmt v0.24.0
 	github.com/go-openapi/swag v0.25.1
+	github.com/go-openapi/swag/jsonutils v0.25.1
 	github.com/go-openapi/validate v0.25.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/go-viper/mapstructure/v2 v2.4.0
@@ -57,18 +58,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.32
-	github.com/openziti/channel/v4 v4.2.37
+	github.com/openziti/channel/v4 v4.2.41
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.50
-	github.com/openziti/foundation/v2 v2.0.77
-	github.com/openziti/identity v1.0.116
+	github.com/openziti/foundation/v2 v2.0.79
+	github.com/openziti/identity v1.0.118
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/runzmd v1.0.82
-	github.com/openziti/sdk-golang v1.2.9
-	github.com/openziti/secretstream v0.1.39
+	github.com/openziti/sdk-golang v1.2.10
+	github.com/openziti/secretstream v0.1.41
 	github.com/openziti/storage v0.4.28
-	github.com/openziti/transport/v2 v2.0.194
+	github.com/openziti/transport/v2 v2.0.198
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.3.4
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -141,7 +142,6 @@ require (
 	github.com/go-openapi/swag/conv v0.25.1 // indirect
 	github.com/go-openapi/swag/fileutils v0.25.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.1 // indirect
-	github.com/go-openapi/swag/jsonutils v0.25.1 // indirect
 	github.com/go-openapi/swag/loading v0.25.1 // indirect
 	github.com/go-openapi/swag/mangling v0.25.1 // indirect
 	github.com/go-openapi/swag/netutils v0.25.1 // indirect
