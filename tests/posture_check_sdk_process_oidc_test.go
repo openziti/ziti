@@ -22,12 +22,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge/posture"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 )
 
-func Test_PostureChecks_Sessions(t *testing.T) {
+func Test_PostureCheck_SDK_Process_OIDC(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -36,10 +38,38 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 	dialIdentityRole := eid.New()
 	hostIdentityRole := eid.New()
 	serviceRole := eid.New()
-	postureCheckRole := eid.New()
-	dialDomain := "dial.example.com"
+	postureCheckRoleAttr := eid.New()
 
-	_ = ctx.AdminManagementSession.requireNewPostureCheckDomain(s(dialDomain), s(postureCheckRole))
+	adminManagementApi := ctx.NewEdgeManagementApi(nil)
+	adminManagementApiSession, err := adminManagementApi.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
+	ctx.Req.NotNil(adminManagementApiSession)
+
+	targetHash := "3cdaefed0138a1d01df9ac5c8a57f02b29c24a31201614c51a592eeed2e5f7f3"
+	targetPath := "C:\\example\\path\\1.exe"
+	targetSignerFingerprint := "f1b2a6e9a37dfc918bd495e79b03dbbe6cb7477e3c6a0c29ff476c2b9a43ad0f\n"
+	targetProcess := &rest_model.Process{
+		Hashes:            []string{targetHash},
+		OsType:            ToPtr(rest_model.OsTypeWindows),
+		Path:              &targetPath,
+		SignerFingerprint: targetSignerFingerprint,
+	}
+
+	validProcessInfo := posture.ProcessInfo{
+		IsRunning:          true,
+		Hash:               targetHash,
+		SignerFingerprints: []string{targetSignerFingerprint},
+	}
+
+	invalidProcessInfo := posture.ProcessInfo{
+		IsRunning:          false,
+		Hash:               targetHash,
+		SignerFingerprints: []string{targetSignerFingerprint},
+	}
+
+	postureCheckProcessMulti, err := adminManagementApi.CreatePostureCheckProcess(targetProcess, []string{postureCheckRoleAttr})
+	ctx.Req.NoError(err)
+	ctx.Req.NotNil(postureCheckProcessMulti)
 
 	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
 	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
@@ -48,10 +78,11 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 	service.terminatorStrategy = xt_smartrouting.Name
 	ctx.AdminManagementSession.requireCreateEntity(service)
 
-	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), s("#"+postureCheckRole))
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), s("#"+postureCheckRoleAttr))
 	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+hostIdentityRole), nil)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
+
 	_, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext(hostIdentityRole)
 	defer hostContext.Close()
 
@@ -82,16 +113,12 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 
 		var clientContext *ziti.ContextImpl
 
-		t.Run("can be created", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			_, ztx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
+		_, ztx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
 
-			// This is testing legacy/non-oidc behavior, so we need to disable OIDC here
-			ztx.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(false)
-			var ok bool
-			clientContext, ok = ztx.(*ziti.ContextImpl)
-			ctx.Req.True(ok)
-		})
+		ztx.(*ziti.ContextImpl).CtrlClt.SetAllowOidcDynamicallyEnabled(true)
+		var ok bool
+		clientContext, ok = ztx.(*ziti.ContextImpl)
+		ctx.Req.True(ok)
 
 		defer clientContext.Close()
 
@@ -106,10 +133,24 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 			postureCache := clientContext.CtrlClt.PostureCache
 			ctx.Req.NoError(err)
 
-			currentPostureDomain := dialDomain
-			postureCache.DomainFunc = func() string {
-				return currentPostureDomain
-			}
+			currentProcessInfo := validProcessInfo
+			postureCache.SetProcessProviderFunc(func(path string) posture.ProcessInfo {
+				if path == targetPath {
+					return currentProcessInfo
+				}
+				return posture.ProcessInfo{}
+			})
+
+			postureCache.SetOsProviderFunc(func() posture.OsInfo {
+				return posture.OsInfo{
+					Type:    "windows",
+					Version: "1.0.0",
+				}
+			})
+
+			clientContext.CtrlClt.PostureCache.Evaluate()
+			err = clientContext.ConnectAllAvailableErs()
+			ctx.Req.NoError(err)
 
 			clientConn := ctx.WrapConn(clientContext.Dial(service.Name))
 			defer func() { _ = clientConn.Close() }()
@@ -124,7 +165,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 			t.Run("sending invalid posture data", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				currentPostureDomain = "invalid"
+				currentProcessInfo = invalidProcessInfo
 				postureCache.Evaluate()
 
 				lastReadCount := 0
@@ -140,7 +181,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 						break
 					}
 
-					time.Sleep(250 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 					count = count + 1
 				}
 
@@ -168,6 +209,4 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 			})
 		})
 	})
-
-	testServer.waitForDone(ctx, 5*time.Second)
 }

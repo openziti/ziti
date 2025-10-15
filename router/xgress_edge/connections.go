@@ -20,11 +20,18 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/url"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
@@ -32,12 +39,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"net/url"
-	"slices"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type identityConnect struct {
@@ -198,6 +199,65 @@ func (self *connectionTracker) runLoop(closeNotify <-chan struct{}) {
 			return
 		}
 	}
+}
+
+// GetChannels returns a snapshot of all active channels grouped by identity ID.
+// This method is primarily used by security monitoring systems that need to iterate
+// over all connected identities and their associated channels for compliance checks,
+// threat detection, or administrative operations. The returned map allows efficient
+// bulk operations while maintaining thread safety through concurrent iteration and
+// per-identity locking.
+//
+// Returns:
+//   - map[string][]channel.Channel: Map where keys are identity IDs and values are
+//     slices of all active channels for that identity. Empty identities are included
+//     with empty slices to maintain a complete view of the connection state.
+//
+// Thread Safety: Safe for concurrent use. Uses buffered iteration over the concurrent
+// map and individual locks per identity state to ensure consistent snapshots.
+func (self *connectionTracker) GetChannels() map[string][]channel.Channel {
+	result := map[string][]channel.Channel{}
+	for entry := range self.states.IterBuffered() {
+		identityId := entry.Key
+		idState := entry.Val
+
+		idState.Lock()
+		result[identityId] = []channel.Channel{}
+
+		result[identityId] = append(result[identityId], idState.connections...)
+
+		idState.Unlock()
+	}
+
+	return result
+}
+
+// GetChannelsByIdentityId retrieves all active channels for a specific identity.
+// This method is used for security enforcement operations where the router needs to
+// take action on all connections belonging to a particular identity, such as when
+// posture checks fail, access policies change, or MFA requirements trigger.
+//
+// Parameters:
+//   - identityId: The unique identity ID to look up connections for
+//
+// Returns:
+//   - []channel.Channel: Slice of all active channels for the identity. Returns empty
+//     slice if identity has no connections or doesn't exist.
+func (self *connectionTracker) GetChannelsByIdentityId(identityId string) []channel.Channel {
+	idState, _ := self.states.Get(identityId)
+
+	var result []channel.Channel
+	if idState == nil {
+		return result
+	}
+
+	idState.Lock()
+
+	result = append(result, idState.connections...)
+
+	defer idState.Unlock()
+
+	return result
 }
 
 func (self *connectionTracker) notifyNeedsFullSync() {
@@ -408,11 +468,24 @@ func newSessionConnectHandler(stateManager state.Manager, options *Options, metr
 	}
 }
 
+// validateApiSession performs security validation of an incoming SDK connection by verifying
+// the API session token and client certificate authenticity. The validation process includes
+// session token verification, certificate chain validation, fingerprint matching, and SPIFFE
+// ID verification when present.
+//
+// Failed validation results in connection termination and security event logging.
+//
+// Parameters:
+//   - binding: The channel binding containing connection details and certificates
+//   - edgeConn: The edgeClientConn being validated and populated with session info
+//
+// Returns:
+//   - error: nil if validation succeeds, descriptive error if validation fails
 func (handler *sessionConnectionHandler) validateApiSession(binding channel.Binding, edgeConn *edgeClientConn) error {
 	ch := binding.GetChannel()
 	binding.AddCloseHandler(handler)
 
-	byteToken, ok := ch.Headers()[edge.SessionTokenHeader]
+	byteToken, ok := ch.Headers()[edgeSdk.SessionTokenHeader]
 
 	if !ok {
 		_ = ch.Close()
@@ -430,7 +503,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 
 	token := string(byteToken)
 
-	apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
+	apiSession := handler.stateManager.GetApiSessionTokenWithTimeout(token, handler.options.lookupApiSessionTimeout)
 
 	if apiSession == nil {
 		_ = ch.Close()
@@ -449,7 +522,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 		return fmt.Errorf("no api session found for token [%s], fingerprint: [%v], subjects [%v]", token, fingerprint, subjects)
 	}
 
-	edgeConn.apiSession = apiSession
+	edgeConn.apiSessionToken = apiSession
 
 	isValid := handler.validateBySpiffeId(apiSession, certificates[0])
 
@@ -465,30 +538,28 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 	return errors.New("invalid client certificate for api session")
 }
 
+// completeBinding finalizes the connection setup after successful validation by registering
+// the connection for lifecycle management. This includes setting up cleanup handlers for
+// API session removal, adding the connection to active tracking systems, and ensuring
+// proper cleanup coordination to prevent resource leaks.
+//
+// Parameters:
+//   - binding: The validated channel binding to complete setup for
+//   - edgeConn: The validated edgeClientConn to register for operation
 func (handler *sessionConnectionHandler) completeBinding(binding channel.Binding, edgeConn *edgeClientConn) {
 	ch := binding.GetChannel()
-	apiSession := edgeConn.apiSession
-	byteToken := ch.Headers()[edge.SessionTokenHeader]
-	token := string(byteToken)
-	if apiSession.Claims != nil {
-		token = apiSession.Claims.ApiSessionId
-	}
+	apiSession := edgeConn.apiSessionToken
 
-	removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
+	_ = handler.stateManager.AddApiSessionRemovedListener(apiSession, func(_ *state.ApiSessionToken) {
 		if !ch.IsClosed() {
 			if err := ch.Close(); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
 			}
 		}
-
-		handler.stateManager.RemoveActiveChannel(ch)
 	})
-
-	handler.stateManager.AddActiveChannel(ch, apiSession)
-	handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
 }
 
-func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state.ApiSession, clientFingerprint string) bool {
+func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state.ApiSessionToken, clientFingerprint string) bool {
 	for _, fingerprint := range apiSession.CertFingerprints {
 		if clientFingerprint == fingerprint {
 			return true
@@ -499,19 +570,10 @@ func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state
 }
 
 func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
-	token := ""
-	if byteToken, ok := ch.Headers()[edge.SessionTokenHeader]; ok {
-		token = string(byteToken)
-
-		handler.stateManager.RemoveConnectedApiSessionWithChannel(token, ch)
-	} else {
-		pfxlog.Logger().
-			WithField("id", ch.Id()).
-			Error("session connection handler encountered a HandleClose that did not have a SessionTokenHeader")
-	}
+	//no work, interface fulfillment
 }
 
-func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.ApiSession, clientCert *x509.Certificate) bool {
+func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.ApiSessionToken, clientCert *x509.Certificate) bool {
 	spiffeId, err := spiffehlp.GetSpiffeIdFromCert(clientCert)
 
 	if err != nil {

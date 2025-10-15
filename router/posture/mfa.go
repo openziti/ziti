@@ -17,7 +17,7 @@ type MfaCheck struct {
 	*edge_ctrl_pb.DataState_PostureCheck_Mfa
 }
 
-func (m *MfaCheck) Evaluate(state *Cache) *CheckError {
+func (m *MfaCheck) Evaluate(state *InstanceData) *CheckError {
 	now := time.Now()
 
 	if state == nil {

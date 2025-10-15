@@ -44,6 +44,7 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/posture"
+	"github.com/openziti/ziti/router/state"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -96,8 +97,6 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 		return false
 	}
 
-	self.tunneler.stateManager.RemoveConnectedApiSession(currentToken)
-
 	self.apiSessionTokens[ctrlId] = resp.Token
 	self.currentIdentity = &rest_model.IdentityDetail{
 		BaseEntity: rest_model.BaseEntity{
@@ -127,7 +126,6 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 		}
 	}
 
-	self.tunneler.stateManager.AddConnectedApiSession(resp.Token)
 	return true
 }
 
@@ -288,7 +286,8 @@ func (self *fabricProvider) tunnelServiceV1(
 		}
 	}
 
-	cleanupCallback := self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
+	serviceSessionToken := state.NewServiceSessionTokenFromId(response.Session.Token)
+	cleanupCallback := self.tunneler.stateManager.AddLegacyServiceSessionRemovedListener(serviceSessionToken, func(_ *state.ServiceSessionToken) {
 		if err = conn.Close(); err != nil {
 			log.WithError(err).Error("failed to close external conn when session closed")
 		}
@@ -485,7 +484,8 @@ func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh ch
 
 	if terminator.created.CompareAndSwap(false, true) {
 		// TODO: How do we make sure we don't get dups here. Probably not a big problem and this will need to be refactored for JWT sessions in any case
-		closeCallback := self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
+		serviceSessionToken := state.NewServiceSessionTokenFromId(response.Session.Token)
+		closeCallback := self.tunneler.stateManager.AddLegacyServiceSessionRemovedListener(serviceSessionToken, func(_ *state.ServiceSessionToken) {
 			if err := self.removeTerminator(terminator); err != nil {
 				log.WithError(err).Error("failed to remove terminator after edge session was removed")
 			}

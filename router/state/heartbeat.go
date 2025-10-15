@@ -17,6 +17,8 @@ limitations under the License.
 package state
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	routerEnv "github.com/openziti/ziti/router/env"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 const maxTokensPerMessage = 10000
@@ -36,7 +37,7 @@ type heartbeatOperation struct {
 }
 
 type TokenProvider interface {
-	ActiveApiSessionTokens() []string
+	ActiveApiSessionTokens() []*ApiSessionToken
 	flushRecentlyRemoved()
 }
 
@@ -47,53 +48,54 @@ func newHeartbeatOperation(env routerEnv.RouterEnv, frequency time.Duration, tok
 		BaseOperation: runner.NewBaseOperation("Heartbeat Operation", frequency)}
 }
 
-func (operation *heartbeatOperation) Run() error {
-	tokens := operation.tokenProvider.ActiveApiSessionTokens()
+func (op *heartbeatOperation) Run() error {
+	tokens := op.tokenProvider.ActiveApiSessionTokens()
 
-	operation.beat(tokens)
-	operation.tokenProvider.flushRecentlyRemoved()
+	op.beat(tokens)
+	op.tokenProvider.flushRecentlyRemoved()
 
 	return nil
 }
 
-func (operation *heartbeatOperation) beat(tokens []string) {
-	var msgs []*channel.Message
+func (op *heartbeatOperation) beat(apiSessionTokens []*ApiSessionToken) {
+	// Filter to only include legacy protobuf tokens that require heartbeating
+	legacyTokens := op.filterLegacyProtobufTokens(apiSessionTokens)
 
-	pfxlog.Logger().Tracef("heartbeat tokens: %d", len(tokens))
+	var messages []*channel.Message
 
-	for len(tokens) > 0 {
+	pfxlog.Logger().Tracef("heartbeat tokens: %d legacy of %d total", len(legacyTokens), len(apiSessionTokens))
 
-		if maxTokensPerMessage >= len(tokens) {
-			msg := &edge_ctrl_pb.ApiSessionHeartbeat{
-				Tokens: tokens,
-			}
-			bodyBytes, err := proto.Marshal(msg)
+	for len(legacyTokens) > 0 {
+		var chunk []*ApiSessionToken
 
-			if err != nil {
-				pfxlog.Logger().Panic("could not marshal SessionHeartbeat type (1)")
-			}
-
-			msgs = append(msgs, channel.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
-
-			tokens = nil
+		if maxTokensPerMessage >= len(legacyTokens) {
+			chunk = legacyTokens
+			legacyTokens = nil
 		} else {
-			msg := &edge_ctrl_pb.ApiSessionHeartbeat{
-				Tokens: tokens[:maxTokensPerMessage],
-			}
-
-			bodyBytes, err := proto.Marshal(msg)
-
-			if err != nil {
-				pfxlog.Logger().Panic("could not marshal SessionHeartbeat type (2)")
-			}
-
-			tokens = tokens[maxTokensPerMessage:]
-			msgs = append(msgs, channel.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
+			chunk = legacyTokens[:maxTokensPerMessage]
+			legacyTokens = legacyTokens[maxTokensPerMessage:]
 		}
+
+		tokenChunk := make([]string, 0, len(chunk))
+		for _, apiSessionToken := range chunk {
+			tokenChunk = append(tokenChunk, apiSessionToken.GetToken())
+		}
+
+		msg := &edge_ctrl_pb.ApiSessionHeartbeat{
+			Tokens: tokenChunk,
+		}
+		bodyBytes, err := proto.Marshal(msg)
+
+		if err != nil {
+			pfxlog.Logger().Error("could not marshal SessionHeartbeat type")
+			return
+		}
+
+		messages = append(messages, channel.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
 	}
 
-	operation.env.GetNetworkControllers().ForEach(func(ctrlId string, ch channel.Channel) {
-		for _, msg := range msgs {
+	op.env.GetNetworkControllers().ForEach(func(ctrlId string, ch channel.Channel) {
+		for _, msg := range messages {
 			// can't send the same messages across channels, will run into problems with channel heartbeats and
 			// concurrent writes
 			msgCopy := channel.NewMessage(msg.ContentType, msg.Body)
@@ -104,4 +106,18 @@ func (operation *heartbeatOperation) beat(tokens []string) {
 		}
 	})
 
+}
+
+// filterLegacyProtobufTokens returns only tokens that require controller heartbeating.
+// JWT tokens are self-contained and don't need heartbeat synchronization with controllers.
+func (op *heartbeatOperation) filterLegacyProtobufTokens(tokens []*ApiSessionToken) []*ApiSessionToken {
+	var legacyTokens []*ApiSessionToken
+
+	for _, token := range tokens {
+		if token.Type == ApiSessionTokenLegacyProtobuf {
+			legacyTokens = append(legacyTokens, token)
+		}
+	}
+
+	return legacyTokens
 }

@@ -18,16 +18,18 @@ package xgress_edge
 
 import (
 	"errors"
+	"math"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/latency"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	sdkEdge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"math"
-	"sync/atomic"
-	"time"
 )
 
 type Acceptor struct {
@@ -49,16 +51,16 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	fpg := cert.NewFingerprintGenerator()
 
-	var sdkChannel edge.SdkChannel
+	var sdkChannel sdkEdge.SdkChannel
 	if multiChannel, ok := binding.GetChannel().(channel.MultiChannel); ok {
-		sdkChannel = multiChannel.GetUnderlayHandler().(edge.SdkChannel)
+		sdkChannel = multiChannel.GetUnderlayHandler().(sdkEdge.SdkChannel)
 		sdkChannel.InitChannel(multiChannel)
 	} else {
-		sdkChannel = edge.NewSingleSdkChannel(binding.GetChannel())
+		sdkChannel = sdkEdge.NewSingleSdkChannel(binding.GetChannel())
 	}
 
 	conn := &edgeClientConn{
-		msgMux:       edge.NewMapMsgMux(),
+		msgMux:       sdkEdge.NewChannelConnMapMux[*state.ConnState](),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,
@@ -71,57 +73,64 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	log.Debug("peer fingerprints ", conn.fingerprints)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeConnect,
+		Type: sdkEdge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processConnect(m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeBind,
+		Type: sdkEdge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processBind(self.listener.factory.stateManager, m, ch)
+			conn.processBind(m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeUnbind,
+		Type: sdkEdge.ContentTypeUnbind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processUnbind(m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeUpdateBind,
+		Type: sdkEdge.ContentTypeUpdateBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processUpdateBind(self.listener.factory.stateManager, m, ch)
+			conn.processUpdateBind(m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeHealthEvent,
+		Type: sdkEdge.ContentTypeHealthEvent,
 		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processHealthEvent(self.listener.factory.stateManager, m, ch)
+			conn.processHealthEvent(m, ch)
 		},
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: edge.ContentTypeUpdateToken,
+		Type: sdkEdge.ContentTypePostureResponse,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processPostureResponse(m, ch)
+		},
+	})
+
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeUpdateToken,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processTokenUpdate(m, ch)
 		},
 	})
 
-	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, conn.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeStateClosed, conn.msgMux.HandleReceive)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, conn.processTraceRoute)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRoute, conn.processTraceRoute)
 
-	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
-	binding.AddReceiveHandlerF(edge.ContentTypeXgPayload, conn.handleXgPayload)
-	binding.AddReceiveHandlerF(edge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
-	binding.AddReceiveHandlerF(edge.ContentTypeXgClose, conn.handleXgClose)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgPayload, conn.handleXgPayload)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgClose, conn.handleXgClose)
 
 	// Since data is the most common type, it gets to dispatch directly
 	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
@@ -143,7 +152,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		return err
 	}
 
-	identityId := conn.apiSession.ApiSession.IdentityId
+	identityId := conn.apiSessionToken.ApiSession.IdentityId
 	self.connStateTracker.markConnected(identityId, conn.ch.GetChannel())
 
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -165,9 +174,9 @@ func (d DebugPeekHandler) Connect(channel.Channel, string) {
 }
 
 func (d DebugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
-	if m.ContentType == edge.ContentTypeDialSuccess || m.ContentType == edge.ContentTypeDialFailed {
-		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
-		result, err := edge.UnmarshalDialResult(m)
+	if m.ContentType == sdkEdge.ContentTypeDialSuccess || m.ContentType == sdkEdge.ContentTypeDialFailed {
+		connId, _ := m.GetUint32Header(sdkEdge.ConnIdHeader)
+		result, err := sdkEdge.UnmarshalDialResult(m)
 		if err != nil {
 			pfxlog.Logger().WithError(err).Infof("err unmarshalling dial result, seq: %d , replyTo: %d, connId: %d",
 				m.Sequence(), m.ReplyFor(), connId)
@@ -179,12 +188,12 @@ func (d DebugPeekHandler) Rx(m *channel.Message, _ channel.Channel) {
 }
 
 func (d DebugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
-	if m.ContentType == edge.ContentTypeDial {
-		connId, _ := m.GetUint32Header(edge.ConnIdHeader)
-		newConnId, _ := m.GetUint32Header(edge.RouterProvidedConnId)
-		circuitId, _ := m.GetStringHeader(edge.CircuitIdHeader)
+	if m.ContentType == sdkEdge.ContentTypeDial {
+		connId, _ := m.GetUint32Header(sdkEdge.ConnIdHeader)
+		newConnId, _ := m.GetUint32Header(sdkEdge.RouterProvidedConnId)
+		circuitId, _ := m.GetStringHeader(sdkEdge.CircuitIdHeader)
 
-		pfxlog.Logger().Infof("sending dial: seq: %d , connId: %d, newConnId: %d, circuitId: %s",
+		pfxlog.Logger().Infof("sending dial: seq: %d , ConnId: %d, newConnId: %d, circuitId: %s",
 			m.Sequence(), connId, newConnId, circuitId)
 	}
 }
@@ -275,19 +284,19 @@ func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
 	return nil
 }
 
-func NewListenerSdkChannel(underlay channel.Underlay) edge.UnderlayHandlerSdkChannel {
+func NewListenerSdkChannel(underlay channel.Underlay) sdkEdge.UnderlayHandlerSdkChannel {
 	result := &ListenerSdkChannel{
-		BaseSdkChannel: *edge.NewBaseSdkChannel(underlay),
+		BaseSdkChannel: *sdkEdge.NewBaseSdkChannel(underlay),
 	}
 
-	result.constraints.AddConstraint(edge.ChannelTypeDefault, 1, 1)
-	result.constraints.AddConstraint(edge.ChannelTypeControl, 1, 0)
+	result.constraints.AddConstraint(sdkEdge.ChannelTypeDefault, 1, 1)
+	result.constraints.AddConstraint(sdkEdge.ChannelTypeControl, 1, 0)
 
 	return result
 }
 
 type ListenerSdkChannel struct {
-	edge.BaseSdkChannel
+	sdkEdge.BaseSdkChannel
 	constraints channel.UnderlayConstraints
 }
 

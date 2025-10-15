@@ -163,6 +163,10 @@ const (
 	MfaInvalidTokenMessage string = "An invalid token/code was provided"
 	MfaInvalidTokenStatus  int    = http.StatusBadRequest
 
+	InvalidBackingTokenTypeCode    string = "INVALID_BACKING_TOKEN_TYPE"
+	InvalidBackingTokenTypeMessage        = "The backing token type is invalid"
+	InvalidBackingTokenTypeStatus         = http.StatusBadRequest
+
 	MfaNotEnrolledCode    string = "MFA_NOT_ENROLLED"
 	MfaNotEnrolledMessage string = "The current identity is not enrolled in MFA"
 	MfaNotEnrolledStatus  int    = http.StatusConflict

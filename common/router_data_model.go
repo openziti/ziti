@@ -22,6 +22,11 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"os"
+	"sort"
+	"sync/atomic"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
@@ -30,10 +35,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"os"
-	"sort"
-	"sync/atomic"
 )
 
 // RouterDataModelConfig contains the configuration values for a RouterDataModel
@@ -967,7 +968,7 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 	identity.ServicePolicies.IterCb(func(servicePolicyId string, _ struct{}) {
 		servicePolicy, ok := rdm.ServicePolicies.Get(servicePolicyId)
 
-		if ok && servicePolicy.PolicyType != policyType {
+		if ok && servicePolicy.PolicyType == policyType {
 			policies = append(policies, servicePolicy)
 
 			servicePolicy.PostureChecks.IterCb(func(postureCheckId string, _ struct{}) {

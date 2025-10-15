@@ -156,8 +156,10 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 	}
 }
 
-func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (string, error) {
-	entity.Id = uuid.New().String()
+func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, error) {
+	if entity.Id == "" {
+		entity.Id = uuid.New().String()
+	}
 
 	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
 	if err != nil {
@@ -176,11 +178,15 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
+	if isLegacy {
+		policyResult := self.EvaluatePostureForService(entity.IdentityId, entity.ApiSessionId, entity.Type, service.Id, service.Name)
 
-	if !policyResult.Passed {
-		self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
-		return "", apierror.NewInvalidPosture(policyResult.Cause)
+		if !policyResult.Passed {
+			self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(entity.IdentityId, policyResult.Failure)
+			return "", apierror.NewInvalidPosture(policyResult.Cause)
+		}
+
+		entity.ServicePolicies = policyResult.PassingPolicyIds
 	}
 
 	edgeRouterAvailable, err := self.GetEnv().GetManagers().EdgeRouter.IsSharedEdgeRouterPresent(entity.IdentityId, entity.ServiceId)
@@ -191,7 +197,6 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 	if !edgeRouterAvailable {
 		return "", apierror.NewNoEdgeRoutersAvailable()
 	}
-	entity.ServicePolicies = policyResult.PassingPolicyIds
 
 	claims := common.ServiceAccessClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -206,6 +211,7 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		IdentityId:   entity.IdentityId,
 		Type:         entity.Type,
 		TokenType:    common.TokenTypeServiceAccess,
+		IsLegacy:     isLegacy,
 	}
 
 	result, err := self.env.GetRootTlsJwtSigner().Generate(claims)
@@ -213,18 +219,22 @@ func (self *SessionManager) CreateJwt(entity *Session, ctx *change.Context) (str
 		return "", err
 	}
 
-	self.env.GetEventDispatcher().AcceptSessionEvent(&event.SessionEvent{
-		Namespace:    event.SessionEventNS,
-		EventSrcId:   self.env.GetId(),
-		Timestamp:    time.Now(),
-		EventType:    event.SessionEventTypeCreated,
-		Provider:     event.SessionProviderJwt,
-		SessionType:  entity.Type,
-		Id:           entity.Id,
-		ApiSessionId: entity.ApiSessionId,
-		IdentityId:   entity.IdentityId,
-		ServiceId:    entity.ServiceId,
-	})
+	if !isLegacy {
+		// legacy events will be output during db write, non-legacy events are output here as they aren't stored durably
+		self.env.GetEventDispatcher().AcceptSessionEvent(&event.SessionEvent{
+			Namespace:    event.SessionEventNS,
+			EventSrcId:   self.env.GetId(),
+			Timestamp:    time.Now(),
+			EventType:    event.SessionEventTypeCreated,
+			Provider:     event.SessionProviderJwt,
+			SessionType:  entity.Type,
+			Id:           entity.Id,
+			ApiSessionId: entity.ApiSessionId,
+			IdentityId:   entity.IdentityId,
+			ServiceId:    entity.ServiceId,
+			Token:        entity.Id,
+		})
+	}
 
 	return result, nil
 }
@@ -234,7 +244,9 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 		return entity.Id, nil
 	}
 
-	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+	if entity.Id == "" {
+		entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+	}
 
 	apiSession, err := self.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
 	if err != nil {

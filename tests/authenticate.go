@@ -26,6 +26,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"net/http"
+	"net/url"
+	"sort"
+	"sync"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -40,12 +47,6 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
-	"math/big"
-	"net/http"
-	"net/url"
-	"sort"
-	"sync"
-	"time"
 )
 
 type authenticator interface {

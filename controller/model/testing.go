@@ -53,6 +53,10 @@ type TestContext struct {
 	eventDispatcher event.Dispatcher
 }
 
+func (ctx *TestContext) CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error) {
+	panic("implement me")
+}
+
 func (ctx *TestContext) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	//TODO implement me
 	panic("implement me")

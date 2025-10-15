@@ -1,7 +1,10 @@
 package posture
 
 import (
+	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
@@ -14,20 +17,20 @@ type ProcessCheck struct {
 	*edge_ctrl_pb.DataState_PostureCheck_ProcessMulti
 }
 
-func (p *ProcessCheck) Evaluate(cache *Cache) *CheckError {
+func (p *ProcessCheck) Evaluate(data *InstanceData) *CheckError {
 	switch p.Semantic {
 	case db.SemanticAllOf:
-		return p.requireAll(cache)
+		return p.requireAll(data)
 	case db.SemanticAnyOf:
-		return p.requireOne(cache)
+		return p.requireOne(data)
 	default:
 		pfxlog.Logger().Panicf("invalid semantic, expected %s or %s got [%s]", db.SemanticAllOf, db.SemanticAnyOf, p.Semantic)
 		return nil
 	}
 }
 
-func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
-	if cache == nil {
+func (p *ProcessCheck) requireAll(data *InstanceData) *CheckError {
+	if data == nil {
 		return &CheckError{
 			Id:    p.Id,
 			Name:  p.Name,
@@ -36,7 +39,7 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range data.ProcessList.Processes {
 		cacheProcesses[process.Path] = process
 	}
 
@@ -61,7 +64,7 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 			}
 		}
 
-		failedValue := p.compareProcesses(cache.Os.Os.Type, cacheProcess, process)
+		failedValue := p.compareProcesses(data.Os.Os.Type, cacheProcess, process)
 
 		if failedValue != nil {
 			allInListError.FailedValues = append(allInListError.FailedValues, *failedValue)
@@ -69,9 +72,9 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 
 	if len(allInListError.FailedValues) > 0 {
-		for _, process := range cache.ProcessList.Processes {
+		for _, process := range data.ProcessList.Processes {
 			allInListError.GivenValues = append(allInListError.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
-				OsType:       cache.Os.Os.Type,
+				OsType:       data.Os.Os.Type,
 				Path:         process.Path,
 				Hashes:       []string{process.Hash},
 				Fingerprints: process.SignerFingerprints,
@@ -88,8 +91,8 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	return nil
 }
 
-func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
-	if cache == nil {
+func (p *ProcessCheck) requireOne(data *InstanceData) *CheckError {
+	if data == nil {
 		return &CheckError{
 			Id:    p.Id,
 			Name:  p.Name,
@@ -98,16 +101,26 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	for _, process := range cache.ProcessList.Processes {
+	if data.ProcessList == nil {
+		data.ProcessList = &edge_client_pb.PostureResponse_ProcessList{}
+	}
+
+	for _, process := range data.ProcessList.Processes {
 		cacheProcesses[process.Path] = process
 	}
 
 	anyInList := &AnyInListError[*edge_ctrl_pb.DataState_PostureCheck_Process]{}
 
+	osType := ""
+
+	if data.Os != nil && data.Os.Os != nil {
+		osType = data.Os.Os.Type
+	}
+
 	for _, process := range p.Processes {
 		cacheProcess := cacheProcesses[process.Path]
 
-		failedValue := p.compareProcesses(cache.Os.Os.Type, cacheProcess, process)
+		failedValue := p.compareProcesses(osType, cacheProcess, process)
 
 		if failedValue != nil {
 			anyInList.FailedValues = append(anyInList.FailedValues, *failedValue)
@@ -116,9 +129,9 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 		}
 	}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range data.ProcessList.Processes {
 		anyInList.GivenValues = append(anyInList.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
-			OsType:       cache.Os.Os.Type,
+			OsType:       data.Os.Os.Type,
 			Path:         process.Path,
 			Hashes:       []string{process.Hash},
 			Fingerprints: process.SignerFingerprints,
@@ -144,12 +157,17 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		return result
 	}
 
+	if !given.IsRunning {
+		result.Reason = errors.New("process is reported as not running")
+		return result
+	}
+
 	if valid.Path != given.Path {
 		result.Reason = fmt.Errorf("paths do not match, given %s, expected: %s", given.Path, valid.Path)
 		return result
 	}
 
-	if valid.OsType != osType {
+	if !strings.EqualFold(strings.ToLower(valid.OsType), strings.ToLower(osType)) {
 		result.Reason = fmt.Errorf("os types do not match, given %s, expected: %s", osType, valid.OsType)
 		return result
 	}

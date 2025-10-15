@@ -19,10 +19,11 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
-	"time"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	CustomClaimRemoteAddress    = "z_ra"
 	CustomClaimIsCertExtendable = "z_ice"
 	CustomClaimImproperCert     = "z_iccc"
+	CustomClaimIsLegacy         = "z_leg"
 
 	DefaultAccessTokenDuration  = 30 * time.Minute
 	DefaultIdTokenDuration      = 30 * time.Minute
@@ -55,6 +57,10 @@ const (
 	TokenTypeAccess        = "a"
 	TokenTypeRefresh       = "r"
 	TokenTypeServiceAccess = "s"
+	TokenTypeTotp          = "t"
+
+	ServiceSessionTypeBind = "Bind"
+	ServiceSessionTypeDial = "Dial"
 )
 
 type CustomClaims struct {
@@ -158,10 +164,23 @@ func (c *RefreshClaims) UnmarshalJSON(data []byte) error {
 
 type ServiceAccessClaims struct {
 	jwt.RegisteredClaims
+
+	// ApiSessionId is the id of the parent api session
 	ApiSessionId string `json:"z_asid"`
-	IdentityId   string `json:"z_iid"`
-	TokenType    string `json:"z_t"`
-	Type         string `json:"z_st"`
+
+	// IdentityId is the id of the associated identity
+	IdentityId string `json:"z_iid"`
+
+	// TokenType denotes the overall token type, which is a token that denotes access to a service for dial/bind
+	TokenType string `json:"z_t"`
+
+	// Type is either "Dial" or "Bind"
+	Type string `json:"z_st"`
+
+	// IsLegacy denotes that this token was generated from a legacy-authenticated API Session and thus has durable
+	// storage associated with it. This alters how systems interact with the token and ensures legacy considerations
+	// are taken into account (storage cleanup, token value interpretation, etc.)
+	IsLegacy bool `json:"z_leg"`
 }
 
 func (c *ServiceAccessClaims) HasAudience(targetAud string) bool {
@@ -280,5 +299,36 @@ func (c *IdTokenClaims) TotpComplete() bool {
 		}
 	}
 
+	return false
+}
+
+// TotpClaims is a set of claims used to define TOTP JWT tokens that signify the last time a client
+// has successfully performed a TOTP code submission. They have no expiration date, but are tied to
+// and API Session via the ApiSessionId/z_asid claim. A valid, unexpired Api Session token is required
+// to be used in conjunction with a TOTP token - making the TOTP token scoped to the API Session's expiration and
+// validity.
+//
+// As these are expected for HA systems only, they do require OIDC authentication to be issued and can
+// be obtained via the /[edge|management]/v1/tokens/totp endpoint. Ensure your current API Session bearer
+// token is valid and is set in the authorization header of the request.
+//
+// Claims:
+//   - z_asid: the id of the api session that the token is scoped to
+//   - z_t: the type of token, always "t"
+//   - sub: the identity id of the identity that the token is scoped to
+//   - iss: the controller that issued the token
+//   - issued_at: the time the token was issued, also indicated when the TOTP code was submitted and verified
+type TotpClaims struct {
+	jwt.RegisteredClaims
+	ApiSessionId string `json:"z_asid,omitempty"`
+	Type         string `json:"z_t"`
+}
+
+func (t *TotpClaims) HasAudience(targetAud string) bool {
+	for _, aud := range t.Audience {
+		if aud == targetAud {
+			return true
+		}
+	}
 	return false
 }

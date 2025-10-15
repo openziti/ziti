@@ -21,8 +21,15 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/jsonutils"
+	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
@@ -30,13 +37,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v3/pkg/op"
-	"html/template"
-	"io"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -54,6 +54,7 @@ const (
 
 	AuthRequestIdHeader = "auth-request-id"
 	AcceptHeader        = "accept"
+	AuthorizationHeader = "authorization"
 	TotpRequiredHeader  = "totp-required"
 	ContentTypeHeader   = "content-type"
 
@@ -394,7 +395,7 @@ func (m *JsonMap) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
-	return swag.WriteJSON(m)
+	return jsonutils.WriteJSON(m)
 }
 
 func (l *login) deleteEnrollTotp(w http.ResponseWriter, r *http.Request) {

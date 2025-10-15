@@ -117,6 +117,41 @@ type AppEnv struct {
 	timelineId   string
 }
 
+func (ae *AppEnv) CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error) {
+	if claims == nil {
+		return "", nil, errors.New("claims cannot be nil")
+	}
+
+	if issuer == "" {
+		return "", nil, errors.New("issuer cannot be empty")
+	}
+
+	now := time.Now()
+	nowTime := jwt.NumericDate{Time: now}
+	totpClaims := &common.TotpClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:   issuer,
+			Subject:  claims.Subject,
+			IssuedAt: &nowTime,
+			ID:       uuid.NewString(),
+		},
+		ApiSessionId: claims.ApiSessionId,
+		Type:         common.TokenTypeTotp,
+	}
+
+	for _, aud := range claims.Audience {
+		totpClaims.Audience = append(totpClaims.Audience, aud)
+	}
+
+	jwtSigner := ae.GetClientApiDefaultTlsJwtSigner()
+	tokenStr, err := jwtSigner.Generate(totpClaims)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return tokenStr, totpClaims, nil
+}
+
 // GetPeerControllerAddresses returns the network addresses of peer controllers.
 func (ae *AppEnv) GetPeerControllerAddresses() []string {
 	return ae.HostController.GetPeerAddresses()
@@ -271,7 +306,7 @@ func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
 	}
-	
+
 	return rootSigner
 }
 

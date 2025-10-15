@@ -18,6 +18,10 @@ package routes
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
@@ -28,8 +32,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
 	"go.etcd.io/bbolt"
-	"strings"
-	"time"
 )
 
 const EntityNameService = "services"
@@ -217,9 +219,14 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			}
 
 			var timeoutRemaining int64
+			var timeoutAt *strfmt.DateTime
 
 			ae.Managers.PostureResponse.WithPostureData(rc.Identity.Id, func(postureData *model.PostureData) {
 				timeoutRemaining = postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, postureData)
+				if timeoutRemaining >= 0 {
+					newTimeout := strfmt.DateTime(time.Now().Add(time.Duration(timeoutRemaining) * time.Second))
+					timeoutAt = &newTimeout
+				}
 
 				//determine if updatedAt is provided by the source posture check or the posture state
 				if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, postureData); lastUpdatedAt != nil {
@@ -233,6 +240,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			query.IsPassing = &isCheckPassing
 			query.TimeoutRemaining = &timeoutRemaining
 			query.Timeout = &timeout
+			query.TimeoutAt = timeoutAt
 			querySet.PostureQueries = append(querySet.PostureQueries, query)
 
 			if !isCheckPassing {
@@ -256,6 +264,10 @@ func PostureCheckToQueries(check *model.PostureCheck) *rest_model.PostureQuery {
 	}
 
 	switch *ret.QueryType {
+	case rest_model.PostureCheckTypeMFA:
+		mfaCheck := check.SubType.(*model.PostureCheckMfa)
+		ret.PromptOnWake = mfaCheck.PromptOnWake
+		ret.PromptOnUnlock = mfaCheck.PromptOnUnlock
 	case rest_model.PostureCheckTypePROCESS:
 		processCheck := check.SubType.(*model.PostureCheckProcess)
 		ret.Process = &rest_model.PostureQueryProcess{

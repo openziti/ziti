@@ -17,6 +17,9 @@
 package routes
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_server/operations/session"
@@ -27,8 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"net/http"
-	"time"
 )
 
 func init() {
@@ -125,44 +126,49 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
 	start := time.Now()
-	if rc.Claims != nil {
-		request := MapCreateSessionToModel(rc.Claims.Subject, rc.Claims.ApiSessionId, params.Session)
-		token, err := ae.Managers.Session.CreateJwt(request, rc.NewChangeContext())
 
+	// if not JWT-based auth, still create a durable legacy session
+	isLegacy := rc.Claims == nil
+
+	entity := MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session)
+	jwtStr, err := ae.Managers.Session.CreateJwt(entity, isLegacy)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	edgeRouters, err := getSessionEdgeRouters(ae, entity)
+	if err != nil {
+		pfxlog.Logger().Errorf("could not render edge routers for jwt session: %s", err)
+	}
+
+	sessionType := rest_model.DialBind(entity.Type)
+
+	newSessionEnvelope := &rest_model.SessionCreateEnvelope{
+		Data: &rest_model.SessionDetail{
+			BaseEntity: rest_model.BaseEntity{
+				ID: &entity.Id,
+			},
+			APISessionID: &rc.ApiSession.Id,
+			EdgeRouters:  edgeRouters,
+			IdentityID:   &rc.Identity.Id,
+			ServiceID:    &entity.ServiceId,
+			Token:        &jwtStr,
+			Type:         &sessionType,
+		},
+		Meta: &rest_model.Meta{},
+	}
+
+	if isLegacy {
+		_, err = ae.Managers.Session.Create(entity, rc.NewChangeContext())
 		if err != nil {
 			rc.RespondWithError(err)
 			return
 		}
-
-		edgeRouters, err := getSessionEdgeRouters(ae, request)
-		if err != nil {
-			pfxlog.Logger().Errorf("could not render edge routers for jwt session: %s", err)
-		}
-
-		sessionType := rest_model.DialBind(request.Type)
-
-		newSessionEnvelope := &rest_model.SessionCreateEnvelope{
-			Data: &rest_model.SessionDetail{
-				BaseEntity: rest_model.BaseEntity{
-					ID: &request.Id,
-				},
-				APISessionID: &rc.ApiSession.Id,
-				EdgeRouters:  edgeRouters,
-				IdentityID:   &rc.Identity.Id,
-				ServiceID:    &request.ServiceId,
-				Token:        &token,
-				Type:         &sessionType,
-			},
-			Meta: &rest_model.Meta{},
-		}
-
-		rc.Respond(newSessionEnvelope, http.StatusCreated)
-	} else {
-		responder := &SessionRequestResponder{ae: ae, Responder: rc}
-		CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
-			return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session), rc.NewChangeContext())
-		})
 	}
+
+	rc.Respond(newSessionEnvelope, http.StatusCreated)
 
 	r.createTimer.UpdateSince(start)
 }
