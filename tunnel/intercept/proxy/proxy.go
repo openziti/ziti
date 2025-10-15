@@ -104,13 +104,17 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 
 		if len(parts) == 3 {
 			protocol := parts[2]
-			if protocol == "tcp" {
+			switch protocol {
+			case "tcp":
 				service.Protocols = append(service.Protocols, intercept.TCP)
-			} else if protocol == "udp" {
+			case "udp":
 				service.Protocols = append(service.Protocols, intercept.UDP)
-			} else {
+			default:
 				return nil, fmt.Errorf("invalid protocol specified in '%s', must be tcp or udp", arg)
 			}
+		} else {
+			// Default to TCP if no protocol specified
+			service.Protocols = append(service.Protocols, intercept.TCP)
 		}
 		services[parts[0]] = service
 	}
