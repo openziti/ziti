@@ -42,7 +42,11 @@ func (self *listener) Listen(string, xgress.BindHandler) error {
 		// if no error, will log success
 		log.Infof("geneve interface started successfully - udp: %s", conn.LocalAddr().String())
 		// Close it when done
-		defer conn.Close()
+		defer func() {
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithError(closeErr).Errorf("failed to close geneve interface - udp")
+			}
+		}()
 		// Open a raw socket to send Modified Packets to Networking Stack
 		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 		if err != nil {
@@ -53,7 +57,11 @@ func (self *listener) Listen(string, xgress.BindHandler) error {
 		// if no error, will log success
 		log.Infof("geneve interface started successfully - fd: %d", fd)
 		// Close it when done
-		defer syscall.Close(fd)
+		defer func() {
+			if closeErr := syscall.Close(fd); closeErr != nil {
+				log.WithError(closeErr).Errorf("failed to close geneve interface - fd")
+			}
+		}()
 		// Loop to process packets
 		for {
 			log := pfxlog.ChannelLogger("geneveListener")

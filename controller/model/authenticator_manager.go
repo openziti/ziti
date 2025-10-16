@@ -66,7 +66,7 @@ func NewAuthenticatorManager(env Env) *AuthenticatorManager {
 	return manager
 }
 
-func (self *AuthenticatorManager) newModelEntity() *Authenticator {
+func (self *AuthenticatorManager) NewModelEntity() *Authenticator {
 	return &Authenticator{}
 }
 

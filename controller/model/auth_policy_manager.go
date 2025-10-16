@@ -75,7 +75,7 @@ func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Aut
 	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
-func (self *AuthPolicyManager) newModelEntity() *AuthPolicy {
+func (self *AuthPolicyManager) NewModelEntity() *AuthPolicy {
 	return &AuthPolicy{}
 }
 

@@ -26,9 +26,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/store"
-	"time"
 
 	"github.com/openziti/identity/certtools"
 )
@@ -290,7 +291,7 @@ func (e *ZitiPKI) CSR(caname string, bundleName string, csrTemplate x509.Certifi
 			return fmt.Errorf("failed saving generated CSR: %v", err)
 		}
 	} else {
-		return fmt.Errorf("Unsupported key type")
+		return errors.New("unsupported key type")
 	}
 	return nil
 }

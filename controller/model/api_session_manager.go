@@ -52,7 +52,7 @@ type ApiSessionManager struct {
 	HeartbeatCollector *HeartbeatCollector
 }
 
-func (self *ApiSessionManager) newModelEntity() *ApiSession {
+func (self *ApiSessionManager) NewModelEntity() *ApiSession {
 	return &ApiSession{}
 }
 

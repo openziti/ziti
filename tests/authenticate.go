@@ -1159,7 +1159,7 @@ func (request *authenticatedRequests) streamEvents(req *subscriptionRequest) (fu
 	result := channel.UnmarshalResult(responseMsg)
 	if !result.Success {
 		closeF()
-		return nil, fmt.Errorf("error starting event streaming [%s]\n", result.Message)
+		return nil, fmt.Errorf("error starting event streaming [%s]", result.Message)
 	}
 
 	return closeF, nil

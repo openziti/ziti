@@ -65,7 +65,11 @@ func (s *echoServer) acceptLoop() {
 }
 
 func (s *echoServer) handleConnection(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("error closing connection")
+		}
+	}()
 
 	pfxlog.Logger().Debug("echo server handling new connection")
 
@@ -119,7 +123,11 @@ func TestXgressConnHalfClose(t *testing.T) {
 	// Start echo server
 	server, err := newEchoServer(0) // Use any available port
 	require.NoError(t, err)
-	defer server.Close()
+	defer func() {
+		if closeErr := server.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("error closing server")
+		}
+	}()
 
 	serverAddr := server.Address()
 	pfxlog.Logger().Infof("Echo server started on %s", serverAddr)
@@ -232,7 +240,9 @@ func TestXgressConnHalfClose(t *testing.T) {
 
 	// Close client connection when we get EOF after successful read
 	pfxlog.Logger().Info("Closing client connection")
-	clientClientConn.Close()
+	if closeErr := clientClientConn.Close(); closeErr != nil {
+		pfxlog.Logger().WithError(closeErr).Error("error closing client connection")
+	}
 
 	// Wait for xgress instances to close with timeout
 	// Wait for both xgress instances to close

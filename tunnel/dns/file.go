@@ -23,6 +23,8 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 const hostFormat = "%s\t%s\t# NetFoundry"
@@ -71,7 +73,11 @@ func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("failed to close hosts file")
+		}
+	}()
 
 	if !isHostPresent(hostname, ip, f) {
 		_, err := f.Seek(0, io.SeekEnd)

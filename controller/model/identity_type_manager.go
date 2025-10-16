@@ -34,7 +34,7 @@ type IdentityTypeManager struct {
 	baseEntityManager[*IdentityType, *db.IdentityType]
 }
 
-func (self *IdentityTypeManager) newModelEntity() *IdentityType {
+func (self *IdentityTypeManager) NewModelEntity() *IdentityType {
 	return &IdentityType{}
 }
 

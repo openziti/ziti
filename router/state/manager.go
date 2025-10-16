@@ -1233,13 +1233,7 @@ func (sm *ManagerImpl) flushRecentlyRemoved() {
 	now := time.Now()
 	var toRemove []string
 	sm.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
-		remove := false
-
 		if now.Sub(t) >= 5*time.Minute {
-			remove = true
-		}
-
-		if remove {
 			toRemove = append(toRemove, key)
 		}
 	})
@@ -1268,6 +1262,8 @@ func (sm *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 			case ch <- val:
 			case <-deadline:
 				timedOut = true
+			}
+			if timedOut {
 				break
 			}
 			if i%10000 == 0 {

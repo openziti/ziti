@@ -22,7 +22,6 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_client_api_server/operations/session"
 	clientSession "github.com/openziti/edge-api/rest_client_api_server/operations/session"
 	managementSession "github.com/openziti/edge-api/rest_management_api_server/operations/session"
 	"github.com/openziti/edge-api/rest_model"
@@ -124,7 +123,7 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
+func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params clientSession.CreateSessionParams) {
 	start := time.Now()
 
 	// if not JWT-based auth, still create a durable legacy session

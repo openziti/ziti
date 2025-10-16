@@ -45,7 +45,7 @@ type ConfigManager struct {
 	baseEntityManager[*Config, *db.Config]
 }
 
-func (self *ConfigManager) newModelEntity() *Config {
+func (self *ConfigManager) NewModelEntity() *Config {
 	return &Config{}
 }
 

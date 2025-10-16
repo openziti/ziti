@@ -55,7 +55,7 @@ func (self *RevocationManager) ApplyCreate(cmd *command.CreateEntityCommand[*Rev
 	return err
 }
 
-func (self *RevocationManager) newModelEntity() *Revocation {
+func (self *RevocationManager) NewModelEntity() *Revocation {
 	return &Revocation{}
 }
 

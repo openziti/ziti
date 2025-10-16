@@ -19,14 +19,15 @@ package demo
 import (
 	"context"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/openziti/sdk-golang/ziti"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/fatih/color"
+	"github.com/openziti/sdk-golang/ziti"
 )
 
 func NewZitiEchoClient(identityJson string) (*zitiEchoClient, error) {
@@ -63,7 +64,7 @@ func (self *zitiEchoClient) echo(input string) error {
 	resp, err := self.httpClient.Get(u)
 	if err == nil {
 		c := color.New(color.FgGreen, color.Bold)
-		c.Print("\nziti-http-echo-client: ")
+		_, _ = c.Print("\nziti-http-echo-client: ")
 		_, err = io.Copy(os.Stdout, resp.Body)
 	}
 	return err

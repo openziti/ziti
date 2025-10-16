@@ -1,3 +1,20 @@
+version: "2"
+linters:
+  settings:
+    staticcheck:
+      checks: 
+        - "all" 
+        - "-ST1000" # Incorrect or missing package comment
+        - "-ST1003" # Poorly chosen identifier
+        - "-ST1006" # Poorly chosen receiver name
+        - "-ST1020" # The documentation of an exported function should start with the function’s name
+        - "-ST1021" # The documentation of an exported type should start with type’s name
+        - "-QF1008" # access through an embedded member, which is not necessary. Consider adding back
+        - "-QF1003" # could use tagged switch
+        - "-QF1001" # could apply De Morgan's law
+        - "-ST1016" # methods on the same type should have the same receiver name
+        - "-QF1002" # could use tagged switch on err
+        - "-SA1019" # x509.IsEncryptedPEMBlock has been deprecated since Go 1.16
 run:
   build-tags:
     - apitests

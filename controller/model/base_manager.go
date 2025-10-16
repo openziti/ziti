@@ -35,7 +35,7 @@ type EntityManager[E models.Entity] interface {
 	command.EntityDeleter
 	GetEnv() Env
 
-	newModelEntity() E
+	NewModelEntity() E
 	readEntityInTx(tx *bbolt.Tx, id string, modelEntity E) error
 }
 
@@ -77,7 +77,7 @@ func (self *baseEntityManager[ME, PE]) GetEnv() Env {
 }
 
 func (self *baseEntityManager[ME, PE]) BaseLoad(id string) (ME, error) {
-	entity := self.impl.newModelEntity()
+	entity := self.impl.NewModelEntity()
 	if err := self.readEntity(id, entity); err != nil {
 		return *new(ME), err
 	}
@@ -85,7 +85,7 @@ func (self *baseEntityManager[ME, PE]) BaseLoad(id string) (ME, error) {
 }
 
 func (self *baseEntityManager[ME, PE]) BaseLoadInTx(tx *bbolt.Tx, id string) (ME, error) {
-	entity := self.impl.newModelEntity()
+	entity := self.impl.NewModelEntity()
 	if err := self.readEntityInTx(tx, id, entity); err != nil {
 		return *new(ME), err
 	}
@@ -226,7 +226,7 @@ func (self *baseEntityManager[ME, PE]) updateEntity(modelEntity ME, checker bolt
 }
 
 func (self *baseEntityManager[ME, PE]) Read(id string) (ME, error) {
-	modelEntity := self.impl.newModelEntity()
+	modelEntity := self.impl.NewModelEntity()
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTx(tx, id, modelEntity)
 	})
@@ -237,7 +237,7 @@ func (self *baseEntityManager[ME, PE]) Read(id string) (ME, error) {
 }
 
 func (self *baseEntityManager[ME, PE]) readInTx(tx *bbolt.Tx, id string) (ME, error) {
-	modelEntity := self.impl.newModelEntity()
+	modelEntity := self.impl.NewModelEntity()
 	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return *new(ME), err
 	}

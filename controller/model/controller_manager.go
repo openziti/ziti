@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -49,7 +48,7 @@ type ControllerManager struct {
 	baseEntityManager[*Controller, *db.Controller]
 }
 
-func (self *ControllerManager) newModelEntity() *Controller {
+func (self *ControllerManager) NewModelEntity() *Controller {
 	return &Controller{}
 }
 
@@ -73,14 +72,6 @@ func (self *ControllerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Con
 func (self *ControllerManager) Read(id string) (*Controller, error) {
 	modelEntity := &Controller{}
 	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-func (self *ControllerManager) readInTx(tx *bbolt.Tx, id string) (*Controller, error) {
-	modelEntity := &Controller{}
-	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil

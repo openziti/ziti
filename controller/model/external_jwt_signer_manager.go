@@ -45,7 +45,7 @@ type ExternalJwtSignerManager struct {
 	baseEntityManager[*ExternalJwtSigner, *db.ExternalJwtSigner]
 }
 
-func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {
+func (self *ExternalJwtSignerManager) NewModelEntity() *ExternalJwtSigner {
 	return &ExternalJwtSigner{}
 }
 

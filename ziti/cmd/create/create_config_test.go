@@ -2,12 +2,14 @@ package create
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/stretchr/testify/assert"
 )
 
 // These constants are hard-coded so that they may serve as a notifier. When the constants change in the source from
@@ -308,8 +310,10 @@ func captureOutput(function func()) string {
 	return string(result.out)
 }
 
-func setEnvByMap[K string, V string](m map[K]V) {
+func setEnvByMap(m map[string]string) {
 	for k, v := range m {
-		os.Setenv(string(k), string(v))
+		if err := os.Setenv(k, v); err != nil {
+			pfxlog.Logger().WithError(err).WithField("key", k).Error("failed to set env var")
+		}
 	}
 }

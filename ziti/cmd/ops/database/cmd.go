@@ -18,10 +18,11 @@ package database
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -33,7 +34,7 @@ func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := zdecli.Run("ziti db explore", args[0]); err != nil {
-				_, _ = errOut.Write([]byte(fmt.Sprintf("Error: %s", err)))
+				_, _ = fmt.Fprintf(errOut, "Error: %s", err)
 			}
 		},
 	}

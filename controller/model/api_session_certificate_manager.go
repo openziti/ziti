@@ -43,7 +43,7 @@ type ApiSessionCertificateManager struct {
 	baseEntityManager[*ApiSessionCertificate, *db.ApiSessionCertificate]
 }
 
-func (self *ApiSessionCertificateManager) newModelEntity() *ApiSessionCertificate {
+func (self *ApiSessionCertificateManager) NewModelEntity() *ApiSessionCertificate {
 	return &ApiSessionCertificate{}
 }
 

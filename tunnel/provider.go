@@ -92,7 +92,7 @@ type contextProvider struct {
 }
 
 func (self *contextProvider) PrepForUse(serviceId string) {
-	if _, err := self.Context.GetSession(serviceId); err != nil {
+	if _, err := self.GetSession(serviceId); err != nil {
 		logrus.WithError(err).Error("failed to acquire network session")
 	} else {
 		logrus.Debug("acquired network session")
@@ -106,7 +106,7 @@ func (self *contextProvider) TunnelService(service Service, identity string, con
 		Identity:       identity,
 	}
 
-	zitiConn, err := self.Context.DialWithOptions(service.GetName(), options)
+	zitiConn, err := self.DialWithOptions(service.GetName(), options)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (self *contextProvider) TunnelService(service Service, identity string, con
 
 func (self *contextProvider) HostService(hostCtx HostingContext) (HostControl, error) {
 	logger := logrus.WithField("service", hostCtx.ServiceName())
-	listener, err := self.Context.ListenWithOptions(hostCtx.ServiceName(), hostCtx.ListenOptions())
+	listener, err := self.ListenWithOptions(hostCtx.ServiceName(), hostCtx.ListenOptions())
 	if err != nil {
 		logger.WithError(err).Error("error listening for service")
 		return nil, err

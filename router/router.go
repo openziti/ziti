@@ -787,13 +787,7 @@ func (self *Router) startControlPlane() error {
 		})
 	}
 
-	for {
-		if self.ctrls.AnyCtrlChannel() != nil {
-			break
-		}
-		if self.isShutdown.Load() {
-			break
-		}
+	for self.ctrls.AnyCtrlChannel() == nil && !self.isShutdown.Load() {
 		time.Sleep(1 * time.Second)
 	}
 
@@ -865,9 +859,10 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 		}
 	}
 
-	if "" != self.config.Ctrl.LocalBinding {
+	if self.config.Ctrl.LocalBinding != "" {
 		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
 	}
+
 	dialer := channel.NewReconnectingDialer(channel.ReconnectingDialerConfig{
 		Identity:          self.config.Id,
 		Endpoint:          addr,

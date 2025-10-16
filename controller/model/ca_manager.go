@@ -19,6 +19,9 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
@@ -32,8 +35,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"strings"
-	"sync"
 )
 
 func NewCaManager(env Env) *CaManager {
@@ -176,7 +177,7 @@ func (self *CaManager) RefreshActiveAuthCaCertCache() error {
 	return err
 }
 
-func (self *CaManager) newModelEntity() *Ca {
+func (self *CaManager) NewModelEntity() *Ca {
 	return &Ca{}
 }
 
@@ -406,7 +407,7 @@ func NewFormatter(symbols map[string]string) *Formatter {
 func (formatter *Formatter) Format(name string) string {
 	for symbol, value := range formatter.symbolValues {
 		searchSymbol := formatter.sentinelStart + symbol + formatter.sentinelEnd
-		name = strings.Replace(name, searchSymbol, value, -1)
+		name = strings.ReplaceAll(name, searchSymbol, value)
 	}
 
 	return name

@@ -61,7 +61,7 @@ func (self *TransitRouterManager) GetEntityTypeId() string {
 	return "transitRouters"
 }
 
-func (self *TransitRouterManager) newModelEntity() *TransitRouter {
+func (self *TransitRouterManager) NewModelEntity() *TransitRouter {
 	return &TransitRouter{}
 }
 
