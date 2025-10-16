@@ -20,13 +20,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"reflect"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (ctx *TestContext) setJsonValue(container *gabs.Container, value interface{}, path ...string) {
@@ -204,6 +205,7 @@ func (ctx *TestContext) toStringSlice(container *gabs.Container) []string {
 		}
 		children, err := container.Children()
 		ctx.Req.NoError(err)
+		result = make([]string, 0, len(children))
 		for _, child := range children {
 			val, ok := child.Data().(string)
 			ctx.Req.True(ok, "expected child to be string value")

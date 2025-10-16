@@ -9,10 +9,12 @@ import (
 
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	managementPostureChecks "github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
@@ -487,4 +489,72 @@ func (helper *ManagementHelperClient) CreatePostureCheckProcess(process *rest_mo
 	}
 
 	return checkDetail, nil
+}
+
+func (helper *ManagementHelperClient) CreateExtJwtSigner(extJwtSigner *rest_model.ExternalJWTSignerCreate) (*rest_model.ExternalJWTSignerDetail, error) {
+	params := external_jwt_signer.NewCreateExternalJWTSignerParams()
+
+	params.ExternalJWTSigner = extJwtSigner
+
+	resp, err := helper.API.ExternalJWTSigner.CreateExternalJWTSigner(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return helper.GetExtJwtSigner(resp.Payload.Data.ID)
+}
+
+func (helper *ManagementHelperClient) GetExtJwtSigner(id string) (*rest_model.ExternalJWTSignerDetail, error) {
+	params := external_jwt_signer.NewDetailExternalJWTSignerParams()
+
+	params.ID = id
+
+	resp, err := helper.API.ExternalJWTSigner.DetailExternalJWTSigner(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) CreateAuthPolicy(authPolicy *rest_model.AuthPolicyCreate) (*rest_model.AuthPolicyDetail, error) {
+	params := auth_policy.NewCreateAuthPolicyParams()
+	params.AuthPolicy = authPolicy
+
+	resp, err := helper.API.AuthPolicy.CreateAuthPolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return helper.GetAuthPolicy(resp.Payload.Data.ID)
+}
+
+func (helper *ManagementHelperClient) GetAuthPolicy(id string) (*rest_model.AuthPolicyDetail, error) {
+	params := auth_policy.NewDetailAuthPolicyParams()
+	params.ID = id
+
+	resp, err := helper.API.AuthPolicy.DetailAuthPolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) PatchExtJwtSigner(id string, patch *rest_model.AuthPolicyPatch) (*rest_model.AuthPolicyDetail, error) {
+	params := auth_policy.NewPatchAuthPolicyParams()
+	params.ID = id
+	params.AuthPolicy = patch
+
+	_, err := helper.API.AuthPolicy.PatchAuthPolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return helper.GetAuthPolicy(id)
 }

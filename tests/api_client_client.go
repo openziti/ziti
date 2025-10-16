@@ -37,6 +37,61 @@ type ClientHelperClient struct {
 	testCtx *TestContext
 }
 
+func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToCertAuth(enrollmentJwt string) (*edgeApis.CertCredentials, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	template := &x509.CertificateRequest{}
+
+	newCsr, err := x509.CreateCertificateRequest(rand.Reader, template, privateKey)
+
+	if err != nil {
+		return nil, err
+	}
+
+	newCsrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: newCsr})
+
+	params := clientEnroll.NewEnrollTokenParams()
+
+	params.TokenEnrollmentRequest = &rest_model.TokenEnrollmentRequest{
+		ClientCsr: string(newCsrPem),
+	}
+	params.Authorization = "Bearer " + enrollmentJwt
+
+	resp, err := helper.API.Enroll.EnrollToken(params)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	certs := nfPem.PemStringToCertificates(resp.Payload.Data.Cert)
+
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("no certificates returned from enrollment")
+	}
+
+	creds := edgeApis.NewCertCredentials(certs, privateKey)
+
+	return creds, nil
+}
+
+func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToTokenAuth(enrollmentJwt string) error {
+	params := clientEnroll.NewEnrollTokenParams()
+
+	params.TokenEnrollmentRequest = &rest_model.TokenEnrollmentRequest{}
+	params.Authorization = "Bearer " + enrollmentJwt
+
+	_, err := helper.API.Enroll.EnrollToken(params)
+
+	if err != nil {
+		return rest_util.WrapErr(err)
+	}
+
+	return nil
+}
+
 func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) (*edgeApis.CertCredentials, error) {
 	token := enrollmentToken
 
@@ -306,7 +361,7 @@ func (helper *ClientHelperClient) ExtendCertsWithAuthenticatorId(authenticatorId
 	_, err = helper.API.CurrentAPISession.ExtendVerifyCurrentIdentityAuthenticator(verifyParams, nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not verify the extension of the authenticator: %w", err)
+		return nil, fmt.Errorf("could not verify the extension of the authenticator: %w", rest_util.WrapErr(err))
 	}
 
 	return newCreds, nil
@@ -319,7 +374,7 @@ func (helper *ClientHelperClient) GetCurrentApiSessionDetail() (*rest_model.Curr
 	resp, err := helper.API.CurrentAPISession.GetCurrentAPISession(params, nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not get current api session detail: %w", err)
+		return nil, fmt.Errorf("could not get current api session detail: %w", rest_util.WrapErr(err))
 	}
 
 	return resp.Payload.Data, nil
@@ -403,6 +458,17 @@ func (helper *ClientHelperClient) GetTotpToken(code string) (*rest_model.TotpTok
 
 	if err != nil {
 		return nil, fmt.Errorf("could not get totp token: %w", err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ClientHelperClient) QueryCurrentApiSession() (*rest_model.CurrentAPISessionDetail, error) {
+	params := &clientCurrentApiSession.GetCurrentAPISessionParams{}
+	resp, err := helper.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
 	}
 
 	return resp.Payload.Data, nil

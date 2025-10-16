@@ -73,6 +73,14 @@ func NewEnrollmentExpired() *errorz.ApiError {
 	}
 }
 
+func NewEnrollmentIdentityAlreadyEnrolled() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    EnrollmentIdentityAlreadyEnrolledCode,
+		Message: EnrollmentIdentityAlreadyEnrolledMessage,
+		Status:  EnrollmentIdentityAlreadyEnrolledStatus,
+	}
+}
+
 func NewCouldNotProcessCsr() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CouldNotProcessCsrCode,
@@ -102,6 +110,22 @@ func NewInvalidEnrollmentToken() *errorz.ApiError {
 		Code:    InvalidEnrollmentTokenCode,
 		Message: InvalidEnrollmentTokenMessage,
 		Status:  InvalidEnrollmentTokenStatus,
+	}
+}
+
+func NewInvalidEnrollmentNotAllowed() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidEnrollmentNotAllowedCode,
+		Message: InvalidEnrollmentNotAllowedMessage,
+		Status:  InvalidEnrollmentNotAllowedStatus,
+	}
+}
+
+func NewInvalidEnrollmentAlreadyEnrolled() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidEnrollmentAlreadyEnrolledCode,
+		Message: InvalidEnrollmentAlreadyEnrolledMessage,
+		Status:  InvalidEnrollmentAlreadyEnrolledStatus,
 	}
 }
 

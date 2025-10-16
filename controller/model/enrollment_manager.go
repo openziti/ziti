@@ -145,7 +145,7 @@ func (self *EnrollmentManager) NewModelEntity() *Enrollment {
 func (self *EnrollmentManager) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
 	method := ctx.GetMethod()
 
-	if method == db.MethodEnrollCa {
+	if method == db.MethodEnrollCa || method == db.MethodEnrollToken {
 		return method, nil
 	}
 

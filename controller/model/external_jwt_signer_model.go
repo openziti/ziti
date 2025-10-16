@@ -17,13 +17,14 @@
 package model
 
 import (
+	"time"
+
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 type ExternalJwtSigner struct {
@@ -41,29 +42,39 @@ type ExternalJwtSigner struct {
 	ClientId        *string
 	Scopes          []string
 
-	CommonName  string
-	Fingerprint *string
-	NotAfter    time.Time
-	NotBefore   time.Time
-	TargetToken string
+	CommonName                    string
+	Fingerprint                   *string
+	NotAfter                      time.Time
+	NotBefore                     time.Time
+	TargetToken                   string
+	EnrollToCertEnabled           bool
+	EnrollToTokenEnabled          bool
+	EnrollAttributeClaimsSelector string
+	EnrollAuthPolicyId            string
+	EnrollNameClaimselector       string
 }
 
 func (entity *ExternalJwtSigner) toBoltEntity() (*db.ExternalJwtSigner, error) {
 	signer := &db.ExternalJwtSigner{
-		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:            entity.Name,
-		CertPem:         entity.CertPem,
-		JwksEndpoint:    entity.JwksEndpoint,
-		Enabled:         entity.Enabled,
-		ExternalAuthUrl: entity.ExternalAuthUrl,
-		UseExternalId:   entity.UseExternalId,
-		ClaimsProperty:  entity.ClaimsProperty,
-		Kid:             entity.Kid,
-		Issuer:          entity.Issuer,
-		Audience:        entity.Audience,
-		ClientId:        entity.ClientId,
-		Scopes:          entity.Scopes,
-		TargetToken:     entity.TargetToken,
+		BaseExtEntity:                 *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:                          entity.Name,
+		CertPem:                       entity.CertPem,
+		JwksEndpoint:                  entity.JwksEndpoint,
+		Enabled:                       entity.Enabled,
+		ExternalAuthUrl:               entity.ExternalAuthUrl,
+		UseExternalId:                 entity.UseExternalId,
+		IdentityIdClaimsSelector:      entity.ClaimsProperty,
+		Kid:                           entity.Kid,
+		Issuer:                        entity.Issuer,
+		Audience:                      entity.Audience,
+		ClientId:                      entity.ClientId,
+		Scopes:                        entity.Scopes,
+		TargetToken:                   entity.TargetToken,
+		EnrollToCertEnabled:           entity.EnrollToCertEnabled,
+		EnrollToTokenEnabled:          entity.EnrollToTokenEnabled,
+		EnrollAttributeClaimsSelector: entity.EnrollAttributeClaimsSelector,
+		EnrollAuthPolicyId:            entity.EnrollAuthPolicyId,
+		EnrollNameClaimSelector:       entity.EnrollNameClaimselector,
 	}
 
 	if entity.CertPem != nil && *entity.CertPem != "" {
@@ -104,7 +115,7 @@ func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSig
 	entity.NotBefore = timeOrEmpty(boltExternalJwtSigner.NotBefore)
 	entity.NotAfter = timeOrEmpty(boltExternalJwtSigner.NotAfter)
 	entity.ExternalAuthUrl = boltExternalJwtSigner.ExternalAuthUrl
-	entity.ClaimsProperty = boltExternalJwtSigner.ClaimsProperty
+	entity.ClaimsProperty = boltExternalJwtSigner.IdentityIdClaimsSelector
 	entity.UseExternalId = boltExternalJwtSigner.UseExternalId
 	entity.Kid = boltExternalJwtSigner.Kid
 	entity.Issuer = boltExternalJwtSigner.Issuer
@@ -112,6 +123,11 @@ func (entity *ExternalJwtSigner) fillFrom(_ Env, _ *bbolt.Tx, boltExternalJwtSig
 	entity.ClientId = boltExternalJwtSigner.ClientId
 	entity.Scopes = boltExternalJwtSigner.Scopes
 	entity.TargetToken = boltExternalJwtSigner.TargetToken
+	entity.EnrollToCertEnabled = boltExternalJwtSigner.EnrollToCertEnabled
+	entity.EnrollToTokenEnabled = boltExternalJwtSigner.EnrollToTokenEnabled
+	entity.EnrollAttributeClaimsSelector = boltExternalJwtSigner.EnrollAttributeClaimsSelector
+	entity.EnrollNameClaimselector = boltExternalJwtSigner.EnrollNameClaimSelector
+	entity.EnrollAuthPolicyId = boltExternalJwtSigner.EnrollAuthPolicyId
 	return nil
 }
 

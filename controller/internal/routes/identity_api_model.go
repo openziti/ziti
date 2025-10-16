@@ -18,6 +18,8 @@ package routes
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
-	"strings"
 )
 
 const (
@@ -251,6 +252,9 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	cost := rest_model.TerminatorCost(identity.DefaultHostingCost)
 
+	if identity.RoleAttributes == nil {
+		identity.RoleAttributes = []string{}
+	}
 	roleAttributes := rest_model.Attributes(identity.RoleAttributes)
 
 	appData := rest_model.Tags{

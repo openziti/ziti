@@ -18,15 +18,17 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type updateExtJwtOptions struct {
@@ -45,19 +47,24 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := updateExtJwtOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 		ExtJwtSigner: rest_model.ExternalJWTSignerPatch{
-			Audience:        Ptr(""),
-			CertPem:         Ptr(""),
-			ClaimsProperty:  Ptr(""),
-			Enabled:         Ptr(true),
-			ExternalAuthURL: Ptr(""),
-			Issuer:          Ptr(""),
-			JwksEndpoint:    &jwksEndpoint,
-			Kid:             Ptr(""),
-			Name:            Ptr(""),
-			Tags:            &rest_model.Tags{SubTags: map[string]interface{}{}},
-			UseExternalID:   Ptr(false),
-			Scopes:          []string{},
-			ClientID:        Ptr(""),
+			Audience:                      Ptr(""),
+			CertPem:                       Ptr(""),
+			ClaimsProperty:                Ptr(""),
+			Enabled:                       Ptr(true),
+			ExternalAuthURL:               Ptr(""),
+			Issuer:                        Ptr(""),
+			JwksEndpoint:                  &jwksEndpoint,
+			Kid:                           Ptr(""),
+			Name:                          Ptr(""),
+			Tags:                          &rest_model.Tags{SubTags: map[string]interface{}{}},
+			UseExternalID:                 Ptr(false),
+			Scopes:                        []string{},
+			ClientID:                      Ptr(""),
+			EnrollToCertEnabled:           Ptr(false),
+			EnrollToTokenEnabled:          Ptr(false),
+			EnrollNameClaimsSelector:      Ptr(""),
+			EnrollAttributeClaimsSelector: Ptr(""),
+			EnrollAuthPolicyID:            Ptr(""),
 		},
 		nameOrId:     "",
 		newName:      "",
@@ -108,6 +115,12 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
 	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
 	cmd.Flags().StringVarP(&options.targetToken, "target-token", "", "", "The target token SDKs should use")
+	cmd.Flags().BoolVarP(options.ExtJwtSigner.EnrollToCertEnabled, "enroll-to-cert", "", false, "Enable enrollment to certificate authentication, defaults to false")
+	cmd.Flags().BoolVarP(options.ExtJwtSigner.EnrollToTokenEnabled, "enroll-to-token", "", false, "Enable enrollment to a token authentication, defaults to false")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.EnrollNameClaimsSelector, "enroll-name-claims-selector", "", "", "The claims JSON pointer selector or top level property to use for the name of enrolling identities, defaults to /sub")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.EnrollAttributeClaimsSelector, "enroll-attr-claims-selector", "", "", "The claims JSON pointer selector or top level property to use for the attributes of enrolling identities")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.EnrollAuthPolicyID, "enroll-auth-policy", "", "", "The name or ID of the authentication policy to use for enrolling identities, defaults to `default`")
+
 	return cmd
 }
 
@@ -221,6 +234,45 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 			options.ExtJwtSigner.Tags.SubTags[k] = v
 		}
 		changed = true
+	}
+
+	if options.Cmd.Flag("enroll-to-cert").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.EnrollToCertEnabled = nil
+	}
+
+	if options.Cmd.Flag("enroll-to-token").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.EnrollToTokenEnabled = nil
+	}
+
+	if options.Cmd.Flag("enroll-name-claims-selector").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.EnrollNameClaimsSelector = nil
+	}
+
+	if options.Cmd.Flag("enroll-attr-claims-selector").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.EnrollAttributeClaimsSelector = nil
+	}
+
+	if options.Cmd.Flag("enroll-auth-policy").Changed {
+		changed = true
+
+		idOrName := stringz.OrEmpty(options.ExtJwtSigner.EnrollAuthPolicyID)
+
+		resolvedId, err := api.MapNameToID(util.EdgeAPI, "auth-policies", &options.EntityOptions.Options, idOrName)
+		if err != nil {
+			return err
+		}
+
+		options.ExtJwtSigner.EnrollAuthPolicyID = &resolvedId
+	} else {
+		options.ExtJwtSigner.EnrollAuthPolicyID = nil
 	}
 
 	if !changed {
