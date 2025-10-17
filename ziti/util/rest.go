@@ -22,6 +22,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	openApiRuntime "github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
@@ -29,12 +36,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"gopkg.in/resty.v1"
-	"io"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"time"
 )
 
 // Use a 2-second timeout with a retry count of 5
@@ -62,7 +63,7 @@ func OutputJson(out io.Writer, data []byte) {
 			panic(err)
 		}
 	} else {
-		if _, err := fmt.Fprint(out, data); err != nil {
+		if _, err := fmt.Fprint(out, string(data)); err != nil {
 			panic(err)
 		}
 	}
@@ -320,20 +321,20 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 }
 
 // ControllerDelete will delete entities of the given type in the given Controller
-func ControllerDelete(api API, entityType string, id string, body string, out io.Writer, logRequestJson bool, logResponseJson bool, timeout int, verbose bool) (error, *int) {
+func ControllerDelete(api API, entityType string, id string, body string, out io.Writer, logRequestJson bool, logResponseJson bool, timeout int, verbose bool) (*int, error) {
 	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	baseUrl, err := restClientIdentity.GetBaseUrlForApi(api)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	req, err := NewRequest(restClientIdentity, timeout, verbose)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	entityPath := entityType + "/" + id
@@ -352,13 +353,13 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 	resp, err := req.Delete(fullUrl)
 
 	if err != nil {
-		return fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, baseUrl, err), nil
+		return nil, fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, baseUrl, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		statusCode := resp.StatusCode()
-		return fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp)), &statusCode
+		return &statusCode, fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
+			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJson {

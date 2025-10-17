@@ -42,7 +42,7 @@ type EdgeRouterPolicyManager struct {
 	baseEntityManager[*EdgeRouterPolicy, *db.EdgeRouterPolicy]
 }
 
-func (self *EdgeRouterPolicyManager) newModelEntity() *EdgeRouterPolicy {
+func (self *EdgeRouterPolicyManager) NewModelEntity() *EdgeRouterPolicy {
 	return &EdgeRouterPolicy{}
 }
 

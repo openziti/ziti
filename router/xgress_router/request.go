@@ -18,17 +18,18 @@ package xgress_router
 
 import (
 	"encoding/json"
+	"io"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
-	"io"
-	"time"
 )
 
 type Request struct {
@@ -163,7 +164,8 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 		return nil, circuitError
 	}
 
-	if reply.ContentType == ctrl_msg.CircuitSuccessType {
+	switch reply.ContentType {
+	case ctrl_msg.CircuitSuccessType:
 		var address string
 
 		circuitId := &identity.TokenId{Token: string(reply.Body)}
@@ -184,12 +186,12 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 			ResponseMsg: reply,
 		}, nil
 
-	} else if reply.ContentType == ctrl_msg.CircuitFailedType {
+	case ctrl_msg.CircuitFailedType:
 		errMsg := string(reply.Body)
 		log.WithError(err).Error("failure creating circuit")
 		return nil, errors.New(errMsg)
 
-	} else {
+	default:
 		log.Errorf("unexpected controller response to circuit request, response content type [%v]", reply.ContentType)
 		return nil, circuitError
 	}

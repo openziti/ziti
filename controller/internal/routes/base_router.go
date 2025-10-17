@@ -18,13 +18,16 @@ package routes
 
 import (
 	"fmt"
+	"net/http"
+	"reflect"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/apierror"
 	edgeApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/env"
@@ -34,9 +37,6 @@ import (
 	"github.com/openziti/ziti/controller/response"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"net/http"
-	"reflect"
-	"strings"
 )
 
 const (
@@ -192,7 +192,7 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 			return
 		}
 
-		if sve, ok := err.(*apierror.ValidationErrors); ok {
+		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}
@@ -316,7 +316,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
 			return
 		}
 
-		if sve, ok := err.(*apierror.ValidationErrors); ok {
+		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}
@@ -357,7 +357,7 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 			return
 		}
 
-		if sve, ok := err.(*apierror.ValidationErrors); ok {
+		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}

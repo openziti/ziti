@@ -20,13 +20,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/info"
 	"os"
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/info"
 )
 
 type Monitor struct {
@@ -141,8 +142,14 @@ func (memory *Memory) captureProfile() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	if err := pprof.WriteHeapProfile(f); err != nil {
+
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("profiler failed to close")
+		}
+	}()
+
+	if err = pprof.WriteHeapProfile(f); err != nil {
 		return err
 	}
 	memory.ctr++

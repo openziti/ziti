@@ -259,21 +259,21 @@ func (l *Local) writeChainBundle(caName, destCaName, name string, chainName stri
 			return fmt.Errorf("failed to open CA: %v: %v", caPath, err)
 		}
 	}
-	defer caIn.Close()
+	defer func() { _ = caIn.Close() }()
 
 	serverCertPath := filepath.Join(l.Root, caName, LocalCertsDir, name+".cert")
 	serverCertIn, err := os.Open(serverCertPath)
 	if err != nil {
 		return fmt.Errorf("failed to open server cert: %v: %v", serverCertPath, err)
 	}
-	defer serverCertIn.Close()
+	defer func() { _ = serverCertIn.Close() }()
 
 	chainCertPath := filepath.Join(l.Root, destCaName, LocalCertsDir, chainName)
 	out, err := os.OpenFile(chainCertPath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open chain file: %v: %v", chainCertPath, err)
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, serverCertIn)
 	if err != nil {
@@ -293,7 +293,7 @@ func encodeAndWrite(path, pemType string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return pem.Encode(f, &pem.Block{
 		Type:  pemType,
@@ -308,7 +308,7 @@ func (l *Local) updateIndex(caName, name string, rawCert []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	cert, err := x509.ParseCertificate(rawCert)
 	if err != nil {
@@ -361,7 +361,7 @@ func (l *Local) Update(caName string, sn *big.Int, st certificate.State) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var state string
 	switch st {
@@ -430,7 +430,7 @@ func (l *Local) Revoked(caName string) ([]pkix.RevokedCertificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer index.Close()
+	defer func() { _ = index.Close() }()
 
 	var revokedCerts []pkix.RevokedCertificate
 	scanner := bufio.NewScanner(index)
@@ -511,7 +511,7 @@ func createFile(path, content string) error {
 	if err != nil {
 		return fmt.Errorf("failed creating file  %v: %v", path, err)
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 
 	if content == "" {
 		return nil

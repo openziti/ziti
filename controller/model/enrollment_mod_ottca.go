@@ -18,13 +18,13 @@ package model
 
 import (
 	"crypto/x509"
+	"time"
+
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
-	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
-	"time"
 )
 
 type EnrollModuleOttCa struct {
@@ -133,7 +133,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 
 	if existing != nil {
 		apiError := apierror.NewCertInUse()
-		apiError.Cause = &fabricApiError.GenericCauseError{
+		apiError.Cause = &apierror.GenericCauseError{
 			DataMap: map[string]interface{}{
 				"fingerprint": fingerprint,
 			},

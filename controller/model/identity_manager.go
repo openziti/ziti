@@ -83,7 +83,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 	return manager
 }
 
-func (self *IdentityManager) newModelEntity() *Identity {
+func (self *IdentityManager) NewModelEntity() *Identity {
 	return &Identity{}
 }
 

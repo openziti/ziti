@@ -22,14 +22,15 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/network"
-	"net/http"
-	"os"
-	"strings"
 )
 
 var _ xweb.ApiHandlerFactory = &MetricsApiFactory{}
@@ -164,7 +165,7 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 		metricsResult, err := metricsApi.modelMapper.MapInspectResultToMetricsResult(inspection)
 
 		if err != nil {
-			_, _ = rw.Write([]byte(fmt.Sprintf("Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())))
+			_, _ = fmt.Fprintf(rw, "Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())
 			rw.WriteHeader(http.StatusInternalServerError)
 		} else {
 			if _, err = rw.Write([]byte(*metricsResult)); err != nil {

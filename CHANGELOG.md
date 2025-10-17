@@ -1,3 +1,9 @@
+# Release 1.7.1
+
+## What's New
+
+This release updates the build to use Go 1.25.+. This is the only change in the release.
+
 # Release 1.7.0
 
 ## What's New

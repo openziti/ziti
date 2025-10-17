@@ -17,15 +17,16 @@
 package edge
 
 import (
+	"io"
+	"net/url"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
-	"net/url"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -141,7 +142,7 @@ func runDeleteEntityOfType(o *deleteOptions, entityType string) error {
 
 func deleteEntitiesOfType(o *deleteOptions, entityType string, ids []string) error {
 	for _, id := range ids {
-		err, statusCode := util.ControllerDelete("edge", entityType, id, "", o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
+		statusCode, err := util.ControllerDelete("edge", entityType, id, "", o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
 		if err != nil {
 			if statusCode != nil && o.ignoreMissing {
 				o.Printf("delete of %v with id %v: %v\n", boltz.GetSingularEntityType(entityType), id, color.New(color.FgYellow, color.Bold).Sprint("NOT FOUND"))

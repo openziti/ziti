@@ -18,9 +18,10 @@ package demo
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"net"
 	"net/http"
+
+	"github.com/fatih/color"
 )
 
 type plainEchoServer struct {
@@ -32,7 +33,7 @@ func (s *plainEchoServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	input := r.URL.Query().Get("input")
 	result := fmt.Sprintf("As you say, '%v', indeed!\n", input)
 	c := color.New(color.FgBlue, color.Bold)
-	c.Print("\nplain-http-echo-server: ")
+	_, _ = c.Print("\nplain-http-echo-server: ")
 	fmt.Printf("received input '%v'\n", input)
 	if _, err := rw.Write([]byte(result)); err != nil {
 		panic(err)
@@ -50,7 +51,7 @@ func (s *plainEchoServer) run() (err error) {
 	s.Port = addr.Port
 
 	c := color.New(color.FgBlue, color.Bold)
-	c.Print("\nplain-http-echo-server: ")
+	_, _ = c.Print("\nplain-http-echo-server: ")
 	fmt.Printf("listening on %v\n", addr)
 	go func() { _ = http.Serve(s.listener, http.HandlerFunc(s.ServeHTTP)) }()
 	return nil

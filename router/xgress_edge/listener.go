@@ -30,7 +30,6 @@ import (
 	sdkinspect "github.com/openziti/sdk-golang/inspect"
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkedge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common"
@@ -79,7 +78,8 @@ type listener struct {
 }
 
 func (listener *listener) Inspect(key string, _ time.Duration) any {
-	if key == inspect.RouterEdgeCircuitsKey {
+	switch key {
+	case inspect.RouterEdgeCircuitsKey:
 		result := &inspect.EdgeListenerCircuits{
 			Circuits: map[string]*inspect.EdgeXgFwdInspectDetail{},
 		}
@@ -98,7 +98,8 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 			v.Unlock()
 		}
 		return result
-	} else if key == inspect.RouterSdkCircuitsKey {
+
+	case inspect.RouterSdkCircuitsKey:
 		result := &inspect.SdkCircuits{
 			Circuits: map[string]*inspect.SdkCircuitDetail{},
 		}
@@ -297,7 +298,7 @@ func (self *edgeClientConn) getIdentityId() string {
 // Returns:
 //   - map[uint32]edge.MsgSink[*state.ConnState]: Map of connection ID to message sink containing
 //     connection state. Each sink provides access to connection metadata and state information.
-func (self *edgeClientConn) GetConnIdToSinks() map[uint32]edge.MsgSink[*state.ConnState] {
+func (self *edgeClientConn) GetConnIdToSinks() map[uint32]sdkedge.MsgSink[*state.ConnState] {
 	return self.msgMux.GetSinks()
 }
 
@@ -350,12 +351,12 @@ func (self *edgeClientConn) CloseConn(connId uint32, reason string) error {
 	self.msgMux.RemoveByConnId(connId)
 
 	// Send StateClosed message to SDK
-	closeMsg := edge.NewStateClosedMsg(connId, reason)
-	closeMsg.PutUint32Header(edge.ConnIdHeader, connId)
+	closeMsg := sdkedge.NewStateClosedMsg(connId, reason)
+	closeMsg.PutUint32Header(sdkedge.ConnIdHeader, connId)
 
 	err := closeMsg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
-		log.WithError(err).WithFields(edge.GetLoggerFields(closeMsg)).Error("failed to send state closed message")
+		log.WithError(err).WithFields(sdkedge.GetLoggerFields(closeMsg)).Error("failed to send state closed message")
 		return err
 	}
 
@@ -372,9 +373,10 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 
 	// Notify the controller of the xgress fault
 	fault := &ctrl_pb.Fault{Id: circuitId}
-	if edgeForwarder.originator == xgress.Initiator {
+	switch edgeForwarder.originator {
+	case xgress.Initiator:
 		fault.Subject = ctrl_pb.FaultSubject_IngressFault
-	} else if edgeForwarder.originator == xgress.Terminator {
+	case xgress.Terminator:
 		fault.Subject = ctrl_pb.FaultSubject_EgressFault
 	}
 
@@ -656,9 +658,10 @@ func (self *edgeClientConn) processBindV1(serviceSessionToken *state.ServiceSess
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
 	if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
 		edgePrecedence := sdkedge.Precedence(precedenceData[0])
-		if edgePrecedence == sdkedge.PrecedenceRequired {
+		switch edgePrecedence {
+		case sdkedge.PrecedenceRequired:
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-		} else if edgePrecedence == sdkedge.PrecedenceFailed {
+		case sdkedge.PrecedenceFailed:
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
 	}
@@ -786,9 +789,10 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
 	if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
 		edgePrecedence := sdkedge.Precedence(precedenceData[0])
-		if edgePrecedence == sdkedge.PrecedenceRequired {
+		switch edgePrecedence {
+		case sdkedge.PrecedenceRequired:
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-		} else if edgePrecedence == sdkedge.PrecedenceFailed {
+		case sdkedge.PrecedenceFailed:
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
 	}
@@ -1471,7 +1475,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	msg.ReplyTo(ctx.Req)
 
 	if assignIds, _ := ctx.Req.GetBoolHeader(sdkedge.RouterProvidedConnId); assignIds {
-		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+		msg.PutBoolHeader(sdkedge.RouterProvidedConnId, true)
 	}
 
 	msg.PutStringHeader(sdkedge.CircuitIdHeader, self.circuitId)

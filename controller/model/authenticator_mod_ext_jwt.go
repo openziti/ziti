@@ -20,6 +20,10 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	nfPem "github.com/openziti/foundation/v2/pem"
@@ -33,9 +37,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"strings"
-	"sync"
-	"time"
 )
 
 var _ AuthProcessor = &AuthModuleExtJwt{}
@@ -429,17 +430,6 @@ func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
 	a.DispatchEvent(failEvent)
 
 	return nil, apierror.NewInvalidAuth()
-}
-
-func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
-	signer, ok := args[0].(*db.ExternalJwtSigner)
-
-	if !ok {
-		pfxlog.Logger().Errorf("error on external signature create for authentication module %T: expected %T got %T", a, signer, args[0])
-		return
-	}
-
-	a.addSigner(signer)
 }
 
 func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *db.ExternalJwtSigner) {

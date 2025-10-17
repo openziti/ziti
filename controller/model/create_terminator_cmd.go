@@ -3,16 +3,12 @@ package model
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type CreateEdgeTerminatorCmd struct {
@@ -61,45 +57,6 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.Mutate
 
 func (self *CreateEdgeTerminatorCmd) GetChangeContext() *change.Context {
 	return self.Context
-}
-
-type terminator interface {
-	GetId() string
-	GetInstanceId() string
-	GetBinding() string
-	GetAddress() string
-}
-
-func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*db.Session, error) {
-	if terminator.GetBinding() != common.EdgeBinding {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
-	}
-
-	addressParts := strings.Split(terminator.GetAddress(), ":")
-	if len(addressParts) != 2 {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
-	}
-
-	if addressParts[0] != "hosted" {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
-	}
-
-	sessionToken := addressParts[1]
-	session, err := self.Env.GetStores().Session.LoadOneByToken(tx, sessionToken)
-	if err != nil {
-		pfxlog.Logger().Warnf("sibling terminator %v with shared identity %v has invalid session token %v", terminator.GetId(), terminator.GetInstanceId(), sessionToken)
-		return nil, nil
-	}
-
-	if session.ApiSession == nil {
-		apiSession, err := self.Env.GetStores().ApiSession.LoadById(tx, session.ApiSessionId)
-		if err != nil {
-			return nil, err
-		}
-		session.ApiSession = apiSession
-	}
-
-	return session, nil
 }
 
 func (self *CreateEdgeTerminatorCmd) Encode() ([]byte, error) {

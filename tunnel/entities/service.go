@@ -430,11 +430,11 @@ func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) strin
 }
 
 func (self *Service) GetName() string {
-	return *self.ServiceDetail.Name
+	return *self.Name
 }
 
 func (self *Service) GetId() string {
-	return *self.ServiceDetail.ID
+	return *self.ID
 }
 
 func (self *Service) GetDialTimeout() time.Duration {

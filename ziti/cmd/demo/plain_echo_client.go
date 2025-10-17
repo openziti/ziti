@@ -18,11 +18,12 @@ package demo
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/fatih/color"
 )
 
 type plainEchoClient struct {
@@ -36,7 +37,7 @@ func (self *plainEchoClient) echo(input string) error {
 	resp, err := (&http.Client{}).Get(u)
 	if err == nil {
 		c := color.New(color.FgBlue, color.Bold)
-		c.Print("\nplain-http-echo-client: ")
+		_, _ = c.Print("\nplain-http-echo-client: ")
 		_, err = io.Copy(os.Stdout, resp.Body)
 	}
 	return err

@@ -22,6 +22,10 @@ import (
 	"runtime"
 )
 
+const (
+	DefaultWritePermissions = 0760
+)
+
 func HomeDir() string {
 	if h := os.Getenv("HOME"); h != "" {
 		return h

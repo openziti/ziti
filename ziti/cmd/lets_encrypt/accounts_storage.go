@@ -22,11 +22,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"github.com/openziti/ziti/ziti/internal/log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti/internal/log"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
@@ -203,7 +205,12 @@ func generatePrivateKey(file string, keyType certcrypto.KeyType) (crypto.Private
 	if err != nil {
 		return nil, err
 	}
-	defer certOut.Close()
+
+	defer func() {
+		if closeErr := certOut.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("Could not close file for private key")
+		}
+	}()
 
 	pemKey := certcrypto.PEMBlock(privateKey)
 	err = pem.Encode(certOut, pemKey)

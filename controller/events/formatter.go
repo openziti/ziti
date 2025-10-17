@@ -364,12 +364,12 @@ func (event *PrometheusMetricsEvent) WriteTo(output io.WriteCloser, includeTimes
 }
 
 func (event *PrometheusMetricsEvent) getMetricName() string {
-	key := strings.Replace(event.Metric, " ", "_", -1)
-	key = strings.Replace(key, ".", "_", -1)
-	key = strings.Replace(key, "-", "_", -1)
-	key = strings.Replace(key, "=", "_", -1)
-	key = strings.Replace(key, "/", "_", -1)
-	key = strings.Replace(key, ":", "", -1)
+	key := strings.ReplaceAll(event.Metric, " ", "_")
+	key = strings.ReplaceAll(key, ".", "_")
+	key = strings.ReplaceAll(key, "-", "_")
+	key = strings.ReplaceAll(key, "=", "_")
+	key = strings.ReplaceAll(key, "/", "_")
+	key = strings.ReplaceAll(key, ":", "")
 
 	// Prometheus complains about metrics ending in _count, so "fix" that.
 	if strings.HasSuffix(key, "_count") {

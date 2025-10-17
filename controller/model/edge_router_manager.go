@@ -88,7 +88,7 @@ func (self *EdgeRouterManager) GetEntityTypeId() string {
 	return "edgeRouters"
 }
 
-func (self *EdgeRouterManager) newModelEntity() *EdgeRouter {
+func (self *EdgeRouterManager) NewModelEntity() *EdgeRouter {
 	return &EdgeRouter{}
 }
 

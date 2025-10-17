@@ -18,12 +18,13 @@ package importer
 
 import (
 	"errors"
+	"slices"
+
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"slices"
 )
 
 func (importer *Importer) IsServicePolicyImportRequired(args []string) bool {
@@ -59,7 +60,7 @@ func (importer *Importer) ProcessServicePolicies(input map[string][]interface{})
 		// look up the identity ids from the name and add to the create
 		identityRoles, err := importer.lookupIdentities(create.IdentityRoles)
 		if err != nil {
-			return nil, errors.Join(errors.New("Unable to read all identities from ServicePolicy"), err)
+			return nil, errors.Join(errors.New("unable to read all identities from ServicePolicy"), err)
 		}
 		create.IdentityRoles = identityRoles
 

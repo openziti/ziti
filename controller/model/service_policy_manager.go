@@ -43,7 +43,7 @@ type ServicePolicyManager struct {
 	baseEntityManager[*ServicePolicy, *db.ServicePolicy]
 }
 
-func (self *ServicePolicyManager) newModelEntity() *ServicePolicy {
+func (self *ServicePolicyManager) NewModelEntity() *ServicePolicy {
 	return &ServicePolicy{}
 }
 

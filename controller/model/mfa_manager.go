@@ -20,6 +20,8 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"strings"
+
 	"github.com/dgryski/dgoogauth"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -35,7 +37,6 @@ import (
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 const (
@@ -57,7 +58,7 @@ type MfaManager struct {
 	baseEntityManager[*Mfa, *db.Mfa]
 }
 
-func (self *MfaManager) newModelEntity() *Mfa {
+func (self *MfaManager) NewModelEntity() *Mfa {
 	return &Mfa{}
 }
 
@@ -258,7 +259,7 @@ func (self *MfaManager) generateRecoveryCodes() ([]string, error) {
 			return nil, err
 		}
 		backupStr := base32.StdEncoding.EncodeToString(backupBytes)
-		backupCode := strings.Replace(backupStr, "=", "", -1)[:6]
+		backupCode := strings.ReplaceAll(backupStr, "=", "")[:6]
 		recoveryCodes = append(recoveryCodes, backupCode)
 	}
 

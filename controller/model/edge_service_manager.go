@@ -57,7 +57,7 @@ func (self *EdgeServiceManager) GetEntityTypeId() string {
 	return "edgeServices"
 }
 
-func (self *EdgeServiceManager) newModelEntity() *EdgeService {
+func (self *EdgeServiceManager) NewModelEntity() *EdgeService {
 	return &EdgeService{}
 }
 

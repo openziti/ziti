@@ -57,7 +57,11 @@ func (cpu *CPU) Run() {
 	case <-signalChan:
 	case <-cpu.shutdownC:
 	}
-	defer cpu.profile.Close()
+	defer func() {
+		if closeErr := cpu.profile.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("profiler failed to close")
+		}
+	}()
 	pprof.StopCPUProfile()
 	pfxlog.Logger().Info("stopped profiling cpu")
 }

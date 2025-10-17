@@ -138,7 +138,7 @@ func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enr
 	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
-func (self *EnrollmentManager) newModelEntity() *Enrollment {
+func (self *EnrollmentManager) NewModelEntity() *Enrollment {
 	return &Enrollment{}
 }
 

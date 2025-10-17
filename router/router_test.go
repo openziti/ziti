@@ -1,14 +1,15 @@
 package router
 
 import (
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/router/env"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/router/env"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
@@ -21,7 +22,9 @@ func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	r := Router{
 		config: &env.Config{},
@@ -35,7 +38,9 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	transport.AddAddressParser(tls.AddressParser{})
 	addr, err := transport.ParseAddress("tls:localhost:6565")
@@ -71,7 +76,9 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
 	req.NoError(err)
 
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	transport.AddAddressParser(tls.AddressParser{})
 	addr, err := transport.ParseAddress("tls:localhost:6565")

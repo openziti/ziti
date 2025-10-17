@@ -42,7 +42,7 @@ type ServiceEdgeRouterPolicyManager struct {
 	baseEntityManager[*ServiceEdgeRouterPolicy, *db.ServiceEdgeRouterPolicy]
 }
 
-func (self *ServiceEdgeRouterPolicyManager) newModelEntity() *ServiceEdgeRouterPolicy {
+func (self *ServiceEdgeRouterPolicyManager) NewModelEntity() *ServiceEdgeRouterPolicy {
 	return &ServiceEdgeRouterPolicy{}
 }
 

@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/apierror"
-	fabricApiError "github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
@@ -49,7 +48,7 @@ type SessionManager struct {
 	baseEntityManager[*Session, *db.Session]
 }
 
-func (self *SessionManager) newModelEntity() *Session {
+func (self *SessionManager) NewModelEntity() *Session {
 	return &Session{}
 }
 
@@ -57,7 +56,7 @@ type SessionPostureResult struct {
 	Passed           bool
 	Failure          *PostureSessionRequestFailure
 	PassingPolicyIds []string
-	Cause            *fabricApiError.GenericCauseError
+	Cause            *apierror.GenericCauseError
 }
 
 func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, sessionType, serviceId, serviceName string) *SessionPostureResult {
@@ -135,7 +134,7 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 			sessionFailure.PolicyFailures = append(sessionFailure.PolicyFailures, policyFailure)
 		}
 
-		cause := &fabricApiError.GenericCauseError{
+		cause := &apierror.GenericCauseError{
 			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", failedPolicyIds),
 			DataMap: failureMap,
 		}

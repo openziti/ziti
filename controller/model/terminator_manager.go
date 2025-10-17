@@ -55,7 +55,7 @@ type TerminatorManager struct {
 	baseEntityManager[*Terminator, *db.Terminator]
 }
 
-func (self *TerminatorManager) newModelEntity() *Terminator {
+func (self *TerminatorManager) NewModelEntity() *Terminator {
 	return &Terminator{}
 }
 

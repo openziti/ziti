@@ -161,7 +161,6 @@ func (self *CertExpirationChecker) AnyCtrlChannelWithTimeout(timeout time.Durati
 
 		select {
 		case <-time.After(interval):
-			break
 		case <-self.closeNotify:
 			return nil, true
 		}
@@ -241,7 +240,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 func (self *CertExpirationChecker) getWaitTime() (time.Duration, error) {
 	now := time.Now()
 
-	if self.id.Cert().Leaf.NotAfter.Before(now) || self.id.Cert().Leaf.NotAfter == now {
+	if self.id.Cert().Leaf.NotAfter.Before(now) || self.id.Cert().Leaf.NotAfter.Equal(now) {
 		return 0, fmt.Errorf("client certificate has expired")
 	}
 
