@@ -1110,16 +1110,27 @@ EOF
 
     if [[ -s "$HTTPBIN_OTT" ]]; then
         logDebug "installing httpbin chart as 'miniziti-httpbin'"
-        helmWrapper install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
-            --set-file zitiEnrollment="$HTTPBIN_OTT" \
-            --set zitiServiceName=httpbin-service >&3
+        _httpbin_cmd=(
+            install "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin"
+            --set-file zitiEnrollment="$HTTPBIN_OTT"
+            --set zitiServiceName=httpbin-service
+        )
+        if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/httpbin.yaml" ]]; then
+            _httpbin_cmd+=(--values "${EXTRA_VALUES_DIR}/httpbin.yaml")
+        fi
+        helmWrapper "${_httpbin_cmd[@]}" >&3
         rm -f "$HTTPBIN_OTT"
         logDebug "deleted $HTTPBIN_OTT after installing successfully with miniziti-httpbin chart"
     else
         logDebug "upgrading httpbin chart as 'miniziti-httpbin'"
-        helmWrapper upgrade "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin" \
-            --set-file zitiEnrollment=<(echo "enrolled") \
-            --set zitiServiceName=httpbin-service >&3
+        _httpbin_cmd=(
+            upgrade "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin"
+            --set zitiServiceName=httpbin-service
+        )
+        if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/httpbin.yaml" ]]; then
+            _httpbin_cmd+=(--values "${EXTRA_VALUES_DIR}/httpbin.yaml")
+        fi
+        helmWrapper "${_httpbin_cmd[@]}" >&3
     fi
 
     echo -e "\n\n"
