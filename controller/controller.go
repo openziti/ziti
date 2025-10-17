@@ -909,8 +909,10 @@ func (o *OverlayBindPointFactory) Binding() string {
 
 func (o *OverlayBindPointFactory) FactoryForConfig(config []interface{}) bool {
 	for _, v := range config {
-		if m, ok := v.(map[interface{}]interface{}); ok && m["identity"] != nil {
-			return true
+		if m, ok := v.(map[interface{}]interface{}); ok {
+			if _, exists := m["identity"]; exists {
+				return true
+			}
 		}
 	}
 	return false
