@@ -39,7 +39,7 @@ jobs:
         uses: hmarr/debug-action@v3.0.0
 
       - name: Wait for other builds to complete
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.4.1
         with:
           ref: ${{ env.GITHUB_SHA }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -51,7 +51,7 @@ jobs:
           ignore-checks: Fablab Smoketest,Fablab HA Smoketest,Publish Release Candidate Linux Packages,Publish Release Candidate Docker Images,POST Webhook
 
       - name: Checkout Workspace
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         uses: ./.github/actions/setup-go
