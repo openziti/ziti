@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -69,7 +70,14 @@ type LoginOptions struct {
 	NetworkId     string
 
 	FileCertCreds *edge_apis.IdentityCredentials
-	client        *http.Client
+	client        http.Client
+}
+
+func (options *LoginOptions) GetClient() http.Client {
+	return options.client
+}
+func (options *LoginOptions) SetClient(c http.Client) {
+	options.client = c
 }
 
 const LoginFlagKey = "login"
@@ -148,15 +156,18 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *LoginOptions) newHttpClient() *http.Client {
+func (o *LoginOptions) newHttpClient(tryCachedCreds bool) *http.Client {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
 
-	// any error indicates there are probably no saved credentials. look for login information and use those
-	loginErr := o.Run()
-	if loginErr != nil {
-		pfxlog.Logger().Fatal(loginErr)
+	if tryCachedCreds {
+		// any error indicates there are probably no saved credentials. look for login information and use those
+		o.PopulateFromCache()
+		loginErr := o.Run()
+		if loginErr != nil {
+			pfxlog.Logger().Fatal(loginErr)
+		}
 	}
 
 	caPool := x509.NewCertPool()
@@ -172,18 +183,32 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 		}
 	}
 
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caPool,
-			},
+	transportToUse := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caPool,
 		},
+	}
+
+	t, cte := o.createHttpTransport()
+	if cte != nil {
+		return &http.Client{
+			Transport: transportToUse,
+		}
+	} else {
+		hc := &http.Client{}
+		if t != nil {
+			t.TLSClientConfig.RootCAs = caPool
+			transportToUse = t
+		}
+
+		hc.Transport = transportToUse
+		return hc
 	}
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	httpClient := o.newHttpClient()
+	httpClient := o.newHttpClient(true)
 
 	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
 	if e != nil {
@@ -194,7 +219,7 @@ func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeCli
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClient := o.newHttpClient()
+	httpClient := o.newHttpClient(true)
 
 	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
 	if e != nil {
@@ -209,8 +234,7 @@ func createZitifiedHttpClient(cfg *ziti.Config) (*http.Client, error) {
 		panic(err)
 	}
 
-	zitiContexts := ziti.DefaultCollection
-	//ziti.NewSdkCollection()
+	zitiContexts := ziti.NewSdkCollection()
 	zitiContexts.Add(zitiContext)
 
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
@@ -224,6 +248,7 @@ func createZitifiedHttpClient(cfg *ziti.Config) (*http.Client, error) {
 		return nil, se
 	}
 	return &http.Client{Transport: zitiTransport}, nil
+	//return &http.Client{Transport: createZitifiedHttpTransport(zitiContexts)}, nil
 }
 
 // Run implements this command
@@ -235,14 +260,28 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
-	if o.NetworkId != "" {
-		cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
-		if ce != nil {
-			return ce
+	/*
+		// before -- working
+		var httpClient *http.Client
+		if o.NetworkId != "" {
+			cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
+			if ce != nil {
+				return ce
+			}
+			cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
+			c, cze := createZitifiedHttpClient(cfg)
+			if cze != nil {
+				return cze
+			}
+			o.SetClient(*c)
+			httpClient = c
+		} else {
+			httpClient = &http.Client{}
 		}
-		cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
-		o.client, ce = createZitifiedHttpClient(cfg)
-	}
+	*/
+
+	httpClient := o.newHttpClient(false)
+	o.SetClient(*httpClient)
 
 	if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
@@ -276,8 +315,8 @@ func (o *LoginOptions) Run() error {
 
 	if host == "" {
 		if o.ControllerUrl == "" {
-			if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
-				host = defaultId.Url
+			if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && !o.IgnoreConfig {
+				host = cachedCliConfig.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
 			} else {
 				var err error
@@ -316,9 +355,9 @@ func (o *LoginOptions) Run() error {
 
 	if ctrlUrl.Path == "" {
 		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, o.client)
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, httpClient)
 		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, o.client)
+			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, httpClient)
 		}
 	} else {
 		host = host + ctrlUrl.Path
@@ -334,8 +373,8 @@ func (o *LoginOptions) Run() error {
 		for o.Username == "" {
 			if xterm.IsTerminal(int(os.Stdin.Fd())) {
 				var err error
-				if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
-					o.Username = defaultId.Username
+				if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && cachedCliConfig.Username != "" && !o.IgnoreConfig {
+					o.Username = cachedCliConfig.Username
 					o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
 				} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
 					return err
@@ -364,7 +403,8 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if o.Token == "" {
-		jsonParsed, err := login(o, host, body, o.client)
+		hc := o.GetClient()
+		jsonParsed, err := login(o, host, body, &hc)
 
 		if err != nil {
 			return err
@@ -389,12 +429,13 @@ func (o *LoginOptions) Run() error {
 	o.ControllerUrl = host
 	if !o.IgnoreConfig {
 		loginIdentity := &util.RestClientEdgeIdentity{
-			Url:       host,
-			Username:  o.Username,
-			Token:     o.Token,
-			LoginTime: time.Now().Format(time.RFC3339),
-			CaCert:    o.CaCert,
-			ReadOnly:  o.ReadOnly,
+			Url:           host,
+			Username:      o.Username,
+			Token:         o.Token,
+			LoginTime:     time.Now().Format(time.RFC3339),
+			CaCert:        o.CaCert,
+			ReadOnly:      o.ReadOnly,
+			NetworkIdFile: o.NetworkId,
 		}
 		o.Printf("Saving identity '%v' to %v\n", id, configFile)
 		config.EdgeIdentities[id] = loginIdentity
@@ -405,24 +446,19 @@ func (o *LoginOptions) Run() error {
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
-	isServerTrusted, err := util.IsServerTrusted(host, o.client)
+	httpClient := o.GetClient()
+	isServerTrusted, err := util.IsServerTrusted(host, &httpClient)
 	if err != nil {
 		return err
 	}
 
 	if !isServerTrusted && o.CaCert == "" {
-		var httpClient *http.Client
-		if o.client != nil {
-			httpClient = o.client
-		} else {
-			httpClient = http.DefaultClient
-		}
-		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, *httpClient)
+		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
 		}
 
-		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts)
+		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts, httpClient)
 		if err != nil {
 			return err
 		}
@@ -430,7 +466,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 			return errors.New("server supplied certs not trusted by server, unable to continue")
 		}
 
-		savedCerts, certFile, err := util.ReadCert(ctrlUrl.Hostname())
+		savedCerts, certFile, err := util.ReadCert(ctrlUrl)
 		if err != nil {
 			return err
 		}
@@ -446,7 +482,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 					}
 				}
 				if replace {
-					_, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+					_, err = util.WriteCert(o, ctrlUrl, wellKnownCerts)
 					if err != nil {
 						return err
 					}
@@ -463,7 +499,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				}
 			}
 			if importCerts {
-				o.CaCert, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+				o.CaCert, err = util.WriteCert(o, ctrlUrl, wellKnownCerts)
 				if err != nil {
 					return err
 				}
@@ -471,20 +507,24 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				o.Println("WARNING: no certificate authority provided for server, continuing but login will likely fail")
 			}
 		}
-	} else if isServerTrusted && o.CaCert != "" {
-		override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
-		if err != nil {
-			return err
-		}
-		if !override {
-			o.CaCert = ""
-		}
 	}
+	//} else if isServerTrusted && o.CaCert != "" {
+	//	override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if !override {
+	//		o.CaCert = ""
+	//	}
+	//}
 
 	return nil
 }
 
 func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
+	if o.Yes {
+		return true, nil
+	}
 	filter := &yesNoFilter{}
 	if _, err := o.ask(prompt, filter.Accept); err != nil {
 		return false, err
@@ -493,6 +533,10 @@ func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
 }
 
 func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
+	if o.Yes {
+		return "yes", nil
+	}
+
 	if !xterm.IsTerminal(int(os.Stdin.Fd())) {
 		return "", errors.New("Cannot accept certs - no terminal")
 	}
@@ -544,6 +588,8 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 	method := "password"
 	if cert != "" {
 		client.SetRootCertificate(cert)
+		transport := client.GetClient().Transport.(*http.Transport)
+		transport.CloseIdleConnections() // make sure any idle connections are closed so the client hello happens WITH certs
 	}
 	authHeader := ""
 	if o.ExtJwtToken != "" {
@@ -564,7 +610,6 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 			method = "cert"
 		}
 	}
-
 	resp, err := client.
 		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
@@ -592,4 +637,110 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 	}
 
 	return jsonParsed, nil
+}
+
+func createZitifiedHttpTransport(ctxCollection *ziti.CtxCollection) *http.Transport {
+	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
+	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialer := ctxCollection.NewDialerWithFallback(context.Background(), &net.Dialer{})
+		return dialer.Dial(network, addr)
+	}
+	return zitiTransport
+}
+
+func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
+	// if cli param supplied - use it
+	if o.NetworkId != "" {
+		return o.createHttpTransportFromFile()
+	}
+
+	// if env var set - use it
+	if zt, zte := util.ZitifiedTransportFromEnv(); zte != nil {
+		return nil, zte
+	} else {
+		if zt != nil {
+			o.Printf("NetworkId found by env var [%s], zitified transport enabled\n", constants.ZitiCliNetworkIdVarName)
+			o.NetworkId = ""
+			return zt, nil
+		}
+	}
+
+	// if cached id exists use it
+	config, _, cfgErr := util.LoadRestClientConfig()
+	if cfgErr != nil {
+		return nil, cfgErr
+	}
+	id := config.GetIdentity()
+	cachedCliConfig := config.EdgeIdentities[id]
+
+	if cachedCliConfig != nil {
+		// -- if cached id has networkId referenced - use it
+		if cachedCliConfig.NetworkIdFile != "" {
+			o.NetworkId = cachedCliConfig.NetworkIdFile
+			return o.createHttpTransportFromFile()
+		}
+	}
+	return nil, nil
+}
+
+func (o *LoginOptions) createHttpTransportFromFile() (*http.Transport, error) {
+	cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
+	if ce != nil {
+		return nil, ce
+	}
+	cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
+
+	zc, zce := ziti.NewContext(cfg)
+	if zce != nil {
+		return nil, zce
+	}
+	sdkCollection := ziti.NewSdkCollection()
+	sdkCollection.Add(zc)
+	_, se := zc.GetServices() // loads all the services
+	if se != nil {
+		return nil, fmt.Errorf("failed to get ziti services: %v", se)
+	}
+	return createZitifiedHttpTransport(sdkCollection), nil
+}
+
+func (o *LoginOptions) PopulateFromCache() {
+	config, _, cfgErr := util.LoadRestClientConfig()
+	if cfgErr != nil {
+		return
+	}
+
+	id := config.GetIdentity()
+	cachedCliConfig := config.EdgeIdentities[id]
+	if cachedCliConfig == nil {
+		return
+	}
+
+	o.ControllerUrl = cachedCliConfig.Url
+	o.Username = cachedCliConfig.Username
+	o.Token = cachedCliConfig.Token
+	o.NetworkId = cachedCliConfig.NetworkIdFile
+	o.CaCert = cachedCliConfig.CaCert
+}
+
+func NewFromCache(out io.Writer, eout io.Writer) LoginOptions {
+	o := LoginOptions{
+		Options: api.Options{
+			CommonOptions: common.CommonOptions{
+				Out: out,
+				Err: eout,
+			},
+		},
+	}
+	o.PopulateFromCache()
+	return o
+}
+
+func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
+	o := NewFromCache(out, eout)
+	err := o.Run()
+	if err != nil {
+		return o, err
+	} else {
+		return o, nil
+	}
 }

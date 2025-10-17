@@ -85,7 +85,7 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 		r.RunCliAgent(self.CliAgentAddr, self.CliAgentAlias)
 	}
 
-	go r.ListenForShutdownSignal()
+	go r.ListenForShutdownSignal(cmd.Context())
 
 	if err = r.Run(); err != nil {
 		logrus.WithError(err).Fatal("error starting")

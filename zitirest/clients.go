@@ -165,7 +165,7 @@ func (self *Clients) LoadWellKnownCerts() error {
 		return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", self.host)
 	}
 
-	certsTrusted, err := util.AreCertsTrusted(self.host, wellKnownCerts)
+	certsTrusted, err := util.AreCertsTrusted(self.host, wellKnownCerts, http.Client{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to verify well known certs for host %v", self.host)
 	}

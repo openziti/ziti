@@ -47,7 +47,6 @@ func NewClient() *resty.Client {
 		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 }
 
-// Use a 2-second timeout with a retry count of 5
 func NewClientWithClient(client *http.Client) *resty.Client {
 	return resty.
 		NewWithClient(client).
