@@ -22,7 +22,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
+func urlToId(url *url.URL) string {
+	p := url.Port()
+	if p == "" {
+		if url.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	return url.Hostname() + "_" + p
+}
+
+func WriteCert(p common.Printer, url *url.URL, cert []byte) (string, error) {
+	id := urlToId(url)
 	cfgDir, err := ConfigDir()
 	if err != nil {
 		return "", err
@@ -39,7 +52,8 @@ func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
 	return certFile, nil
 }
 
-func ReadCert(id string) ([]byte, string, error) {
+func ReadCert(url *url.URL) ([]byte, string, error) {
+	id := urlToId(url)
 	cfgDir, err := ConfigDir()
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "couldn't get config dir while reading cert for %v", id)
@@ -74,22 +88,25 @@ func IsServerTrusted(host string, client *http.Client) (bool, error) {
 	return true, nil
 }
 
-func AreCertsTrusted(host string, certs []byte) (bool, error) {
+func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
+		RootCAs:            x509.NewCertPool(),
 	}
-
-	if tlsConfig.RootCAs == nil {
-		tlsConfig.RootCAs = x509.NewCertPool()
-	}
-
 	tlsConfig.RootCAs.AppendCertsFromPEM(certs)
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = tlsConfig
-
-	client := http.Client{
-		Transport: transport,
+	if ot, ok := client.Transport.(*http.Transport); ok {
+		it := ot.Clone()
+		it.TLSClientConfig = tlsConfig
+		client.Transport = it
+		defer func() {
+			client.Transport = ot
+		}()
+	} else {
+		client = http.Client{}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = tlsConfig
+		client.Transport = transport
 	}
 
 	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
@@ -104,11 +121,28 @@ func AreCertsTrusted(host string, certs []byte) (bool, error) {
 }
 
 func GetWellKnownCerts(host string, client http.Client) ([]byte, []*x509.Certificate, error) {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: true,
+	var ot *http.Transport
+	if client.Transport == nil {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		client.Transport = transport
+		ot = transport
+	} else {
+		ot = client.Transport.(*http.Transport)
+		nt := ot.Clone()
+
+		otls := ot.TLSClientConfig
+		ntls := otls.Clone()
+		ntls.InsecureSkipVerify = true
+		nt.TLSClientConfig = ntls
+		nt.Proxy = http.ProxyFromEnvironment
+		client.Transport = nt
+		defer func() {
+			client.Transport = ot
+		}()
 	}
-	client.Transport = transport
 
 	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {

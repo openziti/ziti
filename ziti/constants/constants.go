@@ -141,4 +141,7 @@ const (
 	ZitiEdgeRouterCsrOUVarDescription                = "The organization unit to use for router CSRs"
 	ZitiRouterCsrSansDnsVarName                      = "ZITI_ROUTER_CSR_SANS_DNS"
 	ZitiRouterCsrSansDnsVarDescription               = "Additional DNS SAN of the router"
+
+	ZitiCliNetworkIdVarName        = "ZITI_CLI_NETWORK_ID"
+	ZitiCliNetworkIdVarDescription = "Necessary when using the CLI over a zitified transport"
 )
