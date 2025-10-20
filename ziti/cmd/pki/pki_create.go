@@ -23,13 +23,14 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"github.com/openziti/ziti/ziti/pki/pki"
-	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/ziti/pki/pki"
+	"github.com/openziti/ziti/ziti/util"
 
 	"github.com/spf13/cobra"
 
@@ -276,8 +277,8 @@ func (o *PKICreateOptions) ObtainCommonName() (string, error) {
 func (o *PKICreateOptions) ObtainFileName(caFile string, commonName string) string {
 	var filename string
 	if filename = caFile; len(caFile) == 0 {
-		filename = strings.Replace(commonName, " ", "_", -1)
-		filename = strings.Replace(filename, "*", "wildcard", -1)
+		filename = strings.ReplaceAll(commonName, " ", "_")
+		filename = strings.ReplaceAll(filename, "*", "wildcard")
 	}
 	return filename
 }
@@ -405,7 +406,7 @@ func (o *PKICreateOptions) ObtainPrivateKeyOptions() (pki.PrivateKeyOptions, err
 }
 
 func (o *PKICreateOptions) obtainEcOptions() (pki.PrivateKeyOptions, error) {
-	target := strings.Replace(strings.ToLower(o.Flags.EcCurve), "-", "", -1)
+	target := strings.ReplaceAll(strings.ToLower(o.Flags.EcCurve), "-", "")
 
 	validCurves := []elliptic.Curve{
 		elliptic.P224(),
@@ -414,7 +415,7 @@ func (o *PKICreateOptions) obtainEcOptions() (pki.PrivateKeyOptions, error) {
 		elliptic.P521(),
 	}
 	for _, validCurve := range validCurves {
-		curCurveName := strings.Replace(strings.ToLower(validCurve.Params().Name), "-", "", -1)
+		curCurveName := strings.ReplaceAll(strings.ToLower(validCurve.Params().Name), "-", "")
 
 		if curCurveName == target {
 			return &pki.EcPrivateKeyOptions{
@@ -430,7 +431,7 @@ func (o *PKICreateOptions) obtainEcOptions() (pki.PrivateKeyOptions, error) {
 			validCurveString = validCurveString + ", "
 		}
 
-		validCurveString = validCurveString + strings.Replace(validCurve.Params().Name, "-", "", -1)
+		validCurveString = validCurveString + strings.ReplaceAll(validCurve.Params().Name, "-", "")
 	}
 	return nil, fmt.Errorf("unknown curve name '%s', valid curves (case and dash insensitive) %s", o.Flags.EcCurve, validCurveString)
 }

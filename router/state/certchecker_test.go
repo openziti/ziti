@@ -552,10 +552,7 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 	ctrls := env.NewNetworkControllers(time.Second, ctrlDialer, env.NewDefaultHeartbeatOptions())
 	ctrls.UpdateControllerEndpoints([]string{"tls:localhost:6262"})
 	start := time.Now()
-	for {
-		if ctrls.AnyCtrlChannel() != nil {
-			break
-		}
+	for ctrls.AnyCtrlChannel() == nil {
 		if time.Since(start) > time.Second {
 			panic("control channel not setup")
 		}

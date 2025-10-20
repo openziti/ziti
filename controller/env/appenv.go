@@ -1146,11 +1146,11 @@ func getMetricTimerName(r *http.Request) string {
 
 	if rc != nil {
 		if id, err := rc.GetEntityId(); err == nil && id != "" {
-			cleanUrl = strings.Replace(cleanUrl, id, ":id", -1)
+			cleanUrl = strings.ReplaceAll(cleanUrl, id, ":id")
 		}
 
 		if subid, err := rc.GetEntitySubId(); err == nil && subid != "" {
-			cleanUrl = strings.Replace(cleanUrl, subid, ":subid", -1)
+			cleanUrl = strings.ReplaceAll(cleanUrl, subid, ":subid")
 		}
 	}
 

@@ -20,12 +20,14 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/controller/xt_sticky"
-	"testing"
-	"time"
 )
 
 func Test_StickyTerminators(t *testing.T) {
@@ -42,7 +44,11 @@ func Test_StickyTerminators(t *testing.T) {
 
 	listener1, err := hostContext.Listen(service.Name)
 	ctx.Req.NoError(err)
-	defer listener1.Close()
+	defer func() {
+		if closeErr := listener1.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("error closing listener")
+		}
+	}()
 
 	server1Id := uuid.NewString()
 	server1 := newTestServer(listener1, func(conn *testServerConn) error {
@@ -64,7 +70,11 @@ func Test_StickyTerminators(t *testing.T) {
 
 	listener2, err := hostContext.Listen(service.Name)
 	ctx.Req.NoError(err)
-	defer listener2.Close()
+	defer func() {
+		if closeErr := listener2.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("error closing listener")
+		}
+	}()
 
 	server2Id := uuid.NewString()
 	server2 := newTestServer(listener2, func(conn *testServerConn) error {

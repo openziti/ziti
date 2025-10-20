@@ -19,12 +19,13 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/Jeffail/gabs"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 const CommonFlagKey = "common"
@@ -47,11 +48,11 @@ func (options *Options) OutputRequestJson() bool {
 }
 
 func (options *Options) OutputWriter() io.Writer {
-	return options.CommonOptions.Out
+	return options.Out
 }
 
 func (options *Options) ErrOutputWriter() io.Writer {
-	return options.CommonOptions.Err
+	return options.Err
 }
 
 func addCommonFlag(cmd *cobra.Command, flagName string) {

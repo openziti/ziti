@@ -3,16 +3,17 @@ package health
 import (
 	"bytes"
 	"fmt"
-	health "github.com/AppsFlyer/go-sundheit"
-	"github.com/AppsFlyer/go-sundheit/checks"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/pkg/errors"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	health "github.com/AppsFlyer/go-sundheit"
+	"github.com/AppsFlyer/go-sundheit/checks"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 )
 
 type CheckDefinition interface {
@@ -41,19 +42,20 @@ func (self *ActionDefinition) CreateAction() (Action, error) {
 		ActionDefinition: *self,
 	}
 
-	if self.Action == "mark healthy" {
+	switch self.Action {
+	case "mark healthy":
 		result.actionImpl = func(state *ServiceState) {
 			state.nextPrecedence = state.BaselinePrecedence
 		}
-	} else if self.Action == "mark unhealthy" {
+	case "mark unhealthy":
 		result.actionImpl = func(state *ServiceState) {
 			state.nextPrecedence = edge.PrecedenceFailed
 		}
-	} else if self.Action == "send event" {
+	case "send event":
 		result.actionImpl = func(state *ServiceState) {
 			state.sendEvent = true
 		}
-	} else {
+	default:
 		increase := true
 		var costStr string
 		if strings.HasPrefix(self.Action, "increase cost ") {

@@ -32,6 +32,6 @@ type PostureCheckTypeManager struct {
 	baseEntityManager[*PostureCheckType, *db.PostureCheckType]
 }
 
-func (self *PostureCheckTypeManager) newModelEntity() *PostureCheckType {
+func (self *PostureCheckTypeManager) NewModelEntity() *PostureCheckType {
 	return &PostureCheckType{}
 }

@@ -109,7 +109,7 @@ func newRouterManager(env Env) *RouterManager {
 	return result
 }
 
-func (self *RouterManager) newModelEntity() *Router {
+func (self *RouterManager) NewModelEntity() *Router {
 	return &Router{}
 }
 

@@ -18,13 +18,15 @@ package agentcli
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"time"
+
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"time"
 )
 
 type AgentPprofHeapAction struct {
@@ -73,7 +75,11 @@ func (self *AgentPprofHeapAction) Run() error {
 			if err != nil {
 				return err
 			}
-			defer out.Close()
+			defer func() {
+				if closeErr := out.Close(); closeErr != nil {
+					pfxlog.Logger().WithError(closeErr).Error("failed to close output file")
+				}
+			}()
 		}
 		return self.RunCopyOut(agent.HeapProfile, nil, out)
 	}
@@ -89,7 +95,11 @@ func (self *AgentPprofHeapAction) Run() error {
 		if err != nil {
 			return err
 		}
-		defer out.Close()
+		defer func() {
+			if closeErr := out.Close(); closeErr != nil {
+				pfxlog.Logger().WithError(closeErr).Error("failed to close output file")
+			}
+		}()
 	}
 
 	return agent.MakeRequest(addr, agent.HeapProfile, nil, out)

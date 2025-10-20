@@ -19,6 +19,9 @@ package importer
 import (
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
@@ -26,8 +29,6 @@ import (
 	"github.com/openziti/ziti/internal"
 	"github.com/openziti/ziti/internal/ascode"
 	"github.com/openziti/ziti/internal/rest/mgmt"
-	"slices"
-	"strings"
 )
 
 func (importer *Importer) IsIdentityImportRequired(args []string) bool {
@@ -98,7 +99,7 @@ func (importer *Importer) ProcessIdentities(input map[string][]interface{}) (map
 		}
 
 		create := FromMap(data, rest_model.IdentityCreate{})
-		if "true" == doc.Path("isDefaultAdmin").Data() {
+		if doc.Path("isDefaultAdmin").Data() == "true" {
 			log.Debug("Not creating default admin")
 			continue
 		}

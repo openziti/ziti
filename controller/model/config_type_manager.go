@@ -50,7 +50,7 @@ type ConfigTypeManager struct {
 	baseEntityManager[*ConfigType, *db.ConfigType]
 }
 
-func (self *ConfigTypeManager) newModelEntity() *ConfigType {
+func (self *ConfigTypeManager) NewModelEntity() *ConfigType {
 	return &ConfigType{}
 }
 

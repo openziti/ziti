@@ -62,7 +62,7 @@ type PostureCheckManager struct {
 	cache *lru.Cache[string, *PostureCheck]
 }
 
-func (self *PostureCheckManager) newModelEntity() *PostureCheck {
+func (self *PostureCheckManager) NewModelEntity() *PostureCheck {
 	return &PostureCheck{}
 }
 

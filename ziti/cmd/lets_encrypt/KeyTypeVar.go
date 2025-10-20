@@ -18,6 +18,7 @@ package lets_encrypt
 
 import (
 	"errors"
+
 	"github.com/go-acme/lego/v4/certcrypto"
 )
 
@@ -53,7 +54,7 @@ func (f *KeyTypeVar) Set(value string) error {
 	case "RSA8192":
 		*f = KeyTypeVar(certcrypto.RSA8192)
 	default:
-		return errors.New("Invalid option")
+		return errors.New("invalid option")
 	}
 
 	return nil

@@ -50,7 +50,7 @@ type ServiceManager struct {
 	cache cmap.ConcurrentMap[string, *Service]
 }
 
-func (self *ServiceManager) newModelEntity() *Service {
+func (self *ServiceManager) NewModelEntity() *Service {
 	return &Service{}
 }
 
