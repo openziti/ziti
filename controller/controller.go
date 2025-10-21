@@ -45,6 +45,7 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
+	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -233,21 +234,6 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		xwebInitialized:     concurrency.NewInitState(),
 	}
 	xwebInstanceOptions := xweb.InstanceOptions{
-		//InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
-		//	var errs []error
-		//	for i, serverConfig := range config.ServerConfigs {
-		//		for _, bp := range serverConfig.BindPoints {
-		//			/* validation xxxx
-		//			if bp.Identity.Identity == nil {
-		//				if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
-		//					errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
-		//				}
-		//			}
-		//			*/
-		//		}
-		//	}
-		//	return stderr.Join(errs...)
-		//}},
 		DefaultIdentity:        c.config.Id,
 		DefaultIdentitySection: xweb.DefaultIdentitySection,
 		DefaultConfigSection:   xweb.DefaultConfigSection,
@@ -279,12 +265,8 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 			},
 		},
 	}
-	if err := xweb.BindPointFactories.Register(&UnderlayBindPointFactory{}); err != nil {
-		return nil, err
-	}
-	if err := xweb.BindPointFactories.Register(&OverlayBindPointFactory{}); err != nil {
-		return nil, err
-	}
+
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 
 	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwebInstanceOptions)
 
@@ -874,54 +856,4 @@ func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
 
 	provider := mesh.HeaderProviderFunc(providerFunc)
 	return []mesh.HeaderProvider{provider}
-}
-
-type UnderlayBindPointFactory struct{}
-
-func (u *UnderlayBindPointFactory) Binding() string {
-	return "underlay"
-}
-
-func (u *UnderlayBindPointFactory) FactoryForConfig(config []interface{}) bool {
-	for _, v := range config {
-		if m, ok := v.(map[interface{}]interface{}); ok {
-			if m["interface"] != nil || m["address"] != nil || m["newAddress"] != nil {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (u *UnderlayBindPointFactory) New(config []interface{}) (xweb.BindPoint, error) {
-	ubp := &UnderlayBindPoint{}
-	if err := ubp.Configure(config); err != nil {
-		return nil, errors.Wrap(err, "unable to configure underlay bind point")
-	}
-	return ubp, nil
-}
-
-type OverlayBindPointFactory struct{}
-
-func (o *OverlayBindPointFactory) Binding() string {
-	return "overlay"
-}
-
-func (o *OverlayBindPointFactory) FactoryForConfig(config []interface{}) bool {
-	for _, v := range config {
-		if m, ok := v.(map[interface{}]interface{}); ok {
-			if _, exists := m["identity"]; exists {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (o *OverlayBindPointFactory) New(config []interface{}) (xweb.BindPoint, error) {
-	obp := &OverlayBindPoint{}
-	if err := obp.Configure(config); err != nil {
-		return nil, errors.Wrap(err, "unable to configure underlay bind point")
-	}
-	return obp, nil
 }
