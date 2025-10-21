@@ -45,7 +45,6 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
-	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -265,8 +264,6 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 			},
 		},
 	}
-
-	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 
 	c.xweb = xweb.NewInstance(c.xwebFactoryRegistry, xwebInstanceOptions)
 
