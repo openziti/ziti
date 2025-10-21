@@ -1,3 +1,15 @@
+# Release 1.8.0
+
+## What's New
+
+* controllers can now bind APIs using a OpenZiti identity
+
+## Binding Controller APIs With Identity
+
+It's now possible to bind controller's APIs using an OpenZiti overlay network identity. To bind a given controller
+API to an OpenZiti identity a new bindPoint needs to be added to the web section. 
+
+
 # Release 1.7.2
 
 ## What's New
@@ -138,7 +150,7 @@ Added support for dynamic service proxies with configurable binding and protocol
 This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
 
 This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
-IP ip addresses or DNS entries to forward to a service using tproxy or tun interface, 
+IP addresses or DNS entries to forward to a service using tproxy or tun interface, 
 depending on implementation.
 
 A proxy on the other hand will just start a regular TCP/UDP listener on the configured port, 

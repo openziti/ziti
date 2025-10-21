@@ -24,6 +24,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/openziti/xweb/v2"
+	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/config"
 
 	"github.com/michaelquigley/pfxlog"
@@ -73,6 +75,8 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 
 	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
 	startLogger.Info("starting ziti-controller")
+
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 
 	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
 		fmt.Printf("unable to create fabric controller %+v\n", err)

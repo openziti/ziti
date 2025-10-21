@@ -647,6 +647,7 @@ func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 
 	// if env var set - use it
 	if zt, zte := util.ZitifiedTransportFromEnv(); zte != nil {
+		o.Printf("NetworkId found by env var [%s] but failed: %v\n", constants.ZitiCliNetworkIdVarName, zte)
 		return nil, zte
 	} else {
 		if zt != nil {

@@ -1,4 +1,4 @@
-//go:build cli_tests
+//go:build apitests
 
 /*
 Copyright NetFoundry Inc.
@@ -767,6 +767,8 @@ func (o *overlay) startExternal(zitiPath string, done chan error) {
 		done <- err
 		return
 	}
+	//o.extCmd.Stdout = os.Stdout //stdoutFile
+	//o.extCmd.Stderr = os.Stdout //stderrFile
 	o.extCmd.Stdout = stdoutFile
 	o.extCmd.Stderr = stderrFile
 
