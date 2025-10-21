@@ -508,15 +508,6 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 			}
 		}
 	}
-	//} else if isServerTrusted && o.CaCert != "" {
-	//	override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if !override {
-	//		o.CaCert = ""
-	//	}
-	//}
 
 	return nil
 }
