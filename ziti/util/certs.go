@@ -89,12 +89,7 @@ func IsServerTrusted(host string, client *http.Client) (bool, error) {
 }
 
 func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error) {
-	c := InsecureClient(&client)
-	tr, _ := c.Transport.(*http.Transport)
-	tr.TLSClientConfig = &tls.Config{
-		RootCAs: x509.NewCertPool(),
-	}
-	tr.TLSClientConfig.RootCAs.AppendCertsFromPEM(certs)
+	c := InsecureClient(&client, certs)
 
 	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
@@ -108,7 +103,7 @@ func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error
 }
 
 func GetWellKnownCerts(host string, client http.Client) ([]byte, []*x509.Certificate, error) {
-	c := InsecureClient(&client)
+	c := InsecureClient(&client, nil)
 
 	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
@@ -201,10 +196,14 @@ func (self blockSort) Swap(i, j int) {
 	self[j] = tmp
 }
 
-func InsecureClient(client *http.Client) *http.Client {
+func InsecureClient(client *http.Client, certs []byte) *http.Client {
 	tlsConfig := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		InsecureSkipVerify: true,
+	}
+
+	if len(certs) > 0 {
+		tlsConfig.RootCAs.AppendCertsFromPEM(certs)
 	}
 
 	var t *http.Transport
