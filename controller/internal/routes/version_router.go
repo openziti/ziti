@@ -115,7 +115,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				}
 
 				for _, bindPoint := range webListener.BindPoints {
-					apiBaseUrl := bindPoint.Address + apiBindingToPath(api.Binding())
+					apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
 					apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
 				}
 			}
