@@ -70,23 +70,6 @@ func (u UnderlayBindPoint) ServerAddress() string {
 	return u.Address
 }
 
-func (u UnderlayBindPoint) Configuredd(config []interface{}) error {
-	for _, v := range config {
-		if m, ok := v.(map[interface{}]interface{}); ok {
-			if v, ok := m["interface"].(string); ok {
-				u.InterfaceAddress = v
-			}
-			if v, ok := m["address"].(string); ok {
-				u.Address = v
-			}
-			if v, ok := m["newAddress"].(string); ok {
-				u.NewAddress = v
-			}
-		}
-	}
-	return nil
-}
-
 func newUnderlayBindPoint(conf map[interface{}]interface{}) (xweb.BindPoint, error) {
 	u := UnderlayBindPoint{}
 	if v, ok := conf["interface"].(string); ok {

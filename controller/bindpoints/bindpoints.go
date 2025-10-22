@@ -21,10 +21,12 @@ import (
 )
 
 // BindPointListenerFactory implements the xweb.BindPointListenerFactory.
-// It provides a factory that generates xweb.BindPoints
+// It provides a factory that generates xweb.BindPoints based on the provided config section
 type BindPointListenerFactory struct {
 }
 
+// New checks to see if this bindPoint is for overlay or underlay then calls the expected func.
+// As of now there are only two types, OverlayBindPoint and UnderlayBindPoint
 func (c *BindPointListenerFactory) New(conf map[interface{}]interface{}) (xweb.BindPoint, error) {
 	if conf["identity"] != nil {
 		return newOverlayBindPoint(conf)
