@@ -89,27 +89,14 @@ func IsServerTrusted(host string, client *http.Client) (bool, error) {
 }
 
 func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error) {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-		RootCAs:            x509.NewCertPool(),
+	c := InsecureClient(&client)
+	tr, _ := c.Transport.(*http.Transport)
+	tr.TLSClientConfig = &tls.Config{
+		RootCAs: x509.NewCertPool(),
 	}
-	tlsConfig.RootCAs.AppendCertsFromPEM(certs)
+	tr.TLSClientConfig.RootCAs.AppendCertsFromPEM(certs)
 
-	if ot, ok := client.Transport.(*http.Transport); ok {
-		it := ot.Clone()
-		it.TLSClientConfig = tlsConfig
-		client.Transport = it
-		defer func() {
-			client.Transport = ot
-		}()
-	} else {
-		client = http.Client{}
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig = tlsConfig
-		client.Transport = transport
-	}
-
-	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
+	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
 		if ue, ok := err.(*url.Error); ok && errors.As(ue.Err, &x509.UnknownAuthorityError{}) {
 			return false, nil
@@ -121,30 +108,9 @@ func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error
 }
 
 func GetWellKnownCerts(host string, client http.Client) ([]byte, []*x509.Certificate, error) {
-	var ot *http.Transport
-	if client.Transport == nil {
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		client.Transport = transport
-		ot = transport
-	} else {
-		ot = client.Transport.(*http.Transport)
-		nt := ot.Clone()
+	c := InsecureClient(&client)
 
-		otls := ot.TLSClientConfig
-		ntls := otls.Clone()
-		ntls.InsecureSkipVerify = true
-		nt.TLSClientConfig = ntls
-		nt.Proxy = http.ProxyFromEnvironment
-		client.Transport = nt
-		defer func() {
-			client.Transport = ot
-		}()
-	}
-
-	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
+	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,4 +199,24 @@ func (self blockSort) Swap(i, j int) {
 	tmp := self[i]
 	self[i] = self[j]
 	self[j] = tmp
+}
+
+func InsecureClient(client *http.Client) *http.Client {
+	tlsConfig := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		InsecureSkipVerify: true,
+	}
+
+	var t *http.Transport
+	if ot, ok := client.Transport.(*http.Transport); ok {
+		t = ot.Clone()
+		t.TLSClientConfig = tlsConfig
+	} else {
+		t = &http.Transport{TLSClientConfig: tlsConfig}
+	}
+
+	c := &http.Client{
+		Transport: t,
+	}
+	return c
 }
