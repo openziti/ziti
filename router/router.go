@@ -641,7 +641,7 @@ func (self *Router) registerComponents() error {
 			var errs []error
 			for i, serverConfig := range config.ServerConfigs {
 				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.ServerAddress(), ":")[0]); ve != nil {
 						if config.Options.DefaultConfigSection != xweb.DefaultConfigSection {
 							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
 						} else {
