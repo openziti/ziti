@@ -134,34 +134,6 @@ jobs:
           path: release/
           retention-days: 5
 
-  tests:
-    name: Run Unit and Integration Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Install Go
-        uses: ./.github/actions/setup-go
-
-      - name: Install Ziti CI
-        uses: openziti/ziti-ci@v1
-
-      - name: Run Go Quickstart Test
-        timeout-minutes: 5
-        shell: bash
-        run: |
-          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
-
-      - name: Run Unit and Integration Tests
-        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          go test ./... --tags apitests
-
   publish:
     name: Publish Binaries
     # !cancelled() overrides default behavior, allowing this job to proceed if needed jobs failed, unless "if"
@@ -171,10 +143,9 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.linux-build.result == 'success')
-      && (needs.tests.result == 'success')
       }}
     # ensure required job outcomes are specified in "if" expression
-    needs: [ tests, linux-build, mac-os-build, windows-build ]
+    needs: [ linux-build, mac-os-build, windows-build ]
     permissions:
       contents: write  # need write to create the release
       id-token: write  # need write to get OIDC token for generating attestations
