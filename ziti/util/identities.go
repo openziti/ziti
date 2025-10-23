@@ -81,6 +81,7 @@ type RestClientEdgeIdentity struct {
 	CaCert        string `json:"caCert,omitempty"`
 	ReadOnly      bool   `json:"readOnly"`
 	NetworkIdFile string `json:"networkId"`
+	OidcEnabled   bool   `json:"oidcEnabled"`
 }
 
 func (self *RestClientEdgeIdentity) IsReadOnly() bool {
@@ -130,7 +131,12 @@ func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose boo
 
 func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Request {
 	r := client.R()
-	r.SetHeader(env.ZitiSession, self.Token)
+	if self.OidcEnabled {
+		authHeader := "Bearer " + strings.TrimSpace(self.Token)
+		r.SetHeader("Authorization", authHeader)
+	} else {
+		r.SetHeader(env.ZitiSession, self.Token)
+	}
 	return r
 }
 

@@ -228,29 +228,6 @@ func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeMana
 	return c, nil
 }
 
-func createZitifiedHttpClient(cfg *ziti.Config) (*http.Client, error) {
-	zitiContext, err := ziti.NewContext(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	zitiContexts := ziti.NewSdkCollection()
-	zitiContexts.Add(zitiContext)
-
-	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
-	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dialer := zitiContexts.NewDialer()
-		return dialer.Dial(network, addr)
-	}
-
-	_, se := zitiContext.GetServices()
-	if se != nil {
-		return nil, se
-	}
-	return &http.Client{Transport: zitiTransport}, nil
-	//return &http.Client{Transport: createZitifiedHttpTransport(zitiContexts)}, nil
-}
-
 // Run implements this command
 func (o *LoginOptions) Run() error {
 	var host string
@@ -259,26 +236,6 @@ func (o *LoginOptions) Run() error {
 	if cfgErr != nil {
 		return cfgErr
 	}
-
-	/*
-		// before -- working
-		var httpClient *http.Client
-		if o.NetworkId != "" {
-			cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
-			if ce != nil {
-				return ce
-			}
-			cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
-			c, cze := createZitifiedHttpClient(cfg)
-			if cze != nil {
-				return cze
-			}
-			o.SetClient(*c)
-			httpClient = c
-		} else {
-			httpClient = &http.Client{}
-		}
-	*/
 
 	httpClient := o.newHttpClient(false)
 	o.SetClient(*httpClient)
@@ -601,6 +558,7 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 			method = "cert"
 		}
 	}
+	
 	resp, err := client.
 		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
