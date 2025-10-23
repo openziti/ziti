@@ -169,6 +169,15 @@ jobs:
         run: |
           go test ./... --tags apitests
 
+      - name: Run CLI tests and Integration Tests
+        if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          mkdir cli_tests_bin
+          go build ./... -o cli_tests_bin
+          go test ./... --tags cli_tests
+
   fablab-smoketest:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build

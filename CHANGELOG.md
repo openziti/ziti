@@ -15,7 +15,6 @@ API to an OpenZiti identity a new bindPoint needs to be added to the web section
 
 This release updates the build to use Go 1.25.+. This is the only change in the release.
 
-
 # Release 1.7.0
 
 ## What's New

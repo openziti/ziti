@@ -1,4 +1,4 @@
-//go:build apitests
+//go:build cli_tests
 
 /*
 Copyright NetFoundry Inc.
@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package tests
+package cli_tests
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	"os"
 	gopath "path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -49,7 +50,7 @@ type loginTestState struct {
 }
 
 func (s *loginTestState) removeZitiDir(t *testing.T) {
-	zitiDir := filepath.Join(s.homeDir, ".ziti")
+	zitiDir, _ := util.ConfigDir()
 	if err := os.RemoveAll(zitiDir); err != nil {
 		t.Errorf("remove %s: %v", zitiDir, err)
 		t.Fail()
@@ -58,15 +59,23 @@ func (s *loginTestState) removeZitiDir(t *testing.T) {
 }
 
 func Test_LoginSuite(t *testing.T) {
-	zitiPath := `D:\git\github\openziti\nf\ziti\build\ziti.exe` //need to fix xxxx
+	zitiPath := os.Getenv("ZITI_CLI_TEST_ZITI_BIN")
+	if zitiPath == "" {
+		t.Fatalf("ZITI_CLI_TEST_ZITI_BIN not set")
+	}
+	if _, err := os.Stat(zitiPath); err != nil {
+		t.Fatalf("ziti binary not found at provided location %s: %v", zitiPath, err)
+	}
 	baseDir := filepath.Join(os.TempDir(), "cli-tests")
 	if me := os.MkdirAll(baseDir, 0755); me != nil {
 		t.Fatalf("failed creating baseDir dir: %v", baseDir)
 	}
-	targetHome, err := os.MkdirTemp(baseDir, "test-run-*")
+	testRunHome, err := os.MkdirTemp(baseDir, "test-run-*")
 	if err != nil {
 		t.Fatalf("failed creating temp dir: %v", err)
 	}
+	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
+	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
 
 	externalCtx, externalCancel := context.WithCancel(context.Background())
 	defer externalCancel()
@@ -77,8 +86,8 @@ func Test_LoginSuite(t *testing.T) {
 		homeDir:             util.HomeDir(),
 		zitiContext:         nil,
 		zitiTransport:       nil,
-		externalZiti:        testutil.CreateOverlay(t, externalCtx, 0, gopath.Join(targetHome, "external")),
-		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 330*time.Second, gopath.Join(targetHome, "target")),
+		externalZiti:        testutil.CreateOverlay(t, externalCtx, 0, testRunHome, "external", false),
+		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 330*time.Second, testRunHome, "target", false),
 		commonOpts: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: os.Stdout,
@@ -102,24 +111,20 @@ func Test_LoginSuite(t *testing.T) {
 				}
 			}
 			if !success {
-				t.Logf("manual cleanup may be required at %s", targetHome)
+				t.Logf("manual cleanup may be required at %s", testRunHome)
 			} else {
-				t.Logf("tests passed, removing temp dir at %s", targetHome)
-				if rerr := os.RemoveAll(targetHome); rerr != nil {
-					t.Logf("remove %s failed... **sigh**: %v", targetHome, rerr)
+				t.Logf("tests passed, removing temp dir at %s", testRunHome)
+				if rerr := os.RemoveAll(testRunHome); rerr != nil {
+					t.Logf("remove %s failed... **sigh**: %v", testRunHome, rerr)
 				}
 			}
 		} else {
-			t.Logf("tests failed, temp dir left intact at %s", targetHome)
+			t.Logf("tests failed, temp dir left intact at %s", testRunHome)
 		}
 		testState.externalZiti.CleanupPids()
 		testState.controllerUnderTest.CleanupPids()
 	}()
 
-	// set ZITI_HOME so that anything here forth is not corrupting local stuff
-	_ = os.Setenv("ZITI_HOME", targetHome)
-
-	testState.externalZiti.ControllerAddress = "localhost"
 	extDone := make(chan error)
 	go testState.externalZiti.StartExternal(zitiPath, extDone)
 	go func() {
@@ -131,7 +136,6 @@ func Test_LoginSuite(t *testing.T) {
 	}()
 
 	testState.externalZiti.WaitForControllerReadyorig(t, nil)
-
 	testState.controllerUnderTest.Name = "target"
 	targetDone := make(chan error)
 	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
@@ -150,7 +154,7 @@ func Test_LoginSuite(t *testing.T) {
 
 	now := time.Now().Format("150405")
 
-	if ae := testState.controllerUnderTest.CreateAdminIdentity(t, now, targetHome); ae != nil {
+	if ae := testState.controllerUnderTest.CreateAdminIdentity(t, now, testRunHome); ae != nil {
 		t.Fatalf("unable to create controller admin: %v", ae)
 	}
 
@@ -194,7 +198,7 @@ func Test_LoginSuite(t *testing.T) {
 }
 
 // Authentication Methods
-func (s *loginTestState) test_CorrectPasswordSucceeds(t *testing.T) {
+func (s *loginTestState) testCorrectPasswordSucceeds(t *testing.T) {
 	opts := s.controllerUnderTest.NewTestLoginOpts()
 
 	err := opts.Run()
@@ -209,7 +213,7 @@ func (s *loginTestState) test_CorrectPasswordSucceeds(t *testing.T) {
 	require.NotEmpty(t, opts.Token)
 }
 
-func (s *loginTestState) test_WrongPasswordFails(t *testing.T) {
+func (s *loginTestState) testWrongPasswordFails(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
@@ -225,7 +229,7 @@ func (s *loginTestState) test_WrongPasswordFails(t *testing.T) {
 	require.Contains(t, err.Error(), "401 Unauthorized")
 }
 
-func (s *loginTestState) test_TokenBasedLogin(t *testing.T) {
+func (s *loginTestState) testTokenBasedLogin(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Token:         s.controllerUnderTest.Token,
@@ -240,7 +244,7 @@ func (s *loginTestState) test_TokenBasedLogin(t *testing.T) {
 	t.Logf("Login successful, token: %s", opts.Token)
 }
 
-func (s *loginTestState) test_ClientCertAuthentication(t *testing.T) {
+func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 	// Setup common options
 	baseOpts := edge.LoginOptions{
 		Options:       s.commonOpts,
@@ -307,7 +311,7 @@ func (s *loginTestState) test_ClientCertAuthentication(t *testing.T) {
 	})
 }
 
-func (s *loginTestState) test_IdentityFileAuthentication(t *testing.T) {
+func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
@@ -327,18 +331,18 @@ func (s *loginTestState) test_IdentityFileAuthentication(t *testing.T) {
 	t.Logf("Login successful, token: %s", opts.Token)
 }
 
-func (s *loginTestState) test_ExternalJWTAuthentication(t *testing.T) {
+func (s *loginTestState) testExternalJWTAuthentication(t *testing.T) {
 	// TODO: Generate valid JWT token
 	t.Skip("External JWT authentication requires JWT setup")
 }
 
-func (s *loginTestState) test_NetworkIdentityZitifiedConnection(t *testing.T) {
+func (s *loginTestState) testNetworkIdentityZitifiedConnection(t *testing.T) {
 	// TODO: Create network identity file
 	t.Skip("Network identity requires identity setup")
 }
 
 // Edge Cases
-func (s *loginTestState) test_EmptyUsername(t *testing.T) {
+func (s *loginTestState) testEmptyUsername(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      "",
@@ -355,7 +359,7 @@ func (s *loginTestState) test_EmptyUsername(t *testing.T) {
 	t.Logf("Empty username correctly failed: %v", err)
 }
 
-func (s *loginTestState) test_EmptyPassword(t *testing.T) {
+func (s *loginTestState) testEmptyPassword(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
@@ -372,14 +376,18 @@ func (s *loginTestState) test_EmptyPassword(t *testing.T) {
 	t.Logf("Empty password correctly failed: %v", err)
 }
 
-func (s *loginTestState) test_InvalidControllerURL(t *testing.T) {
+func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
+	hostErr := "i/o timeout"
+	if runtime.GOOS == "windows" { //because of course it's different on linux/windows
+		hostErr = "no such host"
+	}
 	t.Run("not-a-url", func(t *testing.T) {
 		opts := &edge.LoginOptions{Options: s.commonOpts, Username: s.controllerUnderTest.Username, Password: s.controllerUnderTest.Password,
 			ControllerUrl: "not-a-url", Yes: true, IgnoreConfig: true,
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "no such host")
+		require.Contains(t, err.Error(), hostErr)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
@@ -405,22 +413,23 @@ func (s *loginTestState) test_InvalidControllerURL(t *testing.T) {
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "no such host")
+		require.Contains(t, err.Error(), hostErr)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
 	t.Run("https://non-existent-host-12345.local:9999", func(t *testing.T) {
+		dnsErr := "no such host"
 		opts := &edge.LoginOptions{Options: s.commonOpts, Username: s.controllerUnderTest.Username, Password: s.controllerUnderTest.Password,
 			ControllerUrl: "https://non-existent-host-12345.local:9999", Yes: true, IgnoreConfig: true,
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "no such host")
+		require.Contains(t, err.Error(), dnsErr)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 }
 
-func (s *loginTestState) test_NonExistentUsername(t *testing.T) {
+func (s *loginTestState) testNonExistentUsername(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      "nonexistent-user-12345",
@@ -437,7 +446,11 @@ func (s *loginTestState) test_NonExistentUsername(t *testing.T) {
 	t.Logf("Non-existent username correctly failed: %v", err)
 }
 
-func (s *loginTestState) test_ControllerUnavailable(t *testing.T) {
+func (s *loginTestState) testControllerUnavailable(t *testing.T) {
+	expectedErr := "connection refused"
+	if runtime.GOOS == "windows" { //because of course it's different on linux/windows
+		expectedErr = "the target machine actively refused it"
+	}
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
@@ -450,7 +463,7 @@ func (s *loginTestState) test_ControllerUnavailable(t *testing.T) {
 
 	err := opts.Run()
 	require.Error(t, err, "unavailable controller should fail")
-	require.Contains(t, err.Error(), "the target machine actively refused it")
+	require.Contains(t, err.Error(), expectedErr)
 	t.Logf("Unavailable controller correctly failed: %v", err)
 }
 
@@ -506,18 +519,18 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 func (s *loginTestState) runLoginTests(t *testing.T) {
 	//Authentication Methods
-	t.Run("correct password succeeds", s.test_CorrectPasswordSucceeds)
-	t.Run("wrong password fails", s.test_WrongPasswordFails)
-	t.Run("token based login", s.test_TokenBasedLogin)
-	t.Run("client cert authentication - no ca", s.test_ClientCertAuthentication)
-	t.Run("identity file authentication", s.test_IdentityFileAuthentication)
-	t.Run("external JWT authentication", s.test_ExternalJWTAuthentication)
-	t.Run("network identity zitified connection", s.test_NetworkIdentityZitifiedConnection)
+	t.Run("correct password succeeds", s.testCorrectPasswordSucceeds)
+	t.Run("wrong password fails", s.testWrongPasswordFails)
+	t.Run("token based login", s.testTokenBasedLogin)
+	t.Run("client cert authentication - no ca", s.testClientCertAuthentication)
+	t.Run("identity file authentication", s.testIdentityFileAuthentication)
+	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
+	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
 	// Edge Cases
-	t.Run("empty username", s.test_EmptyUsername)
-	t.Run("empty password", s.test_EmptyPassword)
-	t.Run("invalid controller URL", s.test_InvalidControllerURL)
-	t.Run("non-existent username", s.test_NonExistentUsername)
-	t.Run("controller unavailable", s.test_ControllerUnavailable)
+	t.Run("empty username", s.testEmptyUsername)
+	t.Run("empty password", s.testEmptyPassword)
+	t.Run("invalid controller URL", s.testInvalidControllerURL)
+	t.Run("non-existent username", s.testNonExistentUsername)
+	t.Run("controller unavailable", s.testControllerUnavailable)
 }

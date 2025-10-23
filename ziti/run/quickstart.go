@@ -420,7 +420,7 @@ func (o *QuickstartOpts) Run(ctx context.Context) error {
 			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
 			fmt.Printf("    --home \"%s\" \\\n", o.Home)
 			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --cluster-member tls:%s:%s\\ \n", o.ControllerAddress, o.ControllerPort)
+			fmt.Printf("    --cluster-member tls:%s:%d\\ \n", o.ControllerAddress, o.ControllerPort)
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()

@@ -1,4 +1,4 @@
-//go:build apitests
+//go:build apitests || cli_tests
 
 /*
 Copyright NetFoundry Inc.
@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	gopath "path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -165,11 +166,6 @@ func (o *Overlay) start(ctx context.Context) error {
 	}()
 
 	if o.ConfigureAndExit {
-		//err := <-o.cmdDone
-		//if err != nil {
-		//	o.t.Fatalf("error executing quickstart: %v", err)
-		//}
-		//return nil // expect the controller and router will be shutting down, don't wait for them
 		err := o.waitForCompletion()
 		if err != nil {
 			o.t.Fatalf("error executing quickstart: %v", err)
@@ -242,6 +238,7 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
+	fmt.Printf("%s overlay command: %s %s\n", o.Name, zitiPath, strings.Join(args, " "))
 	o.extCmd = exec.CommandContext(
 		o.Ctx,
 		zitiPath,
@@ -250,14 +247,11 @@ func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 	_ = os.Mkdir(o.Home, 0755)
 	stdoutFile, err := os.Create(filepath.Join(o.Home, "ctrl-stdout.log"))
 	if err != nil {
-		done <- err
-		return
+		panic(err)
 	}
 	stderrFile, err := os.Create(filepath.Join(o.Home, "ctrl-stderr.log"))
 	if err != nil {
-		_ = stdoutFile.Close()
-		done <- err
-		return
+		panic(err)
 	}
 	o.extCmd.Stdout = stdoutFile
 	o.extCmd.Stderr = stderrFile
@@ -359,11 +353,6 @@ func (o *Overlay) CreateOverlayIdentities(t *testing.T, now string) error {
 	if _, le := o.Login(); le != nil {
 		return le
 	}
-	v2a := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2a.SetArgs(strings.Split("ops import --username "+o.Username+" --password "+o.Password+" ./login_test_import.yml", " "))
-	if v2Err := v2a.Execute(); v2Err != nil {
-		t.Fatalf("unable to import zitified-login-test.yml: %v", v2Err)
-	}
 
 	controllerIdName := fmt.Sprintf("controller-binder-%s", now)
 	controllerJwtPath := filepath.Join(o.Home, controllerIdName+".jwt")
@@ -393,8 +382,10 @@ func (o *Overlay) CreateOverlayIdentities(t *testing.T, now string) error {
 	o.NetworkDialingIdFile = strings.TrimSuffix(clientJwtPath, ".jwt") + ".json"
 	t.Logf("networkDialingIdFile should exist at: %v", o.NetworkDialingIdFile)
 
+	cwd, _ := os.Getwd()
+	yamlToImport, _ := filepath.Abs(cwd + "/login_test_import.yml")
 	v2 := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2.SetArgs(strings.Split("ops import --username "+o.Username+" --password "+o.Password+" ./login_test_import.yml", " "))
+	v2.SetArgs(strings.Split("ops import --username "+o.Username+" --password "+o.Password+" "+yamlToImport, " "))
 	if v2Err := v2.Execute(); v2Err != nil {
 		t.Fatalf("unable to import zitified-login-test.yml: %v", v2Err)
 	}
@@ -622,6 +613,8 @@ func (o *Overlay) WaitForControllerReadyorig(t *testing.T, cmdComplete chan erro
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
+	timeout := time.After(30 * time.Second)
+
 	for {
 		select {
 		case <-ticker.C:
@@ -633,29 +626,36 @@ func (o *Overlay) WaitForControllerReadyorig(t *testing.T, cmdComplete chan erro
 				}
 				return
 			}
+		case <-timeout:
+			t.Logf("Timed out waiting for controller at %s", o.ControllerHostPort())
+			if cmdComplete != nil {
+				cmdComplete <- fmt.Errorf("timeout")
+			}
+			return
 		}
 	}
 }
 
-func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string) Overlay {
+func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string, ha bool) Overlay {
 	o := Overlay{
+		Name:         name,
 		t:            t,
 		Ctx:          ctx,
 		startTimeout: startTimeout,
 		cmdDone:      make(chan error, 1),
 		QuickstartOpts: &run.QuickstartOpts{
-			Home:              home,
+			Home:              gopath.Join(home, name),
 			ControllerAddress: "localhost", //helpers.GetCtrlAdvertisedAddress(),
 			ControllerPort:    findAvailablePort(t),
 			RouterAddress:     "localhost", //helpers.GetRouterAdvertisedAddress(),
 			RouterPort:        findAvailablePort(t),
 			Routerless:        false,
-			//TrustDomain:       "target",
-			//InstanceID:        "target",
-			IsHA:             false,
-			Username:         "admin",
-			Password:         "admin",
-			ConfigureAndExit: false,
+			TrustDomain:       name,
+			InstanceID:        name,
+			IsHA:              ha,
+			Username:          "admin",
+			Password:          "admin",
+			ConfigureAndExit:  false,
 		},
 		pidsMutex: &sync.Mutex{},
 	}
