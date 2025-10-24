@@ -39,7 +39,6 @@ type OverlayBindPoint struct {
 	Identity       []byte //an openziti identity
 	Service        string //name of the service to bind
 	ClientAuthType tls.ClientAuthType
-	ServeTLS       bool
 	Name           string
 	cfg            ziti.Config
 	ctx            ziti.Context
@@ -112,12 +111,6 @@ func newOverlayBindPoint(conf map[interface{}]interface{}) (OverlayBindPoint, er
 		}
 	}
 
-	if serveTLS, ok := identCfg["serveTLS"].(bool); ok {
-		o.ServeTLS = serveTLS
-	} else {
-		o.ServeTLS = true
-	}
-
 	o.cfg = ziti.Config{}
 	unMarshallErr := json.Unmarshal(o.Identity, &o.cfg)
 	if unMarshallErr != nil {
@@ -141,13 +134,9 @@ func (o OverlayBindPoint) Listener(_ string, tlsConfig *gotls.Config) (net.Liste
 		return nil, fmt.Errorf("error listening on overlay: %s", err)
 	}
 
-	if o.ServeTLS {
-		ln = gotls.NewListener(ln, tlsConfig)
-		if tlsConfig.ClientAuth < gotls.RequestClientCert {
-			pfxlog.Logger().WithError(err).Warnf("The configured certificate verification method [%d] will not support mutual TLS", tlsConfig.ClientAuth)
-		}
-	} else {
-		pfxlog.Logger().Warn("API not configured for TLS - use with caution")
+	ln = gotls.NewListener(ln, tlsConfig)
+	if tlsConfig.ClientAuth < gotls.RequestClientCert {
+		pfxlog.Logger().WithError(err).Warnf("The configured certificate verification method [%d] will not support mutual TLS", tlsConfig.ClientAuth)
 	}
 
 	return ln, nil
