@@ -24,7 +24,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/config"
 

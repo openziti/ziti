@@ -48,7 +48,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/alert"
 	"github.com/openziti/ziti/common/config"

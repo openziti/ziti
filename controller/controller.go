@@ -39,7 +39,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/concurrency"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"

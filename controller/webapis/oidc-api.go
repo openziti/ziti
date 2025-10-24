@@ -27,7 +27,7 @@ import (
 
 	"github.com/openziti/identity"
 
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/oidc_auth"
