@@ -25,7 +25,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/stretchr/testify/require"
 	"math/big"
 	"net"

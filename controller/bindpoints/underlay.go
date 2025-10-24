@@ -18,6 +18,7 @@ package bindpoints
 
 import (
 	gotls "crypto/tls"
+	goerrs "errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/openziti/identity"
 	transporttls "github.com/openziti/transport/v2/tls"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/pkg/errors"
 )
 
@@ -85,7 +86,7 @@ func newUnderlayBindPoint(conf map[interface{}]interface{}) (xweb.BindPoint, err
 }
 
 // Validate this configuration object.
-func (u UnderlayBindPoint) Validate(id identity.Identity) []error {
+func (u UnderlayBindPoint) Validate(id identity.Identity) error {
 	var errs []error
 
 	// required
@@ -109,7 +110,7 @@ func (u UnderlayBindPoint) Validate(id identity.Identity) []error {
 		errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
 	}
 
-	return errs
+	return goerrs.Join(errs...)
 }
 
 // wrapSetCtrlAddressHeader will check to see if the bindPoint is configured to advertise a "new address". If so

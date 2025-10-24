@@ -18,7 +18,7 @@ package webapis
 
 import (
 	"fmt"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	log "github.com/sirupsen/logrus"
 	"strings"
 )

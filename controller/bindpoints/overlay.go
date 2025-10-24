@@ -21,6 +21,7 @@ import (
 	gotls "crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -31,7 +32,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/pkg/errors"
 )
 
 // IdentityConfig represents the BindPointConfig when an identity is supplied as opposed to an address
@@ -142,6 +142,6 @@ func (o OverlayBindPoint) Listener(_ string, tlsConfig *gotls.Config) (net.Liste
 	return ln, nil
 }
 
-func (o OverlayBindPoint) Validate(_ identity.Identity) []error {
-	return nil
+func (o OverlayBindPoint) Validate(_ identity.Identity) error {
+	return nil // much of the validation happens before this func is invoked in newOverlayBindPoint
 }
