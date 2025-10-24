@@ -25,7 +25,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/stretchr/testify/require"
 	"math/big"
 	"net"
@@ -132,7 +132,7 @@ func Test_getPossibleIssuers(t *testing.T) {
 			bindPoint2Address = "test2.example.com:443"
 		)
 
-		bindPoints := []*xweb.BindPointConfig{
+		bindPoints := []*xweb.UnderlayBindPoint{
 			{
 				Address: bindPoint1Address,
 			},

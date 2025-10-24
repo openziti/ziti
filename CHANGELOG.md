@@ -1,3 +1,40 @@
+# Release 1.8.0
+
+## What's New
+
+* controllers can now optionally bind APIs using a OpenZiti identity
+
+## Binding Controller APIs With Identity
+
+It's now possible to bind controller APIs to an OpenZiti overlay network identity. To bind a given controller
+API to an OpenZiti identity, add a section to the desired `bindPoint` section. For example a common `bindPoint`
+configuration might look like:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+```
+To bind any declared APIs to a given OpenZiti identity add an `identity` block:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          file: "c:/temp/ctrl.testing/clint.ctrl.json"
+          service: "mgmt"
+```
+It's possible to refer to an environment variable for the identity file if desired. Add an environment variable with 
+the contents of the environment variable the identity file base64 encoded. For example if an environment is defined 
+with the name `ZITI_ID_EXAMPLE` and contains a base64 encoded identity file, the following `bindPoint` block can be used:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          env: ZITI_ID_EXAMPLE
+          service: "mgmt"
+```
+
 # Release 1.7.1
 
 ## What's New
@@ -18,7 +55,7 @@ Added support for dynamic service proxies with configurable binding and protocol
 This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
 
 This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
-IP ip addresses or DNS entries to forward to a service using tproxy or tun interface, 
+IP addresses or DNS entries to forward to a service using tproxy or tun interface, 
 depending on implementation.
 
 A proxy on the other hand will just start a regular TCP/UDP listener on the configured port, 

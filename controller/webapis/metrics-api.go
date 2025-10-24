@@ -28,7 +28,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/network"
 )

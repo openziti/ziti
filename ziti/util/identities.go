@@ -17,12 +17,19 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
+
+var zitiCliContextCollection *ziti.CtxCollection
+
+func init() {
+	zitiCliContextCollection = ziti.NewSdkCollection()
+}
 
 type API string
 
@@ -67,12 +74,14 @@ func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, ver
 }
 
 type RestClientEdgeIdentity struct {
-	Url       string `json:"url"`
-	Username  string `json:"username"`
-	Token     string `json:"token"`
-	LoginTime string `json:"loginTime"`
-	CaCert    string `json:"caCert,omitempty"`
-	ReadOnly  bool   `json:"readOnly"`
+	Url           string `json:"url"`
+	Username      string `json:"username"`
+	Token         string `json:"token"`
+	LoginTime     string `json:"loginTime"`
+	CaCert        string `json:"caCert,omitempty"`
+	ReadOnly      bool   `json:"readOnly"`
+	NetworkIdFile string `json:"networkId"`
+	OidcEnabled   bool   `json:"oidcEnabled"`
 }
 
 func (self *RestClientEdgeIdentity) IsReadOnly() bool {
@@ -104,6 +113,14 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
 	client := NewClient()
+	if zt, zte := ZitifiedTransportFromEnv(); zte != nil {
+		return nil, zte
+	} else {
+		if zt != nil {
+			client.GetClient().Transport = zt
+		}
+	}
+
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}
@@ -114,7 +131,12 @@ func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose boo
 
 func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Request {
 	r := client.R()
-	r.SetHeader(env.ZitiSession, self.Token)
+	if self.OidcEnabled {
+		authHeader := "Bearer " + strings.TrimSpace(self.Token)
+		r.SetHeader("Authorization", authHeader)
+	} else {
+		r.SetHeader(env.ZitiSession, self.Token)
+	}
 	return r
 }
 

@@ -17,12 +17,16 @@
 package run
 
 import (
+	"context"
 	"fmt"
-	"github.com/openziti/ziti/controller/config"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/openziti/xweb/v3"
+	"github.com/openziti/ziti/controller/bindpoints"
+	"github.com/openziti/ziti/controller/config"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
@@ -72,6 +76,8 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
 	startLogger.Info("starting ziti-controller")
 
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
+
 	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
 		fmt.Printf("unable to create fabric controller %+v\n", err)
 		panic(err)
@@ -100,7 +106,7 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	go self.waitForShutdown()
+	go self.waitForShutdown(cmd.Context())
 
 	self.edgeController.Run()
 	if err := self.fabricController.Run(); err != nil {
@@ -108,13 +114,22 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 	}
 }
 
-func (self *ControllerAction) waitForShutdown() {
+func (self *ControllerAction) waitForShutdown(ctx context.Context) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(ch)
 
-	<-ch
+	pfxlog.Logger().Info("waiting for shutdown signal or context cancel")
 
-	pfxlog.Logger().Info("shutting down ziti-controller")
+	select {
+	case sig := <-ch:
+		pfxlog.Logger().Infof("received signal: %v", sig)
+	case <-ctx.Done():
+		pfxlog.Logger().Info("context cancelled, shutting down")
+	}
+
 	self.edgeController.Shutdown()
 	self.fabricController.Shutdown()
+
+	pfxlog.Logger().Info("shutdown complete")
 }
