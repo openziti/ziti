@@ -156,7 +156,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *LoginOptions) newHttpClient(tryCachedCreds bool) *http.Client {
+func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (*http.Client, error) {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
@@ -166,7 +166,7 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) *http.Client {
 		o.PopulateFromCache()
 		loginErr := o.Run()
 		if loginErr != nil {
-			pfxlog.Logger().Fatal(loginErr)
+			return nil, loginErr
 		}
 	}
 
@@ -190,10 +190,11 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) *http.Client {
 	}
 
 	t, cte := o.createHttpTransport()
+
 	if cte != nil {
 		return &http.Client{
 			Transport: transportToUse,
-		}
+		}, nil
 	} else {
 		hc := &http.Client{}
 		if t != nil {
@@ -202,30 +203,28 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) *http.Client {
 		}
 
 		hc.Transport = transportToUse
-		return hc
+		return hc, nil
 	}
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	httpClient := o.newHttpClient(true)
-
-	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+	nc, nce := o.newHttpClient(true)
+	if nce != nil {
+		return nil, nce
 	}
-	return c, nil
+
+	return rest_util.NewEdgeClientClientWithToken(nc, o.ControllerUrl, o.Token)
 }
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClient := o.newHttpClient(true)
-
-	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+	nc, nce := o.newHttpClient(true)
+	if nce != nil {
+		return nil, nce
 	}
-	return c, nil
+
+	return rest_util.NewEdgeManagementClientWithToken(nc, o.ControllerUrl, o.Token)
 }
 
 // Run implements this command
@@ -237,7 +236,10 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
-	httpClient := o.newHttpClient(false)
+	httpClient, nce := o.newHttpClient(false)
+	if nce != nil {
+		return nce
+	}
 	o.SetClient(*httpClient)
 
 	if o.File != "" {
@@ -558,7 +560,7 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 			method = "cert"
 		}
 	}
-	
+
 	resp, err := client.
 		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
@@ -612,22 +614,6 @@ func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 			o.Printf("NetworkId found by env var [%s], zitified transport enabled\n", constants.ZitiCliNetworkIdVarName)
 			o.NetworkId = ""
 			return zt, nil
-		}
-	}
-
-	// if cached id exists use it
-	config, _, cfgErr := util.LoadRestClientConfig()
-	if cfgErr != nil {
-		return nil, cfgErr
-	}
-	id := config.GetIdentity()
-	cachedCliConfig := config.EdgeIdentities[id]
-
-	if cachedCliConfig != nil {
-		// -- if cached id has networkId referenced - use it
-		if cachedCliConfig.NetworkIdFile != "" {
-			o.NetworkId = cachedCliConfig.NetworkIdFile
-			return o.createHttpTransportFromFile()
 		}
 	}
 	return nil, nil

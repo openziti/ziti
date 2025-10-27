@@ -186,6 +186,24 @@ func Test_LoginSuite(t *testing.T) {
 	t.Run("make sure any ziti instances are stopped", testState.controllerUnderTest.EnsureAllPidsStopped)
 }
 
+func (s *loginTestState) runLoginTests(t *testing.T) {
+	//Authentication Methods
+	t.Run("correct password succeeds", s.testCorrectPasswordSucceeds)
+	t.Run("wrong password fails", s.testWrongPasswordFails)
+	t.Run("token based login", s.testTokenBasedLogin)
+	t.Run("client cert authentication - no ca", s.testClientCertAuthentication)
+	t.Run("identity file authentication", s.testIdentityFileAuthentication)
+	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
+	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
+
+	// Edge Cases
+	t.Run("empty username", s.testEmptyUsername)
+	t.Run("empty password", s.testEmptyPassword)
+	t.Run("invalid controller URL", s.testInvalidControllerURL)
+	t.Run("non-existent username", s.testNonExistentUsername)
+	t.Run("controller unavailable", s.testControllerUnavailable)
+}
+
 // Authentication Methods
 func (s *loginTestState) testCorrectPasswordSucceeds(t *testing.T) {
 	opts := s.controllerUnderTest.NewTestLoginOpts()
@@ -506,24 +524,38 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 		s.runLoginTests(t)
 
+		s.testZitiThenNot(t)
+
 		controllerUnderTestCancel()
 	})
 }
 
-func (s *loginTestState) runLoginTests(t *testing.T) {
-	//Authentication Methods
-	t.Run("correct password succeeds", s.testCorrectPasswordSucceeds)
-	t.Run("wrong password fails", s.testWrongPasswordFails)
-	t.Run("token based login", s.testTokenBasedLogin)
-	t.Run("client cert authentication - no ca", s.testClientCertAuthentication)
-	t.Run("identity file authentication", s.testIdentityFileAuthentication)
-	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
-	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
+func (s *loginTestState) testZitiThenNot(t *testing.T) {
+	// this test should make sure that after logging in with a zitified login, a subsequent login to a non-zitified
+	// controller works as expected
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.controllerUnderTest.Username,
+		Password:      s.controllerUnderTest.Password,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
 
-	// Edge Cases
-	t.Run("empty username", s.testEmptyUsername)
-	t.Run("empty password", s.testEmptyPassword)
-	t.Run("invalid controller URL", s.testInvalidControllerURL)
-	t.Run("non-existent username", s.testNonExistentUsername)
-	t.Run("controller unavailable", s.testControllerUnavailable)
+	err := opts.Run()
+	require.NoError(t, err, "overlay controller should login successfully")
+
+	opts = &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.externalZiti.Username,
+		Password:      s.externalZiti.Password,
+		ControllerUrl: s.externalZiti.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		NetworkId:     "",
+	}
+
+	err = opts.Run()
+	require.NoError(t, err, "underlay controller should login successfully")
 }
