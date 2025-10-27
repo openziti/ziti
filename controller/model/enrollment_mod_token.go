@@ -89,12 +89,12 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 	}
 
 	if verificationResult.NameClaimValue == "" {
-		pfxlog.Logger().Error("token verified but name claim values was empty, cannot create identities with blank names")
+		pfxlog.Logger().Error("token verified but name claim value was empty, cannot create identities with a blank name")
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
 	if verificationResult.IdClaimValue == "" {
-		pfxlog.Logger().Error("token verified but identity id claim values was empty, cannot check for identities with a blank value")
+		pfxlog.Logger().Error("token verified but identity id claim value was empty, cannot check for identities with a blank value")
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
