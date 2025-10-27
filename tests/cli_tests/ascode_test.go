@@ -85,7 +85,10 @@ func TestYamlUploadAndDownload(t *testing.T) {
 		}
 		overlay.CleanupPids()
 	}()
-	overlay.WaitForControllerReady(t, nil)
+	startErr := overlay.WaitForControllerReady(30 * time.Second)
+	if startErr != nil {
+		log.Fatalf("start controller failed: %v", startErr)
+	}
 
 	performImport(t, overlay.ControllerHostPort())
 	performAllTest(t, overlay.ControllerHostPort())

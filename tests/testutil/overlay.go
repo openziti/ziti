@@ -150,20 +150,20 @@ func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 		args...,
 	)
 	_ = os.Mkdir(o.Home, 0755)
-	stdoutFile, err := os.Create(filepath.Join(o.Home, "ctrl-stdout.log"))
-	if err != nil {
-		panic(err)
+	stdoutFile, createErr1 := os.Create(filepath.Join(o.Home, "ctrl-stdout.log"))
+	if createErr1 != nil {
+		done <- createErr1
 	}
-	stderrFile, err := os.Create(filepath.Join(o.Home, "ctrl-stderr.log"))
-	if err != nil {
-		panic(err)
+	stderrFile, createErr2 := os.Create(filepath.Join(o.Home, "ctrl-stderr.log"))
+	if createErr2 != nil {
+		done <- createErr2
 	}
 	o.extCmd.Stdout = stdoutFile
 	o.extCmd.Stderr = stderrFile
 
 	fmt.Printf("ctrl logs at: %s\n", filepath.Join(o.Home, "ctrl-stdout.log"))
-	if err := o.extCmd.Start(); err != nil {
-		done <- err
+	if startErr := o.extCmd.Start(); startErr != nil {
+		done <- startErr
 		return
 	}
 
@@ -476,30 +476,20 @@ func (o *Overlay) getRunningPids() []int {
 	return running
 }
 
-func (o *Overlay) WaitForControllerReady(t *testing.T, cmdComplete chan error) {
-	t.Logf("Waiting for controller at %s\n", o.ControllerHostPort())
+func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-
-	timeout := time.After(30 * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
+			fmt.Println("Waiting for controller to start... " + o.ControllerHostPort())
 			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
 			if err == nil {
-				t.Logf("Controller ready at %s", o.ControllerHostPort())
-				if cmdComplete != nil {
-					cmdComplete <- nil
-				}
-				return
+				return nil
 			}
-		case <-timeout:
-			t.Logf("Timed out waiting for controller at %s", o.ControllerHostPort())
-			if cmdComplete != nil {
-				cmdComplete <- fmt.Errorf("timeout")
-			}
-			return
+		case <-time.After(timeout):
+			return fmt.Errorf("timeout waiting for controller to become ready at %s", o.ControllerHostPort())
 		}
 	}
 }
