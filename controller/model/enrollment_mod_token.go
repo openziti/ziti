@@ -304,7 +304,7 @@ func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens [
 		tokenVerificationResult, err := module.env.GetTokenIssuerCache().VerifyTokenByInspection(candidateToken)
 
 		if err != nil {
-			pfxlog.Logger().WithError(err).Debugf("could not verify candidate token at header index %d, error encoutered", i)
+			pfxlog.Logger().WithError(err).Debugf("could not verify candidate token at header index %d, error encountered", i)
 			continue
 		}
 
