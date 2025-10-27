@@ -33,16 +33,22 @@ import (
 )
 
 const (
+	// AuthorizationHeader is the HTTP header containing the bearer token for token-based enrollment.
 	AuthorizationHeader = "authorization"
+	// TargetTokenIssuerId is the HTTP header used to specify a particular token issuer for enrollment.
 	TargetTokenIssuerId = "ziti-token-issuer-id"
 )
 
+// EnrollModuleToken handles JWT token-based enrollment for identities.
+// Tokens are verified using the token issuer cache, which supports both
+// direct certificate PEM and JWKS endpoint based verification.
 type EnrollModuleToken struct {
 	env                  Env
 	method               string
 	fingerprintGenerator cert.FingerprintGenerator
 }
 
+// NewEnrollModuleToken creates a new EnrollModuleToken handler.
 func NewEnrollModuleToken(env Env) *EnrollModuleToken {
 	return &EnrollModuleToken{
 		env:                  env,
@@ -51,10 +57,19 @@ func NewEnrollModuleToken(env Env) *EnrollModuleToken {
 	}
 }
 
+// CanHandle returns true if the given enrollment method is db.MethodEnrollToken.
 func (module *EnrollModuleToken) CanHandle(method string) bool {
 	return method == module.method
 }
 
+// Process handles JWT token-based enrollment. The process:
+// 1. Verifies the JWT token from request headers
+// 2. Validates the token issuer is enabled and allows the requested enrollment type
+// 3. Confirms authentication policy permits the enrollment method (cert or token)
+// 4. Checks for duplicate identities by external ID
+// 5. For certificate enrollment: signs the CSR and creates a certificate authenticator
+// 6. For token enrollment: creates identity for token-based authentication
+// Returns an enrollment result with appropriate content (certificate chain or empty).
 func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResult, error) {
 	ctx.GetChangeContext().
 		SetChangeAuthorType(change.AuthorTypeController).
@@ -230,6 +245,9 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 	}, nil
 }
 
+// verifyToken extracts and verifies the JWT token from request headers.
+// If a target issuer ID is provided, it verifies the token using that specific issuer.
+// Otherwise, it attempts to identify the issuer from the token's issuer claim.
 func (module *EnrollModuleToken) verifyToken(headers Headers) (*TokenVerificationResult, error) {
 	candidateTokens := headers.GetStrings(AuthorizationHeader)
 
@@ -246,6 +264,8 @@ func (module *EnrollModuleToken) verifyToken(headers Headers) (*TokenVerificatio
 	}
 }
 
+// verifyTokenByTokenIssuerId validates a candidate token using a specific token issuer.
+// Requires the issuer to be enabled and returns the first valid token verification result.
 func (module *EnrollModuleToken) verifyTokenByTokenIssuerId(targetTokenIssuerId string, candidateTokens []string) (*TokenVerificationResult, error) {
 	tokenIssuer := module.env.GetTokenIssuerCache().GetById(targetTokenIssuerId)
 
@@ -283,6 +303,8 @@ func (module *EnrollModuleToken) verifyTokenByTokenIssuerId(targetTokenIssuerId 
 	return nil, errors.New("no valid candidate tokens were found")
 }
 
+// verifyTokenIssuerByInspection validates candidate tokens by examining the issuer claim
+// and attempting to verify with all known token issuers. Returns the first valid result.
 func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens []string) (*TokenVerificationResult, error) {
 	knownIssuers := module.env.GetTokenIssuerCache().GetIssuerStrings()
 	var seenIssuers []string
@@ -320,6 +342,8 @@ func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens [
 	return nil, errors.New("no valid candidate tokens were found")
 }
 
+// checkForExistingIdentity verifies that no identity with the same external ID already exists.
+// Prevents duplicate enrollments for the same external identity.
 func (module *EnrollModuleToken) checkForExistingIdentity(id string) error {
 
 	existingIdentity, err := module.env.GetManagers().Identity.ReadByExternalId(id)
@@ -338,6 +362,8 @@ func (module *EnrollModuleToken) checkForExistingIdentity(id string) error {
 	return nil
 }
 
+// IsJwt performs a basic structural validation of a JWT.
+// Checks that the token starts with 'e' and contains exactly 3 non-empty dot-separated parts.
 func IsJwt(token string) bool {
 	if strings.HasPrefix(token, "e") {
 		parts := strings.Split(token, ".")

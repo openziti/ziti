@@ -31,12 +31,18 @@ import (
 var _ AuthProcessor = &AuthModuleExtJwt{}
 
 const (
-	AuthMethodExtJwt          = "ext-jwt"
-	InternalTokenIssuerClaim  = "-internal-token-issuer"
-	JwksQueryTimeout          = 1 * time.Second
+	// AuthMethodExtJwt is the authentication method identifier for external JWT authentication.
+	AuthMethodExtJwt = "ext-jwt"
+	// InternalTokenIssuerClaim is the key for storing the token issuer in JWT claims during verification.
+	InternalTokenIssuerClaim = "-internal-token-issuer"
+	// JwksQueryTimeout is the duration to cache JWKS endpoint responses to reduce network calls.
+	JwksQueryTimeout = 1 * time.Second
+	// MaxCandidateJwtProcessing limits the number of candidate tokens to process during authentication.
 	MaxCandidateJwtProcessing = 2
 )
 
+// AuthTokenVerificationResult extends TokenVerificationResult with authentication context.
+// Includes error information, auth policy, and identity from authentication processing.
 type AuthTokenVerificationResult struct {
 	*TokenVerificationResult
 
@@ -45,6 +51,8 @@ type AuthTokenVerificationResult struct {
 	Identity   *Identity
 }
 
+// LogResult logs the authentication verification result with contextual fields.
+// Logs issuer, policy, identity, and audiences when available.
 func (r *AuthTokenVerificationResult) LogResult(logger *logrus.Entry, index int) {
 	if r.AuthPolicy != nil {
 		logger = logger.WithField("authPolicyId", r.AuthPolicy.Id)
@@ -77,10 +85,13 @@ func (r *AuthTokenVerificationResult) LogResult(logger *logrus.Entry, index int)
 	}
 }
 
+// AuthModuleExtJwt handles JWT authentication using external token issuers.
+// Uses the token issuer cache to verify tokens and authenticate identities.
 type AuthModuleExtJwt struct {
 	BaseAuthenticator
 }
 
+// NewAuthModuleExtJwt creates a new AuthModuleExtJwt handler.
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	ret := &AuthModuleExtJwt{
 		BaseAuthenticator: BaseAuthenticator{
@@ -92,27 +103,33 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	return ret
 }
 
+// CanHandle returns true if the given authentication method is ext-jwt.
 func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
 
+// Process handles primary JWT authentication using external token issuers.
 func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
 	return a.process(context)
 }
 
+// ProcessSecondary handles secondary JWT authentication using external token issuers.
 func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, error) {
 	return a.process(context)
 }
 
+// AuthResultIssuer represents a successful JWT authentication result from an external token issuer.
 type AuthResultIssuer struct {
 	AuthResultBase
 	Issuer TokenIssuer
 }
 
+// IsSuccessful returns true if the token issuer and identity are both present.
 func (a *AuthResultIssuer) IsSuccessful() bool {
 	return a.Issuer != nil && a.Identity() != nil
 }
 
+// AuthenticatorId returns the authenticator ID from the token issuer.
 func (a *AuthResultIssuer) AuthenticatorId() string {
 	if a.Issuer == nil {
 		return ""
@@ -121,6 +138,7 @@ func (a *AuthResultIssuer) AuthenticatorId() string {
 	return a.Issuer.AuthenticatorId()
 }
 
+// Authenticator returns an Authenticator instance for this JWT authentication.
 func (a *AuthResultIssuer) Authenticator() *Authenticator {
 	authenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{
