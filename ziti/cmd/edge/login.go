@@ -209,9 +209,9 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (*http.Client, error) 
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	nc, nce := o.newHttpClient(true)
-	if nce != nil {
-		return nil, nce
+	nc, newClientErr := o.newHttpClient(true)
+	if newClientErr != nil {
+		return nil, newClientErr
 	}
 
 	return rest_util.NewEdgeClientClientWithToken(nc, o.ControllerUrl, o.Token)
@@ -219,9 +219,9 @@ func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeCli
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	nc, nce := o.newHttpClient(true)
-	if nce != nil {
-		return nil, nce
+	nc, newClientErr := o.newHttpClient(true)
+	if newClientErr != nil {
+		return nil, newClientErr
 	}
 
 	return rest_util.NewEdgeManagementClientWithToken(nc, o.ControllerUrl, o.Token)
@@ -236,9 +236,9 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
-	httpClient, nce := o.newHttpClient(false)
-	if nce != nil {
-		return nce
+	httpClient, newClientErr := o.newHttpClient(false)
+	if newClientErr != nil {
+		return newClientErr
 	}
 	o.SetClient(*httpClient)
 
