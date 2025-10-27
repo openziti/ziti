@@ -119,6 +119,7 @@ type AppEnv struct {
 	TokenIssuerCache *model.TokenIssuerCache
 }
 
+// GetTokenIssuerCache returns the TokenIssuerCache instance for verifying external JWT tokens.
 func (ae *AppEnv) GetTokenIssuerCache() *model.TokenIssuerCache {
 	return ae.TokenIssuerCache
 }
