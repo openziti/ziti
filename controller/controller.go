@@ -45,6 +45,7 @@ import (
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
+	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -98,6 +99,10 @@ type Controller struct {
 
 	xwebInitialized concurrency.InitState
 	healthChecker   gosundheit.Health
+}
+
+func init() {
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {

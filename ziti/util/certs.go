@@ -207,8 +207,8 @@ func InsecureClient(client *http.Client, certs []byte) *http.Client {
 	}
 
 	var t *http.Transport
-	if ot, ok := client.Transport.(*http.Transport); ok {
-		t = ot.Clone()
+	if origTransport, ok := client.Transport.(*http.Transport); ok {
+		t = origTransport.Clone()
 		t.TLSClientConfig = tlsConfig
 	} else {
 		t = &http.Transport{TLSClientConfig: tlsConfig}

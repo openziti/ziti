@@ -19,11 +19,9 @@ package testutil
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	gopath "path"
@@ -68,11 +66,10 @@ type Overlay struct {
 	NetworkDialingIdFile string // a ziti identity file used to dial mgmt services hosted/bound by a controller using a ziti overlay
 	t                    *testing.T
 	Ctx                  context.Context
-	startTimeout         time.Duration
+	StartTimeout         time.Duration
 	Name                 string
 	extCmd               *exec.Cmd
 	cmdDone              chan error
-	pid                  int
 	pidsMutex            *sync.Mutex
 	activePids           []int
 	*run.QuickstartOpts
@@ -81,42 +78,8 @@ type Overlay struct {
 func (o *Overlay) ControllerHostPort() string {
 	return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
 }
-func (o *Overlay) routerHostPort() string {
+func (o *Overlay) RouterHostPort() string {
 	return fmt.Sprintf("https://%s:%d", o.RouterAddress, o.RouterPort)
-}
-func (o *Overlay) waitForControllerReady(t *testing.T, cmdComplete chan error) {
-	t.Logf("Waiting for controller at %s", o.ControllerHostPort())
-	ticker := time.NewTicker(25 * time.Millisecond)
-	defer ticker.Stop()
-	itls := &tls.Config{InsecureSkipVerify: true}
-	client := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: itls,
-		},
-	}
-	if ot, ok := http.DefaultClient.Transport.(*http.Transport); ok {
-		it := ot.Clone()
-		it.TLSClientConfig = itls
-		http.DefaultClient.Transport = it
-		defer func() {
-			http.DefaultClient.Transport = ot
-		}()
-	}
-
-	for range ticker.C {
-		testUrl := o.ControllerHostPort() + "/.well-known/est/cacerts"
-		t.Logf("Waiting for controller at %s", testUrl)
-		resp, err := client.Get(testUrl)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			_ = resp.Body.Close()
-			t.Logf("Controller ready at %s", o.ControllerHostPort())
-			cmdComplete <- nil
-			return
-		}
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-	}
 }
 
 func (o *Overlay) startArgs() []string {
@@ -134,64 +97,6 @@ func (o *Overlay) startArgs() []string {
 		args = append(args, "--configure-and-exit")
 	}
 	return args
-}
-
-func (o *Overlay) waitForCompletion() error {
-	done := make(chan error, 1)
-	go func() {
-		done <- o.extCmd.Wait()
-	}()
-
-	select {
-	case err := <-done:
-		if errors.Is(err, context.Canceled) ||
-			(err != nil && strings.Contains(err.Error(), "signal killed")) {
-			return nil
-		}
-		return nil
-	case <-time.After(10 * time.Second):
-		return fmt.Errorf("timeout waiting for command completion")
-	}
-}
-
-func (o *Overlay) start(ctx context.Context) error {
-	qs := run.NewQuickStartCmd(os.Stdout, os.Stderr, o.Ctx)
-	qs.SetContext(ctx)
-	qs.SetArgs(o.startArgs())
-
-	//o.cmdDone = make(chan error, 1)
-	go func() {
-		o.cmdDone <- qs.Execute()
-		fmt.Println("done?")
-	}()
-
-	if o.ConfigureAndExit {
-		err := o.waitForCompletion()
-		if err != nil {
-			o.t.Fatalf("error executing quickstart: %v", err)
-		}
-	}
-
-	cmdComplete := make(chan error)
-	go o.waitForControllerReady(o.t, cmdComplete)
-	select {
-	case err := <-cmdComplete:
-		if err != nil {
-			return err
-		}
-		if !o.Routerless {
-			go o.QuickstartOpts.WaitForRouter(cmdComplete)
-			select {
-			case err := <-cmdComplete:
-				return err
-			case <-time.After(o.startTimeout):
-				return fmt.Errorf("timed out waiting for controller")
-			}
-		}
-		return nil
-	case <-time.After(o.startTimeout):
-		return fmt.Errorf("timed out waiting for controller")
-	}
 }
 
 func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
@@ -275,43 +180,6 @@ func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 }
 
 func (o *Overlay) CreateAdminIdentity(t *testing.T, now, baseDir string) error {
-	if lr, le := o.Login(); le != nil {
-		return le
-	} else {
-		//set the valid token for reuse later:
-		require.NotEmpty(t, lr.Token)
-		o.Token = lr.Token
-	}
-	adminIdName := fmt.Sprintf("test-admin-%s", now)
-	adminJwtPath := filepath.Join(baseDir, adminIdName+".jwt")
-	zitiCmd := edge.NewCmdEdge(os.Stdout, os.Stderr, common.NewOptionsProvider(os.Stdout, os.Stderr))
-	zitiCmd.SetArgs(strings.Split("create identity "+adminIdName+" -o "+adminJwtPath+" --admin", " "))
-	if zitiCmdErr := zitiCmd.Execute(); zitiCmdErr != nil {
-		t.Fatalf("unable to create identity: %v", zitiCmdErr)
-	}
-	zitiCmd.SetArgs([]string{"enroll", adminJwtPath})
-	if zitiCmdErr := zitiCmd.Execute(); zitiCmdErr != nil {
-		t.Fatalf("unable to create identity: %v", zitiCmdErr)
-	}
-	o.AdminIdFile = strings.TrimSuffix(adminJwtPath, ".jwt") + ".json"
-	t.Logf("identity file should exist at: %v", o.AdminIdFile)
-
-	unwrapCmd := ops.NewUnwrapIdentityFileCommand(os.Stdout, os.Stderr)
-	unwrapCmd.SetArgs([]string{o.AdminIdFile})
-	unwrapCmdErr := unwrapCmd.Execute()
-	if unwrapCmdErr != nil {
-		t.Fatalf("unable to unwrap identity: %v", unwrapCmdErr)
-	}
-	o.AdminCertFile = strings.TrimSuffix(adminJwtPath, ".jwt") + ".cert"
-	o.AdminCaFile = strings.TrimSuffix(adminJwtPath, ".jwt") + ".ca"
-	o.AdminKeyFile = strings.TrimSuffix(adminJwtPath, ".jwt") + ".key"
-	t.Logf("certfile should exist at: %v", o.AdminCertFile)
-	t.Logf("caFile should exist at: %v", o.AdminCaFile)
-	t.Logf("keyFile should exist at: %v", o.AdminKeyFile)
-	return nil
-}
-
-func (o *Overlay) createNetworkIdentities(t *testing.T, now, baseDir string) error {
 	if lr, le := o.Login(); le != nil {
 		return le
 	} else {
@@ -608,7 +476,7 @@ func (o *Overlay) getRunningPids() []int {
 	return running
 }
 
-func (o *Overlay) WaitForControllerReadyorig(t *testing.T, cmdComplete chan error) {
+func (o *Overlay) WaitForControllerReady(t *testing.T, cmdComplete chan error) {
 	t.Logf("Waiting for controller at %s\n", o.ControllerHostPort())
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -636,12 +504,27 @@ func (o *Overlay) WaitForControllerReadyorig(t *testing.T, cmdComplete chan erro
 	}
 }
 
+func (o *Overlay) WaitForRouterReady(timeout time.Duration) error {
+	if !o.Routerless {
+		routerReady := make(chan error)
+		o.WaitForRouter(timeout, routerReady)
+
+		select {
+		case err := <-routerReady:
+			return err
+		case <-time.After(10 * time.Second):
+			return fmt.Errorf("timeout waiting for router to be ready at: %s", o.RouterHostPort())
+		}
+	}
+	return nil
+}
+
 func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string, ha bool) Overlay {
 	o := Overlay{
 		Name:         name,
 		t:            t,
 		Ctx:          ctx,
-		startTimeout: startTimeout,
+		StartTimeout: startTimeout,
 		cmdDone:      make(chan error, 1),
 		QuickstartOpts: &run.QuickstartOpts{
 			Home:              gopath.Join(home, name),

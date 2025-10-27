@@ -24,8 +24,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/config"
 
 	"github.com/michaelquigley/pfxlog"
@@ -36,10 +34,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-func init() {
-	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
-}
 
 func NewRunControllerCmd() *cobra.Command {
 	action := &ControllerAction{}
