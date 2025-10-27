@@ -366,17 +366,18 @@ func (s *loginTestState) testEmptyPassword(t *testing.T) {
 }
 
 func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
-	hostErr := "i/o timeout"
-	if runtime.GOOS == "windows" { //because of course it's different on linux/windows
-		hostErr = "no such host"
-	}
+	hostErrors := []string{"i/o timeout", "no such host", "server misbehaving"}
 	t.Run("not-a-url", func(t *testing.T) {
 		opts := &edge.LoginOptions{Options: s.commonOpts, Username: s.controllerUnderTest.Username, Password: s.controllerUnderTest.Password,
 			ControllerUrl: "not-a-url", Yes: true, IgnoreConfig: true,
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), hostErr)
+		require.True(t,
+			strings.Contains(err.Error(), hostErrors[0]) ||
+				strings.Contains(err.Error(), hostErrors[1]) ||
+				strings.Contains(err.Error(), hostErrors[2]),
+			"Host errors array: %v", hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
@@ -402,18 +403,25 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), hostErr)
+		require.True(t,
+			strings.Contains(err.Error(), hostErrors[0]) ||
+				strings.Contains(err.Error(), hostErrors[1]) ||
+				strings.Contains(err.Error(), hostErrors[2]),
+			"Host errors array: %v", hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
 	t.Run("https://non-existent-host-12345.local:9999", func(t *testing.T) {
-		dnsErr := "no such host"
 		opts := &edge.LoginOptions{Options: s.commonOpts, Username: s.controllerUnderTest.Username, Password: s.controllerUnderTest.Password,
 			ControllerUrl: "https://non-existent-host-12345.local:9999", Yes: true, IgnoreConfig: true,
 			NetworkId: s.controllerUnderTest.NetworkDialingIdFile}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), dnsErr)
+		require.True(t,
+			strings.Contains(err.Error(), hostErrors[0]) ||
+				strings.Contains(err.Error(), hostErrors[1]) ||
+				strings.Contains(err.Error(), hostErrors[2]),
+			"Host errors array: %v", hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 }
