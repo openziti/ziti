@@ -176,7 +176,7 @@ jobs:
         run: |
           mkdir cli_tests_bin
           go build -o cli_tests_bin ./... 
-          go test ./... --tags cli_tests
+          ZITI_CLI_TEST_ZITI_BIN="$PWD/cli_tests_bin/ziti" go test ./... --tags cli_tests
 
   fablab-smoketest:
     name: Fablab Smoketest
