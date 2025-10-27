@@ -44,16 +44,7 @@ type UnderlayBindPoint struct {
 }
 
 func (u UnderlayBindPoint) BeforeHandler(next http.Handler) http.Handler {
-	wrappedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if u.NewAddress != "" {
-			address := "https://" + u.NewAddress
-			writer.Header().Set(ZitiCtrlAddressHeader, address)
-		}
-
-		next.ServeHTTP(writer, request)
-	})
-
-	return wrappedHandler
+	return u.wrapSetCtrlAddressHeader(next)
 }
 func (u UnderlayBindPoint) AfterHandler(prev http.Handler) http.Handler {
 	return prev

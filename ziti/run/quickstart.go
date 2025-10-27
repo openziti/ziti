@@ -395,7 +395,7 @@ func (o *QuickstartOpts) Run(ctx context.Context) error {
 		r := make(chan error)
 		timeout, _ = time.ParseDuration("30s")
 		logrus.Infof("waiting for router at: %s:%d", o.RouterAddress, o.RouterPort)
-		go o.WaitForRouter(r)
+		go o.WaitForRouter(timeout, r)
 		select {
 		case <-r:
 			//completed normally
@@ -684,12 +684,11 @@ func (o *QuickstartOpts) waitForController(done chan error) {
 	done <- nil
 }
 
-func (o *QuickstartOpts) WaitForRouter(done chan error) {
-	timeout := time.After(30 * time.Second)
+func (o *QuickstartOpts) WaitForRouter(timeout time.Duration, done chan error) {
 	for {
 		select {
-		case <-timeout:
-			done <- fmt.Errorf("router not available after 30s at %s:%d", o.RouterAddress, o.RouterPort)
+		case <-time.After(timeout):
+			done <- fmt.Errorf("router not available after %s at %s:%d", timeout, o.RouterAddress, o.RouterPort)
 			return
 		default:
 			addr := fmt.Sprintf("%s:%d", o.RouterAddress, o.RouterPort)

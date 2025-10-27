@@ -18,7 +18,6 @@ package bindpoints
 
 import (
 	"crypto/tls"
-	gotls "crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -126,7 +125,7 @@ func newOverlayBindPoint(conf map[interface{}]interface{}) (OverlayBindPoint, er
 	return o, nil
 }
 
-func (o OverlayBindPoint) Listener(_ string, tlsConfig *gotls.Config) (net.Listener, error) {
+func (o OverlayBindPoint) Listener(_ string, tlsConfig *tls.Config) (net.Listener, error) {
 	var ln net.Listener
 
 	ln, err := o.ctx.Listen(o.Service)
@@ -134,8 +133,8 @@ func (o OverlayBindPoint) Listener(_ string, tlsConfig *gotls.Config) (net.Liste
 		return nil, fmt.Errorf("error listening on overlay: %s", err)
 	}
 
-	ln = gotls.NewListener(ln, tlsConfig)
-	if tlsConfig.ClientAuth < gotls.RequestClientCert {
+	ln = tls.NewListener(ln, tlsConfig)
+	if tlsConfig.ClientAuth < tls.RequestClientCert {
 		pfxlog.Logger().WithError(err).Warnf("The configured certificate verification method [%d] will not support mutual TLS", tlsConfig.ClientAuth)
 	}
 

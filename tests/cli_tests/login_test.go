@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -40,7 +39,6 @@ import (
 )
 
 type loginTestState struct {
-	pidsMutex           sync.Mutex
 	homeDir             string
 	zitiContext         *ziti.Context
 	zitiTransport       *http.Transport
@@ -86,8 +84,8 @@ func Test_LoginSuite(t *testing.T) {
 		homeDir:             util.HomeDir(),
 		zitiContext:         nil,
 		zitiTransport:       nil,
-		externalZiti:        testutil.CreateOverlay(t, externalCtx, 0, testRunHome, "external", false),
-		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 330*time.Second, testRunHome, "target", false),
+		externalZiti:        testutil.CreateOverlay(t, externalCtx, 60*time.Second, testRunHome, "external", false),
+		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 60*time.Second, testRunHome, "target", false),
 		commonOpts: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: os.Stdout,
@@ -127,30 +125,36 @@ func Test_LoginSuite(t *testing.T) {
 
 	extDone := make(chan error)
 	go testState.externalZiti.StartExternal(zitiPath, extDone)
-	go func() {
-		qsErr := <-extDone
-		if qsErr == nil {
+	select {
+	case err := <-extDone:
+		if err != nil {
 			externalCancel()
-			t.Fatal("unexpected error from external quickstart?")
+			t.Fatalf("unexpected error from external quickstart: %v", err)
 		}
-	}()
+	case <-time.After(testState.externalZiti.StartTimeout):
+		externalCancel()
+		t.Fatal("timeout waiting for external quickstart")
+	}
 
-	testState.externalZiti.WaitForControllerReadyorig(t, nil)
-	testState.controllerUnderTest.Name = "target"
+	testState.externalZiti.WaitForControllerReady(t, nil)
+
 	targetDone := make(chan error)
 	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
-	go func() {
-		qsErr := <-targetDone
-		if qsErr == nil {
+	select {
+	case err := <-targetDone:
+		if err != nil {
 			ctrlUnderTestCancel()
-			t.Fatal("unexpected error from external quickstart?")
+			t.Fatalf("unexpected error from controller quickstart: %v", err)
 		}
-	}()
-	testState.controllerUnderTest.WaitForControllerReadyorig(t, nil)
+	case <-time.After(testState.controllerUnderTest.StartTimeout):
+		ctrlUnderTestCancel()
+		t.Fatal("timeout waiting for controller quickstart")
+	}
+
+	testState.controllerUnderTest.WaitForControllerReady(t, nil)
 	if _, le := testState.controllerUnderTest.Login(); le != nil {
 		t.Fatalf("unable to login before running tests: %v", le)
 	}
-	t.Logf("Target controller at: %s", testState.controllerUnderTest.ControllerHostPort())
 
 	now := time.Now().Format("150405")
 
@@ -499,15 +503,19 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 		}
 
 		targetDone := make(chan error)
-		s.controllerUnderTest.StartExternal(zitiPath, targetDone)
-		go func() {
-			qsErr := <-targetDone
-			if qsErr == nil {
+		go s.controllerUnderTest.StartExternal(zitiPath, targetDone)
+		select {
+		case err := <-targetDone:
+			if err != nil {
 				controllerUnderTestCancel()
-				t.Fatal("unexpected error from external quickstart?")
+				t.Fatalf("unexpected error from controller quickstart: %v", err)
 			}
-		}()
-		s.controllerUnderTest.WaitForControllerReadyorig(t, nil)
+		case <-time.After(s.controllerUnderTest.StartTimeout):
+			controllerUnderTestCancel()
+			t.Fatal("timeout waiting for controller quickstart")
+		}
+
+		s.controllerUnderTest.WaitForControllerReady(t, nil)
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
 		s.controllerUnderTest.ControllerPort = 443
 
