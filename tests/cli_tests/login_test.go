@@ -61,16 +61,16 @@ func Test_LoginSuite(t *testing.T) {
 	if zitiPath == "" {
 		t.Fatalf("ZITI_CLI_TEST_ZITI_BIN not set")
 	}
-	if _, err := os.Stat(zitiPath); err != nil {
-		t.Fatalf("ziti binary not found at provided location %s: %v", zitiPath, err)
+	if _, statErr := os.Stat(zitiPath); statErr != nil {
+		t.Fatalf("ziti binary not found at provided location %s: %v", zitiPath, statErr)
 	}
 	baseDir := filepath.Join(os.TempDir(), "cli-tests")
 	if me := os.MkdirAll(baseDir, 0755); me != nil {
 		t.Fatalf("failed creating baseDir dir: %v", baseDir)
 	}
-	testRunHome, err := os.MkdirTemp(baseDir, "test-run-*")
-	if err != nil {
-		t.Fatalf("failed creating temp dir: %v", err)
+	testRunHome, mkdirErr := os.MkdirTemp(baseDir, "test-run-*")
+	if mkdirErr != nil {
+		t.Fatalf("failed creating temp dir: %v", mkdirErr)
 	}
 	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
 	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
@@ -103,8 +103,8 @@ func Test_LoginSuite(t *testing.T) {
 			go func() { errChan <- testState.controllerUnderTest.Stop() }()
 			success := true
 			for i := 0; i < 2; i++ { // Wait for both
-				if err := <-errChan; err != nil {
-					t.Logf("stop error: %v", err)
+				if deferErr := <-errChan; deferErr != nil {
+					t.Logf("stop error: %v", deferErr)
 					success = false
 				}
 			}
@@ -125,33 +125,18 @@ func Test_LoginSuite(t *testing.T) {
 
 	extDone := make(chan error)
 	go testState.externalZiti.StartExternal(zitiPath, extDone)
-	select {
-	case err := <-extDone:
-		if err != nil {
-			externalCancel()
-			t.Fatalf("unexpected error from external quickstart: %v", err)
-		}
-	case <-time.After(testState.externalZiti.StartTimeout):
-		externalCancel()
-		t.Fatal("timeout waiting for external quickstart")
-	}
-
-	testState.externalZiti.WaitForControllerReady(t, nil)
-
 	targetDone := make(chan error)
 	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
-	select {
-	case err := <-targetDone:
-		if err != nil {
-			ctrlUnderTestCancel()
-			t.Fatalf("unexpected error from controller quickstart: %v", err)
-		}
-	case <-time.After(testState.controllerUnderTest.StartTimeout):
-		ctrlUnderTestCancel()
-		t.Fatal("timeout waiting for controller quickstart")
+
+	exStartErr := testState.externalZiti.WaitForControllerReady(30 * time.Second)
+	if exStartErr != nil {
+		log.Fatalf("externalZiti start failed: %v", exStartErr)
+	}
+	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(30 * time.Second)
+	if cutStartErr != nil {
+		log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 	}
 
-	testState.controllerUnderTest.WaitForControllerReady(t, nil)
 	if _, le := testState.controllerUnderTest.Login(); le != nil {
 		t.Fatalf("unable to login before running tests: %v", le)
 	}
@@ -166,7 +151,7 @@ func Test_LoginSuite(t *testing.T) {
 	t.Log("=========================== overlay ready. tests begin =============================")
 	t.Log("====================================================================================")
 
-	testTimeout := 600 * time.Second
+	testTimeout := 60 * time.Second
 	testDone := make(chan struct{})
 	testTimer := time.NewTimer(testTimeout)
 	defer testTimer.Stop()
@@ -504,18 +489,10 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 		targetDone := make(chan error)
 		go s.controllerUnderTest.StartExternal(zitiPath, targetDone)
-		select {
-		case err := <-targetDone:
-			if err != nil {
-				controllerUnderTestCancel()
-				t.Fatalf("unexpected error from controller quickstart: %v", err)
-			}
-		case <-time.After(s.controllerUnderTest.StartTimeout):
-			controllerUnderTestCancel()
-			t.Fatal("timeout waiting for controller quickstart")
+		cutStartErr := s.controllerUnderTest.WaitForControllerReady(30 * time.Second)
+		if cutStartErr != nil {
+			log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 		}
-
-		s.controllerUnderTest.WaitForControllerReady(t, nil)
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
 		s.controllerUnderTest.ControllerPort = 443
 
