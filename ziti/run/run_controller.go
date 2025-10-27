@@ -37,6 +37,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func init() {
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
+}
+
 func NewRunControllerCmd() *cobra.Command {
 	action := &ControllerAction{}
 
@@ -75,8 +79,6 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 
 	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
 	startLogger.Info("starting ziti-controller")
-
-	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 
 	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
 		fmt.Printf("unable to create fabric controller %+v\n", err)
