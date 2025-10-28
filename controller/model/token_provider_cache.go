@@ -305,7 +305,7 @@ func (a *TokenIssuerCache) VerifyTokenByInspection(candidateToken string) (*Toke
 		return nil, errors.New("token issuer is nil")
 	}
 
-	if tokenIssuer.IsEnabled() == false {
+	if !tokenIssuer.IsEnabled() {
 		return nil, errors.New("token issuer is disabled")
 	}
 
@@ -764,8 +764,8 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 
 // IssuerPublicKey represents a public key and associated certificate chain.
 type IssuerPublicKey struct {
-	PubKey any                  // The public key used for signature verification
-	Chain  []*x509.Certificate  // Optional X.509 certificate chain
+	PubKey any                 // The public key used for signature verification
+	Chain  []*x509.Certificate // Optional X.509 certificate chain
 }
 
 // getJwtTokenKid extracts the key ID (kid) from a JWT token header.
