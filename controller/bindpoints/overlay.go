@@ -39,6 +39,7 @@ type OverlayBindPoint struct {
 	Service        string //name of the service to bind
 	ClientAuthType tls.ClientAuthType
 	Name           string
+	Opts           ziti.ListenOptions
 	cfg            ziti.Config
 	ctx            ziti.Context
 }
@@ -109,6 +110,12 @@ func newOverlayBindPoint(conf map[interface{}]interface{}) (OverlayBindPoint, er
 			o.ClientAuthType = tls.VerifyClientCertIfGiven
 		}
 	}
+	if listenOptsCfg, ok := identCfg["listenOptions"]; ok {
+		optsCfg := listenOptsCfg.(map[interface{}]interface{})
+		if asId, ok := optsCfg["bindUsingEdgeIdentity"].(bool); ok {
+			o.Opts.BindUsingEdgeIdentity = asId
+		}
+	}
 
 	o.cfg = ziti.Config{}
 	unMarshallErr := json.Unmarshal(o.Identity, &o.cfg)
@@ -128,7 +135,7 @@ func newOverlayBindPoint(conf map[interface{}]interface{}) (OverlayBindPoint, er
 func (o OverlayBindPoint) Listener(_ string, tlsConfig *tls.Config) (net.Listener, error) {
 	var ln net.Listener
 
-	ln, err := o.ctx.Listen(o.Service)
+	ln, err := o.ctx.ListenWithOptions(o.Service, &o.Opts)
 	if err != nil {
 		return nil, fmt.Errorf("error listening on overlay: %s", err)
 	}

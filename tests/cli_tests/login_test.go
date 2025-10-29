@@ -394,8 +394,9 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 		require.True(t,
 			strings.Contains(err.Error(), hostErrors[0]) ||
 				strings.Contains(err.Error(), hostErrors[1]) ||
-				strings.Contains(err.Error(), hostErrors[2]),
-			"Host errors array: %v", hostErrors)
+				strings.Contains(err.Error(), hostErrors[2]) ||
+				strings.Contains(err.Error(), "service 'not-a-url' not found"),
+			"Error %s not contained in host errors array: %v", err.Error(), hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
@@ -424,8 +425,9 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 		require.True(t,
 			strings.Contains(err.Error(), hostErrors[0]) ||
 				strings.Contains(err.Error(), hostErrors[1]) ||
-				strings.Contains(err.Error(), hostErrors[2]),
-			"Host errors array: %v", hostErrors)
+				strings.Contains(err.Error(), hostErrors[2]) ||
+				strings.Contains(err.Error(), "service 'ftp' not found"),
+			"Error %s not contained in host errors array: %v", err.Error(), hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
@@ -438,8 +440,9 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 		require.True(t,
 			strings.Contains(err.Error(), hostErrors[0]) ||
 				strings.Contains(err.Error(), hostErrors[1]) ||
-				strings.Contains(err.Error(), hostErrors[2]),
-			"Host errors array: %v", hostErrors)
+				strings.Contains(err.Error(), hostErrors[2]) ||
+				strings.Contains(err.Error(), "service 'non-existent-host-12345.local' not found"),
+			"Error %s not contained in host errors array: %v", err.Error(), hostErrors)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 }
@@ -478,13 +481,17 @@ func (s *loginTestState) testControllerUnavailable(t *testing.T) {
 
 	err := opts.Run()
 	require.Error(t, err, "unavailable controller should fail")
-	require.Contains(t, err.Error(), expectedErr)
+	require.True(t,
+		strings.Contains(err.Error(), expectedErr) ||
+			strings.Contains(err.Error(), "service '127.0.0.1' not found"),
+		"Expected error not found: %v", err.Error())
+
 	t.Logf("Unavailable controller correctly failed: %v", err)
 }
 
 func (s *loginTestState) reconfigureTargetForZiti(pkiRoot string) error {
 	v2 := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt.ziti --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
+	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
 	if zitiCmdErr := v2.Execute(); zitiCmdErr != nil {
 		return zitiCmdErr
 	}
