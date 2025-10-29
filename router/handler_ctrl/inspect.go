@@ -19,6 +19,9 @@ package handler_ctrl
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
@@ -28,8 +31,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"strings"
-	"time"
 )
 
 type inspectHandler struct {
@@ -80,7 +81,7 @@ type inspectRequestContext struct {
 }
 
 func (context *inspectRequestContext) inspectXgressDialer(binding string, requested string) {
-	factory, _ := xgress_router.GlobalRegistry().Factory(binding)
+	factory, _ := context.handler.env.GetXgressRegistry().Factory(binding)
 	if factory == nil {
 		context.appendError("no xgress factory configured for edge binding")
 		return
@@ -153,7 +154,7 @@ func (context *inspectRequestContext) processLocal() {
 			result := context.handler.env.GetNetworkControllers().Inspect()
 			context.handleJsonResponse(requested, result)
 		} else if lc == inspect.RouterIdentityConnectionStatusesKey {
-			factory, _ := xgress_router.GlobalRegistry().Factory("edge")
+			factory, _ := context.handler.env.GetXgressRegistry().Factory("edge")
 			if factory == nil {
 				context.appendError("no xgress factory configured for edge binding")
 				continue

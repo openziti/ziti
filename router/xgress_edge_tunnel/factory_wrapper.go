@@ -122,7 +122,7 @@ func NewFactoryWrapper(env env.RouterEnv, stateManager state.Manager) XrctrlFact
 		}
 
 		wrapper.delegate.Store(factory)
-		xgress_router.GlobalRegistry().Register(common.TunnelBinding, factory)
+		env.GetXgressRegistry().Replace(common.TunnelBinding, factory)
 
 		done := false
 		for !done {

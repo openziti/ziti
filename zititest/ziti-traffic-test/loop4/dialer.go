@@ -19,12 +19,13 @@ package loop4
 import (
 	"errors"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/spf13/cobra"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/spf13/cobra"
 )
 
 func init() {
