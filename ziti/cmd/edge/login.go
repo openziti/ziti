@@ -314,8 +314,6 @@ func (o *LoginOptions) Run() error {
 		} else {
 			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, httpClient)
 		}
-	} else {
-		host = host + ctrlUrl.Path
 	}
 
 	if o.Token != "" && o.Cmd != nil && !o.Cmd.Flag("read-only").Changed {

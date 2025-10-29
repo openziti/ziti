@@ -97,11 +97,28 @@ func (u UnderlayBindPoint) Validate(id identity.Identity) error {
 		}
 	}
 
-	if ve := id.ValidFor(strings.Split(u.Address, ":")[0]); ve != nil {
-		errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
+	if h, _, err := net.SplitHostPort(u.Address); err == nil {
+		if ve := id.ValidFor(normalizeIp(h)); ve != nil {
+			errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
+		}
 	}
 
 	return goerrs.Join(errs...)
+}
+
+func normalizeIp(s string) string {
+	s = strings.Trim(s, "[]")
+	var ip net.IP
+	if i := strings.IndexByte(s, '%'); i != -1 {
+		ip = net.ParseIP(s[:i])
+	} else {
+		ip = net.ParseIP(s)
+	}
+	if ip == nil {
+		return s
+	} else {
+		return ip.String()
+	}
 }
 
 // wrapSetCtrlAddressHeader will check to see if the bindPoint is configured to advertise a "new address". If so
