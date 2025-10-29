@@ -665,8 +665,8 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 			logger.WithError(circuitErr).Warn("route attempt for circuit failed")
 			network.CircuitFailedEvent(circuitId, params, startTime, path, terminator, circuitErr.Cause())
 			attempt++
-			ctx.WithField("attemptNumber", attempt+1)
-			logger = logger.WithField("attemptNumber", attempt+1)
+			ctx.WithField("attemptNumber", attempt)
+			logger = logger.WithField("attemptNumber", attempt)
 			if attempt < network.options.CreateCircuitRetries {
 				continue
 			} else {
