@@ -17,12 +17,10 @@
 package edge
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -299,8 +297,6 @@ func (o *LoginOptions) Run() error {
 	if urlParseErr != nil {
 		return errors.Wrap(urlParseErr, "invalid controller URL")
 	}
-
-	host = ctrlUrl.Scheme + "://" + ctrlUrl.Host
 
 	if err := o.ConfigureCerts(host, ctrlUrl); err != nil {
 		return err
@@ -590,19 +586,10 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 	return jsonParsed, nil
 }
 
-func createZitifiedHttpTransport(ctxCollection *ziti.CtxCollection) *http.Transport {
-	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
-	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dialer := ctxCollection.NewDialerWithFallback(context.Background(), &net.Dialer{})
-		return dialer.Dial(network, addr)
-	}
-	return zitiTransport
-}
-
 func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
-	// if cli param supplied - use it
+	// if cli param supplied - use it first
 	if o.NetworkId != "" {
-		return o.createHttpTransportFromFile()
+		return util.NewZitifiedTransportFromFile(o.NetworkId)
 	}
 
 	// if env var set - use it
@@ -617,26 +604,6 @@ func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 		}
 	}
 	return nil, nil
-}
-
-func (o *LoginOptions) createHttpTransportFromFile() (*http.Transport, error) {
-	cfg, ce := ziti.NewConfigFromFile(o.NetworkId)
-	if ce != nil {
-		return nil, ce
-	}
-	cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
-
-	zc, zce := ziti.NewContext(cfg)
-	if zce != nil {
-		return nil, zce
-	}
-	sdkCollection := ziti.NewSdkCollection()
-	sdkCollection.Add(zc)
-	_, se := zc.GetServices() // loads all the services
-	if se != nil {
-		return nil, fmt.Errorf("failed to get ziti services: %v", se)
-	}
-	return createZitifiedHttpTransport(sdkCollection), nil
 }
 
 func (o *LoginOptions) PopulateFromCache() {

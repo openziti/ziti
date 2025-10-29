@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
@@ -112,11 +113,26 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
 	client := NewClient()
-	if zt, zte := ZitifiedTransportFromEnv(); zte != nil {
-		return nil, zte
+	if ztFromEnv, ztFromEnvErr := ZitifiedTransportFromEnv(); ztFromEnvErr != nil {
+		return nil, ztFromEnvErr
 	} else {
-		if zt != nil {
-			client.GetClient().Transport = zt
+		if ztFromEnv != nil {
+			if verbose {
+				client.Log.Printf("Using Ziti Transport from environment var: %s", constants.ZitiCliNetworkIdVarName)
+			}
+			client.GetClient().Transport = ztFromEnv
+		} else {
+			if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile); ztFromFileErr != nil {
+				// ignore any error around the networkId file
+				if verbose {
+					client.Log.Printf("Ziti Transport from cached file failed: %v", ztFromFileErr)
+				}
+			} else {
+				if verbose {
+					client.Log.Printf("Using Ziti Transport from cached file: %s", self.NetworkIdFile)
+				}
+				client.GetClient().Transport = ztFromFile
+			}
 		}
 	}
 
