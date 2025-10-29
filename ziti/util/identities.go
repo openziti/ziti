@@ -17,12 +17,20 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
+
+var zitiCliContextCollection *ziti.CtxCollection
+
+func init() {
+	zitiCliContextCollection = ziti.NewSdkCollection()
+}
 
 type API string
 
@@ -67,12 +75,13 @@ func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, ver
 }
 
 type RestClientEdgeIdentity struct {
-	Url       string `json:"url"`
-	Username  string `json:"username"`
-	Token     string `json:"token"`
-	LoginTime string `json:"loginTime"`
-	CaCert    string `json:"caCert,omitempty"`
-	ReadOnly  bool   `json:"readOnly"`
+	Url           string `json:"url"`
+	Username      string `json:"username"`
+	Token         string `json:"token"`
+	LoginTime     string `json:"loginTime"`
+	CaCert        string `json:"caCert,omitempty"`
+	ReadOnly      bool   `json:"readOnly"`
+	NetworkIdFile string `json:"networkId"`
 }
 
 func (self *RestClientEdgeIdentity) IsReadOnly() bool {
@@ -104,6 +113,29 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
 	client := NewClient()
+	if ztFromEnv, ztFromEnvErr := ZitifiedTransportFromEnv(); ztFromEnvErr != nil {
+		return nil, ztFromEnvErr
+	} else {
+		if ztFromEnv != nil {
+			if verbose {
+				client.Log.Printf("Using Ziti Transport from environment var: %s", constants.ZitiCliNetworkIdVarName)
+			}
+			client.GetClient().Transport = ztFromEnv
+		} else {
+			if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile); ztFromFileErr != nil {
+				// ignore any error around the networkId file
+				if verbose {
+					client.Log.Printf("Ziti Transport from cached file failed: %v", ztFromFileErr)
+				}
+			} else {
+				if verbose {
+					client.Log.Printf("Using Ziti Transport from cached file: %s", self.NetworkIdFile)
+				}
+				client.GetClient().Transport = ztFromFile
+			}
+		}
+	}
+
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}

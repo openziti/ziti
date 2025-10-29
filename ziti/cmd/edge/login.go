@@ -20,6 +20,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_client"
@@ -32,16 +40,12 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
+	xterm "golang.org/x/term"
+	"gopkg.in/resty.v1"
 )
 
 // LoginOptions are the flags for login commands
@@ -60,8 +64,18 @@ type LoginOptions struct {
 	ExtJwtToken   string
 	File          string
 	ControllerUrl string
+	ServiceName   string
+	NetworkId     string
 
 	FileCertCreds *edge_apis.IdentityCredentials
+	client        http.Client
+}
+
+func (options *LoginOptions) GetClient() http.Client {
+	return options.client
+}
+func (options *LoginOptions) SetClient(c http.Client) {
+	options.client = c
 }
 
 const LoginFlagKey = "login"
@@ -96,6 +110,10 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "ext-jwt")
 	cmd.Flags().StringVarP(&options.File, "file", "f", "", "An identity file to use for authentication")
 	addLoginAnnotation(cmd, "file")
+	cmd.Flags().StringVarP(&options.ServiceName, "service", "s", "", "The service name to use. When set the file will be used to create a zitified connection")
+	addLoginAnnotation(cmd, "service")
+	cmd.Flags().StringVarP(&options.NetworkId, "networkIdentity", "n", "", "The identity to use to connect to the OpenZiti overlay")
+	addLoginAnnotation(cmd, "networkIdentity")
 
 	options.AddCommonFlags(cmd)
 }
@@ -136,15 +154,18 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *LoginOptions) newHttpClient() *http.Client {
+func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (*http.Client, error) {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
 
-	// any error indicates there are probably no saved credentials. look for login information and use those
-	loginErr := o.Run()
-	if loginErr != nil {
-		pfxlog.Logger().Fatal(loginErr)
+	if tryCachedCreds {
+		// any error indicates there are probably no saved credentials. look for login information and use those
+		o.PopulateFromCache()
+		loginErr := o.Run()
+		if loginErr != nil {
+			return nil, loginErr
+		}
 	}
 
 	caPool := x509.NewCertPool()
@@ -160,35 +181,48 @@ func (o *LoginOptions) newHttpClient() *http.Client {
 		}
 	}
 
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caPool,
-			},
+	transportToUse := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caPool,
 		},
+	}
+
+	t, cte := o.createHttpTransport()
+
+	if cte != nil {
+		return &http.Client{
+			Transport: transportToUse,
+		}, nil
+	} else {
+		hc := &http.Client{}
+		if t != nil {
+			t.TLSClientConfig.RootCAs = caPool
+			transportToUse = t
+		}
+
+		hc.Transport = transportToUse
+		return hc, nil
 	}
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	httpClient := o.newHttpClient()
-
-	c, e := rest_util.NewEdgeClientClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+	nc, newClientErr := o.newHttpClient(true)
+	if newClientErr != nil {
+		return nil, newClientErr
 	}
-	return c, nil
+
+	return rest_util.NewEdgeClientClientWithToken(nc, o.ControllerUrl, o.Token)
 }
 
 // NewMgmtClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClient := o.newHttpClient()
-
-	c, e := rest_util.NewEdgeManagementClientWithToken(httpClient, o.ControllerUrl, o.Token)
-	if e != nil {
-		pfxlog.Logger().Fatal(e)
+	nc, newClientErr := o.newHttpClient(true)
+	if newClientErr != nil {
+		return nil, newClientErr
 	}
-	return c, nil
+
+	return rest_util.NewEdgeManagementClientWithToken(nc, o.ControllerUrl, o.Token)
 }
 
 // Run implements this command
@@ -200,17 +234,21 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
+	httpClient, newClientErr := o.newHttpClient(false)
+	if newClientErr != nil {
+		return newClientErr
+	}
+	o.SetClient(*httpClient)
+
 	if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
-
 		if err != nil {
 			return fmt.Errorf("could not read file %s: %w", o.File, err)
 		}
 
-		if !o.IgnoreConfig {
-			idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
-			o.FileCertCreds = idCredentials
-		}
+		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+		o.FileCertCreds = idCredentials
+
 		ztAPI := cfg.ZtAPI
 
 		// override with the first HA client API URL if defined
@@ -223,15 +261,19 @@ func (o *LoginOptions) Run() error {
 			return fmt.Errorf("could not parse ztAPI '%s' as a URL", ztAPI)
 		}
 
-		host = parsedZtAPI.Host
+		if o.ControllerUrl == "" {
+			host = parsedZtAPI.Host
+		} else {
+			host = o.ControllerUrl
+		}
 	}
 
 	id := config.GetIdentity()
 
 	if host == "" {
 		if o.ControllerUrl == "" {
-			if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
-				host = defaultId.Url
+			if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && !o.IgnoreConfig {
+				host = cachedCliConfig.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
 			} else {
 				var err error
@@ -256,8 +298,6 @@ func (o *LoginOptions) Run() error {
 		return errors.Wrap(urlParseErr, "invalid controller URL")
 	}
 
-	host = ctrlUrl.Scheme + "://" + ctrlUrl.Host
-
 	if err := o.ConfigureCerts(host, ctrlUrl); err != nil {
 		return err
 	}
@@ -270,12 +310,10 @@ func (o *LoginOptions) Run() error {
 
 	if ctrlUrl.Path == "" {
 		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool)
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, httpClient)
 		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert)
+			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, httpClient)
 		}
-	} else {
-		host = host + ctrlUrl.Path
 	}
 
 	if o.Token != "" && o.Cmd != nil && !o.Cmd.Flag("read-only").Changed {
@@ -286,19 +324,27 @@ func (o *LoginOptions) Run() error {
 	body := "{}"
 	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
-			var err error
-			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
-				o.Username = defaultId.Username
-				o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
-			} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				var err error
+				if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && cachedCliConfig.Username != "" && !o.IgnoreConfig {
+					o.Username = cachedCliConfig.Username
+					o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
+				} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("username required but not provided")
 			}
 		}
 
 		if o.Password == "" {
 			var err error
-			if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
-				return err
+			if xterm.IsTerminal(int(os.Stdin.Fd())) {
+				if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("password required but not provided")
 			}
 		}
 
@@ -310,7 +356,8 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if o.Token == "" {
-		jsonParsed, err := login(o, host, body)
+		hc := o.GetClient()
+		jsonParsed, err := login(o, host, body, &hc)
 
 		if err != nil {
 			return err
@@ -335,12 +382,13 @@ func (o *LoginOptions) Run() error {
 	o.ControllerUrl = host
 	if !o.IgnoreConfig {
 		loginIdentity := &util.RestClientEdgeIdentity{
-			Url:       host,
-			Username:  o.Username,
-			Token:     o.Token,
-			LoginTime: time.Now().Format(time.RFC3339),
-			CaCert:    o.CaCert,
-			ReadOnly:  o.ReadOnly,
+			Url:           host,
+			Username:      o.Username,
+			Token:         o.Token,
+			LoginTime:     time.Now().Format(time.RFC3339),
+			CaCert:        o.CaCert,
+			ReadOnly:      o.ReadOnly,
+			NetworkIdFile: o.NetworkId,
 		}
 		o.Printf("Saving identity '%v' to %v\n", id, configFile)
 		config.EdgeIdentities[id] = loginIdentity
@@ -351,18 +399,19 @@ func (o *LoginOptions) Run() error {
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
-	isServerTrusted, err := util.IsServerTrusted(host)
+	httpClient := o.GetClient()
+	isServerTrusted, err := util.IsServerTrusted(host, &httpClient)
 	if err != nil {
 		return err
 	}
 
 	if !isServerTrusted && o.CaCert == "" {
-		wellKnownCerts, certs, err := util.GetWellKnownCerts(host)
+		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
 		}
 
-		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts)
+		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts, httpClient)
 		if err != nil {
 			return err
 		}
@@ -370,7 +419,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 			return errors.New("server supplied certs not trusted by server, unable to continue")
 		}
 
-		savedCerts, certFile, err := util.ReadCert(ctrlUrl.Hostname())
+		savedCerts, certFile, err := util.ReadCert(ctrlUrl)
 		if err != nil {
 			return err
 		}
@@ -386,7 +435,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 					}
 				}
 				if replace {
-					_, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+					_, err = util.WriteCert(o, ctrlUrl, wellKnownCerts)
 					if err != nil {
 						return err
 					}
@@ -403,7 +452,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				}
 			}
 			if importCerts {
-				o.CaCert, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+				o.CaCert, err = util.WriteCert(o, ctrlUrl, wellKnownCerts)
 				if err != nil {
 					return err
 				}
@@ -411,20 +460,15 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				o.Println("WARNING: no certificate authority provided for server, continuing but login will likely fail")
 			}
 		}
-	} else if isServerTrusted && o.CaCert != "" {
-		override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
-		if err != nil {
-			return err
-		}
-		if !override {
-			o.CaCert = ""
-		}
 	}
 
 	return nil
 }
 
 func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
+	if o.Yes {
+		return true, nil
+	}
 	filter := &yesNoFilter{}
 	if _, err := o.ask(prompt, filter.Accept); err != nil {
 		return false, err
@@ -433,6 +477,14 @@ func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
 }
 
 func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
+	if o.Yes {
+		return "yes", nil
+	}
+
+	if !xterm.IsTerminal(int(os.Stdin.Fd())) {
+		return "", errors.New("Cannot accept certs - no terminal")
+	}
+
 	for {
 		val, err := term.Prompt(prompt)
 		if err != nil {
@@ -465,8 +517,13 @@ func (self *yesNoFilter) Accept(s string) bool {
 }
 
 // EdgeControllerLogin will authenticate to the given Edge Controller
-func login(o *LoginOptions, url string, authentication string) (*gabs.Container, error) {
-	client := util.NewClient()
+func login(o *LoginOptions, url string, authentication string, httpClient *http.Client) (*gabs.Container, error) {
+	var client *resty.Client
+	if httpClient != nil {
+		client = util.NewClientWithClient(httpClient)
+	} else {
+		client = util.NewClient()
+	}
 	cert := o.CaCert
 	out := o.Out
 	logJSON := o.OutputJSONResponse
@@ -475,6 +532,8 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 	method := "password"
 	if cert != "" {
 		client.SetRootCertificate(cert)
+		transport := client.GetClient().Transport.(*http.Transport)
+		transport.CloseIdleConnections() // make sure any idle connections are closed so the client hello happens WITH certs
 	}
 	authHeader := ""
 	if o.ExtJwtToken != "" {
@@ -523,4 +582,66 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 	}
 
 	return jsonParsed, nil
+}
+
+func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
+	// if cli param supplied - use it first
+	if o.NetworkId != "" {
+		return util.NewZitifiedTransportFromFile(o.NetworkId)
+	}
+
+	// if env var set - use it
+	if zt, zte := util.ZitifiedTransportFromEnv(); zte != nil {
+		o.Printf("NetworkId found by env var [%s] but failed: %v\n", constants.ZitiCliNetworkIdVarName, zte)
+		return nil, zte
+	} else {
+		if zt != nil {
+			o.Printf("NetworkId found by env var [%s], zitified transport enabled\n", constants.ZitiCliNetworkIdVarName)
+			o.NetworkId = ""
+			return zt, nil
+		}
+	}
+	return nil, nil
+}
+
+func (o *LoginOptions) PopulateFromCache() {
+	config, _, cfgErr := util.LoadRestClientConfig()
+	if cfgErr != nil {
+		return
+	}
+
+	id := config.GetIdentity()
+	cachedCliConfig := config.EdgeIdentities[id]
+	if cachedCliConfig == nil {
+		return
+	}
+
+	o.ControllerUrl = cachedCliConfig.Url
+	o.Username = cachedCliConfig.Username
+	o.Token = cachedCliConfig.Token
+	o.NetworkId = cachedCliConfig.NetworkIdFile
+	o.CaCert = cachedCliConfig.CaCert
+}
+
+func NewFromCache(out io.Writer, eout io.Writer) LoginOptions {
+	o := LoginOptions{
+		Options: api.Options{
+			CommonOptions: common.CommonOptions{
+				Out: out,
+				Err: eout,
+			},
+		},
+	}
+	o.PopulateFromCache()
+	return o
+}
+
+func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
+	o := NewFromCache(out, eout)
+	err := o.Run()
+	if err != nil {
+		return o, err
+	} else {
+		return o, nil
+	}
 }

@@ -21,12 +21,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/openziti/identity"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/identity"
+
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/oidc_auth"
@@ -188,7 +189,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 // getPossibleIssuers inspects the API server's identity and bind points for addresses, SAN DNS, and SAN IP entries
 // that denote valid issuers. It returns a list of hostname:port combinations as a slice. It handles converting
 // :443 to explicit and implicit ports for clients that may silently remove :443
-func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig) []oidc_auth.Issuer {
+func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oidc_auth.Issuer {
 	const (
 		DefaultTlsPort = "443"
 	)
@@ -200,7 +201,7 @@ func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig
 	portMap := map[string]struct{}{}
 
 	for _, bindPoint := range bindPoints {
-		host, port, err := net.SplitHostPort(bindPoint.Address)
+		host, port, err := net.SplitHostPort(bindPoint.ServerAddress())
 		if err != nil {
 			continue
 
@@ -211,7 +212,7 @@ func getPossibleIssuers(id identity.Identity, bindPoints []*xweb.BindPointConfig
 			issuerMap[host] = struct{}{}
 		}
 
-		issuerMap[bindPoint.Address] = struct{}{}
+		issuerMap[bindPoint.ServerAddress()] = struct{}{}
 	}
 
 	var ports []string

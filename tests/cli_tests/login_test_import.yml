@@ -1,0 +1,125 @@
+{
+  "authPolicies": [],
+  "certificateAuthorities": [],
+  "configTypes": [],
+  "configs": [
+    {
+      "configType": "@intercept.v1",
+      "data": {
+        "addresses": [
+          "mgmt.ziti"
+        ],
+        "portRanges": [
+          {
+            "high": 443,
+            "low": 443
+          }
+        ],
+        "protocols": [
+          "tcp"
+        ]
+      },
+      "name": "mgmt.interceptv1",
+      "tags": {}
+    }
+  ],
+  "edgeRouterPolicies": [
+    {
+      "edgeRouterRoles": [
+        "#public"
+      ],
+      "identityRoles": [
+        "#all"
+      ],
+      "name": "all-endpoints-public-routers",
+      "semantic": "AnyOf",
+      "tags": {}
+    },
+    {
+      "edgeRouterRoles": [
+        "@router-quickstart"
+      ],
+      "identityRoles": [
+        "@router-quickstart"
+      ],
+      "name": "edge-router-RoZMjWCQAx-system",
+      "semantic": "AnyOf",
+      "tags": {}
+    }
+  ],
+  "edgeRouters": [
+    {
+      "appData": {},
+      "disabled": false,
+      "hostname": "sg4",
+      "isTunnelerEnabled": true,
+      "name": "router-quickstart",
+      "noTraversal": false,
+      "roleAttributes": [
+        "public"
+      ],
+      "tags": {},
+      "unverifiedCertPem": null,
+      "unverifiedFingerprint": null
+    }
+  ],
+  "externalJwtSigners": [],
+  "identities": [
+  ],
+  "postureChecks": [],
+  "serviceEdgeRouterPolicies": [
+    {
+      "edgeRouterRoles": [
+        "#all"
+      ],
+      "name": "all-routers-all-services",
+      "semantic": "AnyOf",
+      "serviceRoles": [
+        "#all"
+      ],
+      "tags": {}
+    }
+  ],
+  "servicePolicies": [
+    {
+      "identityRoles": [
+        "#mgmtclients"
+      ],
+      "name": "mgmt.dial",
+      "postureCheckRoles": [],
+      "semantic": "AnyOf",
+      "serviceRoles": [
+        "@mgmt"
+      ],
+      "tags": {},
+      "type": "Dial"
+    },
+    {
+      "identityRoles": [
+        "#mgmtservers"
+      ],
+      "name": "mgmt.bind",
+      "postureCheckRoles": [],
+      "semantic": "AnyOf",
+      "serviceRoles": [
+        "@mgmt"
+      ],
+      "tags": {},
+      "type": "Bind"
+    }
+  ],
+  "services": [
+    {
+      "configs": [
+        "@mgmt.interceptv1"
+      ],
+      "encryptionRequired": true,
+      "name": "mgmt",
+      "roleAttributes": [
+        "mgmtservers"
+      ],
+      "tags": {},
+      "terminatorStrategy": "smartrouting"
+    }
+  ]
+}

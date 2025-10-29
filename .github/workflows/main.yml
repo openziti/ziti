@@ -169,6 +169,23 @@ jobs:
         run: |
           go test ./... --tags apitests
 
+      - name: Run CLI tests and Integration Tests
+        if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          mkdir cli_tests_bin
+          go build -o cli_tests_bin ./... 
+          ZITI_CLI_TEST_ZITI_BIN="$PWD/cli_tests_bin/ziti" go test ./... --tags cli_tests
+          
+      - name: Upload CLI test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-test-logs-${{ github.run_id }}
+          path: '**/ctrl-std*log'
+          retention-days: 5
+
   fablab-smoketest:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
