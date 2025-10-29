@@ -519,7 +519,6 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	strVal, ok := val.(string)
 
 	if ok {
-		strVal = strings.TrimSpace(strVal)
 		if strVal != "" {
 			return []string{strVal}, nil
 		}
@@ -540,7 +539,6 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 			return nil, fmt.Errorf("could not resolve json point %s as array of strings at index %d: %v: value is not a string", property, i, arrVal)
 		}
 
-		arrStrVal = strings.TrimSpace(arrStrVal)
 		if arrStrVal != "" {
 			attributes = append(attributes, arrStrVal)
 		}
