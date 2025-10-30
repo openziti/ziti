@@ -153,6 +153,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
+      GO_VERSION: ${{ steps.setup-go.outputs.go-version }} 
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -160,6 +161,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Go
+        id: setup-go
         uses: ./.github/actions/setup-go
 
       - name: Install Python
@@ -315,4 +317,5 @@ jobs:
             -f "event_type=ziti_release" \
             -F "client_payload[version]=${{ needs.publish.outputs.ZITI_VERSION }}" \
             -F "client_payload[run_id]=${{ github.run_id }}" \
-            -F "client_payload[repo]=${{ github.repository }}"
+            -F "client_payload[repo]=${{ github.repository }}" \
+            -F "client_payload[go_toolchain_version]=${{ needs.publish.outputs.GO_VERSION }}"
