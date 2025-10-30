@@ -314,13 +314,18 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if apiErr != nil {
 		invalid := apierror.NewInvalidAuth()
-		if method == AuthMethodPassword {
-			renderLogin(w, credentials.AuthRequestId, invalid)
-			w.WriteHeader(invalid.Status)
+		if responseType == HtmlContentType {
+
+			if method == AuthMethodPassword {
+				w.WriteHeader(invalid.Status)
+				renderLogin(w, credentials.AuthRequestId, invalid)
+				return
+			}
+
+			http.Error(w, invalid.Message, invalid.Status)
 			return
 		}
-
-		http.Error(w, invalid.Message, invalid.Status)
+		renderJsonError(w, apiErr)
 		return
 	}
 
