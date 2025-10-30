@@ -18,6 +18,8 @@ package handler_ctrl
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -27,7 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 type faultHandler struct {

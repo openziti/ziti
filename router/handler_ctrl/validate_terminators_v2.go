@@ -17,6 +17,8 @@
 package handler_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -25,7 +27,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xgress_router"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type validateTerminatorsV2Handler struct {
@@ -76,7 +77,7 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 		binding := terminator.Binding
 		dialer := dialers[binding]
 		if dialer == nil {
-			if factory, err := xgress_router.GlobalRegistry().Factory(binding); err == nil {
+			if factory, err := handler.env.GetXgressRegistry().Factory(binding); err == nil {
 				if dialer, err = factory.CreateDialer(handler.env.GetDialerCfg()[binding]); err == nil {
 					dialers[binding] = dialer
 				}

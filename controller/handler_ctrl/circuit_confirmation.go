@@ -17,6 +17,8 @@
 package handler_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type circuitConfirmationHandler struct {
@@ -104,7 +105,7 @@ func (self *circuitConfirmationHandler) sendUnroute(circuitId string) {
 	if body, err := proto.Marshal(unroute); err == nil {
 		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err = self.r.Control.Send(msg); err == nil {
-			log.Info("sent unroute to router for circuit")
+			log.Debug("sent unroute to router for circuit")
 		} else {
 			log.WithError(err).Error("error sending unroute to router for circuit")
 		}

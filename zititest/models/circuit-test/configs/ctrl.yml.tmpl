@@ -1,7 +1,13 @@
 v: 3
 
+{{if .Component.GetFlag "ha"}}
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+routerDataModel:
+  enabled: true
+{{end}}
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem

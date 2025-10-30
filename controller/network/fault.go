@@ -19,7 +19,6 @@ package network
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/sirupsen/logrus"
 )
 
 type ForwardingFaultReport struct {
@@ -29,15 +28,15 @@ type ForwardingFaultReport struct {
 }
 
 func (network *Network) fault(ffr *ForwardingFaultReport) {
-	logrus.Infof("network fault processing for [%d] circuits", len(ffr.CircuitIds))
+	pfxlog.Logger().Debugf("network fault processing for [%d] circuits", len(ffr.CircuitIds))
 	for _, circuitId := range ffr.CircuitIds {
 		log := pfxlog.Logger().WithField("circuitId", circuitId).WithField("routerId", ffr.R.Id)
 		s, found := network.Circuit.Get(circuitId)
 		if found {
 			if success := network.rerouteCircuitWithTries(s, 2); success {
-				log.Info("rerouted circuit in response to forwarding fault from router")
+				log.Debug("rerouted circuit in response to forwarding fault from router")
 			} else {
-				log.Infof("error rerouting circuit in response to forwarding fault from router, circuit removed")
+				log.Debugf("error rerouting circuit in response to forwarding fault from router, circuit removed")
 			}
 		} else if !ffr.UnknownOwner {
 			// If the owner is unknown, we can't unroute because the circuit may be owned by some other controller
@@ -46,7 +45,7 @@ func (network *Network) fault(ffr *ForwardingFaultReport) {
 
 			// unroute non-existent circuit
 			if err := sendUnroute(ffr.R, circuitId, true); err == nil {
-				log.Info("sent unroute for circuit to router in response to forwarding fault")
+				log.Debug("sent unroute for circuit to router in response to forwarding fault")
 			} else {
 				log.WithError(err).Error("error sending unroute for circuit to router in response to forwarding fault")
 			}

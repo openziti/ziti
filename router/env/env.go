@@ -60,6 +60,7 @@ type RouterEnv interface {
 	GetXgressMetrics() XgressMetrics
 	NotifyCertsUpdated()
 	GetAlerter() Alerter
+	GetXgressRegistry() *Registry
 }
 
 type Alerter interface {

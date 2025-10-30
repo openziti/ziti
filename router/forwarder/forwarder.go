@@ -19,6 +19,9 @@ package forwarder
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
@@ -29,8 +32,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/sirupsen/logrus"
-	"sync/atomic"
-	"time"
 )
 
 type Forwarder struct {

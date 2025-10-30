@@ -42,7 +42,6 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
 	env2 "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/openziti/ziti/zitirest"
 
 	"github.com/Jeffail/gabs"
@@ -63,7 +62,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
@@ -71,8 +69,6 @@ import (
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -564,23 +560,13 @@ func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Ro
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	config, err := env2.LoadConfig(configFile)
+	routerCfg, err := env2.LoadConfig(configFile)
 	ctx.Req.NoError(err)
 	if cfgTweaks != nil {
-		cfgTweaks(config)
+		cfgTweaks(routerCfg)
 	}
-	newRouter := router.Create(config, NewVersionProviderTest())
+	newRouter := router.Create(routerCfg, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
-
-	xgressEdgeFactory := xgress_edge.NewFactory(config, newRouter, newRouter.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
-
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, newRouter.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
-
-	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeFactory))
-	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeTunnelFactory))
-	ctx.Req.NoError(newRouter.RegisterXrctrl(newRouter.GetStateManager()))
 	ctx.Req.NoError(newRouter.Start())
 	return newRouter
 }

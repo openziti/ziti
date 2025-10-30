@@ -17,80 +17,100 @@
 package handler_edge_ctrl
 
 import (
+	"slices"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/event"
 	"google.golang.org/protobuf/proto"
-	"slices"
-	"sync"
-	"time"
 )
 
 type connectEventsHandler struct {
 	appEnv *env.AppEnv
-	sync.Mutex
+	eventC chan func()
 }
 
 func NewConnectEventsHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
-	return &connectEventsHandler{
+	result := &connectEventsHandler{
 		appEnv: appEnv,
+		eventC: make(chan func(), 1000),
 	}
+
+	go result.processEvents()
+	return result
 }
 
-func (h *connectEventsHandler) ContentType() int32 {
+func (self *connectEventsHandler) ContentType() int32 {
 	return int32(edge_ctrl_pb.ContentType_ConnectEventsTypes)
 }
 
-func (h *connectEventsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	go func() {
-		// process per-router events in order
-		h.Lock()
-		defer h.Unlock()
+func (self *connectEventsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	req := &edge_ctrl_pb.ConnectEvents{}
+	if err := proto.Unmarshal(msg.Body, req); err != nil {
+		pfxlog.Logger().WithError(err).Error("could not convert message to ConnectEvents")
+		return
+	}
 
-		req := &edge_ctrl_pb.ConnectEvents{}
-		routerId := ch.Id()
-		if err := proto.Unmarshal(msg.Body, req); err != nil {
-			pfxlog.Logger().WithError(err).Error("could not convert message to ConnectEvents")
+	processF := func() {
+		self.HandleConnectEvents(req, ch)
+	}
+
+	select {
+	case self.eventC <- processF:
+	case <-self.appEnv.GetCloseNotifyChannel():
+	}
+}
+
+func (self *connectEventsHandler) processEvents() {
+	for {
+		select {
+		case eventF := <-self.eventC:
+			eventF()
+		case <-self.appEnv.GetCloseNotifyChannel():
+			return
+		}
+	}
+}
+
+func (self *connectEventsHandler) HandleConnectEvents(req *edge_ctrl_pb.ConnectEvents, ch channel.Channel) {
+	identityManager := self.appEnv.Managers.Identity
+
+	if req.FullState {
+		identityManager.GetConnectionTracker().SyncAllFromRouter(req, ch)
+	}
+
+	var events []*event.ConnectEvent
+	for _, identityEvent := range req.Events {
+		for _, connect := range identityEvent.ConnectTimes {
+			events = append(events, &event.ConnectEvent{
+				Namespace: event.ConnectEventNS,
+				SrcType:   event.ConnectSourceIdentity,
+				DstType:   event.ConnectDestinationRouter,
+				SrcId:     identityEvent.IdentityId,
+				SrcAddr:   connect.SrcAddr,
+				DstId:     ch.Id(),
+				DstAddr:   connect.DstAddr,
+				Timestamp: time.UnixMilli(connect.ConnectTime),
+			})
 		}
 
-		identityManager := h.appEnv.Managers.Identity
-
-		if req.FullState {
-			identityManager.GetConnectionTracker().SyncAllFromRouter(req, ch)
-		}
-
-		var events []*event.ConnectEvent
-		for _, identityEvent := range req.Events {
-			for _, connect := range identityEvent.ConnectTimes {
-				events = append(events, &event.ConnectEvent{
-					Namespace: event.ConnectEventNS,
-					SrcType:   event.ConnectSourceIdentity,
-					DstType:   event.ConnectDestinationRouter,
-					SrcId:     identityEvent.IdentityId,
-					SrcAddr:   connect.SrcAddr,
-					DstId:     routerId,
-					DstAddr:   connect.DstAddr,
-					Timestamp: time.UnixMilli(connect.ConnectTime),
-				})
+		if !req.FullState {
+			if identityEvent.IsConnected {
+				identityManager.GetConnectionTracker().MarkConnected(identityEvent.IdentityId, ch)
+			} else {
+				identityManager.GetConnectionTracker().MarkDisconnected(identityEvent.IdentityId, ch)
 			}
-
-			if !req.FullState {
-				if identityEvent.IsConnected {
-					identityManager.GetConnectionTracker().MarkConnected(identityEvent.IdentityId, ch)
-				} else {
-					identityManager.GetConnectionTracker().MarkDisconnected(identityEvent.IdentityId, ch)
-				}
-			}
 		}
+	}
 
-		slices.SortFunc(events, func(a, b *event.ConnectEvent) int {
-			return int(a.Timestamp.UnixMilli() - b.Timestamp.UnixMilli())
-		})
+	slices.SortFunc(events, func(a, b *event.ConnectEvent) int {
+		return int(a.Timestamp.UnixMilli() - b.Timestamp.UnixMilli())
+	})
 
-		for _, evt := range events {
-			h.appEnv.GetEventDispatcher().AcceptConnectEvent(evt)
-		}
-	}()
+	for _, evt := range events {
+		self.appEnv.GetEventDispatcher().AcceptConnectEvent(evt)
+	}
 }

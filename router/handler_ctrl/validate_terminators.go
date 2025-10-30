@@ -68,7 +68,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		binding := terminator.Binding
 		dialer := dialers[binding]
 		if dialer == nil {
-			if factory, err := xgress_router.GlobalRegistry().Factory(binding); err == nil {
+			if factory, err := handler.env.GetXgressRegistry().Factory(binding); err == nil {
 				if dialer, err = factory.CreateDialer(handler.env.GetDialerCfg()[binding]); err == nil {
 					dialers[binding] = dialer
 				}

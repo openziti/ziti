@@ -4,6 +4,11 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -27,12 +32,9 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
+var DefaultVersion = "v1.7.0"
 var ClientRoutersVersion = ""
 var HostRoutersVersion = ""
 
@@ -44,7 +46,7 @@ const (
 	TestModeHostBackwardsCompatibility   = "host-backwards-compatibility"
 )
 
-var mode testMode = TestModeDefault
+var mode testMode = TestModeHostBackwardsCompatibility
 
 var entityCounts = map[string]uint32{
 	"loop-client":    1,
@@ -142,7 +144,7 @@ var m = &model.Model{
 	Id: "circuit-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"ha":          "true",
+			"ha":          "false",
 			"tcpdump":     "false",
 			"environment": "circuit-test",
 			"credentials": model.Variables{
@@ -181,34 +183,43 @@ var m = &model.Model{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
 		model.FactoryFunc(func(m *model.Model) error {
 			if mode == TestModeDefault {
-				ClientRoutersVersion = ""
-				HostRoutersVersion = ""
+				ClientRoutersVersion = DefaultVersion
+				HostRoutersVersion = DefaultVersion
 			} else if mode == TestModeClientBackwardsCompatibility {
-				ClientRoutersVersion = "v1.5.4"
-				HostRoutersVersion = ""
+				ClientRoutersVersion = "v1.1.15"
+				HostRoutersVersion = DefaultVersion
 
-				m.Scope.Defaults["testErtClient"] = true
-				m.Scope.Defaults["testSdkClient"] = true
-				m.Scope.Defaults["testSdkXgClient"] = false
-
-				m.Scope.Defaults["testErtHost"] = true
-				m.Scope.Defaults["testSdkHost"] = true
-				m.Scope.Defaults["testSdkXgHost"] = true
-			} else if mode == TestModeHostBackwardsCompatibility {
-				ClientRoutersVersion = ""
-				HostRoutersVersion = "v1.5.4"
-
-				m.Scope.Defaults["testErtClient"] = true
+				m.Scope.Defaults["testErtClient"] = false
 				m.Scope.Defaults["testSdkClient"] = true
 				m.Scope.Defaults["testSdkXgClient"] = true
 
 				m.Scope.Defaults["testErtHost"] = true
-				m.Scope.Defaults["testSdkHost"] = true
+				m.Scope.Defaults["testSdkHost"] = false
+				m.Scope.Defaults["testSdkXgHost"] = false
+			} else if mode == TestModeHostBackwardsCompatibility {
+				ClientRoutersVersion = DefaultVersion
+				HostRoutersVersion = "v0.31.0"
+
+				m.Scope.Defaults["testErtClient"] = false
+				m.Scope.Defaults["testSdkClient"] = true
+				m.Scope.Defaults["testSdkXgClient"] = true
+
+				m.Scope.Defaults["testErtHost"] = true
+				m.Scope.Defaults["testSdkHost"] = false
 				m.Scope.Defaults["testSdkXgHost"] = false
 			}
 
 			err := m.ForEachComponent(".client-router", 1, func(c *model.Component) error {
 				c.Type.(*zitilab.RouterType).Version = ClientRoutersVersion
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			err = m.ForEachComponent(".ctrl", 1, func(c *model.Component) error {
+				c.Type.(*zitilab.ControllerType).Version = DefaultVersion
 				return nil
 			})
 
@@ -252,7 +263,7 @@ var m = &model.Model{
 			}
 
 			if val, _ := m.GetBoolVariable("tcpdump"); !val {
-				for _, c := range m.SelectComponents("tcpdump") {
+				for _, c := range m.SelectComponents(".tcpdump") {
 					delete(c.Host.Components, c.Id)
 				}
 			}
@@ -402,7 +413,9 @@ var m = &model.Model{
 					Components: model.Components{
 						"router-metrics": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal", "sim-services"}},
-							Type:  &zitilab.RouterType{},
+							Type: &zitilab.RouterType{
+								Version: DefaultVersion,
+							},
 						},
 					},
 				},

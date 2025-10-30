@@ -114,6 +114,7 @@ type Router struct {
 	agentBindHandlers   []channel.BindHandler
 	rdmRequired         atomic.Bool
 	indexWatchers       env.IndexWatchers
+	xgRegistry          *env.Registry
 	xgBindHandler       xgress.BindHandler
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
@@ -154,6 +155,10 @@ func (self *Router) GetCloseNotify() <-chan struct{} {
 
 func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
+}
+
+func (self *Router) GetXgressRegistry() *env.Registry {
+	return self.xgRegistry
 }
 
 func (self *Router) RenderJsonConfig() (string, error) {
@@ -234,6 +239,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	metricsRegistry := createMetricsRegistry(cfg, closeNotify)
 
 	router := &Router{
+		xgRegistry:          env.NewRegistry(),
 		config:              cfg,
 		metricsRegistry:     metricsRegistry,
 		shutdownC:           closeNotify,
@@ -253,7 +259,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
-	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
+	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
 
@@ -388,7 +394,7 @@ func (self *Router) Start() error {
 	}
 
 	// Initialize xgress registry
-	xgress_router.GlobalRegistry().Initialize(self)
+	self.xgRegistry.Initialize(self)
 
 	// Start network listeners and dialers
 	self.startXlinkDialers()
@@ -609,23 +615,23 @@ func (self *Router) registerComponents() error {
 
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(acceptor, xlinkChAccepter, linkTransportConfig, self)
 
-	xgress_router.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress_router.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
-	xgress_router.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	xgress_router.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
+	self.xgRegistry.Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	self.xgRegistry.Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
+	self.xgRegistry.Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	self.xgRegistry.Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
 
 	// Register edge-related xgress factories
 	xgressEdgeFactory := xgress_edge.NewFactory(self.config, self, self.stateManager)
-	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
+	self.xgRegistry.Register(common.EdgeBinding, xgressEdgeFactory)
 	if err := self.RegisterXrctrl(xgressEdgeFactory); err != nil {
 		return fmt.Errorf("error registering edge in framework (%w)", err)
 	}
 
 	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
-	xgress_router.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+	self.xgRegistry.Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(self, self.stateManager)
-	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
+	self.xgRegistry.Register(common.TunnelBinding, xgressEdgeTunnelFactory)
 	if err := self.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
 		return fmt.Errorf("error registering edge tunnel in framework (%w)", err)
 	}
@@ -740,7 +746,7 @@ func (self *Router) setDefaultDialerBindings() {
 
 func (self *Router) startXgressListeners() {
 	for _, binding := range self.config.Listeners {
-		factory, err := xgress_router.GlobalRegistry().Factory(binding.Name)
+		factory, err := self.xgRegistry.Factory(binding.Name)
 		if err != nil {
 			logrus.Fatalf("error getting xgress factory [%s] (%v)", binding.Name, err)
 		}
