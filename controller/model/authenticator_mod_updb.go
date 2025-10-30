@@ -21,12 +21,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"time"
 )
 
 var _ AuthProcessor = &AuthModuleUpdb{}
@@ -72,7 +73,6 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	if username == "" || password == "" {
 		reason := "username and password fields are required"
 		failEvent := module.NewAuthEventFailure(context, bundle, reason)
-
 		module.DispatchEvent(failEvent)
 		return nil, errorz.NewCouldNotValidate(errors.New(reason))
 	}
@@ -154,29 +154,15 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	attempts := int64(0)
-	module.attemptsByAuthenticatorId.Upsert(bundle.Authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
+	module.attemptsByAuthenticatorId.Upsert(bundle.Authenticator.Id, 1, func(exist bool, prevAttempts int64, attemptIncrement int64) int64 {
 		if exist {
-			attempts = prevAttempts + 1
-			return attempts
+			attempts = prevAttempts + attemptIncrement
+		} else {
+			attempts = attemptIncrement
 		}
 
-		return 0
+		return attempts
 	})
-
-	if bundle.AuthPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts > bundle.AuthPolicy.Primary.Updb.MaxAttempts {
-		reason := fmt.Sprintf("updb auth failed, max attempts exceeded, attempts: %v, maxAttempts: %v", attempts, bundle.AuthPolicy.Primary.Updb.MaxAttempts)
-		failEvent := module.NewAuthEventFailure(context, bundle, reason)
-
-		module.DispatchEvent(failEvent)
-		logger.WithField("attempts", attempts).WithField("maxAttempts", bundle.AuthPolicy.Primary.Updb.MaxAttempts).Error(reason)
-
-		duration := time.Duration(bundle.AuthPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute
-		if err = module.env.GetManagers().Identity.Disable(bundle.Authenticator.IdentityId, duration, context.GetChangeContext()); err != nil {
-			logger.WithError(err).Error("could not lock identity, unhandled error")
-		}
-
-		return nil, apierror.NewInvalidAuth()
-	}
 
 	updb := bundle.Authenticator.ToUpdb()
 
@@ -201,9 +187,25 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 		module.DispatchEvent(failEvent)
 		logger.Error(reason)
 
+		if bundle.AuthPolicy.Primary.Updb.MaxAttempts != db.UpdbUnlimitedAttemptsLimit && attempts >= bundle.AuthPolicy.Primary.Updb.MaxAttempts {
+			reason := fmt.Sprintf("updb auth failed, max attempts exceeded, attempts: %v, maxAttempts: %v", attempts, bundle.AuthPolicy.Primary.Updb.MaxAttempts)
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+
+			module.DispatchEvent(failEvent)
+			logger.WithField("attempts", attempts).WithField("maxAttempts", bundle.AuthPolicy.Primary.Updb.MaxAttempts).Error(reason)
+
+			duration := time.Duration(bundle.AuthPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute
+			if err = module.env.GetManagers().Identity.Disable(bundle.Authenticator.IdentityId, duration, context.GetChangeContext()); err != nil {
+				logger.WithError(err).Error("could not lock identity, unhandled error")
+			}
+
+			module.attemptsByAuthenticatorId.Remove(bundle.Authenticator.Id)
+		}
+
 		return nil, apierror.NewInvalidAuth()
 	}
 
+	module.attemptsByAuthenticatorId.Remove(bundle.Authenticator.Id)
 	successEvent := module.NewAuthEventSuccess(context, bundle)
 	module.DispatchEvent(successEvent)
 

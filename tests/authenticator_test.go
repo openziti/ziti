@@ -21,6 +21,10 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
@@ -28,9 +32,6 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
@@ -53,12 +54,12 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		authenticatorsBody, err := gabs.ParseJSON(resp.Body())
 		req.NoError(err)
 
-		t.Run("can see three authenticators", func(t *testing.T) {
+		t.Run("can see four authenticators", func(t *testing.T) {
 			req := require.New(t)
 			count, err := authenticatorsBody.ArrayCount("data")
 
 			req.NoError(err)
-			req.Equal(3, count, "expected three authenticators")
+			req.Equal(4, count, "expected four authenticators")
 		})
 
 		t.Run("ott listed authenticator has isIssuedByNetwork=true", func(t *testing.T) {
