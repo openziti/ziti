@@ -1,4 +1,4 @@
-// +build dataflow
+//go:build dataflow
 
 /*
 	Copyright NetFoundry Inc.
@@ -21,16 +21,17 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"math/rand"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 func Test_TunnelerDataflowTcp(t *testing.T) {

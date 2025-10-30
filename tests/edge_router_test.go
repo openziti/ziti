@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,11 +19,12 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/foundation/v2/stringz"
 	"net/url"
 	"sort"
 	"testing"
+
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_EdgeRouter(t *testing.T) {

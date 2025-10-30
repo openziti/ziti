@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -28,6 +27,11 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"testing"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
@@ -39,10 +43,6 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/ziti/util"
 	"gopkg.in/resty.v1"
-	"net/http"
-	"net/url"
-	"strings"
-	"testing"
 )
 
 func Test_EnrollmentIdentityExtend(t *testing.T) {

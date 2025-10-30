@@ -259,7 +259,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
-	router.faulter = forwarder.NewFaulter(router.ctrls, cfg.Forwarder.FaultTxInterval, closeNotify)
+	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
 

@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -21,11 +20,12 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"testing"
 )
 
 func Test_Authenticate_Updb(t *testing.T) {

@@ -676,11 +676,11 @@ func waitForController(ctrlUrl string, done chan error) {
 
 func waitForRouter(address string, port uint16, done chan struct{}) {
 	for {
-		addr := fmt.Sprintf("%s:%d", address, port)
+		addr := net.JoinHostPort(address, strconv.Itoa(int(port)))
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err == nil {
 			_ = conn.Close()
-			fmt.Printf("Router is available on %s:%d\n", address, port)
+			fmt.Printf("Router is available on %s\n", addr)
 			close(done)
 			return
 		}

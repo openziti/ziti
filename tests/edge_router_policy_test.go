@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -21,8 +20,9 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/eid"
 	"testing"
+
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_EdgeRouterPolicy(t *testing.T) {

@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,11 +19,12 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/golang-jwt/jwt/v5"
 	enrollment_client "github.com/openziti/edge-api/rest_client_api_client/enrollment"
 	enrollment_management "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/sdk-golang/ziti"
-	"testing"
 )
 
 func Test_EnrollmentNetwork(t *testing.T) {

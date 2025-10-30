@@ -39,11 +39,6 @@ import (
 	"testing"
 	"time"
 
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/controller/config"
-	env2 "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/zitirest"
-
 	"github.com/Jeffail/gabs"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -56,6 +51,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	idlib "github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
+	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
@@ -64,11 +60,14 @@ import (
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller"
+	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/server"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
+	routerEnv "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/zitirest"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -215,7 +214,7 @@ func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *Client
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	client := edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edgeApis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
 	return &ClientHelperClient{
 		ClientApiClient: client,
@@ -227,7 +226,7 @@ func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *Ma
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	client := edge_apis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edgeApis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
 	return &ManagementHelperClient{
 		ManagementApiClient: client,
@@ -485,7 +484,7 @@ func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) 
 	if tunneler {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	routerConfig, err := env2.LoadConfigWithOptions(configFile, false)
+	routerConfig, err := routerEnv.LoadConfigWithOptions(configFile, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -506,7 +505,7 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	ctx.transitRouterEntity = ctx.AdminManagementSession.requireNewTransitRouter()
 	jwt := ctx.AdminManagementSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
-	routerConfig, err := env2.LoadConfigWithOptions(TransitRouterConfFile, false)
+	routerConfig, err := routerEnv.LoadConfigWithOptions(TransitRouterConfFile, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -523,7 +522,7 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 }
 
 func (ctx *TestContext) startTransitRouter() {
-	routerConfig, err := env2.LoadConfig(TransitRouterConfFile)
+	routerConfig, err := routerEnv.LoadConfig(TransitRouterConfFile)
 	ctx.Req.NoError(err)
 	newRouter := router.Create(routerConfig, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
@@ -543,7 +542,7 @@ func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string)
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*env2.Config), roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*routerEnv.Config), roleAttributes ...string) *router.Router {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(cfgTweaks)
@@ -555,12 +554,12 @@ func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...strin
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Router {
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *router.Router {
 	configFile := EdgeRouterConfFile
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = TunnelerEdgeRouterConfFile
 	}
-	routerCfg, err := env2.LoadConfig(configFile)
+	routerCfg, err := routerEnv.LoadConfig(configFile)
 	ctx.Req.NoError(err)
 	if cfgTweaks != nil {
 		cfgTweaks(routerCfg)
@@ -948,8 +947,8 @@ func (ctx *TestContext) shutdownRouters() {
 	ctx.routers = nil
 }
 
-func (ctx *TestContext) NewAdminCredentials() *edge_apis.UpdbCredentials {
-	return edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
+	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
 }
 
 type TestConn struct {

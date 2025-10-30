@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -21,6 +20,10 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
@@ -28,9 +31,6 @@ import (
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {

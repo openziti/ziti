@@ -1,5 +1,4 @@
 //go:build dataflow
-// +build dataflow
 
 /*
 	Copyright NetFoundry Inc.
@@ -21,16 +20,17 @@ package tests
 
 import (
 	"encoding/json"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 type identityEvent struct {

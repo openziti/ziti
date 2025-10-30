@@ -1,5 +1,4 @@
 //go:build dataflow
-// +build dataflow
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,12 +19,13 @@
 package tests
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/eid"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_HSDataflow(t *testing.T) {
