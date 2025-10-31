@@ -8,17 +8,18 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"net"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"net"
-	"strconv"
-	"testing"
-	"time"
 )
 
 func Test_signerRecord_Resolve(t *testing.T) {
@@ -33,7 +34,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 
 		jwksResolver, err := newTestJwksResolver()
 		req.NoError(err)
-		
+
 		leaf1Key, err := newKey(leaf1KeyPair.cert, []*x509.Certificate{leaf1KeyPair.cert, testRootCa.cert})
 		req.NoError(err)
 
@@ -44,8 +45,8 @@ func Test_signerRecord_Resolve(t *testing.T) {
 
 		jwksResolver.AddKey(leaf2Key, leaf2KeyPair.key)
 
-		signerRec := &signerRecord{
-			kidToPubKey: map[string]pubKey{},
+		signerRec := &TokenIssuerExtJwt{
+			kidToPubKey: map[string]IssuerPublicKey{},
 			externalJwtSigner: &db.ExternalJwtSigner{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id:        "fake-id",

@@ -154,6 +154,10 @@ type Env interface {
 	// coordination and distributed system operations.
 	GetId() string
 
+	// GetTokenIssuerCache provides access to the cache of external JWT token issuers.
+	// Used for token-based enrollment and JWT authentication to verify tokens from external identity providers.
+	GetTokenIssuerCache() *TokenIssuerCache
+
 	// CreateTotpTokenFromAccessClaims creates a new TOTP JWT for the given access claims
 	CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error)
 }

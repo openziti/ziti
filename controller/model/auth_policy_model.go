@@ -89,6 +89,8 @@ func (entity *AuthPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltAuthPolicy *db.AuthPo
 		RequiredExtJwtSigner: boltAuthPolicy.Secondary.RequiredExtJwtSigner,
 	}
 
+	entity.Primary.ExtJwt.AllowAllSigners = len(entity.Primary.ExtJwt.AllowedExtJwtSigners) == 0
+
 	return nil
 }
 

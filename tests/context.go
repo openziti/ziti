@@ -75,7 +75,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
 )
 
@@ -123,7 +122,7 @@ func ST(t time.Time) *strfmt.DateTime {
 }
 
 type TestContext struct {
-	*require.Assertions
+	*CustomAssertions
 	ApiHost                string
 	AdminAuthenticator     *updbAuthenticator
 	AdminManagementSession *session
@@ -131,7 +130,7 @@ type TestContext struct {
 	RestClients            *zitirest.Clients
 	fabricController       *controller.Controller
 	EdgeController         *server.Controller
-	Req                    *require.Assertions
+	Req                    *CustomAssertions
 	clientApiClient        *resty.Client
 	managementApiClient    *resty.Client
 	enabledJsonLogging     bool
@@ -159,9 +158,7 @@ func NewTestContext(t *testing.T) *TestContext {
 			Password: eid.New(),
 		},
 		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
-		Req:      require.New(t),
 	}
-	ret.Assertions = ret.Req
 	ret.testContextChanged(t)
 
 	return ret
@@ -176,8 +173,9 @@ func GetTestContext() *TestContext {
 // errors.
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
-	ctx.Req = require.New(t)
-	ctx.Assertions = ctx.Req
+	newReq := NewCustomAssertions(t)
+	ctx.Req = newReq
+	ctx.CustomAssertions = newReq
 }
 
 // NextTest is an alias for testContextChanged and reflects the bbolt testing framework

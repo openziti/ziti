@@ -25,6 +25,7 @@ require (
 	github.com/go-acme/lego/v4 v4.25.2
 	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/go-openapi/errors v0.22.3
+	github.com/go-openapi/jsonpointer v0.22.1
 	github.com/go-openapi/loads v0.23.1
 	github.com/go-openapi/runtime v0.29.0
 	github.com/go-openapi/spec v0.22.0
@@ -60,7 +61,7 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.2.41
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.50
+	github.com/openziti/edge-api v0.26.51
 	github.com/openziti/foundation/v2 v2.0.79
 	github.com/openziti/identity v1.0.118
 	github.com/openziti/jwks v1.0.6
@@ -134,7 +135,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.24.0 // indirect
-	github.com/go-openapi/jsonpointer v0.22.1 // indirect
 	github.com/go-openapi/jsonreference v0.21.2 // indirect
 	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect
 	github.com/go-openapi/swag/conv v0.25.1 // indirect

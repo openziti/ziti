@@ -18,9 +18,11 @@ package model
 
 import (
 	"crypto/x509"
+	"net/http"
+	"strings"
+
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/ziti/controller/change"
-	"net/http"
 )
 
 type EnrollmentResult struct {
@@ -56,6 +58,42 @@ func (registry *EnrollmentRegistryImpl) GetByMethod(method string) EnrollmentPro
 			return processor
 		}
 	}
+
+	return nil
+}
+
+type Headers map[string]interface{}
+
+func (h *Headers) Set(key string, value interface{}) {
+	key = strings.ToLower(key)
+	(*h)[key] = value
+}
+
+func (h *Headers) Get(key string) interface{} {
+	key = strings.ToLower(key)
+	return (*h)[key]
+}
+
+func (h *Headers) Remove(key string) {
+	key = strings.ToLower(key)
+	delete(*h, key)
+}
+
+func (h *Headers) GetStrings(key string) []string {
+	key = strings.ToLower(key)
+	val := h.Get(key)
+
+	if val == nil {
+		return nil
+	}
+
+	switch v := val.(type) {
+	case string:
+		return []string{v}
+	case []string:
+		return v
+	}
+
 	return nil
 }
 
@@ -64,7 +102,7 @@ type EnrollmentContext interface {
 	GetToken() string
 	GetData() *EnrollmentData
 	GetCerts() []*x509.Certificate
-	GetHeaders() map[string]interface{}
+	GetHeaders() Headers
 	GetMethod() string
 	GetChangeContext() *change.Context
 }
@@ -78,7 +116,7 @@ type EnrollmentData struct {
 }
 
 type EnrollmentContextHttp struct {
-	Headers       map[string]interface{}
+	Headers       Headers
 	Parameters    map[string]interface{}
 	Data          *EnrollmentData
 	Certs         []*x509.Certificate
@@ -107,7 +145,7 @@ func (context *EnrollmentContextHttp) GetCerts() []*x509.Certificate {
 	return context.Certs
 }
 
-func (context *EnrollmentContextHttp) GetHeaders() map[string]interface{} {
+func (context *EnrollmentContextHttp) GetHeaders() Headers {
 	return context.Headers
 }
 
@@ -116,6 +154,25 @@ func (context *EnrollmentContextHttp) GetChangeContext() *change.Context {
 }
 
 func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request, changeCtx *change.Context) error {
+	context.SetParametersFromRequest(request)
+	context.SetHeadersFromRequest(request)
+
+	context.Certs = request.TLS.PeerCertificates
+	context.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	return nil
+}
+
+func (context *EnrollmentContextHttp) SetHeadersFromRequest(request *http.Request) {
+	headers := Headers{}
+	for h, v := range request.Header {
+		headers[strings.ToLower(h)] = v
+	}
+
+	context.Headers = headers
+}
+
+func (context *EnrollmentContextHttp) SetParametersFromRequest(request *http.Request) {
 	queryValues := request.URL.Query()
 	parameters := map[string]interface{}{}
 
@@ -129,15 +186,5 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request,
 		}
 	}
 
-	headers := map[string]interface{}{}
-	for h, v := range request.Header {
-		headers[h] = v
-	}
-
 	context.Parameters = parameters
-	context.Certs = request.TLS.PeerCertificates
-	context.Headers = headers
-	context.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
-
-	return nil
 }

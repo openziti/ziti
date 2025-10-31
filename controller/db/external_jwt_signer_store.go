@@ -18,57 +18,70 @@ package db
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/go-openapi/jsonpointer"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/apierror"
-	"strings"
-	"time"
 )
 
 const (
-	FieldExternalJwtSignerFingerprint     = "fingerprint"
-	FieldExternalJwtSignerCertPem         = "certPem"
-	FieldExternalJwtSignerJwksEndpoint    = "jwksEndpoint"
-	FieldExternalJwtSignerCommonName      = "commonName"
-	FieldExternalJwtSignerNotAfter        = "notAfter"
-	FieldExternalJwtSignerNotBefore       = "notBefore"
-	FieldExternalJwtSignerEnabled         = "enabled"
-	FieldExternalJwtSignerExternalAuthUrl = "externalAuthUrl"
-	FieldExternalJwtSignerAuthPolicies    = "authPolicies"
-	FieldExternalJwtSignerClaimsProperty  = "claimsProperty"
-	FieldExternalJwtSignerUseExternalId   = "useExternalId"
-	FieldExternalJwtSignerKid             = "kid"
-	FieldExternalJwtSignerIssuer          = "issuer"
-	FieldExternalJwtSignerAudience        = "audience"
-	FieldExternalJwtSignerClientId        = "clientId"
-	FieldExternalJwtSignerScopes          = "scopes"
-	FieldExternalJwtSignerTargetToken     = "targetToken"
+	FieldExternalJwtSignerFingerprint                   = "fingerprint"
+	FieldExternalJwtSignerCertPem                       = "certPem"
+	FieldExternalJwtSignerJwksEndpoint                  = "jwksEndpoint"
+	FieldExternalJwtSignerCommonName                    = "commonName"
+	FieldExternalJwtSignerNotAfter                      = "notAfter"
+	FieldExternalJwtSignerNotBefore                     = "notBefore"
+	FieldExternalJwtSignerEnabled                       = "enabled"
+	FieldExternalJwtSignerExternalAuthUrl               = "externalAuthUrl"
+	FieldExternalJwtSignerAuthPolicies                  = "authPolicies"
+	FieldExternalJwtSignerIdentityIdClaimSelector       = "claimsProperty"
+	FieldExternalJwtSignerUseExternalId                 = "useExternalId"
+	FieldExternalJwtSignerKid                           = "kid"
+	FieldExternalJwtSignerIssuer                        = "issuer"
+	FieldExternalJwtSignerAudience                      = "audience"
+	FieldExternalJwtSignerClientId                      = "clientId"
+	FieldExternalJwtSignerScopes                        = "scopes"
+	FieldExternalJwtSignerTargetToken                   = "targetToken"
+	FieldExternalJwtSignerEnrollmentToCertEnabled       = "enrollToCertEnabled"
+	FieldExternalJwtSignerEnrollToTokenEnabled          = "enrollToTokenEnabled"
+	FieldExternalJwtSignerEnrollAttributeClaimsSelector = "enrollAttributeClaimsSelector"
+	FieldExternalJwtSignerEnrollNameClaimsSelector      = "enrollNameClaimsSelector"
+	FieldExternalJwtSignerEnrollAuthPolicyId            = "enrollAuthPolicyId"
 
-	DefaultClaimsProperty = "sub"
+	DefaultIdentityIdClaimsSelector        = "/sub"
+	DefaultEnrollIdentityNameClaimSelector = "/sub"
 
 	TargetTokenAccess = "ACCESS"
 )
 
 type ExternalJwtSigner struct {
 	boltz.BaseExtEntity
-	Name            string     `json:"name"`
-	Fingerprint     *string    `json:"fingerprint"`
-	Kid             *string    `json:"kid"`
-	CertPem         *string    `json:"certPem"`
-	JwksEndpoint    *string    `json:"jwksEndpoint"`
-	CommonName      string     `json:"commonName"`
-	NotAfter        *time.Time `json:"notAfter"`
-	NotBefore       *time.Time `json:"notBefore"`
-	Enabled         bool       `json:"enabled"`
-	ExternalAuthUrl *string    `json:"externalAuthUrl"`
-	ClaimsProperty  *string    `json:"claimsProperty"`
-	UseExternalId   bool       `json:"useExternalId"`
-	Issuer          *string    `json:"issuer"`
-	Audience        *string    `json:"audience"`
-	ClientId        *string    `json:"clientId"`
-	Scopes          []string   `json:"scopes"`
-	TargetToken     string     `json:"targetToken"`
+	Name                          string     `json:"name"`
+	Fingerprint                   *string    `json:"fingerprint"`
+	Kid                           *string    `json:"kid"`
+	CertPem                       *string    `json:"certPem"`
+	JwksEndpoint                  *string    `json:"jwksEndpoint"`
+	CommonName                    string     `json:"commonName"`
+	NotAfter                      *time.Time `json:"notAfter"`
+	NotBefore                     *time.Time `json:"notBefore"`
+	Enabled                       bool       `json:"enabled"`
+	ExternalAuthUrl               *string    `json:"externalAuthUrl"`
+	IdentityIdClaimsSelector      *string    `json:"identityIdClaimsSelector"`
+	UseExternalId                 bool       `json:"useExternalId"`
+	Issuer                        *string    `json:"issuer"`
+	Audience                      *string    `json:"audience"`
+	ClientId                      *string    `json:"clientId"`
+	Scopes                        []string   `json:"scopes"`
+	TargetToken                   string     `json:"targetToken"`
+	EnrollToCertEnabled           bool       `json:"enrollToCertEnabled"`
+	EnrollToTokenEnabled          bool       `json:"enrollToTokenEnabled"`
+	EnrollAttributeClaimsSelector string     `json:"enrollAttributeClaimsSelector"`
+	EnrollAuthPolicyId            string     `json:"enrollAuthPolicyId"`
+	EnrollNameClaimSelector       string     `json:"enrollNameClaimsSelector"`
 }
 
 func (entity *ExternalJwtSigner) GetName() string {
@@ -103,6 +116,7 @@ type externalJwtSignerStoreImpl struct {
 	kidIndex           boltz.ReadIndex
 	symbolIssuer       boltz.EntitySymbol
 	issuerIndex        boltz.ReadIndex
+	enrollAuthPolicyId boltz.EntitySymbol
 }
 
 func (store *externalJwtSignerStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -127,12 +141,19 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldExternalJwtSignerNotAfter, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerNotBefore, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
-	store.AddSymbol(FieldExternalJwtSignerClaimsProperty, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerIdentityIdClaimSelector, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerUseExternalId, ast.NodeTypeBool)
 	store.AddSymbol(FieldExternalJwtSignerAudience, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerClientId, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerScopes, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerTargetToken, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerEnrollmentToCertEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerEnrollToTokenEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerEnrollAttributeClaimsSelector, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerEnrollNameClaimsSelector, ast.NodeTypeString)
+
+	store.enrollAuthPolicyId = store.AddFkSymbol(FieldExternalJwtSignerEnrollAuthPolicyId, store.stores.authPolicy)
+	store.AddFkConstraint(store.enrollAuthPolicyId, true, boltz.CascadeNone)
 
 	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
 }
@@ -156,13 +177,18 @@ func (store *externalJwtSignerStoreImpl) FillEntity(entity *ExternalJwtSigner, b
 	entity.NotBefore = bucket.GetTime(FieldExternalJwtSignerNotBefore)
 	entity.Enabled = bucket.GetBoolWithDefault(FieldExternalJwtSignerEnabled, false)
 	entity.ExternalAuthUrl = bucket.GetString(FieldExternalJwtSignerExternalAuthUrl)
-	entity.ClaimsProperty = bucket.GetString(FieldExternalJwtSignerClaimsProperty)
+	entity.IdentityIdClaimsSelector = bucket.GetString(FieldExternalJwtSignerIdentityIdClaimSelector)
 	entity.UseExternalId = bucket.GetBoolWithDefault(FieldExternalJwtSignerUseExternalId, false)
 	entity.Issuer = bucket.GetString(FieldExternalJwtSignerIssuer)
 	entity.Audience = bucket.GetString(FieldExternalJwtSignerAudience)
 	entity.ClientId = bucket.GetString(FieldExternalJwtSignerClientId)
 	entity.Scopes = bucket.GetStringList(FieldExternalJwtSignerScopes)
 	entity.TargetToken = bucket.GetStringWithDefault(FieldExternalJwtSignerTargetToken, TargetTokenAccess)
+	entity.EnrollToCertEnabled = bucket.GetBoolWithDefault(FieldExternalJwtSignerEnrollmentToCertEnabled, false)
+	entity.EnrollToTokenEnabled = bucket.GetBoolWithDefault(FieldExternalJwtSignerEnrollToTokenEnabled, false)
+	entity.EnrollAttributeClaimsSelector = bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollAttributeClaimsSelector, "")
+	entity.EnrollNameClaimSelector = bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollNameClaimsSelector, DefaultEnrollIdentityNameClaimSelector)
+	entity.EnrollAuthPolicyId = bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollAuthPolicyId, "")
 
 	if entity.TargetToken == "" {
 		entity.TargetToken = TargetTokenAccess
@@ -185,6 +211,19 @@ func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner
 	ctx.SetStringP(FieldExternalJwtSignerClientId, entity.ClientId)
 	ctx.SetStringList(FieldExternalJwtSignerScopes, entity.Scopes)
 	ctx.SetString(FieldExternalJwtSignerTargetToken, entity.TargetToken)
+	ctx.SetBool(FieldExternalJwtSignerEnrollmentToCertEnabled, entity.EnrollToCertEnabled)
+	ctx.SetBool(FieldExternalJwtSignerEnrollToTokenEnabled, entity.EnrollToTokenEnabled)
+	ctx.SetString(FieldExternalJwtSignerEnrollAttributeClaimsSelector, entity.EnrollAttributeClaimsSelector)
+
+	if entity.EnrollNameClaimSelector == "" {
+		entity.EnrollNameClaimSelector = DefaultEnrollIdentityNameClaimSelector
+	}
+	ctx.SetString(FieldExternalJwtSignerEnrollNameClaimsSelector, entity.EnrollNameClaimSelector)
+
+	if entity.EnrollAuthPolicyId == "" {
+		entity.EnrollAuthPolicyId = DefaultAuthPolicyId
+	}
+	ctx.SetString(FieldExternalJwtSignerEnrollAuthPolicyId, entity.EnrollAuthPolicyId)
 
 	if entity.ExternalAuthUrl != nil && strings.TrimSpace(*entity.ExternalAuthUrl) == "" {
 		entity.ExternalAuthUrl = nil
@@ -201,10 +240,10 @@ func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner
 	}
 	ctx.SetStringP(FieldExternalJwtSignerAudience, entity.Audience)
 
-	if entity.ClaimsProperty == nil || strings.TrimSpace(*entity.ClaimsProperty) == "" {
-		ctx.SetString(FieldExternalJwtSignerClaimsProperty, DefaultClaimsProperty)
+	if entity.IdentityIdClaimsSelector == nil || strings.TrimSpace(*entity.IdentityIdClaimsSelector) == "" {
+		ctx.SetString(FieldExternalJwtSignerIdentityIdClaimSelector, DefaultIdentityIdClaimsSelector)
 	} else {
-		ctx.SetStringP(FieldExternalJwtSignerClaimsProperty, entity.ClaimsProperty)
+		ctx.SetStringP(FieldExternalJwtSignerIdentityIdClaimSelector, entity.IdentityIdClaimsSelector)
 	}
 
 	jwksEndpoint := ctx.Bucket.GetString(FieldExternalJwtSignerJwksEndpoint)
@@ -218,6 +257,76 @@ func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner
 		ctx.Bucket.SetError(apierror.NewBadRequestFieldError(
 			*errorz.NewFieldError("only one of jwksEndpoint or certPem may be defined", FieldExternalJwtSignerJwksEndpoint, jwksEndpoint)))
 	}
+
+	var authPolicy *AuthPolicy
+	enrollAuthPolicyId := ctx.Bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollAuthPolicyId, "")
+
+	if enrollAuthPolicyId != "" {
+		var err error
+		authPolicy, _, err = store.stores.authPolicy.FindById(ctx.Tx(), enrollAuthPolicyId)
+		if err != nil {
+			ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("the auth policy could not be found", "enrollAuthPolicyId", entity.EnrollAuthPolicyId)))
+			return
+		}
+	}
+
+	enrollToTokenEnabled := ctx.Bucket.GetBoolWithDefault(FieldExternalJwtSignerEnrollToTokenEnabled, false)
+
+	if enrollToTokenEnabled {
+		if authPolicy == nil {
+			ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("the auth policy must be specified if enroll to token is enabled", "enrollAuthPolicyId", entity.EnrollAuthPolicyId)))
+			return
+		}
+
+		if !authPolicy.Primary.ExtJwt.Allowed {
+			ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("primary external jwt authentication on auth policy is disabled", "enrollAuthPolicyId", entity.EnrollAuthPolicyId)))
+			return
+		}
+	}
+
+	enrollToCertEnabled := ctx.Bucket.GetBoolWithDefault(FieldExternalJwtSignerEnrollmentToCertEnabled, false)
+
+	if enrollToCertEnabled {
+		if authPolicy == nil {
+			ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("the auth policy must be specified if enroll to cert is enabled", "enrollAuthPolicyId", entity.EnrollAuthPolicyId)))
+			return
+		}
+
+		if !authPolicy.Primary.Cert.Allowed {
+			ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("primary certificate authentication on auth policy is disabled", "enrollAuthPolicyId", entity.EnrollAuthPolicyId)))
+			return
+		}
+	}
+
+	enrollAttributeClaimsSelector := ctx.Bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollAttributeClaimsSelector, "")
+	err := store.verifyJsonPointer(enrollAttributeClaimsSelector)
+
+	if err != nil {
+		ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("the attribute claims selector is invalid: "+err.Error(), FieldExternalJwtSignerEnrollAttributeClaimsSelector, enrollAttributeClaimsSelector)))
+		return
+	}
+
+	enrollNameClaimSelector := ctx.Bucket.GetStringWithDefault(FieldExternalJwtSignerEnrollNameClaimsSelector, "")
+	err = store.verifyJsonPointer(enrollNameClaimSelector)
+
+	if err != nil {
+		ctx.Bucket.SetError(errorz.NewFieldApiError(errorz.NewFieldError("the name attribute claims selector is invalid: "+err.Error(), FieldExternalJwtSignerEnrollNameClaimsSelector, enrollNameClaimSelector)))
+		return
+	}
+}
+
+func (store *externalJwtSignerStoreImpl) verifyJsonPointer(selector string) error {
+	if selector == "" {
+		return nil
+	}
+
+	if !strings.HasPrefix(selector, "/") {
+		selector = "/" + selector
+	}
+
+	_, err := jsonpointer.New(selector)
+
+	return err
 }
 
 func (store *externalJwtSignerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

@@ -18,6 +18,10 @@ package edge
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
@@ -26,9 +30,6 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"strings"
 )
 
 type createExtJwtSignerOptions struct {
@@ -101,6 +102,12 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ClientID, "client-id", "", "", "The client id for OIDC that should be used")
 	cmd.Flags().StringSliceVarP(&options.ExtJwtSigner.Scopes, "scopes", "", nil, "The scopes for OIDC that should be used")
 	cmd.Flags().StringVarP(&options.TargetToken, "target-token", "", "ACCESS", "The target token SDKs should use, defaults to ACCESS")
+	cmd.Flags().BoolVarP(&options.ExtJwtSigner.EnrollToCertEnabled, "enroll-to-cert", "", false, "Enable enrollment to certificate authentication, defaults to false")
+	cmd.Flags().BoolVarP(&options.ExtJwtSigner.EnrollToTokenEnabled, "enroll-to-token", "", false, "Enable enrollment to a token authentication, defaults to false")
+	cmd.Flags().StringVarP(&options.ExtJwtSigner.EnrollNameClaimsSelector, "enroll-name-claims-selector", "", "", "The claims JSON pointer selector or top level property to use for the name of enrolling identities, defaults to /sub")
+	cmd.Flags().StringVarP(&options.ExtJwtSigner.EnrollAttributeClaimsSelector, "enroll-attr-claims-selector", "", "", "The claims JSON pointer selector or top level property to use for the attributes of enrolling identities")
+	cmd.Flags().StringVarP(&options.ExtJwtSigner.EnrollAuthPolicyID, "enroll-auth-policy", "", "", "The name or ID of the authentication policy to use for enrolling identities, defaults to `default`")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -175,6 +182,17 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 		}
 	}
 	options.ExtJwtSigner.Scopes = cleanedScopes
+
+	if options.ExtJwtSigner.EnrollAuthPolicyID != "" {
+		idOrName := options.ExtJwtSigner.EnrollAuthPolicyID
+
+		resolvedId, err := api.MapNameToID(util.EdgeAPI, "auth-policies", &options.EntityOptions.Options, idOrName)
+		if err != nil {
+			return err
+		}
+
+		options.ExtJwtSigner.EnrollAuthPolicyID = resolvedId
+	}
 
 	params := external_jwt_signer.NewCreateExternalJWTSignerParams()
 	params.ExternalJWTSigner = &options.ExtJwtSigner

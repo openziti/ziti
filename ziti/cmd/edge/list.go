@@ -19,17 +19,6 @@ package edge
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-openapi/runtime"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
-	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
-	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"net/url"
 	"os"
@@ -38,8 +27,19 @@ import (
 	"strings"
 
 	"github.com/Jeffail/gabs"
+	"github.com/go-openapi/runtime"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -714,6 +714,11 @@ func runListExtJwtSigners(options *api.Options) error {
 		outTable.AppendRow(table.Row{id, name, "ClientId", clientId}, rowConfigAutoMerge)
 		outTable.AppendRow(table.Row{id, name, "Scopes", scopes}, rowConfigAutoMerge)
 		outTable.AppendRow(table.Row{id, name, "TargetToken", *entity.TargetToken}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enroll To Cert", entity.EnrollToCertEnabled}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enroll To Token", entity.EnrollToTokenEnabled}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enroll Name Selector", entity.EnrollNameClaimsSelector}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enroll Attr Selector", entity.EnrollAttributeClaimsSelector}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Enroll AuthPolicy", entity.EnrollAuthPolicyID}, rowConfigAutoMerge)
 
 	}
 

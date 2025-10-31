@@ -115,6 +115,13 @@ type AppEnv struct {
 
 	TraceManager *TraceManager
 	timelineId   string
+
+	TokenIssuerCache *model.TokenIssuerCache
+}
+
+// GetTokenIssuerCache returns the TokenIssuerCache instance for verifying external JWT tokens.
+func (ae *AppEnv) GetTokenIssuerCache() *model.TokenIssuerCache {
+	return ae.TokenIssuerCache
 }
 
 func (ae *AppEnv) CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error) {
@@ -936,6 +943,8 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 		TraceManager: NewTraceManager(host.GetCloseNotifyChannel()),
 		timelineId:   timelineId,
 	}
+
+	ae.TokenIssuerCache = model.NewTokenIssuerCache(ae)
 
 	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
 

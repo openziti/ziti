@@ -290,6 +290,11 @@ message ExternalJwtSigner {
   optional string clientId = 17;
   repeated string scopes = 18;
   string targetToken = 19;
+  bool enrollToCertEnabled = 20;
+  bool enrollToTokenEnabled = 21;
+  string enrollAuthPolicyId = 22;
+  string enrollNameClaimSelector = 23;
+  string enrollAttributeClaimsSelector = 24;
 }
 
 // Identities

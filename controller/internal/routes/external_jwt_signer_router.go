@@ -19,8 +19,8 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	external_jwt_signer_client "github.com/openziti/edge-api/rest_client_api_server/operations/external_jwt_signer"
-	"github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
+	extJwtClient "github.com/openziti/edge-api/rest_client_api_server/operations/external_jwt_signer"
+	extJwtManagement "github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
@@ -46,76 +46,76 @@ func NewExternalJwtSignerRouter() *ExternalJwtSignerRouter {
 
 func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 	// client
-	ae.ClientApi.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer_client.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer_client.ListExternalJWTSignersParams) middleware.Responder {
-		return ae.IsAllowed(r.ListClient, params.HTTPRequest, "", "", permissions.Always())
+	ae.ClientApi.ExternalJWTSignerListExternalJWTSignersHandler = extJwtClient.ListExternalJWTSignersHandlerFunc(func(params extJwtClient.ListExternalJWTSignersParams) middleware.Responder {
+		return ae.IsAllowed(r.ListForClient, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	// management
-	ae.ManagementApi.ExternalJWTSignerDeleteExternalJWTSignerHandler = external_jwt_signer.DeleteExternalJWTSignerHandlerFunc(func(params external_jwt_signer.DeleteExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerDeleteExternalJWTSignerHandler = extJwtManagement.DeleteExternalJWTSignerHandlerFunc(func(params extJwtManagement.DeleteExternalJWTSignerParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.DeleteForManagement, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.ExternalJWTSignerDetailExternalJWTSignerHandler = external_jwt_signer.DetailExternalJWTSignerHandlerFunc(func(params external_jwt_signer.DetailExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerDetailExternalJWTSignerHandler = extJwtManagement.DetailExternalJWTSignerHandlerFunc(func(params extJwtManagement.DetailExternalJWTSignerParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.DetailForManagement, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer.ListExternalJWTSignersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerListExternalJWTSignersHandler = extJwtManagement.ListExternalJWTSignersHandlerFunc(func(params extJwtManagement.ListExternalJWTSignersParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListForManagement, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.ExternalJWTSignerUpdateExternalJWTSignerHandler = external_jwt_signer.UpdateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.UpdateExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerUpdateExternalJWTSignerHandler = extJwtManagement.UpdateExternalJWTSignerHandlerFunc(func(params extJwtManagement.UpdateExternalJWTSignerParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.UpdateForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.ExternalJWTSignerCreateExternalJWTSignerHandler = external_jwt_signer.CreateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.CreateExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerCreateExternalJWTSignerHandler = extJwtManagement.CreateExternalJWTSignerHandlerFunc(func(params extJwtManagement.CreateExternalJWTSignerParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateForManagement(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.ExternalJWTSignerPatchExternalJWTSignerHandler = external_jwt_signer.PatchExternalJWTSignerHandlerFunc(func(params external_jwt_signer.PatchExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	ae.ManagementApi.ExternalJWTSignerPatchExternalJWTSignerHandler = extJwtManagement.PatchExternalJWTSignerHandlerFunc(func(params extJwtManagement.PatchExternalJWTSignerParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.PatchForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
-func (r *ExternalJwtSignerRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+func (r *ExternalJwtSignerRouter) ListForManagement(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntityForManagement)
 }
 
-func (r *ExternalJwtSignerRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+func (r *ExternalJwtSignerRouter) DetailForManagement(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntityForManagement)
 }
 
-func (r *ExternalJwtSignerRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.CreateExternalJWTSignerParams) {
+func (r *ExternalJwtSignerRouter) CreateForManagement(ae *env.AppEnv, rc *response.RequestContext, params extJwtManagement.CreateExternalJWTSignerParams) {
 	Create(rc, rc, ExternalJwtSignerLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.ExternalJwtSigner.Create, MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner), rc)
+		return MapCreate(ae.Managers.ExternalJwtSigner.Create, MapCreateExternalJwtSignerToModelForManagement(params.ExternalJWTSigner), rc)
 	})
 }
 
-func (r *ExternalJwtSignerRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ExternalJwtSignerRouter) DeleteForManagement(ae *env.AppEnv, rc *response.RequestContext) {
 	DeleteWithHandler(rc, ae.Managers.ExternalJwtSigner)
 }
 
-func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.UpdateExternalJWTSignerParams) {
+func (r *ExternalJwtSignerRouter) UpdateForManagement(ae *env.AppEnv, rc *response.RequestContext, params extJwtManagement.UpdateExternalJWTSignerParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), nil, rc.NewChangeContext())
+		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModelForManagement(params.ID, params.ExternalJWTSigner), nil, rc.NewChangeContext())
 	})
 }
 
-func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.PatchExternalJWTSignerParams) {
-	Patch(rc, func(id string, fields fields.UpdatedFields) error {
+func (r *ExternalJwtSignerRouter) PatchForManagement(ae *env.AppEnv, rc *response.RequestContext, params extJwtManagement.PatchExternalJWTSignerParams) {
+	Patch(rc, func(id string, patchFields fields.UpdatedFields) error {
 
-		if fields.IsUpdated(db.FieldExternalJwtSignerCertPem) {
-			fields.AddField(db.FieldExternalJwtSignerCommonName)
-			fields.AddField(db.FieldExternalJwtSignerNotBefore)
-			fields.AddField(db.FieldExternalJwtSignerNotAfter)
-			fields.AddField(db.FieldExternalJwtSignerFingerprint)
+		if patchFields.IsUpdated(db.FieldExternalJwtSignerCertPem) {
+			patchFields.AddField(db.FieldExternalJwtSignerCommonName)
+			patchFields.AddField(db.FieldExternalJwtSignerNotBefore)
+			patchFields.AddField(db.FieldExternalJwtSignerNotAfter)
+			patchFields.AddField(db.FieldExternalJwtSignerFingerprint)
 		}
 
-		externalJwtSigner := MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner)
-		return ae.Managers.ExternalJwtSigner.Update(externalJwtSigner, fields.FilterMaps("tags", "data"), rc.NewChangeContext())
+		externalJwtSigner := MapPatchExternalJwtSignerToModelForManagement(params.ID, params.ExternalJWTSigner)
+		return ae.Managers.ExternalJwtSigner.Update(externalJwtSigner, patchFields.FilterMaps("tags", "data"), rc.NewChangeContext())
 	})
 }
 
-func (r *ExternalJwtSignerRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ExternalJwtSignerRouter) ListForClient(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
 		if err != nil {
@@ -127,7 +127,7 @@ func (r *ExternalJwtSignerRouter) ListClient(ae *env.AppEnv, rc *response.Reques
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
 		}
-		apiEntities, err := MapClientExtJwtSignersToRestEntity(ae, rc, result.ExtJwtSigners)
+		apiEntities, err := MapExtJwtSignersToRestEntityForClient(ae, rc, result.ExtJwtSigners)
 		if err != nil {
 			return nil, err
 		}

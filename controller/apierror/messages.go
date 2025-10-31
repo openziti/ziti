@@ -54,6 +54,10 @@ const (
 	EnrollmentExpiredMessage string = "The window for this enrollment has expired"
 	EnrollmentExpiredStatus  int    = http.StatusBadRequest
 
+	EnrollmentIdentityAlreadyEnrolledCode    string = "ENROLLMENT_IDENTITY_ALREADY_ENROLLED"
+	EnrollmentIdentityAlreadyEnrolledMessage string = "The token supplied for this enrollment already has a matching identity, cannot enroll a new identity"
+	EnrollmentIdentityAlreadyEnrolledStatus  int    = http.StatusConflict
+
 	CouldNotProcessCsrCode    string = "COULD_NOT_PROCESS_CSR"
 	CouldNotProcessCsrMessage string = "The supplied csr could not be processed"
 	CouldNotProcessCsrStatus  int    = http.StatusBadRequest
@@ -69,6 +73,14 @@ const (
 	InvalidEnrollmentTokenCode    string = "INVALID_ENROLLMENT_TOKEN"
 	InvalidEnrollmentTokenMessage string = "The supplied token is not valid"
 	InvalidEnrollmentTokenStatus  int    = http.StatusBadRequest
+
+	InvalidEnrollmentNotAllowedCode    = "INVALID_ENROLLMENT_NOT_ALLOWED"
+	InvalidEnrollmentNotAllowedMessage = "The configuration does not allow this enrollment"
+	InvalidEnrollmentNotAllowedStatus  = http.StatusConflict
+
+	InvalidEnrollmentAlreadyEnrolledCode    = "INVALID_ENROLLMENT_ALREADY_ENROLLED"
+	InvalidEnrollmentAlreadyEnrolledMessage = "The token provided has already been used to enroll"
+	InvalidEnrollmentAlreadyEnrolledStatus  = http.StatusGone
 
 	InvalidEnrollMethodCode    string = "INVALID_ENROLL_METHOD"
 	InvalidEnrollMethodMessage string = "The supplied enrollment method is not valid"

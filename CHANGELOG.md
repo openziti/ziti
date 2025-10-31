@@ -1,3 +1,123 @@
+# Release 1.7.2
+
+## What's New
+
+* OIDC/JWT Token-based Enrollment
+
+## OIDC/JWT Token-based Enrollment
+
+OpenZiti now supports provisioning identities just-in-time through OIDC/JWT token enrollment. External identity 
+providers can be configured to allow identities to enroll using JWT tokens, with support for the resulting 
+identities to use certificate or token authentication.
+
+### External JWT Signer Configuration
+
+External JWT signers are configured via the Edge Management API to define enrollment behavior with the following new 
+enrollment-specific properties:
+
+- **enrollToCertEnabled** - When enabled, identities can exchange a JWT token and a certificate signing request (CSR) 
+        for a client certificate during enrollment. The certificate can then be used for standard certificate-based
+        authentication.
+
+- **enrollToTokenEnabled** - When enabled, identities can use a JWT token to enroll. The current token or future tokens
+        may be used for authentication.
+
+- **enrollNameClaimsSelector** - Specifies which JWT claim contains the identity name. Accepts a JSON pointer 
+        (e.g., `/preferred_username`) or a simple property name (e.g., `preferred_username`, automatically converted to
+        `/preferred_username`). Defaults to `/sub` if not specified. The extracted value becomes the identity name in Ziti.
+
+- **enrollAttributeClaimsSelector** - Specifies which JWT claims to extract as identity attributes during enrollment.
+        Accepts a JSON pointer (e.g., `/roles`) or a simple property name (e.g., `roles`). Extracted attributes are 
+        applied to the newly enrolled identity for use in authorization policies.
+
+- **enrollAuthPolicyId** - Specifies the authentication policy to apply to newly enrolled identities. This determines
+        what authentication methods are available for the identity post-enrollment.
+
+Additionally the existing property named **claimsProperty** that specifies external id to match identities to:
+
+- now supports a JSON pointer (e.g., `/id`) or a simple property name (e.g., `id`)
+- is used to populate the `externalId` field of the identity
+
+### Enrollment Paths
+
+#### Certificate Enrollment (enrollToCertEnabled)
+
+When certificate enrollment is enabled, unauthenticated users can:
+
+1. Obtain a list of available IdPs from the public Edge Client API `GET /external-jwt-signers` endpoint, where 
+   `enrollToCertEnabled` is set to `true`
+2. Obtain a JWT from the configured OIDC provider
+3. Generate a certificate signing request (CSR)
+4. Submit an enrollment request with the JWT and CSR
+5. Have their identity created in Ziti with attributes extracted from JWT claims
+6. Receive a signed client certificate for certificate-based authentication
+
+#### Token Enrollment (enrollToTokenEnabled)
+
+When token enrollment is enabled, unauthenticated users can:
+
+1. Obtain a list of available IdPs from the public Edge Client API `GET /external-jwt-signers` endpoint, where 
+   `enrollToTokenEnabled` is set to `true`
+1. Obtain a JWT from the configured OIDC provider
+2. Submit an enrollment request with the JWT
+3. Have their identity created in Ziti with attributes extracted from JWT claims
+4. Receive a Ziti API token for token-based authentication
+
+### Edge Management API
+
+The Edge Management API provides full CRUD operations for configuring external JWT signers:
+
+- `POST /external-jwt-signers` - Create a new external JWT signer with all configuration options
+- `GET /external-jwt-signers` - List all configured external JWT signers
+- `GET /external-jwt-signers/{id}` - Retrieve a specific signer configuration
+- `PUT /external-jwt-signers/{id}` - Update all fields of a signer
+- `PATCH /external-jwt-signers/{id}` - Partially update a signer
+- `DELETE /external-jwt-signers/{id}` - Delete a signer
+
+### Edge Client API
+
+The Edge Client API exposes a reduced set of external JWT signer information for unauthenticated enrollment requests:
+
+- `GET /external-jwt-signers` - List available JWT signers with enrollment capabilities
+
+The client API response includes the following fields for each signer:
+
+- `name` - Signer name
+- `externalAuthUrl` - URL where users obtain JWT tokens
+- `clientId` - OIDC client ID
+- `scopes` - Requested OIDC scopes
+- `openIdConfigurationUrl` - OIDC discovery endpoint
+- `audience` - Expected token audience
+- `targetToken` - Token type to use (ACCESS or ID)
+- **`enrollToCertEnabled`** - Flag indicating certificate enrollment is available
+- **`enrollToTokenEnabled`** - Flag indicating token enrollment is available
+
+### CLI Commands
+
+**Create an external JWT signer with enrollment options:**
+```
+ziti edge controller create ext-jwt-signer <name> <issuer> \
+  --jwks-endpoint <url> \
+  --audience <audience> \
+  --enroll-to-cert \
+  --enroll-to-token=false \
+  --enroll-name-claims-selector preferred_username \
+  --enroll-attr-claims-selector roles \
+  --enroll-auth-policy <policy-id-or-name>
+```
+
+**Update enrollment options on an existing signer:**
+```
+ziti edge controller update ext-jwt-signer <name|id> \
+  --enroll-to-cert \
+  --enroll-auth-policy <policy-id-or-name>
+```
+
+**List external JWT signers:**
+```
+ziti edge controller list ext-jwt-signers
+```
+
 # Release 1.7.1
 
 ## What's New

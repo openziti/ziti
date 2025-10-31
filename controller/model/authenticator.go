@@ -20,12 +20,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/event"
-	"net/http"
-	"time"
 )
 
 type AuthResult interface {
@@ -69,7 +70,7 @@ type AuthContext interface {
 	GetMethod() string
 	GetData() map[string]interface{}
 	GetCerts() []*x509.Certificate
-	GetHeaders() map[string]interface{}
+	GetHeaders() Headers
 	GetChangeContext() *change.Context
 	GetRemoteAddr() string
 
@@ -87,7 +88,7 @@ type AuthContextHttp struct {
 	Method          string
 	Data            map[string]interface{}
 	Certs           []*x509.Certificate
-	Headers         map[string]interface{}
+	Headers         Headers
 	ChangeContext   *change.Context
 	PrimaryIdentity *Identity
 	RemoteAddr      string
@@ -109,9 +110,9 @@ func NewAuthContextHttp(request *http.Request, method string, data interface{}, 
 	mapData := map[string]interface{}{}
 	_ = json.Unmarshal(sigh, &mapData)
 
-	headers := map[string]interface{}{}
+	headers := Headers{}
 	for h, v := range request.Header {
-		headers[h] = v
+		headers.Set(h, v)
 	}
 
 	sdkInfo, envInfo, err := parseSdkEnvInfo(mapData)
@@ -164,7 +165,7 @@ func (context *AuthContextHttp) GetData() map[string]interface{} {
 	return context.Data
 }
 
-func (context *AuthContextHttp) GetHeaders() map[string]interface{} {
+func (context *AuthContextHttp) GetHeaders() Headers {
 	return context.Headers
 }
 
@@ -237,7 +238,7 @@ type AuthBundle struct {
 	Authenticator           *Authenticator
 	Identity                *Identity
 	AuthPolicy              *AuthPolicy
-	ExternalJwtSigner       *ExternalJwtSigner
+	TokenIssuer             TokenIssuer
 	ImproperClientCertChain bool
 }
 
@@ -257,8 +258,8 @@ func (a *AuthBundle) Apply(event *event.AuthenticationEvent) {
 		event.AuthPolicyId = a.AuthPolicy.Id
 	}
 
-	if a.ExternalJwtSigner != nil {
-		event.ExternalJwtSignerId = a.ExternalJwtSigner.Id
+	if a.TokenIssuer != nil {
+		event.ExternalJwtSignerId = a.TokenIssuer.Id()
 	}
 
 	event.ImproperClientCertChain = a.ImproperClientCertChain
