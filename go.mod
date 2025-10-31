@@ -60,14 +60,14 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.2.41
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.50
+	github.com/openziti/edge-api v0.26.51
 	github.com/openziti/foundation/v2 v2.0.79
 	github.com/openziti/identity v1.0.118
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/runzmd v1.0.84
 	github.com/openziti/sdk-golang v1.2.10
-	github.com/openziti/secretstream v0.1.41
+	github.com/openziti/secretstream v0.1.42
 	github.com/openziti/storage v0.4.31
 	github.com/openziti/transport/v2 v2.0.198
 	github.com/openziti/x509-claims v1.0.3
