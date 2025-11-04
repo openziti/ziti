@@ -4,6 +4,8 @@
 
 * controllers can now optionally bind APIs using a OpenZiti identity
 * `ziti edge login` now supports the `--networkIdentity` flag to authenticate and establish connections through the Ziti overlay network
+* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
+  provided as just the JWT, not with the "Bearer " prefix
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 
 ## Binding Controller APIs With Identity

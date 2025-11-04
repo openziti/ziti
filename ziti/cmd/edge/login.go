@@ -268,6 +268,10 @@ func (o *LoginOptions) Run() error {
 		return errors.Wrap(urlParseErr, "invalid controller URL")
 	}
 
+	if ctrlUrl.Host == "" {
+		return errors.New("invalid controller URL, ensure a URL is supplied or exists in the selected identity")
+	}
+
 	if err := o.ConfigureCerts(host, ctrlUrl); err != nil {
 		return err
 	}
