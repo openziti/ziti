@@ -269,7 +269,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if ctrlUrl.Host == "" {
-		return errors.New("invalid controller URL, ensure a URL is supplied or exists in the selected identity")
+		return errors.New("invalid controller URL supplied")
 	}
 
 	if err := o.ConfigureCerts(host, ctrlUrl); err != nil {
@@ -343,9 +343,9 @@ func (o *LoginOptions) Run() error {
 		return e
 	} else {
 		o.transport = t
-		nc, nce := o.newHttpClient(false)
-		if nce != nil {
-			return nce
+		nc, ncErr := o.newHttpClient(false)
+		if ncErr != nil {
+			return ncErr
 		}
 		o.client = nc
 	}

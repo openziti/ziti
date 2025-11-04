@@ -141,18 +141,18 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 		return nil, err
 	}
 
-	baseUrl, err := restClientIdentity.GetBaseUrlForApi(api)
+	baseUrlStr, err := restClientIdentity.GetBaseUrlForApi(api)
 	if err != nil {
 		return nil, err
 	}
 
-	bu, _ := url.Parse(baseUrl)
-	req, err := NewRequestByTerminator(restClientIdentity, timeout, verbose, bu.User.Username())
+	baseUrl, _ := url.Parse(baseUrlStr)
+	req, err := NewRequestByTerminator(restClientIdentity, timeout, verbose, baseUrl.User.Username())
 	if err != nil {
 		return nil, err
 	}
 
-	queryUrl := baseUrl + "/" + path
+	queryUrl := strings.TrimRight(baseUrlStr, "/") + "/" + path
 
 	if len(params) > 0 {
 		queryUrl += "?" + params.Encode()
