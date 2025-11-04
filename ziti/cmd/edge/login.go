@@ -38,6 +38,7 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
+	"github.com/openziti/ziti/internal/jwtutil"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -369,7 +370,7 @@ func (o *LoginOptions) Run() error {
 		loginIdentity := &util.RestClientEdgeIdentity{
 			Url:           host,
 			Username:      o.Username,
-			Token:         "--use-api-session--",
+			Token:         "", // --use-api-session--
 			LoginTime:     time.Now().Format(time.RFC3339),
 			CaCert:        o.CaCert,
 			ReadOnly:      o.ReadOnly,
@@ -511,66 +512,6 @@ func (o *LoginOptions) terminatorId() string {
 	return curl.User.Username()
 }
 
-// EdgeControllerLogin will authenticate to the given Edge Controller
-func login(o *LoginOptions, authentication string) (*gabs.Container, error) {
-	client := util.NewClientWithClient(&o.client)
-	lu := o.ControllerUrl
-	out := o.Out
-	logJSON := o.OutputJSONResponse
-	timeout := o.Timeout
-	verbose := o.Verbose
-	method := "password"
-	transport := client.GetClient().Transport.(*http.Transport)
-	transport.CloseIdleConnections() // make sure any idle connections are closed so the client hello happens WITH certs
-	authHeader := ""
-	if o.ExtJwtToken != "" {
-		method = "ext-jwt"
-		authHeader = "Bearer " + strings.TrimSpace(o.ExtJwtToken)
-		client.SetHeader("Authorization", authHeader)
-	} else {
-		if o.ClientCert != "" {
-			clientCert, err := tls.LoadX509KeyPair(o.ClientCert, o.ClientKey)
-			if err != nil {
-				return nil, fmt.Errorf("can't load client certificate: %s with key %s: %v", o.ClientCert, o.ClientKey, err)
-			}
-			client.SetCertificates(clientCert)
-			method = "cert"
-		} else if o.FileCertCreds != nil {
-			tlsCert := o.FileCertCreds.TlsCerts()[0]
-			client.SetCertificates(tlsCert)
-			method = "cert"
-		}
-	}
-
-	resp, err := client.
-		SetTimeout(time.Duration(timeout)*time.Second).
-		SetDebug(verbose).
-		R().
-		SetQueryParam("method", method).
-		SetHeader("Content-Type", "application/json").
-		SetBody(authentication).
-		Post(lu + "/authenticate")
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", lu, err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", lu, resp.Status(), util.PrettyPrintResponse(resp))
-	}
-
-	if logJSON {
-		util.OutputJson(out, resp.Body())
-	}
-
-	jsonParsed, err := gabs.ParseJSON(resp.Body())
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", lu, resp.String())
-	}
-
-	return jsonParsed, nil
-}
-
 func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 	// if cli param supplied - use it first
 	if o.NetworkId != "" {
@@ -675,6 +616,7 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 	}
 	return caPool, nil
 }
+
 func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.ManagementApiClient, error) {
 	if useCachedCreds {
 		o.PopulateFromCache()
@@ -726,16 +668,13 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 
 	var authCreds edge_apis.Credentials
 	if o.Token != "" {
-		return edge_apis.NewApiSessionLegacy(o.Token), nil
-	} else if o.ApiSession != nil {
-		switch o.ApiSession.GetType() {
-		case edge_apis.ApiSessionTypeOidc:
-			return o.ApiSession, nil
-		case edge_apis.ApiSessionTypeLegacy:
-			return o.ApiSession, nil
-		default:
-			panic("unsupported api session type " + o.ApiSession.GetType())
+		if jwtutil.IsJwt(o.Token) {
+			return edge_apis.NewApiSessionOidc(o.Token, ""), nil
+		} else {
+			return edge_apis.NewApiSessionLegacy(o.Token), nil
 		}
+	} else if o.ApiSession != nil {
+		return o.ApiSession, nil
 	} else if o.Username != "" && o.Password != "" {
 		authCreds = edge_apis.NewUpdbCredentials(o.Username, o.Password)
 	} else if o.ClientCert != "" || o.ClientKey != "" {
