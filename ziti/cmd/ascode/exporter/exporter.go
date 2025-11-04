@@ -20,6 +20,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"io"
+	"os"
+	"slices"
+	"strings"
+
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
@@ -33,10 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
-	"io"
-	"os"
-	"slices"
-	"strings"
 )
 
 var log = pfxlog.Logger()
@@ -75,7 +76,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long: "Export all or comma separated list of selected entities.\n" +
 			"Valid entities are: [all|ca/certificate-authority|identity|edge-router|service|config|config-type|service-policy|edge-router-policy|service-edge-router-policy|external-jwt-signer|auth-policy|posture-check] (default all)",
 		Args: cobra.MinimumNArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 
 			logLvl := logrus.InfoLevel
 			if loginOpts.Verbose {
@@ -97,11 +98,12 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				log.Fatalf("Invalid output format: %s", outputFormat)
 			}
 
-			client, err := loginOpts.NewMgmtClient()
-			if err != nil {
-				log.Fatal(err)
+			mgmtClient, mgmtClientErr := loginOpts.NewManagementClient(true)
+			if mgmtClientErr != nil {
+				log.WithError(mgmtClientErr).Error("Error creating management client")
+				return mgmtClientErr
 			}
-			exporter.Client = client
+			exporter.Client = mgmtClient.BaseClient.API.ZitiEdgeManagement
 
 			var entities []string
 			if len(args) > 0 {
@@ -158,7 +160,7 @@ func NewExportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 					WithField("bytes", bytes).
 					Debug("Wrote data")
 			}
-
+			return nil
 		},
 		Hidden: true,
 	}

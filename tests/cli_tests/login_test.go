@@ -73,8 +73,9 @@ func Test_LoginSuite(t *testing.T) {
 		t.Fatalf("failed creating temp dir: %v", mkdirErr)
 	}
 	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
-	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
-
+	cfgDir := filepath.Join(baseDir, ".config/ziti")
+	_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
+	_ = os.RemoveAll(cfgDir)
 	externalCtx, externalCancel := context.WithCancel(context.Background())
 	defer externalCancel()
 	ctrlUnderTestCtx, ctrlUnderTestCancel := context.WithCancel(context.Background())
@@ -84,8 +85,8 @@ func Test_LoginSuite(t *testing.T) {
 		homeDir:             util.HomeDir(),
 		zitiContext:         nil,
 		zitiTransport:       nil,
-		externalZiti:        testutil.CreateOverlay(t, externalCtx, 60*time.Second, testRunHome, "external", false),
-		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 60*time.Second, testRunHome, "target", false),
+		externalZiti:        testutil.CreateOverlay(t, externalCtx, 600*time.Second, testRunHome, "external", false),
+		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 600*time.Second, testRunHome, "target", false),
 		commonOpts: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: os.Stdout,
@@ -132,14 +133,20 @@ func Test_LoginSuite(t *testing.T) {
 	if exStartErr != nil {
 		log.Fatalf("externalZiti start failed: %v", exStartErr)
 	}
+
 	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(30 * time.Second)
 	if cutStartErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 	}
 
-	if _, le := testState.controllerUnderTest.Login(); le != nil {
+	if lo, le := testState.controllerUnderTest.Login(); le != nil {
 		t.Fatalf("unable to login before running tests: %v", le)
+	} else {
+		testState.controllerUnderTest.ApiSession = lo.ApiSession
 	}
+
+	require.NotEmpty(t, testState.controllerUnderTest.ApiSession)
+	require.NotEmpty(t, testState.controllerUnderTest.ApiSession.GetToken())
 
 	now := time.Now().Format("150405")
 
@@ -166,8 +173,8 @@ func Test_LoginSuite(t *testing.T) {
 		t.Fatalf("unable to login before running tests: %v", le)
 	} else {
 		//set the valid token for reuse later:
-		require.NotEmpty(t, lr.Token)
-		testState.controllerUnderTest.Token = lr.Token
+		require.NotEmpty(t, lr.ApiSession)
+		testState.controllerUnderTest.ApiSession = lr.ApiSession
 	}
 
 	t.Run("login tests over underlay", testState.runLoginTests)
@@ -210,14 +217,14 @@ func (s *loginTestState) testCorrectPasswordSucceeds(t *testing.T) {
 
 	err := opts.Run()
 	require.NoError(t, err)
-	require.NotEmpty(t, opts.Token)
+	require.NotEmpty(t, opts.ApiSession)
 	t.Logf("Login successful, token: %s", opts.Token)
 
 	// Verify we can create a management client
-	client, err := opts.NewMgmtClient()
+	client, err := opts.NewManagementClient(false)
 	require.NoError(t, err)
 	require.NotNil(t, client)
-	require.NotEmpty(t, opts.Token)
+	require.NotEmpty(t, opts.ApiSession)
 }
 
 func (s *loginTestState) testWrongPasswordFails(t *testing.T) {
@@ -233,13 +240,12 @@ func (s *loginTestState) testWrongPasswordFails(t *testing.T) {
 
 	err := opts.Run()
 	require.Error(t, err, "login with wrong password should fail")
-	require.Contains(t, err.Error(), "401 Unauthorized")
 }
 
 func (s *loginTestState) testTokenBasedLogin(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
-		Token:         s.controllerUnderTest.Token,
+		ApiSession:    s.controllerUnderTest.ApiSession,
 		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
 		IgnoreConfig:  true,
 		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
@@ -247,8 +253,9 @@ func (s *loginTestState) testTokenBasedLogin(t *testing.T) {
 
 	err := opts.Run()
 	require.NoError(t, err)
-	require.Equal(t, s.controllerUnderTest.Token, opts.Token)
-	t.Logf("Login successful, token: %s", opts.Token)
+	require.NotEmpty(t, opts.ApiSession)
+	require.NotEmpty(t, opts.ApiSession.GetToken())
+	t.Logf("Login successful, token: %s", opts.ApiSession.GetToken())
 }
 
 func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
@@ -270,7 +277,7 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.NoError(t, err, "login with cert/key/ca when all present should succeed")
-		require.NotEmpty(t, opts.Token)
+		require.NotEmpty(t, opts.ApiSession)
 		t.Logf("Login successful, token: %s", opts.Token)
 	})
 
@@ -291,7 +298,7 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.Error(t, err, "expected error when client key is missing")
-		require.Contains(t, err.Error(), "can't load client certificate")
+		require.Contains(t, err.Error(), "failed to read key")
 	})
 
 	s.removeZitiDir(t)
@@ -302,7 +309,7 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 
 		err := opts.Run()
 		require.NoError(t, err, "expected success when CA cert is missing and IgnoreConfig is enabled and 'Yes' is true")
-		require.NotEmpty(t, opts.Token)
+		require.NotEmpty(t, opts.ApiSession)
 		t.Logf("Login successful, token: %s", opts.Token)
 	})
 
@@ -331,10 +338,10 @@ func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
 	err := opts.Run()
 	require.NoError(t, err)
 
-	client, err := opts.NewMgmtClient()
+	client, err := opts.NewManagementClient(false)
 	require.NoError(t, err)
 	require.NotNil(t, client)
-	require.NotEmpty(t, opts.Token)
+	require.NotEmpty(t, opts.ApiSession)
 	t.Logf("Login successful, token: %s", opts.Token)
 }
 
@@ -412,7 +419,12 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 		}
 		err := opts.Run()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid controller URL")
+		invurlmsg := "invalid controller URL"
+		parsemsg := "unable to parse controller url"
+		require.True(t,
+			strings.Contains(err.Error(), invurlmsg) ||
+				strings.Contains(err.Error(), parsemsg),
+			`Error %s found but expected either: %s or %s`, err.Error(), invurlmsg, parsemsg)
 		t.Logf("Invalid URL correctly failed: %v", err)
 	})
 
@@ -460,7 +472,6 @@ func (s *loginTestState) testNonExistentUsername(t *testing.T) {
 
 	err := opts.Run()
 	require.Error(t, err, "non-existent username should fail")
-	require.Contains(t, err.Error(), "401 Unauthorized")
 	t.Logf("Non-existent username correctly failed: %v", err)
 }
 

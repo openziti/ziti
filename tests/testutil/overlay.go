@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/openziti/edge-api/rest_util"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/ziti/cmd"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -57,7 +58,7 @@ type loginCreds struct {
 	AdminCaFile   string
 	AdminKeyFile  string
 	AdminIdFile   string
-	Token         string
+	ApiSession    edge_apis.ApiSession
 }
 
 type Overlay struct {
@@ -184,8 +185,10 @@ func (o *Overlay) CreateAdminIdentity(t *testing.T, now, baseDir string) error {
 		return le
 	} else {
 		//set the valid token for reuse later:
-		require.NotEmpty(t, lr.Token)
-		o.Token = lr.Token
+		require.NotEmpty(t, lr)
+		require.NotEmpty(t, lr.ApiSession)
+		require.NotEmpty(t, lr.ApiSession.GetToken())
+		o.ApiSession = lr.ApiSession
 	}
 	adminIdName := fmt.Sprintf("test-admin-%s", now)
 	adminJwtPath := filepath.Join(baseDir, adminIdName+".jwt")
@@ -293,11 +296,11 @@ func (o *Overlay) Login() (*edge.LoginOptions, error) {
 		Yes:           true,
 		NetworkId:     o.NetworkDialingIdFile,
 	}
-	il, ile := initialLogin, initialLogin.Run()
+	ile := initialLogin.Run()
 	if ile == nil {
 		util.ReloadConfig() //every login really needs to call reload to flush/overwrite the cached client
 	}
-	return il, ile
+	return initialLogin, ile
 }
 
 func (o *Overlay) closeFileHandles() {

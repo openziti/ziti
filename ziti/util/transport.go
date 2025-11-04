@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
@@ -31,7 +30,7 @@ import (
 // information from request URLs and passes it to Ziti dial operation via DialOptions.
 //
 // Returns an error if the configuration is invalid or Ziti context creation fails.
-func NewZitifiedTransportFromSlice(bytes []byte) (*http.Transport, error) {
+func NewZitifiedTransportFromSlice(bytes []byte, terminator string) (*http.Transport, error) {
 	cfg := &ziti.Config{}
 	if err := json.Unmarshal(bytes, &cfg); err != nil {
 		return nil, err
@@ -50,14 +49,8 @@ func NewZitifiedTransportFromSlice(bytes []byte) (*http.Transport, error) {
 
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone()
 
-	opts := &ziti.DialOptions{}
-
-	// use Proxy hook to capture username from URL per-request
-	zitiTransport.Proxy = func(req *http.Request) (*url.URL, error) {
-		if u := req.URL.User; u != nil {
-			opts.Identity = u.Username()
-		}
-		return nil, nil
+	opts := &ziti.DialOptions{
+		Identity: terminator,
 	}
 
 	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -83,8 +76,8 @@ func NewZitifiedTransportFromSlice(bytes []byte) (*http.Transport, error) {
 //
 // Returns (nil, nil) if the environment variable is not set, or (transport, error)
 // if there's an issue creating the transport.
-func ZitifiedTransportFromEnv() (*http.Transport, error) {
-	return ZitifiedTransportFromEnvByName(constants.ZitiCliNetworkIdVarName)
+func ZitifiedTransportFromEnv(terminator string) (*http.Transport, error) {
+	return ZitifiedTransportFromEnvByName(constants.ZitiCliNetworkIdVarName, terminator)
 }
 
 // ZitifiedTransportFromEnvByName creates a Ziti-enabled HTTP transport by reading
@@ -93,7 +86,7 @@ func ZitifiedTransportFromEnv() (*http.Transport, error) {
 // The environment variable should contain a base64-encoded Ziti configuration.
 // Returns (nil, nil) if the environment variable is not set, or (transport, error)
 // if there are issues with decoding or configuration creation.
-func ZitifiedTransportFromEnvByName(envVarName string) (*http.Transport, error) {
+func ZitifiedTransportFromEnvByName(envVarName string, terminator string) (*http.Transport, error) {
 	b64Zid := os.Getenv(envVarName)
 	if b64Zid == "" {
 		return nil, nil
@@ -103,7 +96,7 @@ func ZitifiedTransportFromEnvByName(envVarName string) (*http.Transport, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read and decode ziti identity: %v", err)
 	}
-	return NewZitifiedTransportFromSlice(data)
+	return NewZitifiedTransportFromSlice(data, terminator)
 }
 
 // NewZitifiedTransportFromFile creates a Ziti-enabled HTTP transport by reading
@@ -111,10 +104,10 @@ func ZitifiedTransportFromEnvByName(envVarName string) (*http.Transport, error) 
 // configuration data.
 //
 // Returns an error if the file cannot be read or contains invalid configuration.
-func NewZitifiedTransportFromFile(pathToFile string) (*http.Transport, error) {
+func NewZitifiedTransportFromFile(pathToFile string, terminator string) (*http.Transport, error) {
 	data, err := os.ReadFile(pathToFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ziti identity file %s: %v", pathToFile, err)
 	}
-	return NewZitifiedTransportFromSlice(data)
+	return NewZitifiedTransportFromSlice(data, terminator)
 }

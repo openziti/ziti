@@ -19,6 +19,12 @@ package importer
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"maps"
+	"os"
+	"strings"
+
 	"github.com/judedaryl/go-arrayutils"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_client"
@@ -32,10 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
-	"io"
-	"maps"
-	"os"
-	"strings"
 )
 
 var log = pfxlog.Logger()
@@ -94,7 +96,7 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				filename: args[0],
 			}.read()
 			if err != nil {
-				log.WithError(err).Fatal("error reading file")
+				return fmt.Errorf("error reading file: %v", err)
 			}
 
 			data := map[string][]interface{}{}
@@ -111,11 +113,11 @@ func NewImportCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			}
 			importer.Data = data
 
-			client, err := loginOpts.NewMgmtClient()
-			if err != nil {
-				log.Fatal(err)
+			mgmtClient, mgmtClientErr := loginOpts.NewManagementClient(true)
+			if mgmtClientErr != nil {
+				return mgmtClientErr
 			}
-			importer.Client = client
+			importer.Client = mgmtClient.BaseClient.API.ZitiEdgeManagement
 
 			var entities []string
 			if len(args) > 1 {

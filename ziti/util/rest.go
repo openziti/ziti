@@ -34,6 +34,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/controller/api"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"gopkg.in/resty.v1"
 )
@@ -145,7 +146,8 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 		return nil, err
 	}
 
-	req, err := NewRequest(restClientIdentity, timeout, verbose)
+	bu, _ := url.Parse(baseUrl)
+	req, err := NewRequestByTerminator(restClientIdentity, timeout, verbose, bu.User.Username())
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +275,16 @@ func NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiF
 }
 
 type EdgeManagementAuth struct {
-	Token string
+	LegacyToken string
+	BearerToken string
 }
 
 func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
-	return request.SetHeaderParam("zt-session", e.Token)
+	if e.LegacyToken != "" {
+		return request.SetHeaderParam(api.ZitiSession, e.LegacyToken)
+	} else {
+		return request.SetHeaderParam("Authorization", "Bearer "+e.BearerToken)
+	}
 }
 
 // ControllerCreate will create entities of the given type in the given Edge Controller

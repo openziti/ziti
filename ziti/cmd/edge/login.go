@@ -17,8 +17,10 @@
 package edge
 
 import (
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,7 +33,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_client"
-	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/foundation/v2/term"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
@@ -45,7 +46,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	xterm "golang.org/x/term"
-	"gopkg.in/resty.v1"
 )
 
 // LoginOptions are the flags for login commands
@@ -66,9 +66,14 @@ type LoginOptions struct {
 	ControllerUrl string
 	ServiceName   string
 	NetworkId     string
-
 	FileCertCreds *edge_apis.IdentityCredentials
-	client        http.Client
+	ApiSession    edge_apis.ApiSession
+	TotpCallback  func(strings chan string)
+
+	client    http.Client
+	transport *http.Transport
+	caPool    *x509.CertPool
+	cachedId  *util.RestClientEdgeIdentity
 }
 
 func (options *LoginOptions) GetClient() http.Client {
@@ -154,55 +159,29 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (*http.Client, error) {
+func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
 
 	if tryCachedCreds {
 		// any error indicates there are probably no saved credentials. look for login information and use those
-		o.PopulateFromCache()
-		loginErr := o.Run()
+		cached := *o
+		cached.PopulateFromCache()
+		cached.IgnoreConfig = true // don't overwrite when trying to login
+		loginErr := cached.Run()
 		if loginErr != nil {
-			return nil, loginErr
+			return http.Client{}, loginErr
 		}
 	}
-
-	caPool := x509.NewCertPool()
-	if o.CaCert != "" {
-		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
-			rootPemData, err := os.ReadFile(o.CaCert)
-			if err != nil {
-				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
-			}
-			caPool.AppendCertsFromPEM(rootPemData)
-		} else {
-			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
-		}
-	}
-
-	transportToUse := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: caPool,
-		},
-	}
-
 	t, cte := o.createHttpTransport()
-
 	if cte != nil {
-		return &http.Client{
-			Transport: transportToUse,
-		}, nil
-	} else {
-		hc := &http.Client{}
-		if t != nil {
-			t.TLSClientConfig.RootCAs = caPool
-			transportToUse = t
-		}
-
-		hc.Transport = transportToUse
-		return hc, nil
+		return http.Client{}, cte
 	}
+	c := http.Client{
+		Transport: t,
+	}
+	return c, nil
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
@@ -212,17 +191,7 @@ func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeCli
 		return nil, newClientErr
 	}
 
-	return rest_util.NewEdgeClientClientWithToken(nc, o.ControllerUrl, o.Token)
-}
-
-// NewMgmtClient returns a new management client for use with the controller using the set of login material provided
-func (o *LoginOptions) NewMgmtClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	nc, newClientErr := o.newHttpClient(true)
-	if newClientErr != nil {
-		return nil, newClientErr
-	}
-
-	return rest_util.NewEdgeManagementClientWithToken(nc, o.ControllerUrl, o.Token)
+	return rest_util.NewEdgeClientClientWithToken(&nc, o.ControllerUrl, o.Token)
 }
 
 // Run implements this command
@@ -238,7 +207,7 @@ func (o *LoginOptions) Run() error {
 	if newClientErr != nil {
 		return newClientErr
 	}
-	o.SetClient(*httpClient)
+	o.client = httpClient
 
 	if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
@@ -310,10 +279,12 @@ func (o *LoginOptions) Run() error {
 
 	if ctrlUrl.Path == "" {
 		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, httpClient)
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, &httpClient)
 		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, httpClient)
+			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
 		}
+		hostUrl, _ := url.Parse(host)
+		o.ControllerUrl = o.ControllerUrl + hostUrl.Path
 	}
 
 	if o.Token != "" && o.Cmd != nil && !o.Cmd.Flag("read-only").Changed {
@@ -321,8 +292,8 @@ func (o *LoginOptions) Run() error {
 		o.Println("NOTE: When using --token the saved identity will be marked as read-only unless --read-only=false is provided")
 	}
 
-	body := "{}"
-	if o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
+	dontHaveApiSession := !(o.ApiSession != nil && len(o.ApiSession.GetToken()) != 0)
+	if dontHaveApiSession && o.Token == "" && o.ClientCert == "" && o.ExtJwtToken == "" && o.FileCertCreds == nil {
 		for o.Username == "" {
 			if xterm.IsTerminal(int(os.Stdin.Fd())) {
 				var err error
@@ -352,47 +323,61 @@ func (o *LoginOptions) Run() error {
 		_, _ = container.SetP(o.Username, "username")
 		_, _ = container.SetP(o.Password, "password")
 
-		body = container.String()
+		//body = container.String()
 	}
 
-	if o.Token == "" {
-		hc := o.GetClient()
-		jsonParsed, err := login(o, host, body, &hc)
+	caPool, caPoolErr := o.GetCaPool()
+	if caPoolErr != nil {
+		return caPoolErr
+	} else {
+		o.caPool = caPool
+	}
 
-		if err != nil {
-			return err
+	t, e := o.createHttpTransport()
+	if e != nil {
+		return e
+	} else {
+		o.transport = t
+		nc, nce := o.newHttpClient(false)
+		if nce != nil {
+			return nce
 		}
+		o.client = nc
+	}
 
-		if !jsonParsed.ExistsP("data.token") {
-			return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
+	if o.Token == "" || dontHaveApiSession {
+		// if no token or api session, need to log in
+		s, le := o.Login()
+		if le != nil {
+			return le
 		}
-
-		var ok bool
-		o.Token, ok = jsonParsed.Path("data.token").Data().(string)
-
-		if !ok {
-			return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
-		}
-
-		if !o.OutputJSONResponse {
-			o.Printf("Token: %v\n", o.Token)
+		if s == nil {
+			return fmt.Errorf("failed to login")
+		} else {
+			o.ApiSession = s
 		}
 	}
 
 	o.ControllerUrl = host
+	var sess *edge_apis.ApiSessionJsonWrapper
+	if o.ApiSession != nil {
+		sess = &edge_apis.ApiSessionJsonWrapper{
+			ApiSession: o.ApiSession,
+		}
+	}
 	if !o.IgnoreConfig {
 		loginIdentity := &util.RestClientEdgeIdentity{
 			Url:           host,
 			Username:      o.Username,
-			Token:         o.Token,
+			Token:         "--use-api-session--",
 			LoginTime:     time.Now().Format(time.RFC3339),
 			CaCert:        o.CaCert,
 			ReadOnly:      o.ReadOnly,
 			NetworkIdFile: o.NetworkId,
+			ApiSession:    sess,
 		}
 		o.Printf("Saving identity '%v' to %v\n", id, configFile)
 		config.EdgeIdentities[id] = loginIdentity
-
 		return util.PersistRestClientConfig(config)
 	}
 	return nil
@@ -516,25 +501,27 @@ func (self *yesNoFilter) Accept(s string) bool {
 	return false
 }
 
-// EdgeControllerLogin will authenticate to the given Edge Controller
-func login(o *LoginOptions, url string, authentication string, httpClient *http.Client) (*gabs.Container, error) {
-	var client *resty.Client
-	if httpClient != nil {
-		client = util.NewClientWithClient(httpClient)
-	} else {
-		client = util.NewClient()
+func (o *LoginOptions) terminatorId() string {
+	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
+	curl, curle := url.Parse(o.ControllerUrl)
+	if curle != nil {
+		o.Printf("unable to parse controller url [%s]\n", o.ControllerUrl)
+		return ""
 	}
-	cert := o.CaCert
+	return curl.User.Username()
+}
+
+// EdgeControllerLogin will authenticate to the given Edge Controller
+func login(o *LoginOptions, authentication string) (*gabs.Container, error) {
+	client := util.NewClientWithClient(&o.client)
+	lu := o.ControllerUrl
 	out := o.Out
 	logJSON := o.OutputJSONResponse
 	timeout := o.Timeout
 	verbose := o.Verbose
 	method := "password"
-	if cert != "" {
-		client.SetRootCertificate(cert)
-		transport := client.GetClient().Transport.(*http.Transport)
-		transport.CloseIdleConnections() // make sure any idle connections are closed so the client hello happens WITH certs
-	}
+	transport := client.GetClient().Transport.(*http.Transport)
+	transport.CloseIdleConnections() // make sure any idle connections are closed so the client hello happens WITH certs
 	authHeader := ""
 	if o.ExtJwtToken != "" {
 		method = "ext-jwt"
@@ -562,14 +549,14 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 		SetQueryParam("method", method).
 		SetHeader("Content-Type", "application/json").
 		SetBody(authentication).
-		Post(url + "/authenticate")
+		Post(lu + "/authenticate")
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", url, err)
+		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", lu, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), util.PrettyPrintResponse(resp))
+		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", lu, resp.Status(), util.PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -578,7 +565,7 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", lu, resp.String())
 	}
 
 	return jsonParsed, nil
@@ -587,21 +574,33 @@ func login(o *LoginOptions, url string, authentication string, httpClient *http.
 func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 	// if cli param supplied - use it first
 	if o.NetworkId != "" {
-		return util.NewZitifiedTransportFromFile(o.NetworkId)
+		t, e := util.NewZitifiedTransportFromFile(o.NetworkId, o.terminatorId())
+		o.transport = t
+		return t, e
 	}
 
 	// if env var set - use it
-	if zt, zte := util.ZitifiedTransportFromEnv(); zte != nil {
+	if zt, zte := util.ZitifiedTransportFromEnv(o.terminatorId()); zte != nil {
 		o.Printf("NetworkId found by env var [%s] but failed: %v\n", constants.ZitiCliNetworkIdVarName, zte)
 		return nil, zte
 	} else {
 		if zt != nil {
 			o.Printf("NetworkId found by env var [%s], zitified transport enabled\n", constants.ZitiCliNetworkIdVarName)
 			o.NetworkId = ""
+			o.transport = zt
 			return zt, nil
 		}
 	}
-	return nil, nil
+
+	caPool, caErr := o.GetCaPool()
+	if caErr != nil {
+		return nil, caErr
+	}
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caPool,
+		},
+	}, nil
 }
 
 func (o *LoginOptions) PopulateFromCache() {
@@ -616,11 +615,26 @@ func (o *LoginOptions) PopulateFromCache() {
 		return
 	}
 
-	o.ControllerUrl = cachedCliConfig.Url
-	o.Username = cachedCliConfig.Username
-	o.Token = cachedCliConfig.Token
-	o.NetworkId = cachedCliConfig.NetworkIdFile
-	o.CaCert = cachedCliConfig.CaCert
+	if o.ControllerUrl == "" {
+		o.ControllerUrl = cachedCliConfig.Url
+	}
+	if o.Username == "" {
+		o.Username = cachedCliConfig.Username
+	}
+	if o.Token == "" {
+		o.Token = cachedCliConfig.Token
+	}
+	if o.NetworkId == "" {
+		o.NetworkId = cachedCliConfig.NetworkIdFile
+	}
+	if o.CaCert == "" {
+		o.CaCert = cachedCliConfig.CaCert
+	}
+	if o.ApiSession == nil {
+		if cachedCliConfig.ApiSession != nil {
+			o.ApiSession = cachedCliConfig.ApiSession.ApiSession
+		}
+	}
 }
 
 func NewFromCache(out io.Writer, eout io.Writer) LoginOptions {
@@ -644,4 +658,186 @@ func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
 	} else {
 		return o, nil
 	}
+}
+
+func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
+	caPool := x509.NewCertPool()
+	if o.CaCert != "" {
+		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
+			rootPemData, err := os.ReadFile(o.CaCert)
+			if err != nil {
+				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+			}
+			caPool.AppendCertsFromPEM(rootPemData)
+		} else {
+			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
+		}
+	}
+	return caPool, nil
+}
+func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.ManagementApiClient, error) {
+	if useCachedCreds {
+		o.PopulateFromCache()
+		// any error indicates there are probably no saved credentials. look for login information and use those
+		cached := *o
+		cached.IgnoreConfig = true // don't overwrite when trying to login
+		loginErr := cached.Run()
+		if loginErr != nil {
+			return nil, loginErr
+		}
+		o.client = cached.client
+		o.transport = cached.transport
+		o.caPool = cached.caPool
+
+		// here
+		o.ApiSession = cached.ApiSession
+	}
+
+	ctrlUrl, _ := url.Parse(o.ControllerUrl)
+	transport := &edge_apis.TlsAwareHttpTransport{Transport: o.transport}
+	o.client.Transport = transport
+
+	adminClient := edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
+		ApiUrls:          []*url.URL{ctrlUrl},
+		CaPool:           o.caPool,
+		TotpCodeProvider: edge_apis.NewTotpCodeProviderFromChStringFunc(o.TotpCallback),
+		Components: &edge_apis.Components{
+			HttpClient:        &o.client,
+			TlsAwareTransport: transport,
+			CaPool:            o.caPool,
+		},
+	})
+
+	adminClient.SetAllowOidcDynamicallyEnabled(true)
+	if useCachedCreds {
+		_, sessErr := adminClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, o.ApiSession)
+		if sessErr != nil {
+			return nil, sessErr
+		}
+	}
+	return adminClient, nil
+}
+
+func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
+	adminClient, newClientErr := o.NewManagementClient(false)
+	if newClientErr != nil {
+		return nil, newClientErr
+	}
+
+	var authCreds edge_apis.Credentials
+	if o.Token != "" {
+		return edge_apis.NewApiSessionLegacy(o.Token), nil
+	} else if o.ApiSession != nil {
+		switch o.ApiSession.GetType() {
+		case edge_apis.ApiSessionTypeOidc:
+			return o.ApiSession, nil
+		case edge_apis.ApiSessionTypeLegacy:
+			return o.ApiSession, nil
+		default:
+			panic("unsupported api session type " + o.ApiSession.GetType())
+		}
+	} else if o.Username != "" && o.Password != "" {
+		authCreds = edge_apis.NewUpdbCredentials(o.Username, o.Password)
+	} else if o.ClientCert != "" || o.ClientKey != "" {
+		var key crypto.PrivateKey
+		if keyPEM, err := os.ReadFile(o.ClientKey); err != nil {
+			return nil, fmt.Errorf("failed to read key: %w", err)
+		} else {
+			keyBlock, _ := pem.Decode(keyPEM)
+			k, _ := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+			key = k
+		}
+
+		var cert *x509.Certificate
+		if certPEM, err := os.ReadFile(o.ClientCert); err != nil {
+			return nil, fmt.Errorf("failed to read cert: %w", err)
+		} else {
+			block, _ := pem.Decode(certPEM)
+			if block == nil {
+				return nil, fmt.Errorf("invalid cert pem")
+			}
+			c, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse cert: %w", err)
+			}
+			cert = c
+		}
+
+		authCreds = edge_apis.NewCertCredentials([]*x509.Certificate{cert}, key)
+	} else if o.File != "" {
+		cfg, err := ziti.NewConfigFromFile(o.File)
+		if err != nil {
+			return nil, err
+		}
+		authCreds = edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+	} else if o.extJwtFile != "" {
+		jwt, jwtErr := os.ReadFile(o.extJwtFile)
+		if jwtErr != nil {
+			return nil, fmt.Errorf("failed to read jwt file: %w", jwtErr)
+		}
+		authCreds = edge_apis.NewJwtCredentials(string(jwt))
+	}
+
+	s, err := adminClient.Authenticate(authCreds, nil)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, fmt.Errorf("authentication failed for some reason but no error")
+	}
+	return s, nil
+}
+
+// EffectiveUrl will take all inputs and return the expected url of the controller or prompt the user to enter the url
+// to use if insufficient information exists in the inputs provided
+func (o *LoginOptions) EffectiveUrl() (string, error) {
+	// if provided use the url provided
+	if o.ControllerUrl != "" {
+		return addHttpsIfNeeded(o.ControllerUrl), nil
+	}
+
+	// if using file-based auth and --file is provided, look into the file for the url
+	if o.File != "" {
+		return o.UrlFromFile()
+	}
+
+	// if a cached id exists - use the url from that
+	if o.cachedId != nil {
+		return addHttpsIfNeeded(o.cachedId.Url), nil
+	}
+
+	return "", nil
+}
+
+func addHttpsIfNeeded(host string) string {
+	if !strings.HasPrefix(host, "http") {
+		host = "https://" + host
+	}
+	return host
+}
+
+func (o *LoginOptions) UrlFromFile() (string, error) {
+	cfg, err := ziti.NewConfigFromFile(o.File)
+	if err != nil {
+		return "", fmt.Errorf("could not read file %s: %w", o.File, err)
+	}
+
+	if o.FileCertCreds == nil {
+		idCredentials := edge_apis.NewIdentityCredentialsFromConfig(cfg.ID)
+		o.FileCertCreds = idCredentials
+	}
+
+	ztAPI := cfg.ZtAPI
+
+	// override with the first HA client API URL if defined
+	if len(cfg.ZtAPIs) > 0 {
+		ztAPI = cfg.ZtAPIs[0]
+	}
+
+	parsedZtAPI, err := url.Parse(ztAPI)
+	if err != nil {
+		return "", fmt.Errorf("could not parse ztAPI '%s' as a URL", ztAPI)
+	}
+
+	return addHttpsIfNeeded(parsedZtAPI.Host), nil
 }

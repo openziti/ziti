@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	fabricRestClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/util"
@@ -112,7 +113,7 @@ func (self *Clients) Authenticate(user, password string) error {
 }
 
 func (self *Clients) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
-	return request.SetHeaderParam("zt-session", self.token.Load())
+	return request.SetHeaderParam(api.ZitiSession, self.token.Load())
 }
 
 func (self *Clients) SetSessionToken(token string) {
