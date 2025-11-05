@@ -7,6 +7,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"testing"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -24,12 +31,6 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
-	"net"
-	"net/http"
-	"net/http/cookiejar"
-	"net/url"
-	"testing"
-	"time"
 )
 
 type testRpServer struct {
@@ -438,6 +439,30 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 				})
 			})
 		})
+	})
+
+	t.Run("updb with invalid password", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
+		resp, err := client.R().Get(rpServer.LoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
+		ctx.Req.NotEmpty(authRequestId)
+
+		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
+
+		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": "invalid"}).
+			SetHeader("Accept", "application/json").
+			Post(opLoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+		ctx.Req.Equal("application/json", resp.Header().Get("Content-Type"))
 	})
 
 	t.Run("cert", func(t *testing.T) {
