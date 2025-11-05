@@ -148,6 +148,7 @@ func (c *Controller) initializeAuthModules() {
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleEdgeRouterOtt(c.AppEnv))
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleTransitRouterOtt(c.AppEnv))
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleUpdb(c.AppEnv))
+		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleToken(c.AppEnv))
 	})
 }
 

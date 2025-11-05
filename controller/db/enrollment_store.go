@@ -17,10 +17,11 @@
 package db
 
 import (
+	"time"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 const (
@@ -38,6 +39,7 @@ const (
 	MethodEnrollOtt   = "ott"
 	MethodEnrollOttCa = "ottca"
 	MethodEnrollCa    = "ca"
+	MethodEnrollToken = "token"
 	MethodEnrollUpdb  = "updb"
 )
 

@@ -21,6 +21,10 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/fullsailor/pkcs7"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
@@ -36,9 +40,6 @@ import (
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
-	"io"
-	"net/http"
-	"strings"
 )
 
 func init() {
@@ -135,6 +136,12 @@ func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
+	ae.ClientApi.EnrollEnrollTokenHandler = enroll.EnrollTokenHandlerFunc(func(params enroll.EnrollTokenParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.tokenHandler(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
+	})
+
 	// Extend Enrollment
 	ae.ClientApi.EnrollExtendRouterEnrollmentHandler = enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
@@ -197,13 +204,7 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 func (ro *EnrollRouter) ottHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollOttParams) {
 	changeCtx := rc.NewChangeContext()
 
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	enrollContext := &model.EnrollmentContextHttp{
-		Headers: headers,
 		Data: &model.EnrollmentData{
 			ClientCsrPem: []byte(params.OttEnrollmentRequest.ClientCsr),
 		},
@@ -212,7 +213,7 @@ func (ro *EnrollRouter) ottHandler(ae *env.AppEnv, rc *response.RequestContext, 
 		Method:        db.MethodEnrollOtt,
 		ChangeContext: changeCtx,
 	}
-
+	enrollContext.SetHeadersFromRequest(rc.Request)
 	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	ro.processEnrollContext(ae, rc, enrollContext)
@@ -406,14 +407,8 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 
 func (ro *EnrollRouter) ottCaHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollOttCaParams) {
 	changeCtx := rc.NewChangeContext()
-
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	enrollContext := &model.EnrollmentContextHttp{
-		Headers: headers,
+
 		Data: &model.EnrollmentData{
 			ClientCsrPem: []byte(params.OttEnrollmentRequest.ClientCsr),
 		},
@@ -423,6 +418,7 @@ func (ro *EnrollRouter) ottCaHandler(ae *env.AppEnv, rc *response.RequestContext
 		ChangeContext: changeCtx,
 	}
 
+	enrollContext.SetHeadersFromRequest(rc.Request)
 	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	ro.processEnrollContext(ae, rc, enrollContext)
@@ -431,13 +427,7 @@ func (ro *EnrollRouter) ottCaHandler(ae *env.AppEnv, rc *response.RequestContext
 func (ro *EnrollRouter) updbHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollUpdbParams) {
 	changeCtx := rc.NewChangeContext()
 
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	enrollContext := &model.EnrollmentContextHttp{
-		Headers: headers,
 		Data: &model.EnrollmentData{
 			Username: string(params.UpdbCredentials.Username),
 			Password: string(params.UpdbCredentials.Password),
@@ -448,6 +438,7 @@ func (ro *EnrollRouter) updbHandler(ae *env.AppEnv, rc *response.RequestContext,
 		ChangeContext: changeCtx,
 	}
 
+	enrollContext.SetHeadersFromRequest(rc.Request)
 	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	ro.processEnrollContext(ae, rc, enrollContext)
@@ -456,13 +447,7 @@ func (ro *EnrollRouter) updbHandler(ae *env.AppEnv, rc *response.RequestContext,
 func (ro *EnrollRouter) erOttHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollErOttParams) {
 	changeCtx := rc.NewChangeContext()
 
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	enrollContext := &model.EnrollmentContextHttp{
-		Headers: headers,
 		Data: &model.EnrollmentData{
 			ClientCsrPem: []byte(params.ErOttEnrollmentRequest.ClientCsr),
 		},
@@ -472,6 +457,7 @@ func (ro *EnrollRouter) erOttHandler(ae *env.AppEnv, rc *response.RequestContext
 		ChangeContext: changeCtx,
 	}
 
+	enrollContext.SetHeadersFromRequest(rc.Request)
 	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	ro.processEnrollContext(ae, rc, enrollContext)
@@ -480,18 +466,13 @@ func (ro *EnrollRouter) erOttHandler(ae *env.AppEnv, rc *response.RequestContext
 func (ro *EnrollRouter) caHandler(ae *env.AppEnv, rc *response.RequestContext, _ enroll.EnrollCaParams) {
 	changeCtx := rc.NewChangeContext()
 
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	enrollContext := &model.EnrollmentContextHttp{
-		Headers:       headers,
 		Certs:         rc.Request.TLS.PeerCertificates,
 		Method:        "ca",
 		ChangeContext: changeCtx,
 	}
 
+	enrollContext.SetHeadersFromRequest(rc.Request)
 	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	ro.processEnrollContext(ae, rc, enrollContext)
@@ -506,17 +487,11 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 
 	changeCtx := rc.NewChangeContext()
 
-	headers := map[string]interface{}{}
-	for h, v := range rc.Request.Header {
-		headers[h] = v
-	}
-
 	if params.Body == nil {
 		params.Body = &rest_model.GenericEnroll{}
 	}
 
 	enrollCtx := &model.EnrollmentContextHttp{
-		Headers:    headers,
 		Parameters: nil,
 		Data: &model.EnrollmentData{
 			RequestedName: params.Body.Name,
@@ -536,7 +511,31 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 		enrollCtx.Data.ClientCsrPem = []byte(params.Body.CertCsr)
 	}
 
+	enrollCtx.SetHeadersFromRequest(rc.Request)
+
 	ro.processEnrollContext(ae, rc, enrollCtx)
+}
+
+func (ro *EnrollRouter) tokenHandler(ae *env.AppEnv, rc *response.RequestContext, params enroll.EnrollTokenParams) {
+	changeCtx := rc.NewChangeContext()
+
+	var clientCsrPem []byte = nil
+	if params.TokenEnrollmentRequest.ClientCsr != "" {
+		clientCsrPem = []byte(params.TokenEnrollmentRequest.ClientCsr)
+	}
+
+	enrollContext := &model.EnrollmentContextHttp{
+		Data: &model.EnrollmentData{
+			ClientCsrPem: clientCsrPem,
+		},
+		Certs:         rc.Request.TLS.PeerCertificates,
+		Method:        db.MethodEnrollToken,
+		ChangeContext: changeCtx,
+	}
+	enrollContext.SetHeadersFromRequest(rc.Request)
+	enrollContext.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
+
+	ro.processEnrollContext(ae, rc, enrollContext)
 }
 
 func willAcceptJson(r *http.Request) bool {

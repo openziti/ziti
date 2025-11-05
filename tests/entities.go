@@ -25,13 +25,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"math/big"
+	"sort"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/common/eid"
-	"math/big"
-	"sort"
-	"time"
 
 	"github.com/Jeffail/gabs"
 )
@@ -340,6 +341,9 @@ func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 
 	ctx.pathEquals(c, entity.defaultHostingCost, path("defaultHostingCost"))
 
+	if entity.roleAttributes == nil {
+		entity.roleAttributes = []string{}
+	}
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 	ctx.pathEquals(c, entity.tags, path("tags"))

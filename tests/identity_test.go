@@ -20,6 +20,12 @@
 package tests
 
 import (
+	"net/http"
+	"net/url"
+	"sort"
+	"testing"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -28,11 +34,6 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/db"
-	"net/http"
-	"net/url"
-	"sort"
-	"testing"
-	"time"
 )
 
 func Test_Identity(t *testing.T) {
@@ -150,6 +151,8 @@ func Test_Identity(t *testing.T) {
 		}
 
 		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
+
+		identity.roleAttributes = []string{}
 		ctx.AdminManagementSession.validateEntityWithQuery(identity)
 		ctx.AdminManagementSession.validateEntityWithLookup(identity)
 	})
