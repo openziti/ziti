@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -81,6 +82,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 		ctx.Req.NotNil(*id.HasEdgeRouterConnection)
 		ctx.Req.True(*id.HasEdgeRouterConnection)
 	case <-time.After(15 * time.Second):
+		fmt.Printf("CONNECTION EVENTS: timed out (%s)\n", time.Now().String())
 		ctx.Fail("timed out")
 	}
 

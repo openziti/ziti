@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 package tests
 

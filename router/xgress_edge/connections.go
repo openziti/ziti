@@ -328,7 +328,7 @@ func (self *connectionTracker) report() {
 		})
 	}
 
-	if len(evts.Events) > 0 || evts.FullState {
+	if len(evts.Events) > 0 || fullSync {
 		if self.sendEvents(evts) {
 			if fullSync {
 				self.lastFullSync = startTime
@@ -341,8 +341,6 @@ func (self *connectionTracker) report() {
 				}
 			})
 		}
-	} else if fullSync {
-		self.lastFullSync = startTime
 	}
 }
 

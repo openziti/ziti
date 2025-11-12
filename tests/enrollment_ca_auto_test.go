@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -23,11 +22,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/common/eid"
 )
 
 // Test_EnrollmetnCaAuto uses the generic enrollment endpoint

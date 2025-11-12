@@ -219,7 +219,7 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	if err != nil && n == 0 && errors.Is(err, io.EOF) {
 		if connAliveErr := self.Conn.SetWriteDeadline(time.Time{}); connAliveErr == nil {
 			self.flags.Set(closedFlag, true)
-			pfxlog.Logger().WithError(connAliveErr).Errorf("failed to set write deadline, connection is fully closed")
+			pfxlog.Logger().WithError(connAliveErr).Debugf("failed to set write deadline, connection is fully closed")
 		}
 
 		if self.flags.IsSet(halfCloseFlag) {

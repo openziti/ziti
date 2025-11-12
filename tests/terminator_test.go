@@ -1,4 +1,4 @@
-// +build apitests
+//go:build apitests
 
 /*
 	Copyright NetFoundry Inc.

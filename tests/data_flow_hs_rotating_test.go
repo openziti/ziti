@@ -1,5 +1,4 @@
 //go:build dataflow
-// +build dataflow
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,16 +19,17 @@
 package tests
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/pkg/errors"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/pkg/errors"
 )
 
 func Test_HSRotatingDataflow(t *testing.T) {
@@ -270,7 +270,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientContext, err := ziti.NewContext(clientConfig)
 	ctx.Req.NoError(err)
-	
+
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 

@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,14 +19,15 @@
 package tests
 
 import (
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/ziti/controller/db"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func Test_AuthPolicies(t *testing.T) {

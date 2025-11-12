@@ -17,8 +17,6 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
 	"net"
 	"syscall"
 	"time"
@@ -32,6 +30,7 @@ import (
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/forwarder"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -158,7 +157,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 
 	log.Debug("route request received")
 
-	if factory, err := xgress_router.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
+	if factory, err := rh.env.GetXgressRegistry().Factory(route.Egress.Binding); err == nil {
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 			if rh.forwarder.Options.XgressDialDwellTime > 0 {
 				log.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)

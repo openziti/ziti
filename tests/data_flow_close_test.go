@@ -1,5 +1,4 @@
 //go:build dataflow
-// +build dataflow
 
 /*
 	Copyright NetFoundry Inc.
@@ -22,11 +21,12 @@ package tests
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/eid"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_ServerConnClosePropagation(t *testing.T) {

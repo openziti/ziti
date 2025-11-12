@@ -17,22 +17,26 @@
 package forwarder
 
 import (
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 type Faulter struct {
-	ctrls       env.NetworkControllers
-	interval    time.Duration
-	circuitIds  cmap.ConcurrentMap[string, string]
-	closeNotify chan struct{}
+	ctrls         env.NetworkControllers
+	interval      time.Duration
+	circuitIds    cmap.ConcurrentMap[string, string]
+	closeNotify   <-chan struct{}
+	linkFaults    metrics.Meter
+	circuitFaults metrics.Meter
 }
 
 type FaultReceiver interface {
@@ -40,12 +44,14 @@ type FaultReceiver interface {
 	NotifyInvalidLink(linkId string)
 }
 
-func NewFaulter(ctrls env.NetworkControllers, interval time.Duration, closeNotify chan struct{}) *Faulter {
+func NewFaulter(routerEnv env.RouterEnv, interval time.Duration) *Faulter {
 	f := &Faulter{
-		ctrls:       ctrls,
-		interval:    interval,
-		circuitIds:  cmap.New[string](),
-		closeNotify: closeNotify,
+		ctrls:         routerEnv.GetNetworkControllers(),
+		interval:      interval,
+		circuitIds:    cmap.New[string](),
+		closeNotify:   routerEnv.GetCloseNotify(),
+		linkFaults:    routerEnv.GetMetricsRegistry().Meter("faults.link"),
+		circuitFaults: routerEnv.GetMetricsRegistry().Meter("faults.circuit"),
 	}
 
 	if interval > 0 {
@@ -56,6 +62,7 @@ func NewFaulter(ctrls env.NetworkControllers, interval time.Duration, closeNotif
 }
 
 func (self *Faulter) Report(circuitId string, ctrlId string) {
+	self.circuitFaults.Mark(1)
 	if self.interval > 0 {
 		self.circuitIds.Set(circuitId, ctrlId)
 	}
@@ -72,6 +79,7 @@ func (self *Faulter) NotifyInvalidLink(linkId string) {
 				Error("failed to notify of invalid link")
 		}
 	})
+	self.linkFaults.Mark(1)
 }
 
 func (self *Faulter) run() {
@@ -98,13 +106,13 @@ func (self *Faulter) run() {
 					log := pfxlog.Logger().WithField("ctrlId", ctrlId)
 					ch := self.ctrls.GetCtrlChannel(ctrlId)
 					if ch == nil {
-						log.Error("no control channel for controller")
+						log.Error("unable to report circuit fault, no control channel for controller")
 						continue
 					}
 
 					fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
 					if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
-						log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+						log.WithField("circuitCount", len(workload)).Debug("reported forwarding faults")
 					} else {
 						log.WithError(err).Error("error sending fault report")
 					}
@@ -114,7 +122,7 @@ func (self *Faulter) run() {
 					self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 						log := pfxlog.Logger().WithField("ctrlId", ctrlId)
 						if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
-							log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+							log.WithField("circuitCount", len(workload)).Debug("reported forwarding faults")
 						} else {
 							log.WithError(err).Error("error sending fault report")
 						}

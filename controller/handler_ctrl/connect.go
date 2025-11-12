@@ -21,12 +21,13 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/controller/network"
-	"time"
 )
 
 type ConnectHandler struct {

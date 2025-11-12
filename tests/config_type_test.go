@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,11 +19,12 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/foundation/v2/errorz"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_ConfigTypes(t *testing.T) {

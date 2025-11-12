@@ -1225,17 +1225,19 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 
 	edgeFwd, _ := self.xgCircuits.Get(payload.CircuitId)
 	if edgeFwd == nil {
-		pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Warn("no xgress edge forwarder for circuit")
+		if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
+			pfxlog.Logger().WithFields(payload.GetLoggerFields()).Debug("no xgress edge forwarder for circuit")
+		}
 		return
 	}
 
 	if err = self.forwarder.ForwardPayload(edgeFwd.address, payload, 0); err != nil {
+		if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
+			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Debug("failed to forward payload")
+		}
+
 		if !channel.IsTimeout(err) {
-			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
 			self.forwarder.ReportForwardingFault(payload.CircuitId, "") // ctrlId will be filled in by forwarder, if possible
-			return
-		} else {
-			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Error("failed to forward payload")
 		}
 	} else {
 		if !payload.IsRetransmitFlagSet() {

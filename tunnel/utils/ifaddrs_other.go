@@ -1,4 +1,4 @@
-// +build !linux
+//go:build !linux
 
 /*
 	Copyright NetFoundry Inc.
@@ -19,8 +19,9 @@
 package utils
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"net"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 func AllInterfaceAddrs() ([]net.Addr, error) {

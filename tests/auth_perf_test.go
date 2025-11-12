@@ -1,5 +1,4 @@
 //go:build apitests && perftests
-// +build apitests,perftests
 
 /*
 	Copyright NetFoundry Inc.

@@ -1,19 +1,20 @@
-// +build slowtests
+//go:build slowtests
 
 package health
 
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/stretchr/testify/require"
 )
 
 type svcChangeEvent struct {

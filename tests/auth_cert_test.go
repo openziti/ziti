@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -27,6 +26,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
@@ -38,10 +42,6 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"reflect"
-	"testing"
-	"time"
 )
 
 func Test_Authenticate_Cert(t *testing.T) {
