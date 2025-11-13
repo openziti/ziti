@@ -78,7 +78,6 @@ func NewCmdCreateConfigRouterEdge(routerOptions *CreateConfigRouterOptions, data
 			data.Router.Edge.LanInterface = routerOptions.LanInterface
 			data.Router.Edge.Resolver = cmdhelper.GetZitiEdgeRouterResolver()
 			data.Router.Edge.DnsSvcIpRange = cmdhelper.GetZitiEdgeRouterDnsSvcIpRange()
-			data.Router.IsHA = routerOptions.IsHA
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			routerOptions.Cmd = cmd

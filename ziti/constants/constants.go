@@ -41,7 +41,7 @@ const (
 	DefaultCtrlBindAddress    = "0.0.0.0"
 	DefaultCtrlAdvertisedPort = "6262"
 
-	DefaultCtrlDatabaseFile = "db/ctrl.db"
+	DefaultCtrlDatabaseFile = "db/raft"
 
 	DefaultCtrlEdgeBindAddress    = "0.0.0.0"
 	DefaultCtrlEdgeAdvertisedPort = "1280"

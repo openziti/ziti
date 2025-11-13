@@ -36,7 +36,6 @@ const (
 	optionCtrlPort                       = "ctrlPort"
 	optionEdgeIdentityEnrollmentDuration = "identityEnrollmentDuration"
 	optionEdgeRouterEnrollmentDuration   = "routerEnrollmentDuration"
-	optionClustered                      = "clustered"
 )
 
 var (
@@ -74,7 +73,6 @@ type CreateConfigControllerOptions struct {
 	CtrlPort                       string
 	EdgeIdentityEnrollmentDuration time.Duration
 	EdgeRouterEnrollmentDuration   time.Duration
-	Clustered                      bool
 }
 
 type CreateControllerConfigCmd struct {
@@ -109,7 +107,6 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				}
 
 				data.PopulateConfigValues()
-				data.Controller.Ctrl.Clustered = controllerOptions.Clustered
 
 				// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
 				if data.Controller.Ctrl.AdvertisedPort == "" || controllerOptions.CtrlPort != constants.DefaultCtrlAdvertisedPort {
@@ -153,7 +150,6 @@ func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultCtrlAdvertisedPort, "port used for the router to controller communication")
 	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
 	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
-	cmd.Flags().BoolVar(&options.Clustered, optionClustered, false, "Enables HA mode if true")
 }
 
 // run implements the command

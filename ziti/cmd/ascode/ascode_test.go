@@ -22,8 +22,11 @@ import (
 	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/run"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -45,7 +48,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	go func() {
 		err := qsCmd.Execute()
 		if err != nil {
-			log.Fatal(err)
+			t.Fatal(err)
 		}
 		cmdComplete <- true
 	}()
@@ -57,7 +60,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	case <-c:
 		//completed normally
 		log.Info("controller online")
-	case <-time.After(30 * time.Second):
+	case <-time.After(45 * time.Second):
 		cancel()
 		panic("timed out waiting for controller")
 	}
@@ -73,7 +76,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	fmt.Println("Operation completed")
 }
 
-func waitForController(ctrlUrl string, done chan struct{}) {
+func waitForController(ctrlUrl string, ready chan struct{}) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Transport: tr}
 	for {
@@ -84,8 +87,31 @@ func waitForController(ctrlUrl string, done chan struct{}) {
 			break
 		}
 	}
-	done <- struct{}{}
 
+	//loop until auth succeeds. use default user/pwd
+	for {
+		l := edge.LoginOptions{
+			Options: api.Options{
+				CommonOptions: common.CommonOptions{
+					Out: os.Stdout,
+					Err: os.Stderr,
+				},
+			},
+			Username:      "admin",
+			Password:      "admin",
+			ControllerUrl: ctrlUrl,
+			Yes:           true,
+		}
+		lerr := l.Run()
+		if lerr != nil {
+			// wait...
+			time.Sleep(500 * time.Millisecond)
+			continue //try again...
+		}
+		break
+	}
+
+	ready <- struct{}{}
 }
 
 func performImport(t *testing.T) {
