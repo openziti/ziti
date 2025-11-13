@@ -26,7 +26,7 @@ function _wait_for_controller {
         )" != "200" ]]; do
         if (( elapsed >= timeout )); then
             echo "Timeout waiting for https://${advertised_host_port}" >&2
-            exit 1
+            return 1
         fi
         echo "waiting for https://${advertised_host_port}"
         sleep 3
@@ -40,7 +40,7 @@ function _wait_for_controller {
     while ! "${BUILD_DIR}/ziti" edge login -u admin -p admin "${advertised_host_port}" -y; do
         if (( elapsed >= timeout )); then
             echo "Login failed after $timeout seconds, exiting."
-            exit 1
+            return 1
         fi
         echo "Login failed, retrying..."
         sleep 1
@@ -53,18 +53,18 @@ function _wait_for_controller {
 function _check_command() {
     if ! command -v "$1" &>/dev/null; then
         echo "ERROR: this script requires ${BINS[*]}, but '$1' is missing." >&2
-        $1
+        return 1
     fi
 }
 
 function _wait_for_leader() {
-  local timeout=10  # Maximum wait time in seconds
+  local timeout=10
   local elapsed=0
   
   while [ "$elapsed" -lt "$timeout" ]; do
     if "${BUILD_DIR}/ziti" ops cluster list | awk -F'│' 'NR>3 {print $3, $5}' | grep -q "true"; then
       echo "Leader found"
-      return 0  # Success
+      return 0
     fi
     echo "leader not found. waiting for leader..."
     sleep 1
@@ -72,7 +72,7 @@ function _wait_for_leader() {
   done
 
   echo "No leader found after $timeout seconds"
-  return 1  # Failure
+  return 1
 }
 
 declare -a BINS=(awk grep jq "${BUILD_DIR}/ziti")
@@ -91,8 +91,15 @@ done
     > >(while IFS= read -r line; do echo "inst1: $line"; done) 2>&1 &
 pid1=$!
 
-_wait_for_controller "2001"
-_wait_for_leader
+if ! _wait_for_controller "2001"; then
+  echo "Controller 2001 failed to start" >&2
+  exit 1
+fi
+
+if ! _wait_for_leader; then
+  echo "Leader not found after starting inst1" >&2
+  exit 1
+fi
 
 "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-address="127.0.0.1" \
@@ -107,8 +114,16 @@ _wait_for_leader
 pid2=$!
 
 sleep 3
-_wait_for_controller "2002"
-_wait_for_leader
+
+if ! _wait_for_controller "2002"; then
+  echo "Controller 2002 failed to start" >&2
+  exit 1
+fi
+
+if ! _wait_for_leader; then
+  echo "Leader not found after starting inst2" >&2
+  exit 1
+fi
 
 "${BUILD_DIR}/ziti" edge quickstart join \
     --ctrl-address="127.0.0.1" \
@@ -123,7 +138,11 @@ _wait_for_leader
 pid3=$!
 
 sleep 3
-_wait_for_controller "2003"
+
+if ! _wait_for_controller "2003"; then
+  echo "Controller 2003 failed to start" >&2
+  exit 1
+fi
 
 echo "========================================================="
 echo "HA Cluster should now be online"
@@ -131,8 +150,12 @@ echo "HA Cluster should now be online"
 echo ""
 echo "Building and running quickstart test"
 echo "========================================================="
-"${BUILD_DIR}/ziti" ops verify traffic -u admin -p admin --controller-url localhost:2001 -y \
-  > >(while IFS= read -r line; do echo "traffic: $line"; done) 2>&1
+
+if ! "${BUILD_DIR}/ziti" ops verify traffic -u admin -p admin --controller-url localhost:2001 -y \
+  > >(while IFS= read -r line; do echo "traffic: $line"; done) 2>&1; then
+  echo "Traffic verification failed" >&2
+  exit 1
+fi
 
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=localhost \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=2001 \

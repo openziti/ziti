@@ -241,7 +241,7 @@ func (o *LoginOptions) Run() error {
 	id := config.GetIdentity()
 
 	if host == "" {
-		if o.ControllerUrl == "" {
+		if strings.TrimPrefix(o.ControllerUrl, "https://") == "" {
 			if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && !o.IgnoreConfig {
 				host = cachedCliConfig.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
@@ -259,13 +259,11 @@ func (o *LoginOptions) Run() error {
 		}
 	}
 
-	if !strings.HasPrefix(host, "http") {
-		host = "https://" + host
-	}
+	host = addHttpsIfNeeded(host)
 
 	ctrlUrl, urlParseErr := url.Parse(host)
 	if urlParseErr != nil {
-		return errors.Wrap(urlParseErr, "invalid controller URL")
+		return errors.New("invalid controller URL supplied")
 	}
 
 	if ctrlUrl.Host == "" {
@@ -327,8 +325,6 @@ func (o *LoginOptions) Run() error {
 		container := gabs.New()
 		_, _ = container.SetP(o.Username, "username")
 		_, _ = container.SetP(o.Password, "password")
-
-		//body = container.String()
 	}
 
 	caPool, caPoolErr := o.GetCaPool()
@@ -559,10 +555,10 @@ func (o *LoginOptions) PopulateFromCache() {
 	if cachedCliConfig == nil {
 		return
 	}
-
 	if o.ControllerUrl == "" {
 		o.ControllerUrl = cachedCliConfig.Url
 	}
+	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
 	if o.Username == "" {
 		o.Username = cachedCliConfig.Username
 	}
@@ -637,6 +633,8 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 
 		// here
 		o.ApiSession = cached.ApiSession
+
+		o.ControllerUrl = util.EdgeControllerGetManagementApiBasePath(o.ControllerUrl, o.CaCert, &o.client)
 	}
 
 	ctrlUrl, _ := url.Parse(o.ControllerUrl)
