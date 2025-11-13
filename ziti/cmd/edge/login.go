@@ -633,8 +633,6 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 
 		// here
 		o.ApiSession = cached.ApiSession
-
-		o.ControllerUrl = util.EdgeControllerGetManagementApiBasePath(o.ControllerUrl, o.CaCert, &o.client)
 	}
 
 	ctrlUrl, _ := url.Parse(o.ControllerUrl)
@@ -659,6 +657,7 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 			return nil, sessErr
 		}
 	}
+
 	return adminClient, nil
 }
 
