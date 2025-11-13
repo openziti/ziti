@@ -118,8 +118,8 @@ func AddLoginFlags(cmd *cobra.Command, options *LoginOptions) {
 	addLoginAnnotation(cmd, "file")
 	cmd.Flags().StringVarP(&options.ServiceName, "service", "s", "", "The service name to use. When set the file will be used to create a zitified connection")
 	addLoginAnnotation(cmd, "service")
-	cmd.Flags().StringVarP(&options.NetworkId, "networkIdentity", "n", "", "The identity to use to connect to the OpenZiti overlay")
-	addLoginAnnotation(cmd, "networkIdentity")
+	cmd.Flags().StringVarP(&options.NetworkId, "network-identity", "n", "", "The identity to use to connect to the OpenZiti overlay")
+	addLoginAnnotation(cmd, "network-identity")
 
 	options.AddCommonFlags(cmd)
 }

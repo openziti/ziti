@@ -3,7 +3,7 @@
 ## What's New
 
 * controllers can now optionally bind APIs using a OpenZiti identity
-* `ziti edge login` now supports the `--networkIdentity` flag to authenticate and establish connections through the Ziti overlay network
+* `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
 * `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
   provided as just the JWT, not with the "Bearer " prefix
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
@@ -77,16 +77,16 @@ notation with a port number:
 The `ziti edge login` command and REST client utilities have been enhanced to support identity-based connections
 through the Ziti overlay network.
 
-### New `--networkIdentity` Flag for `ziti edge login`
+### New `--network-identity` Flag for `ziti edge login`
 
-The `ziti edge login` command now includes a `--networkIdentity` flag that allows you to authenticate to a Ziti
+The `ziti edge login` command now includes a `--network-identity` flag that allows you to authenticate to a Ziti
 controller through the overlay network using a Ziti identity:
 
 ```bash
 ziti edge login https://ziti.mgmt.apis.local:1280 \
   --username myuser \
   --password mypass \
-  --networkIdentity /path/to/identity.json
+  --network-identity /path/to/identity.json
 ```
 
 This is useful when the controller is only accessible through the Ziti overlay network or when you want to ensure
@@ -96,7 +96,7 @@ all communication to the controller flows through the overlay for security purpo
 
 When establishing connections, identities are resolved in the following order:
 
-1. **Command-line flag**: The `--networkIdentity` flag takes precedence
+1. **Command-line flag**: The `--network-identity` flag takes precedence
 2. **Environment variable**: If `ZITI_CLI_NETWORK_ID` is set and contains a base64-encoded identity, it is used
 3. **Cached identity file**: If a network identity was saved from a previous login in the Ziti config directory, it may be used
 
@@ -117,7 +117,7 @@ the intercept `ziti.mgmt.apis.local`
 ziti edge login https://ziti.mgmt.apis.local:1280 \
   --username myuser \
   --password mypass \
-  --networkIdentity /path/to/identity.json
+  --network-identity /path/to/identity.json
 ```
 
 **Identity-aware Dialing (Addressable Terminators)**
@@ -127,7 +127,7 @@ functionality. The URL format should be `identity-to-dial@service-name-to-dial`.
 ziti edge login https://my-identity@my-service:1280 \
   --username myuser \
   --password mypass \
-  --networkIdentity /path/to/identity.json
+  --network-identity /path/to/identity.json
 ```
 
 In this mode, the transport extracts the identity from the URL and uses it to establish a direct connection to
