@@ -694,7 +694,7 @@ func (o *QuickstartOpts) WaitForRouter(timeout time.Duration, done chan error) {
 			done <- fmt.Errorf("router not available after %s at %s:%d", timeout, o.RouterAddress, o.RouterPort)
 			return
 		default:
-			addr := fmt.Sprintf("%s:%d", o.RouterAddress, o.RouterPort)
+			addr := net.JoinHostPort(o.RouterAddress, strconv.Itoa(int(o.RouterPort)))
 			conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 			if err == nil {
 				_ = conn.Close()
