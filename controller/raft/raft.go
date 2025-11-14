@@ -21,6 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -45,13 +53,6 @@ import (
 	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/ziti/controller/raft/mesh"
 	"github.com/sirupsen/logrus"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type ClusterEvent uint32
@@ -112,6 +113,7 @@ type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
 	GetCommandRateLimiterConfig() command.RateLimiterConfig
+	GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig
 	GetRaftConfig() *config.RaftConfig
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
@@ -121,13 +123,13 @@ type Env interface {
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
 	result := &Controller{
-		env:                env,
-		Config:             env.GetRaftConfig(),
-		indexTracker:       NewIndexTracker(),
-		migrationMgr:       migrationMgr,
-		clusterEvents:      make(chan raft.Observation, 16),
-		commandRateLimiter: command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
-		errorMappers:       map[string]func(map[string]any) error{},
+		env:             env,
+		Config:          env.GetRaftConfig(),
+		indexTracker:    NewIndexTracker(),
+		migrationMgr:    migrationMgr,
+		clusterEvents:   make(chan raft.Observation, 16),
+		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
+		errorMappers:    map[string]func(map[string]any) error{},
 	}
 	result.initErrorMappers()
 	return result
@@ -150,7 +152,7 @@ type Controller struct {
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
-	commandRateLimiter         rate.RateLimiter
+	raftRateLimiter            rate.AdaptiveRateLimitTracker
 	errorMappers               map[string]func(map[string]any) error
 }
 
@@ -220,7 +222,9 @@ func (self *Controller) GetMesh() mesh.Mesh {
 }
 
 func (self *Controller) GetRateLimiter() rate.RateLimiter {
-	return self.commandRateLimiter
+	// this is only used by the API session store, which is not generally used
+	// when using HA
+	return command.NoOpRateLimiter{}
 }
 
 func (self *Controller) ConfigureMeshHandlers(bindHandler channel.BindHandler) {
@@ -309,7 +313,9 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
-		return err
+		result := apierror.NewTooManyUpdatesError()
+		result.Cause = err
+		return result
 	}
 
 	encoded, err := cmd.Encode()
@@ -320,6 +326,11 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	msg := channel.NewMessage(int32(cmd_pb.ContentType_NewLogEntryType), encoded)
 	result, err := msg.WithTimeout(5 * time.Second).SendForReply(peer.Channel)
 	if err != nil {
+		if channel.IsTimeout(err) {
+			tooManyUpdatesErr := apierror.NewTooManyUpdatesError()
+			tooManyUpdatesErr.Cause = err
+			return tooManyUpdatesErr
+		}
 		return err
 	}
 
@@ -488,17 +499,21 @@ func (self *Controller) applyCommand(cmd command.Command) (uint64, error) {
 
 // ApplyEncodedCommand applies the command to the RAFT distributed log
 func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
-	val, idx, err := self.ApplyWithTimeout(encoded, 5*time.Second)
-	if err != nil {
-		return 0, err
+	val, idx, err := self.ApplyWithTimeout(encoded)
+	return self.HandleApplyOutput(encoded, val, idx, err)
+}
+
+func (self *Controller) HandleApplyOutput(cmd []byte, val interface{}, idx uint64, applyErr error) (uint64, error) {
+	if applyErr != nil {
+		return 0, applyErr
 	}
 	if err, ok := val.(error); ok {
 		return 0, err
 	}
 	if val != nil {
-		cmd, err := self.Fsm.decoders.Decode(encoded)
+		cmd, err := self.Fsm.decoders.Decode(cmd)
 		if err != nil {
-			logrus.WithError(err).Error("failed to unmarshal command which returned non-nil, non-error value")
+			pfxlog.Logger().WithError(err).Error("failed to unmarshal command which returned non-nil, non-error value")
 			return 0, err
 		}
 		pfxlog.Logger().WithField("cmdType", reflect.TypeOf(cmd)).Error("command return non-nil, non-error value")
@@ -507,33 +522,55 @@ func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
 }
 
 // ApplyWithTimeout applies the given command to the RAFT distributed log with the given timeout
-func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, uint64, error) {
-	returnValue := atomic.Value{}
-	index := atomic.Uint64{}
-	err := self.commandRateLimiter.RunRateLimited(func() error {
-		f := self.Raft.Apply(log, timeout)
-		if err := f.Error(); err != nil {
-			return err
-		}
-
-		if response := f.Response(); response != nil {
-			returnValue.Store(response)
-		}
-		index.Store(f.Index())
-		return nil
-	})
-
+func (self *Controller) ApplyWithTimeout(log []byte) (interface{}, uint64, error) {
+	secondPhase, err := self.ApplyTwoPhase(log)
 	if err != nil {
-		if errors.Is(err, raft.ErrNotLeader) {
-			noLeaderErr := apierror.NewClusterHasNoLeaderError()
-			noLeaderErr.Cause = err
-			err = noLeaderErr
-		}
-
 		return nil, 0, err
 	}
+	return secondPhase()
+}
 
-	return returnValue.Load(), index.Load(), nil
+// ApplyTwoPhase applies the given command to the RAFT distributed but returns an operation which will return the result
+func (self *Controller) ApplyTwoPhase(log []byte) (func() (interface{}, uint64, error), error) {
+	start := time.Now()
+	raftOperation, err := self.raftRateLimiter.RunRateLimited("raft operation")
+	if err != nil {
+		return nil, err
+	}
+
+	f := self.Raft.Apply(log, self.Config.ApplyTimeout)
+
+	return func() (interface{}, uint64, error) {
+		if err = f.Error(); err != nil {
+			if errors.Is(err, raft.ErrNotLeader) {
+				noLeaderErr := apierror.NewClusterHasNoLeaderError()
+				noLeaderErr.Cause = err
+				err = noLeaderErr
+				raftOperation.Failed()
+			} else if errors.Is(err, raft.ErrEnqueueTimeout) {
+				tooBusyErr := apierror.NewTooManyUpdatesError()
+				tooBusyErr.Cause = err
+				err = tooBusyErr
+				raftOperation.Backoff()
+			} else {
+				raftOperation.Failed()
+			}
+
+			return nil, 0, err
+		}
+
+		defer func() {
+			if time.Since(start) > self.Config.ApplyTimeout {
+				raftOperation.Backoff()
+			} else {
+				raftOperation.Success()
+			}
+		}()
+
+		response := f.Response()
+		index := f.Index()
+		return response, index, nil
+	}, nil
 }
 
 // Init sets up the Mesh and Raft instances
@@ -584,7 +621,7 @@ func (self *Controller) Init() error {
 		self.clusterEvents <- obs
 	})
 
-	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
+	self.Fsm = NewFsm(raftConfig.DataDir, raftConfig.RestartSelf, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
 
 	if err = self.Fsm.Init(); err != nil {
 		return fmt.Errorf("failed to init FSM (%w)", err)

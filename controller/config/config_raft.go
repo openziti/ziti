@@ -1,14 +1,17 @@
 package config
 
 import (
+	"time"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/openziti/transport/v2"
-	"time"
+	"github.com/openziti/ziti/controller/command"
 )
 
 type RaftConfig struct {
 	Recover               bool
 	DataDir               string
+	RestartSelf           bool
 	AdvertiseAddress      transport.Address
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
@@ -28,4 +31,7 @@ type RaftConfig struct {
 	Logger   hclog.Logger
 
 	WarnWhenLeaderlessFor time.Duration
+
+	ApplyTimeout time.Duration
+	RateLimiter  command.AdaptiveRateLimiterConfig
 }

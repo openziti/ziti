@@ -22,7 +22,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/openziti/ziti/controller/config"
 
@@ -64,6 +66,19 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 			WithField("arch", version.GetArchitecture()).
 			WithField("build-date", version.GetBuildDate()).
 			WithField("revision", version.GetRevision())
+
+	if delaySecondsStr := os.Getenv("DELAY_START_SECONDS"); delaySecondsStr != "" {
+		delaySeconds, err := strconv.Atoi(delaySecondsStr)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("could not parse DELAY_START_SECONDS, using default value of 10s")
+			delaySeconds = 10
+		} else if delaySeconds < 1 || delaySeconds > 120 {
+			pfxlog.Logger().Errorf("invalid value '%d' for DELAY_START_SECONDS, using default value of 10s", delaySeconds)
+		}
+
+		pfxlog.Logger().Infof("delaying start-up for %d seconds", delaySeconds)
+		time.Sleep(time.Duration(delaySeconds) * time.Second)
+	}
 
 	ctrlConfig, err := config.LoadConfig(args[0])
 	if err != nil {

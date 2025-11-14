@@ -86,6 +86,10 @@ const (
 	DefaultRaftSnapshotInterval  = 2 * time.Minute
 	DefaultRaftSnapshotThreshold = 500
 	DefaultRaftTrailingLogs      = 500
+
+	RaftRateLimiterQueueSizeMetricName  = "raft.rate_limiter.queue_size"
+	RaftRateLimiterWorkTimerMetricName  = "raft.rate_limiter.work_timer"
+	RaftRateLimiterWindowSizeMetricName = "raft.rate_limiter.window_size"
 )
 
 type Config struct {
@@ -221,6 +225,7 @@ func LoadConfig(path string) (*Config, error) {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			controllerConfig.Raft = &RaftConfig{}
 
+			controllerConfig.Raft.ApplyTimeout = 5 * time.Second
 			controllerConfig.Raft.ElectionTimeout = 5 * time.Second
 			controllerConfig.Raft.HeartbeatTimeout = 3 * time.Second
 			controllerConfig.Raft.LeaderLeaseTimeout = 3 * time.Second
@@ -231,10 +236,18 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.SnapshotThreshold = DefaultRaftSnapshotThreshold
 			controllerConfig.Raft.TrailingLogs = DefaultRaftTrailingLogs
 
+			controllerConfig.Raft.RateLimiter.QueueSizeMetric = RaftRateLimiterQueueSizeMetricName
+			controllerConfig.Raft.RateLimiter.WorkTimerMetric = RaftRateLimiterWorkTimerMetricName
+			controllerConfig.Raft.RateLimiter.WindowSizeMetric = RaftRateLimiterWindowSizeMetricName
+
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
 			} else {
 				return nil, errors.Errorf("cluster dataDir configuration missing")
+			}
+
+			if value, found := submap["restartSelfOnSnapshot"]; found {
+				controllerConfig.Raft.RestartSelf = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
 
 			if value, found := submap["snapshotInterval"]; found {
@@ -333,6 +346,24 @@ func LoadConfig(path string) (*Config, error) {
 					}
 				} else {
 					return nil, errors.New("invalid commandHandler value, should be map")
+				}
+			}
+
+			if value, found := submap["applyTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.ApplyTimeout = val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.applyTimeout value '%v", value)
+				}
+			}
+
+			controllerConfig.Raft.RateLimiter.SetDefaults()
+
+			if value, found := submap["rateLimiter"]; found {
+				if rateLimitterConfig, ok := value.(map[interface{}]interface{}); ok {
+					if err = command.LoadAdaptiveRateLimiterConfig(&controllerConfig.Raft.RateLimiter, rateLimitterConfig); err != nil {
+						return nil, fmt.Errorf("error loading cluster rate limiting configuration (%w)", err)
+					}
 				}
 			}
 		} else {
@@ -966,12 +997,10 @@ func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Addr
 			break
 		}
 
-		if !hostFound {
-			for _, ipAddresses := range serverCert.Leaf.IPAddresses {
-				if host == ipAddresses.String() {
-					hostFound = true
-					break
-				}
+		for _, ipAddresses := range serverCert.Leaf.IPAddresses {
+			if host == ipAddresses.String() {
+				hostFound = true
+				break
 			}
 		}
 

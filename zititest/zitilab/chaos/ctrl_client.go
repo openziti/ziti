@@ -5,12 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/rest_client/inspect"
-	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/zitirest"
-	"gopkg.in/yaml.v3"
 	"io"
 	"maps"
 	"math/rand"
@@ -20,6 +14,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/controller/rest_client/inspect"
+	"github.com/openziti/ziti/controller/rest_model"
+	"github.com/openziti/ziti/zitirest"
+	"gopkg.in/yaml.v3"
 )
 
 func NewCtrlClients(run model.Run, selector string) (*CtrlClients, error) {

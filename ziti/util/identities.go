@@ -232,6 +232,21 @@ func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientO
 func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 	result := http.Header{}
 	result.Set(env.ZitiSession, self.Token)
+
+	if self.ApiSession != nil && self.ApiSession.ApiSession != nil {
+		switch self.ApiSession.ApiSession.GetType() {
+		case edge_apis.ApiSessionTypeOidc:
+			authHeader := "Bearer " + strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken()))
+			result.Set("Authorization", authHeader)
+		case edge_apis.ApiSessionTypeLegacy:
+			result.Set(env.ZitiSession, string(self.ApiSession.ApiSession.GetToken()))
+		default:
+			panic("unsupported api session type " + self.ApiSession.ApiSession.GetType())
+		}
+	} else {
+		result.Set(env.ZitiSession, self.Token)
+	}
+
 	return result
 }
 

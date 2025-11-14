@@ -51,6 +51,7 @@ enum ContentType {
   ValidateTerminatorsRequestType = 10100;
   ValidateTerminatorResponseType = 10101;
   ValidateTerminatorResultType = 10102;
+  ValidateTerminatorHostResultType = 10121;
 
   ValidateRouterLinksRequestType = 10103;
   ValidateRouterLinksResponseType = 10104;
@@ -75,6 +76,8 @@ enum ContentType {
   ValidateCircuitsRequestType = 10118;
   ValidateCircuitsResponseType = 10119;
   ValidateCircuitsResultType = 10120;
+
+  // next id 10122
 }
 
 enum Header {
@@ -191,8 +194,11 @@ message RaftMemberListResponse {
 }
 
 message ValidateTerminatorsRequest {
-  string filter = 1;
+  string terminatorsFilter = 1;
   bool fixInvalid = 2;
+  string identitiesFilter = 3;
+  uint32 expectedPerSvcAndHost = 4;
+  uint32 expectedPerHost = 5;
 }
 
 message ValidateTerminatorsResponse {
@@ -222,6 +228,12 @@ message TerminatorDetail {
   TerminatorState state = 10;
   bool fixed = 11;
   string detail = 12;
+}
+
+message InvalidTerminatorHostState {
+  string identityId = 1;
+  string serviceId = 2;
+  string message = 3;
 }
 
 message ValidateRouterLinksRequest {

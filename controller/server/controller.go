@@ -240,41 +240,23 @@ func (c *Controller) Run() {
 
 func (c *Controller) checkEdgeInitialized() {
 	log := pfxlog.Logger()
-	defaultAdminFound := false
-	lastWarn := time.Time{}
-	first := true
 
-	for !defaultAdminFound {
-		admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
+	admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
 
-		if err != nil {
-			log.WithError(err).Panic("could not check if a default admin exists")
-		}
-
-		if admin == nil {
-			if !c.AppEnv.GetHostController().IsRaftEnabled() {
-				log.Fatal("the Ziti Edge has not been initialized via 'ziti controller edge init', no default admin exists")
-			}
-
-			if first {
-				time.Sleep(3 * time.Second)
-				first = false
-			}
-
-			now := time.Now()
-			if now.Sub(lastWarn) > time.Minute {
-				log.Warnf("the controller has not been initialized, no default admin exists. Add this node to a cluster using "+
-					"'ziti agent cluster add %s' against an existing cluster member, or if this is the bootstrap node, run "+
-					"'ziti agent cluster init' to configure the default admin and bootstrap the cluster",
-					(*c.AppEnv.HostController.GetEnv().GetConfig().Ctrl.Options.AdvertiseAddress).String())
-				lastWarn = now
-			}
-			time.Sleep(time.Second)
-		} else {
-			defaultAdminFound = true
-		}
+	if err != nil {
+		log.WithError(err).Panic("could not check if a default admin exists")
 	}
-	log.Info("edge initialized")
+
+	if admin == nil {
+		if !c.AppEnv.GetHostController().IsRaftEnabled() {
+			log.Fatal("the Ziti Edge has not been initialized via 'ziti controller edge init', no default admin exists")
+		}
+
+		log.Warnf("the controller has not yet been initialized, no default admin exists. Add this node to a cluster using "+
+			"'ziti agent cluster add %s' against an existing cluster member, or if this is the bootstrap node, run "+
+			"'ziti agent cluster init' to configure the default admin and bootstrap the cluster",
+			(*c.AppEnv.HostController.GetEnv().GetConfig().Ctrl.Options.AdvertiseAddress).String())
+	}
 }
 
 func (c *Controller) Shutdown() {

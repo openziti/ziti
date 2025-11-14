@@ -4,6 +4,10 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -28,9 +32,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""
@@ -70,6 +71,7 @@ var m = &model.Model{
 	Id: "sdk-hosting-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
+			"ha":          true,
 			"environment": "sdk-hosting-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
@@ -94,7 +96,7 @@ var m = &model.Model{
 	StructureFactories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
 			err := m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+				host.InstanceType = "c5.2xlarge" // need larger cpu for all the tls handshaking with 200 hosts
 				return nil
 			})
 
@@ -278,7 +280,7 @@ var m = &model.Model{
 				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
 			}
 
-			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(component.Start("#ctrl1"))
 
 			if isHA {
 				workflow.AddAction(semaphore.Sleep(2 * time.Second))
@@ -323,7 +325,7 @@ var m = &model.Model{
 					name := fmt.Sprintf("service-policy-%03d", i)
 					identityRoles := fmt.Sprintf("@%s", identity)
 					servicesRoles := ""
-					for j := 0; j < 10; j++ {
+					for j := 0; j < 50; j++ {
 						idx := serviceIdx % 2000
 						if j > 0 {
 							servicesRoles += ","
@@ -340,9 +342,12 @@ var m = &model.Model{
 				return parallel.Execute(tasks, 25)
 			}))
 
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-			workflow.AddAction(semaphore.Sleep(5 * time.Second))
+			if isHA {
+				workflow.AddAction(component.StartInParallel(".ctrl", 10))
+				workflow.AddAction(semaphore.Sleep(2 * time.Second))
+				workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+				workflow.AddAction(semaphore.Sleep(5 * time.Second))
+			}
 
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
@@ -375,7 +380,7 @@ var m = &model.Model{
 				return err
 			}
 			err := run.GetModel().ForEachComponent(".ctrl", 3, func(c *model.Component) error {
-				return edge.ControllerAvailable(c.Id, 30*time.Second).Execute(run)
+				return edge.ControllerAvailable(c.Id, time.Minute).Execute(run)
 			})
 			if err != nil {
 				return err

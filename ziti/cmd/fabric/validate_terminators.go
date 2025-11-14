@@ -18,6 +18,8 @@ package fabric
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -26,14 +28,17 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type validateTerminatorsAction struct {
 	api.Options
-	filter       string
-	fixInvalid   bool
-	includeValid bool
+	terminatorFilter string
+	fixInvalid       bool
+	includeValid     bool
+
+	identityFilter        string
+	expectedPerHostAndSvc uint32
+	expectedPerHost       uint32
 
 	eventNotify chan *mgmt_pb.TerminatorDetail
 }
@@ -56,16 +61,29 @@ func NewValidateTerminatorsCmd(p common.OptionsProvider) *cobra.Command {
 	action.AddCommonFlags(validateTerminatorsCmd)
 	validateTerminatorsCmd.Flags().BoolVar(&action.fixInvalid, "fix-invalid", false, "Fix invalid terminators. Usually this means deleting them.")
 	validateTerminatorsCmd.Flags().BoolVar(&action.includeValid, "include-valid", false, "Show results for valid terminators as well")
-	validateTerminatorsCmd.Flags().StringVar(&action.filter, "filter", "", "Specify which terminators to validate")
+	validateTerminatorsCmd.Flags().StringVar(&action.terminatorFilter, "filter", "", "Specify which terminators to validate")
+	validateTerminatorsCmd.Flags().StringVar(&action.identityFilter, "identity-filter", "", "Specify which identities to validate")
+	validateTerminatorsCmd.Flags().Uint32Var(&action.expectedPerHostAndSvc, "expected-per-host-and-svc", 0,
+		"If set, check that selected hosts have this number of terminators per service")
+	validateTerminatorsCmd.Flags().Uint32Var(&action.expectedPerHostAndSvc, "expected-per-host", 0,
+		"If set, check that selected hosts have this number of terminators total")
 	return validateTerminatorsCmd
 }
 
-func (self *validateTerminatorsAction) validateTerminators(cmd *cobra.Command, _ []string) error {
+func (self *validateTerminatorsAction) validateTerminators(*cobra.Command, []string) error {
 	closeNotify := make(chan struct{})
 	self.eventNotify = make(chan *mgmt_pb.TerminatorDetail, 1)
 
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddReceiveHandler(int32(mgmt_pb.ContentType_ValidateTerminatorResultType), self)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateTerminatorHostResultType), func(msg *channel.Message, ch channel.Channel) {
+			detail := &mgmt_pb.InvalidTerminatorHostState{}
+			if err := proto.Unmarshal(msg.Body, detail); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to unmarshal terminator detail")
+				return
+			}
+			fmt.Printf("identityId: %s, serviceId: %s, detail: %s\n", detail.IdentityId, detail.ServiceId, detail.Message)
+		})
 		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 			close(closeNotify)
 		}))
@@ -78,8 +96,11 @@ func (self *validateTerminatorsAction) validateTerminators(cmd *cobra.Command, _
 	}
 
 	request := &mgmt_pb.ValidateTerminatorsRequest{
-		Filter:     self.filter,
-		FixInvalid: self.fixInvalid,
+		TerminatorsFilter:     self.terminatorFilter,
+		FixInvalid:            self.fixInvalid,
+		ExpectedPerSvcAndHost: self.expectedPerHostAndSvc,
+		ExpectedPerHost:       self.expectedPerHost,
+		IdentitiesFilter:      self.identityFilter,
 	}
 
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Duration(self.Timeout) * time.Second).SendForReply(ch)
@@ -107,6 +128,7 @@ func (self *validateTerminatorsAction) validateTerminators(cmd *cobra.Command, _
 				fmt.Printf("id: %s, binding: %s, hostId: %s, routerId: %s, state: %s, fixed: %v, detail: %s\n",
 					detail.TerminatorId, detail.Binding, detail.HostId, detail.RouterId, detail.State.String(), detail.Fixed, detail.Detail)
 			}
+
 			expected--
 		}
 	}
