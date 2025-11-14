@@ -570,7 +570,7 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		return errors.New(errStr)
 	}
 
-	log.Info("sending create terminator v2 request")
+	log.WithField("ctrlId", ctrlCh.Id()).Info("sending create terminator v2 request")
 
 	queued, err := ctrlCh.TrySend(protobufs.MarshalTyped(request).ToSendable())
 	if err != nil {
@@ -623,7 +623,8 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		if terminator.establishCallback != nil {
 			terminator.establishCallback(response.Result)
 		}
-		terminator.close(self, true, false, response.Msg)
+		terminator.close(self, true, false,
+			fmt.Sprintf("received error from controller: %s", response.Msg))
 		return
 	}
 

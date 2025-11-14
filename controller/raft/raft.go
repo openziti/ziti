@@ -21,6 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -45,13 +53,6 @@ import (
 	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/ziti/controller/raft/mesh"
 	"github.com/sirupsen/logrus"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type ClusterEvent uint32
@@ -121,13 +122,14 @@ type Env interface {
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
 	result := &Controller{
-		env:                env,
-		Config:             env.GetRaftConfig(),
-		indexTracker:       NewIndexTracker(),
-		migrationMgr:       migrationMgr,
-		clusterEvents:      make(chan raft.Observation, 16),
-		commandRateLimiter: command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
-		errorMappers:       map[string]func(map[string]any) error{},
+		env:                 env,
+		Config:              env.GetRaftConfig(),
+		indexTracker:        NewIndexTracker(),
+		migrationMgr:        migrationMgr,
+		clusterEvents:       make(chan raft.Observation, 16),
+		commandRateLimiter:  command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
+		errorMappers:        map[string]func(map[string]any) error{},
+		maxInFlightCommands: concurrenz.NewSemaphore(32),
 	}
 	result.initErrorMappers()
 	return result
@@ -152,6 +154,7 @@ type Controller struct {
 	clusterEvents              chan raft.Observation
 	commandRateLimiter         rate.RateLimiter
 	errorMappers               map[string]func(map[string]any) error
+	maxInFlightCommands        concurrenz.Semaphore
 }
 
 func (self *Controller) GetNodeId() *identity.TokenId {
@@ -309,6 +312,9 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
+		if channel.IsTimeout(err) {
+			return apierror.NewTooManyUpdatesError()
+		}
 		return err
 	}
 
@@ -508,20 +514,56 @@ func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
 
 // ApplyWithTimeout applies the given command to the RAFT distributed log with the given timeout
 func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, uint64, error) {
-	returnValue := atomic.Value{}
-	index := atomic.Uint64{}
-	err := self.commandRateLimiter.RunRateLimited(func() error {
-		f := self.Raft.Apply(log, timeout)
-		if err := f.Error(); err != nil {
-			return err
-		}
+	//returnValue := atomic.Value{}
+	//index := atomic.Uint64{}
+	//err := self.commandRateLimiter.RunRateLimited(func() error {
+	//	f := self.Raft.Apply(log, timeout)
+	//	if err := f.Error(); err != nil {
+	//		return err
+	//	}
+	//
+	//	if response := f.Response(); response != nil {
+	//		returnValue.Store(response)
+	//	}
+	//	index.Store(f.Index())
+	//	return nil
+	//})
+	//
+	//if err != nil {
+	//	if errors.Is(err, raft.ErrNotLeader) {
+	//		noLeaderErr := apierror.NewClusterHasNoLeaderError()
+	//		noLeaderErr.Cause = err
+	//		err = noLeaderErr
+	//	}
+	//
+	//	return nil, 0, err
+	//}
+	//
+	//return returnValue.Load(), index.Load(), nil
 
-		if response := f.Response(); response != nil {
-			returnValue.Store(response)
+	future := concurrenz.AtomicValue[raft.ApplyFuture]{}
+
+	semaphoreAcquired := false
+
+	err := self.commandRateLimiter.RunRateLimited(func() error {
+		if !self.maxInFlightCommands.AcquireWithTimeout(timeout) {
+			return apierror.NewTooManyUpdatesError()
 		}
-		index.Store(f.Index())
+		semaphoreAcquired = true
+
+		f := self.Raft.Apply(log, timeout)
+		future.Store(f)
 		return nil
 	})
+
+	if semaphoreAcquired {
+		defer self.maxInFlightCommands.Release()
+	}
+
+	f := future.Load()
+	if err == nil {
+		err = f.Error()
+	}
 
 	if err != nil {
 		if errors.Is(err, raft.ErrNotLeader) {
@@ -533,7 +575,9 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 		return nil, 0, err
 	}
 
-	return returnValue.Load(), index.Load(), nil
+	response := f.Response()
+	index := f.Index()
+	return response, index, nil
 }
 
 // Init sets up the Mesh and Raft instances

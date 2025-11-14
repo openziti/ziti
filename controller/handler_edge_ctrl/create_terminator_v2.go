@@ -18,6 +18,9 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -32,8 +35,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math"
-	"time"
 )
 
 type createTerminatorV2Handler struct {
@@ -58,6 +59,11 @@ func (self *createTerminatorV2Handler) Label() string {
 }
 
 func (self *createTerminatorV2Handler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	if self.appEnv.GetCommandDispatcher().IsLeaderless() {
+		pfxlog.ContextLogger(ch.Label()).Error("cluster has no leader, unable to handle create terminator request")
+		return
+	}
+
 	req := &edge_ctrl_pb.CreateTerminatorV2Request{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorV2Request")
