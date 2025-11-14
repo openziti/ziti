@@ -20,6 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -29,8 +32,6 @@ import (
 	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"time"
 )
 
 // start with a random scenario then cycle through them
@@ -98,7 +99,7 @@ func validateTerminatorsForCtrlWithChan(run model.Run, c *model.Component, deadl
 }
 
 func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
-	expectedTerminatorCount := int64(6000)
+	expectedTerminatorCount := int64(30000)
 	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
 	if err != nil {
 		return err

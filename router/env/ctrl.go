@@ -17,9 +17,10 @@
 package env
 
 import (
-	"github.com/openziti/foundation/v2/versions"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/foundation/v2/versions"
 
 	"github.com/openziti/channel/v4"
 )

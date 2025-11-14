@@ -17,6 +17,7 @@
 package inspect
 
 type ControllerInspectDetails struct {
+	LeaderId    string                              `json:"leaderId"`
 	Controllers map[string]*ControllerInspectDetail `json:"controllers"`
 }
 

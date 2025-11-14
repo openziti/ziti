@@ -4,6 +4,10 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -28,9 +32,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""
@@ -70,6 +71,7 @@ var m = &model.Model{
 	Id: "sdk-hosting-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
+			"ha":          true,
 			"environment": "sdk-hosting-test",
 			"credentials": model.Variables{
 				"aws": model.Variables{
@@ -323,7 +325,7 @@ var m = &model.Model{
 					name := fmt.Sprintf("service-policy-%03d", i)
 					identityRoles := fmt.Sprintf("@%s", identity)
 					servicesRoles := ""
-					for j := 0; j < 10; j++ {
+					for j := 0; j < 50; j++ {
 						idx := serviceIdx % 2000
 						if j > 0 {
 							servicesRoles += ","
@@ -375,7 +377,7 @@ var m = &model.Model{
 				return err
 			}
 			err := run.GetModel().ForEachComponent(".ctrl", 3, func(c *model.Component) error {
-				return edge.ControllerAvailable(c.Id, 30*time.Second).Execute(run)
+				return edge.ControllerAvailable(c.Id, time.Minute).Execute(run)
 			})
 			if err != nil {
 				return err

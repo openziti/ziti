@@ -17,6 +17,7 @@
 package handler_peer_ctrl
 
 import (
+	"sync"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -26,15 +27,14 @@ import (
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/raft"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler {
 	poolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(controller.Config.CommandHandlerOptions.MaxQueueSize),
+		QueueSize:   1,
 		MinWorkers:  0,
-		MaxWorkers:  1, // we should only have one thing apply entries, so they don't get applied out of order
+		MaxWorkers:  64, // we should only have one thing apply entries, so they don't get applied out of order
 		IdleTime:    time.Second,
 		CloseNotify: controller.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
@@ -50,6 +50,7 @@ func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler 
 	return &commandHandler{
 		controller: controller,
 		pool:       pool,
+		queue:      make(chan msgAndChannel, controller.Config.CommandHandlerOptions.MaxQueueSize),
 	}
 }
 
@@ -60,30 +61,63 @@ func commandHandlerWorker(_ uint32, f func()) {
 type commandHandler struct {
 	controller *raft.Controller
 	pool       goroutines.Pool
+	queue      chan msgAndChannel
+	lock       sync.Mutex
 }
 
 func (self *commandHandler) ContentType() int32 {
 	return int32(cmd_pb.ContentType_NewLogEntryType)
 }
 
-func (self *commandHandler) HandleReceive(m *channel.Message, ch channel.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
-
-	err := self.pool.QueueOrError(func() {
-		if idx, err := self.controller.ApplyEncodedCommand(m.Body); err != nil {
-			sendErrorResponseCalculateType(m, ch, err)
-			return
-		} else {
-			sendSuccessResponse(m, ch, idx)
-		}
-	})
-
-	if errors.Is(err, goroutines.QueueFullError) {
-		err = apierror.NewTooManyUpdatesError()
+func (self *commandHandler) processMessages() {
+	for self.processMessage() {
+		// process until we run out of messages
 	}
+}
+
+func (self *commandHandler) processMessage() bool {
+	var pair msgAndChannel
+	var phaseTwo func() (interface{}, uint64, error)
+	var err error
+
+	self.lock.Lock()
+	select {
+	case pair = <-self.queue:
+		phaseTwo, err = self.controller.ApplyTwoPhase(pair.msg.Body)
+	default:
+		self.lock.Unlock()
+		return false
+	}
+	self.lock.Unlock()
 
 	if err != nil {
-		log.WithError(err).Error("unable to queue command for processing")
-		go sendErrorResponseCalculateType(m, ch, err)
+		sendErrorResponseCalculateType(pair.msg, pair.ch, apierror.NewTooManyUpdatesError())
+		return true
 	}
+
+	result, index, err := phaseTwo()
+	if index, err = self.controller.HandleApplyOutput(pair.msg.Body, result, index, err); err != nil {
+		sendErrorResponseCalculateType(pair.msg, pair.ch, err)
+	} else {
+		sendSuccessResponse(pair.msg, pair.ch, index)
+	}
+
+	return true
+}
+
+func (self *commandHandler) HandleReceive(m *channel.Message, ch channel.Channel) {
+	select {
+	case self.queue <- msgAndChannel{msg: m, ch: ch}:
+	default:
+		go sendErrorResponseCalculateType(m, ch, apierror.NewTooManyUpdatesError())
+		return
+	}
+
+	// we don't care if the queue is full, another worker will pick the work up
+	_ = self.pool.QueueOrError(self.processMessages)
+}
+
+type msgAndChannel struct {
+	msg *channel.Message
+	ch  channel.Channel
 }
