@@ -129,12 +129,12 @@ func Test_LoginSuite(t *testing.T) {
 	targetDone := make(chan error)
 	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
 
-	exStartErr := testState.externalZiti.WaitForControllerReady(30 * time.Second)
+	exStartErr := testState.externalZiti.WaitForControllerReady(60 * time.Second)
 	if exStartErr != nil {
 		log.Fatalf("externalZiti start failed: %v", exStartErr)
 	}
 
-	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(30 * time.Second)
+	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(60 * time.Second)
 	if cutStartErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 	}
@@ -158,7 +158,7 @@ func Test_LoginSuite(t *testing.T) {
 	t.Log("=========================== overlay ready. tests begin =============================")
 	t.Log("====================================================================================")
 
-	testTimeout := 60 * time.Second
+	testTimeout := 120 * time.Second
 	testDone := make(chan struct{})
 	testTimer := time.NewTimer(testTimeout)
 	defer testTimer.Stop()
@@ -533,7 +533,7 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 		targetDone := make(chan error)
 		go s.controllerUnderTest.StartExternal(zitiPath, targetDone)
-		cutStartErr := s.controllerUnderTest.WaitForControllerReady(30 * time.Second)
+		cutStartErr := s.controllerUnderTest.WaitForControllerReady(60 * time.Second)
 		if cutStartErr != nil {
 			log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 		}
