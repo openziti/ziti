@@ -327,12 +327,23 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}()
 	fmt.Println("Controller running...")
 
-	addy := net.JoinHostPort(o.ControllerAddress, strconv.Itoa(int(o.ControllerPort)))
-	ctrlUrl := fmt.Sprintf("https://%s", addy)
+	o.ControllerAddress = helpers.GetCtrlEdgeAdvertisedAddress()
+
+	portStr := helpers.GetCtrlEdgeAdvertisedPort()
+	port, portErr := strconv.Atoi(portStr)
+	if portErr != nil {
+		cancel()
+		return fmt.Errorf("invalid controller port: %s", portStr)
+	}
+	o.ControllerPort = uint16(port)
 
 	c := make(chan error)
 	timeout := 30 * time.Second
-	go waitForController(ctrlUrl, c)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	go waitForController(ctx, o.ControllerHostPort(), c)
+
 	select {
 	case <-c:
 		//completed normally
@@ -340,7 +351,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	case <-time.After(timeout):
 		o.cleanupHome()
 		cancel()
-		return fmt.Errorf("timed out waiting for controller: %s", ctrlUrl)
+		return fmt.Errorf("timed out waiting for controller: %s", o.ControllerHostPort())
 	}
 
 	if o.IsHA {
@@ -409,7 +420,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}
 
 	erConfigFile := path.Join(o.instHome(), routerName+".yaml")
-	err := o.configureRouter(routerName, erConfigFile, ctrlUrl)
+	err := o.configureRouter(routerName, erConfigFile, o.ControllerHostPort())
 	if err != nil {
 		cancel()
 		return err
@@ -492,7 +503,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 	if !o.AlreadyInitialized {
 		loginCmd := edge.NewLoginCmd(o.out, o.errOut)
 		loginCmd.SetArgs([]string{
-			ctrlUrl,
+			o.ControllerHostPort(),
 			fmt.Sprintf("--username=%s", o.Username),
 			fmt.Sprintf("--password=%s", o.Password),
 			"-y",
@@ -673,18 +684,31 @@ func (o *QuickstartOpts) CreateMinimalPki() {
 	}
 }
 
-func waitForController(ctrlUrl string, done chan error) {
+func waitForController(ctx context.Context, ctrlUrl string, done chan error) {
+	if !strings.HasPrefix(ctrlUrl, "https://") {
+		ctrlUrl = "https://" + ctrlUrl
+	}
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Transport: tr}
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		r, e := client.Get(ctrlUrl)
-		if e != nil || r == nil || r.StatusCode != 200 {
+		select {
+		case <-ctx.Done():
+			done <- ctx.Err()
+			return
+		case <-ticker.C:
+			fmt.Printf("waiting for controller: %s\n", ctrlUrl)
+		default:
+			r, e := client.Get(ctrlUrl)
+			if e == nil && r != nil && r.StatusCode == 200 {
+				done <- nil
+				return
+			}
 			time.Sleep(50 * time.Millisecond)
-		} else {
-			break
 		}
 	}
-	done <- nil
 }
 
 func (o *QuickstartOpts) WaitForRouter(timeout time.Duration, done chan error) {
@@ -854,8 +878,8 @@ func (o *QuickstartOpts) InitLegacy() error {
 }
 
 func (o *QuickstartOpts) ControllerHostPort() string {
-	return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
+	return net.JoinHostPort(o.ControllerAddress, strconv.Itoa(int(o.ControllerPort)))
 }
 func (o *QuickstartOpts) RouterHostPort() string {
-	return fmt.Sprintf("https://%s:%d", o.RouterAddress, o.RouterPort)
+	return net.JoinHostPort(o.RouterAddress, strconv.Itoa(int(o.RouterPort)))
 }

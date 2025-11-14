@@ -41,7 +41,6 @@ import (
 	"github.com/openziti/ziti/internal/jwtutil"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
@@ -71,10 +70,11 @@ type LoginOptions struct {
 	ApiSession    edge_apis.ApiSession
 	TotpCallback  func(strings chan string)
 
-	client    http.Client
-	transport *http.Transport
-	caPool    *x509.CertPool
-	cachedId  *util.RestClientEdgeIdentity
+	client     http.Client
+	transport  *http.Transport
+	caPool     *x509.CertPool
+	cachedId   *util.RestClientEdgeIdentity
+	mgmtClient *edge_apis.ManagementApiClient
 }
 
 func (options *LoginOptions) GetClient() http.Client {
@@ -137,7 +137,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "logs into a Ziti Edge Controller instance",
 		Long:  `login allows the ziti command to establish a session with a Ziti Edge Controller, allowing more commands to be run against the controller.`,
 		Args:  cobra.RangeArgs(0, 1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			if len(args) > 0 {
 				options.ControllerUrl = args[0]
@@ -146,11 +146,11 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			if options.extJwtFile != "" {
 				auth, err := os.ReadFile(options.extJwtFile)
 				if err != nil {
-					pfxlog.Logger().Fatal(err)
+					return err
 				}
 				options.ExtJwtToken = string(auth)
 			}
-			cmdhelper.CheckErr(options.Run())
+			return options.Run()
 		},
 		SuggestFor: []string{},
 	}
@@ -346,6 +346,8 @@ func (o *LoginOptions) Run() error {
 		o.client = nc
 	}
 
+	o.ControllerUrl = host
+
 	if o.Token == "" || dontHaveApiSession {
 		// if no token or api session, need to log in
 		s, le := o.Login()
@@ -359,7 +361,6 @@ func (o *LoginOptions) Run() error {
 		}
 	}
 
-	o.ControllerUrl = host
 	var sess *edge_apis.ApiSessionJsonWrapper
 	if o.ApiSession != nil {
 		sess = &edge_apis.ApiSessionJsonWrapper{
@@ -368,7 +369,7 @@ func (o *LoginOptions) Run() error {
 	}
 	if !o.IgnoreConfig {
 		loginIdentity := &util.RestClientEdgeIdentity{
-			Url:           host,
+			Url:           o.ControllerUrl,
 			Username:      o.Username,
 			Token:         "", // --use-api-session--
 			LoginTime:     time.Now().Format(time.RFC3339),
@@ -617,6 +618,71 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 	return caPool, nil
 }
 
+func (o *LoginOptions) MergeUnsetFrom(cached LoginOptions) {
+	if o == nil {
+		return
+	}
+
+	if o.Username == "" {
+		o.Username = cached.Username
+	}
+	if o.Password == "" {
+		o.Password = cached.Password
+	}
+	if o.Token == "" {
+		o.Token = cached.Token
+	}
+	if o.CaCert == "" {
+		o.CaCert = cached.CaCert
+	}
+	if o.ClientCert == "" {
+		o.ClientCert = cached.ClientCert
+	}
+	if o.ClientKey == "" {
+		o.ClientKey = cached.ClientKey
+	}
+	if o.ServiceName == "" {
+		o.ServiceName = cached.ServiceName
+	}
+	if o.extJwtFile == "" {
+		o.extJwtFile = cached.extJwtFile
+	}
+	if o.ExtJwtToken == "" {
+		o.ExtJwtToken = cached.ExtJwtToken
+	}
+	if o.File == "" {
+		o.File = cached.File
+	}
+	if o.ControllerUrl == "" {
+		o.ControllerUrl = cached.ControllerUrl
+	}
+	if o.NetworkId == "" {
+		o.NetworkId = cached.NetworkId
+	}
+	if o.FileCertCreds == nil {
+		o.FileCertCreds = cached.FileCertCreds
+	}
+	if o.ApiSession == nil {
+		o.ApiSession = cached.ApiSession
+	}
+	if o.transport == nil {
+		o.transport = cached.transport
+	}
+	if o.caPool == nil {
+		o.caPool = cached.caPool
+	}
+	if o.cachedId == nil {
+		o.cachedId = cached.cachedId
+	}
+	if o.mgmtClient == nil {
+		o.mgmtClient = cached.mgmtClient
+	}
+	if o.TotpCallback == nil {
+		o.TotpCallback = cached.TotpCallback
+	}
+	o.client = cached.client
+}
+
 func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.ManagementApiClient, error) {
 	if useCachedCreds {
 		o.PopulateFromCache()
@@ -627,15 +693,16 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 		if loginErr != nil {
 			return nil, loginErr
 		}
-		o.client = cached.client
-		o.transport = cached.transport
-		o.caPool = cached.caPool
-
-		// here
-		o.ApiSession = cached.ApiSession
+		o.MergeUnsetFrom(cached)
 	}
 
+	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
 	ctrlUrl, _ := url.Parse(o.ControllerUrl)
+	if ctrlUrl.Path == "" {
+		resolvedUrl := util.EdgeControllerGetManagementApiBasePath(o.ControllerUrl, o.CaCert, &o.client)
+		hostUrl, _ := url.Parse(resolvedUrl)
+		o.ControllerUrl = o.ControllerUrl + hostUrl.Path
+	}
 	transport := &edge_apis.TlsAwareHttpTransport{Transport: o.transport}
 	o.client.Transport = transport
 
@@ -725,6 +792,7 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 	if s == nil {
 		return nil, fmt.Errorf("authentication failed for some reason but no error")
 	}
+	o.mgmtClient = adminClient
 	return s, nil
 }
 
