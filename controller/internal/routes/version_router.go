@@ -25,7 +25,7 @@ import (
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common/build"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
@@ -115,7 +115,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				}
 
 				for _, bindPoint := range webListener.BindPoints {
-					apiBaseUrl := bindPoint.Address + apiBindingToPath(api.Binding())
+					apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
 					apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
 				}
 			}

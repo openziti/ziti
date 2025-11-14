@@ -23,14 +23,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
 
 	"github.com/fatih/color"
 	"github.com/google/uuid"
@@ -446,7 +447,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 	cmd.Flags().BoolVar(&opts.showRefreshToken, "refresh-token", false, "Display the full Refresh Token to the screen. Use caution.")
 	cmd.Flags().BoolVar(&opts.showAccessToken, "access-token", false, "Display the full Access Token to the screen. Use caution.")
 	cmd.Flags().StringVar(&opts.ControllerUrl, "controller-url", "", "The url of the controller")
-	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "s", []string{}, "List of additional scopes to add")
+	cmd.Flags().StringSliceVarP(&opts.additionalScopes, "additional-scopes", "a", []string{}, "List of additional scopes to add")
 	cmd.Flags().BoolVar(&opts.attemptAuth, "authenticate", false, "Also attempt to authenticate using the supplied ext-jwt-signer")
 	cmd.Flags().StringVarP(&opts.RedirectURL, "redirect-url", "r", "http://localhost:20314/auth/callback", "The expected redirect URL to listen to")
 

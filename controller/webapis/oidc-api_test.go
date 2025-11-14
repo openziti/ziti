@@ -24,13 +24,15 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/openziti/identity"
+	"github.com/openziti/xweb/v3"
+	"github.com/openziti/ziti/controller/bindpoints"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getPossibleIssuers(t *testing.T) {
@@ -132,11 +134,11 @@ func Test_getPossibleIssuers(t *testing.T) {
 			bindPoint2Address = "test2.example.com:443"
 		)
 
-		bindPoints := []*xweb.BindPointConfig{
-			{
+		bindPoints := []xweb.BindPoint{
+			&bindpoints.UnderlayBindPoint{
 				Address: bindPoint1Address,
 			},
-			{
+			&bindpoints.UnderlayBindPoint{
 				Address: bindPoint2Address,
 			},
 		}

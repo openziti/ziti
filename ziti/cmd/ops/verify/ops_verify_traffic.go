@@ -66,7 +66,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "traffic",
 		Short: "Verifies traffic",
 		Long:  "A tool to verify traffic can flow over the overlay properly. You must be authenticated to use this tool.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			logLvl := logrus.InfoLevel
 			if t.verbose {
 				logLvl = logrus.DebugLevel
@@ -98,11 +98,11 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			t.bindSPName = t.prefix + ".bind"
 			t.dialSPName = t.prefix + ".dial"
 
-			var err error
-			t.client, err = t.loginOpts.NewMgmtClient()
-			if err != nil {
-				log.Fatal(err)
+			mgmtClient, mgmtClientErr := t.loginOpts.NewManagementClient(true)
+			if mgmtClientErr != nil {
+				return mgmtClientErr
 			}
+			t.client = mgmtClient.BaseClient.API.ZitiEdgeManagement
 
 			if t.cleanup {
 				log.Info("attempting to cleanup based on parameters. this operation will disconnect the server if it's running.")
@@ -121,6 +121,8 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			} else {
 				log.Fatal("no role supplied? should have defaulted to 'both'")
 			}
+
+			return nil
 		},
 	}
 

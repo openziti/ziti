@@ -1,3 +1,174 @@
+# Release 1.8.0
+
+## What's New
+
+* controllers can now optionally bind APIs using a OpenZiti identity
+* `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
+* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
+  provided as just the JWT, not with the "Bearer " prefix
+* identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
+
+## Binding Controller APIs With Identity
+
+Controller APIs can now be bound to an OpenZiti overlay network identity, allowing secure communication through
+the Ziti network. This is useful for scenarios where you want to expose controller APIs only through the overlay
+network rather than on a standard network interface.
+
+### Configuration Structure
+
+A standard `bindPoint` configuration looks like this:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+```
+
+To bind controller APIs to an OpenZiti identity, add an additional `identity` block to your `bindPoints`. The
+identity configuration specifies where to load the Ziti identity file and which service to bind it to:
+
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          file: "c:/temp/ctrl.testing/ctrl.identity.json"
+          service: "mgmt"
+```
+
+### Supported Configuration Options
+
+- `file`: Path to a Ziti identity JSON file containing the controller's identity and enrollment certificate
+- `env`: Name of an environment variable containing a base64-encoded Ziti identity (alternative to `file`)
+- `service`: The name of the Ziti service to bind the controller API to
+
+### Using Environment Variables
+
+For deployments where storing identity files on disk is not preferred, you can reference a base64-encoded
+identity file from an environment variable. The environment variable should contain the base64-encoded contents
+of the identity JSON file.
+
+For example, if an environment variable named `ZITI_CTRL_IDENTITY` contains a base64-encoded identity file:
+
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          env: ZITI_CTRL_IDENTITY
+          service: "mgmt"
+```
+
+### IPv6 Support
+
+Both IPv4 and IPv6 addresses are supported for standard bind points. IPv6 addresses should be specified in bracket
+notation with a port number:
+
+```text
+    bindPoints:
+      - interface: "[::1]:18441"
+        address: "[::1]:18441"
+      - identity:
+          file: "/path/to/identity.json"
+          service: "mgmt"
+```
+
+## CLI Enhancements for Identity-Based Connections
+
+The `ziti edge login` command and REST client utilities have been enhanced to support identity-based connections
+through the Ziti overlay network.
+
+### New `--network-identity` Flag for `ziti edge login`
+
+The `ziti edge login` command now includes a `--network-identity` flag that allows you to authenticate to a Ziti
+controller through the overlay network using a Ziti identity:
+
+```bash
+ziti edge login https://ziti.mgmt.apis.local:1280 \
+  --username myuser \
+  --password mypass \
+  --network-identity /path/to/identity.json
+```
+
+This is useful when the controller is only accessible through the Ziti overlay network or when you want to ensure
+all communication to the controller flows through the overlay for security purposes.
+
+### Identity Resolution Order
+
+When establishing connections, identities are resolved in the following order:
+
+1. **Command-line flag**: The `--network-identity` flag takes precedence
+2. **Environment variable**: If `ZITI_CLI_NETWORK_ID` is set and contains a base64-encoded identity, it is used
+3. **Cached identity file**: If a network identity was saved from a previous login in the Ziti config directory, it may be used
+
+This layered approach allows for flexibility in deployment scenarios:
+- Development: Use command-line flags for quick testing
+- Automation: Use environment variables in CI/CD pipelines
+- Production: Cache identities securely for repeated access
+
+#### Dialing Modes When Authenticating
+
+The CLI supports two dialing modes:
+
+**Intercept-based Dialing (Default)**
+By default, URLs are expected to leverage intercepts. Create a service with an appropriate intercept config and use
+the intercept address when dialing. This is the standard mode for most use cases. For example, given a service with
+the intercept `ziti.mgmt.apis.local`
+```bash
+ziti edge login https://ziti.mgmt.apis.local:1280 \
+  --username myuser \
+  --password mypass \
+  --network-identity /path/to/identity.json
+```
+
+**Identity-aware Dialing (Addressable Terminators)**
+To support addressable terminators-based dialing, specify a user in the URL. This activates dial-by-identity
+functionality. The URL format should be `identity-to-dial@service-name-to-dial`. For example:
+```bash
+ziti edge login https://my-identity@my-service:1280 \
+  --username myuser \
+  --password mypass \
+  --network-identity /path/to/identity.json
+```
+
+In this mode, the transport extracts the identity from the URL and uses it to establish a direct connection to
+the specified service via the addressable terminator.
+
+## What's New
+
+* controllers can now optionally bind APIs using a OpenZiti identity
+
+## Binding Controller APIs With Identity
+
+It's now possible to bind controller APIs to an OpenZiti overlay network identity. To bind a given controller
+API to an OpenZiti identity, add a section to the desired `bindPoint` section. For example a common `bindPoint`
+configuration might look like:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+```
+To bind any declared APIs to a given OpenZiti identity add an `identity` block:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          file: "c:/temp/ctrl.testing/clint.ctrl.json"
+          service: "mgmt"
+```
+It's possible to refer to an environment variable for the identity file if desired. Add an environment variable with 
+the contents of the environment variable the identity file base64 encoded. For example if an environment is defined 
+with the name `ZITI_ID_EXAMPLE` and contains a base64 encoded identity file, the following `bindPoint` block can be used:
+```text
+    bindPoints:
+      - interface: 127.0.0.1:18441
+        address: 127.0.0.1:18441
+      - identity:
+          env: ZITI_ID_EXAMPLE
+          service: "mgmt"
+```
+
+
 # Release 1.7.2
 
 ## What's New
@@ -138,7 +309,7 @@ Added support for dynamic service proxies with configurable binding and protocol
 This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
 
 This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
-IP ip addresses or DNS entries to forward to a service using tproxy or tun interface, 
+IP addresses or DNS entries to forward to a service using tproxy or tun interface, 
 depending on implementation.
 
 A proxy on the other hand will just start a regular TCP/UDP listener on the configured port, 

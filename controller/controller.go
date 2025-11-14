@@ -22,11 +22,9 @@ import (
 	cryptoTls "crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	stderr "errors"
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -41,12 +39,13 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/concurrency"
 	fabricMetrics "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/common/profiler"
+	"github.com/openziti/ziti/controller/bindpoints"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -100,6 +99,10 @@ type Controller struct {
 
 	xwebInitialized concurrency.InitState
 	healthChecker   gosundheit.Health
+}
+
+func init() {
+	xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.BindPointListenerFactory{})
 }
 
 func (c *Controller) GetPeerSigners() []*x509.Certificate {
@@ -235,17 +238,6 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 		xwebInitialized:     concurrency.NewInitState(),
 	}
 	xwebInstanceOptions := xweb.InstanceOptions{
-		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
-			var errs []error
-			for i, serverConfig := range config.ServerConfigs {
-				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
-						errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
-					}
-				}
-			}
-			return stderr.Join(errs...)
-		}},
 		DefaultIdentity:        c.config.Id,
 		DefaultIdentitySection: xweb.DefaultIdentitySection,
 		DefaultConfigSection:   xweb.DefaultConfigSection,
@@ -844,8 +836,8 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 			for _, bindPoint := range serverConfig.BindPoints {
 				for _, api := range serverConfig.APIs {
 					apiData[api.Binding()] = append(apiData[api.Binding()], event.ApiAddress{
-						Url:     "https://" + bindPoint.Address + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
-						Version: "v1",                                                       //TODO: temp till xweb supports reporting versions via api.Version()
+						Url:     "https://" + bindPoint.ServerAddress() + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
+						Version: "v1",                                                               //TODO: temp till xweb supports reporting versions via api.Version()
 					})
 				}
 			}

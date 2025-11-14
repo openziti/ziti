@@ -1,3 +1,5 @@
+//go:build cli_tests
+
 /*
 	Copyright NetFoundry Inc.
 
@@ -14,87 +16,97 @@
 	limitations under the License.
 */
 
-package cmd
+package cli_tests
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"github.com/antchfx/jsonquery"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
-	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
-	"github.com/openziti/ziti/ziti/run"
-	"github.com/stretchr/testify/assert"
-	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/antchfx/jsonquery"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/tests/testutil"
+	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
+	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
+	"github.com/stretchr/testify/assert"
 )
 
 var log = pfxlog.Logger()
 
 func TestYamlUploadAndDownload(t *testing.T) {
+	zitiPath := os.Getenv("ZITI_CLI_TEST_ZITI_BIN")
+	if zitiPath == "" {
+		t.Fatalf("ZITI_CLI_TEST_ZITI_BIN not set")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	cmdComplete := make(chan bool)
-	qsCmd := run.NewQuickStartCmd(os.Stdout, os.Stderr, ctx)
 
-	qsCmd.SetArgs([]string{})
-
-	go func() {
-		err := qsCmd.Execute()
-		if err != nil {
-			log.Fatal(err)
-		}
-		cmdComplete <- true
-	}()
-
-	c := make(chan struct{})
-	go waitForController("https://127.0.0.1:1280", c)
-
-	select {
-	case <-c:
-		//completed normally
-		log.Info("controller online")
-	case <-time.After(30 * time.Second):
-		cancel()
-		panic("timed out waiting for controller")
+	baseDir := filepath.Join(os.TempDir(), "import-tests")
+	if me := os.MkdirAll(baseDir, 0755); me != nil {
+		t.Fatalf("failed creating baseDir dir: %v", baseDir)
+	}
+	testRunHome, err := os.MkdirTemp(baseDir, "test-run-*")
+	if err != nil {
+		t.Fatalf("failed creating temp dir: %v", err)
 	}
 
-	performImport(t)
-	performAllTest(t)
-	performServiceAndConfigTest(t)
-	performIdentitiesTest(t)
+	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
+	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
+	overlay := testutil.CreateOverlay(t, ctx, 60*time.Second, testRunHome, "import", false)
+	targetDone := make(chan error)
+	go overlay.StartExternal(zitiPath, targetDone)
+
+	defer func() {
+		if !t.Failed() {
+			// allow/ensure the processes to exit windows is a pain about rm'ing folders if not
+			errChan := make(chan error, 1)
+
+			go func() { errChan <- overlay.Stop() }()
+			success := true
+
+			if err := <-errChan; err != nil {
+				t.Logf("stop error: %v", err)
+				success = false
+			}
+
+			if !success {
+				t.Logf("manual cleanup may be required at %s", testRunHome)
+			} else {
+				t.Logf("tests passed, removing temp dir at %s", testRunHome)
+				if rerr := os.RemoveAll(testRunHome); rerr != nil {
+					t.Logf("remove %s failed... **sigh**: %v", testRunHome, rerr)
+				}
+			}
+		} else {
+			t.Logf("tests failed, temp dir left intact at %s", testRunHome)
+		}
+		overlay.CleanupPids()
+	}()
+	startErr := overlay.WaitForControllerReady(30 * time.Second)
+	if startErr != nil {
+		log.Fatalf("start controller failed: %v", startErr)
+	}
+
+	performImport(t, overlay.ControllerHostPort())
+	performAllTest(t, overlay.ControllerHostPort())
+	performServiceAndConfigTest(t, overlay.ControllerHostPort())
+	performIdentitiesTest(t, overlay.ControllerHostPort())
 
 	cancel() //terminate the running ctrl/router
 
-	<-cmdComplete
 	fmt.Println("Operation completed")
 }
 
-func waitForController(ctrlUrl string, done chan struct{}) {
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	client := &http.Client{Transport: tr}
-	for {
-		r, e := client.Get(ctrlUrl)
-		if e != nil || r == nil || r.StatusCode != 200 {
-			time.Sleep(50 * time.Millisecond)
-		} else {
-			break
-		}
-	}
-	done <- struct{}{}
-
-}
-
-func performImport(t *testing.T) {
+func performImport(t *testing.T, url string) {
 
 	errWriter := strings.Builder{}
 
 	uploadWriter := strings.Builder{}
 	importCmd := importer.NewImportCmd(&uploadWriter, &errWriter)
-	importCmd.SetArgs([]string{"--input-format=yaml", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "./test.yaml"})
+	importCmd.SetArgs([]string{"--input-format=yaml", "--yes", "--controller-url=" + url, "--username=admin", "--password=admin", "./test.yaml"})
 
 	err := importCmd.Execute()
 	if err != nil {
@@ -103,7 +115,7 @@ func performImport(t *testing.T) {
 
 }
 
-func performAllTest(t *testing.T) {
+func performAllTest(t *testing.T, url string) {
 
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
@@ -114,7 +126,7 @@ func performAllTest(t *testing.T) {
 	log.Info("output file: ", tempFile.Name())
 
 	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "all"})
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=" + url, "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "all"})
 	err = exportCmd.Execute()
 	if err != nil {
 		t.Fatal(err)
@@ -271,7 +283,7 @@ func performAllTest(t *testing.T) {
 
 }
 
-func performServiceAndConfigTest(t *testing.T) {
+func performServiceAndConfigTest(t *testing.T, url string) {
 
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
@@ -282,7 +294,7 @@ func performServiceAndConfigTest(t *testing.T) {
 	log.Info("output file: ", tempFile.Name())
 
 	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "service,config"})
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=" + url, "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "service,config"})
 	err = exportCmd.Execute()
 	if err != nil {
 		t.Fatal(err)
@@ -336,7 +348,7 @@ func performServiceAndConfigTest(t *testing.T) {
 
 }
 
-func performIdentitiesTest(t *testing.T) {
+func performIdentitiesTest(t *testing.T, url string) {
 
 	// Create a temporary file in the default temporary directory
 	tempFile, err := os.CreateTemp("", "ascode-output-*.json")
@@ -347,7 +359,7 @@ func performIdentitiesTest(t *testing.T) {
 	log.Info("output file: ", tempFile.Name())
 
 	exportCmd := exporter.NewExportCmd(os.Stdout, os.Stderr)
-	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=localhost:1280", "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "identity"})
+	exportCmd.SetArgs([]string{"--output-format=json", "--yes", "--controller-url=" + url, "--username=admin", "--password=admin", "--output-file=" + tempFile.Name(), "identity"})
 	err = exportCmd.Execute()
 	if err != nil {
 		t.Fatal(err)

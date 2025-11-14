@@ -48,7 +48,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/alert"
 	"github.com/openziti/ziti/common/config"
@@ -298,24 +298,32 @@ func (self *Router) createDataPlaneAdapter() xgress.DataPlaneAdapter {
 	})
 }
 
-func (self *Router) ListenForShutdownSignal() {
+func (self *Router) ListenForShutdownSignal(ctx context.Context) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(ch)
 
-	s := <-ch
+	pfxlog.Logger().Info("waiting for shutdown signal or context cancel")
 
-	if s == syscall.SIGQUIT {
-		fmt.Println("=== STACK DUMP BEGIN ===")
-		debugz.DumpStack()
-		fmt.Println("=== STACK DUMP CLOSE ===")
+	select {
+	case s := <-ch:
+		pfxlog.Logger().Infof("received signal: %v", s)
+		if s == syscall.SIGQUIT {
+			fmt.Println("=== STACK DUMP BEGIN ===")
+			debugz.DumpStack()
+			fmt.Println("=== STACK DUMP END ===")
+		}
+	case <-ctx.Done():
+		pfxlog.Logger().Info("context cancelled, initiating shutdown")
 	}
 
 	log := pfxlog.Logger()
-
 	log.Info("shutting down ziti router")
 
 	if err := self.Shutdown(); err != nil {
-		log.WithError(err).Info("error encountered during shutdown")
+		log.WithError(err).Error("error encountered during shutdown")
+	} else {
+		log.Info("shutdown complete")
 	}
 }
 
@@ -641,7 +649,7 @@ func (self *Router) registerComponents() error {
 			var errs []error
 			for i, serverConfig := range config.ServerConfigs {
 				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.Address, ":")[0]); ve != nil {
+					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.ServerAddress(), ":")[0]); ve != nil {
 						if config.Options.DefaultConfigSection != xweb.DefaultConfigSection {
 							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
 						} else {

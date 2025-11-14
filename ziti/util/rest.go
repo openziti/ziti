@@ -34,6 +34,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/controller/api"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"gopkg.in/resty.v1"
 )
@@ -42,6 +43,14 @@ import (
 func NewClient() *resty.Client {
 	return resty.
 		New().
+		SetTimeout(2 * time.Second).
+		SetRetryCount(5).
+		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
+}
+
+func NewClientWithClient(client *http.Client) *resty.Client {
+	return resty.
+		NewWithClient(client).
 		SetTimeout(2 * time.Second).
 		SetRetryCount(5).
 		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
@@ -132,17 +141,18 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 		return nil, err
 	}
 
-	baseUrl, err := restClientIdentity.GetBaseUrlForApi(api)
+	baseUrlStr, err := restClientIdentity.GetBaseUrlForApi(api)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := NewRequest(restClientIdentity, timeout, verbose)
+	baseUrl, _ := url.Parse(baseUrlStr)
+	req, err := NewRequestByTerminator(restClientIdentity, timeout, verbose, baseUrl.User.Username())
 	if err != nil {
 		return nil, err
 	}
 
-	queryUrl := baseUrl + "/" + path
+	queryUrl := strings.TrimRight(baseUrlStr, "/") + "/" + path
 
 	if len(params) > 0 {
 		queryUrl += "?" + params.Encode()
@@ -265,11 +275,16 @@ func NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiF
 }
 
 type EdgeManagementAuth struct {
-	Token string
+	LegacyToken string
+	BearerToken string
 }
 
 func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
-	return request.SetHeaderParam("zt-session", e.Token)
+	if e.LegacyToken != "" {
+		return request.SetHeaderParam(api.ZitiSession, e.LegacyToken)
+	} else {
+		return request.SetHeaderParam("Authorization", "Bearer "+e.BearerToken)
+	}
 }
 
 // ControllerCreate will create entities of the given type in the given Edge Controller
@@ -506,9 +521,13 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	return jsonParsed, nil
 }
 
-func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool) string {
-	client := NewClient()
-
+func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.CertPool, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 	client.SetHostURL(host)
 
 	if caPool != nil {
@@ -593,8 +612,13 @@ func getManagementApiBasePath(host string, client *resty.Client) string {
 // determine the proper path that should be used to access the Edge Management API. Depending
 // on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
 // `/edge/management/<version>` and `/edge/client/<version>`.
-func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
-	client := NewClient()
+func EdgeControllerGetManagementApiBasePath(host string, cert string, httpClient *http.Client) string {
+	var client *resty.Client
+	if httpClient == nil {
+		client = NewClient()
+	} else {
+		client = NewClientWithClient(httpClient)
+	}
 
 	client.SetHostURL(host)
 

@@ -17,12 +17,21 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
+
+var zitiCliContextCollection *ziti.CtxCollection
+
+func init() {
+	zitiCliContextCollection = ziti.NewSdkCollection()
+}
 
 type API string
 
@@ -50,6 +59,7 @@ func (self *RestClientConfig) GetIdentity() string {
 type RestClientIdentity interface {
 	NewTlsClientConfig() (*tls.Config, error)
 	NewClient(timeout time.Duration, verbose bool) (*resty.Client, error)
+	NewClientByTerminator(timeout time.Duration, verbose bool, terminator string) (*resty.Client, error)
 	NewRequest(client *resty.Client) *resty.Request
 	IsReadOnly() bool
 	GetBaseUrlForApi(api API) (string, error)
@@ -59,7 +69,11 @@ type RestClientIdentity interface {
 }
 
 func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool) (*resty.Request, error) {
-	client, err := restClientIdentity.NewClient(time.Duration(timeoutInSeconds)*time.Second, verbose)
+	return NewRequestByTerminator(restClientIdentity, timeoutInSeconds, verbose, "")
+}
+
+func NewRequestByTerminator(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool, terminator string) (*resty.Request, error) {
+	client, err := restClientIdentity.NewClientByTerminator(time.Duration(timeoutInSeconds)*time.Second, verbose, terminator)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +81,14 @@ func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, ver
 }
 
 type RestClientEdgeIdentity struct {
-	Url       string `json:"url"`
-	Username  string `json:"username"`
-	Token     string `json:"token"`
-	LoginTime string `json:"loginTime"`
-	CaCert    string `json:"caCert,omitempty"`
-	ReadOnly  bool   `json:"readOnly"`
+	Url           string                           `json:"url"`
+	Username      string                           `json:"username"`
+	Token         string                           `json:"token"`
+	LoginTime     string                           `json:"loginTime"`
+	CaCert        string                           `json:"caCert,omitempty"`
+	ReadOnly      bool                             `json:"readOnly"`
+	NetworkIdFile string                           `json:"networkId"`
+	ApiSession    *edge_apis.ApiSessionJsonWrapper `json:"apiSession"`
 }
 
 func (self *RestClientEdgeIdentity) IsReadOnly() bool {
@@ -103,7 +119,40 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
+	return self.NewClientByTerminator(timeout, verbose, "")
+}
+
+func (self *RestClientEdgeIdentity) NewClientByTerminator(timeout time.Duration, verbose bool, terminator string) (*resty.Client, error) {
 	client := NewClient()
+	if ztFromEnv, ztFromEnvErr := ZitifiedTransportFromEnv(""); ztFromEnvErr != nil {
+		return nil, ztFromEnvErr
+	} else {
+		if ztFromEnv != nil {
+			if verbose {
+				client.Log.Printf("Using Ziti Transport from environment var: %s", constants.ZitiCliNetworkIdVarName)
+			}
+			client.GetClient().Transport = ztFromEnv
+		} else {
+			if self.NetworkIdFile != "" {
+				if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile, terminator); ztFromFileErr != nil {
+					// ignore any error around the networkId file
+					if verbose {
+						client.Log.Printf("Ziti transport from cached file failed: %v", ztFromFileErr)
+					}
+				} else {
+					if verbose {
+						client.Log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
+					}
+					client.GetClient().Transport = ztFromFile
+				}
+			} else {
+				if verbose {
+					client.Log.Printf("Using default http transport")
+				}
+			}
+		}
+	}
+
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}
@@ -114,7 +163,19 @@ func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose boo
 
 func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Request {
 	r := client.R()
-	r.SetHeader(env.ZitiSession, self.Token)
+	if self.ApiSession != nil && self.ApiSession.ApiSession != nil {
+		switch self.ApiSession.ApiSession.GetType() {
+		case edge_apis.ApiSessionTypeOidc:
+			authHeader := "Bearer " + strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken()))
+			r.SetHeader("Authorization", authHeader)
+		case edge_apis.ApiSessionTypeLegacy:
+			r.SetHeader(env.ZitiSession, string(self.ApiSession.ApiSession.GetToken()))
+		default:
+			panic("unsupported api session type " + self.ApiSession.ApiSession.GetType())
+		}
+	} else {
+		r.SetHeader(env.ZitiSession, self.Token)
+	}
 	return r
 }
 
@@ -145,9 +206,7 @@ func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts ClientOpt
 
 	clientRuntime := httptransport.NewWithClient(parsedHost.Host, rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
 
-	clientRuntime.DefaultAuthentication = &EdgeManagementAuth{
-		Token: self.Token,
-	}
+	clientRuntime.DefaultAuthentication = self.newEdgeAuth()
 
 	return rest_management_api_client.New(clientRuntime, nil), nil
 }
@@ -165,9 +224,7 @@ func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientO
 
 	clientRuntime := httptransport.NewWithClient(parsedHost.Host, fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
 
-	clientRuntime.DefaultAuthentication = &EdgeManagementAuth{
-		Token: self.Token,
-	}
+	clientRuntime.DefaultAuthentication = self.newEdgeAuth()
 
 	return fabric_rest_client.New(clientRuntime, nil), nil
 }
@@ -363,4 +420,18 @@ func newRestClientTransport(clientOpts ClientOpts, clientIdentity RestClientIden
 		Timeout:   10 * time.Second,
 	}
 	return httpClient, nil
+}
+
+func (self *RestClientEdgeIdentity) newEdgeAuth() EdgeManagementAuth {
+	ea := EdgeManagementAuth{}
+
+	if self.ApiSession != nil && self.ApiSession.ApiSession != nil {
+		ea.BearerToken = string(self.ApiSession.ApiSession.GetToken())
+	} else if self.Token != "" {
+		ea.LegacyToken = self.Token
+	} else {
+		panic("no  authentication mechanism set")
+	}
+
+	return ea
 }

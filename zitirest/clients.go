@@ -22,6 +22,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
 	openApiRuntime "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -34,17 +42,11 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	fabricRestClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
-	"io"
-	"net"
-	"net/http"
-	"net/url"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Clients struct {
@@ -111,7 +113,7 @@ func (self *Clients) Authenticate(user, password string) error {
 }
 
 func (self *Clients) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
-	return request.SetHeaderParam("zt-session", self.token.Load())
+	return request.SetHeaderParam(api.ZitiSession, self.token.Load())
 }
 
 func (self *Clients) SetSessionToken(token string) {
@@ -159,12 +161,12 @@ func (self *Clients) LoadWellKnownCerts() error {
 		self.host = "https://" + self.host
 	}
 
-	wellKnownCerts, _, err := util.GetWellKnownCerts(self.host)
+	wellKnownCerts, _, err := util.GetWellKnownCerts(self.host, http.Client{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", self.host)
 	}
 
-	certsTrusted, err := util.AreCertsTrusted(self.host, wellKnownCerts)
+	certsTrusted, err := util.AreCertsTrusted(self.host, wellKnownCerts, http.Client{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to verify well known certs for host %v", self.host)
 	}

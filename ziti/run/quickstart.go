@@ -20,8 +20,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/enroll"
 	"io"
 	"net"
 	"net/http"
@@ -34,6 +32,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/ziti/enroll"
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -65,13 +66,16 @@ type QuickstartOpts struct {
 	errOut             io.Writer
 	cleanOnExit        bool
 	TrustDomain        string
-	isHA               bool
+	IsHA               bool
 	InstanceID         string
 	ClusterMember      string
-	joinCommand        bool
-	verbose            bool
-	nonVoter           bool
-	routerless         bool
+	Routerless         bool
+	ConfigureAndExit   bool
+	ConfigFile         string
+
+	joinCommand bool
+	verbose     bool
+	nonVoter    bool
 }
 
 func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
@@ -91,9 +95,10 @@ func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
 	cmd.Flags().Uint16Var(&options.ControllerPort, "ctrl-port", uint16(defaultCtrlPort), "sets the port to use for the control plane and API. current: "+currentCtrlPort)
 	cmd.Flags().StringVar(&options.RouterAddress, "router-address", "", "sets the advertised address for the integrated router. current: "+currentRouterAddy)
 	cmd.Flags().Uint16Var(&options.RouterPort, "router-port", uint16(defaultRouterPort), "sets the port to use for the integrated router. current: "+currentRouterPort)
-	cmd.Flags().BoolVar(&options.routerless, "no-router", false, "specifies the quickstart should not start a router")
+	cmd.Flags().BoolVar(&options.Routerless, "no-router", false, "specifies the quickstart should not start a router")
 
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "Show additional output.")
+	cmd.Flags().BoolVar(&options.ConfigureAndExit, "configure-and-exit", false, "Configures everything and then exits gracefully")
 }
 
 func addQuickstartHaFlags(cmd *cobra.Command, options *QuickstartOpts) {
@@ -108,15 +113,12 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		Use:   "quickstart",
 		Short: "runs a Controller and Router in quickstart mode",
 		Long:  "runs a Controller and Router in quickstart mode with a temporary directory; suitable for testing and development",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
 			options.TrustDomain = "quickstart"
 			options.InstanceID = "quickstart"
-			err := options.run(context)
-			if err != nil {
-				logrus.Fatal(err)
-			}
+			return options.run(context)
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
@@ -134,7 +136,7 @@ func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context
 		Run: func(cmd *cobra.Command, args []string) {
 			options.out = out
 			options.errOut = errOut
-			options.isHA = true
+			options.IsHA = true
 			if options.TrustDomain == "" {
 				options.TrustDomain = uuid.New().String()
 				fmt.Println("Trust domain was not supplied. Using a random trust domain: " + options.TrustDomain)
@@ -175,7 +177,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 }
 
 func (o *QuickstartOpts) cleanupHome() {
-	if o.cleanOnExit {
+	if o.cleanOnExit && !o.ConfigureAndExit {
 		fmt.Println("Removing temp directory at: " + o.Home)
 		_ = os.RemoveAll(o.Home)
 	} else {
@@ -195,7 +197,7 @@ func (o *QuickstartOpts) join(ctx context.Context) error {
 		logrus.Fatalf("--cluster-member is required")
 	}
 
-	o.isHA = true
+	o.IsHA = true
 	o.joinCommand = true
 	return o.run(ctx)
 }
@@ -250,7 +252,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		o.InstanceID = uuid.New().String()
 	}
 
-	ctrlYaml := path.Join(o.instHome(), "ctrl.yaml")
+	o.ConfigFile = path.Join(o.instHome(), "ctrl.yaml")
 	routerName := "router-" + o.InstanceID
 
 	//ZITI_HOME=/tmp ziti create config controller | grep -v "#" | sed -E 's/^ *$//g' | sed '/^$/d'
@@ -280,14 +282,14 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		_ = os.MkdirAll(dbDir, 0o700)
 		logrus.Debugf("made directory '%s'", dbDir)
 
-		o.createMinimalPki()
+		o.CreateMinimalPki()
 
 		_ = os.Setenv("ZITI_HOME", o.instHome())
 		ctrl := create.NewCmdCreateConfigController()
 		args := []string{
-			fmt.Sprintf("--output=%s", ctrlYaml),
+			fmt.Sprintf("--output=%s", o.ConfigFile),
 		}
-		if o.isHA {
+		if o.IsHA {
 			args = append(args, "--clustered")
 		}
 		ctrl.SetArgs(args)
@@ -296,12 +298,12 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			logrus.Fatal(err)
 		}
 
-		if !o.isHA {
+		if !o.IsHA {
 			initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
 			initCmd.SetArgs([]string{
 				fmt.Sprintf("--username=%s", o.Username),
 				fmt.Sprintf("--password=%s", o.Password),
-				ctrlYaml,
+				o.ConfigFile,
 			})
 			initErr := initCmd.Execute()
 			if initErr != nil {
@@ -310,12 +312,14 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		}
 	}
 
+	curCtx, cancel := context.WithCancel(ctx) //used to cancel controller and router when configure-and-exit is selected
 	fmt.Println("Starting controller...")
 	go func() {
 		runCtrl := NewRunControllerCmd()
 		runCtrl.SetArgs([]string{
-			ctrlYaml,
+			o.ConfigFile,
 		})
+		runCtrl.SetContext(curCtx)
 		runCtrlErr := runCtrl.Execute()
 		if runCtrlErr != nil {
 			logrus.Fatal(runCtrlErr)
@@ -323,23 +327,34 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}()
 	fmt.Println("Controller running...")
 
-	ctrlAddy := helpers.GetCtrlEdgeAdvertisedAddress()
-	ctrlPort := helpers.GetCtrlEdgeAdvertisedPort()
-	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
+	o.ControllerAddress = helpers.GetCtrlEdgeAdvertisedAddress()
+
+	portStr := helpers.GetCtrlEdgeAdvertisedPort()
+	port, portErr := strconv.Atoi(portStr)
+	if portErr != nil {
+		cancel()
+		return fmt.Errorf("invalid controller port: %s", portStr)
+	}
+	o.ControllerPort = uint16(port)
 
 	c := make(chan error)
-	timeout, _ := time.ParseDuration("30s")
-	go waitForController(ctrlUrl, c)
+	timeout := 30 * time.Second
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	go waitForController(ctx, o.ControllerHostPort(), c)
+
 	select {
 	case <-c:
 		//completed normally
 		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
 		o.cleanupHome()
-		return fmt.Errorf("timed out waiting for controller: %s", ctrlUrl)
+		cancel()
+		return fmt.Errorf("timed out waiting for controller: %s", o.ControllerHostPort())
 	}
 
-	if o.isHA {
+	if o.IsHA {
 		p := common.NewOptionsProvider(o.out, o.errOut)
 		fmt.Println("waiting three seconds for controller to become ready...")
 
@@ -364,6 +379,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 						time.Sleep(2 * time.Second) // Wait before retrying
 					} else {
 						fmt.Println("Max retries reached. Failing.")
+						cancel()
 						return agentInitErr
 					}
 				} else {
@@ -397,14 +413,16 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 				logrus.Info("Add command successful. continuing...")
 			case <-time.After(addTimeout):
 				o.cleanupHome()
+				cancel()
 				return fmt.Errorf("timed out adding to cluster")
 			}
 		}
 	}
 
 	erConfigFile := path.Join(o.instHome(), routerName+".yaml")
-	err := o.configureRouter(routerName, erConfigFile, ctrlUrl)
+	err := o.configureRouter(routerName, erConfigFile, o.ControllerHostPort())
 	if err != nil {
+		cancel()
 		return err
 	}
 	o.runRouter(erConfigFile)
@@ -412,21 +430,26 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 
-	if !o.routerless {
-		r := make(chan struct{})
+	if !o.Routerless {
+		r := make(chan error)
 		timeout, _ = time.ParseDuration("30s")
 		logrus.Infof("waiting for router at: %s:%d", o.RouterAddress, o.RouterPort)
-		go waitForRouter(o.RouterAddress, o.RouterPort, r)
+		go o.WaitForRouter(timeout, r)
 		select {
-		case <-r:
-			//completed normally
+		case waitErr := <-r:
+			if waitErr != nil {
+				o.cleanupHome()
+				cancel()
+				return fmt.Errorf("router failed: %w", waitErr)
+			}
 		case <-time.After(timeout):
 			o.cleanupHome()
+			cancel()
 			return fmt.Errorf("timed out waiting for router on port: %d", o.RouterPort)
 		}
 	}
 
-	if o.isHA {
+	if o.IsHA {
 		go func() {
 			time.Sleep(3 * time.Second) // output this after a bit...
 			nextInstId := incrementStringSuffix(o.InstanceID)
@@ -439,7 +462,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
 			fmt.Printf("    --home \"%s\" \\\n", o.Home)
 			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --cluster-member tls:%s:%s\\ \n", ctrlAddy, ctrlPort)
+			fmt.Printf("    --cluster-member tls:%s:%d\\ \n", o.ControllerAddress, o.ControllerPort)
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()
@@ -458,6 +481,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}
 
 	o.cleanupHome()
+	cancel()
 	return nil
 }
 
@@ -472,14 +496,14 @@ func (o *QuickstartOpts) printDetails() {
 }
 
 func (o *QuickstartOpts) configureRouter(routerName string, configFile string, ctrlUrl string) error {
-	if o.routerless {
+	if o.Routerless {
 		return nil
 	}
 
 	if !o.AlreadyInitialized {
 		loginCmd := edge.NewLoginCmd(o.out, o.errOut)
 		loginCmd.SetArgs([]string{
-			ctrlUrl,
+			o.ControllerHostPort(),
 			fmt.Sprintf("--username=%s", o.Username),
 			fmt.Sprintf("--password=%s", o.Password),
 			"-y",
@@ -520,7 +544,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 
 		data := &create.ConfigTemplateValues{}
 		data.PopulateConfigValues()
-		opts.IsHA = o.isHA
+		opts.IsHA = o.IsHA
 		create.SetZitiRouterIdentity(&data.Router, routerName)
 		erCfg := create.NewCmdCreateConfigRouterEdge(opts, data)
 		erCfg.SetArgs([]string{
@@ -551,7 +575,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 }
 
 func (o *QuickstartOpts) runRouter(configFile string) {
-	if o.routerless {
+	if o.Routerless {
 		return
 	}
 
@@ -570,7 +594,7 @@ func (o *QuickstartOpts) runRouter(configFile string) {
 	}()
 }
 
-func (o *QuickstartOpts) createMinimalPki() {
+func (o *QuickstartOpts) CreateMinimalPki() {
 	where := path.Join(o.Home, "pki")
 	fmt.Println("emitting a minimal PKI")
 
@@ -660,31 +684,50 @@ func (o *QuickstartOpts) createMinimalPki() {
 	}
 }
 
-func waitForController(ctrlUrl string, done chan error) {
+func waitForController(ctx context.Context, ctrlUrl string, done chan error) {
+	if !strings.HasPrefix(ctrlUrl, "https://") {
+		ctrlUrl = "https://" + ctrlUrl
+	}
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Transport: tr}
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		r, e := client.Get(ctrlUrl)
-		if e != nil || r == nil || r.StatusCode != 200 {
+		select {
+		case <-ctx.Done():
+			done <- ctx.Err()
+			return
+		case <-ticker.C:
+			fmt.Printf("waiting for controller: %s\n", ctrlUrl)
+		default:
+			r, e := client.Get(ctrlUrl)
+			if e == nil && r != nil && r.StatusCode == 200 {
+				done <- nil
+				return
+			}
 			time.Sleep(50 * time.Millisecond)
-		} else {
-			break
 		}
 	}
-	done <- nil
 }
 
-func waitForRouter(address string, port uint16, done chan struct{}) {
+func (o *QuickstartOpts) WaitForRouter(timeout time.Duration, done chan error) {
 	for {
-		addr := net.JoinHostPort(address, strconv.Itoa(int(port)))
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			fmt.Printf("Router is available on %s\n", addr)
-			close(done)
+		select {
+		case <-time.After(timeout):
+			done <- fmt.Errorf("router not available after %s at %s:%d", timeout, o.RouterAddress, o.RouterPort)
 			return
+		default:
+			addr := net.JoinHostPort(o.RouterAddress, strconv.Itoa(int(o.RouterPort)))
+			conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+			if err == nil {
+				_ = conn.Close()
+				fmt.Printf("Router is available on %s:%d\n", o.RouterAddress, o.RouterPort)
+				done <- nil
+				return
+			}
+			time.Sleep(25 * time.Millisecond)
 		}
-		time.Sleep(25 * time.Millisecond)
 	}
 }
 
@@ -700,7 +743,7 @@ func (o *QuickstartOpts) scopedName(name string) string {
 }
 
 func (o *QuickstartOpts) instHome() string {
-	if o.isHA {
+	if o.IsHA {
 		return path.Join(o.Home, o.InstanceID)
 	}
 	return o.Home
@@ -788,4 +831,55 @@ func incrementStringSuffix(input string) string {
 	incremented := fmt.Sprintf("%0*d", numLength, num)
 
 	return strings.TrimSuffix(input, numStr) + incremented
+}
+
+func (o *QuickstartOpts) InitHA(p common.OptionsProvider) error {
+	maxRetries := 5
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
+		agentInitCmd := agentcli.NewAgentClusterInit(p)
+		pid := os.Getpid()
+		args := []string{
+			o.Username,
+			o.Password,
+			o.Username,
+			fmt.Sprintf("--pid=%d", pid),
+		}
+		agentInitCmd.SetArgs(args)
+
+		agentInitErr := agentInitCmd.Execute()
+		if agentInitErr != nil {
+			if attempt < maxRetries {
+				fmt.Println("initialization failed. waiting two seconds and trying again")
+				time.Sleep(2 * time.Second) // Wait before retrying
+			} else {
+				fmt.Println("Max retries reached. Failing.")
+				return agentInitErr
+			}
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
+func (o *QuickstartOpts) InitLegacy() error {
+	initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
+	initCmd.SetArgs([]string{
+		fmt.Sprintf("--username=%s", o.Username),
+		fmt.Sprintf("--password=%s", o.Password),
+		o.ConfigFile,
+	})
+	initErr := initCmd.Execute()
+	if initErr != nil {
+		return initErr
+	}
+	return nil
+}
+
+func (o *QuickstartOpts) ControllerHostPort() string {
+	return net.JoinHostPort(o.ControllerAddress, strconv.Itoa(int(o.ControllerPort)))
+}
+func (o *QuickstartOpts) RouterHostPort() string {
+	return net.JoinHostPort(o.RouterAddress, strconv.Itoa(int(o.RouterPort)))
 }

@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,11 +16,26 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/openziti/ziti/ziti/cmd/common"
+
 	"github.com/fullsailor/pkcs7"
 	"github.com/pkg/errors"
 )
 
-func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
+func urlToId(url *url.URL) string {
+	p := url.Port()
+	if p == "" {
+		if url.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	return url.Hostname() + "_" + p
+}
+
+func WriteCert(p common.Printer, url *url.URL, cert []byte) (string, error) {
+	id := urlToId(url)
 	cfgDir, err := ConfigDir()
 	if err != nil {
 		return "", err
@@ -38,7 +52,8 @@ func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
 	return certFile, nil
 }
 
-func ReadCert(id string) ([]byte, string, error) {
+func ReadCert(url *url.URL) ([]byte, string, error) {
+	id := urlToId(url)
 	cfgDir, err := ConfigDir()
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "couldn't get config dir while reading cert for %v", id)
@@ -58,8 +73,11 @@ func ReadCert(id string) ([]byte, string, error) {
 	return result, certFile, nil
 }
 
-func IsServerTrusted(host string) (bool, error) {
-	resp, err := http.DefaultClient.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
+func IsServerTrusted(host string, client *http.Client) (bool, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
 		if ue, ok := err.(*url.Error); ok && (errors.As(ue.Err, &x509.UnknownAuthorityError{}) || strings.Contains(err.Error(), "x509")) {
 			return false, nil
@@ -70,25 +88,10 @@ func IsServerTrusted(host string) (bool, error) {
 	return true, nil
 }
 
-func AreCertsTrusted(host string, certs []byte) (bool, error) {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-	}
+func AreCertsTrusted(host string, certs []byte, client http.Client) (bool, error) {
+	c := InsecureClient(&client, certs)
 
-	if tlsConfig.RootCAs == nil {
-		tlsConfig.RootCAs = x509.NewCertPool()
-	}
-
-	tlsConfig.RootCAs.AppendCertsFromPEM(certs)
-
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = tlsConfig
-
-	client := http.Client{
-		Transport: transport,
-	}
-
-	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
+	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
 		if ue, ok := err.(*url.Error); ok && errors.As(ue.Err, &x509.UnknownAuthorityError{}) {
 			return false, nil
@@ -99,16 +102,10 @@ func AreCertsTrusted(host string, certs []byte) (bool, error) {
 	return true, nil
 }
 
-func GetWellKnownCerts(host string) ([]byte, []*x509.Certificate, error) {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: true,
-	}
-	client := http.Client{
-		Transport: transport,
-	}
+func GetWellKnownCerts(host string, client http.Client) ([]byte, []*x509.Certificate, error) {
+	c := InsecureClient(&client, nil)
 
-	resp, err := client.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
+	resp, err := c.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,4 +194,28 @@ func (self blockSort) Swap(i, j int) {
 	tmp := self[i]
 	self[i] = self[j]
 	self[j] = tmp
+}
+
+func InsecureClient(client *http.Client, certs []byte) *http.Client {
+	tlsConfig := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		InsecureSkipVerify: true,
+	}
+
+	if len(certs) > 0 {
+		tlsConfig.RootCAs.AppendCertsFromPEM(certs)
+	}
+
+	var t *http.Transport
+	if origTransport, ok := client.Transport.(*http.Transport); ok {
+		t = origTransport.Clone()
+		t.TLSClientConfig = tlsConfig
+	} else {
+		t = &http.Transport{TLSClientConfig: tlsConfig}
+	}
+
+	c := &http.Client{
+		Transport: t,
+	}
+	return c
 }

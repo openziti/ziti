@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/channel/v4/websockets"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_mgmt"

@@ -49,7 +49,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/xweb/v2"
+	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
