@@ -952,7 +952,7 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 	identity, ok := rdm.Identities.Get(identityId)
 
 	if !ok {
-		return nil, fmt.Errorf("identity not foud by id")
+		return nil, fmt.Errorf("identity not found by id")
 	}
 
 	service, ok := rdm.Services.Get(serviceId)
