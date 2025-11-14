@@ -350,6 +350,10 @@ func (o *LoginOptions) Run() error {
 
 	if o.Token == "" || dontHaveApiSession {
 		// if no token or api session, need to log in
+		adminClient, newMgmtClientErr := o.NewManagementClient(false)
+		if newMgmtClientErr != nil {
+			return newMgmtClientErr
+		}
 		s, le := o.Login()
 		if le != nil {
 			return le
@@ -359,6 +363,7 @@ func (o *LoginOptions) Run() error {
 		} else {
 			o.ApiSession = s
 		}
+		o.mgmtClient = adminClient
 	}
 
 	var sess *edge_apis.ApiSessionJsonWrapper
@@ -694,6 +699,11 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 			return nil, loginErr
 		}
 		o.MergeUnsetFrom(cached)
+		_, sessErr := o.mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, o.ApiSession)
+		if sessErr != nil {
+			return nil, sessErr
+		}
+		return o.mgmtClient, nil
 	}
 
 	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
@@ -706,7 +716,7 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 	transport := &edge_apis.TlsAwareHttpTransport{Transport: o.transport}
 	o.client.Transport = transport
 
-	adminClient := edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
+	o.mgmtClient = edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
 		ApiUrls:          []*url.URL{ctrlUrl},
 		CaPool:           o.caPool,
 		TotpCodeProvider: edge_apis.NewTotpCodeProviderFromChStringFunc(o.TotpCallback),
@@ -717,23 +727,12 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 		},
 	})
 
-	adminClient.SetAllowOidcDynamicallyEnabled(true)
-	if useCachedCreds {
-		_, sessErr := adminClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, o.ApiSession)
-		if sessErr != nil {
-			return nil, sessErr
-		}
-	}
+	o.mgmtClient.SetAllowOidcDynamicallyEnabled(true)
 
-	return adminClient, nil
+	return o.mgmtClient, nil
 }
 
 func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
-	adminClient, newClientErr := o.NewManagementClient(false)
-	if newClientErr != nil {
-		return nil, newClientErr
-	}
-
 	var authCreds edge_apis.Credentials
 	if o.Token != "" {
 		if jwtutil.IsJwt(o.Token) {
@@ -785,14 +784,14 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 		authCreds = edge_apis.NewJwtCredentials(string(jwt))
 	}
 
-	s, err := adminClient.Authenticate(authCreds, nil)
+	s, err := o.mgmtClient.Authenticate(authCreds, nil)
 	if err != nil {
 		return nil, err
 	}
 	if s == nil {
 		return nil, fmt.Errorf("authentication failed for some reason but no error")
 	}
-	o.mgmtClient = adminClient
+
 	return s, nil
 }
 
