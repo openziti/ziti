@@ -452,10 +452,10 @@ func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigs
 					serviceMap = map[string]string{}
 					identity.ServiceConfigs[serviceConfig.Service] = serviceMap
 				}
-				serviceMap[config.Type] = config.Id
+				serviceMap[config.TypeId] = config.Id
 			} else if identity.ServiceConfigs != nil {
 				if serviceMap, ok := identity.ServiceConfigs[serviceConfig.Service]; ok {
-					delete(serviceMap, config.Type)
+					delete(serviceMap, config.TypeId)
 				}
 			}
 		}

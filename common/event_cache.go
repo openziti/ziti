@@ -18,9 +18,10 @@ package common
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"sync"
 	"sync/atomic"
+
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 )
 
 type OnStoreSuccess func(index uint64, event *edge_ctrl_pb.DataState_ChangeSet)
@@ -144,7 +145,10 @@ func (cache *LoggingEventCache) WhileLocked(callback func(uint64, bool)) {
 func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
+	return cache.storeLocked(event, onSuccess)
+}
 
+func (cache *LoggingEventCache) storeLocked(event *edge_ctrl_pb.DataState_ChangeSet, onSuccess OnStoreSuccess) error {
 	// Synthetic events are not backed by any kind of data store that provides and index. They are not stored and
 	// trigger the on success callback immediately.
 	if event.IsSynthetic {
@@ -156,6 +160,18 @@ func (cache *LoggingEventCache) Store(event *edge_ctrl_pb.DataState_ChangeSet, o
 
 	if ok && currentIndex >= event.Index {
 		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", currentIndex, event.Index, cache)
+	}
+
+	for ok && event.Index > currentIndex+1 {
+		err := cache.storeLocked(&edge_ctrl_pb.DataState_ChangeSet{
+			Index: currentIndex + 1,
+		}, func(index uint64, event *edge_ctrl_pb.DataState_ChangeSet) {
+
+		})
+		if err != nil {
+			return err
+		}
+		currentIndex, ok = cache.currentIndex()
 	}
 
 	targetLogIndex := uint64(0)
@@ -199,7 +215,6 @@ func (cache *LoggingEventCache) ReplayFrom(startIndex uint64) ([]*edge_ctrl_pb.D
 	defer cache.lock.Unlock()
 
 	_, eventFound := cache.Events[startIndex]
-
 	if !eventFound {
 		// if we're asked to replay an index we haven't reached yet, return an empty list
 		headIndex := cache.Log[cache.HeadLogIndex]

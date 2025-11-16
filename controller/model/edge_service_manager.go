@@ -17,6 +17,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -28,7 +30,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
@@ -293,9 +294,9 @@ func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[strin
 		for _, configId := range service.Configs {
 			config, _ := configStore.LoadById(tx, configId)
 			if config != nil {
-				_, wantsConfig := configTypes[config.Type]
+				_, wantsConfig := configTypes[config.TypeId]
 				if wantsAll || wantsConfig {
-					service.Config[config.Type] = config.Data
+					service.Config[config.TypeId] = config.Data
 				}
 			}
 		}

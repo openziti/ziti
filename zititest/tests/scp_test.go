@@ -18,11 +18,12 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestScp(t *testing.T) {

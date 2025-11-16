@@ -90,7 +90,7 @@ func (broker *Broker) ValidateRouterDataModel() []error {
 	return broker.routerSyncStrategy.Validate()
 }
 
-func (broker *Broker) GetRouterDataModel() *common.RouterDataModel {
+func (broker *Broker) GetRouterDataModel() *common.RouterDataModelSender {
 	return broker.routerSyncStrategy.GetRouterDataModel()
 }
 

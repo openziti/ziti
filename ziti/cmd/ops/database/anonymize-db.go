@@ -20,6 +20,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"sort"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/command"
@@ -27,9 +31,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
-	"os"
-	"sort"
-	"strings"
 )
 
 var attrCounter = 0
@@ -616,14 +617,14 @@ func (self *anonymizeDbAction) scrubConfigs() {
 
 			entityCounter++
 			entity.Name = self.rename(entity, entityCounter)
-			if entity.Type == "NH5p4FpGR" { // host.v1
+			if entity.TypeId == "NH5p4FpGR" { // host.v1
 				entity.Data = hostV1
-			} else if entity.Type == "host.v2" {
+			} else if entity.TypeId == "host.v2" {
 				entity.Data = hostV2
-			} else if entity.Type == "g7cIWbcGg" { // intercept.v1
+			} else if entity.TypeId == "g7cIWbcGg" { // intercept.v1
 				entity.Data = interceptV1
 			} else {
-				return fmt.Errorf("unexpected config type: %s", entity.Type)
+				return fmt.Errorf("unexpected config type: %s", entity.TypeId)
 			}
 
 			if !self.preserveTags {

@@ -64,7 +64,7 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 	current.Validate(model, reportedF)
 
 	if len(response.Diffs) > 0 && request.Fix {
-		model = common.NewReceiverRouterDataModelFromExisting(model, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
+		model = common.NewReceiverRouterDataModelFromExisting(model, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, true)
 	}
 

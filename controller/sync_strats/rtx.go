@@ -45,7 +45,7 @@ type RouterSender struct {
 	Router           *model.Router
 	send             chan *channel.Message
 	closeNotify      chan struct{}
-	routerDataModel  *common.RouterDataModel
+	routerDataModel  *common.RouterDataModelSender
 	requestModelSync chan *edge_ctrl_pb.SubscribeToDataModelRequest
 	modelChange      chan struct{}
 	currentIndex     uint64
@@ -59,7 +59,7 @@ type RouterSender struct {
 	sync.Mutex
 }
 
-func newRouterSender(edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModel) *RouterSender {
+func newRouterSender(edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
 	rtx := &RouterSender{
 		Id:               eid.New(),
 		EdgeRouter:       edgeRouter,
@@ -213,6 +213,9 @@ func (rtx *RouterSender) handleModelChange() {
 
 	if ok {
 		for _, curEvent := range events {
+			if len(curEvent.Changes) == 0 {
+				continue
+			}
 			if err = protobufs.MarshalTyped(curEvent).Send(rtx.Router.Control); err != nil {
 				logger.WithError(err).
 					WithField("eventIndex", curEvent.Index).

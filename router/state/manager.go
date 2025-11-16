@@ -58,8 +58,7 @@ const (
 	EventUpdatedApiSession = "UpdatedApiSession"
 	EventRemovedApiSession = "RemovedApiSession"
 
-	RouterDataModelListerBufferSize = 100
-	DefaultSubscriptionTimeout      = 5 * time.Minute
+	DefaultSubscriptionTimeout = 5 * time.Minute
 )
 
 type RemoveListener func()
@@ -657,7 +656,7 @@ func (sm *ManagerImpl) StartRouterModelSave(filePath string, duration time.Durat
 // LoadRouterModel initializes the router data model from a saved file,
 // falling back to an empty model if the file doesn't exist.
 func (sm *ManagerImpl) LoadRouterModel(filePath string) {
-	model, err := common.NewReceiverRouterDataModelFromFile(filePath, RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
+	model, err := common.NewReceiverRouterDataModelFromFile(filePath, sm.env.GetCloseNotify())
 
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -665,7 +664,7 @@ func (sm *ManagerImpl) LoadRouterModel(filePath string) {
 		} else {
 			pfxlog.Logger().Infof("router data model file does not exist [%s]", filePath)
 		}
-		model = common.NewReceiverRouterDataModel(RouterDataModelListerBufferSize, sm.env.GetCloseNotify())
+		model = common.NewReceiverRouterDataModel(sm.env.GetCloseNotify())
 	} else {
 		index, _ := model.CurrentIndex()
 		pfxlog.Logger().WithField("path", filePath).WithField("index", index).Info("loaded router model from file")
