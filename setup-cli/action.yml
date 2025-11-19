@@ -1,0 +1,62 @@
+name: ziti-cli
+description: Get ziti binary and add it to the PATH
+inputs:
+  version:
+    required: false
+    default: stable
+    description: |
+      version of ziti CLI to download,
+      use tag (like v1.6.7) or special values:
+      'stable' (default) means latest release, 
+      `latest` means most recent tagged release
+
+runs:
+  using: composite
+  steps:
+    - name: process version
+      shell: bash
+      run: |
+        ver=${{ inputs.version }}
+        if [[ ${{ inputs.version }} == "stable" ]]; then
+           ver=$(gh release view --repo openziti/ziti | awk '/^tag/{ print $2 }')
+        elif [[ ${{ inputs.version }} == "latest" ]]; then
+           ver=$(gh release list --limit 1 --repo openziti/ziti --json "tagName" --jq ".[0].tagName")
+        fi
+        echo "using version = $ver"
+        echo "ZITI_VERSION=$ver" >> $GITHUB_ENV
+
+    - name: download ziti CLI
+      shell: bash
+      run: |
+        os=${{ runner.os }}
+        case ${os} in
+          Linux) os=linux
+          ;;
+          macOS) os=darwin
+          ;;
+          Windows) os=windows
+          ;;
+        esac
+        arch=$(uname -m)
+        if [[ "${arch}" == "x86_64" ]]; then
+           arch="amd64"
+        fi
+        echo "downloading ziti-${os}-${arch} ${ZITI_VERSION} tarball"
+        mkdir -p '${{ runner.temp }}'
+        cd '${{ runner.temp }}'
+        gh release download ${ZITI_VERSION} --repo openziti/ziti --pattern "ziti-${os}-${arch}-*" --output ziti.bundle
+
+    - name: extract ziti CLI and add to PATH
+      shell: bash
+      run: |
+        cd '${{ runner.temp }}'
+        mkdir -p ziti-cli/bin
+        if [[ ${{ runner.os }} == "Windows" ]]; then
+          mkdir -p ziti-cli/bin
+          unzip -d 'ziti-cli\bin' ziti.bundle
+        else
+          tar -xpf ziti.bundle -C ziti-cli/bin
+        fi
+        ./ziti-cli/bin/ziti version
+        echo "${{ runner.temp }}/ziti-cli/bin" >> $GITHUB_PATH
+           
