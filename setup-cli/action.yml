@@ -13,10 +13,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup GitHub CLI
-      if: runner.os == 'linux' 
-      uses: ksivamuthu/actions-setup-gh-cli@v3
-
     - name: process version
       shell: bash
       run: |
