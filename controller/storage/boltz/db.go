@@ -21,16 +21,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"go.etcd.io/bbolt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"go.etcd.io/bbolt"
 )
 
 const (
@@ -64,6 +65,9 @@ type Db interface {
 	Batch(ctx MutateContext, fn func(ctx MutateContext) error) error
 	View(fn func(tx *bbolt.Tx) error) error
 	RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error)
+
+	// SetContextDecorator provides the db with a method it can use to decorate MutateContext instances
+	SetContextDecorator(f func(ctx MutateContext))
 
 	// GetDefaultSnapshotPath returns the default location for a snapshot created now
 	GetDefaultSnapshotPath() string
@@ -104,6 +108,7 @@ type DbImpl struct {
 	db                  *bbolt.DB
 	restoreListeners    concurrenz.CopyOnWriteSlice[func()]
 	txCompleteListeners concurrenz.CopyOnWriteSlice[func(ctx MutateContext)]
+	contextDecorator    func(ctx MutateContext)
 }
 
 func Open(path string, rootBucket string) (*DbImpl, error) {
@@ -134,6 +139,10 @@ func (self *DbImpl) Close() error {
 	return self.db.Close()
 }
 
+func (self *DbImpl) SetContextDecorator(f func(ctx MutateContext)) {
+	self.contextDecorator = f
+}
+
 func (self *DbImpl) AddTxCompleteListener(listener func(ctx MutateContext)) {
 	self.txCompleteListeners.Append(listener)
 }
@@ -151,6 +160,11 @@ func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) 
 
 		return self.db.Update(func(tx *bbolt.Tx) error {
 			ctx.setTx(tx)
+
+			if self.contextDecorator != nil {
+				self.contextDecorator(ctx)
+			}
+
 			if err := fn(ctx); err != nil {
 				return err
 			}
@@ -184,6 +198,10 @@ func (self *DbImpl) Batch(ctx MutateContext, fn func(ctx MutateContext) error) e
 		defer self.reloadLock.RUnlock()
 
 		defer ctx.setTx(nil)
+
+		if self.contextDecorator != nil {
+			self.contextDecorator(ctx)
+		}
 
 		return self.db.Batch(func(tx *bbolt.Tx) error {
 			ctx.setTx(tx)
