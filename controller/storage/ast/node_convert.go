@@ -18,9 +18,10 @@ package ast
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"reflect"
 	"strings"
+
+	"github.com/michaelquigley/pfxlog"
 
 	"github.com/pkg/errors"
 )
@@ -713,7 +714,7 @@ func (self *StringFuncNode) IsConst() bool {
 
 func (self *StringFuncNode) EvalString(s Symbols) *string {
 	result := self.expr.EvalString(s)
-	if s == nil {
+	if result == nil {
 		return nil
 	}
 	val := self.f(*result)
