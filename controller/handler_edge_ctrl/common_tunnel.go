@@ -3,6 +3,9 @@ package handler_edge_ctrl
 import (
 	"bytes"
 	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -12,8 +15,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 func NewTunnelState() *TunnelState {
@@ -395,7 +396,7 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 		}
 
 		if updateIdentity {
-			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, nil, self.newTunnelChangeContext()))
+			self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, nil, self.newTunnelChangeContext())
 		}
 	}
 }
