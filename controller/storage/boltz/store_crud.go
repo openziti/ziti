@@ -17,6 +17,8 @@
 package boltz
 
 import (
+	"reflect"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 func (store *BaseStore[E]) GetParentStore() Store {
@@ -156,15 +157,6 @@ func (store *BaseStore[E]) newEntityChangeFlow() entityChangeFlow {
 	}
 }
 
-func (store *BaseStore[E]) fireParentEvent(changeFlow entityChangeFlow) error {
-	if store.parent != nil {
-		parentEntityChangeFlow := store.parent.newEntityChangeFlow()
-		parentEntityChangeFlow.initFromChild(changeFlow)
-		return parentEntityChangeFlow.fireEvents()
-	}
-	return nil
-}
-
 // Create stores a new entity in the datastore
 //
 // Creates must be called on the top level, so we don't need to worry about created
@@ -196,12 +188,6 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 		Bucket:        bucket,
 		IsCreate:      true,
 	}
-	store.entityStrategy.PersistEntity(entity, persistCtx)
-	if bucket.HasError() {
-		return bucket.GetError()
-	}
-	indexingContext := store.newIndexingContext(true, ctx, entity.GetId(), bucket)
-	indexingContext.ProcessAfterUpdate()
 
 	changeFlow := &EntityChangeState[E]{
 		EventId:    uuid.NewString(),
@@ -212,15 +198,33 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 		store:      store,
 	}
 
+	var parentEntityChangeFlow entityChangeFlow
+	if store.parent != nil {
+		parentEntityChangeFlow = store.parent.newEntityChangeFlow()
+		parentEntityChangeFlow.queuePostCommitProcessing(ctx)
+	}
+
+	changeFlow.queuePostCommitProcessing(ctx)
+
+	store.entityStrategy.PersistEntity(entity, persistCtx)
+	if bucket.HasError() {
+		return bucket.GetError()
+	}
+	indexingContext := store.newIndexingContext(true, ctx, entity.GetId(), bucket)
+	indexingContext.ProcessAfterUpdate()
+
 	if err := changeFlow.loadFinalState(); err != nil {
 		return err
 	}
 
-	if err := store.fireParentEvent(changeFlow); err != nil {
-		return err
+	if parentEntityChangeFlow != nil {
+		parentEntityChangeFlow.initFromChild(changeFlow)
+		if err := parentEntityChangeFlow.processPreCommit(); err != nil {
+			return err
+		}
 	}
 
-	if err := changeFlow.fireEvents(); err != nil {
+	if err := changeFlow.processPreCommit(); err != nil {
 		return err
 	}
 
@@ -262,6 +266,23 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 		return store.entityNotFoundF(entity.GetId())
 	}
 
+	changeFlow := &EntityChangeState[E]{
+		EventId:      uuid.NewString(),
+		ChangeType:   EntityUpdated,
+		EntityId:     entity.GetId(),
+		Ctx:          ctx,
+		InitialState: baseEntity,
+		store:        store,
+	}
+
+	var parentEntityChangeFlow entityChangeFlow
+	if store.parent != nil {
+		parentEntityChangeFlow = store.parent.newEntityChangeFlow()
+		parentEntityChangeFlow.queuePostCommitProcessing(ctx)
+	}
+
+	changeFlow.queuePostCommitProcessing(ctx)
+
 	indexingContext := store.newIndexingContext(false, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessBeforeUpdate() // remove old values, using existing values in store
 	persistCtx := &PersistContext{
@@ -275,24 +296,18 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 	store.entityStrategy.PersistEntity(entity, persistCtx)
 	indexingContext.ProcessAfterUpdate() // add new values, using updated values in store
 
-	changeFlow := &EntityChangeState[E]{
-		EventId:      uuid.NewString(),
-		ChangeType:   EntityUpdated,
-		EntityId:     entity.GetId(),
-		Ctx:          ctx,
-		InitialState: baseEntity,
-		store:        store,
-	}
-
 	if err = changeFlow.loadFinalState(); err != nil {
 		return err
 	}
 
-	if err = store.fireParentEvent(changeFlow); err != nil {
-		return err
+	if parentEntityChangeFlow != nil {
+		parentEntityChangeFlow.initFromChild(changeFlow)
+		if err = parentEntityChangeFlow.processPreCommit(); err != nil {
+			return err
+		}
 	}
 
-	if err = changeFlow.fireEvents(); err != nil {
+	if err = changeFlow.processPreCommit(); err != nil {
 		return err
 	}
 

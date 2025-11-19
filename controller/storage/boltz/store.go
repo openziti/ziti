@@ -17,10 +17,11 @@
 package boltz
 
 import (
-	"github.com/openziti/foundation/v2/concurrenz"
-	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"go.etcd.io/bbolt"
 )
 
 type StoreDefinition[E Entity] struct {
@@ -161,6 +162,10 @@ func (self *EntityChangeState[E]) loadFinalState() error {
 	return err
 }
 
+func (self *EntityChangeState[E]) queuePostCommitProcessing(ctx MutateContext) {
+	ctx.Tx().OnCommit(self.processPostCommit)
+}
+
 func (self *EntityChangeState[E]) fireEvents() error {
 	if err := self.processPreCommit(); err != nil {
 		return err
@@ -193,6 +198,9 @@ type entityChangeFlow interface {
 	processPreCommit() error
 	processPostCommit()
 	fireEvents() error
+
+	// Used for adds so that the add event gets generated before any other events coming from constraints
+	queuePostCommitProcessing(ctx MutateContext)
 	MarkParentEvent()
 }
 
