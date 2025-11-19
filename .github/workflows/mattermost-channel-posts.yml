@@ -23,7 +23,7 @@ jobs:
     name: POST Webhook
     if: github.actor != 'dependabot[bot]'
     steps:
-      - uses: openziti/ziti-mattermost-action-py@debug-py-action
+      - uses: openziti/ziti-mattermost-action-py@v1
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
@@ -35,7 +35,7 @@ jobs:
           senderUsername: "GitHubZ"
           destChannel: "dev-notifications"
 
-      - uses: openziti/ziti-mattermost-action-py@main
+      - uses: openziti/ziti-mattermost-action-py@v1
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
