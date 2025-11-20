@@ -164,6 +164,7 @@ require (
 	github.com/openziti/secretstream v0.1.42 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
+	github.com/openziti/xweb/v3 v3.0.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
@@ -209,7 +210,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
-	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/oauth2 v0.33.0 // indirect
