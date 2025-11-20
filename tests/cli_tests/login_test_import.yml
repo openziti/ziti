@@ -7,7 +7,7 @@
       "configType": "@intercept.v1",
       "data": {
         "addresses": [
-          "mgmt.ziti.internal"
+          "mgmt.ziti"
         ],
         "portRanges": [
           {
