@@ -509,9 +509,7 @@ func (self *yesNoFilter) Accept(s string) bool {
 }
 
 func (o *LoginOptions) terminatorId() string {
-	if o.ControllerUrl != "" {
-		o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
-	}
+	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
 	curl, curle := url.Parse(o.ControllerUrl)
 	if curle != nil {
 		o.Printf("unable to parse controller url [%s]\n", o.ControllerUrl)
@@ -566,9 +564,7 @@ func (o *LoginOptions) PopulateFromCache() {
 	if o.ControllerUrl == "" {
 		o.ControllerUrl = cachedCliConfig.Url
 	}
-	if o.ControllerUrl != "" {
-		o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
-	}
+	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
 	if o.Username == "" {
 		o.Username = cachedCliConfig.Username
 	}
