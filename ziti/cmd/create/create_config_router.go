@@ -19,6 +19,7 @@ package create
 import (
 	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -38,7 +39,6 @@ type CreateConfigRouterOptions struct {
 	IsPrivate    bool
 	TunnelerMode string
 	LanInterface string
-	IsHA         bool
 }
 
 type NewCreateConfigRouterCmd struct {
@@ -72,6 +72,10 @@ func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCrea
 				}
 
 				data.PopulateConfigValues()
+
+				if os.Getenv(constants.CtrlAdvertisedAddressVarName) == "" {
+					data.Controller.Ctrl.AdvertisedAddress = ""
+				}
 
 				// Update router data with options passed in
 				data.Router.Name = validateRouterName(routerOptions.RouterName)

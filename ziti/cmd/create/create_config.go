@@ -166,7 +166,6 @@ type RouterTemplateValues struct {
 	Wss                WSSRouterTemplateValues
 	Forwarder          RouterForwarderTemplateValues
 	Listener           RouterListenerTemplateValues
-	IsHA               bool
 }
 
 type EdgeRouterTemplateValues struct {
