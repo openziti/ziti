@@ -241,7 +241,7 @@ func (o *LoginOptions) Run() error {
 	id := config.GetIdentity()
 
 	if host == "" {
-		if strings.TrimPrefix(o.ControllerUrl, "https://") == "" {
+		if o.ControllerUrl == "" {
 			if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && !o.IgnoreConfig {
 				host = cachedCliConfig.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
@@ -509,7 +509,9 @@ func (self *yesNoFilter) Accept(s string) bool {
 }
 
 func (o *LoginOptions) terminatorId() string {
-	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
+	if o.ControllerUrl != "" {
+		o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
+	}
 	curl, curle := url.Parse(o.ControllerUrl)
 	if curle != nil {
 		o.Printf("unable to parse controller url [%s]\n", o.ControllerUrl)
@@ -564,7 +566,9 @@ func (o *LoginOptions) PopulateFromCache() {
 	if o.ControllerUrl == "" {
 		o.ControllerUrl = cachedCliConfig.Url
 	}
-	o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
+	if o.ControllerUrl != "" {
+		o.ControllerUrl = addHttpsIfNeeded(o.ControllerUrl)
+	}
 	if o.Username == "" {
 		o.Username = cachedCliConfig.Username
 	}
@@ -817,7 +821,7 @@ func (o *LoginOptions) EffectiveUrl() (string, error) {
 }
 
 func addHttpsIfNeeded(host string) string {
-	if !strings.HasPrefix(host, "http") {
+	if host != "" && !strings.HasPrefix(host, "http") {
 		host = "https://" + host
 	}
 	return host
