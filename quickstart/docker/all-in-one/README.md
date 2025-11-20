@@ -21,27 +21,27 @@ This is the primary use case for this project: running the `ziti edge quickstart
     docker compose pull
     ```
 
-2. Run it.
+1. Run it.
 
     ```bash
     docker compose up
     ```
 
-3. Modify the configuration files mounted on `/home/ziggy/quickstart/` and bounce the container.
+1. Modify the configuration files mounted on `/home/ziggy/quickstart/` and bounce the container.
 
     ```bash
     docker compose up --force-recreate
     ```
 
-4. Observe the logs
+1. Observe the logs
 
     ```bash
     docker compose logs --follow
     ```
 
-5. Open the console in a browser: [localhost:1280/zac/](https://localhost:1280/zac/). If you override the default controller address then substitute the correct address in the URL like `https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/`.
+1. Open the console in a browser: [localhost:1280/zac/](https://localhost:1280/zac/). If you override the default controller address then substitute the correct address in the URL like `https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/`.
 
-6. Run the CLI inside the quickstart environment.
+1. Run the CLI inside the quickstart environment.
 
     ```bash
     docker compose exec quickstart ziti edge list identities
@@ -72,4 +72,3 @@ Run it again with a different storage location.
 ```bash
 ZITI_HOME=./config docker compose up
 ```
-
