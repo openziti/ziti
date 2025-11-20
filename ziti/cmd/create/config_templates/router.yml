@@ -16,11 +16,12 @@ identity:
   {{ if not .Router.AltCertsEnabled }}#{{ end }}  - server_cert:  "{{ .Router.AltServerCert }}"
   {{ if not .Router.AltCertsEnabled }}#{{ end }}    server_key:   "{{ .Router.AltServerKey }}"
 
-ha:
-  enabled: {{ .Router.IsHA }}
-
 ctrl:
+  {{- if .Controller.Ctrl.AdvertisedAddress }}
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
+  {{- else }}
+  {}
+  {{- end }}
 
 link:
   dialers:

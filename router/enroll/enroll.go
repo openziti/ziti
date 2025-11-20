@@ -24,11 +24,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openziti/ziti/router/env"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/ziti/router/env"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"
@@ -182,7 +184,38 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return fmt.Errorf("unable to write CA certs to [%s]: %s", identityConfig.CA, err)
 	}
 
-	if err = re.fullConfig.SaveControllerEndpoints(ec.Controllers); err != nil {
+	var controllers []string
+	if len(re.fullConfig.Ctrl.InitialEndpoints) > 0 {
+		for _, ep := range re.fullConfig.Ctrl.InitialEndpoints {
+			controllers = append(controllers, ep.String())
+		}
+	} else {
+		// if config is missing endpoints, try to get them from the JWT claimset
+		claims := jwt.MapClaims{}
+		parser := jwt.NewParser()
+		_, _, err := parser.ParseUnverified(strings.TrimSpace(string(jwtBuf)), claims)
+		if err == nil {
+			if ctrl, ok := claims["ctrl"]; ok {
+				controllers = append(controllers, ctrl.(string))
+			}
+
+			if ctrls, ok := claims["ctrls"]; ok {
+				if ctrlsSlice, ok := ctrls.([]interface{}); ok {
+					for _, ctrl := range ctrlsSlice {
+						controllers = append(controllers, ctrl.(string))
+					}
+				}
+			}
+		} else {
+			log.Warnf("failed to parse JWT for custom claims: %v", err)
+		}
+	}
+
+	if len(controllers) == 0 {
+		controllers = ec.Controllers
+	}
+
+	if err = re.fullConfig.SaveControllerEndpoints(controllers); err != nil {
 		return err
 	}
 

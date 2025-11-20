@@ -544,8 +544,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 
 		data := &create.ConfigTemplateValues{}
 		data.PopulateConfigValues()
-		opts.IsHA = o.IsHA
-		create.SetZitiRouterIdentity(&data.Router, routerName)
+				create.SetZitiRouterIdentity(&data.Router, routerName)
 		erCfg := create.NewCmdCreateConfigRouterEdge(opts, data)
 		erCfg.SetArgs([]string{
 			fmt.Sprintf("--routerName=%s", routerName),
