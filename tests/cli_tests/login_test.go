@@ -327,21 +327,21 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 }
 
 func (s *loginTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T) {
-		opts := &edge.LoginOptions{
-			Options:       s.commonOpts,
-			ControllerUrl: "",
-			Yes:           true,
-			IgnoreConfig:  true,
-			File:          s.controllerUnderTest.AdminIdFile,
-			NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
-		}
-		err := opts.Run()
-		require.NoError(t, err)
-		client, err := opts.NewManagementClient(false)
-		require.NoError(t, err)
-		require.NotNil(t, client)
-		require.NotEmpty(t, opts.ApiSession)
-		t.Logf("Login successful, token: %s", opts.Token)
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: "",
+		Yes:           true,
+		IgnoreConfig:  true,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	err := opts.Run()
+	require.NoError(t, err)
+	client, err := opts.NewManagementClient(false)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	require.NotEmpty(t, opts.ApiSession)
+	t.Logf("Login successful, token: %s", opts.Token)
 }
 
 func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
@@ -521,7 +521,7 @@ func (s *loginTestState) testControllerUnavailable(t *testing.T) {
 
 func (s *loginTestState) reconfigureTargetForZiti(pkiRoot string) error {
 	v2 := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
+	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti.internal --ca-name intermediate-ca-quickstart --server-file mgmt.ziti.internal", " "))
 	if zitiCmdErr := v2.Execute(); zitiCmdErr != nil {
 		return zitiCmdErr
 	}
@@ -545,7 +545,7 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 		defer controllerUnderTestCancel()
 		s.controllerUnderTest.Ctx = controllerUnderTestCtx2
 		s.controllerUnderTest.ConfigFile = gopath.Join(s.controllerUnderTest.Home, "ctrl.yaml")
-		newServerCertPath := gopath.Join(s.controllerUnderTest.Home, "pki/intermediate-ca-quickstart/certs/mgmt.ziti.chain.pem")
+		newServerCertPath := gopath.Join(s.controllerUnderTest.Home, "pki/intermediate-ca-quickstart/certs/mgmt.ziti.internal.chain.pem")
 		if re := s.controllerUnderTest.ReplaceConfig(newServerCertPath); re != nil {
 			t.Fatalf("failed to replace config: %v", re)
 		}
@@ -556,7 +556,10 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 		if cutStartErr != nil {
 			log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 		}
-		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
+
+		s.updateAdminIdFileForZiti(t, "https://mgmt.ziti.internal:443")
+
+		s.controllerUnderTest.ControllerAddress = "mgmt.ziti.internal"
 		s.controllerUnderTest.ControllerPort = 443
 
 		s.runLoginTests(t)
@@ -565,6 +568,13 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 		controllerUnderTestCancel()
 	})
+}
+
+func (s *loginTestState) updateAdminIdFileForZiti(t *testing.T, newAddr string) {
+	t.Logf("Updating %s with new url: %s from %s", s.controllerUnderTest.AdminIdFile, "https://mgmt.ziti.internal:443", s.controllerUnderTest.ControllerHostPort())
+	data, _ := os.ReadFile(s.controllerUnderTest.AdminIdFile)
+	out := strings.ReplaceAll(string(data), s.controllerUnderTest.ControllerHostPort(), newAddr)
+	_ = os.WriteFile(s.controllerUnderTest.AdminIdFile, []byte(out), 0644)
 }
 
 func (s *loginTestState) testZitiThenNot(t *testing.T) {
