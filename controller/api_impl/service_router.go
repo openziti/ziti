@@ -63,7 +63,14 @@ func (r *ServiceRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 	})
 
 	fabricApi.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
-		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Patch(n, rc, params) }, params.HTTPRequest, params.ID, "")
+		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) {
+			Patch(rc, func(id string, fields fields.UpdatedFields) error {
+				return n.Managers.Service.Update(
+					MapPatchServiceToModel(params.ID, params.Service),
+					fields.FilterMaps("tags").MapField("maxIdleTimeMillis", "maxIdleTime"),
+					rc.NewChangeContext())
+			})
+		}, params.HTTPRequest, params.ID, "")
 	})
 
 	fabricApi.ServiceListServiceTerminatorsHandler = service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams) middleware.Responder {

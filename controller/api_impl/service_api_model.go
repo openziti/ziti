@@ -17,6 +17,8 @@
 package api_impl
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
@@ -55,6 +57,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 		},
 		Name:               stringz.OrEmpty(service.Name),
 		TerminatorStrategy: service.TerminatorStrategy,
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 	}
 
 	if ret.Id == "" {
@@ -76,6 +79,7 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 		},
 		Name:               stringz.OrEmpty(service.Name),
 		TerminatorStrategy: service.TerminatorStrategy,
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 	}
 
 	return ret
@@ -89,6 +93,7 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 		},
 		Name:               service.Name,
 		TerminatorStrategy: service.TerminatorStrategy,
+		MaxIdleTime:        time.Duration(service.MaxIdleTimeMillis) * time.Millisecond,
 	}
 
 	return ret
@@ -97,9 +102,11 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 type ServiceModelMapper struct{}
 
 func (ServiceModelMapper) ToApi(_ *network.Network, _ api.RequestContext, service *model.Service) (interface{}, error) {
+	maxIdleTime := service.MaxIdleTime.Milliseconds()
 	return &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,
 		TerminatorStrategy: &service.TerminatorStrategy,
+		MaxIdleTimeMillis:  &maxIdleTime,
 	}, nil
 }

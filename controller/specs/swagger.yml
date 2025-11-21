@@ -1513,11 +1513,14 @@ definitions:
         required:
           - name
           - terminatorStrategy
+          - maxIdleTimeMillis
         properties:
           name:
             type: string
           terminatorStrategy:
             type: string
+          maxIdleTimeMillis:
+            type: integer
   serviceCreate:
     type: object
     required:
@@ -1527,6 +1530,8 @@ definitions:
         type: string
       terminatorStrategy:
         type: string
+      maxIdleTimeMillis:
+        type: integer
       tags:
         $ref: '#/definitions/tags'
   serviceUpdate:
@@ -1538,6 +1543,8 @@ definitions:
         type: string
       terminatorStrategy:
         type: string
+      maxIdleTimeMillis:
+        type: integer
       tags:
         $ref: '#/definitions/tags'
   servicePatch:
@@ -1547,6 +1554,8 @@ definitions:
         type: string
       terminatorStrategy:
         type: string
+      maxIdleTimeMillis:
+        type: integer
       tags:
         $ref: '#/definitions/tags'
 
@@ -1887,10 +1896,10 @@ definitions:
     type: object
     properties:
       type:
-        type:  string
-      source: 
         type: string
-      dest: 
+      source:
+        type: string
+      dest:
         type: string
 
   linkDetail:
@@ -1934,7 +1943,7 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/linkConnection'
-          
+
   linkPatch:
     type: object
     properties:

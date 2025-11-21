@@ -42,6 +42,9 @@ import (
 // swagger:model servicePatch
 type ServicePatch struct {
 
+	// max idle time millis
+	MaxIdleTimeMillis int64 `json:"maxIdleTimeMillis,omitempty"`
+
 	// name
 	Name string `json:"name,omitempty"`
 

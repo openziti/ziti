@@ -2309,6 +2309,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -2330,9 +2333,13 @@ func init() {
           "type": "object",
           "required": [
             "name",
-            "terminatorStrategy"
+            "terminatorStrategy",
+            "maxIdleTimeMillis"
           ],
           "properties": {
+            "maxIdleTimeMillis": {
+              "type": "integer"
+            },
             "name": {
               "type": "string"
             },
@@ -2352,6 +2359,9 @@ func init() {
     "servicePatch": {
       "type": "object",
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -2369,6 +2379,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -8102,6 +8115,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -8123,9 +8139,13 @@ func init() {
           "type": "object",
           "required": [
             "name",
-            "terminatorStrategy"
+            "terminatorStrategy",
+            "maxIdleTimeMillis"
           ],
           "properties": {
+            "maxIdleTimeMillis": {
+              "type": "integer"
+            },
             "name": {
               "type": "string"
             },
@@ -8145,6 +8165,9 @@ func init() {
     "servicePatch": {
       "type": "object",
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -8162,6 +8185,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "maxIdleTimeMillis": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
