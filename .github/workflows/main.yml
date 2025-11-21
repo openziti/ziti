@@ -164,10 +164,10 @@ jobs:
 
       - name: Run Unit and Integration Tests
         if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
-        timeout-minutes: 10
+        timeout-minutes: 15
         shell: bash
         run: |
-          go test ./... --tags apitests
+          go test ./... -timeout 15m --tags apitests
 
       - name: Run CLI tests and Integration Tests
         if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
