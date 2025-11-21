@@ -25,7 +25,7 @@ require (
 	github.com/openziti/identity v1.0.118
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/sdk-golang v1.3.0
-	github.com/openziti/storage v0.4.31
+	github.com/openziti/storage v0.4.32
 	github.com/openziti/transport/v2 v2.0.198
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -164,6 +164,7 @@ require (
 	github.com/openziti/secretstream v0.1.42 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
+	github.com/openziti/xweb/v3 v3.0.1 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
