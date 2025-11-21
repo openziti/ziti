@@ -23,10 +23,17 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	transporttls "github.com/openziti/transport/v2/tls"
@@ -36,14 +43,8 @@ import (
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"math"
-	"net/url"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
@@ -197,6 +198,21 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to load identity (%s)", err)
 	} else {
 		controllerConfig.Id = identity.NewIdentity(id)
+
+		conflicts := controllerConfig.Id.CheckServerCertSansForConflicts()
+
+		if len(conflicts) > 0 {
+			conflictsStr := ""
+
+			for _, conflict := range conflicts {
+				if conflictsStr != "" {
+					conflictsStr += ", "
+				}
+				conflictsStr += conflict.Error()
+			}
+
+			return nil, fmt.Errorf("conflicting SANs found in root [identity] section server certificate, ensure each server certificate is the sole representation of each DNS/IP SAN: %s", conflictsStr)
+		}
 
 		if err := controllerConfig.Id.WatchFiles(); err != nil {
 			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
