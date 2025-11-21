@@ -1,3 +1,17 @@
+# Release 1.7.2
+
+## What's New
+
+The 1.7.0 release changed legacy (non-JWT) sessions to be in the JWT format, even when not using an OIDC flow.
+The 1.7.+ controller and router require the information in the JWT, and are thus incompatible with legacy service
+sessions issued from older controllers. This release ensures that all service sessions are cleared to avoid
+running clients from failing with cached older sessions.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.7.1 -> v1.7.2](https://github.com/openziti/ziti/compare/v1.7.1...v1.7.2)
+    * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
+
 # Release 1.7.1
 
 ## What's New
