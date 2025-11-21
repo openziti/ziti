@@ -13,7 +13,8 @@ on:
 
 jobs:
   mattermost-ziti-webhook:
-    runs-on: ubuntu-latest
+    continue-on-error: true
+    runs-on: ubuntu-24.04
     name: POST Webhook
     if: github.repository_owner == 'openziti' && github.actor != 'dependabot[bot]'
     env:

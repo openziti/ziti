@@ -20,7 +20,7 @@ env:
 jobs:
   build-linux-packages:
     name: Build ${{ matrix.package_name }} ${{ matrix.arch.gox }} ${{ matrix.packager }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         package_name:
@@ -37,13 +37,11 @@ jobs:
           - deb
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build ziti executable
         shell: bash
@@ -64,7 +62,7 @@ jobs:
           ZITI_MAINTAINER: "OpenZiti Maintainers <developers@openziti.org>"
           ZITI_HOMEPAGE: "https://openziti.io"
           ZITI_VENDOR: "NetFoundry Inc."
-          GOARCH: ${{ matrix.arch.goreleaser }}
+          TARGETARCH: ${{ matrix.arch.goreleaser }}
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary
@@ -77,7 +75,7 @@ jobs:
   dry-run-linux-packages:
     needs: build-linux-packages
     name: Dry Run ${{ format('{0}:{1}', matrix.distro.name, matrix.distro.version) }} ${{ matrix.arch.gox }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_PWD: ziggypw
       ZITI_CTRL_ADVERTISED_ADDRESS: linux-controller.127.21.71.0.sslip.io
@@ -127,7 +125,7 @@ jobs:
             rpm: x86_64
     steps:
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: "*-${{ matrix.arch.gox }}-${{ matrix.distro.type }}"
           merge-multiple: true
@@ -136,7 +134,10 @@ jobs:
       - name: Install Packages
         shell: bash
         run: |
-          set -x
+
+          set -o pipefail
+          set -o xtrace
+
           ls -lR ./release/
           case "${{ matrix.distro.type }}" in
             rpm)
@@ -158,7 +159,10 @@ jobs:
         env:
           DEBUG: 1
         run: |
-          set -x
+
+          set -o pipefail
+          set -o xtrace
+
           /opt/openziti/etc/controller/bootstrap.bash <<CTRL
           ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
           ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
@@ -168,33 +172,33 @@ jobs:
           CTRL
 
           /opt/openziti/etc/router/bootstrap.bash <<ROUTER
-          ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}
-          ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
           ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}
           ZITI_ROUTER_PORT=${ZITI_ROUTER_PORT}
           ZITI_BOOTSTRAP_ENROLLMENT=false
           ZITI_ARGS="--verbose"
           ROUTER
 
-  test-linux-services:
-    name: Test Debian Linux Services
-    runs-on: ubuntu-latest
+  linux-deployments:
+    name: Test Linux Deployments
+    runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install nfpm
         shell: bash
         run: |
+
+          set -o pipefail
+          set -o xtrace
+
           echo ~/.local/bin >> $GITHUB_PATH
           mkdir -p ~/.local/bin
-          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${{ env.NFPM_VERSION }}/nfpm_${{ env.NFPM_VERSION }}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
+          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
           nfpm --version
 
       - name: Bootstrap & Run
@@ -205,8 +209,10 @@ jobs:
         if: always()
         shell: bash
         run: |
-          set -x
-          set +e
+
+          set -o xtrace
+          set +o errexit
+
           sudo ss -lntp | grep -E ":(${ZITI_CTRL_ADVERTISED_PORT}|${ZITI_ROUTER_PORT})"
           sudo journalctl --no-pager -o cat -u ziti-controller.service
           sudo journalctl --no-pager -o cat -u ziti-router.service
@@ -215,46 +221,41 @@ jobs:
 
   docker-deployments:
     name: Test Docker Deployments
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
-      - name: Run the Compose Test Script
+      - name: Run the Docker Test Script
         shell: bash
-        run: dist/docker-images/compose.test.bash
+        run: dist/docker-images/docker.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
 
   kubernetes-deployments:
     name: Test Kubernetes Deployments
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_NAMESPACE: zititest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install minikube
-        uses: medyagh/setup-minikube@v0.0.18
+        uses: medyagh/setup-minikube@v0.0.20
         with:
           start: false
 
       - name: Run the Kubernetes Test Script
         shell: bash
         run: ./dist/docker-images/k8s.test.bash --cpus=2  # GitHub runners have 4 vCPUs
-

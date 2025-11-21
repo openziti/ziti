@@ -1,16 +1,13 @@
 name: Test Quickstart
+
 on:
   workflow_dispatch:
-  # test quickstart changes after merge
   push:
     branches:
       - main
-    paths:
-      - 'quickstart/**'
-  # test quickstart changes before merge
   pull_request:
-    paths:
-      - 'quickstart/**'
+    branches:
+      - main
 
 # cancel older, redundant runs of same workflow on same branch
 concurrency:
@@ -20,19 +17,17 @@ concurrency:
 jobs:
   expressInstallTest:
     name: Test expressInstall() Quickstart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install zsh
         shell: bash
-        run: sudo apt-get update && sudo apt-get install --yes zsh
+        run: sudo apt-get update && sudo apt-get install --yes zsh 
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build and run a quickstart container image
         shell: bash
@@ -40,7 +35,7 @@ jobs:
 
   allInOneTest:
     name: Test all-in-one Quickstart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_CLI_TAG: local  # override default :latest since we're not pulling from registry
       ARTIFACTS_DIR: ./build  # output dir for `go build`, input dir for `compose up --build`
@@ -48,13 +43,11 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Build ziti executable
         shell: bash
@@ -88,3 +81,35 @@ jobs:
           ls -lAn ${GOCACHE:-${HOME}/.cache/go-build}/ ${GOPATH:-${HOME}/go}/pkg/mod/
           docker compose --profile test logs
           exit 0
+
+  haQuickstartTest:
+    name: Test HA Quickstart
+    runs-on: ubuntu-24.04
+    env:
+      BUILD_DIR: /tmp/build  # dir is created by build step and env var used by test script to find ziti executable
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v5
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Go Caching
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build ziti executable
+        shell: bash
+        run: |
+          mkdir -pv ${BUILD_DIR}
+          go build -o ${BUILD_DIR} ${GITHUB_WORKSPACE}/...
+
+      - name: Build and run a three quickstart in HA mode
+        shell: bash
+        run: ./quickstart/test/ha-test.sh

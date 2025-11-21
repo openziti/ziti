@@ -39,14 +39,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -54,8 +52,13 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
+
+          set -o xtrace
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
@@ -69,17 +72,15 @@ jobs:
     name: Build Windows binaries
     # allow fors to opt-out of time-consuming Windows builds
     if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -87,7 +88,11 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
+          
+          set -o xtrace
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
@@ -99,17 +104,16 @@ jobs:
 
   linux-build:
     name: Build Linux binaries
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04  # pin oldest available Docker host for ABI compatibility
+    container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -117,12 +121,16 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+
+          set -o xtrace
+
           go install github.com/mitchellh/gox@latest
+
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+
           CC=arm-linux-gnueabihf-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+
           CC=aarch64-linux-gnu-gcc \
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
@@ -135,17 +143,15 @@ jobs:
 
   tests:
     name: Run Unit and Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
@@ -157,29 +163,50 @@ jobs:
           go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
 
       - name: Run Unit and Integration Tests
+        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
         timeout-minutes: 10
         shell: bash
         run: |
           go test ./... --tags apitests
 
+      - name: Run CLI tests and Integration Tests
+        if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          mkdir cli_tests_bin
+          go build -o cli_tests_bin ./... 
+          ZITI_CLI_TEST_ZITI_BIN="$PWD/cli_tests_bin/ziti" go test ./... --tags cli_tests
+
+      - name: Upload CLI test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-test-logs-${{ github.run_id }}
+          path: '**/ctrl-std*log'
+          retention-days: 5
+
   fablab-smoketest:
     name: Fablab Smoketest
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -190,11 +217,12 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          go test ./...
           pushd zititest && go mod tidy && go install ./... && popd
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
@@ -253,17 +281,15 @@ jobs:
     name: Teardown SmokeTest
     # ensure reasonable timeout-minutes on steps in this un-cancellable job
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [ fablab-smoketest ]
     steps:
-      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
-      #- name: Sleep If Failed
-      #  if: needs.fablab-smoketest.result != 'success' && needs.fablab-smoketest.result != 'skipped' && needs.fablab-smoketest.result != 'cancelled'
-      #  shell: bash
-      #  run: |
-      #    sleep 30m
-
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest.result != 'skipped'
         timeout-minutes: 30
@@ -288,21 +314,24 @@ jobs:
   fablab-ha-smoketest:
     name: Fablab HA Smoketest
     # not applicable to forks. shouldn't run on release build
-    if: false && github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v')
-    runs-on: ubuntu-20.04
+    if: false
+    runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
       - name: Build and Test
         env:
@@ -317,20 +346,23 @@ jobs:
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/smoketest create -d smoketest-ha-${GITHUB_RUN_NUMBER} -n smoketest-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/smoketest up
 
-      #      - name: Test Ziti Command
-      #        shell: bash
-      #        run: |
-      #          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-      #          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
       - name: Create fablab instance archive
         if: always()
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
@@ -339,40 +371,51 @@ jobs:
           cp ~/.fablab/config.yml smoketest-ha-${GITHUB_RUN_NUMBER}/
           tar --exclude *terraform-provider-aws* -czvf - smoketest-ha-${GITHUB_RUN_NUMBER}/ | gpg --symmetric --cipher-algo aes256 --batch --quiet --passphrase ${FABLAB_PASSPHRASE} -o smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg
           aws s3 cp ./smoketest-ha-${GITHUB_RUN_NUMBER}.tar.gz.gpg s3://ziti-smoketest-fablab-instances/
-          
-          #      - name: Test Report Generation
-          #        if: always()
-          #        shell: bash
-          #        run: |
-          #          go install github.com/jstemmer/go-junit-report/v2@latest
-          #$(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
 
-      #      - name: Test Summary
-      #        uses: test-summary/action@v2
-      #        with:
-      #          paths: |
-      #            test-report.xml
-      #          show: "fail, skip"
-      #        if: always()
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
 
-      # END linux-build-steps
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs-ha-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Test Report Generation
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: ${{ !cancelled() }}
+        with:
+          paths: |
+            test-report.xml
+          show: "fail, skip"
 
   fablab-ha-smoketest-teardown:
     name: Teardown HA SmokeTest
-    if: always()
-    runs-on: ubuntu-20.04
+    if: false
+    runs-on: ubuntu-24.04
     needs: [ fablab-ha-smoketest ]
     steps:
-      # allow time for investigation unless the workflow is cancelled or the smoketest succeeded or was skipped
-      - name: Sleep If Failed
-        if: needs.fablab-ha-smoketest.result != 'success' && needs.fablab-ha-smoketest.result != 'skipped' && needs.fablab-ha-smoketest.result != 'cancelled'
-        shell: bash
-        run: |
-          sleep 30m
-
       # release cloud resources if the smoketest succeeded, failed, or was cancelled; unnecessary if skipped
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
       - name: Teardown Test Environment
         if: needs.fablab-smoketest-ha.result != 'skipped'
+        timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
         shell: bash
@@ -400,48 +443,47 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
+      && (needs.fablab-ha-smoketest.result == 'success' || needs.fablab-ha-smoketest.result == 'skipped')
       && (needs.tests.result == 'success')
       }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     # ensure required job outcomes are specified in "if" expression
     needs: [ tests, linux-build, mac-os-build, windows-build, fablab-smoketest, fablab-ha-smoketest ]
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.7'
+          python-version: '3.13'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
 
       - name: Download linux release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
 
       - name: Download darwin release artifact
         if: needs.mac-os-build.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
         if: needs.windows-build.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
@@ -459,8 +501,8 @@ jobs:
                 -print0 \
                 -path "./release/*/darwin/ziti" \
                 -o \
-                -path "./release/*/linux/ziti" \
-            | xargs -0 chmod -c +x
+                -path "./release/*/linux/ziti*" \
+          | xargs -0 chmod -c +x
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
       - name: Get next version for downstream release candidates

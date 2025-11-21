@@ -1,6 +1,6 @@
 name: Release Quickstart Workflow
 on:
-  pull_request_target:
+  pull_request:
     types:
       - closed
     branches:
@@ -25,7 +25,7 @@ jobs:
           && contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
         )
       )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
       # use github.ref, not github.head_ref, because this workflow should only run on merged PRs in the target/base
@@ -39,7 +39,7 @@ jobs:
         uses: hmarr/debug-action@v3.0.0
 
       - name: Wait for other builds to complete
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.4.1
         with:
           ref: ${{ env.GITHUB_SHA }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -47,15 +47,14 @@ jobs:
           wait-interval: 20
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
           running-workflow-name: Release Quickstart Job
+          # comma-separated list of check names (job.<id>.name) to ignore
+          ignore-checks: Fablab Smoketest,Fablab HA Smoketest,Publish Release Candidate Linux Packages,Publish Release Candidate Docker Images,POST Webhook
 
       - name: Checkout Workspace
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
