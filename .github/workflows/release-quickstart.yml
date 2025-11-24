@@ -20,7 +20,7 @@ jobs:
     # pushes trigger a quickstart release with the same tag name and the same
     # ziti binary release version
     if: (github.repository_owner == 'openziti' || vars.ZITI_QUICKSTART_IMAGE != '') && (
-        startsWith(github.ref_name, 'v') || (
+        (startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-')) || (
           github.event.pull_request.merged == true 
           && contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
         )
