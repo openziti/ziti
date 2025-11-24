@@ -241,7 +241,7 @@ func (o *LoginOptions) Run() error {
 	id := config.GetIdentity()
 
 	if host == "" {
-		if strings.TrimPrefix(o.ControllerUrl, "https://") == "" {
+		if o.ControllerUrl == "" {
 			if cachedCliConfig := config.EdgeIdentities[id]; cachedCliConfig != nil && !o.IgnoreConfig {
 				host = cachedCliConfig.Url
 				o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
@@ -817,7 +817,7 @@ func (o *LoginOptions) EffectiveUrl() (string, error) {
 }
 
 func addHttpsIfNeeded(host string) string {
-	if !strings.HasPrefix(host, "http") {
+	if host != "" && !strings.HasPrefix(host, "http") {
 		host = "https://" + host
 	}
 	return host

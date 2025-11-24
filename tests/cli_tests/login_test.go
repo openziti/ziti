@@ -200,6 +200,7 @@ func (s *loginTestState) runLoginTests(t *testing.T) {
 	t.Run("token based login", s.testTokenBasedLogin)
 	t.Run("client cert authentication - no ca", s.testClientCertAuthentication)
 	t.Run("identity file authentication", s.testIdentityFileAuthentication)
+	t.Run("identity file authentication - ctrl url unset", s.testIdentityFileAuthenticationCtrlUrlUnset)
 	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
 	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
@@ -323,6 +324,24 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 		require.Error(t, err, "expected error when CA cert is missing")
 		require.Contains(t, err.Error(), "Cannot accept certs - no terminal")
 	})
+}
+
+func (s *loginTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T) {
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: "",
+		Yes:           true,
+		IgnoreConfig:  true,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	err := opts.Run()
+	require.NoError(t, err)
+	client, err := opts.NewManagementClient(false)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	require.NotEmpty(t, opts.ApiSession)
+	t.Logf("Login successful, token: %s", opts.Token)
 }
 
 func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
@@ -537,6 +556,9 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 		if cutStartErr != nil {
 			log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 		}
+
+		s.updateAdminIdFileForZiti(t, "https://mgmt.ziti:443")
+
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
 		s.controllerUnderTest.ControllerPort = 443
 
@@ -546,6 +568,13 @@ func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) 
 
 		controllerUnderTestCancel()
 	})
+}
+
+func (s *loginTestState) updateAdminIdFileForZiti(t *testing.T, newAddr string) {
+	t.Logf("Updating %s with new url: %s from %s", s.controllerUnderTest.AdminIdFile, "https://mgmt.ziti:443", s.controllerUnderTest.ControllerHostPort())
+	data, _ := os.ReadFile(s.controllerUnderTest.AdminIdFile)
+	out := strings.ReplaceAll(string(data), s.controllerUnderTest.ControllerHostPort(), newAddr)
+	_ = os.WriteFile(s.controllerUnderTest.AdminIdFile, []byte(out), 0644)
 }
 
 func (s *loginTestState) testZitiThenNot(t *testing.T) {
