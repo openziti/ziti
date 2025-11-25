@@ -431,6 +431,7 @@ exportZitiVars() {
   done
 }
 
+# Docker passes the "run" command to entrypoint.bash, and this function is then called in-line to ensure that the PKI, config file, and database are created if they don't exist, and calls issueLeafCerts() directly if the config file exists; on Linux, this function is only called by the running bootstrap.bash directly, and the system service passes "check" to entrypoint.bash, which only performs a preflight check for PKI, config file, and database before calling issueLeafCerts()
 bootstrap() {
 
   if [[ -n "${1:-}" ]]; then
@@ -441,11 +442,13 @@ bootstrap() {
     return 1
   fi
 
-  # make PKI unless explicitly disabled or it already exists
-  if [[ "${ZITI_BOOTSTRAP_PKI}"      == true ]]; then
+  # make PKI unless explicitly disabled
+  if [[ "${ZITI_BOOTSTRAP_PKI}" == true ]]; then
+    # If config doesn't exist, make PKI from scratch
     if ! [[ -s "${_ctrl_config_file}" ]]; then
-      # make PKI unless explicitly disabled or a configuration already exists
       makePki
+    elif [[ "${ZITI_AUTO_RENEW_CERTS:-}" == true ]]; then
+      issueLeafCerts
     fi
   fi
 

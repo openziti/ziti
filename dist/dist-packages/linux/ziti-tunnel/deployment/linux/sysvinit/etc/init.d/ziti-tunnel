@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# ziti-tunnel           Start up the ziti-tunnel client
+#
+#
+# chkconfig: 345 28 72
+# descripttion: Intercept network traffic for NetFoundry/Ziti services.
+
+### BEGIN INIT INFO
+# Provides:          ziti-tunnel
+# Required-Start:    $local_fs $network
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start Ziti Tunnel
+### END INIT INFO
+
+ziti_dir=/opt/netfoundry/ziti
+service=$(basename $(readlink -f "${0}"))
+logfile="/var/log/${service}.log"
+pidfile="/var/run/${service}.pid"
+cfgfile="${ziti_dir}/cfg/${service}.json"
+jwtfile="${ziti_dir}/cfg/${service}.jwt"
+
+# source function library
+. /etc/init.d/functions
+
+# pull in sysconfig settings
+[ -f "/etc/sysconfig/${service}" ] && . "/etc/sysconfig/${service}"
+
+
+do_enroll()
+{
+    if [ ! -f "${cfgfile}" ]; then
+        echo -n $"Enrolling ${service}: "
+        if [ -f "${jwtfile}" ]; then
+            "${ziti_dir}/bin/ziti-tunnel" enroll --jwt "${jwtfile}" --out "${cfgfile}" >> "${logfile}" 2>&1
+            if [ ${?} -ne 0 -o ! -f "${cfgfile}" ]; then
+                failure $"Enrolling ${service}"
+                echo ""
+                exit 1
+            fi
+        else
+            echo "${cfgfile} does not exist, nor does ${jwtfile}" >> "${logfile}"
+            failure $"Enrolling ${service}"
+            echo ""
+            exit 1
+        fi
+        success $"Enrolling ${service}"
+        echo ""
+    fi
+}
+
+do_start()
+{
+    if [ "${VERBOSE}" = "YES" ]; then
+        verbose_opts="--verbose"
+    fi
+    if [ -n "${RESOLVER}" ]; then
+        resolver_opts="--resolver ${RESOLVER}"
+    fi
+    
+    do_enroll
+    echo -n $"Starting ${service}: "
+    ("${ziti_dir}/bin/ziti-tunnel" run ${verbose_opts} ${resolver_opts} "${cfgfile}" >> "${logfile}" 2>&1 & echo "${!}" > "${pidfile}" && sleep 1; ps -p "${!}" > /dev/null)
+    ec=${?}
+    if [ ${ec} -eq 0 ]; then
+        success $"logging to ${logfile}"
+    else
+        failure $"see ${logfile}"
+    fi
+    echo ""
+    return ${ec}
+}
+
+do_stop()
+{
+    echo -n $"Stopping ${service}: "
+    killproc -p "${pidfile}" "${ziti_dir}/bin/ziti-tunnel"
+    echo ""
+}
+
+do_status()
+{
+    status -p "${pidfile}" "${service}"    
+}
+
+do_status_q()
+{
+    do_status > /dev/null 2>&1
+}
+
+case "${1}" in
+    start)
+        do_status_q && exit 0
+        do_start
+        ;;
+    stop)
+        do_status_q && do_stop
+        ;;
+    restart)
+        do_stop
+        sleep 1
+        do_start
+        ;;
+    status)
+        do_status
+        ;;
+    *)
+        echo "Usage: /etc/init.d/ziti-tunnel {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac

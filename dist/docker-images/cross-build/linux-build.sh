@@ -39,6 +39,7 @@ for ARCH in ${JOBS[@]}; do
             -arch=${ARCH} \
             -output=${GOX_OUTPUT} \
             -parallel=${PROCS_PER_JOB} \
+            ${TAGS+-tags=${TAGS}} \
             ./ziti/
     "
 case ${ARCH} in

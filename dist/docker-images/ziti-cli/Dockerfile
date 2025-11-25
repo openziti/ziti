@@ -2,21 +2,18 @@
 
 # get kubectl CLI from a source with Docker Content Trust (DCT)
 # FIXME: require DCT at build time
-FROM bitnami/kubectl AS bitnami-kubectl
-
-# FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
-# FROM registry.access.redhat.com/openshift4/ose-cli AS openshift-cli  
+FROM portainer/kubectl-shell:2.35.0 AS portainer-kubectl
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
 ARG ARTIFACTS_DIR=./release
-ARG DOCKER_BUILD_DIR=.
-# e.g. linux
-ARG TARGETOS
+ARG DOCKER_BUILD_DIR=./dist/docker-images/ziti-cli
 # e.g. arm64
 ARG TARGETARCH
+# e.g. linux
+ARG TARGETOS
 
 ARG ZUID=2171
 ARG ZGID=2171
@@ -43,7 +40,7 @@ RUN   INSTALL_PKGS="python3.11 python3.11-pip tar bash-completion vim-minimal le
 # COPY --from=openshift-cli  /path/to/oc /usr/local/bin/oc
 
 ### install Kubernetes CLI
-COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
+COPY --from=portainer-kubectl /usr/local/bin/kubectl /usr/local/bin/
 
 ### add license in the path prescribed by OpenShift
 RUN mkdir -p -m0755 /licenses
@@ -55,8 +52,7 @@ RUN groupadd --gid ${ZGID} ziggy \
       && chown -R ${ZUID}:${ZGID} ${HOME} \
       && chmod -R g+rwX ${HOME}
 RUN mkdir -p /usr/local/bin
-COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
-RUN chmod 0755 /usr/local/bin/ziti
+COPY --chmod=0755 ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 
 RUN /usr/local/bin/ziti completion bash > /etc/bash_completion.d/ziti_cli
 

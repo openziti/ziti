@@ -16,12 +16,14 @@ makeConfig() {
   shopt -u nocasematch  # toggle on case-sensitive comparison
 
   # used by "ziti create config" as controller host
-  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" || -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
-    echo "ERROR: ZITI_CTRL_ADVERTISED_ADDRESS and ZITI_ROUTER_ADVERTISED_ADDRESS must be set" >&2
+  if [[ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
+    echo "ERROR: ZITI_ROUTER_ADVERTISED_ADDRESS must be set" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   else
-    echo "DEBUG: controller address is '${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}'" >&3
+    if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+        echo "DEBUG: controller address is '${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}'" >&3
+    fi
     echo "DEBUG: router address is '${ZITI_ROUTER_ADVERTISED_ADDRESS}:${ZITI_ROUTER_PORT}'" >&3
   fi
 
@@ -244,11 +246,10 @@ promptRouterPort() {
 
 promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
-    if ! ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter address of the controller [required]: ")"; then
-      echo "ERROR: missing required address ZITI_CTRL_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
-      return 1
-    else
-      setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
+    if ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter address of the controller [optional]: " || echo "")"; then
+      if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS}" ]]; then
+        setAnswer "ZITI_CTRL_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
+      fi
     fi
   fi
 }
@@ -473,8 +474,6 @@ else
   importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
   loadEnvStdin                  # slurp answers from stdin if it's not a tty
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
-  promptCtrlAddress             # prompt for ZITI_CTRL_ADVERTISED_ADDRESS if not already set
-  promptCtrlPort                # prompt for ZITI_CTRL_ADVERTISED_PORT if not already set
   promptRouterAddress           # prompt for ZITI_ROUTER_ADVERTISED_ADDRESS if not already set
   promptRouterPort              # prompt for ZITI_ROUTER_PORT if not already set
   promptEnrollToken             # prompt for ZITI_ENROLL_TOKEN if not already set
