@@ -1,3 +1,9 @@
+# Release 1.1.19
+
+## What's New
+
+This release only third party library updates, build process updates and a Go version update.
+
 # Release 1.1.18
 
 ## What's New

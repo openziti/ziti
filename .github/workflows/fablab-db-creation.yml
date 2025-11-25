@@ -19,17 +19,14 @@ env:
 jobs:
   build:
     name: Build and Run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'openziti'
     steps:
       - name: Checkout ziti
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        id: setup-go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ./go.mod
+        uses: ./.github/actions/setup-go
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
