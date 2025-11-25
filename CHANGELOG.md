@@ -286,15 +286,23 @@ ziti edge controller list ext-jwt-signers
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v4.2.41 -> v4.2.42](https://github.com/openziti/channel/compare/v4.2.41...v4.2.42)
 * github.com/openziti/edge-api: [v0.26.50 -> v0.26.51](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.51)
+* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.80](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.80)
+    * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
+
+* github.com/openziti/identity: [v1.0.118 -> v1.0.119](https://github.com/openziti/identity/compare/v1.0.118...v1.0.119)
 * github.com/openziti/sdk-golang: [v1.2.10 -> v1.3.0](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.3.0)
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
 * github.com/openziti/secretstream: [v0.1.41 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.42)
 * github.com/openziti/storage: [v0.4.31 -> v0.4.32](https://github.com/openziti/storage/compare/v0.4.31...v0.4.32)
+* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.199](https://github.com/openziti/transport/compare/v2.0.198...v2.0.199)
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
 * github.com/openziti/ziti: [v1.7.1 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.1...v1.8.0)
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
+    * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
+    * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
