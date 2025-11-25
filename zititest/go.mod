@@ -18,15 +18,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.2.41
+	github.com/openziti/channel/v4 v4.2.42
 	github.com/openziti/edge-api v0.26.51
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.79
-	github.com/openziti/identity v1.0.118
+	github.com/openziti/foundation/v2 v2.0.80
+	github.com/openziti/identity v1.0.119
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/sdk-golang v1.3.0
 	github.com/openziti/storage v0.4.32
-	github.com/openziti/transport/v2 v2.0.198
+	github.com/openziti/transport/v2 v2.0.199
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
