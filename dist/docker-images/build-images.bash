@@ -12,9 +12,12 @@ cd "$DIRNAME/../.."  # the images can be built from anywhere, but the Dockerfile
 # - add an --arm64 flag to build the ziti binary and container images for arm64
 # - add a --namespace option to specify the registry hostname and namespace/org to tag each image, e.g., --namespace 127.0.0.1:5000/localtest
 # - add a --push flag to push the images to the registry instead of loading them into the build context
+# - add a --no-console flag to omit the console from the controller image
+# - add a --console-version option to override the Dependabot-managed version of the console in the controller image
+# - add a standalone console image w/ Angular or Node server?
 
 # define a version based on the most recent tag
-ZITI_VERSION=$(git describe --tags --always)
+: "${ZITI_VERSION:=$(git describe --tags --always)}"
 
 : build the go build env
 docker buildx build \
@@ -28,7 +31,7 @@ docker run \
     --rm \
     --user "$UID" \
     --name=ziti-go-builder \
-    --volume=$PWD:/mnt \
+    --volume=$PWD:/mnt/ziti \
     --volume=${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build \
     --env=GOCACHE=/.cache/go-build \
     ziti-go-builder amd64

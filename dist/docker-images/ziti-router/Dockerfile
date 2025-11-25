@@ -51,5 +51,4 @@ ENV ZITI_ROUTER_MODE=host
 # renew router certs at startup with run --extend
 ENV ZITI_AUTO_RENEW_CERTS=true
 
-
 ENTRYPOINT [ "/entrypoint.bash" ]
