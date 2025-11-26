@@ -5,7 +5,7 @@ FROM debian:bullseye-slim
 #
 
 ARG TARGETARCH
-ARG golang_version=1.22.1
+ARG golang_version=1.24.2
 ARG go_distribution_file=go${golang_version}.linux-${TARGETARCH}.tar.gz
 ARG go_path=/usr/share/go
 ARG go_root=/usr/local/go
@@ -16,8 +16,7 @@ RUN apt-get -y update
 RUN apt-get -y install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
 RUN apt-get -y install wget build-essential
 
-COPY ./linux-build.sh /usr/local/bin/
-RUN chmod a+rx /usr/local/bin/linux-build.sh
+COPY --chmod=0755 ./linux-build.sh /usr/local/bin/
 RUN wget -q https://go.dev/dl/${go_distribution_file}
 RUN tar -xzf ${go_distribution_file} -C /usr/local/
 
@@ -30,7 +29,7 @@ ENV GOPATH=${go_path}
 ENV GOROOT=${go_root}
 ENV GOCACHE=${go_cache}
 ENV PATH=${go_path}/bin:${go_root}/bin:$PATH
+ENV CGO_ENABLED=1
 RUN go install github.com/mitchellh/gox@latest
-WORKDIR /mnt
+WORKDIR /mnt/ziti
 ENTRYPOINT ["linux-build.sh"]
-

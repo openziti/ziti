@@ -22,10 +22,10 @@ services:
     # to ensure consistency throughout the compose project
     environment:
       # *** these are the important vars to set ***
-      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}  # domain name of the controller (required)
-      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # exposed port of the controller
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-}                 # controller address (default: learned from enrollment token)
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-}                       # controller port (default: learned from enrollment token)
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}                                       # enrollment token for this router (required)
-      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}  # domain name for this router (default: the container ID [hostname -f])
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}  # this router's address (default: the container ID [hostname -f])
       ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}                                     # exposed port for this router
       ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-host}                                     # none, host, tproxy, tproxy (default: host, tproxy requires additional config below)
 

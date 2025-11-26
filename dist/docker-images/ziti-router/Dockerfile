@@ -4,7 +4,6 @@ ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 FROM ${ZITI_CLI_IMAGE}:${ZITI_CLI_TAG}
 
 ARG ROUTER_PACKAGE=./dist/dist-packages/linux/openziti-router
-ARG DOCKER_BUILD_DIR=.
 
 ### Required OpenShift Labels
 LABEL name="openziti/ziti-router" \
@@ -51,6 +50,5 @@ ENV ZITI_ROUTER_MODE=host
 
 # renew router certs at startup with run --extend
 ENV ZITI_AUTO_RENEW_CERTS=true
-
 
 ENTRYPOINT [ "/entrypoint.bash" ]

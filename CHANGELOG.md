@@ -1,3 +1,9 @@
+# Release 1.1.20
+
+## What's New
+
+This release sync the 1.1 branch with the package and docker build code from main
+
 # Release 1.1.19
 
 ## What's New
