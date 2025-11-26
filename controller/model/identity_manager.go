@@ -474,34 +474,32 @@ func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, 
 // PatchInfo updates the identity's envInfo and sdkInfo fields based on the supplied fields.
 // The fields to update are determined by the checker. If checker is nil, all fields are updated.
 func (self *IdentityManager) PatchInfo(identity *Identity, checker fields.UpdatedFields, changeCtx *change.Context) {
-	go func() {
-		start := time.Now()
+	start := time.Now()
 
-		if checker == nil {
-			checker = fields.UpdatedFieldsMap{
-				db.FieldIdentityEnvInfoArch:       struct{}{},
-				db.FieldIdentityEnvInfoOs:         struct{}{},
-				db.FieldIdentityEnvInfoOsRelease:  struct{}{},
-				db.FieldIdentityEnvInfoOsVersion:  struct{}{},
-				db.FieldIdentityEnvInfoDomain:     struct{}{},
-				db.FieldIdentityEnvInfoHostname:   struct{}{},
-				db.FieldIdentitySdkInfoBranch:     struct{}{},
-				db.FieldIdentitySdkInfoRevision:   struct{}{},
-				db.FieldIdentitySdkInfoType:       struct{}{},
-				db.FieldIdentitySdkInfoVersion:    struct{}{},
-				db.FieldIdentitySdkInfoAppId:      struct{}{},
-				db.FieldIdentitySdkInfoAppVersion: struct{}{},
-			}
+	if checker == nil {
+		checker = fields.UpdatedFieldsMap{
+			db.FieldIdentityEnvInfoArch:       struct{}{},
+			db.FieldIdentityEnvInfoOs:         struct{}{},
+			db.FieldIdentityEnvInfoOsRelease:  struct{}{},
+			db.FieldIdentityEnvInfoOsVersion:  struct{}{},
+			db.FieldIdentityEnvInfoDomain:     struct{}{},
+			db.FieldIdentityEnvInfoHostname:   struct{}{},
+			db.FieldIdentitySdkInfoBranch:     struct{}{},
+			db.FieldIdentitySdkInfoRevision:   struct{}{},
+			db.FieldIdentitySdkInfoType:       struct{}{},
+			db.FieldIdentitySdkInfoVersion:    struct{}{},
+			db.FieldIdentitySdkInfoAppId:      struct{}{},
+			db.FieldIdentitySdkInfoAppVersion: struct{}{},
 		}
+	}
 
-		err := self.Update(identity, checker, changeCtx)
+	err := self.Update(identity, checker, changeCtx)
 
-		if err != nil {
-			pfxlog.Logger().Warnf("unable to update identity %s sdk/env info: %v", identity.Id, err)
-		}
+	if err != nil {
+		pfxlog.Logger().Warnf("unable to update identity %s sdk/env info: %v", identity.Id, err)
+	}
 
-		self.updateSdkInfoTimer.UpdateSince(start)
-	}()
+	self.updateSdkInfoTimer.UpdateSince(start)
 }
 
 func (self *IdentityManager) GetConnectionTracker() *ConnectionTracker {
