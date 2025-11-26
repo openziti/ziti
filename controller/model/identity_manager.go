@@ -439,7 +439,7 @@ func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigs
 		}
 
 		for _, serviceConfig := range cmd.serviceConfigs {
-			config, err := self.env.GetStores().Config.LoadById(ctx.Tx(), serviceConfig.Config)
+			cfg, err := self.env.GetStores().Config.LoadById(ctx.Tx(), serviceConfig.Config)
 			if err != nil {
 				return err
 			}
@@ -452,10 +452,10 @@ func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigs
 					serviceMap = map[string]string{}
 					identity.ServiceConfigs[serviceConfig.Service] = serviceMap
 				}
-				serviceMap[config.Type] = config.Id
+				serviceMap[cfg.Type] = cfg.Id
 			} else if identity.ServiceConfigs != nil {
 				if serviceMap, ok := identity.ServiceConfigs[serviceConfig.Service]; ok {
-					delete(serviceMap, config.Type)
+					delete(serviceMap, cfg.Type)
 				}
 			}
 		}
@@ -471,11 +471,13 @@ func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, 
 	return self.queryRoleAttributes(index, queryString)
 }
 
-func (self *IdentityManager) PatchInfo(identity *Identity, checker boltz.FieldChecker, changeCtx *change.Context) error {
+// PatchInfo updates the identity's envInfo and sdkInfo fields based on the supplied fields.
+// The fields to update are determined by the checker. If checker is nil, all fields are updated.
+func (self *IdentityManager) PatchInfo(identity *Identity, checker fields.UpdatedFields, changeCtx *change.Context) {
 	start := time.Now()
 
 	if checker == nil {
-		checker = boltz.MapFieldChecker{
+		checker = fields.UpdatedFieldsMap{
 			db.FieldIdentityEnvInfoArch:       struct{}{},
 			db.FieldIdentityEnvInfoOs:         struct{}{},
 			db.FieldIdentityEnvInfoOsRelease:  struct{}{},
@@ -491,11 +493,13 @@ func (self *IdentityManager) PatchInfo(identity *Identity, checker boltz.FieldCh
 		}
 	}
 
-	err := self.updateEntityBatch(identity, checker, changeCtx)
+	err := self.Update(identity, checker, changeCtx)
+
+	if err != nil {
+		pfxlog.Logger().Warnf("unable to update identity %s sdk/env info: %v", identity.Id, err)
+	}
 
 	self.updateSdkInfoTimer.UpdateSince(start)
-
-	return err
 }
 
 func (self *IdentityManager) GetConnectionTracker() *ConnectionTracker {
@@ -730,8 +734,7 @@ func (self *IdentityManager) UpdateSdkEnvInfo(identity *Identity, envInfo *EnvIn
 	}
 
 	if len(updateFields) != 0 {
-
-		return self.PatchInfo(identity, updateFields, changeCtx)
+		self.PatchInfo(identity, updateFields, changeCtx)
 	}
 
 	return nil
@@ -759,7 +762,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 	}
 
 	var sdkInfo *SdkInfo
-	for msg.SdkInfo != nil {
+	if msg.SdkInfo != nil {
 		sdkInfo = &SdkInfo{
 			AppId:      msg.SdkInfo.AppId,
 			AppVersion: msg.SdkInfo.AppVersion,

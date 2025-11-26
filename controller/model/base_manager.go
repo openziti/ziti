@@ -172,6 +172,7 @@ func (self *baseEntityManager[ME, PE]) createEntityInTx(ctx boltz.MutateContext,
 	return modelEntity.GetId(), nil
 }
 
+//nolint:unused
 func (self *baseEntityManager[ME, PE]) updateEntityBatch(modelEntity edgeEntity[PE], checker boltz.FieldChecker, changeCtx *change.Context) error {
 	return self.GetDb().Batch(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		existing, found, err := self.GetStore().FindById(ctx.Tx(), modelEntity.GetId())
