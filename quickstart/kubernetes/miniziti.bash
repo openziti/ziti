@@ -800,7 +800,22 @@ main(){
         --namespace cert-manager \
         --set crds.keep=false \
         --set app.trust.namespace="${ZITI_NAMESPACE}" >&3
+    # Wait for trust-manager-tls secret to be created by cert-manager
+    logInfo "waiting for trust-manager-tls secret"
+    for ((i=0; i<MINIZITI_TIMEOUT_SECS; i++)); do
+        if kubectlWrapper get secret -n cert-manager trust-manager-tls >/dev/null 2>&1; then
+            logDebug "trust-manager-tls secret exists"
+            break
+        fi
+        sleep 1
+    done
+
     kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" trust-manager >&3
+    
+    # Wait for trust-manager pods to be ready (not just deployment available)
+    logInfo "waiting for trust-manager pods to be ready"
+    kubectlWrapper wait pods -n cert-manager -l app.kubernetes.io/name=trust-manager --for condition=Ready --timeout="${MINIZITI_TIMEOUT_SECS}s" >&3
+
 
     #
     ## Ensure OpenZiti Controller is Upgraded and Ready
