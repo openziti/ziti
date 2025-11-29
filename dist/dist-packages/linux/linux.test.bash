@@ -137,6 +137,14 @@ do
     --config "./dist/dist-packages/linux/nfpm-${PKG}.yaml"
 done
 
+# Ensure systemd service state is clean before installing packages
+for SVC in ziti-controller.service ziti-router.service
+do
+    sudo systemctl reset-failed "${SVC}" 2>/dev/null || true
+    sudo systemctl disable --now "${SVC}" 2>/dev/null || true
+    sudo systemctl clean --what=state "${SVC}" 2>/dev/null || true
+done
+
 sudo dpkg --install "${TMPDIR}/openziti_"*.deb
 sudo dpkg --install "${TMPDIR}/openziti-"{controller,router}_*.deb
 
