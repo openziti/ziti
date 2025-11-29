@@ -1,4 +1,4 @@
-name: mattermost-ziti-webhook
+name: mattermost-ziti-py-webhook
 on:
   issues:
   issue_comment:
@@ -20,7 +20,7 @@ on:
 jobs:
   send-notifications:
     runs-on: ubuntu-24.04
-    name: POST Webhook
+    name: POST Webhook with Python
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: openziti/ziti-mattermost-action-py@v1

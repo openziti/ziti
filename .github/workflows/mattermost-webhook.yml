@@ -1,4 +1,4 @@
-name: mattermost-ziti-webhook
+name: mattermost-ziti-nodejs-webhook
 on:
   create:
   delete:
@@ -12,10 +12,10 @@ on:
   release:
 
 jobs:
-  mattermost-ziti-webhook:
+  mattermost-ziti-nodejs-webhook:
     continue-on-error: true
     runs-on: ubuntu-24.04
-    name: POST Webhook
+    name: POST Webhook with NodeJS
     if: github.repository_owner == 'openziti' && github.actor != 'dependabot[bot]'
     env:
       ZITI_LOG: 99
