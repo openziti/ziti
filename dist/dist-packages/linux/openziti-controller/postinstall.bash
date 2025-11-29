@@ -17,6 +17,8 @@ upgrade() {
 
 commonActions() {
   loadEnvFile
+  # create the controller share directory for agent.sock and other shared files
+  mkdir -p /opt/openziti/share/controller
 }
 
 makeEmptyRestrictedFile() {
