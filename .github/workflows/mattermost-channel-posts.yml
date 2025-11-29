@@ -1,46 +1,65 @@
 name: mattermost-ziti-py-webhook
 on:
+  create:
+  delete:
   issues:
   issue_comment:
   pull_request_review:
-    types: [ submitted ]
+    types:
+      - submitted
   pull_request_review_comment:
   pull_request:
-    types: [ opened, reopened, ready_for_review, closed ]
-  fork:
+    types:
+      - opened
+      - reopened
   push:
-    tags:
-      - '*'
+  fork:
   release:
-    types: [ released ]
+    types:
+      - released
   workflow_dispatch:
-  watch:
-    types: [ started ]
+
+permissions:
+  contents: read
 
 jobs:
   send-notifications:
     runs-on: ubuntu-24.04
     name: POST Webhook with Python
-    if: github.actor != 'dependabot[bot]'
+    env:
+      # filter out uninteresting events
+      IS_INTERESTING: ${{ github.event_name != 'pull_request_review' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') }}
     steps:
-      - uses: openziti/ziti-mattermost-action-py@v1
-        if: |
-          github.repository_owner == 'openziti'
-          && ((github.event_name != 'pull_request_review')
-          || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
+      - name: Notify dev-notifications channel
+        uses: openziti/ziti-mattermost-action-py@v1
+        if: ${{ env.IS_INTERESTING == 'true' && secrets.ZHOOK_URL_DEV_NOTIFICATIONS != '' && secrets.ZITI_MATTERMOST_IDENTITY != '' }}
         with:
+          # Identity JSON or Base64 encoded JSON
           zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-          webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
-          eventJson: ${{ toJson(github.event) }}
-          senderUsername: "GitHubZ"
 
-      - uses: openziti/ziti-mattermost-action-py@v1
-        if: |
-          github.repository_owner == 'openziti'
-          && ((github.event_name != 'pull_request_review')
-          || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-        with:
-          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-          webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
+          # http://<ziti service intercept address>/hooks/<incoming webhook secret token>
+          # http://mattermost.ziti.internal:80/hooks/asdflkhjasdflkhjasdflkhjasdflkhj
+          webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
+
+          # Event JSON or Base64 encoded JSON
           eventJson: ${{ toJson(github.event) }}
-          senderUsername: "GitHubZ"
+
+          # Sender username to spoof in Mattermost
+          senderUsername: GitHubZ
+
+      - name: Notify github-sig-core channel
+        uses: openziti/ziti-mattermost-action-py@v1
+        if: ${{ env.IS_INTERESTING == 'true' && secrets.ZHOOK_URL_GITHUB_SIG_CORE != '' && secrets.ZITI_MATTERMOST_IDENTITY != '' }}
+        with:
+          # Identity JSON or Base64 encoded JSON
+          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+
+          # http://<ziti service intercept address>/hooks/<incoming webhook secret token>
+          # http://mattermost.ziti.internal:80/hooks/asdflkhjasdflkhjasdflkhjasdflkhj
+          webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
+
+          # Event JSON or Base64 encoded JSON
+          eventJson: ${{ toJson(github.event) }}
+
+          # Sender username to spoof in Mattermost
+          senderUsername: GitHubZ
