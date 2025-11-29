@@ -28,19 +28,19 @@ jobs:
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
           || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-      with:
-        zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
-        eventJson: ${{ toJson(github.event) }}
+        with:
+          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+          webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
+          eventJson: ${{ toJson(github.event) }}
           senderUsername: "GitHubZ"
 
-    - uses: openziti/ziti-mattermost-action-py@v1
+      - uses: openziti/ziti-mattermost-action-py@v1
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
           || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-      with:
-        zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
-        eventJson: ${{ toJson(github.event) }}
+        with:
+          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+          webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
+          eventJson: ${{ toJson(github.event) }}
           senderUsername: "GitHubZ"
