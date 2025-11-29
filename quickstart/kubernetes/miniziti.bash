@@ -811,14 +811,10 @@ main(){
     done
 
     kubectlWrapper wait deployments -n cert-manager --for condition=Available --timeout="${MINIZITI_TIMEOUT_SECS}s" trust-manager >&3
-    # Wait for trust-manager service to have endpoints to avoid connection refused on webhook
-    logInfo "waiting for trust-manager service endpoints"
-    for ((i=0; i<MINIZITI_TIMEOUT_SECS; i++)); do
-        if kubectlWrapper get endpoints -n cert-manager trust-manager -o jsonpath="{.subsets[*].addresses[*].ip}" 2>/dev/null | grep -q .; then
-            break
-        fi
-        sleep 1
-    done
+    
+    # Wait for trust-manager pods to be ready (not just deployment available)
+    logInfo "waiting for trust-manager pods to be ready"
+    kubectlWrapper wait pods -n cert-manager -l app.kubernetes.io/name=trust-manager --for condition=Ready --timeout="${MINIZITI_TIMEOUT_SECS}s" >&3
 
 
     #
