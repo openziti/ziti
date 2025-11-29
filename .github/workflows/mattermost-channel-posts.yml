@@ -1,4 +1,4 @@
-name: mattermost-ziti-webhook
+name: mattermost-ziti-py-webhook
 on:
   issues:
   issue_comment:
@@ -20,7 +20,7 @@ on:
 jobs:
   send-notifications:
     runs-on: ubuntu-24.04
-    name: POST Webhook
+    name: POST Webhook with Python
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: openziti/ziti-mattermost-action-py@v1
@@ -28,19 +28,19 @@ jobs:
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
           || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-      with:
-        zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
-        eventJson: ${{ toJson(github.event) }}
+        with:
+          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+          webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
+          eventJson: ${{ toJson(github.event) }}
           senderUsername: "GitHubZ"
 
-    - uses: openziti/ziti-mattermost-action-py@v1
+      - uses: openziti/ziti-mattermost-action-py@v1
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
           || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-      with:
-        zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
-        eventJson: ${{ toJson(github.event) }}
+        with:
+          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+          webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
+          eventJson: ${{ toJson(github.event) }}
           senderUsername: "GitHubZ"
