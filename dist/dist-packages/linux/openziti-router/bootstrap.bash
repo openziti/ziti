@@ -206,8 +206,8 @@ promptEnrollToken() {
         echo "DEBUG: not prompting for token because identity exists in ${ZITI_HOME}/${ZITI_ROUTER_IDENTITY_CERT}" >&3
     # prompt for enrollment token if interactive, unless already answered
     else
-        if ! [[ "${ZITI_BOOTSTRAP_ENROLLMENT:-}" == true ]]; then
-            echo "WARN: ZITI_BOOTSTRAP_ENROLLMENT is not true in ${SVC_ENV_FILE}, not enrolling" >&2
+        if ! [[ "${ZITI_BOOTSTRAP_ENROLLMENT:-}" =~ ^(true|force)$ ]]; then
+            echo "WARN: ZITI_BOOTSTRAP_ENROLLMENT is not 'true' or 'force' in ${SVC_ENV_FILE}, not enrolling" >&2
         # do nothing if enrollment token is already defined in env file
         elif [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
             echo "DEBUG: ZITI_ENROLL_TOKEN is defined in ${BOOT_ENV_FILE}" >&3
