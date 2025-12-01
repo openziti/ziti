@@ -37,7 +37,7 @@ jobs:
           - deb
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Go
         id: setup-go
@@ -66,7 +66,7 @@ jobs:
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
           path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}
@@ -125,7 +125,7 @@ jobs:
             rpm: x86_64
     steps:
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: "*-${{ matrix.arch.gox }}-${{ matrix.distro.type }}"
           merge-multiple: true
@@ -183,7 +183,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Go
         id: setup-go
@@ -226,7 +226,7 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Go
         id: setup-go
@@ -245,7 +245,7 @@ jobs:
       ZITI_NAMESPACE: zititest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Go
         id: setup-go

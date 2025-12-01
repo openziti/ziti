@@ -48,10 +48,10 @@ jobs:
       NFPM_VERSION: "2.38.0"
     steps:
       - name: Checkout Workspace
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
@@ -80,7 +80,7 @@ jobs:
         shell: bash
 
       - name: upload package artifact to build summary page
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
           path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}

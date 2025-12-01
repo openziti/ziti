@@ -39,7 +39,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
@@ -75,7 +75,7 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -96,7 +96,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
@@ -108,7 +108,7 @@ jobs:
     container: openziti/ziti-builder:v2  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -135,7 +135,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -180,7 +180,7 @@ jobs:
           
       - name: Upload CLI test logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cli-test-logs-${{ github.run_id }}
           path: '**/ctrl-std*log'
@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -254,7 +254,7 @@ jobs:
           $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: logs-${{ github.run_id }}
@@ -318,7 +318,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -378,7 +378,7 @@ jobs:
           $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: logs-ha-${{ github.run_id }}
@@ -453,7 +453,7 @@ jobs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -469,21 +469,21 @@ jobs:
         uses: openziti/ziti-ci@v1
 
       - name: Download linux release artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
 
       - name: Download darwin release artifact
         if: needs.mac-os-build.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
         if: needs.windows-build.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
