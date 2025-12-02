@@ -2,12 +2,13 @@ package db
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"sort"
 )
 
 type PolicyType string
@@ -368,14 +369,18 @@ func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id stri
 	if err != nil {
 		return err
 	}
-	policy.IdentityRoles = nil
-	policy.ServiceRoles = nil
-	policy.PostureCheckRoles = nil
 
-	err = store.Update(ctx, policy, nil)
-	if err != nil {
-		return fmt.Errorf("failure while clearing policy before delete: %w", err)
+	if len(policy.IdentityRoles) != 0 || len(policy.ServiceRoles) != 0 || len(policy.PostureCheckRoles) != 0 {
+		policy.IdentityRoles = nil
+		policy.ServiceRoles = nil
+		policy.PostureCheckRoles = nil
+
+		err = store.Update(ctx, policy, nil)
+		if err != nil {
+			return fmt.Errorf("failure while clearing policy before delete: %w", err)
+		}
 	}
+
 	return store.BaseStore.DeleteById(ctx, id)
 }
 

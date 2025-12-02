@@ -168,8 +168,7 @@ func (c *Controller) Initialize() {
 
 	c.initializeAuthModules()
 
-	//after InitPersistence
-	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
+	syncStrategy := sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
 		MaxQueuedRouterConnects:  100,
 		MaxQueuedClientHellos:    1000,
 		RouterConnectWorkerCount: 10,
@@ -177,7 +176,12 @@ func (c *Controller) Initialize() {
 		RouterTxBufferSize:       100,
 		HelloSendTimeout:         10 * time.Second,
 		SessionChunkSize:         100,
-	}))
+	})
+
+	//after InitPersistence
+	c.AppEnv.Broker = env.NewBroker(c.AppEnv, syncStrategy)
+
+	syncStrategy.Start()
 
 	servicePolicyEnforcer := policy.NewServicePolicyEnforcer(c.AppEnv, policyAppWanFreq)
 	if err := c.policyEngine.AddOperation(servicePolicyEnforcer); err != nil {

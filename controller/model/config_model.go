@@ -68,7 +68,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Config, error) {
 	return &db.Config{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
-		Type:          entity.TypeId,
+		TypeId:        entity.TypeId,
 		Data:          entity.Data,
 	}, nil
 }
@@ -87,7 +87,7 @@ func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.Field
 func (entity *Config) fillFrom(_ Env, _ *bbolt.Tx, boltConfig *db.Config) error {
 	entity.FillCommon(boltConfig)
 	entity.Name = boltConfig.Name
-	entity.TypeId = boltConfig.Type
+	entity.TypeId = boltConfig.TypeId
 	entity.Data = boltConfig.Data
 	return nil
 }

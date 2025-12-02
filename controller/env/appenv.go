@@ -53,6 +53,7 @@ import (
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
@@ -515,6 +516,10 @@ func (ae *AppEnv) GetId() string {
 	return ae.HostController.GetNetwork().GetAppId()
 }
 
+func (ae *AppEnv) HandleServicePolicyChange(ctx boltz.MutateContext, policyChange *edge_ctrl_pb.DataState_ServicePolicyChange) {
+	ae.Broker.GetRouterSyncStrategy().HandleServicePolicyChange(ctx, policyChange)
+}
+
 type HostController interface {
 	GetConfig() *config.Config
 	GetEnv() *AppEnv
@@ -528,6 +533,7 @@ type HostController interface {
 	Identity() identity.Identity
 	IsRaftEnabled() bool
 	IsRaftLeader() bool
+	GetStartRaftIndex() uint64
 	GetDb() boltz.Db
 	GetCommandDispatcher() command.Dispatcher
 	GetPeerSigners() []*x509.Certificate

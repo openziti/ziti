@@ -47,6 +47,7 @@ type RouterEnv interface {
 	GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
 	GetRouterDataModel() *common.RouterDataModel
+	WithRouterDataModel(f func(*common.RouterDataModel) error) error
 	GetConnectEventsConfig() *ConnectEventsConfig
 	GetRouterDataModelEnabledConfig() *config.Value[bool]
 	IsRouterDataModelRequired() bool

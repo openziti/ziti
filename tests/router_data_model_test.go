@@ -1,4 +1,4 @@
-//go:build dataflow
+//go:build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -20,6 +20,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -75,12 +76,14 @@ func (self *testSubscriber) NotifyServiceChange(state *common.IdentityState, ser
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	self.serviceEvents <- &serviceEvent{
-		state:     state,
-		service:   service,
-		eventType: eventType,
+	if eventType != common.ServiceDialPoliciesChanged && eventType != common.ServiceBindPoliciesChanged {
+		self.serviceEvents <- &serviceEvent{
+			state:     state,
+			service:   service,
+			eventType: eventType,
+		}
+		self.currentState = state
 	}
-	self.currentState = state
 }
 
 func (self *testSubscriber) getNextIdentityEvent(eventType common.IdentityEventType) *identityEvent {
@@ -148,6 +151,16 @@ func (self *testSubscriber) getNextServiceEventOfType(eventType common.ServiceEv
 	return nil
 }
 
+func (self *testSubscriber) ensureNoEvents(timeout time.Duration) {
+	select {
+	case evt := <-self.identityEvents:
+		self.ctx.Failf("unexpected identity event", "event type: %s", evt.eventType.String())
+	case evt := <-self.serviceEvents:
+		self.ctx.Failf("unexpected service event", "event type: %s", evt.eventType.String())
+	case <-time.After(timeout):
+	}
+}
+
 func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
@@ -165,7 +178,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.EventFullState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -175,7 +188,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 
 	policy1 := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1), s())
 
-	svcEvent := sub.getNextServiceEvent(common.EventAccessGained)
+	svcEvent := sub.getNextServiceEvent(common.ServiceAccessGainedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(false, svcEvent.service.BindAllowed)
@@ -190,7 +203,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	// add a bind policy to ensure and make sure the service change shows up
 	policy2 = ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1), s())
 
-	svcEvent = sub.getNextServiceEvent(common.EventUpdated)
+	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(true, svcEvent.service.BindAllowed)
@@ -198,13 +211,13 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	// remove the initial policy, dial should now be disabled
 	ctx.AdminManagementSession.requireDeleteEntity(policy1)
 
-	svcEvent = sub.getNextServiceEvent(common.EventUpdated)
+	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Equal(false, svcEvent.service.DialAllowed)
 	ctx.Equal(true, svcEvent.service.BindAllowed)
 
 	service2 := ctx.AdminManagementSession.requireNewService(s(serviceRole2), nil)
-	svcEvent = sub.getNextServiceEvent(common.EventAccessGained)
+	svcEvent = sub.getNextServiceEvent(common.ServiceAccessGainedEvent)
 	ctx.Equal(service2.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(true, svcEvent.service.BindAllowed)
@@ -212,17 +225,17 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	// testing losing access via loss of policy
 	ctx.AdminManagementSession.requireDeleteEntity(policy2)
 
-	svcEvent = sub.getNextServiceEventOfType(common.EventAccessRemoved)
+	svcEvent = sub.getNextServiceEventOfType(common.ServiceAccessLostEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 
-	svcEvent = sub.getNextServiceEventOfType(common.EventUpdated)
+	svcEvent = sub.getNextServiceEventOfType(common.ServiceUpdatedEvent)
 	ctx.Equal(service2.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(false, svcEvent.service.BindAllowed)
 
 	// testing losing access via service being removed
 	ctx.AdminManagementSession.requireDeleteEntity(service2)
-	svcEvent = sub.getNextServiceEvent(common.EventAccessRemoved)
+	svcEvent = sub.getNextServiceEvent(common.ServiceAccessLostEvent)
 	ctx.Equal(service2.Id, svcEvent.service.Service.Id)
 }
 
@@ -243,7 +256,7 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.EventFullState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -278,18 +291,16 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 
 	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1), s())
 
-	svcEvent := sub.getNextServiceEvent(common.EventAccessGained)
+	svcEvent := sub.getNextServiceEvent(common.ServiceAccessGainedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(false, svcEvent.service.BindAllowed)
 	ctx.NotNil(svcEvent.service.Configs[ct.Name])
-	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].ConfigType.Id)
-	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].ConfigType.Name)
-	ctx.Equal(cfg.Id, svcEvent.service.Configs[ct.Name].Config.Id)
-	ctx.Equal(cfg.Name, svcEvent.service.Configs[ct.Name].Config.Name)
+	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].TypeId)
+	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].TypeName)
 
 	configData := map[string]interface{}{}
-	ctx.NoError(json.Unmarshal([]byte(svcEvent.service.Configs[ct.Name].Config.DataJson), &configData))
+	ctx.NoError(json.Unmarshal([]byte(svcEvent.service.Configs[ct.Name].DataJson), &configData))
 	ctx.Equal(float64(22), configData["port"])
 	ctx.Equal("ssh.globotech.bizniz", configData["hostname"])
 
@@ -320,14 +331,12 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	ct.Name = eid.New()
 	ctx.AdminManagementSession.requireUpdateEntity(ct)
 
-	svcEvent = sub.getNextServiceEvent(common.EventUpdated)
+	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Nil(svcEvent.service.Configs[oldConfigTypeName])
 	ctx.NotNil(svcEvent.service.Configs[ct.Name])
-	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].ConfigType.Id)
-	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].ConfigType.Name)
-	ctx.Equal(cfg.Id, svcEvent.service.Configs[ct.Name].Config.Id)
-	ctx.Equal(cfg.Name, svcEvent.service.Configs[ct.Name].Config.Name)
+	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].TypeId)
+	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].TypeName)
 
 	cfg.Data = map[string]interface{}{
 		"port":     float64(33),
@@ -335,16 +344,14 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	}
 	ctx.AdminManagementSession.requireUpdateEntity(cfg)
 
-	svcEvent = sub.getNextServiceEvent(common.EventUpdated)
+	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.NotNil(svcEvent.service.Configs[ct.Name])
-	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].ConfigType.Id)
-	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].ConfigType.Name)
-	ctx.Equal(cfg.Id, svcEvent.service.Configs[ct.Name].Config.Id)
-	ctx.Equal(cfg.Name, svcEvent.service.Configs[ct.Name].Config.Name)
+	ctx.Equal(ct.Id, svcEvent.service.Configs[ct.Name].TypeId)
+	ctx.Equal(ct.Name, svcEvent.service.Configs[ct.Name].TypeName)
 
 	configData = map[string]interface{}{}
-	ctx.NoError(json.Unmarshal([]byte(svcEvent.service.Configs[ct.Name].Config.DataJson), &configData))
+	ctx.NoError(json.Unmarshal([]byte(svcEvent.service.Configs[ct.Name].DataJson), &configData))
 	ctx.Equal(float64(33), configData["port"])
 	ctx.Equal("fizzy.globotech.bizniz", configData["hostname"])
 }
@@ -366,7 +373,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.EventFullState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -389,12 +396,12 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	postureCheckRole2 := eid.New()
 	sp := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1), s("#"+identityRole1), s("#"+postureCheckRole1, "#"+postureCheckRole2))
 
-	svcEvent := sub.getNextServiceEvent(common.EventAccessGained)
+	svcEvent := sub.getNextServiceEvent(common.ServiceAccessGainedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
 	ctx.Equal(true, svcEvent.service.DialAllowed)
 	ctx.Equal(false, svcEvent.service.BindAllowed)
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(1, len(idEvent.state.PostureChecks))
 	testPostureCheck := idEvent.state.PostureChecks[postureCheck1Id]
 	ctx.NotNil(testPostureCheck)
@@ -413,7 +420,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	}, nil)
 	ctx.NoError(err)
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(1, len(idEvent.state.PostureChecks))
 	testPostureCheck = idEvent.state.PostureChecks[postureCheck1Id]
 	ctx.NotNil(testPostureCheck)
@@ -435,7 +442,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.NoError(err)
 	postureCheck2Id := resp.Payload.Data.ID
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(2, len(idEvent.state.PostureChecks))
 	testPostureCheck = idEvent.state.PostureChecks[postureCheck1Id]
 	ctx.NotNil(testPostureCheck)
@@ -451,11 +458,13 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.Equal(1, len(subType.Mac.MacAddresses))
 	ctx.Equal(postureCheck2.MacAddresses[0], subType.Mac.MacAddresses[0])
 
+	fmt.Println("remove one of the posture checks")
+
 	// remove one of the posture checks from the policy
 	sp.postureCheckRoles = s("#" + postureCheckRole2)
 	ctx.AdminManagementSession.requireUpdateEntity(sp)
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(1, len(idEvent.state.PostureChecks))
 	testPostureCheck = idEvent.state.PostureChecks[postureCheck2Id]
 	ctx.NotNil(testPostureCheck)
@@ -464,20 +473,24 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.Equal(1, len(subType.Mac.MacAddresses))
 	ctx.Equal(postureCheck2.MacAddresses[0], subType.Mac.MacAddresses[0])
 
+	fmt.Println("adding second posture check back")
+
 	// add it back
 	sp.postureCheckRoles = s("#"+postureCheckRole1, "#"+postureCheckRole2)
 	ctx.AdminManagementSession.requireUpdateEntity(sp)
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(2, len(idEvent.state.PostureChecks))
+
+	fmt.Println("delete the service")
 
 	// delete the service
 	ctx.AdminManagementSession.requireDeleteEntity(service1)
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
-	service1 = ctx.AdminManagementSession.requireNewService(s(serviceRole1), nil)
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	_ = ctx.AdminManagementSession.requireNewService(s(serviceRole1), nil)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(2, len(idEvent.state.PostureChecks))
 	ctx.NotNil(idEvent.state.PostureChecks[postureCheck1Id])
 	ctx.NotNil(idEvent.state.PostureChecks[postureCheck2Id])
@@ -488,12 +501,68 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	}, nil)
 	ctx.NoError(err)
 
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(1, len(idEvent.state.PostureChecks))
 	ctx.NotNil(idEvent.state.PostureChecks[postureCheck2Id])
 
 	// delete the service policy
 	ctx.AdminManagementSession.requireDeleteEntity(sp)
-	idEvent = sub.getNextIdentityEvent(common.EventPostureChecksUpdated)
+	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
+}
+
+func Test_RouterDataModel_DataModelReplacement(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	router := ctx.CreateEnrollAndStartHAEdgeRouter()
+
+	sub := newTestSubscriber(ctx)
+
+	identityRole1 := eid.New()
+	identityRole2 := eid.New()
+
+	testIdentity, _ := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false, identityRole1, identityRole2)
+	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
+
+	// test that initial event shows up
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
+	ctx.Equal(0, len(idEvent.state.Services))
+	ctx.Equal(0, len(idEvent.state.PostureChecks))
+
+	serviceRole1 := eid.New()
+	serviceRole2 := eid.New()
+	service1 := ctx.AdminManagementSession.requireNewService(s(serviceRole1), nil)
+
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1), s())
+
+	svcEvent := sub.getNextServiceEvent(common.ServiceAccessGainedEvent)
+	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
+	ctx.Equal(true, svcEvent.service.DialAllowed)
+	ctx.Equal(false, svcEvent.service.BindAllowed)
+
+	// add and remove a policy to ensure no extraneous events are created
+	policy2 := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1), s())
+	ctx.AdminManagementSession.requireDeleteEntity(policy2)
+
+	// add a policy for later
+	_ = ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole2), s("#"+identityRole1), s())
+
+	// add a bind policy to ensure and make sure the service change shows up
+	_ = ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1), s())
+
+	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
+	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
+	ctx.Equal(true, svcEvent.service.DialAllowed)
+	ctx.Equal(true, svcEvent.service.BindAllowed)
+
+	fmt.Println("replacing data model")
+	dataState := router.GetRouterDataModel().GetDataState()
+	updatedRouterDataModel := common.NewReceiverRouterDataModelFromDataState(dataState, router.GetCloseNotify())
+	router.GetStateManager().SetRouterDataModel(updatedRouterDataModel, false)
+
+	// time.Sleep(2 * time.Minute)
+	sub.ensureNoEvents(time.Second)
 }

@@ -38,7 +38,7 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 
 	newState := request.State
 	model := common.NewBareRouterDataModel()
-	model.WhileLocked(func(u uint64, b bool) {
+	model.WhileLocked(func(u uint64) {
 		for _, event := range newState.Events {
 			model.Handle(newState.EndIndex, event)
 		}
@@ -46,6 +46,7 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 	})
 
 	current := self.state.RouterDataModel()
+	model.InheritLocalData(current)
 
 	response := &edge_ctrl_pb.RouterDataModelValidateResponse{
 		OrigEntityCounts: model.GetEntityCounts(),
@@ -64,7 +65,7 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 	current.Validate(model, reportedF)
 
 	if len(response.Diffs) > 0 && request.Fix {
-		model = common.NewReceiverRouterDataModelFromExisting(model, RouterDataModelListerBufferSize, self.state.GetEnv().GetCloseNotify())
+		model = common.NewReceiverRouterDataModelFromExisting(model, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, true)
 	}
 

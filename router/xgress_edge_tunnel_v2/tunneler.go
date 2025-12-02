@@ -118,7 +118,11 @@ func (self *tunneler) Start() error {
 	self.serviceListener = intercept.NewServiceListener(self.interceptor, resolver)
 	self.serviceListener.HandleProviderReady(self.fabricProvider)
 
-	if err = self.env.GetRouterDataModel().SubscribeToIdentityChanges(self.env.GetRouterId().Token, self, true); err != nil {
+	err = self.env.WithRouterDataModel(func(model *common.RouterDataModel) error {
+		return model.SubscribeToIdentityChanges(self.env.GetRouterId().Token, self, true)
+	})
+
+	if err != nil {
 		return err
 	}
 
@@ -145,16 +149,16 @@ func (self *tunneler) Close() error {
 }
 
 func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType common.IdentityEventType) {
-	if eventType == common.EventIdentityDeleted || state.Identity.Disabled {
+	if eventType == common.IdentityDeletedEvent || state.Identity.Disabled {
 		pfxlog.Logger().Infof("identity deleted or disabled %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
-	} else if eventType == common.EventFullState || eventType == common.EventIdentityUpdated {
+	} else if eventType == common.IdentityFullStateState || eventType == common.IdentityUpdatedEvent {
 		pfxlog.Logger().Infof("identity updated %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
 		for _, svc := range state.Services {
-			self.NotifyServiceChange(state, svc, common.EventAccessGained)
+			self.NotifyServiceChange(state, svc, common.ServiceAccessGainedEvent)
 		}
 	}
 }
@@ -163,11 +167,11 @@ func (self *tunneler) NotifyServiceChange(state *common.IdentityState, service *
 	pfxlog.Logger().Infof("service changed for %s. service %s was %s", state.Identity.Name, service.Service.Name, eventType)
 	tunSvc := self.mapRdmServiceToRest(service)
 	switch eventType {
-	case common.EventAccessGained:
+	case common.ServiceAccessGainedEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceAdded, tunSvc)
-	case common.EventUpdated:
+	case common.ServiceUpdatedEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceChanged, tunSvc)
-	case common.EventAccessRemoved:
+	case common.ServiceAccessLostEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, tunSvc)
 	}
 }
@@ -187,11 +191,11 @@ func (self *tunneler) mapRdmServiceToRest(svc *common.IdentityService) *rest_mod
 
 	for cfgId, cfg := range svc.Configs {
 		cfgData := map[string]interface{}{}
-		if err := json.Unmarshal([]byte(cfg.Config.DataJson), &cfgData); err != nil {
+		if err := json.Unmarshal([]byte(cfg.DataJson), &cfgData); err != nil {
 			pfxlog.Logger().WithError(err).WithField("configId", cfgId).Error("failed to unmarshal config data")
 		} else {
 			result.Configs = append(result.Configs, cfgId)
-			result.Config[cfg.ConfigType.Name] = cfgData
+			result.Config[cfg.TypeName] = cfgData
 		}
 	}
 

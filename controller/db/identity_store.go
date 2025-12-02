@@ -17,6 +17,7 @@
 package db
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -289,9 +290,9 @@ func (store *identityStoreImpl) fillServiceConfig(entity *Identity, entityBucket
 			if serviceBucket != nil {
 				cursor := serviceBucket.Cursor()
 				for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
-					configType := string(k)
+					configTypeId := string(k)
 					configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
-					serviceMap[configType] = configId
+					serviceMap[configTypeId] = configId
 				}
 			}
 			if len(serviceMap) > 0 {
@@ -419,16 +420,16 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 
 		cursor := serviceBucket.Cursor()
 		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
-			configType := string(k)
+			configTypeId := string(k)
 			configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
-			serviceMap[configType] = configId
+			serviceMap[configTypeId] = configId
 		}
 
 		serviceUpdated := false
 		updated, serviceFound := entity.ServiceConfigs[serviceId]
 
-		for configType, configId := range serviceMap {
-			newConfigId, configTypeFound := updated[configType]
+		for configTypeId, configId := range serviceMap {
+			newConfigId, configTypeFound := updated[configTypeId]
 			if !configTypeFound || configId != newConfigId {
 				// un-index old value
 				if err := store.stores.config.identityServicesLinks.RemoveCompoundLink(ctx.Tx(), configId, ss(entity.Id, serviceId)); err != nil {
@@ -438,16 +439,16 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 				serviceUpdated = true
 			}
 			if !configTypeFound {
-				serviceBucket.DeleteValue([]byte(configType))
+				serviceBucket.DeleteValue([]byte(configTypeId))
 			}
 		}
 
-		for configType, configId := range updated {
-			oldConfigId, ok := serviceMap[configType]
+		for configTypeId, configId := range updated {
+			oldConfigId, ok := serviceMap[configTypeId]
 			if !ok || configId != oldConfigId {
 				serviceUpdated = true
 				// set new value
-				serviceBucket.SetString(configType, configId, nil)
+				serviceBucket.SetString(configTypeId, configId, nil)
 
 				// index new value
 				if err := store.stores.config.identityServicesLinks.AddCompoundLink(ctx.Tx(), configId, ss(entity.Id, serviceId)); err != nil {
@@ -483,9 +484,9 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 		}
 
 		serviceBucket := configsBucket.GetOrCreateBucket(serviceId)
-		for configType, configId := range configMappings {
+		for configTypeId, configId := range configMappings {
 			// set new value
-			serviceBucket.SetString(configType, configId, nil)
+			serviceBucket.SetString(configTypeId, configId, nil)
 
 			// index new value
 			if err := store.stores.config.identityServicesLinks.AddCompoundLink(ctx.Tx(), configId, ss(entity.Id, serviceId)); err != nil {
@@ -572,6 +573,13 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		// Remove entity from IdentityRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolIdentityRoles); err != nil {
 			return err
+		}
+
+		if len(entity.RoleAttributes) != 0 {
+			entity.RoleAttributes = nil
+			if err := store.Update(ctx, entity, nil); err != nil {
+				return fmt.Errorf("could not clear role attributes for identity '%s' before deletion (%w)", id, err)
+			}
 		}
 	}
 

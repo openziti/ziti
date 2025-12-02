@@ -23,10 +23,17 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	transporttls "github.com/openziti/transport/v2/tls"
@@ -36,14 +43,8 @@ import (
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"math"
-	"net/url"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
@@ -78,6 +79,7 @@ const (
 	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
 
 	DefaultRouterDataModelEnabled            = true
+	MinRouterDataModelLogSize                = 10
 	DefaultRouterDataModelLogSize            = 10_000
 	DefaultRouterDataModelListenerBufferSize = 1000
 
@@ -699,12 +701,12 @@ func LoadConfig(path string) (*Config, error) {
 
 			if value, found := submap["logSize"]; found {
 				if val, ok := value.(int); ok {
-					if val < 0 {
-						return nil, errors.Wrapf(err, "failed to parse routerDataModel.logSize, must be >= 0 %v", value)
+					if val < MinRouterDataModelLogSize {
+						return nil, fmt.Errorf("invalid routerDataModel.logSize '%d', must be >= %d", val, MinRouterDataModelLogSize)
 					}
 					controllerConfig.RouterDataModel.LogSize = uint64(val)
 				} else {
-					return nil, errors.Wrapf(err, "failed to parse routerDataModel.logSize, should be int not value %T", value)
+					return nil, fmt.Errorf("failed to parse routerDataModel.logSize, must be type int, not type %T", value)
 				}
 			}
 

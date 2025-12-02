@@ -94,12 +94,11 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 			if supported, ok := msg.Headers.GetBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel)); ok && supported {
 				outMsg.Headers.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
 
-				if index, ok := h.stateManager.RouterDataModel().CurrentIndex(); ok {
-					outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
-				}
+				index := h.stateManager.RouterDataModel().CurrentIndex()
+				outMsg.Headers.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), index)
 			}
 
-			if err := outMsg.ReplyTo(msg).Send(ch); err != nil {
+			if err = outMsg.ReplyTo(msg).Send(ch); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not send client hello")
 			}
 			return

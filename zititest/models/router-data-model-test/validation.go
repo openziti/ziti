@@ -19,6 +19,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
+	"math"
+	"math/rand"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/go-openapi/runtime"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -35,13 +43,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"math"
-	"math/rand"
-	"slices"
-	"strings"
-	"sync"
-	"time"
 )
 
 type CtrlClients struct {
@@ -363,63 +364,7 @@ func (self *taskGenerationContext) generateConfigTasks() {
 	if scenarioCounter%3 == 0 && len(self.configs) > 2 { // only delete configs every third iteration
 		for i := 0; i < 2; i++ {
 			entityId := *self.configs[i].ID
-			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
-				return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
-			}))
-		}
-	}
-
-	// delete any configs used by config types to be deleted
-	if len(self.configTypesDeleted) > 0 {
-		for _, config := range self.configs {
-			if _, deleted := self.configsDeleted[*config.ID]; deleted {
-				continue
-			}
-			if _, deleted := self.configTypesDeleted[*config.ConfigTypeID]; deleted {
-				entityId := *config.ID
-				self.configsDeleted[entityId] = struct{}{}
-				self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
-					return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
-				}))
-			}
-		}
-	}
-
-	for i := 2; i < min(7, len(self.configs)); i++ {
-		entityId := *self.configs[i].ID
-		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.config", fmt.Sprintf("modify config %s", entityId), func() error {
-			entity := self.configs[i]
-			entity.Name = newId()
-			entity.Data = map[string]interface{}{
-				"hostname": fmt.Sprintf("https://%s.com", uuid.NewString()),
-				"protocol": func() string {
-					if rand.Int()%2 == 0 {
-						return "tcp"
-					}
-					return "udp"
-				}(),
-				"port": rand.Intn(32000),
-			}
-			return models.UpdateConfigFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
-		}))
-	}
-
-	if len(self.configTypes) > 0 {
-		createConfigCount := 25 - (len(self.configs) - len(self.configsDeleted)) // target 25 configs available
-		for i := 0; i < createConfigCount; i++ {
-			self.tasks = append(self.tasks, createNewConfig(self.ctrls.getRandomCtrl(), self.getConfigTypeId()))
-		}
-	}
-}
-
-func (self *taskGenerationContext) generatePostureCheckTasks() {
-	if self.err != nil {
-		return
-	}
-
-	if scenarioCounter%3 == 0 && len(self.configs) > 2 { // only delete configs every third iteration
-		for i := 0; i < 2; i++ {
-			entityId := *self.configs[i].ID
+			self.configsDeleted[entityId] = struct{}{}
 			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
 				return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
 			}))
@@ -535,7 +480,6 @@ func getServiceAndConfigChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.
 	ctx.loadEntities()
 	ctx.generateConfigTypeTasks()
 	ctx.generateConfigTasks()
-	ctx.generatePostureCheckTasks()
 	ctx.generateServiceTasks()
 
 	return ctx.getResults()
@@ -581,7 +525,7 @@ func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 	return result, nil
 }
 
-func getPostureTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
+func getPostureTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
 	entities, err := models.ListPostureChecks(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
 	if err != nil {
 		return nil, err

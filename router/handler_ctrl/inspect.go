@@ -142,9 +142,9 @@ func (context *inspectRequestContext) processLocal() {
 			}
 		} else if lc == "router-data-model" {
 			result := context.handler.env.GetRouterDataModel()
-			context.handleJsonResponse(requested, result)
+			context.handleJsonResponse(requested, result.ToMap())
 		} else if lc == "router-data-model-index" {
-			idx, _ := context.handler.env.GetRouterDataModel().CurrentIndex()
+			idx := context.handler.env.GetRouterDataModel().CurrentIndex()
 			data := map[string]any{
 				"timeline": context.handler.env.GetRouterDataModel().GetTimelineId(),
 				"index":    idx,

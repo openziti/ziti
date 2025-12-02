@@ -1,8 +1,9 @@
 package db
 
 import (
-	"context"
 	"fmt"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
@@ -12,14 +13,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type ServicePolicyEventsKeyType string
-
-const (
-	ServicePolicyEventsKey = ServicePolicyEventsKeyType("servicePolicyEvents")
-)
 
 type serviceEventHandler struct {
 	events []*ServiceEvent
@@ -63,7 +59,6 @@ type roleAttributeChangeContext struct {
 	denormLinkCollection  boltz.RefCountedLinkCollection
 	changeHandler         func(fromId []byte, toId []byte, add bool)
 	denormChangeHandler   func(fromId, toId []byte, add bool)
-	servicePolicyEvents   []*edge_ctrl_pb.DataState_ServicePolicyChange
 	errorz.ErrorHolder
 }
 
@@ -92,32 +87,31 @@ func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, servic
 	self.addServiceEvent(self.tx(), identityId, serviceId, eventType)
 }
 
+type PolicyChangeHandler interface {
+	HandleServicePolicyChange(ctx boltz.MutateContext, policyChange *edge_ctrl_pb.DataState_ServicePolicyChange)
+}
+
 func (self *roleAttributeChangeContext) notifyOfPolicyChangeEvent(
 	policyId []byte,
 	relatedId []byte,
 	relatedType edge_ctrl_pb.ServicePolicyRelatedEntityType,
 	isAdd bool) {
 
-	self.servicePolicyEvents = append(self.servicePolicyEvents, &edge_ctrl_pb.DataState_ServicePolicyChange{
-		PolicyId:          string(policyId),
-		RelatedEntityIds:  []string{string(relatedId)},
-		RelatedEntityType: relatedType,
-		Add:               isAdd,
-	})
-}
+	if policyChangeHandler, ok := self.mutateCtx.Context().Value(AppEnvKey).(PolicyChangeHandler); ok {
+		change := &edge_ctrl_pb.DataState_ServicePolicyChange{
+			PolicyId:          string(policyId),
+			RelatedEntityIds:  []string{string(relatedId)},
+			RelatedEntityType: relatedType,
+			Add:               isAdd,
+		}
 
-func (self *roleAttributeChangeContext) processServicePolicyEvents() {
-	if len(self.servicePolicyEvents) > 0 {
-		self.mutateCtx.UpdateContext(func(stateCtx context.Context) context.Context {
-			eventSlice := self.servicePolicyEvents
-			currentValue := stateCtx.Value(ServicePolicyEventsKey)
-			if currentValue != nil {
-				currentSlice := currentValue.([]*edge_ctrl_pb.DataState_ServicePolicyChange)
-				eventSlice = append(eventSlice, currentSlice...)
-			}
-			return context.WithValue(stateCtx, ServicePolicyEventsKey, eventSlice)
-		})
-		self.servicePolicyEvents = nil
+		action := func() {
+			policyChangeHandler.HandleServicePolicyChange(self.mutateCtx, change)
+		}
+
+		self.mutateCtx.Tx().OnCommit(action)
+	} else {
+		pfxlog.Logger().Error("app env not available while making service policy changes")
 	}
 }
 
@@ -218,8 +212,6 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 			})
 		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles, log)
 	}
-
-	ctx.processServicePolicyEvents()
 }
 
 func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol) {
@@ -257,10 +249,9 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	for ; cursor.IsValid(); cursor.Next() {
 		entityId := cursor.Current()
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx(), entityId)
-		match, change := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
-		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, change)
+		match, didChange := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
+		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, didChange)
 	}
-	ctx.processServicePolicyEvents()
 }
 
 func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []string) error {
@@ -303,8 +294,6 @@ func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRol
 			})
 		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles, log)
 	}
-
-	ctx.processServicePolicyEvents()
 }
 
 func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string, log *logrus.Entry) (bool, bool) {
