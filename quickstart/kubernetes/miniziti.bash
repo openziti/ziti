@@ -816,6 +816,21 @@ main(){
     logInfo "waiting for trust-manager pods to be ready"
     kubectlWrapper wait pods -n cert-manager -l app.kubernetes.io/name=trust-manager --for condition=Ready --timeout="${MINIZITI_TIMEOUT_SECS}s" >&3
 
+    # Wait for trust-manager webhook endpoint to actually be responsive
+    # Pod Ready doesn't guarantee the webhook service endpoint is registered and accepting connections
+    logInfo "waiting for trust-manager webhook to be responsive"
+    for ((i=0; i<MINIZITI_TIMEOUT_SECS; i++)); do
+        # Check if endpoints are registered for the trust-manager service
+        local endpoints
+        endpoints=$(kubectlWrapper get endpoints -n cert-manager trust-manager -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)
+        if [[ -n "${endpoints}" ]]; then
+            logDebug "trust-manager endpoints registered: ${endpoints}"
+            # Give the webhook a moment to fully initialize after endpoint registration
+            sleep 3
+            break
+        fi
+        sleep 1
+    done
 
     #
     ## Ensure OpenZiti Controller is Upgraded and Ready
