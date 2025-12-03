@@ -14,27 +14,28 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/raft"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/cluster"
-	"net/http"
 )
 
 func init() {
 	r := NewClusterRouter()
-	AddRouter(r)
+	env.AddRouter(r)
 }
 
 type ClusterRouter struct {
@@ -44,44 +45,45 @@ func NewClusterRouter() *ClusterRouter {
 	return &ClusterRouter{}
 }
 
-func (r *ClusterRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper RequestWrapper) {
-	fabricApi.ClusterClusterListMembersHandler = cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
-		return wrapper.WrapRequest(r.listMembers, params.HTTPRequest, "", "")
+func (r *ClusterRouter) Register(ae *env.AppEnv) {
+	ae.FabricApi.ClusterClusterListMembersHandler = cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
+		return ae.IsAllowed(r.listMembers, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	fabricApi.ClusterClusterMemberAddHandler = cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
-		return wrapper.WrapRequest(func(network *network.Network, rc api.RequestContext) {
-			r.addMember(network, rc, params)
-		}, params.HTTPRequest, "", "")
+	ae.FabricApi.ClusterClusterMemberAddHandler = cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.addMember(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	fabricApi.ClusterClusterMemberRemoveHandler = cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
-		return wrapper.WrapRequest(func(network *network.Network, rc api.RequestContext) {
-			r.removeMember(network, rc, params)
-		}, params.HTTPRequest, "", "")
+	ae.FabricApi.ClusterClusterMemberRemoveHandler = cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.removeMember(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	fabricApi.ClusterClusterTransferLeadershipHandler = cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
-		return wrapper.WrapRequest(func(network *network.Network, rc api.RequestContext) {
-			r.transferLeadership(network, rc, params)
-		}, params.HTTPRequest, "", "")
+	ae.FabricApi.ClusterClusterTransferLeadershipHandler = cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.transferLeadership(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }
 
-func (r *ClusterRouter) getClusterController(n *network.Network) *raft.Controller {
-	if n.Dispatcher == nil {
+func (r *ClusterRouter) getClusterController(ae *env.AppEnv) *raft.Controller {
+	dispatcher := ae.Managers.Dispatcher
+	if dispatcher == nil {
 		return nil
 	}
 
-	if ClusterController, ok := n.Dispatcher.(*raft.Controller); ok {
+	if ClusterController, ok := dispatcher.(*raft.Controller); ok {
 		return ClusterController
 	}
 
 	return nil
 }
 
-func (r *ClusterRouter) listMembers(n *network.Network, rc api.RequestContext) {
-	ClusterController := r.getClusterController(n)
+func (r *ClusterRouter) listMembers(ae *env.AppEnv, rc *response.RequestContext) {
+	ClusterController := r.getClusterController(ae)
 	if ClusterController != nil {
 		vals := make([]*rest_model.ClusterMemberListValue, 0)
 		members, err := ClusterController.ListMembers()
@@ -110,8 +112,8 @@ func (r *ClusterRouter) listMembers(n *network.Network, rc api.RequestContext) {
 	}
 }
 
-func (r *ClusterRouter) addMember(n *network.Network, rc api.RequestContext, params cluster.ClusterMemberAddParams) {
-	ClusterController := r.getClusterController(n)
+func (r *ClusterRouter) addMember(ae *env.AppEnv, rc *response.RequestContext, params cluster.ClusterMemberAddParams) {
+	ClusterController := r.getClusterController(ae)
 	if ClusterController != nil {
 		addr := *params.Member.Address
 
@@ -135,8 +137,8 @@ func (r *ClusterRouter) addMember(n *network.Network, rc api.RequestContext, par
 	}
 }
 
-func (r *ClusterRouter) removeMember(n *network.Network, rc api.RequestContext, params cluster.ClusterMemberRemoveParams) {
-	ClusterController := r.getClusterController(n)
+func (r *ClusterRouter) removeMember(ae *env.AppEnv, rc *response.RequestContext, params cluster.ClusterMemberRemoveParams) {
+	ClusterController := r.getClusterController(ae)
 	if ClusterController != nil {
 		req := &cmd_pb.RemovePeerRequest{
 			Id: *params.Member.ID,
@@ -157,8 +159,8 @@ func (r *ClusterRouter) removeMember(n *network.Network, rc api.RequestContext, 
 	}
 }
 
-func (r *ClusterRouter) transferLeadership(n *network.Network, rc api.RequestContext, params cluster.ClusterTransferLeadershipParams) {
-	ClusterController := r.getClusterController(n)
+func (r *ClusterRouter) transferLeadership(ae *env.AppEnv, rc *response.RequestContext, params cluster.ClusterTransferLeadershipParams) {
+	ClusterController := r.getClusterController(ae)
 	if ClusterController != nil {
 		req := &cmd_pb.TransferLeadershipRequest{
 			Id: params.Member.NewLeaderID,
