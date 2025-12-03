@@ -1891,8 +1891,6 @@ func (strategy *InstantStrategy) addToChangeSet(index uint64, event *edge_ctrl_p
 		strategy.changeSets[index] = changeSet
 	}
 	changeSet.Changes = append(changeSet.Changes, event)
-
-	fmt.Printf("ADDING TO CHANGESET (new? %v): %T - %s\n", !found, event, event.Summarize())
 }
 
 func (strategy *InstantStrategy) completeChangeSet(ctx boltz.MutateContext) {
