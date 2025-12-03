@@ -14,13 +14,13 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
-	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
-
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
@@ -29,44 +29,44 @@ const EntityNameCircuit = "circuits"
 var CircuitLinkFactory = NewCircuitLinkFactory()
 
 type CircuitLinkFactoryIml struct {
-	BasicLinkFactory
+	api_impl.BasicLinkFactory
 }
 
 func NewCircuitLinkFactory() *CircuitLinkFactoryIml {
 	return &CircuitLinkFactoryIml{
-		BasicLinkFactory: *NewBasicLinkFactory(EntityNameCircuit),
+		BasicLinkFactory: *api_impl.NewBasicLinkFactory(EntityNameCircuit),
 	}
 }
 
-func (factory *CircuitLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
+func (factory *CircuitLinkFactoryIml) Links(entity api_impl.LinkEntity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
-	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
-	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
+	links[api_impl.EntityNameTerminator] = factory.NewNestedLink(entity, api_impl.EntityNameTerminator)
+	links[api_impl.EntityNameService] = factory.NewNestedLink(entity, api_impl.EntityNameService)
 	return links
 }
 
-func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *model.Circuit) (*rest_model.CircuitDetail, error) {
+func MapCircuitToRestModel(ae *env.AppEnv, _ *response.RequestContext, circuit *model.Circuit) (interface{}, error) {
 	path := &rest_model.Path{}
 	for _, node := range circuit.Path.Nodes {
-		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
+		path.Nodes = append(path.Nodes, api_impl.ToEntityRef(node.Name, node, api_impl.RouterLinkFactory))
 	}
 	for _, link := range circuit.Path.Links {
-		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
+		path.Links = append(path.Links, api_impl.ToEntityRef(link.Id, link, api_impl.LinkLinkFactory))
 	}
 
 	var svcEntityRef *rest_model.EntityRef
-	if svc, _ := n.Service.Read(circuit.ServiceId); svc != nil {
-		svcEntityRef = ToEntityRef(svc.Name, svc, ServiceLinkFactory)
+	if svc, _ := ae.Managers.Service.Read(circuit.ServiceId); svc != nil {
+		svcEntityRef = api_impl.ToEntityRef(svc.Name, svc, api_impl.ServiceLinkFactory)
 	} else {
-		svcEntityRef = ToEntityRef("<deleted>", deletedEntity(circuit.ServiceId), ServiceLinkFactory)
+		svcEntityRef = api_impl.ToEntityRef("<deleted>", deletedEntity(circuit.ServiceId), api_impl.ServiceLinkFactory)
 	}
 
 	ret := &rest_model.CircuitDetail{
-		BaseEntity: BaseEntityToRestModel(circuit, CircuitLinkFactory),
+		BaseEntity: api_impl.BaseEntityToRestModel(circuit, CircuitLinkFactory),
 		ClientID:   circuit.ClientId,
 		Path:       path,
 		Service:    svcEntityRef,
-		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
+		Terminator: api_impl.ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, api_impl.TerminatorLinkFactory),
 	}
 
 	return ret, nil

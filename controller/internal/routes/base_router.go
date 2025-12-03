@@ -65,14 +65,19 @@ func modelToApi[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, ma
 	return apiEntities, nil
 }
 
-func ListWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[E],
+type EntityLister[E models.Entity] interface {
+	BasePreparedList(query ast.Query) (*models.EntityListResult[E], error)
+	GetSymbolTypes() ast.SymbolTypes
+}
+
+func ListWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	ListWithQueryF(ae, rc, lister, mapper, lister.BasePreparedList)
 }
 
 func ListWithQueryF[E models.Entity](ae *env.AppEnv,
 	rc *response.RequestContext,
-	lister models.EntityRetriever[E],
+	lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
 	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithQueryFAndCollector(ae, rc, lister, mapper, defaultToListEnvelope, qf)
@@ -90,14 +95,14 @@ type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) inte
 
 func ListWithQueryFAndCollector[E models.Entity](ae *env.AppEnv,
 	rc *response.RequestContext,
-	lister models.EntityRetriever[E],
+	lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
 	toEnvelope ApiListEnvelopeFactory,
 	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(lister.GetListStore())
+		query, err := queryOptions.getFullQuery(lister.GetSymbolTypes())
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +218,11 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 	rsp.RespondWithCreatedId(id, linkFactory.SelfLinkFromId(id))
 }
 
-func DetailWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever[E],
+type EntityRetriever[T models.Entity] interface {
+	BaseLoad(id string) (T, error)
+}
+
+func DetailWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, loader EntityRetriever[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		entity, err := loader.BaseLoad(id)

@@ -17,10 +17,11 @@
 package api_impl
 
 import (
+	"path"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/rest_model"
-	"path"
 )
 
 func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_model.BaseEntity {
@@ -91,7 +92,7 @@ func (factory *BasicLinkFactory) Links(entity LinkEntity) rest_model.Links {
 	}
 }
 
-func (factory BasicLinkFactory) NewNestedLink(entity LinkEntity, elem ...string) rest_model.Link {
+func (factory *BasicLinkFactory) NewNestedLink(entity LinkEntity, elem ...string) rest_model.Link {
 	elem = append([]string{factory.SelfUrlString(entity.GetId())}, elem...)
 	//path.Join will remove the ./ prefix in its "clean" operation
 	return NewLink("./" + path.Join(elem...))

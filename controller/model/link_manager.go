@@ -17,6 +17,10 @@
 package model
 
 import (
+	"math"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
@@ -25,9 +29,6 @@ import (
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/orcaman/concurrent-map/v2"
-	"math"
-	"sync"
-	"time"
 )
 
 type LinkManager struct {

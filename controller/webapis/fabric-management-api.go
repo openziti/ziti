@@ -19,7 +19,9 @@ package webapis
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/go-openapi/loads"
+	"net/http"
+	"strings"
+
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -32,11 +34,8 @@ import (
 	"github.com/openziti/ziti/controller/handler_mgmt"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_client"
-	"github.com/openziti/ziti/controller/rest_server"
 	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/xmgmt"
-	"net/http"
-	"strings"
 )
 
 const (
@@ -74,14 +73,6 @@ func (factory *FabricManagementApiFactory) Binding() string {
 }
 
 func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	managementSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
-	if err != nil {
-		pfxlog.Logger().Fatalln(err)
-	}
-
-	fabricAPI := operations.NewZitiFabricAPI(managementSpec)
-	fabricAPI.ServeError = api_impl.ServeError
-
 	if requestWrapper == nil {
 		requestWrapper = &FabricRequestWrapper{
 			nodeId:  factory.nodeId,
@@ -90,10 +81,10 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 	}
 
 	for _, router := range api_impl.Routers {
-		router.Register(fabricAPI, requestWrapper)
+		router.Register(factory.env.FabricApi, requestWrapper)
 	}
 
-	managementApiHandler, err := NewFabricManagementApiHandler(fabricAPI, factory.MakeDefault, options)
+	managementApiHandler, err := NewFabricManagementApiHandler(factory.env.FabricApi, factory.MakeDefault, options)
 
 	if err != nil {
 		return nil, err

@@ -17,14 +17,16 @@
 package models
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/objectz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"time"
 )
 
 const (
@@ -160,6 +162,10 @@ type BaseEntityManager[E boltz.ExtEntity] struct {
 }
 
 func (ctrl *BaseEntityManager[E]) GetStore() boltz.EntityStore[E] {
+	return ctrl.Store
+}
+
+func (ctrl *BaseEntityManager[E]) GetSymbolTypes() ast.SymbolTypes {
 	return ctrl.Store
 }
 
@@ -305,4 +311,57 @@ func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity i
 		}
 	}
 	return nil
+}
+
+type BaseObjectStoreManager[E Entity] struct {
+	store *objectz.ObjectStore[E]
+}
+
+func (self *BaseObjectStoreManager[E]) InitStore(store *objectz.ObjectStore[E]) {
+	if self.store == nil {
+		self.store = store
+	}
+}
+
+func (self *BaseObjectStoreManager[E]) GetStore() *objectz.ObjectStore[E] {
+	return self.store
+}
+
+func (self *BaseObjectStoreManager[E]) GetSymbolTypes() ast.SymbolTypes {
+	return self.store
+}
+
+func (self *BaseObjectStoreManager[E]) checkLimits(query ast.Query) {
+	if query.GetLimit() == nil || *query.GetLimit() < -1 || *query.GetLimit() == 0 {
+		query.SetLimit(ListLimitDefault)
+	} else if *query.GetLimit() > ListLimitMax {
+		query.SetLimit(ListLimitMax)
+	}
+
+	if query.GetSkip() == nil || *query.GetSkip() < 0 {
+		query.SetSkip(ListOffsetDefault)
+	} else if *query.GetSkip() > ListOffsetMax {
+		query.SetSkip(ListOffsetMax)
+	}
+}
+
+func (self *BaseObjectStoreManager[E]) BasePreparedList(query ast.Query) (*EntityListResult[E], error) {
+	self.checkLimits(query)
+
+	entities, count, err := self.store.QueryEntitiesC(query)
+	if err != nil {
+		return nil, err
+	}
+	qmd := &QueryMetaData{
+		Count:            count,
+		Limit:            *query.GetLimit(),
+		Offset:           *query.GetSkip(),
+		FilterableFields: nil,
+	}
+	return &EntityListResult[E]{
+		Loader:        nil,
+		Entities:      entities,
+		QueryMetaData: *qmd,
+	}, nil
+
 }

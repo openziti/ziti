@@ -17,6 +17,8 @@
 package routes
 
 import (
+	"path"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
-	"path"
 )
 
 const (
@@ -43,7 +44,7 @@ func NewApiSessionLinkFactory() *ApiSessionLinkFactoryImpl {
 	}
 }
 
-func (factory ApiSessionLinkFactoryImpl) NewNestedLink(entity models.Entity, elem ...string) rest_model.Link {
+func (factory *ApiSessionLinkFactoryImpl) NewNestedLink(entity models.Entity, elem ...string) rest_model.Link {
 	elem = append([]string{EntityNameApiSession, entity.GetId()}, elem...)
 	return NewLink("./" + path.Join(elem...))
 }
