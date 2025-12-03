@@ -18,6 +18,7 @@ package api
 
 import (
 	"encoding/json"
+
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/fields"
 )

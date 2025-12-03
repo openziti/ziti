@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
 	"path"
@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
-func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_model.BaseEntity {
+func FabricEntityToRestModel(entity models.Entity, linkFactory FabricLinksFactory) rest_model.BaseEntity {
 	id := entity.GetId()
 	createdAt := strfmt.DateTime(entity.GetCreatedAt())
 	updatedAt := strfmt.DateTime(entity.GetUpdatedAt())
@@ -47,58 +47,58 @@ func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_
 	return ret
 }
 
-type FullLinkFactory interface {
-	LinksFactory
-	SelfLinkFactory
+type FullFabricLinkFactory interface {
+	FabricLinksFactory
+	SelfFabricLinkFactory
 }
 
-type LinksFactory interface {
+type FabricLinksFactory interface {
 	Links(entity LinkEntity) rest_model.Links
 	EntityName() string
 }
 
-type SelfLinkFactory interface {
+type SelfFabricLinkFactory interface {
 	SelfLink(entity models.Entity) rest_model.Link
 }
 
-type CreateLinkFactory interface {
+type CreateFabricLinkFactory interface {
 	SelfLinkFromId(id string) rest_model.Link
 }
 
-func NewBasicLinkFactory(entityName string) *BasicLinkFactory {
-	return &BasicLinkFactory{entityName: entityName}
+func NewBasicFabricLinkFactory(entityName string) *BasicFabricLinkFactory {
+	return &BasicFabricLinkFactory{entityName: entityName}
 }
 
-type BasicLinkFactory struct {
+type BasicFabricLinkFactory struct {
 	entityName string
 }
 
-func (factory *BasicLinkFactory) SelfLinkFromId(id string) rest_model.Link {
-	return NewLink(factory.SelfUrlString(id))
+func (factory *BasicFabricLinkFactory) SelfLinkFromId(id string) rest_model.Link {
+	return NewFabricLink(factory.SelfUrlString(id))
 }
 
-func (factory *BasicLinkFactory) SelfUrlString(id string) string {
+func (factory *BasicFabricLinkFactory) SelfUrlString(id string) string {
 	//path.Join will remove the ./ prefix in its "clean" operation
 	return "./" + path.Join(factory.entityName, id)
 }
 
-func (factory *BasicLinkFactory) SelfLink(entity LinkEntity) rest_model.Link {
-	return NewLink(factory.SelfUrlString(entity.GetId()))
+func (factory *BasicFabricLinkFactory) SelfLink(entity LinkEntity) rest_model.Link {
+	return NewFabricLink(factory.SelfUrlString(entity.GetId()))
 }
 
-func (factory *BasicLinkFactory) Links(entity LinkEntity) rest_model.Links {
+func (factory *BasicFabricLinkFactory) Links(entity LinkEntity) rest_model.Links {
 	return rest_model.Links{
 		EntityNameSelf: factory.SelfLink(entity),
 	}
 }
 
-func (factory *BasicLinkFactory) NewNestedLink(entity LinkEntity, elem ...string) rest_model.Link {
+func (factory *BasicFabricLinkFactory) NewNestedLink(entity LinkEntity, elem ...string) rest_model.Link {
 	elem = append([]string{factory.SelfUrlString(entity.GetId())}, elem...)
 	//path.Join will remove the ./ prefix in its "clean" operation
-	return NewLink("./" + path.Join(elem...))
+	return NewFabricLink("./" + path.Join(elem...))
 }
 
-func (factory *BasicLinkFactory) EntityName() string {
+func (factory *BasicFabricLinkFactory) EntityName() string {
 	return factory.entityName
 }
 
@@ -106,7 +106,7 @@ type LinkEntity interface {
 	GetId() string
 }
 
-func ToEntityRef(name string, entity LinkEntity, factory LinksFactory) *rest_model.EntityRef {
+func ToFabricEntityRef(name string, entity LinkEntity, factory FabricLinksFactory) *rest_model.EntityRef {
 	return &rest_model.EntityRef{
 		Links:  factory.Links(entity),
 		Entity: factory.EntityName(),
@@ -115,7 +115,7 @@ func ToEntityRef(name string, entity LinkEntity, factory LinksFactory) *rest_mod
 	}
 }
 
-func NewLink(path string) rest_model.Link {
+func NewFabricLink(path string) rest_model.Link {
 	href := strfmt.URI(path)
 	return rest_model.Link{
 		Href: &href,

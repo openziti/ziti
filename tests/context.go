@@ -17,10 +17,12 @@
 package tests
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha1"
 	cryptoTls "crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -48,6 +50,7 @@ import (
 	"github.com/openziti/channel/v4/websockets"
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/foundation/v2/versions"
 	idlib "github.com/openziti/identity"
 	"github.com/openziti/identity/certtools"
@@ -62,6 +65,8 @@ import (
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/env"
+	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
+	fabricRestModel "github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/server"
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
@@ -78,10 +83,16 @@ const (
 	EdgeRouterConfFile         = "ats-edge.router.yml"
 	TunnelerEdgeRouterConfFile = "ats-edge-tunneler.router.yml"
 	TransitRouterConfFile      = "ats-transit.router.yml"
+	FabricRouterConfFile       = "./testdata/config/router-%v.yml"
 )
 
 func init() {
-	pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday())
+	logOptions := pfxlog.DefaultOptions().
+		SetTrimPrefix("github.com/openziti/").
+		StartingToday()
+
+	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
+	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
@@ -447,7 +458,7 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 		err = ctx.fabricController.Run()
 		ctx.Req.NoError(err)
 	}()
-	err = ctx.waitForCtrlPort(time.Minute * 5)
+	err = ctx.waitForRestAPIPort(time.Minute * 5)
 	ctx.Req.NoError(err)
 }
 
@@ -587,7 +598,7 @@ func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
 	return conf
 }
 
-func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
+func (ctx *TestContext) waitForRestAPIPort(duration time.Duration) error {
 	return ctx.waitForPort(ctx.ApiHost, duration)
 }
 
@@ -947,6 +958,62 @@ func (ctx *TestContext) shutdownRouters() {
 
 func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
 	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+}
+
+func (self *TestContext) EnrollFabricRouter(id string, name string, certFile string) {
+	cert, err := certtools.LoadCertFromFile(certFile)
+	self.Req.NoError(err)
+
+	fingerprint := fmt.Sprintf("%x", sha1.Sum(cert[0].Raw))
+
+	timeoutContext, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelF()
+
+	createRouterParams := &restClientRouter.CreateRouterParams{
+		Router: &fabricRestModel.RouterCreate{
+			Cost:        util.Ptr(int64(0)),
+			Fingerprint: &fingerprint,
+			ID:          &id,
+			Name:        &name,
+			NoTraversal: util.Ptr(false),
+		},
+		Context: timeoutContext,
+	}
+	_, err = self.RestClients.Fabric.Router.CreateRouter(createRouterParams)
+	if err != nil {
+		js, _ := json.MarshalIndent(err, "", "    ")
+		fmt.Println(string(js))
+	}
+	self.Req.NoError(err)
+}
+
+func (ctx *TestContext) startFabricRouter(index uint8) *router.Router {
+	routerCfg, err := routerEnv.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
+	ctx.Req.NoError(err)
+	r := router.Create(routerCfg, versions.NewDefaultVersionProvider())
+	ctx.Req.NoError(r.Start())
+
+	ctx.routers = append(ctx.routers, r)
+	return r
+}
+
+func (ctx *TestContext) waitForPortClose(address string, duration time.Duration) error {
+	now := time.Now()
+	endTime := now.Add(duration)
+	maxWait := duration
+	for {
+		conn, err := net.DialTimeout("tcp", address, maxWait)
+		if err != nil {
+			return nil
+		}
+		_ = conn.Close()
+		now = time.Now()
+		if !now.Before(endTime) {
+			return err
+		}
+		maxWait = endTime.Sub(now)
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 type TestConn struct {

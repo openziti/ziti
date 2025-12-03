@@ -45,28 +45,6 @@ type Link struct {
 	lock        sync.Mutex
 }
 
-func (link *Link) SetId(s string) {
-	// does nothing, only here to satify the interface
-}
-
-func (link *Link) GetCreatedAt() time.Time {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (link *Link) GetUpdatedAt() time.Time {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (link *Link) GetTags() map[string]interface{} {
-	return nil
-}
-
-func (link *Link) IsSystemEntity() bool {
-	return true
-}
-
 func newLink(id string, linkProtocol string, dialAddress string, initialLatency time.Duration) *Link {
 	l := &Link{
 		Id:          id,

@@ -19,14 +19,15 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/go-openapi/runtime"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/models"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 func NewResponder(rc RequestContext, mapper ResponseMapper) *ResponderImpl {

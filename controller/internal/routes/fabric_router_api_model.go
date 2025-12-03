@@ -14,13 +14,13 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/response"
 
 	"github.com/openziti/ziti/controller/rest_model"
 
@@ -30,29 +30,29 @@ import (
 
 const EntityNameRouter = "routers"
 
-var RouterLinkFactory = NewRouterLinkFactory()
+var FabricRouterLinkFactory = NewFabricRouterLinkFactory()
 
-type RouterLinkFactoryIml struct {
-	BasicLinkFactory
+type FabricRouterLinkFactoryIml struct {
+	BasicFabricLinkFactory
 }
 
-func NewRouterLinkFactory() *RouterLinkFactoryIml {
-	return &RouterLinkFactoryIml{
-		BasicLinkFactory: *NewBasicLinkFactory(EntityNameRouter),
+func NewFabricRouterLinkFactory() *FabricRouterLinkFactoryIml {
+	return &FabricRouterLinkFactoryIml{
+		BasicFabricLinkFactory: *NewBasicFabricLinkFactory(EntityNameRouter),
 	}
 }
 
-func (factory *RouterLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
-	links := factory.BasicLinkFactory.Links(entity)
+func (factory *FabricRouterLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
+	links := factory.BasicFabricLinkFactory.Links(entity)
 	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
 	return links
 }
 
-func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.Router {
+func MapCreateFabricRouterToModel(router *rest_model.RouterCreate) *model.Router {
 	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
 			Id:   stringz.OrEmpty(router.ID),
-			Tags: TagsOrDefault(router.Tags),
+			Tags: FabricTagsOrDefault(router.Tags),
 		},
 		Name:        stringz.OrEmpty(router.Name),
 		Fingerprint: router.Fingerprint,
@@ -64,10 +64,10 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.Router {
 	return ret
 }
 
-func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *model.Router {
+func MapUpdateFabricRouterToModel(id string, router *rest_model.RouterUpdate) *model.Router {
 	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
-			Tags: TagsOrDefault(router.Tags),
+			Tags: FabricTagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name:        stringz.OrEmpty(router.Name),
@@ -80,10 +80,10 @@ func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *model.R
 	return ret
 }
 
-func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *model.Router {
+func MapPatchFabricRouterToModel(id string, router *rest_model.RouterPatch) *model.Router {
 	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
-			Tags: TagsOrDefault(router.Tags),
+			Tags: FabricTagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name:        router.Name,
@@ -96,10 +96,10 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *model.Rou
 	return ret
 }
 
-type RouterModelMapper struct{}
+type FabricRouterModelMapper struct{}
 
-func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router *model.Router) (interface{}, error) {
-	connected := n.GetConnectedRouter(router.Id)
+func (FabricRouterModelMapper) ToApi(ae *env.AppEnv, _ *response.RequestContext, router *model.Router) (interface{}, error) {
+	connected := ae.GetNetwork().GetConnectedRouter(router.Id)
 	var restVersionInfo *rest_model.VersionInfo
 	if connected != nil && connected.VersionInfo != nil {
 		versionInfo := connected.VersionInfo
@@ -115,7 +115,7 @@ func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router 
 	isConnected := connected != nil
 	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
-		BaseEntity:  BaseEntityToRestModel(router, RouterLinkFactory),
+		BaseEntity:  FabricEntityToRestModel(router, FabricRouterLinkFactory),
 		Fingerprint: router.Fingerprint,
 		Name:        &router.Name,
 		Connected:   &isConnected,

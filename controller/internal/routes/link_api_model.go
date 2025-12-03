@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/response"
@@ -29,17 +28,17 @@ const EntityNameLink = "links"
 var LinkLinkFactory = NewLinkLinkFactory()
 
 type LinkLinkFactoryIml struct {
-	api_impl.BasicLinkFactory
+	BasicFabricLinkFactory
 }
 
 func NewLinkLinkFactory() *LinkLinkFactoryIml {
 	return &LinkLinkFactoryIml{
-		BasicLinkFactory: *api_impl.NewBasicLinkFactory(EntityNameLink),
+		BasicFabricLinkFactory: *NewBasicFabricLinkFactory(EntityNameLink),
 	}
 }
 
-func (factory *LinkLinkFactoryIml) Links(entity api_impl.LinkEntity) rest_model.Links {
-	links := factory.BasicLinkFactory.Links(entity)
+func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
+	links := factory.BasicFabricLinkFactory.Links(entity)
 	return links
 }
 
@@ -63,11 +62,11 @@ func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
-		DestRouter:    api_impl.ToEntityRef(destRouter.Name, destRouter, api_impl.RouterLinkFactory),
+		DestRouter:    ToFabricEntityRef(destRouter.Name, destRouter, FabricRouterLinkFactory),
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  api_impl.ToEntityRef(link.Src.Name, link.Src, api_impl.RouterLinkFactory),
+		SourceRouter:  ToFabricEntityRef(link.Src.Name, link.Src, FabricRouterLinkFactory),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,

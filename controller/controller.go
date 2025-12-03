@@ -383,8 +383,6 @@ func (c *Controller) initWeb() {
 		if err = c.xweb.GetRegistry().Add(oidcApiFactory); err != nil {
 			pfxlog.Logger().Fatalf("failed to create OIDC API factory: %v", err)
 		}
-
-		webapis.OverrideRequestWrapper(webapis.NewFabricApiWrapper(c.env))
 	} else {
 		// if no edge  we need 1 default API, make the fabric api the default
 		fabricManagementFactory.MakeDefault = true
@@ -437,6 +435,7 @@ func (c *Controller) Run() error {
 		ctrlChannelListenerConfig.HeadersF = c.raftController.GetListenerHeaders
 	}
 
+	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {

@@ -341,6 +341,10 @@ func (ae *AppEnv) GetHostController() HostController {
 	return ae.HostController
 }
 
+func (ae *AppEnv) GetNetwork() *network.Network {
+	return ae.HostController.GetNetwork()
+}
+
 // GetManagers returns the business logic managers.
 func (ae *AppEnv) GetManagers() *model.Managers {
 	return ae.Managers

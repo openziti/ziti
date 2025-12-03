@@ -313,7 +313,7 @@ func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity i
 	return nil
 }
 
-type BaseObjectStoreManager[E Entity] struct {
+type BaseObjectStoreManager[E any] struct {
 	store *objectz.ObjectStore[E]
 }
 

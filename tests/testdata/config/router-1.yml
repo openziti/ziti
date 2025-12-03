@@ -21,7 +21,7 @@ identity:
   ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
 
 ctrl:
-  endpoint: tls:127.0.0.1:6363
+  endpoint: tls:127.0.0.1:6262
   dataDir: testdata/router1
 
 csr:

@@ -21,20 +21,25 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_mgmt"
+	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_client"
-	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/xmgmt"
 )
 
@@ -58,7 +63,7 @@ func (factory *FabricManagementApiFactory) Validate(_ *xweb.InstanceConfig) erro
 }
 
 func NewFabricManagementApiFactory(nodeId identity.Identity, env *env.AppEnv, network *network.Network, xmgmts *concurrenz.CopyOnWriteSlice[xmgmt.Xmgmt]) *FabricManagementApiFactory {
-	pfxlog.Logger().Infof("initializing management api factory with %d xmgmt instances", len(xmgmts.Value()))
+	pfxlog.Logger().Infof("initializing fabric management api factory with %d xmgmt instances", len(xmgmts.Value()))
 	return &FabricManagementApiFactory{
 		env:         env,
 		network:     network,
@@ -69,22 +74,11 @@ func NewFabricManagementApiFactory(nodeId identity.Identity, env *env.AppEnv, ne
 }
 
 func (factory *FabricManagementApiFactory) Binding() string {
-	return api_impl.FabricApiBinding
+	return FabricApiBinding
 }
 
 func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	if requestWrapper == nil {
-		requestWrapper = &FabricRequestWrapper{
-			nodeId:  factory.nodeId,
-			network: factory.network,
-		}
-	}
-
-	for _, router := range api_impl.Routers {
-		router.Register(factory.env.FabricApi, requestWrapper)
-	}
-
-	managementApiHandler, err := NewFabricManagementApiHandler(factory.env.FabricApi, factory.MakeDefault, options)
+	managementApiHandler, err := NewFabricManagementApiHandler(factory.env, factory.MakeDefault, options)
 
 	if err != nil {
 		return nil, err
@@ -101,64 +95,64 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 	return managementApiHandler, nil
 }
 
-func NewFabricManagementApiHandler(fabricApi *operations.ZitiFabricAPI, isDefault bool, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
+func NewFabricManagementApiHandler(ae *env.AppEnv, isDefault bool, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
 	managementApi := &FabricManagementApiHandler{
-		fabricApi: fabricApi,
 		options:   options,
 		isDefault: isDefault,
+		ae:        ae,
 	}
 
 	managementApi.handler = managementApi.newHandler()
-	managementApi.wsHandler = requestWrapper.WrapWsHandler(http.HandlerFunc(managementApi.handleWebSocket))
+	managementApi.wsHandler = managementApi.WrapWsHandler(http.HandlerFunc(managementApi.handleWebSocket))
 	managementApi.wsUrl = rest_client.DefaultBasePath + "/ws-api"
 
 	return managementApi, nil
 }
 
 type FabricManagementApiHandler struct {
-	fabricApi   *operations.ZitiFabricAPI
 	handler     http.Handler
 	wsHandler   http.Handler
 	wsUrl       string
 	options     map[interface{}]interface{}
 	bindHandler channel.BindHandler
 	isDefault   bool
+	ae          *env.AppEnv
 }
 
-func (managementApi *FabricManagementApiHandler) Binding() string {
-	return api_impl.FabricApiBinding
+func (self *FabricManagementApiHandler) Binding() string {
+	return FabricApiBinding
 }
 
-func (managementApi *FabricManagementApiHandler) Options() map[interface{}]interface{} {
-	return managementApi.options
+func (self *FabricManagementApiHandler) Options() map[interface{}]interface{} {
+	return self.options
 }
 
-func (managementApi *FabricManagementApiHandler) RootPath() string {
+func (self *FabricManagementApiHandler) RootPath() string {
 	return rest_client.DefaultBasePath
 }
 
-func (managementApi *FabricManagementApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, managementApi.RootPath())
+func (self *FabricManagementApiHandler) IsHandler(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, self.RootPath())
 }
 
-func (managementApi *FabricManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	if request.URL.Path == managementApi.wsUrl {
-		managementApi.wsHandler.ServeHTTP(writer, request)
+func (self *FabricManagementApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	if request.URL.Path == self.wsUrl {
+		self.wsHandler.ServeHTTP(writer, request)
 	} else {
-		managementApi.handler.ServeHTTP(writer, request)
+		self.handler.ServeHTTP(writer, request)
 	}
 }
 
-func (managementApi *FabricManagementApiHandler) newHandler() http.Handler {
-	innerManagementHandler := managementApi.fabricApi.Serve(nil)
-	return requestWrapper.WrapHttpHandler(innerManagementHandler)
+func (self *FabricManagementApiHandler) newHandler() http.Handler {
+	innerManagementHandler := self.ae.FabricApi.Serve(nil)
+	return self.WrapHttpHandler(innerManagementHandler)
 }
 
-func (managementApi *FabricManagementApiHandler) IsDefault() bool {
-	return managementApi.isDefault
+func (self *FabricManagementApiHandler) IsDefault() bool {
+	return self.isDefault
 }
 
-func (managementApi *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWriter, request *http.Request) {
+func (self *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWriter, request *http.Request) {
 	log := pfxlog.Logger()
 	log.Debug("handling mgmt channel websocket upgrade")
 	upgrader := websocket.Upgrader{}
@@ -176,9 +170,60 @@ func (managementApi *FabricManagementApiHandler) handleWebSocket(writer http.Res
 	id := &identity.TokenId{Token: "mgmt"}
 	underlayFactory := websockets.NewUnderlayFactory(id, conn, certs)
 
-	_, err = channel.NewChannel("mgmt", underlayFactory, managementApi.bindHandler, nil)
+	_, err = channel.NewChannel("mgmt", underlayFactory, self.bindHandler, nil)
 	if err != nil {
 		log.WithError(err).Error("unable to create channel over websocket")
 		return
 	}
+}
+
+func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) http.Handler {
+	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set(ZitiInstanceId, self.ae.InstanceId)
+
+		if r.URL.Path == FabricRestApiRootPath {
+			rw.Header().Set("content-type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+			_, _ = rw.Write(rest_management_api_server.SwaggerJSON)
+			return
+		}
+
+		rc := self.ae.CreateRequestContext(rw, r)
+
+		api.AddRequestContextToHttpContext(r, rc)
+
+		err := self.ae.FillRequestContext(rc)
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		//after request context is filled so that api session is present for session expiration headers
+		response.AddHeaders(rc)
+
+		handler.ServeHTTP(rw, r)
+	})
+
+	return api.TimeoutHandler(api.WrapCorsHandler(wrapped), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
+}
+
+func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http.Handler {
+	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rc := self.ae.CreateRequestContext(rw, r)
+
+		err := self.ae.FillRequestContext(rc)
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		if !permissions.IsAdmin().IsAllowed(rc.ActivePermissions...) {
+			rc.RespondWithApiError(errorz.NewUnauthorized())
+			return
+		}
+
+		handler.ServeHTTP(rw, r)
+	})
+
+	return wrapped
 }

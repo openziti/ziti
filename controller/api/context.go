@@ -19,9 +19,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/openziti/ziti/controller/change"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 type RequestContextImpl struct {

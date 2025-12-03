@@ -14,46 +14,43 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
 	"time"
 
-	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
-
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
 
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/models"
 )
 
-const EntityNameService = "services"
+var FabricServiceLinkFactory = NewFabricServiceLinkFactory()
 
-var ServiceLinkFactory = NewServiceLinkFactory()
-
-type ServiceLinkFactoryIml struct {
-	BasicLinkFactory
+type FabricServiceLinkFactoryIml struct {
+	BasicFabricLinkFactory
 }
 
-func NewServiceLinkFactory() *ServiceLinkFactoryIml {
-	return &ServiceLinkFactoryIml{
-		BasicLinkFactory: *NewBasicLinkFactory(EntityNameService),
+func NewFabricServiceLinkFactory() *FabricServiceLinkFactoryIml {
+	return &FabricServiceLinkFactoryIml{
+		BasicFabricLinkFactory: *NewBasicFabricLinkFactory(EntityNameService),
 	}
 }
 
-func (factory *ServiceLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
-	links := factory.BasicLinkFactory.Links(entity)
+func (factory *FabricServiceLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
+	links := factory.BasicFabricLinkFactory.Links(entity)
 	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
 	return links
 }
 
-func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
+func MapCreateFabricServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: TagsOrDefault(service.Tags),
+			Tags: FabricTagsOrDefault(service.Tags),
 		},
 		Name:               stringz.OrEmpty(service.Name),
 		TerminatorStrategy: service.TerminatorStrategy,
@@ -71,10 +68,10 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 	return ret
 }
 
-func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
+func MapUpdateFabricServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: TagsOrDefault(service.Tags),
+			Tags: FabricTagsOrDefault(service.Tags),
 			Id:   id,
 		},
 		Name:               stringz.OrEmpty(service.Name),
@@ -85,10 +82,10 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 	return ret
 }
 
-func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
+func MapPatchFabricServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: TagsOrDefault(service.Tags),
+			Tags: FabricTagsOrDefault(service.Tags),
 			Id:   id,
 		},
 		Name:               service.Name,
@@ -99,12 +96,12 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 	return ret
 }
 
-type ServiceModelMapper struct{}
+type FabricServiceModelMapper struct{}
 
-func (ServiceModelMapper) ToApi(_ *network.Network, _ api.RequestContext, service *model.Service) (interface{}, error) {
+func (FabricServiceModelMapper) ToApi(_ *env.AppEnv, _ *response.RequestContext, service *model.Service) (interface{}, error) {
 	maxIdleTime := service.MaxIdleTime.Milliseconds()
 	return &rest_model.ServiceDetail{
-		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
+		BaseEntity:         FabricEntityToRestModel(service, FabricServiceLinkFactory),
 		Name:               &service.Name,
 		TerminatorStrategy: &service.TerminatorStrategy,
 		MaxIdleTimeMillis:  &maxIdleTime,
