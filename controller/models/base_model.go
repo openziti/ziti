@@ -122,7 +122,7 @@ func (entity *BaseEntity) ToBoltBaseExtEntity() *boltz.BaseExtEntity {
 	}
 }
 
-type EntityListResult[T Entity] struct {
+type EntityListResult[T any] struct {
 	Loader interface {
 		BaseLoadInTx(tx *bbolt.Tx, id string) (T, error)
 	}

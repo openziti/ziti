@@ -65,7 +65,7 @@ func modelToApi[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, ma
 	return apiEntities, nil
 }
 
-type EntityLister[E models.Entity] interface {
+type EntityLister[E any] interface {
 	BasePreparedList(query ast.Query) (*models.EntityListResult[E], error)
 	GetSymbolTypes() ast.SymbolTypes
 }

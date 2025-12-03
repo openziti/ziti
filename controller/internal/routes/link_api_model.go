@@ -14,12 +14,13 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
-	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/api_impl"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
@@ -28,21 +29,22 @@ const EntityNameLink = "links"
 var LinkLinkFactory = NewLinkLinkFactory()
 
 type LinkLinkFactoryIml struct {
-	BasicLinkFactory
+	api_impl.BasicLinkFactory
 }
 
 func NewLinkLinkFactory() *LinkLinkFactoryIml {
 	return &LinkLinkFactoryIml{
-		BasicLinkFactory: *NewBasicLinkFactory(EntityNameLink),
+		BasicLinkFactory: *api_impl.NewBasicLinkFactory(EntityNameLink),
 	}
 }
 
-func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
+func (factory *LinkLinkFactoryIml) Links(entity api_impl.LinkEntity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
 	return links
 }
 
-func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *model.Link) (*rest_model.LinkDetail, error) {
+func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.Link) (interface{}, error) {
+	n := ae.GetHostController().GetNetwork()
 	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
 	linkStateStr := link.CurrentState().Mode.String()
@@ -61,11 +63,11 @@ func MapLinkToRestModel(n *network.Network, _ api.RequestContext, link *model.Li
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
-		DestRouter:    ToEntityRef(destRouter.Name, destRouter, RouterLinkFactory),
+		DestRouter:    api_impl.ToEntityRef(destRouter.Name, destRouter, api_impl.RouterLinkFactory),
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  ToEntityRef(link.Src.Name, link.Src, RouterLinkFactory),
+		SourceRouter:  api_impl.ToEntityRef(link.Src.Name, link.Src, api_impl.RouterLinkFactory),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,
