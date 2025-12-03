@@ -106,7 +106,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		}
 	}
 
-	metricsApi.modelMapper = api_impl.NewMetricsModelMapper(n, "prometheus", includeTimestamps)
+	metricsApi.modelMapper = NewMetricsModelMapper(n, "prometheus", includeTimestamps)
 	metricsApi.handler = metricsApi.newHandler()
 
 	return metricsApi, nil
@@ -117,7 +117,7 @@ type MetricsApiHandler struct {
 	handler     http.Handler
 	network     *network.Network
 	scrapeCert  *x509.Certificate
-	modelMapper api_impl.MetricsModelMapper
+	modelMapper MetricsModelMapper
 	options     map[interface{}]interface{}
 }
 

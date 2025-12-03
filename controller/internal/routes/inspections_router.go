@@ -14,22 +14,23 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
+	"net/http"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
-	"net/http"
 )
 
 func init() {
 	r := NewInspectRouter()
-	AddRouter(r)
+	env.AddRouter(r)
 }
 
 type InspectRouter struct {
@@ -42,14 +43,14 @@ func NewInspectRouter() *InspectRouter {
 	}
 }
 
-func (r *InspectRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper RequestWrapper) {
-	fabricApi.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
-		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Inspect(n, rc, params.Request) }, params.HTTPRequest, "", "")
+func (r *InspectRouter) Register(ae *env.AppEnv) {
+	ae.FabricApi.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Inspect(ae, rc, params.Request) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }
 
-func (r *InspectRouter) Inspect(n *network.Network, rc api.RequestContext, request *rest_model.InspectRequest) {
-	result := n.Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
-	resp := MapInspectResultToRestModel(n, result)
+func (r *InspectRouter) Inspect(ae *env.AppEnv, rc *response.RequestContext, request *rest_model.InspectRequest) {
+	result := ae.GetHostController().GetNetwork().Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
+	resp := MapInspectResultToRestModel(ae.GetHostController().GetNetwork(), result)
 	rc.Respond(resp, http.StatusOK)
 }

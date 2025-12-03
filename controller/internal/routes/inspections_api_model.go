@@ -14,13 +14,15 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/rest_model"
-	"strings"
+	"github.com/openziti/ziti/controller/webapis"
 )
 
 const EntityNameInspect = "inspections"
@@ -41,7 +43,7 @@ func MapInspectResultToRestModel(n *network.Network, inspectResult *network.Insp
 				format = cmd[1]
 			}
 
-			emitVal, _ = NewMetricsModelMapper(n, format, true).MapInspectResultValueToMetricsResult(val)
+			emitVal, _ = webapis.NewMetricsModelMapper(n, format, true).MapInspectResultValueToMetricsResult(val)
 		} else {
 			if strings.HasPrefix(val.Value, "{") {
 				mapVal := map[string]interface{}{}
