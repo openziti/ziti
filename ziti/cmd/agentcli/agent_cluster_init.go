@@ -68,8 +68,8 @@ func (self *AgentClusterInitOptions) makeRequest(ch channel.Channel) error {
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
 		fmt.Println("success")
+		return nil
 	} else {
-		fmt.Printf("error: %v\n", result.Message)
+		return fmt.Errorf("%v", result.Message)
 	}
-	return nil
 }
