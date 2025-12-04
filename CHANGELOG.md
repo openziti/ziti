@@ -1,3 +1,16 @@
+# Release 1.6.10
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.9 -> v1.6.10](https://github.com/openziti/ziti/compare/v1.6.9...v1.6.10)
+    * [Issue #3420](https://github.com/openziti/ziti/issues/3420) - The terminator id cache uses the same id for all terminators in a host.v2 config, resulting in a single terminator
+    * [Issue #3419](https://github.com/openziti/ziti/issues/3419) - When using the router data model, precedence specified on the per-service identity mapping are incorrectly interpreted
+    * [Issue #3277](https://github.com/openziti/ziti/issues/3277) - Router can deadlock on closing a connection if the incoming data channel is full
+
 # Release 1.6.9
 
 ## What's New

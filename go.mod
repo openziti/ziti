@@ -88,13 +88,13 @@ require (
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
-	golang.org/x/crypto v0.41.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.43.0
+	golang.org/x/net v0.47.0
 	golang.org/x/oauth2 v0.31.0
-	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.36.0
-	golang.org/x/text v0.28.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/text v0.31.0
 	google.golang.org/protobuf v1.36.9
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
@@ -199,10 +199,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/image v0.30.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/term v0.35.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/image v0.33.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
 )
