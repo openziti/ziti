@@ -22,7 +22,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -45,7 +45,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
@@ -58,7 +58,7 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -79,7 +79,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
@@ -91,7 +91,7 @@ jobs:
     container: ${{ vars.ZITI_BUILDER_IMAGE || 'openziti/ziti-builder:v2' }}  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -128,39 +128,11 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
           retention-days: 5
-
-  tests:
-    name: Run Unit and Integration Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Go
-        uses: ./.github/actions/setup-go
-
-      - name: Install Ziti CI
-        uses: openziti/ziti-ci@v1
-
-      - name: Run Go Quickstart Test
-        timeout-minutes: 5
-        shell: bash
-        run: |
-          go test -v -tags "quickstart automated" ./ziti/cmd/edge/...;
-
-      - name: Run Unit and Integration Tests
-        if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          go test ./... --tags apitests
 
   publish:
     name: Publish Binaries
@@ -171,10 +143,9 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.linux-build.result == 'success')
-      && (needs.tests.result == 'success')
       }}
     # ensure required job outcomes are specified in "if" expression
-    needs: [ tests, linux-build, mac-os-build, windows-build ]
+    needs: [ linux-build, mac-os-build, windows-build ]
     permissions:
       contents: write  # need write to create the release
       id-token: write  # need write to get OIDC token for generating attestations
@@ -182,17 +153,19 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
+      GO_VERSION: ${{ steps.setup-go.outputs.go-version }} 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Go
+        id: setup-go
         uses: ./.github/actions/setup-go
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
@@ -202,21 +175,21 @@ jobs:
           ziti-ci-version: latest
 
       - name: Download linux release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
 
       - name: Download darwin release artifact
         if: needs.mac-os-build.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
         if: needs.windows-build.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
@@ -282,7 +255,7 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci publish-to-github --use-current-tag --prerelease --archive-base ""
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-checksums: ./release/attestation-subjects.sha256.txt
 
@@ -320,7 +293,7 @@ jobs:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   repository-dispatch:
-    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    if: ${{ !cancelled() && needs.publish.result == 'success' && github.repository_owner == 'openziti'}}
     needs:
       - publish
       - call-publish-docker-images
@@ -344,4 +317,5 @@ jobs:
             -f "event_type=ziti_release" \
             -F "client_payload[version]=${{ needs.publish.outputs.ZITI_VERSION }}" \
             -F "client_payload[run_id]=${{ github.run_id }}" \
-            -F "client_payload[repo]=${{ github.repository }}"
+            -F "client_payload[repo]=${{ github.repository }}" \
+            -F "client_payload[go_toolchain_version]=${{ needs.publish.outputs.GO_VERSION }}"

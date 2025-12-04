@@ -21,7 +21,7 @@ jobs:
         uses: hmarr/debug-action@v3
 
       - name: Wait for all checks on this rev
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.4.1
         with:
           ref: ${{ github.ref_name }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -30,11 +30,11 @@ jobs:
           # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
           running-workflow-name: Wait for Release Builds to Succeed
           # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job
+          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job,Parse Tag Regex
 
       - name: Git Checkout
         if: failure()
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -59,17 +59,39 @@ jobs:
     name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
-      version: ${{ steps.parse.outputs.version }}
+      version: ${{ steps.validate.outputs.version }}
+      highest: ${{ steps.compare.outputs.highest }}
     steps:
-      - name: Parse the Semantic Version from the Tag
-        id: parse
+      - name: Validate the Release Tag is a Stable Release Ref
+        id: validate
         shell: bash
         run: |
           if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "${GITHUB_REF_NAME} is not a semver release ref" >&2
+            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
             exit 1
+          fi
+
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compare with Highest Version
+        id: compare
+        shell: bash
+        run: |
+          set -o pipefail
+          set -o xtrace
+          
+          HIGHEST_VERSION=$(git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          CURRENT_VERSION="${GITHUB_REF_NAME}"
+          
+          if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
+            echo "highest=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
 
   promote_docker:
@@ -92,6 +114,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
+        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
@@ -153,6 +176,7 @@ jobs:
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
 
   repository-dispatch:
+    if: github.repository_owner == 'openziti'
     needs:
       - parse_version
       - promote_docker
