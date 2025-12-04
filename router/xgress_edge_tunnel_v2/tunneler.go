@@ -210,18 +210,24 @@ func (self *tunneler) mapRdmServiceToRest(svc *common.IdentityService) *rest_mod
 	return result
 }
 
+func (self *tunneler) mapRdmPrecedenceToRest(p edge_ctrl_pb.TerminatorPrecedence) rest_model.TerminatorPrecedence {
+	result := rest_model.TerminatorPrecedenceDefault
+
+	if p == edge_ctrl_pb.TerminatorPrecedence_Required {
+		result = rest_model.TerminatorPrecedenceRequired
+	} else if p == edge_ctrl_pb.TerminatorPrecedence_Failed {
+		result = rest_model.TerminatorPrecedenceFailed
+	}
+
+	return result
+}
+
 func (self *tunneler) mapRdmIdentityToRest(i *common.Identity) *rest_model.IdentityDetail {
 	id := i.Id
 	name := i.Name
 	disabled := i.Disabled
 	defaultHostingCost := int64(i.DefaultHostingCost)
-	defaultHostingPrecedence := rest_model.TerminatorPrecedenceDefault
-
-	if i.DefaultHostingPrecedence == edge_ctrl_pb.TerminatorPrecedence_Required {
-		defaultHostingPrecedence = rest_model.TerminatorPrecedenceRequired
-	} else if i.DefaultHostingPrecedence == edge_ctrl_pb.TerminatorPrecedence_Failed {
-		defaultHostingPrecedence = rest_model.TerminatorPrecedenceFailed
-	}
+	defaultHostingPrecedence := self.mapRdmPrecedenceToRest(i.DefaultHostingPrecedence)
 
 	appData := map[string]interface{}{}
 	if len(i.AppDataJson) > 0 {
@@ -238,7 +244,7 @@ func (self *tunneler) mapRdmIdentityToRest(i *common.Identity) *rest_model.Ident
 
 	hostingPrecedences := map[string]rest_model.TerminatorPrecedence{}
 	for k, v := range i.ServiceHostingPrecedences {
-		hostingPrecedences[k] = rest_model.TerminatorPrecedence(v.String())
+		hostingPrecedences[k] = self.mapRdmPrecedenceToRest(v)
 	}
 
 	result := &rest_model.IdentityDetail{
