@@ -1,3 +1,9 @@
+# Release 1.6.11
+
+## What's New
+
+Sync build actions with main
+
 # Release 1.6.10
 
 ## What's New
