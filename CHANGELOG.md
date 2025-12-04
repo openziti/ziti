@@ -1,3 +1,9 @@
+# Release 1.6.12
+
+# What's New
+
+Sync docker CI code with main
+
 # Release 1.6.11
 
 ## What's New
