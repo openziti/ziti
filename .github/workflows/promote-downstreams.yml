@@ -34,7 +34,7 @@ jobs:
 
       - name: Git Checkout
         if: failure()
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -74,7 +74,7 @@ jobs:
           fi
 
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 

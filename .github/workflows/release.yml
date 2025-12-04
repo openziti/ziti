@@ -22,7 +22,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -45,7 +45,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=darwin -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
@@ -58,7 +58,7 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -79,7 +79,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
@@ -91,7 +91,7 @@ jobs:
     container: ${{ vars.ZITI_BUILDER_IMAGE || 'openziti/ziti-builder:v2' }}  # pin v2 (Ubuntu Focal) for glibc compatibility while leveraging Actions's Node.js
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -128,7 +128,7 @@ jobs:
           $(go env GOPATH)/bin/gox -ldflags "$($(go env GOPATH)/bin/ziti-ci -q -t go-build-flags)" -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./ziti/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
@@ -156,7 +156,7 @@ jobs:
       GO_VERSION: ${{ steps.setup-go.outputs.go-version }} 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -175,21 +175,21 @@ jobs:
           ziti-ci-version: latest
 
       - name: Download linux release artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
 
       - name: Download darwin release artifact
         if: needs.mac-os-build.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
         if: needs.windows-build.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
