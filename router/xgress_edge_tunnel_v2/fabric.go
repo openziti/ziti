@@ -149,7 +149,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
 	id := idgen.MustNewUUIDString()
-	id = self.GetCachedTerminatorId(hostCtx.ServiceId(), id)
+	id = self.GetCachedTerminatorId(hostCtx.GetTerminatorIdCacheKey(), id)
 
 	terminator := &tunnelTerminator{
 		id:         id,
@@ -165,14 +165,14 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	return terminator, nil
 }
 
-func (self *fabricProvider) GetCachedTerminatorId(serviceId string, fallback string) string {
+func (self *fabricProvider) GetCachedTerminatorId(terminatorKey string, fallback string) string {
 	cache := self.env.GetRouterDataModel().GetTerminatorIdCache()
-	result, found := cache.Get(serviceId)
+	result, found := cache.Get(terminatorKey)
 	if found {
 		return result
 	}
 
-	return cache.Upsert(serviceId, fallback, func(exist bool, valueInMap string, newValue string) string {
+	return cache.Upsert(terminatorKey, fallback, func(exist bool, valueInMap string, newValue string) string {
 		if exist {
 			return valueInMap
 		}
@@ -266,7 +266,7 @@ func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 
 func (self *tunnelTerminator) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
-		self.provider.env.GetRouterDataModel().GetTerminatorIdCache().Remove(self.context.ServiceId())
+		self.provider.env.GetRouterDataModel().GetTerminatorIdCache().Remove(self.context.GetTerminatorIdCacheKey())
 
 		log := logrus.WithField("service", self.context.ServiceName()).
 			WithField("routerId", self.provider.env.GetRouterId().Token).

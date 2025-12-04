@@ -25,6 +25,7 @@ type AllowConfig interface {
 
 type HostingContext interface {
 	ServiceId() string
+	GetTerminatorIdCacheKey() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
 	Dial(options map[string]interface{}) (net.Conn, bool, error)
