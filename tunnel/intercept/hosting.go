@@ -45,8 +45,9 @@ type healthChecksProvider interface {
 
 func createHostingContexts(service *entities.Service, identity *rest_model.IdentityDetail, tracker AddressTracker) []tunnel.HostingContext {
 	var result []tunnel.HostingContext
-	for _, t := range service.HostV2Config.Terminators {
-		context := newDefaultHostingContext(identity, service, t, tracker)
+	pfxlog.Logger().WithField("service", service.Name).WithField("terminatorCount", len(service.HostV2Config.Terminators)).Info("creating hosting contexts")
+	for idx, t := range service.HostV2Config.Terminators {
+		context := newDefaultHostingContext(identity, service, t, tracker, uint32(idx))
 		if context == nil {
 			for _, c := range result {
 				c.OnClose()
@@ -58,7 +59,7 @@ func createHostingContexts(service *entities.Service, identity *rest_model.Ident
 	return result
 }
 
-func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *entities.Service, config *entities.HostV1Config, tracker AddressTracker) *hostingContext {
+func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *entities.Service, config *entities.HostV1Config, tracker AddressTracker, index uint32) *hostingContext {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	if config.ForwardProtocol && len(config.AllowedProtocols) < 1 {
@@ -137,6 +138,7 @@ func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *enti
 
 	return &hostingContext{
 		service:          service,
+		terminatorIndex:  index,
 		options:          listenOptions,
 		proxyConf:        proxyConf,
 		dialTimeout:      config.GetDialTimeout(5 * time.Second),
@@ -155,6 +157,7 @@ type addrTranslation struct {
 
 type hostingContext struct {
 	service          *entities.Service
+	terminatorIndex  uint32
 	options          *ziti.ListenOptions
 	proxyConf        *transport.ProxyConfiguration
 	config           *entities.HostV1Config
@@ -163,6 +166,10 @@ type hostingContext struct {
 	addrTracker      AddressTracker
 	addrTranslations []addrTranslation
 	dialWrapper      tunnel.DialWrapper
+}
+
+func (self *hostingContext) GetTerminatorIdCacheKey() string {
+	return fmt.Sprintf("%s.%d", *self.service.ID, self.terminatorIndex)
 }
 
 func (self *hostingContext) SetDialWrapper(dialWrapper tunnel.DialWrapper) {

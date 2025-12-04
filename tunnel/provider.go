@@ -44,6 +44,7 @@ type HostedService interface {
 type HostingContext interface {
 	Service() HostedService
 	ServiceId() string
+	GetTerminatorIdCacheKey() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
 	Dial(options map[string]interface{}) (net.Conn, bool, error)
