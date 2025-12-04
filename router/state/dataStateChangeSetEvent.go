@@ -48,7 +48,7 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 
 	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
 		model := eventHandler.state.RouterDataModel()
-		logger.Info("received data state change set")
+		logger.Debug("received data state change set")
 		model.ApplyChangeSet(newEvent)
 	})
 
