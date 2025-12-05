@@ -217,6 +217,7 @@ func (self *IdentitySubscription) identityRemoved() {
 	notify := false
 	self.Lock()
 	var state *IdentityState
+
 	if self.Identity != nil {
 		state = self.getState()
 
@@ -241,6 +242,11 @@ func (self *IdentitySubscription) identityRemoved() {
 func (self *IdentitySubscription) initialize(rdm *RouterDataModel, identity *Identity) (*IdentityState, bool) {
 	self.Lock()
 	defer self.Unlock()
+
+	if !identity.serviceAccessTrackingEnabled.Load() {
+		rdm.EnableServiceAccessTracking(identity.Id)
+	}
+
 	wasInitialized := false
 	if self.Identity == nil {
 		self.Identity = identity
@@ -287,7 +293,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		WithField("identity", self.IdentityId)
 
 	self.Lock()
-	newIdentity, ok := rdm.Identities.Get(self.IdentityId)
+	newIdentity, identityExists := rdm.Identities.Get(self.IdentityId)
 	notifyRemoved := newIdentity == nil && self.Identity != nil
 	oldIdentity := self.Identity
 	oldServices := self.Services
@@ -298,7 +304,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		rdm.EnableServiceAccessTracking(self.IdentityId)
 	}
 
-	if ok {
+	if identityExists {
 		self.Services, self.Checks = rdm.buildServiceListUsingDenormalizedData(self)
 	}
 	newServices := self.Services
@@ -310,9 +316,11 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		if notifyRemoved {
 			state := &IdentityState{
 				Identity:      oldIdentity,
-				PostureChecks: oldChecks,
-				Services:      oldServices,
+				PostureChecks: map[string]*PostureCheck{},
+				Services:      map[string]*IdentityService{},
 			}
+			self.Services = nil
+			self.Checks = nil
 
 			self.notifyIdentityEvent(state, IdentityDeletedEvent)
 		}
@@ -426,6 +434,10 @@ func (self ServiceEventType) String() string {
 		return "updated"
 	case ServiceAccessLostEvent:
 		return "access.removed"
+	case ServiceDialPoliciesChanged:
+		return "dial.policies-changed"
+	case ServiceBindPoliciesChanged:
+		return "Bind.policies-changed"
 	default:
 		return "unknown"
 	}
