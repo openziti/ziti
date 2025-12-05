@@ -17,15 +17,11 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/api"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/xt"
 )
@@ -95,32 +91,17 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 	return ret
 }
 
-type TerminatorModelMapper struct{}
-
-func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, terminator *model.Terminator) (interface{}, error) {
-	restModel, err := MapTerminatorToRestModel(n, terminator)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", terminator.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
-}
-
 func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, terminator *model.Terminator) (interface{}, error) {
-	return MapTerminatorToRestModel(ae.GetHostController().GetNetwork(), terminator)
+	return MapTerminatorToRestModel(ae, terminator)
 }
 
-func MapTerminatorToRestModel(n *network.Network, terminator *model.Terminator) (*rest_model.TerminatorDetail, error) {
-
-	service, err := n.Managers.Service.Read(terminator.Service)
+func MapTerminatorToRestModel(ae *env.AppEnv, terminator *model.Terminator) (*rest_model.TerminatorDetail, error) {
+	service, err := ae.Managers.Service.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := n.Managers.Router.Read(terminator.Router)
+	router, err := ae.Managers.Router.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}

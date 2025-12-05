@@ -17,24 +17,27 @@
 package model
 
 import (
+	"math"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/objectz"
 	"github.com/openziti/ziti/common/datastructures"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/idgen"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/orcaman/concurrent-map/v2"
-	"math"
-	"sync"
-	"time"
 )
 
 type LinkManager struct {
 	linkTable      *linkTable
 	lock           sync.Mutex
 	initialLatency time.Duration
-	store          *objectz.ObjectStore[*Link]
+	models.BaseObjectStoreManager[*Link]
 }
 
 func NewLinkManager(env Env) *LinkManager {
@@ -48,46 +51,46 @@ func NewLinkManager(env Env) *LinkManager {
 		initialLatency: initialLatency,
 	}
 
-	result.store = objectz.NewObjectStore[*Link](func() objectz.ObjectIterator[*Link] {
+	result.InitStore(objectz.NewObjectStore[*Link](func() objectz.ObjectIterator[*Link] {
 		return datastructures.IterateCMap[*Link](result.linkTable.links)
-	})
+	}))
 
-	result.store.AddStringSymbol("id", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("id", func(entity *Link) *string {
 		return &entity.Id
 	})
-	result.store.AddStringSymbol("protocol", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("protocol", func(entity *Link) *string {
 		return &entity.Protocol
 	})
-	result.store.AddStringSymbol("dialAddress", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("dialAddress", func(entity *Link) *string {
 		return &entity.DialAddress
 	})
-	result.store.AddStringSymbol("sourceRouter", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("sourceRouter", func(entity *Link) *string {
 		return &entity.Src.Id
 	})
-	result.store.AddStringSymbol("destRouter", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("destRouter", func(entity *Link) *string {
 		return &entity.DstId
 	})
-	result.store.AddInt64Symbol("cost", func(entity *Link) *int64 {
+	result.GetStore().AddInt64Symbol("cost", func(entity *Link) *int64 {
 		val := entity.GetCost()
 		return &val
 	})
-	result.store.AddInt64Symbol("staticCost", func(entity *Link) *int64 {
+	result.GetStore().AddInt64Symbol("staticCost", func(entity *Link) *int64 {
 		val := int64(entity.GetStaticCost())
 		return &val
 	})
-	result.store.AddInt64Symbol("destLatency", func(entity *Link) *int64 {
+	result.GetStore().AddInt64Symbol("destLatency", func(entity *Link) *int64 {
 		val := entity.GetDstLatency()
 		return &val
 	})
-	result.store.AddInt64Symbol("sourceLatency", func(entity *Link) *int64 {
+	result.GetStore().AddInt64Symbol("sourceLatency", func(entity *Link) *int64 {
 		val := entity.GetSrcLatency()
 		return &val
 	})
-	result.store.AddStringSymbol("state", func(entity *Link) *string {
+	result.GetStore().AddStringSymbol("state", func(entity *Link) *string {
 		val := entity.CurrentState().Mode.String()
 		return &val
 	})
-	result.store.AddInt64Symbol("iteration", func(entity *Link) *int64 {
+	result.GetStore().AddInt64Symbol("iteration", func(entity *Link) *int64 {
 		val := int64(entity.Iteration)
 		return &val
 	})
@@ -95,8 +98,12 @@ func NewLinkManager(env Env) *LinkManager {
 	return result
 }
 
-func (self *LinkManager) GetStore() *objectz.ObjectStore[*Link] {
-	return self.store
+func (self *LinkManager) BaseLoad(id string) (*Link, error) {
+	entity, found := self.Get(id)
+	if !found {
+		return nil, boltz.NewNotFoundError("link", "id", id)
+	}
+	return entity, nil
 }
 
 func (self *LinkManager) BuildRouterLinks(router *Router) {

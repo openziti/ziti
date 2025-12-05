@@ -66,6 +66,8 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/response"
+	fabricServer "github.com/openziti/ziti/controller/rest_server"
+	fabricOperations "github.com/openziti/ziti/controller/rest_server/operations"
 	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/openziti/ziti/controller/xmgmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -104,6 +106,7 @@ type AppEnv struct {
 	EnrollRegistry       model.EnrollmentRegistry
 	Broker               *Broker
 	HostController       HostController
+	FabricApi            *fabricOperations.ZitiFabricAPI
 	ManagementApi        *managementOperations.ZitiEdgeManagementAPI
 	ClientApi            *clientOperations.ZitiEdgeClientAPI
 	IdentityRefreshMap   cmap.ConcurrentMap[string, time.Time]
@@ -336,6 +339,10 @@ func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
 // GetHostController returns the host controller instance.
 func (ae *AppEnv) GetHostController() HostController {
 	return ae.HostController
+}
+
+func (ae *AppEnv) GetNetwork() *network.Network {
+	return ae.HostController.GetNetwork()
 }
 
 // GetManagers returns the business logic managers.
@@ -897,6 +904,11 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 		return nil, err
 	}
 
+	fabricManagementSpec, err := loads.Embedded(fabricServer.SwaggerJSON, fabricServer.FlatSwaggerJSON)
+	if err != nil {
+		pfxlog.Logger().Fatalln(err)
+	}
+
 	clientSpec, err := loads.Embedded(clientServer.SwaggerJSON, clientServer.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
@@ -906,6 +918,9 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
 	}
+
+	fabricApi := fabricOperations.NewZitiFabricAPI(fabricManagementSpec)
+	fabricApi.ServeError = ServeError
 
 	clientApi := clientOperations.NewZitiEdgeClientAPI(clientSpec)
 	clientApi.ServeError = ServeError
@@ -934,6 +949,7 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 		InstanceId:         cuid.New(),
 		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
+		FabricApi:          fabricApi,
 		ManagementApi:      managementApi,
 		ClientApi:          clientApi,
 		IdentityRefreshMap: cmap.New[time.Time](),

@@ -17,14 +17,17 @@
 package model
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/openziti/identity"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/objectz"
 	"github.com/openziti/ziti/common/datastructures"
 	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/xt"
 	"github.com/orcaman/concurrent-map/v2"
-	"sync/atomic"
-	"time"
 )
 
 type Circuit struct {
@@ -88,41 +91,39 @@ func (self *Circuit) IsEndpointRouter(routerId string) bool {
 }
 
 type CircuitManager struct {
+	models.BaseObjectStoreManager[*Circuit]
 	circuits cmap.ConcurrentMap[string, *Circuit]
-	store    *objectz.ObjectStore[*Circuit]
 }
 
 func NewCircuitManager() *CircuitManager {
 	result := &CircuitManager{
-		circuits: cmap.New[*Circuit](),
+		circuits:               cmap.New[*Circuit](),
+		BaseObjectStoreManager: models.BaseObjectStoreManager[*Circuit]{},
 	}
-	result.store = objectz.NewObjectStore[*Circuit](func() objectz.ObjectIterator[*Circuit] {
+	result.InitStore(objectz.NewObjectStore[*Circuit](func() objectz.ObjectIterator[*Circuit] {
 		return datastructures.IterateCMap(result.circuits)
-	})
-	result.store.AddStringSymbol("id", func(entity *Circuit) *string {
+	}))
+
+	result.GetStore().AddStringSymbol("id", func(entity *Circuit) *string {
 		return &entity.Id
 	})
-	result.store.AddStringSymbol("clientId", func(entity *Circuit) *string {
+	result.GetStore().AddStringSymbol("clientId", func(entity *Circuit) *string {
 		return &entity.ClientId
 	})
-	result.store.AddStringSymbol("service", func(entity *Circuit) *string {
+	result.GetStore().AddStringSymbol("service", func(entity *Circuit) *string {
 		return &entity.ServiceId
 	})
-	result.store.AddStringSymbol("terminator", func(entity *Circuit) *string {
+	result.GetStore().AddStringSymbol("terminator", func(entity *Circuit) *string {
 		val := entity.Terminator.GetId()
 		return &val
 	})
-	result.store.AddDatetimeSymbol("createdAt", func(entity *Circuit) *time.Time {
+	result.GetStore().AddDatetimeSymbol("createdAt", func(entity *Circuit) *time.Time {
 		return &entity.CreatedAt
 	})
-	result.store.AddDatetimeSymbol("updatedAt", func(entity *Circuit) *time.Time {
+	result.GetStore().AddDatetimeSymbol("updatedAt", func(entity *Circuit) *time.Time {
 		return &entity.CreatedAt
 	})
 	return result
-}
-
-func (self *CircuitManager) GetStore() *objectz.ObjectStore[*Circuit] {
-	return self.store
 }
 
 func (self *CircuitManager) Add(circuit *Circuit) {
@@ -134,6 +135,14 @@ func (self *CircuitManager) Get(id string) (*Circuit, bool) {
 		return circuit, true
 	}
 	return nil, false
+}
+
+func (self *CircuitManager) BaseLoad(id string) (*Circuit, error) {
+	entity, found := self.Get(id)
+	if !found {
+		return nil, boltz.NewNotFoundError("circuit", "id", id)
+	}
+	return entity, nil
 }
 
 func (self *CircuitManager) All() []*Circuit {

@@ -17,19 +17,20 @@
 package model
 
 import (
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
 )
 
 // TODO: Add CreateDate
 type Link struct {
+	Id          string
 	SrcLatency  int64
 	DstLatency  int64
 	Cost        int64
-	Id          string
 	Iteration   uint32
 	Src         *Router
 	DstId       string

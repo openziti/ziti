@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/rest_model"
+	edgeRestModel "github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
+	fabricRestModel "github.com/openziti/ziti/controller/rest_model"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -43,7 +44,11 @@ const (
 	EntityNameSelf = "self"
 )
 
-func modelToApi[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error), es []E) ([]interface{}, error) {
+type hasId interface {
+	GetId() string
+}
+
+func modelToApi[E hasId](ae *env.AppEnv, rc *response.RequestContext, mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error), es []E) ([]interface{}, error) {
 	apiEntities := make([]interface{}, 0)
 
 	for _, e := range es {
@@ -65,39 +70,44 @@ func modelToApi[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, ma
 	return apiEntities, nil
 }
 
-func ListWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[E],
+type EntityLister[E any] interface {
+	BasePreparedList(query ast.Query) (*models.EntityListResult[E], error)
+	GetSymbolTypes() ast.SymbolTypes
+}
+
+func ListWithHandler[E hasId](ae *env.AppEnv, rc *response.RequestContext, lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	ListWithQueryF(ae, rc, lister, mapper, lister.BasePreparedList)
 }
 
-func ListWithQueryF[E models.Entity](ae *env.AppEnv,
+func ListWithQueryF[E hasId](ae *env.AppEnv,
 	rc *response.RequestContext,
-	lister models.EntityRetriever[E],
+	lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
 	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithQueryFAndCollector(ae, rc, lister, mapper, defaultToListEnvelope, qf)
 }
 
-func defaultToListEnvelope(data []interface{}, meta *rest_model.Meta) interface{} {
-	return rest_model.Empty{
+func defaultToListEnvelope(data []interface{}, meta *edgeRestModel.Meta) interface{} {
+	return edgeRestModel.Empty{
 		Data: data,
 		Meta: meta,
 	}
 }
 
-type ApiListEnvelopeFactory func(data []interface{}, meta *rest_model.Meta) interface{}
-type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) interface{}
+type ApiListEnvelopeFactory func(data []interface{}, meta *edgeRestModel.Meta) interface{}
+type ApiEntityEnvelopeFactory func(data interface{}, meta *edgeRestModel.Meta) interface{}
 
-func ListWithQueryFAndCollector[E models.Entity](ae *env.AppEnv,
+func ListWithQueryFAndCollector[E hasId](ae *env.AppEnv,
 	rc *response.RequestContext,
-	lister models.EntityRetriever[E],
+	lister EntityLister[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
 	toEnvelope ApiListEnvelopeFactory,
 	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(lister.GetListStore())
+		query, err := queryOptions.getFullQuery(lister.GetSymbolTypes())
 		if err != nil {
 			return nil, err
 		}
@@ -145,8 +155,8 @@ func ListWithEnvelopeFactory(rc *response.RequestContext, toEnvelope ApiListEnve
 		result.Result = []interface{}{}
 	}
 
-	meta := &rest_model.Meta{
-		Pagination: &rest_model.Pagination{
+	meta := &edgeRestModel.Meta{
+		Pagination: &edgeRestModel.Pagination{
 			Limit:      &result.Limit,
 			Offset:     &result.Offset,
 			TotalCount: &result.Count,
@@ -179,7 +189,33 @@ func Create(rc *response.RequestContext, _ response.Responder, linkFactory Creat
 	CreateWithResponder(rc, rc, linkFactory, creator)
 }
 
+func CreateFabric(rc *response.RequestContext, linkFactory CreateFabricLinkFactory, creator ModelCreateF) {
+	CreateWithResponderF(rc, creator, func(id string) {
+		respondWithCreatedIdForFabric(rc, id, linkFactory.SelfLinkFromId(id))
+	})
+}
+
 func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, linkFactory CreateLinkFactory, creator ModelCreateF) {
+	CreateWithResponderF(rc, creator, func(id string) {
+		rsp.RespondWithCreatedId(id, linkFactory.SelfLinkFromId(id))
+	})
+}
+
+func respondWithCreatedIdForFabric(responder response.Responder, id string, link fabricRestModel.Link) {
+	createEnvelope := &fabricRestModel.CreateEnvelope{
+		Data: &fabricRestModel.CreateLocation{
+			Links: fabricRestModel.Links{
+				"self": link,
+			},
+			ID: id,
+		},
+		Meta: &fabricRestModel.Meta{},
+	}
+
+	responder.Respond(createEnvelope, http.StatusCreated)
+}
+
+func CreateWithResponderF(rc *response.RequestContext, creator ModelCreateF, responderF func(id string)) {
 	id, err := creator()
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -210,10 +246,14 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 		return
 	}
 
-	rsp.RespondWithCreatedId(id, linkFactory.SelfLinkFromId(id))
+	responderF(id)
 }
 
-func DetailWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever[E],
+type EntityRetriever[T any] interface {
+	BaseLoad(id string) (T, error)
+}
+
+func DetailWithHandler[E hasId](ae *env.AppEnv, rc *response.RequestContext, loader EntityRetriever[E],
 	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		entity, err := loader.BaseLoad(id)
@@ -248,7 +288,7 @@ func Detail(rc *response.RequestContext, f ModelDetailF) {
 		return
 	}
 
-	rc.RespondWithOk(apiEntity, &rest_model.Meta{})
+	rc.RespondWithOk(apiEntity, &edgeRestModel.Meta{})
 }
 
 type ModelDeleteF func(rc *response.RequestContext, id string) error
@@ -400,9 +440,9 @@ func listWithId(rc *response.RequestContext, f func(id string) ([]interface{}, e
 	offset := int64(0)
 	totalCount := int64(count)
 
-	meta := &rest_model.Meta{
+	meta := &edgeRestModel.Meta{
 		FilterableFields: []string{},
-		Pagination: &rest_model.Pagination{
+		Pagination: &edgeRestModel.Pagination{
 			Limit:      &limit,
 			Offset:     &offset,
 			TotalCount: &totalCount,
@@ -559,8 +599,8 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 		result.Result = []interface{}{}
 	}
 
-	meta := &rest_model.Meta{
-		Pagination: &rest_model.Pagination{
+	meta := &edgeRestModel.Meta{
+		Pagination: &edgeRestModel.Pagination{
 			Limit:      &result.Limit,
 			Offset:     &result.Offset,
 			TotalCount: &result.Count,

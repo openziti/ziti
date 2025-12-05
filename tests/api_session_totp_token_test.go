@@ -190,7 +190,9 @@ func Test_API_Session_TOTP_Tokens(t *testing.T) {
 				issuedAt, err := totpJwtToken.Claims.GetIssuedAt()
 				ctx.NoError(err)
 				ctx.NotNil(issuedAt)
-				ctx.Equal(issuedAt.Time.UTC().Format(time.RFC3339), accessClaims.IssuedAt.AsTime().UTC().Format(time.RFC3339))
+
+				delta := issuedAt.Time.UTC().Sub(accessClaims.IssuedAt.AsTime().UTC()).Abs()
+				ctx.True(delta < 2*time.Millisecond)
 
 				ctx.Equal(accessClaims.ApiSessionId, totpClaims.ApiSessionId)
 

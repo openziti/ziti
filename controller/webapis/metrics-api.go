@@ -29,7 +29,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/network"
 )
 
@@ -52,7 +51,7 @@ func NewMetricsApiFactory(nodeId identity.Identity, network *network.Network) *M
 }
 
 func (factory *MetricsApiFactory) Binding() string {
-	return api_impl.MetricApiBinding
+	return MetricApiBinding
 }
 
 func (factory *MetricsApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
@@ -106,7 +105,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		}
 	}
 
-	metricsApi.modelMapper = api_impl.NewMetricsModelMapper(n, "prometheus", includeTimestamps)
+	metricsApi.modelMapper = NewMetricsModelMapper(n, "prometheus", includeTimestamps)
 	metricsApi.handler = metricsApi.newHandler()
 
 	return metricsApi, nil
@@ -117,12 +116,12 @@ type MetricsApiHandler struct {
 	handler     http.Handler
 	network     *network.Network
 	scrapeCert  *x509.Certificate
-	modelMapper api_impl.MetricsModelMapper
+	modelMapper MetricsModelMapper
 	options     map[interface{}]interface{}
 }
 
 func (metricsApi *MetricsApiHandler) Binding() string {
-	return api_impl.MetricApiBinding
+	return MetricApiBinding
 }
 
 func (metricsApi *MetricsApiHandler) Options() map[interface{}]interface{} {

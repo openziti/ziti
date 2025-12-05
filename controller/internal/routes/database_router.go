@@ -18,6 +18,11 @@ package routes
 
 import (
 	"errors"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
@@ -28,10 +33,8 @@ import (
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/response"
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
+	fabricRestModel "github.com/openziti/ziti/controller/rest_model"
+	fabricDatabase "github.com/openziti/ziti/controller/rest_server/operations/database"
 )
 
 func init() {
@@ -59,6 +62,30 @@ func NewDatabaseRouter() *DatabaseRouter {
 }
 
 func (r *DatabaseRouter) Register(ae *env.AppEnv) {
+	// fabric operations
+	ae.FabricApi.DatabaseCreateDatabaseSnapshotHandler = fabricDatabase.CreateDatabaseSnapshotHandlerFunc(func(params fabricDatabase.CreateDatabaseSnapshotParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateSnapshot(ae, rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.FabricApi.DatabaseCreateDatabaseSnapshotWithPathHandler = fabricDatabase.CreateDatabaseSnapshotWithPathHandlerFunc(func(params fabricDatabase.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.CreateSnapshotWithPath(ae, rc, params.Snapshot)
+		}, params.HTTPRequest, "", "")
+	})
+
+	ae.FabricApi.DatabaseCheckDataIntegrityHandler = fabricDatabase.CheckDataIntegrityHandlerFunc(func(params fabricDatabase.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, false) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.FabricApi.DatabaseFixDataIntegrityHandler = fabricDatabase.FixDataIntegrityHandlerFunc(func(params fabricDatabase.FixDataIntegrityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, true) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.FabricApi.DatabaseDataIntegrityResultsHandler = fabricDatabase.DataIntegrityResultsHandlerFunc(func(params fabricDatabase.DataIntegrityResultsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.GetCheckProgress(rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	// edge operations
 	ae.ManagementApi.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateSnapshot(ae, rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
@@ -86,6 +113,31 @@ func (r *DatabaseRouter) CreateSnapshot(ae *env.AppEnv, rc *response.RequestCont
 		return
 	}
 	rc.RespondWithEmptyOk()
+}
+
+func (r *DatabaseRouter) CreateSnapshotWithPath(ae *env.AppEnv, rc *response.RequestContext, snapshot *fabricRestModel.DatabaseSnapshotCreate) {
+	var path string
+	if snapshot != nil {
+		path = snapshot.Path
+	}
+	actualPath, err := ae.GetHostController().GetNetwork().SnapshotDatabaseToFile(path)
+	if err != nil {
+		if errors.Is(err, network.DbSnapshotTooFrequentError) {
+			rc.RespondWithApiError(apierror.NewRateLimited())
+			return
+		}
+		rc.RespondWithError(err)
+		return
+	}
+
+	result := fabricRestModel.DatabaseSnapshotCreateResultEnvelope{
+		Data: &fabricRestModel.DatabaseSnapshotCreateDetails{
+			Path: &actualPath,
+		},
+		Meta: &fabricRestModel.Meta{},
+	}
+
+	rc.Respond(result, http.StatusOK)
 }
 
 func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.RequestContext, fixErrors bool) {

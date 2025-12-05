@@ -21,6 +21,7 @@ const (
 
 	RestApiV1 = "/" + VersionV1
 
+	FabricRestApiRootPath = "/fabric"
 	RestApiRootPath       = "/edge"
 	ClientRestApiBase     = "/edge/client"
 	ManagementRestApiBase = "/edge/management"
@@ -38,6 +39,10 @@ const (
 	ClientRestApiSpecUrl     = ClientRestApiBaseUrlLatest + "/swagger.json"
 	ManagementRestApiSpecUrl = ManagementRestApiBaseUrlLatest + "/swagger.json"
 
+	FabricRestApiBaseUrlV1 = FabricRestApiRootPath + RestApiV1
+
+	MetricApiBinding                = "metrics"
+	FabricApiBinding                = "fabric"
 	LegacyClientApiBinding          = "edge"
 	ClientApiBinding                = "edge-client"
 	ManagementApiBinding            = "edge-management"
@@ -48,6 +53,9 @@ const (
 // AllApiBindingVersions is a map of: API Binding -> Api Version -> API Path
 // Adding values here will add them to the /versions REST API endpoint
 var AllApiBindingVersions = map[string]map[string]string{
+	FabricApiBinding: {
+		VersionV1: FabricRestApiBaseUrlV1,
+	},
 	ClientApiBinding: {
 		VersionV1: ClientRestApiBaseUrlV1,
 	},

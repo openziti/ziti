@@ -14,20 +14,19 @@
 	limitations under the License.
 */
 
-package api_impl
+package webapis
 
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
 	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
-	"strings"
 )
-
-const EntityNameMetrics = "metrics"
 
 type MetricsModelMapper interface {
 	MapInspectResultToMetricsResult(inspectResult *network.InspectResult) (*string, error)

@@ -3,6 +3,10 @@
 package tests
 
 import (
+	"io"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
@@ -18,9 +22,6 @@ import (
 	"github.com/openziti/ziti/tests/testutil"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"testing"
-	"time"
 )
 
 type testXlinkAcceptor struct {
@@ -152,12 +153,13 @@ func newTestLinkEnv() *testLinkEnv {
 }
 
 func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
-	ctx := NewFabricTestContext(t)
+	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	mgmtClient := ctx.createTestFabricRestClient()
-	mgmtClient.EnrollRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	ctx.startRouter(1)
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
+	ctx.startFabricRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
 	badId, err := id.LoadClientIdentity(
@@ -187,13 +189,14 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 }
 
 func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
-	ctx := NewFabricTestContext(t)
+	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	mgmtClient := ctx.createTestFabricRestClient()
-	mgmtClient.EnrollRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	mgmtClient.EnrollRouter("002", "router-2", "testdata/router/002-client.cert.pem")
-	ctx.startRouter(1)
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
+	ctx.EnrollFabricRouter("002", "router-2", "testdata/router/002-client.cert.pem")
+	ctx.startFabricRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
 	router2Id, err := id.LoadClientIdentity(
@@ -236,27 +239,28 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 }
 
 func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
-	ctx := NewFabricTestContext(t)
+	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	mgmtClient := ctx.createTestFabricRestClient()
-	mgmtClient.EnrollRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	mgmtClient.EnrollRouter("002", "router-2", "testdata/router/002-client.cert.pem")
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
+	ctx.EnrollFabricRouter("002", "router-2", "testdata/router/002-client.cert.pem")
 	ctx.Teardown()
 
 	ctrlListener := ctx.NewControlChannelListener()
-	router1 := ctx.startRouter(1)
+	router1 := ctx.startFabricRouter(1)
 
-	linkChecker := testutil.NewLinkChecker(ctx.Req)
-	router1cc := testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
+	linkChecker := testutil.NewLinkChecker(ctx.Req.Assertions)
+	router1cc := testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req.Assertions)
 
 	router1Listeners := &ctrl_pb.Listeners{}
 	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
 		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
 	}
 
-	router2 := ctx.startRouter(2)
-	router2cc := testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req)
+	router2 := ctx.startFabricRouter(2)
+	router2cc := testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req.Assertions)
 
 	router2Listeners := &ctrl_pb.Listeners{}
 	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
@@ -301,7 +305,7 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 
 	// Test closing control ch to router 1. On reconnect the existing link should get reported
 	ctx.Req.NoError(router1cc.Close())
-	_ = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
+	_ = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req.Assertions)
 
 	time.Sleep(time.Second)
 	linkChecker.RequireNoErrors()
@@ -310,7 +314,7 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 
 	// Test closing control ch to router 2. On reconnect the existing link should get reported
 	ctx.Req.NoError(router2cc.Close())
-	_ = testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req)
+	_ = testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req.Assertions)
 
 	time.Sleep(time.Second)
 
@@ -321,12 +325,12 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	// restart router 1
 	ctx.Req.NoError(router1.Shutdown())
 	ctx.Req.NoError(ctx.waitForPortClose("localhost:6004", 2*time.Second))
-	router1 = ctx.startRouter(1)
+	router1 = ctx.startFabricRouter(1)
 	defer func() {
 		ctx.Req.NoError(router1.Shutdown())
 	}()
 
-	router1cc = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req)
+	router1cc = testutil.StartLinkTest(linkChecker, "router-1", ctrlListener, ctx.Req.Assertions)
 	ctx.Req.NoError(protobufs.MarshalTyped(peerUpdates2).WithTimeout(time.Second).SendAndWaitForWire(router1cc))
 
 	linkChecker.RequireNoErrors()

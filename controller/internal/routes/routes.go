@@ -17,18 +17,16 @@
 package routes
 
 import (
-	"github.com/go-openapi/strfmt"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"strconv"
 	"time"
-)
 
-type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, models.Entity) (interface{}, error)
+	"github.com/go-openapi/strfmt"
+	edgeRestModel "github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/rest_model"
+)
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*PublicQueryOptions, error) {
 	filter := r.URL.Query().Get("filter")
@@ -96,16 +94,16 @@ func NewQueryResult(result interface{}, metadata *models.QueryMetaData) *QueryRe
 	}
 }
 
-func TagsOrDefault(tags *rest_model.Tags) map[string]interface{} {
+func TagsOrDefault(tags *edgeRestModel.Tags) map[string]interface{} {
 	if tags == nil || tags.SubTags == nil {
 		return map[string]interface{}{}
 	}
 	return tags.SubTags
 }
 
-func AttributesOrDefault(attributes *rest_model.Attributes) rest_model.Attributes {
+func AttributesOrDefault(attributes *edgeRestModel.Attributes) edgeRestModel.Attributes {
 	if attributes == nil {
-		return rest_model.Attributes{}
+		return edgeRestModel.Attributes{}
 	}
 
 	return *attributes
@@ -133,4 +131,11 @@ func DateTimePtrOrNil(time *time.Time) *strfmt.DateTime {
 	}
 	dateTime := strfmt.DateTime(*time)
 	return &dateTime
+}
+
+func FabricTagsOrDefault(tags *rest_model.Tags) map[string]interface{} {
+	if tags == nil || tags.SubTags == nil {
+		return map[string]interface{}{}
+	}
+	return tags.SubTags
 }

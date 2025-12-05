@@ -14,13 +14,12 @@
 	limitations under the License.
 */
 
-package api_impl
+package routes
 
 import (
-	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
-
+	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
 )
 
@@ -29,44 +28,44 @@ const EntityNameCircuit = "circuits"
 var CircuitLinkFactory = NewCircuitLinkFactory()
 
 type CircuitLinkFactoryIml struct {
-	BasicLinkFactory
+	BasicFabricLinkFactory
 }
 
 func NewCircuitLinkFactory() *CircuitLinkFactoryIml {
 	return &CircuitLinkFactoryIml{
-		BasicLinkFactory: *NewBasicLinkFactory(EntityNameCircuit),
+		BasicFabricLinkFactory: *NewBasicFabricLinkFactory(EntityNameCircuit),
 	}
 }
 
 func (factory *CircuitLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
-	links := factory.BasicLinkFactory.Links(entity)
+	links := factory.BasicFabricLinkFactory.Links(entity)
 	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
 	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
 	return links
 }
 
-func MapCircuitToRestModel(n *network.Network, _ api.RequestContext, circuit *model.Circuit) (*rest_model.CircuitDetail, error) {
+func MapCircuitToRestModel(ae *env.AppEnv, _ *response.RequestContext, circuit *model.Circuit) (interface{}, error) {
 	path := &rest_model.Path{}
 	for _, node := range circuit.Path.Nodes {
-		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
+		path.Nodes = append(path.Nodes, ToFabricEntityRef(node.Name, node, FabricRouterLinkFactory))
 	}
 	for _, link := range circuit.Path.Links {
-		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
+		path.Links = append(path.Links, ToFabricEntityRef(link.Id, link, LinkLinkFactory))
 	}
 
 	var svcEntityRef *rest_model.EntityRef
-	if svc, _ := n.Service.Read(circuit.ServiceId); svc != nil {
-		svcEntityRef = ToEntityRef(svc.Name, svc, ServiceLinkFactory)
+	if svc, _ := ae.Managers.Service.Read(circuit.ServiceId); svc != nil {
+		svcEntityRef = ToFabricEntityRef(svc.Name, svc, FabricServiceLinkFactory)
 	} else {
-		svcEntityRef = ToEntityRef("<deleted>", deletedEntity(circuit.ServiceId), ServiceLinkFactory)
+		svcEntityRef = ToFabricEntityRef("<deleted>", deletedEntity(circuit.ServiceId), FabricServiceLinkFactory)
 	}
 
 	ret := &rest_model.CircuitDetail{
-		BaseEntity: BaseEntityToRestModel(circuit, CircuitLinkFactory),
+		BaseEntity: FabricEntityToRestModel(circuit, CircuitLinkFactory),
 		ClientID:   circuit.ClientId,
 		Path:       path,
 		Service:    svcEntityRef,
-		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
+		Terminator: ToFabricEntityRef(circuit.Terminator.GetId(), circuit.Terminator, FabricTerminatorLinkFactory),
 	}
 
 	return ret, nil

@@ -1,17 +1,18 @@
 package tests
 
 import (
+	"math/big"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/config"
-	"math/big"
 )
 
-func (ctx *FabricTestContext) NewControlChannelListener() channel.UnderlayListener {
-	config, err := config.LoadConfig(FabricControllerConfFile)
+func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
+	config, err := config.LoadConfig(ControllerConfFile)
 	ctx.Req.NoError(err)
 	ctx.Req.NoError(config.Db.Close())
 
