@@ -44,6 +44,10 @@ import (
 type ServiceDetail struct {
 	BaseEntity
 
+	// max idle time millis
+	// Required: true
+	MaxIdleTimeMillis *int64 `json:"maxIdleTimeMillis"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
@@ -64,6 +68,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		MaxIdleTimeMillis *int64 `json:"maxIdleTimeMillis"`
+
 		Name *string `json:"name"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
@@ -71,6 +77,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.MaxIdleTimeMillis = dataAO1.MaxIdleTimeMillis
 
 	m.Name = dataAO1.Name
 
@@ -89,10 +97,14 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		MaxIdleTimeMillis *int64 `json:"maxIdleTimeMillis"`
+
 		Name *string `json:"name"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
 	}
+
+	dataAO1.MaxIdleTimeMillis = m.MaxIdleTimeMillis
 
 	dataAO1.Name = m.Name
 
@@ -115,6 +127,10 @@ func (m *ServiceDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateMaxIdleTimeMillis(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -126,6 +142,15 @@ func (m *ServiceDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *ServiceDetail) validateMaxIdleTimeMillis(formats strfmt.Registry) error {
+
+	if err := validate.Required("maxIdleTimeMillis", "body", m.MaxIdleTimeMillis); err != nil {
+		return err
+	}
+
 	return nil
 }
 

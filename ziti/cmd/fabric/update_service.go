@@ -18,6 +18,8 @@ package fabric
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -32,6 +34,7 @@ type updateServiceOptions struct {
 	api.Options
 	name               string
 	terminatorStrategy string
+	maxIdleTime        time.Duration
 	tags               map[string]string
 }
 
@@ -57,6 +60,7 @@ func newUpdateServiceCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().DurationVar(&options.maxIdleTime, "max-idle-time", 0, "Time after which idle circuit will be terminated. Defaults to 0, which indicates no limit on idle circuits")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	options.AddCommonFlags(cmd)
 
@@ -79,6 +83,11 @@ func runUpdateService(o *updateServiceOptions) error {
 
 	if o.Cmd.Flags().Changed("terminator-strategy") {
 		api.SetJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("max-idle-time") {
+		api.SetJSONValue(entityData, o.maxIdleTime.Milliseconds(), "maxIdleTimeMillis")
 		change = true
 	}
 

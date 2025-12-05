@@ -17,6 +17,8 @@
 package fabric
 
 import (
+	"time"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -27,6 +29,7 @@ type createServiceOptions struct {
 	api.Options
 	terminatorStrategy string
 	tags               map[string]string
+	maxIdleTime        time.Duration
 }
 
 // newCreateServiceCmd creates the 'fabric create service' command for the given entity type
@@ -50,6 +53,8 @@ func newCreateServiceCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().DurationVar(&options.maxIdleTime, "max-idle-time", 0, "Time after which idle circuit will be terminated. Defaults to 0, which indicates no limit on idle circuits")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -63,7 +68,7 @@ func (o *createServiceOptions) createService(_ *cobra.Command, args []string) (e
 	if o.terminatorStrategy != "" {
 		api.SetJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
 	}
-
+	api.SetJSONValue(entityData, o.maxIdleTime.Milliseconds(), "maxIdleTimeMillis")
 	api.SetJSONValue(entityData, o.tags, "tags")
 
 	result, err := createEntityOfType("services", entityData.String(), &o.Options)
