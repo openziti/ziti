@@ -97,6 +97,7 @@ jobs:
   promote_docker:
     name: Tag Container Image ${{ matrix.image.repo }}:latest
     needs: parse_version
+    if: needs.parse_version.outputs.highest == 'true'  # only promote the highest version as ":latest"
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
@@ -114,7 +115,6 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
-        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
