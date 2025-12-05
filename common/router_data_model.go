@@ -2636,12 +2636,14 @@ func (rdm *RouterDataModel) ToMap() map[string]interface{} {
 			var dialPoliciesCount int32
 			var bindPoliciesCount int32
 
-			v.Identity.WithLock(func() {
-				if access := v.Identity.ServiceAccess[serviceId]; access != nil {
-					dialPoliciesCount = access.DialPoliciesCount
-					bindPoliciesCount = access.BindPoliciesCount
-				}
-			})
+			if v.Identity != nil {
+				v.Identity.WithLock(func() {
+					if access := v.Identity.ServiceAccess[serviceId]; access != nil {
+						dialPoliciesCount = access.DialPoliciesCount
+						bindPoliciesCount = access.BindPoliciesCount
+					}
+				})
+			}
 
 			configsMap := make(map[string]interface{})
 			for configTypeName, identityConfig := range identityService.Configs {
@@ -2677,8 +2679,22 @@ func (rdm *RouterDataModel) ToMap() map[string]interface{} {
 		if v.Identity != nil {
 			serviceAccessTrackingEnabled = v.Identity.serviceAccessTrackingEnabled.Load()
 		}
+
+		var identityMap map[string]interface{}
+
+		if v.Identity != nil {
+			identityMap = map[string]interface{}{
+				"id":            v.Identity.Id,
+				"name":          v.Identity.Name,
+				"disabled":      v.Identity.Disabled,
+				"appDataJson":   string(v.Identity.AppDataJson),
+				"identityIndex": v.Identity.identityIndex,
+			}
+		}
+
 		subscriptions[key] = map[string]interface{}{
 			"identityId":                   v.IdentityId,
+			"identity":                     identityMap,
 			"isRecreatable":                v.IsRouterIdentity,
 			"services":                     subServices,
 			"postureChecks":                subChecks,
