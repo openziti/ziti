@@ -62,7 +62,7 @@ require (
 	github.com/openziti/channel/v4 v4.2.42
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.51
-	github.com/openziti/foundation/v2 v2.0.80
+	github.com/openziti/foundation/v2 v2.0.81
 	github.com/openziti/identity v1.0.119
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.2
@@ -82,13 +82,13 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.45.0
+	github.com/zitadel/oidc/v3 v3.45.1
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20230225012048-214862532bf5
