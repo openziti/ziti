@@ -97,6 +97,7 @@ jobs:
   promote_docker:
     name: Tag Container Image ${{ matrix.image.repo }}:latest
     needs: parse_version
+    if: needs.parse_version.outputs.highest == 'true'  # only promote the highest version as ":latest"
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
@@ -114,7 +115,6 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
-        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
@@ -176,10 +176,14 @@ jobs:
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
 
   repository-dispatch:
-    if: github.repository_owner == 'openziti'
     needs:
       - parse_version
       - promote_docker
+    # run if promote_docker succeeded or was skipped (not highest version), but not if it failed or was cancelled
+    if: |
+      github.repository_owner == 'openziti'
+      && !cancelled()
+      && !failure()
     name: Repository Dispatch Event
     runs-on: ubuntu-24.04
     steps:
