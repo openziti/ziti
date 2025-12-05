@@ -8,6 +8,7 @@
   provided as just the JWT, not with the "Bearer " prefix
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 * OIDC/JWT Token-based Enrollment
+* Clustering Performance Improvements
 
 ## Binding Controller APIs With Identity
 
@@ -134,9 +135,6 @@ ziti edge login https://my-identity@my-service:1280 \
 In this mode, the transport extracts the identity from the URL and uses it to establish a direct connection to
 the specified service via the addressable terminator.
 
-## What's New
-
-* controllers can now optionally bind APIs using a OpenZiti identity
 
 ## Binding Controller APIs With Identity
 
@@ -284,6 +282,81 @@ ziti edge controller update ext-jwt-signer <name|id> \
 ziti edge controller list ext-jwt-signers
 ```
 
+## Clustering Performance Improvements
+
+In previous releases, model updates were submitted to raft one at at time. This prevented 
+raft from being efficient by allowing command batching. This release allows multiple 
+model updates to be in-flight at the same time. 
+
+New Configuration Options
+
+1. Raft Apply Timeout (raft.applyTimeout)
+
+Location: Controller configuration file, under raft section
+Type: Duration
+Default: 5s
+Description: Timeout for applying commands to the Raft distributed log. Commands that exceed this timeout will trigger adaptive rate limiter backoff.
+
+Example:
+```
+  raft:
+    applyTimeout: 10s
+```
+
+2. Raft Rate Limiter Configuration (raft.rateLimiter)
+
+A new adaptive rate limiter that controls the submission of commands to the Raft cluster. Unlike the existing command rate limiter, this specifically manages in-flight Raft operations with adaptive window sizing.
+
+Configuration Structure:
+```
+  raft:
+    rateLimiter:
+      enabled: true
+      minSize: 5
+      maxSize: 250
+      timeout: 30s
+```
+
+Sub-options:
+
+  - enabled (boolean)
+    - Default: true
+    - Description: Enable/disable adaptive rate limiting for Raft command submission
+  - minSize (integer)
+    - Default: 5
+    - Minimum: 1
+    - Description: Minimum window size for concurrent in-flight Raft operations
+  - maxSize (integer)
+    - Default: 250
+    - Description: Maximum window size for concurrent in-flight Raft operations. Must be >= minSize
+  - timeout (duration)
+    - Default: 30s
+    - Description: Time after which outstanding work is assumed to have failed if not marked completed
+
+3. Restart Self on Snapshot (raft.restartSelfOnSnapshot)
+
+Location: Controller configuration file, under raft section
+Type: Boolean
+Default: false
+Description: When true, the controller will automatically restart itself when restoring a snapshot to an initialized system. When false, the controller will exit with code 0, requiring external process management to restart it.
+
+Example:
+```
+  raft:
+    restartSelfOnSnapshot: true
+```
+
+### New Metrics
+
+The adaptive rate limiter exposes three new metrics:
+
+  1. raft.rate_limiter.queue_size (gauge)
+    - Current number of operations queued/in-flight
+  2. raft.rate_limiter.work_timer (timer)
+    - Duration of rate-limited operations
+  3. raft.rate_limiter.window_size (gauge)
+    - Current adaptive window size
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/channel/v4: [v4.2.41 -> v4.2.42](https://github.com/openziti/channel/compare/v4.2.41...v4.2.42)
@@ -296,16 +369,23 @@ ziti edge controller list ext-jwt-signers
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
 * github.com/openziti/secretstream: [v0.1.41 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.42)
-* github.com/openziti/storage: [v0.4.31 -> v0.4.32](https://github.com/openziti/storage/compare/v0.4.31...v0.4.32)
+* github.com/openziti/storage: [v0.4.31 -> v0.4.33](https://github.com/openziti/storage/compare/v0.4.31...v0.4.33)
+    * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
+    * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
+    * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
+
 * github.com/openziti/transport/v2: [v2.0.198 -> v2.0.199](https://github.com/openziti/transport/compare/v2.0.198...v2.0.199)
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
 * github.com/openziti/ziti: [v1.7.1 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.1...v1.8.0)
+    * [Issue #3318](https://github.com/openziti/ziti/issues/3318) - Terminator creation seems to slow exponentially as the number of terminators rises from 10k to 20k to 40k
+    * [Issue #3359](https://github.com/openziti/ziti/issues/3359) - Ensure router data model subscriptions have reasonable performance and will scale
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
     * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
     * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
+
 
 # Release 1.7.1
 

@@ -17,6 +17,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -32,9 +36,6 @@ import (
 	"github.com/openziti/ziti/controller/xt"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"reflect"
-	"strings"
-	"time"
 )
 
 func newTerminatorManager(env Env) *TerminatorManager {
@@ -258,39 +259,98 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 	return result, nil
 }
 
-type TerminatorValidationCallback func(detail *mgmt_pb.TerminatorDetail)
+type TerminatorValidationHandler func(detail *mgmt_pb.TerminatorDetail)
+type InvalidTerminatorHostStateHandler func(detail *mgmt_pb.InvalidTerminatorHostState)
 
-func (self *TerminatorManager) ValidateTerminators(filter string, fixInvalid bool, cb TerminatorValidationCallback) (uint64, error) {
-	if filter == "" {
-		filter = "true limit none"
+func (self *TerminatorManager) ValidateTerminators(req *mgmt_pb.ValidateTerminatorsRequest, terminatorErrorHandler TerminatorValidationHandler, hostErrorHandler InvalidTerminatorHostStateHandler) (uint64, error) {
+	if req.TerminatorsFilter == "" {
+		req.TerminatorsFilter = "true limit none"
 	}
-	result, err := self.BaseList(filter)
+	result, err := self.BaseList(req.TerminatorsFilter)
 	if err != nil {
 		return 0, err
 	}
 
+	log := pfxlog.Logger()
+	log.Infof("validating %d terminators", result.Count)
+
 	go func() {
 		batches := map[string][]*Terminator{}
+
+		perSvcAndHost := map[string]uint32{}
+		perHost := map[string]uint32{}
 
 		for _, terminator := range result.Entities {
 			routerId := terminator.Router
 			batch := append(batches[routerId], terminator)
 			batches[routerId] = batch
+
+			if req.ExpectedPerSvcAndHost > 0 {
+				perSvcAndHost[terminator.Service+"/"+terminator.HostId]++
+			}
+
+			if req.ExpectedPerHost > 0 {
+				perHost[terminator.HostId]++
+			}
+
 			if len(batch) == 50 {
-				self.validateTerminatorBatch(fixInvalid, routerId, batch, cb)
+				self.validateTerminatorBatch(req.FixInvalid, routerId, batch, terminatorErrorHandler)
 				delete(batches, routerId)
 			}
 		}
 
 		for routerId, batch := range batches {
-			self.validateTerminatorBatch(fixInvalid, routerId, batch, cb)
+			self.validateTerminatorBatch(req.FixInvalid, routerId, batch, terminatorErrorHandler)
+		}
+
+		if req.ExpectedPerSvcAndHost > 0 {
+			log.Infof("checking %d terminator identity/service counts", len(perHost))
+			for k, count := range perSvcAndHost {
+				if count != req.ExpectedPerSvcAndHost {
+					parts := strings.Split(k, "/")
+					hostErrorHandler(&mgmt_pb.InvalidTerminatorHostState{
+						ServiceId:  parts[0],
+						IdentityId: parts[1],
+						Message:    fmt.Sprintf("expected %d terminators, but had %d", req.ExpectedPerSvcAndHost, count),
+					})
+				}
+			}
+		}
+
+		if req.ExpectedPerHost > 0 {
+			if req.IdentitiesFilter == "" {
+				req.TerminatorsFilter = "not isAdmin limit none"
+			}
+			identitiesList, err := self.BaseList(req.TerminatorsFilter)
+			if err != nil {
+				hostErrorHandler(&mgmt_pb.InvalidTerminatorHostState{
+					IdentityId: "invalid identities query",
+					ServiceId:  "invalid identities query",
+					Message:    fmt.Sprintf("invalid query '%s' (%s)", req.IdentitiesFilter, err.Error()),
+				})
+				return
+			}
+
+			log.Infof("checking %d identity terminator counts", identitiesList.Count)
+
+			for _, identity := range identitiesList.Entities {
+				if req.ExpectedPerHost > 0 {
+					if req.ExpectedPerHost != perHost[identity.Id] {
+						hostErrorHandler(&mgmt_pb.InvalidTerminatorHostState{
+							IdentityId: identity.Id,
+							Message:    fmt.Sprintf("expected %d terminators, but had %d", req.ExpectedPerHost, perHost[identity.Id]),
+						})
+					}
+				}
+
+			}
 		}
 	}()
 
 	return uint64(len(result.Entities)), nil
 }
 
-func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb TerminatorValidationCallback) {
+func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId string, batch []*Terminator, cb TerminatorValidationHandler) {
 	router := self.env.GetManagers().Router.GetConnected(routerId)
 	if router == nil {
 		self.reportError(router, batch, cb, "router off-line")
@@ -331,7 +391,7 @@ func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId
 	}
 }
 
-func (self *TerminatorManager) reportError(router *Router, batch []*Terminator, cb TerminatorValidationCallback, err string) {
+func (self *TerminatorManager) reportError(router *Router, batch []*Terminator, cb TerminatorValidationHandler, err string) {
 	for _, terminator := range batch {
 		detail := self.newTerminatorDetail(router, terminator)
 		detail.State = mgmt_pb.TerminatorState_Unknown
@@ -431,7 +491,7 @@ type ValidateTerminatorRequestSendable struct {
 	mgr         *TerminatorManager
 	router      *Router
 	terminators []*Terminator
-	cb          TerminatorValidationCallback
+	cb          TerminatorValidationHandler
 	ctx         context.Context
 	cancelF     func()
 }

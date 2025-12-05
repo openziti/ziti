@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"sync/atomic"
 	"time"
@@ -33,7 +34,7 @@ import (
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
-	event2 "github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/controller/event"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bbolterrors "go.etcd.io/bbolt/errors"
@@ -45,12 +46,13 @@ const (
 	ServerIsVoterField = "isVoter"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event2.Dispatcher) *BoltDbFsm {
+func NewFsm(dataDir string, restartSelf bool, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:        decoders,
 		dbPath:          path.Join(dataDir, "ctrl-ha.db"),
 		indexTracker:    indexTracker,
 		eventDispatcher: eventDispatcher,
+		restartSelf:     restartSelf,
 	}
 }
 
@@ -64,11 +66,12 @@ type BoltDbFsm struct {
 	dbPath          string
 	decoders        command.Decoders
 	indexTracker    IndexTracker
-	eventDispatcher event2.Dispatcher
+	eventDispatcher event.Dispatcher
 	currentState    atomic.Pointer[ServersWithIndex]
 	startIndex      uint64
 	index           uint64
 	dbReferenced    atomic.Bool
+	restartSelf     bool
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -228,10 +231,10 @@ func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Confi
 			Servers: configuration.Servers,
 			Index:   index,
 		})
-		evt := event2.NewClusterEvent(event2.ClusterMembersChanged)
+		evt := event.NewClusterEvent(event.ClusterMembersChanged)
 		evt.Index = index
 		for _, srv := range configuration.Servers {
-			evt.Peers = append(evt.Peers, &event2.ClusterPeer{
+			evt.Peers = append(evt.Peers, &event.ClusterPeer{
 				Id:   string(srv.ID),
 				Addr: string(srv.Address),
 			})
@@ -355,10 +358,22 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 
 	// if we're not initializing from a snapshot at startup, restart
 	if self.indexTracker.Index() > 0 || self.dbReferenced.Load() {
-		log.Info("restored snapshot to initialized system, restart required. exiting in 5s")
+		if self.restartSelf {
+			log.Info("restored snapshot to initialized system, restart required, restarting in 5s")
+		} else {
+			log.Info("restored snapshot to initialized system, restart required, exiting in 5s")
+		}
 		time.AfterFunc(5*time.Second, func() {
-			log.Info("restored snapshot to initialized system, restart required. exiting now")
-			os.Exit(0)
+			if self.restartSelf {
+				log.Info("restored snapshot to initialized system, restart required, restarting now")
+				if err = self.RestartController(); err != nil {
+					log.WithError(err).Error("failed to restart controller, exiting now")
+					os.Exit(0)
+				}
+			} else {
+				log.Info("restored snapshot to initialized system, restart required, exiting now")
+				os.Exit(0)
+			}
 		})
 		return nil
 	}
@@ -368,6 +383,52 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		log.Info("restored snapshot to uninitialized system, ok to continue")
 	}
 	return err
+}
+
+// RestartController starts a new controller process with the same parameters and exits the current process.
+// This is useful when the controller needs to be restarted after applying a snapshot or other configuration changes.
+func (self *BoltDbFsm) RestartController() error {
+	log := pfxlog.Logger()
+
+	// Get the current executable path
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get current executable path: %w", err)
+	}
+
+	// Get the current process arguments (excluding the executable itself)
+	args := os.Args[1:]
+
+	log.WithField("executable", executable).
+		WithField("args", args).
+		Info("restarting controller with same parameters")
+
+	// Create the new process with the same arguments
+	cmd := exec.Command(executable, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err = os.Setenv("DELAY_START_SECONDS", "5"); err != nil {
+		log.WithError(err).Error("failed to set DELAY_START_SECONDS in env for child controller process")
+	}
+
+	cmd.Env = os.Environ()
+
+	// Start the new process
+	if err = cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start new controller process: %w", err)
+	}
+
+	log.WithField("newPid", cmd.Process.Pid).Info("new controller process started, exiting current process")
+
+	// Give the new process a moment to start
+	time.Sleep(1 * time.Second)
+
+	// Exit the current process
+	os.Exit(0)
+
+	return nil
 }
 
 func (self *BoltDbFsm) restoreSnapshotDbFile(path string, snapshot io.ReadCloser) error {

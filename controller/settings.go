@@ -84,6 +84,7 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 	log.Info("router connected, syncing ctrl addresses")
 
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{
+		IsLeader:  o.raft.IsLeader(),
 		Addresses: data,
 		Index:     index,
 	}

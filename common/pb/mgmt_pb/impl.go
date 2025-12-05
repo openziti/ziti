@@ -24,6 +24,10 @@ func (request *TerminatorDetail) GetContentType() int32 {
 	return int32(ContentType_ValidateTerminatorResultType)
 }
 
+func (request *InvalidTerminatorHostState) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorHostResultType)
+}
+
 func (request *ValidateRouterLinksRequest) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterLinksRequestType)
 }

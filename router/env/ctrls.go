@@ -392,6 +392,7 @@ func (self *networkControllers) IsLeaderConnected() bool {
 
 func (self *networkControllers) Inspect() *inspect.ControllerInspectDetails {
 	result := &inspect.ControllerInspectDetails{
+		LeaderId:    self.leaderId.Load(),
 		Controllers: map[string]*inspect.ControllerInspectDetail{},
 	}
 

@@ -214,6 +214,10 @@ func (c *Controller) GetCommandRateLimiterConfig() command.RateLimiterConfig {
 	return c.config.CommandRateLimiter
 }
 
+func (c *Controller) GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig {
+	return c.config.Raft.RateLimiter
+}
+
 func (c *Controller) RenderJsonConfig() (string, error) {
 	return c.config.ToJson()
 }
@@ -632,7 +636,6 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 			})
 
 			if err := protobufs.MarshalTyped(req).Send(r.Control); err != nil {
-
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
 			} else {
 				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")

@@ -18,13 +18,14 @@ package handler_mgmt
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller/network"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type validateTerminatorsHandler struct {
@@ -46,28 +47,47 @@ func (handler *validateTerminatorsHandler) HandleReceive(msg *channel.Message, c
 	var err error
 	var terminatorCount uint64
 
-	if err = proto.Unmarshal(msg.Body, request); err == nil {
-		terminatorCount, err = handler.network.Managers.Terminator.ValidateTerminators(request.Filter, request.FixInvalid, func(detail *mgmt_pb.TerminatorDetail) {
-			if !ch.IsClosed() {
-				if sendErr := protobufs.MarshalTyped(detail).WithTimeout(15 * time.Second).SendAndWaitForWire(ch); sendErr != nil {
-					log.WithError(sendErr).Error("send of terminator detail failed, closing channel")
-					if closeErr := ch.Close(); closeErr != nil {
-						log.WithError(closeErr).Error("failed to close channel")
-					}
+	terminatorDetailHandler := func(detail *mgmt_pb.TerminatorDetail) {
+		if !ch.IsClosed() {
+			if sendErr := protobufs.MarshalTyped(detail).WithTimeout(15 * time.Second).SendAndWaitForWire(ch); sendErr != nil {
+				log.WithError(sendErr).Error("send of terminator detail failed, closing channel")
+				if closeErr := ch.Close(); closeErr != nil {
+					log.WithError(closeErr).Error("failed to close channel")
 				}
-			} else {
-				log.Info("channel closed, unable to send terminator detail")
 			}
-		})
+		} else {
+			log.Info("channel closed, unable to send terminator detail")
+		}
+	}
+
+	hostStateErrorHandler := func(detail *mgmt_pb.InvalidTerminatorHostState) {
+		if !ch.IsClosed() {
+			if sendErr := protobufs.MarshalTyped(detail).WithTimeout(15 * time.Second).SendAndWaitForWire(ch); sendErr != nil {
+				log.WithError(sendErr).Error("send of invalid terminator host status failed, closing channel")
+				if closeErr := ch.Close(); closeErr != nil {
+					log.WithError(closeErr).Error("failed to close channel")
+				}
+			}
+		} else {
+			log.Info("channel closed, unable to send invalid terminator host status")
+		}
 	}
 
 	response := &mgmt_pb.ValidateTerminatorsResponse{}
-	if err == nil {
-		response.Success = true
-		response.TerminatorCount = terminatorCount
-	} else {
+
+	if err = proto.Unmarshal(msg.Body, request); err != nil {
 		response.Success = false
 		response.Message = fmt.Sprintf("%v: failed to unmarshall request: %v", handler.network.GetAppId(), err)
+	} else {
+		terminatorCount, err = handler.network.Managers.Terminator.ValidateTerminators(request, terminatorDetailHandler, hostStateErrorHandler)
+
+		if err == nil {
+			response.Success = true
+			response.TerminatorCount = terminatorCount
+		} else {
+			response.Success = false
+			response.Message = fmt.Sprintf("%v: failed to run terminator validation: %v", handler.network.GetAppId(), err)
+		}
 	}
 
 	body, err := proto.Marshal(response)
