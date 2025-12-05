@@ -176,10 +176,14 @@ jobs:
           ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
 
   repository-dispatch:
-    if: github.repository_owner == 'openziti'
     needs:
       - parse_version
       - promote_docker
+    # run if promote_docker succeeded or was skipped (not highest version), but not if it failed or was cancelled
+    if: |
+      github.repository_owner == 'openziti'
+      && !cancelled()
+      && !failure()
     name: Repository Dispatch Event
     runs-on: ubuntu-24.04
     steps:
