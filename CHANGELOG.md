@@ -361,7 +361,7 @@ The adaptive rate limiter exposes three new metrics:
 
 * github.com/openziti/channel/v4: [v4.2.41 -> v4.2.42](https://github.com/openziti/channel/compare/v4.2.41...v4.2.42)
 * github.com/openziti/edge-api: [v0.26.50 -> v0.26.51](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.51)
-* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.80](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.80)
+* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.81](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.81)
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
 
 * github.com/openziti/identity: [v1.0.118 -> v1.0.119](https://github.com/openziti/identity/compare/v1.0.118...v1.0.119)
@@ -376,16 +376,22 @@ The adaptive rate limiter exposes three new metrics:
 
 * github.com/openziti/transport/v2: [v2.0.198 -> v2.0.199](https://github.com/openziti/transport/compare/v2.0.198...v2.0.199)
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
-* github.com/openziti/ziti: [v1.7.1 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.1...v1.8.0)
+* github.com/openziti/ziti: [v1.7.0 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.0...v1.8.0)
+    * [Issue #3410](https://github.com/openziti/ziti/issues/3410) - Consolidate fabric REST API code with edge management and edge client code
+    * [Issue #3425](https://github.com/openziti/ziti/issues/3425) - RDM not properly responding to tunneler enabled flag changes
+    * [Issue #3420](https://github.com/openziti/ziti/issues/3420) - The terminator id cache uses the same id for all terminators in a host.v2 config, resulting in a single terminator
+    * [Issue #3419](https://github.com/openziti/ziti/issues/3419) - When using the router data model, precedence specified on the per-service identity mapping are incorrectly interpreted
     * [Issue #3318](https://github.com/openziti/ziti/issues/3318) - Terminator creation seems to slow exponentially as the number of terminators rises from 10k to 20k to 40k
+    * [Issue #3407](https://github.com/openziti/ziti/issues/3407) - The CLI doesn't properly pass JWT authentication information to websocket endpoints
     * [Issue #3359](https://github.com/openziti/ziti/issues/3359) - Ensure router data model subscriptions have reasonable performance and will scale
+    * [Issue #3381](https://github.com/openziti/ziti/issues/3381) - the fabric service REST apis are missing the maxIdleTime property
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
     * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
     * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
-
+    * [Issue #3264](https://github.com/openziti/ziti/issues/3264) - Allow routers to generate alert events in cases of service misconfiguration
 
 # Release 1.7.1
 

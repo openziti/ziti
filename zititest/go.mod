@@ -21,7 +21,7 @@ require (
 	github.com/openziti/channel/v4 v4.2.42
 	github.com/openziti/edge-api v0.26.51
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.80
+	github.com/openziti/foundation/v2 v2.0.81
 	github.com/openziti/identity v1.0.119
 	github.com/openziti/metrics v1.4.2
 	github.com/openziti/sdk-golang v1.3.0
@@ -32,7 +32,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/net v0.47.0
@@ -198,7 +198,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/logging v0.6.2 // indirect
-	github.com/zitadel/oidc/v3 v3.45.0 // indirect
+	github.com/zitadel/oidc/v3 v3.45.1 // indirect
 	github.com/zitadel/schema v1.3.1 // indirect
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.mozilla.org/pkcs7 v0.9.0 // indirect
