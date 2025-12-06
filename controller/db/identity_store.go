@@ -63,6 +63,7 @@ const (
 	FieldIdentityExternalId                = "externalId"
 	FieldIdentityDisabledAt                = "disabledAt"
 	FieldIdentityDisabledUntil             = "disabledUntil"
+	FieldIdentityPermissions               = "permissions"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -115,6 +116,7 @@ type Identity struct {
 	Disabled                  bool                         `json:"disabled"`
 	ServiceConfigs            map[string]map[string]string `json:"serviceConfigs"`
 	Interfaces                []*Interface                 `json:"interfaces"`
+	Permissions               []string                     `json:"permissions"`
 }
 
 func (entity *Identity) GetEntityType() string {
@@ -232,6 +234,7 @@ func (store *identityStoreImpl) FillEntity(entity *Identity, bucket *boltz.Typed
 	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
 	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.Permissions = bucket.GetStringList(FieldIdentityPermissions)
 	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
 	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
 	entity.AppData = bucket.GetMap(FieldIdentityAppData)
@@ -322,8 +325,12 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 		entity.AuthPolicyId = DefaultAuthPolicyId
 	}
 	ctx.SetString(FieldIdentityAuthPolicyId, entity.AuthPolicyId)
+
 	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+
+	store.validatePermissions(entity.Permissions, ctx.Bucket)
+	ctx.SetStringList(FieldIdentityPermissions, entity.Permissions)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
 	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, true)
@@ -393,6 +400,13 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 
 	store.persistServiceConfigs(entity, ctx)
 	storeInterfaces(entity.Interfaces, ctx)
+}
+
+func (store *identityStoreImpl) validatePermissions(permissions []string, holder errorz.ErrorHolder) {
+	for _, permission := range permissions {
+		holder.SetError(fmt.Errorf("'%s' is not a valid permission", permission))
+		return
+	}
 }
 
 func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *boltz.PersistContext) {
