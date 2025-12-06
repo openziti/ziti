@@ -4,6 +4,12 @@ package tests
 
 import (
 	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
@@ -19,11 +25,6 @@ import (
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/rcrowley/go-metrics"
-	"io"
-	"net/url"
-	"os"
-	"testing"
-	"time"
 )
 
 type modelPerf struct {
@@ -538,7 +539,7 @@ func (s *perfStats) timeRefreshApiSession() {
 func (s *perfStats) timeGetServices() {
 	s.time(s.getServices, func() {
 		params := service2.NewListServicesParams()
-		params.Limit = I(500)
+		params.Limit = ToPtr(500)
 		_, err := s.client.API.Service.ListServices(params, nil)
 		s.Req.NoError(err)
 	})

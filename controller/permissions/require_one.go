@@ -16,12 +16,25 @@
 
 package permissions
 
-const (
-	AdminPermission                 = "ADMIN"
-	AuthenticatedPermission         = "AUTHENTICATED"
-	PartiallyAuthenticatePermission = "PARTIAL_AUTH"
-)
+type RequireOne struct {
+	required []string
+}
 
-type Resolver interface {
-	IsAllowed(...string) bool
+func NewRequireOne(perms ...string) *RequireOne {
+	return &RequireOne{
+		required: perms,
+	}
+}
+
+func (ro *RequireOne) IsAllowed(ctx Context) bool {
+	if ctx.HasPermission(AdminPermission) {
+		return true
+	}
+
+	for _, p := range ro.required {
+		if ctx.HasPermission(p) {
+			return true
+		}
+	}
+	return false
 }

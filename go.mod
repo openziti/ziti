@@ -46,8 +46,8 @@ require (
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.3
-	github.com/hashicorp/raft-boltdb v0.0.0-20251103221153-05f9dd7a5148
-	github.com/jedib0t/go-pretty/v6 v6.7.3
+	github.com/hashicorp/raft-boltdb/v2 v2.3.1
+	github.com/jedib0t/go-pretty/v6 v6.7.7
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/judedaryl/go-arrayutils v0.0.1
@@ -61,7 +61,7 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.2.42
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.51
+	github.com/openziti/edge-api v0.26.52-0.20251206190459-ac70cf400704
 	github.com/openziti/foundation/v2 v2.0.81
 	github.com/openziti/identity v1.0.119
 	github.com/openziti/jwks v1.0.6
@@ -152,9 +152,9 @@ require (
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
-	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/hashicorp/raft-boltdb v0.0.0-20251103221153-05f9dd7a5148 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect

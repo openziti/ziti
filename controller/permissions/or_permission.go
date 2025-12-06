@@ -16,17 +16,19 @@
 
 package permissions
 
-type RequireAdmin struct{}
-
-var requireAdmin = &RequireAdmin{}
-
-func IsAdmin() *RequireAdmin {
-	return requireAdmin
+type RequireOneOf struct {
+	resolvers []Resolver
 }
 
-func (ia *RequireAdmin) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-		if p == AdminPermission {
+func HasOneOf(resolvers ...Resolver) *RequireOneOf {
+	return &RequireOneOf{
+		resolvers: resolvers,
+	}
+}
+
+func (ia *RequireOneOf) IsAllowed(ctx Context) bool {
+	for _, resolver := range ia.resolvers {
+		if resolver.IsAllowed(ctx) {
 			return true
 		}
 	}

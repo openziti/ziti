@@ -24,12 +24,6 @@ func IsPartiallyAuthenticated() *RequirePartiallyAuthenticated {
 	return isPartiallyAuthenticated
 }
 
-func (ir *RequirePartiallyAuthenticated) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-		if p == PartiallyAuthenticatePermission {
-			return true
-		}
-	}
-
-	return false
+func (ir *RequirePartiallyAuthenticated) IsAllowed(ctx Context) bool {
+	return ctx.HasPermission(PartiallyAuthenticatePermission)
 }

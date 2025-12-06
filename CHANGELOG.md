@@ -9,6 +9,7 @@
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 * OIDC/JWT Token-based Enrollment
 * Clustering Performance Improvements
+* Entity level permissions model (BETA)
 
 ## Binding Controller APIs With Identity
 
@@ -356,6 +357,78 @@ The adaptive rate limiter exposes three new metrics:
     - Duration of rate-limited operations
   3. raft.rate_limiter.window_size (gauge)
     - Current adaptive window size
+
+## Granular Permission System (BETA)
+
+Added a comprehensive granular permission system that allows fine-grained control over identity access to controller management API operations. 
+This replaces the previous binary admin/non-admin model with a flexible role-based permission system.
+
+**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
+but the set of exposed permissions may grow, shrink or change based on user feedback. 
+
+### Permission Model
+
+The permission system supports three levels of authorization:
+
+  1. **Global Permissions**: System-wide access levels
+     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
+     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
+
+  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
+     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
+
+  3. **Action-Level Permissions**: Specific operation access on entity types
+     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
+     - Supports `create`, `read`, `update`, and `delete` actions per entity type
+
+### Supported Entity Permissions
+
+The following entity-level permissions are available:
+
+  - `auth-policy` - Authentication policy management
+  - `ca` - Certificate Authority management
+  - `config` - Configuration management
+  - `config-type` - Configuration type management
+  - `edge-router-policy` - Edge router policy management
+  - `enrollment` - Enrollment management
+  - `external-jwt-signer` - External JWT signer management
+  - `identity` - Identity management
+  - `posture-check` - Posture check management
+  - `router` - Edge and transit router management
+  - `service` - Service management
+  - `service-policy` - Service policy management
+  - `service-edge-router-policy` - Service edge router policy management
+  - `terminator` - Terminator management
+  - `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
+
+### Permission Assignment
+
+Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
+
+### Cross-Entity Operations
+
+Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
+  - Listing services for a service-policy requires `service.read` permission
+  - Listing identities for an edge-router-policy requires `identity.read` permission
+  - Listing configs for a service requires `config.read` permission
+
+**NOTE:** 
+More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
+has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
+as well because it will need to look up the config type id that corresponds to the given config type name.
+
+Similar cross entity read permissions may be required when creating services.
+
+### Admin Protection
+
+Non-admin identities cannot:
+ - Create identities with the `isAdmin` flag
+ - Create identities with any permissions granted
+ - Modify admin-related fields on existing identities
+ - Update or delete admin identities
+ - Grant permissions to identities
+
+These protections ensure that privilege escalation is prevented and admin access remains controlled.
 
 ## Component Updates and Bug Fixes
 

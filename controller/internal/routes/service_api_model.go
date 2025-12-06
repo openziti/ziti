@@ -175,7 +175,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 	var policyPostureCheckMap map[string]*model.PolicyPostureChecks
 
-	if !ae.GetHostController().GetConfig().Edge.DisablePostureChecks {
+	if !fillPostureData {
 		policyPostureCheckMap = ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
 	}
 

@@ -19,14 +19,15 @@
 package tests
 
 import (
-	"github.com/google/uuid"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/foundation/v2/errorz"
 	"math"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_Configs(t *testing.T) {
@@ -64,7 +65,7 @@ func Test_Configs(t *testing.T) {
 		config := &rest_model.ConfigCreate{
 			ConfigTypeID: &configType.Id,
 			Data:         "invalid",
-			Name:         S(uuid.NewString()),
+			Name:         ToPtr(uuid.NewString()),
 		}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(config).Post("/configs")

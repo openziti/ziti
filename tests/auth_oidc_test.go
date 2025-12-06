@@ -610,15 +610,15 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		extAuthUrl := "https://some.auth.url.example.com/auth"
 		createExtJwtParam := external_jwt_signer.NewCreateExternalJWTSignerParams()
 		createExtJwtParam.ExternalJWTSigner = &rest_model.ExternalJWTSignerCreate{
-			CertPem:         S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:         B(true),
-			Name:            S("Test JWT Signer - Auth Policy"),
-			Kid:             S(uuid.NewString()),
-			Issuer:          S("test-issuer-99"),
-			Audience:        S("test-audience-99"),
+			CertPem:         ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:         ToPtr(true),
+			Name:            ToPtr("Test JWT Signer - Auth Policy"),
+			Kid:             ToPtr(uuid.NewString()),
+			Issuer:          ToPtr("test-issuer-99"),
+			Audience:        ToPtr("test-audience-99"),
 			ClientID:        &clientId,
 			Scopes:          []string{scope1, scope2},
-			ExternalAuthURL: S(extAuthUrl),
+			ExternalAuthURL: ToPtr(extAuthUrl),
 		}
 
 		extJwtCreateResp, err := managementClient.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParam, nil)

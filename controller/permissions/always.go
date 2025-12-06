@@ -16,20 +16,14 @@
 
 package permissions
 
-type RequireAuthenticated struct{}
+type AlwaysAllow struct{}
 
-var isAuthenticated = &RequireAuthenticated{}
+var always = &AlwaysAllow{}
 
-func IsAuthenticated() *RequireAuthenticated {
-	return isAuthenticated
+func (a *AlwaysAllow) IsAllowed(Context) bool {
+	return true
 }
 
-func (ir *RequireAuthenticated) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-		if p == AuthenticatedPermission {
-			return true
-		}
-	}
-
-	return false
+func Always() *AlwaysAllow {
+	return always
 }

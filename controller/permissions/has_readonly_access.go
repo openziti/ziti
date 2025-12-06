@@ -16,14 +16,14 @@
 
 package permissions
 
-type AlwaysAllow struct{}
+type RequireReadOnlyAccess struct{}
 
-var always = &AlwaysAllow{}
+var requireReadOnlyAccess = &RequireReadOnlyAccess{}
 
-func (a *AlwaysAllow) IsAllowed(_ ...string) bool {
-	return true
+func HasReadOnlyAccess() *RequireReadOnlyAccess {
+	return requireReadOnlyAccess
 }
 
-func Always() *AlwaysAllow {
-	return always
+func (ia *RequireReadOnlyAccess) IsAllowed(ctx Context) bool {
+	return ctx.GetAction() == Read && ctx.HasPermission(AdminReadOnlyPermission)
 }

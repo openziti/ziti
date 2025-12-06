@@ -16,37 +16,16 @@
 
 package permissions
 
-type RequireAll struct {
-	required []string
+var defaultManagementAccess = NewRequireAllOf(
+	IsManagementApi(),
+	HasOneOf(IsAdmin(), HasReadOnlyAccess(), HasEntityAccess(), HasEntityActionAccess()))
+
+var adminReadonly = NewRequireAllOf(IsManagementApi(), HasOneOf(IsAdmin(), HasReadOnlyAccess()))
+
+func DefaultManagementAccess() Resolver {
+	return defaultManagementAccess
 }
 
-func NewRequireAll(perms ...string) *RequireAll {
-	ra := &RequireAll{
-		required: perms,
-	}
-	return ra
-}
-
-func (ra *RequireAll) IsAllowed(identityPerms ...string) bool {
-	ps := map[string]bool{}
-
-	if len(identityPerms) < len(ra.required) {
-		return false
-	}
-
-	for _, p := range identityPerms {
-		ps[p] = true
-
-		//short cut admins
-		if p == AdminPermission {
-			return true
-		}
-	}
-
-	for _, r := range ra.required {
-		if _, ok := ps[r]; !ok {
-			return false
-		}
-	}
-	return true
+func HasAdminReadOnly() Resolver {
+	return adminReadonly
 }

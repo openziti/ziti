@@ -108,11 +108,11 @@ func (self *EdgeServiceManager) readInTx(tx *bbolt.Tx, id string) (*ServiceDetai
 	return entity, nil
 }
 
-func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
+func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, configTypes map[string]struct{}, isMgmtAccess bool) (*ServiceDetail, error) {
 	var service *ServiceDetail
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		service, err = self.ReadForIdentityInTx(tx, id, identityId, configTypes)
+		service, err = self.ReadForIdentityInTx(tx, id, identityId, configTypes, isMgmtAccess)
 		return err
 	})
 	return service, err
@@ -138,16 +138,12 @@ func (self *EdgeServiceManager) IsBindableByIdentity(id string, identityId strin
 	return result, err
 }
 
-func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
+func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}, isMgmtAccess bool) (*ServiceDetail, error) {
 	edgeServiceStore := self.env.GetStores().EdgeService
-	identity, err := self.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
-	if err != nil {
-		return nil, err
-	}
 	isBindable := edgeServiceStore.IsBindableByIdentity(tx, id, identityId)
 	isDialable := edgeServiceStore.IsDialableByIdentity(tx, id, identityId)
 
-	if !isBindable && !isDialable && !identity.IsAdmin { // admin can view services even if policies don't permit bind/dial {
+	if !isBindable && !isDialable && !isMgmtAccess { // admin can view services even if policies don't permit bind/dial {
 		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 
@@ -178,10 +174,11 @@ func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, ide
 }
 
 func (self *EdgeServiceManager) PublicQueryForIdentity(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
-	if sessionIdentity.IsAdmin {
-		return self.queryServices(query, sessionIdentity.Id, configTypes, true)
-	}
 	return self.QueryForIdentity(sessionIdentity.Id, configTypes, query)
+}
+
+func (self *EdgeServiceManager) PublicQueryForMgmtAccess(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
+	return self.queryServices(query, sessionIdentity.Id, configTypes, true)
 }
 
 func (self *EdgeServiceManager) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
@@ -271,7 +268,7 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 
 	for _, key := range ids {
 		// service permissions for admin & non-admin identities will be set according to policies
-		service, err = result.manager.ReadForIdentityInTx(tx, key, result.identityId, result.configTypes)
+		service, err = result.manager.ReadForIdentityInTx(tx, key, result.identityId, result.configTypes, result.isAdmin)
 		if err != nil {
 			return err
 		}

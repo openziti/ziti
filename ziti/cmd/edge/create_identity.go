@@ -19,15 +19,16 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
 	"io"
 	"math"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -37,6 +38,7 @@ type createIdentityOptions struct {
 	api.EntityOptions
 	isAdmin                  bool
 	roleAttributes           []string
+	permissions              []string
 	jwtOutputFile            string
 	username                 string
 	defaultHostingPrecedence string
@@ -93,6 +95,7 @@ func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *co
 	cmd.Flags().StringVar(&options.username, "updb", "", "username to give the identity, will create a UPDB enrollment")
 	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "comma-separated role attributes for the new identity")
+	cmd.Flags().StringSliceVar(&options.permissions, "permissions", nil, "comma-separated permissions for the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
@@ -122,6 +125,7 @@ func runCreateIdentity(o *createIdentityOptions) error {
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	api.SetJSONValue(entityData, o.permissions, "permissions")
 
 	if o.Cmd.Flags().Changed("app-data") {
 		api.SetJSONValue(entityData, o.appData, "appData")

@@ -412,7 +412,7 @@ func (helper *ManagementHelperClient) CreatePostureCheckOs(operatingSystems []*r
 	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckOperatingSystemDetail)
 
 	if !ok {
-		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %ToPtr, got %ToPtr", checkDetail, postureCheckDetail)
 	}
 
 	return checkDetail, nil
@@ -436,7 +436,7 @@ func (helper *ManagementHelperClient) CreatePostureCheckMac(addresses []string, 
 	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckMacAddressDetail)
 
 	if !ok {
-		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %ToPtr, got %ToPtr", checkDetail, postureCheckDetail)
 	}
 
 	return checkDetail, nil
@@ -461,7 +461,7 @@ func (helper *ManagementHelperClient) CreatePostureCheckProcessMulti(processes [
 	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckProcessMultiDetail)
 
 	if !ok {
-		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %ToPtr, got %ToPtr", checkDetail, postureCheckDetail)
 	}
 
 	return checkDetail, nil
@@ -485,7 +485,7 @@ func (helper *ManagementHelperClient) CreatePostureCheckProcess(process *rest_mo
 	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckProcessDetail)
 
 	if !ok {
-		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %ToPtr, got %ToPtr", checkDetail, postureCheckDetail)
 	}
 
 	return checkDetail, nil

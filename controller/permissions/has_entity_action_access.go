@@ -16,32 +16,18 @@
 
 package permissions
 
-type RequireOne struct {
-	required map[string]bool
+import "github.com/michaelquigley/pfxlog"
+
+type RequireEntityActionAccess struct{}
+
+var requiredEntityActionAccess = RequireEntityActionAccess{}
+
+func HasEntityActionAccess() RequireEntityActionAccess {
+	return requiredEntityActionAccess
 }
 
-func NewRequireOne(perms ...string) *RequireOne {
-	ro := &RequireOne{}
-	ro.required = map[string]bool{}
-
-	for _, p := range perms {
-		ro.required[p] = true
-	}
-
-	return ro
-}
-
-func (ro *RequireOne) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-
-		//short cut admins
-		if p == AdminPermission {
-			return true
-		}
-
-		if _, ok := ro.required[p]; ok {
-			return true
-		}
-	}
-	return false
+func (ia RequireEntityActionAccess) IsAllowed(ctx Context) bool {
+	entityAction := ctx.GetEntityAction()
+	pfxlog.Logger().Infof("checking permissions for entity action %s -> %v", entityAction, ctx.HasPermission(entityAction))
+	return entityAction != "" && ctx.HasPermission(entityAction)
 }
