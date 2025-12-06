@@ -676,6 +676,7 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 		Disabled:                  entity.Disabled,
 		DisabledAt:                timePtrToPb(entity.DisabledAt),
 		DisabledUntil:             timePtrToPb(entity.DisabledUntil),
+		Permissions:               entity.Permissions,
 	}
 
 	for serviceId, configInfo := range entity.ServiceConfigs {
@@ -826,6 +827,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		DisabledAt:                pbTimeToTimePtr(msg.DisabledAt),
 		DisabledUntil:             pbTimeToTimePtr(msg.DisabledUntil),
 		ServiceConfigs:            serviceConfigs,
+		Permissions:               msg.Permissions,
 	}
 
 	for _, intf := range msg.Interfaces {

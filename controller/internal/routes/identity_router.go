@@ -18,6 +18,9 @@ package routes
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -37,8 +40,6 @@ import (
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 func init() {
@@ -208,7 +209,7 @@ func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) str
 
 func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params identity.CreateIdentityParams) {
 	Create(rc, rc, IdentityLinkFactory, func() (string, error) {
-		identityModel, enrollments := MapCreateIdentityToModel(params.Identity, getIdentityTypeId(ae, *params.Identity.Type))
+		identityModel, enrollments := MapCreateIdentityToModel(params.Identity)
 		err := ae.Managers.Identity.CreateWithEnrollments(identityModel, enrollments, rc.NewChangeContext())
 		if err != nil {
 			return "", err
