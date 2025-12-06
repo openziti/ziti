@@ -17,6 +17,8 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/go-openapi/runtime/middleware"
 	clientCurrentIdentity "github.com/openziti/edge-api/rest_client_api_server/operations/current_identity"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_server/operations/current_identity"
@@ -24,10 +26,9 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"net/http"
 )
 
 func init() {

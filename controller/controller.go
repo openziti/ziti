@@ -210,10 +210,6 @@ func (c *Controller) GetRaftConfig() *config.RaftConfig {
 	return c.config.Raft
 }
 
-func (c *Controller) GetCommandRateLimiterConfig() command.RateLimiterConfig {
-	return c.config.CommandRateLimiter
-}
-
 func (c *Controller) GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig {
 	return c.config.Raft.RateLimiter
 }

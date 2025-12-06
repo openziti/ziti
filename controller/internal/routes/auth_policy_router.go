@@ -18,12 +18,14 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/auth_policy"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func init() {
@@ -43,27 +45,33 @@ func NewAuthPolicyRouter() *AuthPolicyRouter {
 
 func (r *AuthPolicyRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.AuthPolicyDeleteAuthPolicyHandler = auth_policy.DeleteAuthPolicyHandlerFunc(func(params auth_policy.DeleteAuthPolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.AuthPolicyDetailAuthPolicyHandler = auth_policy.DetailAuthPolicyHandlerFunc(func(params auth_policy.DetailAuthPolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.AuthPolicyListAuthPoliciesHandler = auth_policy.ListAuthPoliciesHandlerFunc(func(params auth_policy.ListAuthPoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.AuthPolicyUpdateAuthPolicyHandler = auth_policy.UpdateAuthPolicyHandlerFunc(func(params auth_policy.UpdateAuthPolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.AuthPolicyCreateAuthPolicyHandler = auth_policy.CreateAuthPolicyHandlerFunc(func(params auth_policy.CreateAuthPolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.AuthPolicyPatchAuthPolicyHandler = auth_policy.PatchAuthPolicyHandlerFunc(func(params auth_policy.PatchAuthPolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "auth-policy", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 
@@ -87,6 +95,9 @@ func (r *AuthPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *AuthPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.UpdateAuthPolicyParams) {
 	Update(rc, func(id string) error {
+		if err := params.AuthPolicy.AuthPolicyCreate.Validate(strfmt.Default); err != nil {
+			return errorz.NewCouldNotValidate(err)
+		}
 		return ae.Managers.AuthPolicy.Update(MapUpdateAuthPolicyToModel(params.ID, params.AuthPolicy), nil, rc.NewChangeContext())
 	})
 }

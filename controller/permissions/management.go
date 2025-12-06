@@ -16,20 +16,16 @@
 
 package permissions
 
-type RequireAdmin struct{}
+var defaultManagementAccess = NewRequireAllOf(
+	IsManagementApi(),
+	HasOneOf(IsAdmin(), HasAdminReadOnlyAccess(), HasEntityAccess(), HasEntityActionAccess()))
 
-var requireAdmin = &RequireAdmin{}
+var adminReadonly = NewRequireAllOf(IsManagementApi(), HasOneOf(IsAdmin(), HasAdminReadOnlyAccess()))
 
-func IsAdmin() *RequireAdmin {
-	return requireAdmin
+func DefaultManagementAccess() Resolver {
+	return defaultManagementAccess
 }
 
-func (ia *RequireAdmin) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-		if p == AdminPermission {
-			return true
-		}
-	}
-
-	return false
+func HasAdminReadOnly() Resolver {
+	return adminReadonly
 }

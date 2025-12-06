@@ -2,10 +2,11 @@ package env
 
 import (
 	"bytes"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/response"
 	"io"
 	"net/http"
+
+	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/controller/response"
 )
 
 func NewRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
@@ -21,7 +22,7 @@ func NewRequestContext(rw http.ResponseWriter, r *http.Request) *response.Reques
 		Body:              body,
 		Identity:          nil,
 		ApiSession:        nil,
-		ActivePermissions: []string{},
+		ActivePermissions: map[string]struct{}{},
 	}
 
 	requestContext.Responder = response.NewResponder(requestContext)

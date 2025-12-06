@@ -33,9 +33,9 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/permissions"
 
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -67,7 +67,7 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 
 	ae.ClientApi.ServiceDetailServiceHandler = clientService.DetailServiceHandlerFunc(func(params clientService.DetailServiceParams, _ interface{}) middleware.Responder {
 		//r.Detail limits by identity
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.DetailClient, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.ServiceListServiceTerminatorsHandler = clientService.ListServiceTerminatorsHandlerFunc(func(params clientService.ListServiceTerminatorsParams, i interface{}) middleware.Responder {
@@ -82,53 +82,65 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 
 	//Management
 	ae.ManagementApi.ServiceDeleteServiceHandler = managementService.DeleteServiceHandlerFunc(func(params managementService.DeleteServiceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceDetailServiceHandler = managementService.DetailServiceHandlerFunc(func(params managementService.DetailServiceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServicesHandler = managementService.ListServicesHandlerFunc(func(params managementService.ListServicesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListManagementServices, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.ListManagementServices, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceUpdateServiceHandler = managementService.UpdateServiceHandlerFunc(func(params managementService.UpdateServiceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceCreateServiceHandler = managementService.CreateServiceHandlerFunc(func(params managementService.CreateServiceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePatchServiceHandler = managementService.PatchServiceHandlerFunc(func(params managementService.PatchServiceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceServiceEdgeRouterPoliciesHandler = managementService.ListServiceServiceEdgeRouterPoliciesHandlerFunc(func(params managementService.ListServiceServiceEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServiceEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-edge-router-policy", permissions.Read)
+		return ae.IsAllowed(r.listServiceEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceEdgeRoutersHandler = managementService.ListServiceEdgeRoutersHandlerFunc(func(params managementService.ListServiceEdgeRoutersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceServicePoliciesHandler = managementService.ListServiceServicePoliciesHandlerFunc(func(params managementService.ListServiceServicePoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Read)
+		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceIdentitiesHandler = managementService.ListServiceIdentitiesHandlerFunc(func(params managementService.ListServiceIdentitiesParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.listIdentities(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceConfigHandler = managementService.ListServiceConfigHandlerFunc(func(params managementService.ListServiceConfigParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listConfigs, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "config", permissions.Read)
+		return ae.IsAllowed(r.listConfigs, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServiceListServiceTerminatorsHandler = managementService.ListServiceTerminatorsHandlerFunc(func(params managementService.ListServiceTerminatorsParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listManagementTerminators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "terminator", permissions.Read)
+		return ae.IsAllowed(r.listManagementTerminators, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 
@@ -182,7 +194,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 			}
 			qmd = &result.QueryMetaData
 		} else {
-			result, err := ae.Managers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
+			result, err := ae.Managers.EdgeService.PublicQueryForMgmtAccess(identity, configTypes, query)
 			if err != nil {
 				pfxlog.Logger().Errorf("error executing list query: %+v", err)
 				return nil, err
@@ -231,10 +243,20 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 	r.listTimer.UpdateSince(start)
 }
 
-func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) DetailClient(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
+		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes, false)
+		if err != nil {
+			return nil, err
+		}
+		return GetServiceMapper(ae)(ae, rc, svc)
+	})
+}
+
+func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
+		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, nil, true)
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +310,7 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 		return
 	}
 
-	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil, false)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -346,7 +368,7 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 		}
 	}
 
-	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil, false)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {

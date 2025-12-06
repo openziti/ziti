@@ -17,13 +17,14 @@
 package model
 
 import (
+	"time"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 type EnvInfo struct {
@@ -97,6 +98,7 @@ type Identity struct {
 	DisabledUntil              *time.Time
 	ServiceConfigs             map[string]map[string]string
 	Interfaces                 []*Interface
+	Permissions                []string
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identity, error) {
@@ -138,6 +140,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*db.Identit
 		DisabledUntil:             entity.DisabledUntil,
 		ServiceConfigs:            entity.ServiceConfigs,
 		Interfaces:                InterfacesToBolt(entity.Interfaces),
+		Permissions:               entity.Permissions,
 	}
 
 	if entity.EnvInfo != nil {
@@ -249,6 +252,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker bol
 		IsAdmin:                   entity.IsAdmin,
 		ServiceConfigs:            entity.ServiceConfigs,
 		Interfaces:                InterfacesToBolt(entity.Interfaces),
+		Permissions:               entity.Permissions,
 	}
 
 	identityStore := env.GetManagers().Identity.GetStore()
@@ -296,6 +300,7 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *db.Identity
 	entity.ServiceConfigs = boltIdentity.ServiceConfigs
 	entity.Interfaces = InterfacesFromBolt(boltIdentity.Interfaces)
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
+	entity.Permissions = boltIdentity.Permissions
 
 	return nil
 }

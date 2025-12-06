@@ -21,8 +21,8 @@ import (
 	controllersClient "github.com/openziti/edge-api/rest_client_api_server/operations/controllers"
 	controllersMan "github.com/openziti/edge-api/rest_management_api_server/operations/controllers"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 

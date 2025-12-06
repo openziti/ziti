@@ -344,6 +344,7 @@ message Identity {
   optional google.protobuf.Timestamp disabledUntil = 19;
   repeated ServiceConfig serviceConfigs = 20;
   repeated Interface interfaces = 21;
+  repeated string permissions = 22;
 }
 
 message CreateIdentityWithEnrollmentsCmd {

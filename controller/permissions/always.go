@@ -16,37 +16,14 @@
 
 package permissions
 
-type RequireAll struct {
-	required []string
-}
+type AlwaysAllow struct{}
 
-func NewRequireAll(perms ...string) *RequireAll {
-	ra := &RequireAll{
-		required: perms,
-	}
-	return ra
-}
+var always = &AlwaysAllow{}
 
-func (ra *RequireAll) IsAllowed(identityPerms ...string) bool {
-	ps := map[string]bool{}
-
-	if len(identityPerms) < len(ra.required) {
-		return false
-	}
-
-	for _, p := range identityPerms {
-		ps[p] = true
-
-		//short cut admins
-		if p == AdminPermission {
-			return true
-		}
-	}
-
-	for _, r := range ra.required {
-		if _, ok := ps[r]; !ok {
-			return false
-		}
-	}
+func (a *AlwaysAllow) IsAllowed(Context) bool {
 	return true
+}
+
+func Always() *AlwaysAllow {
+	return always
 }

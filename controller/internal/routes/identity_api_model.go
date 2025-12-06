@@ -112,7 +112,7 @@ func getRestServiceHostingCosts(costMap map[string]uint16) rest_model.Terminator
 	return result
 }
 
-func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeId string) (*model.Identity, []*model.Enrollment) {
+func MapCreateIdentityToModel(identity *rest_model.IdentityCreate) (*model.Identity, []*model.Enrollment) {
 	var enrollments []*model.Enrollment
 
 	ret := &model.Identity{
@@ -131,6 +131,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
 		ExternalId:                identity.ExternalID,
+		Permissions:               ValueOrDefault(identity.Permissions),
 	}
 
 	if identity.Enrollment != nil {
@@ -179,6 +180,7 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
 		ExternalId:                identity.ExternalID,
+		Permissions:               ValueOrDefault(identity.Permissions),
 	}
 
 	return ret
@@ -201,6 +203,7 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
 		ExternalId:                identity.ExternalID,
+		Permissions:               ValueOrDefault(identity.Permissions),
 	}
 
 	return ret
@@ -281,6 +284,11 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	erConnState := identity.EdgeRouterConnectionStatus.String()
 
+	var permissions *rest_model.Permissions
+	if identity.Permissions != nil {
+		permissions = (*rest_model.Permissions)(util.Ptr(identity.Permissions))
+	}
+
 	ret := &rest_model.IdentityDetail{
 		BaseEntity:                 BaseEntityToRestModel(identity, IdentityLinkFactory),
 		AppData:                    &appData,
@@ -304,6 +312,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		ServiceHostingPrecedences:  getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		Type:                       ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
 		TypeID:                     &identityType.Id,
+		Permissions:                permissions,
 	}
 
 	for _, intf := range identity.Interfaces {

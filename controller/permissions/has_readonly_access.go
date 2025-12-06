@@ -16,22 +16,14 @@
 
 package permissions
 
-type RequireOneOf struct {
-	resolvers []Resolver
+type RequireAdminReadOnlyAccess struct{}
+
+var requireAdminReadOnlyAccess = &RequireAdminReadOnlyAccess{}
+
+func HasAdminReadOnlyAccess() *RequireAdminReadOnlyAccess {
+	return requireAdminReadOnlyAccess
 }
 
-func HasOneOf(resolvers ...Resolver) *RequireOneOf {
-	return &RequireOneOf{
-		resolvers: resolvers,
-	}
-}
-
-func (ia *RequireOneOf) IsAllowed(identityPerms ...string) bool {
-	for _, resolver := range ia.resolvers {
-		if resolver.IsAllowed(identityPerms...) {
-			return true
-		}
-	}
-
-	return false
+func (ia *RequireAdminReadOnlyAccess) IsAllowed(ctx Context) bool {
+	return ctx.GetAction() == Read && ctx.HasPermission(AdminReadOnlyPermission)
 }

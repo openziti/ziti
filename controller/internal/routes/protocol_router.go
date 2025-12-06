@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 

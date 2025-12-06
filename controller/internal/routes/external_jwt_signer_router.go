@@ -24,8 +24,8 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -52,27 +52,33 @@ func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 
 	// management
 	ae.ManagementApi.ExternalJWTSignerDeleteExternalJWTSignerHandler = extJwtManagement.DeleteExternalJWTSignerHandlerFunc(func(params extJwtManagement.DeleteExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.DeleteForManagement, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Delete)
+		return ae.IsAllowed(r.DeleteForManagement, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerDetailExternalJWTSignerHandler = extJwtManagement.DetailExternalJWTSignerHandlerFunc(func(params extJwtManagement.DetailExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.DetailForManagement, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Read)
+		return ae.IsAllowed(r.DetailForManagement, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerListExternalJWTSignersHandler = extJwtManagement.ListExternalJWTSignersHandlerFunc(func(params extJwtManagement.ListExternalJWTSignersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListForManagement, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Read)
+		return ae.IsAllowed(r.ListForManagement, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerUpdateExternalJWTSignerHandler = extJwtManagement.UpdateExternalJWTSignerHandlerFunc(func(params extJwtManagement.UpdateExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.UpdateForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.UpdateForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerCreateExternalJWTSignerHandler = extJwtManagement.CreateExternalJWTSignerHandlerFunc(func(params extJwtManagement.CreateExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateForManagement(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateForManagement(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerPatchExternalJWTSignerHandler = extJwtManagement.PatchExternalJWTSignerHandlerFunc(func(params extJwtManagement.PatchExternalJWTSignerParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.PatchForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.PatchForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 

@@ -160,7 +160,7 @@ func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, e
 		entity.Id = uuid.New().String()
 	}
 
-	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil)
+	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, entity.IdentityId, nil, false)
 	if err != nil {
 		return "", err
 	}
@@ -255,7 +255,7 @@ func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string
 		return "", errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
+	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil, false)
 	if err != nil {
 		return "", err
 	}
@@ -343,15 +343,6 @@ func (self *SessionManager) ReadByToken(token string) (*Session, error) {
 }
 
 func (self *SessionManager) ReadForIdentity(id string, identityId string) (*Session, error) {
-	identity, err := self.GetEnv().GetManagers().Identity.Read(identityId)
-
-	if err != nil {
-		return nil, err
-	}
-	if identity.IsAdmin {
-		return self.Read(id)
-	}
-
 	query := fmt.Sprintf(`id = "%v" and apiSession.identity = "%v"`, id, identityId)
 	result, err := self.Query(query)
 	if err != nil {
@@ -371,7 +362,7 @@ func (self *SessionManager) Read(id string) (*Session, error) {
 	return entity, nil
 }
 
-func (self *SessionManager) DeleteForIdentity(id, identityId string, ctx *change.Context) error {
+func (self *SessionManager) DeleteForIdentity(id, identityId string, changeCtx *change.Context) error {
 	session, err := self.ReadForIdentity(id, identityId)
 	if err != nil {
 		return err
@@ -379,7 +370,7 @@ func (self *SessionManager) DeleteForIdentity(id, identityId string, ctx *change
 	if session == nil {
 		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
-	return self.deleteEntity(id, ctx)
+	return self.deleteEntity(id, changeCtx)
 }
 
 func (self *SessionManager) Delete(id string, ctx *change.Context) error {

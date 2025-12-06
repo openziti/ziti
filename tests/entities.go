@@ -26,15 +26,15 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"reflect"
 	"sort"
 	"time"
 
+	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/common/eid"
-
-	"github.com/Jeffail/gabs"
 )
 
 type entity interface {
@@ -937,5 +937,56 @@ func (entity *ca) CreateSignedCert(name string) *certAuthenticator {
 		certs:   []*x509.Certificate{clientCert},
 		key:     clientKey,
 		certPem: clientPEM.String(),
+	}
+}
+
+// copyRestModelFields copies fields with matching names and types from source to dest using reflection.
+// This is useful for converting between rest model types (e.g., IdentityDetail to IdentityUpdate).
+// Both source and dest must be pointers to structs.
+func copyRestModelFields(source, dest interface{}, ctx *TestContext) {
+	srcVal := reflect.ValueOf(source)
+	destVal := reflect.ValueOf(dest)
+
+	// Dereference pointers
+	if srcVal.Kind() == reflect.Ptr {
+		srcVal = srcVal.Elem()
+	}
+
+	if destVal.Kind() == reflect.Ptr {
+		destVal = destVal.Elem()
+	}
+
+	// Ensure both are structs
+	if srcVal.Kind() != reflect.Struct || destVal.Kind() != reflect.Struct {
+		ctx.Fail("both source and dest must be structs, got %v and %v", srcVal.Kind(), destVal.Kind())
+		return
+	}
+
+	destType := destVal.Type()
+
+	// Iterate through destination fields
+	for i := 0; i < destVal.NumField(); i++ {
+		destField := destVal.Field(i)
+		destFieldType := destType.Field(i)
+
+		// Skip unexported fields
+		if !destField.CanSet() {
+			continue
+		}
+
+		// Find matching field in source by name
+		srcField := srcVal.FieldByName(destFieldType.Name)
+		if !srcField.IsValid() {
+			continue
+		}
+
+		// Check if types match
+		if srcField.Type() == destField.Type() {
+			// Direct copy for matching types
+			destField.Set(srcField)
+		} else if srcField.Type().ConvertibleTo(destField.Type()) {
+			// Convert if possible (e.g., concrete type to interface)
+			destField.Set(srcField.Convert(destField.Type()))
+		}
 	}
 }

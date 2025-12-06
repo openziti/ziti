@@ -3,6 +3,8 @@ package routes
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -12,9 +14,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"net/http"
 )
 
 func init() {

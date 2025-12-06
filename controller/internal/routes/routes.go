@@ -25,7 +25,7 @@ import (
 	edgeRestModel "github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/rest_model"
+	fabricRestModel "github.com/openziti/ziti/controller/rest_model"
 )
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*PublicQueryOptions, error) {
@@ -109,6 +109,14 @@ func AttributesOrDefault(attributes *edgeRestModel.Attributes) edgeRestModel.Att
 	return *attributes
 }
 
+func ValueOrDefault[T any](value *T) T {
+	if value == nil {
+		var zero T
+		return zero
+	}
+	return *value
+}
+
 func BoolOrDefault(val *bool) bool {
 	if val == nil {
 		return false
@@ -133,7 +141,7 @@ func DateTimePtrOrNil(time *time.Time) *strfmt.DateTime {
 	return &dateTime
 }
 
-func FabricTagsOrDefault(tags *rest_model.Tags) map[string]interface{} {
+func FabricTagsOrDefault(tags *fabricRestModel.Tags) map[string]interface{} {
 	if tags == nil || tags.SubTags == nil {
 		return map[string]interface{}{}
 	}

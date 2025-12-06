@@ -104,22 +104,6 @@ func ToPtr[T any](in T) *T {
 	return &in
 }
 
-func S(s string) *string {
-	return &s
-}
-
-func B(b bool) *bool {
-	return &b
-}
-
-func I(i int64) *int64 {
-	return &i
-}
-
-func T(t time.Time) *time.Time {
-	return &t
-}
-
 // ST returns a pointer to a strfmt.Date time. A helper function
 // for creating rest_model types
 func ST(t time.Time) *strfmt.DateTime {
