@@ -430,7 +430,7 @@ func (self *RestClientEdgeIdentity) newRestClientTransport(clientOpts ClientOpts
 	if e != nil {
 		return nil, e
 	}
-	
+
 	t.Proxy = http.ProxyFromEnvironment
 	t.ForceAttemptHTTP2 = true
 	t.MaxIdleConns = 10
@@ -456,13 +456,6 @@ func (self *RestClientEdgeIdentity) newRestClientTransport(clientOpts ClientOpts
 		Timeout:   10 * time.Second,
 	}
 	return httpClient, nil
-}
-
-func (self *RestClientEdgeIdentity) newLegacyAuth() EdgeManagementAuth {
-	ea := EdgeManagementAuth{}
-	ea.LegacyToken = self.Token
-
-	return ea
 }
 
 func (self *RestClientEdgeIdentity) newEdgeAuth() EdgeManagementAuth {
