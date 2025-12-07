@@ -31,42 +31,18 @@ import (
 //
 // Returns an error if the configuration is invalid or Ziti context creation fails.
 func NewZitifiedTransportFromSlice(bytes []byte, terminator string) (*http.Transport, error) {
-	cfg := &ziti.Config{}
-	if err := json.Unmarshal(bytes, &cfg); err != nil {
-		return nil, err
-	}
-	cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
-
-	zc, zce := ziti.NewContext(cfg)
-	if zce != nil {
-		return nil, fmt.Errorf("failed to create ziti context: %v", zce)
-	}
-	zitiCliContextCollection.Add(zc)
-
-	if _, se := zc.GetServices(); se != nil {
-		return nil, fmt.Errorf("failed to get ziti services: %v", se)
+	ztx, cerr := NewZitifiedContextFromSlice(bytes)
+	if cerr != nil {
+		return nil, cerr
 	}
 
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone()
 
-	opts := &ziti.DialOptions{
+	opts := ziti.DialOptions{
 		Identity: terminator,
 	}
+	zitiTransport.DialContext = NewZitiDialContext(ztx, opts)
 
-	zitiTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dialer := zitiCliContextCollection.NewDialerWithFallback(ctx, &net.Dialer{})
-		if opts.Identity != "" {
-			hostParts := strings.Split(addr, ":")
-			return zc.DialWithOptions(hostParts[0], opts)
-		} else {
-			return dialer.Dial(network, addr)
-		}
-	}
-
-	_, se := zc.GetServices() // loads all the services
-	if se != nil {
-		return nil, fmt.Errorf("failed to get ziti services: %v", se)
-	}
 	return zitiTransport, nil
 }
 
@@ -87,14 +63,12 @@ func ZitifiedTransportFromEnv(terminator string) (*http.Transport, error) {
 // Returns (nil, nil) if the environment variable is not set, or (transport, error)
 // if there are issues with decoding or configuration creation.
 func ZitifiedTransportFromEnvByName(envVarName string, terminator string) (*http.Transport, error) {
-	b64Zid := os.Getenv(envVarName)
-	if b64Zid == "" {
-		return nil, nil
-	}
-	idReader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(b64Zid))
-	data, err := io.ReadAll(idReader)
+	data, err := ZitiConfigFromEnvByName(envVarName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read and decode ziti identity: %v", err)
+		return nil, err
+	}
+	if data == nil {
+		return nil, nil
 	}
 	return NewZitifiedTransportFromSlice(data, terminator)
 }
@@ -110,4 +84,83 @@ func NewZitifiedTransportFromFile(pathToFile string, terminator string) (*http.T
 		return nil, fmt.Errorf("failed to read ziti identity file %s: %v", pathToFile, err)
 	}
 	return NewZitifiedTransportFromSlice(data, terminator)
+}
+
+// NewZitiDialContext creates a dial context function that routes connections through
+// a Ziti network. The returned function can be used as the DialContext for http.Transport.
+//
+// If opts.Identity is specified, the function performs addressable terminator-based dialing
+// by extracting the hostname from the address and passing it to Ziti. Otherwise, it uses
+// the fallback dialer from the context collection.
+func NewZitiDialContext(zc ziti.Context, opts ziti.DialOptions) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialer := zitiCliContextCollection.NewDialerWithFallback(ctx, &net.Dialer{})
+		if opts.Identity != "" {
+			hostParts := strings.Split(addr, ":")
+			return zc.DialWithOptions(hostParts[0], &opts)
+		} else {
+			return dialer.Dial(network, addr)
+		}
+	}
+}
+
+// NewZitifiedContextFromSlice creates a Ziti context from JSON-encoded configuration bytes.
+// The context is configured to retrieve all config types and is added to the global context
+// collection. Services are loaded and validated before returning.
+//
+// Returns an error if the configuration is invalid, context creation fails, or services
+// cannot be retrieved.
+func NewZitifiedContextFromSlice(bytes []byte) (ziti.Context, error) {
+	if len(bytes) == 0 {
+		return nil, nil
+	}
+	cfg := &ziti.Config{}
+	if err := json.Unmarshal(bytes, &cfg); err != nil {
+		return nil, err
+	}
+	cfg.ConfigTypes = append(cfg.ConfigTypes, "all")
+
+	zc, zce := ziti.NewContext(cfg)
+	if zce != nil {
+		return nil, fmt.Errorf("failed to create ziti context: %v", zce)
+	}
+	zitiCliContextCollection.Add(zc)
+
+	if _, se := zc.GetServices(); se != nil {
+		return nil, fmt.Errorf("failed to get ziti services: %v", se)
+	}
+
+	_, se := zc.GetServices() // loads all the services
+	if se != nil {
+		return nil, fmt.Errorf("failed to get ziti services: %v", se)
+	}
+
+	return zc, nil
+}
+
+// ZitiConfigFromEnv reads a base64-encoded Ziti configuration from the default
+// environment variable (ZitiCliNetworkIdVarName from constants).
+//
+// Returns (nil, nil) if the environment variable is not set, or (config, error)
+// if there are issues with decoding.
+func ZitiConfigFromEnv() ([]byte, error) {
+	return ZitiConfigFromEnvByName(constants.ZitiCliNetworkIdVarName)
+}
+
+// ZitiConfigFromEnvByName reads a base64-encoded Ziti configuration from the specified
+// environment variable.
+//
+// Returns (nil, nil) if the environment variable is not set, or (config, error) if there
+// are issues decoding the base64-encoded configuration.
+func ZitiConfigFromEnvByName(envVarName string) ([]byte, error) {
+	b64Zid := os.Getenv(envVarName)
+	if b64Zid == "" {
+		return nil, nil
+	}
+	idReader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(b64Zid))
+	data, err := io.ReadAll(idReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read and decode ziti identity: %v", err)
+	}
+	return data, nil
 }

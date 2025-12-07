@@ -63,6 +63,7 @@ type loginCreds struct {
 
 type Overlay struct {
 	loginCreds
+	ControllerName       string
 	NetworkBindingIdFile string // a ziti identity file to use when starting the controller which will bind a given service over an overlay
 	NetworkDialingIdFile string // a ziti identity file used to dial mgmt services hosted/bound by a controller using a ziti overlay
 	t                    *testing.T
@@ -77,7 +78,11 @@ type Overlay struct {
 }
 
 func (o *Overlay) ControllerHostPort() string {
-	return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
+	if o.ControllerName != "" {
+		return fmt.Sprintf("https://%s@%s:%d", o.ControllerName, o.ControllerAddress, o.ControllerPort)
+	} else {
+		return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
+	}
 }
 func (o *Overlay) RouterHostPort() string {
 	return fmt.Sprintf("https://%s:%d", o.RouterAddress, o.RouterPort)
@@ -124,7 +129,11 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
       - identity:
           file: ` + o.NetworkBindingIdFile + `
           service: "mgmt"
-          serveTLS: true
+      - identity:
+          file: ` + o.NetworkBindingIdFile + `
+          service: "mgmt-addressable-terminators"
+          listenOptions:
+            bindUsingEdgeIdentity: true
     apis:
       - binding: edge-management
         options: { }
@@ -142,8 +151,13 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 	return nil
 }
 
+func (o *Overlay) PrintLoginCommand(t *testing.T) {
+	t.Logf("%s overlay login: ziti edge login -y -u admin -p admin --network-identity %s %s\n\n", o.NetworkDialingIdFile, o.ControllerHostPort())
+}
+
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
+	fmt.Println("========================================================")
 	fmt.Printf("%s overlay command: %s %s\n", o.Name, zitiPath, strings.Join(args, " "))
 	o.extCmd = exec.CommandContext(
 		o.Ctx,
@@ -225,10 +239,10 @@ func (o *Overlay) CreateOverlayIdentities(t *testing.T, now string) error {
 		return le
 	}
 
-	controllerIdName := fmt.Sprintf("controller-binder-%s", now)
-	controllerJwtPath := filepath.Join(o.Home, controllerIdName+".jwt")
+	o.ControllerName = fmt.Sprintf("controller-binder-%s", now)
+	controllerJwtPath := filepath.Join(o.Home, o.ControllerName+".jwt")
 	zitiCmd1 := edge.NewCmdEdge(os.Stdout, os.Stderr, p)
-	zitiCmd1.SetArgs(strings.Split("create identity "+controllerIdName+" -o "+controllerJwtPath+" --admin -a mgmtservers", " "))
+	zitiCmd1.SetArgs(strings.Split("create identity "+o.ControllerName+" -o "+controllerJwtPath+" --admin -a mgmtservers", " "))
 	if zitiCmdErr := zitiCmd1.Execute(); zitiCmdErr != nil {
 		t.Fatalf("unable to create identity: %v", zitiCmdErr)
 	}

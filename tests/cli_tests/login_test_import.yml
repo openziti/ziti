@@ -89,7 +89,7 @@
       "postureCheckRoles": [],
       "semantic": "AnyOf",
       "serviceRoles": [
-        "@mgmt"
+        "#mgmtservers"
       ],
       "tags": {},
       "type": "Dial"
@@ -102,7 +102,7 @@
       "postureCheckRoles": [],
       "semantic": "AnyOf",
       "serviceRoles": [
-        "@mgmt"
+        "#mgmtservers"
       ],
       "tags": {},
       "type": "Bind"
@@ -119,6 +119,16 @@
         "mgmtservers"
       ],
       "tags": {},
+      "terminatorStrategy": "smartrouting"
+    },
+    {
+      "configs": [],
+      "encryptionRequired": true,
+      "name": "mgmt-addressable-terminators",
+      "roleAttributes": [
+        "mgmtservers"
+      ],
+      "tags": { },
       "terminatorStrategy": "smartrouting"
     }
   ]

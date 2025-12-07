@@ -17,16 +17,18 @@
 package api
 
 import (
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/websockets"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {
@@ -47,10 +49,17 @@ func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) 
 		return nil, err
 	}
 
+	zc, err := restClientIdentity.NewZitiContext("")
+	if err != nil {
+		return nil, err
+	}
+
+	zitifiedDialer := util.NewZitiDialContext(zc, ziti.DialOptions{})
 	dialer := &websocket.Dialer{
 		Proxy:            http.ProxyFromEnvironment,
 		TLSClientConfig:  tlsConfig,
 		HandshakeTimeout: 5 * time.Second,
+		NetDialContext:   zitifiedDialer,
 	}
 
 	conn, resp, err := dialer.Dial(wsUrl, restClientIdentity.NewWsHeader())
