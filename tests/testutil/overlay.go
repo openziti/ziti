@@ -152,7 +152,7 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 }
 
 func (o *Overlay) PrintLoginCommand(t *testing.T) {
-	t.Logf("%s overlay login: ziti edge login -y -u admin -p admin --network-identity %s %s\n\n", o.NetworkDialingIdFile, o.ControllerHostPort())
+	t.Logf("%s overlay login: ziti edge login -y -u admin -p admin --network-identity %s\n\n", o.NetworkDialingIdFile, o.ControllerHostPort())
 }
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
