@@ -65,9 +65,8 @@ func (s *cliTestState) fabricStreamEvents(t *testing.T) {
 	}()
 
 	go func() {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second) // a small wait to make sure the stream events command connects
 		s.testCorrectPasswordSucceeds(t)
-		time.Sleep(3 * time.Second)
 		cancel()
 	}()
 
