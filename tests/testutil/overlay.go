@@ -165,11 +165,15 @@ func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 		args...,
 	)
 	_ = os.Mkdir(o.Home, 0755)
-	stdoutFile, createErr1 := os.Create(filepath.Join(o.Home, "ctrl-stdout.log"))
+	outf := filepath.Join(o.Home, "ctrl-stdout.log")
+	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
+	stdoutFile, createErr1 := os.Create(outf)
 	if createErr1 != nil {
 		done <- createErr1
 	}
-	stderrFile, createErr2 := os.Create(filepath.Join(o.Home, "ctrl-stderr.log"))
+	errf := filepath.Join(o.Home, "ctrl-stderr.log")
+	fmt.Printf("log for %s stderr at: %s\n", o.Name, errf)
+	stderrFile, createErr2 := os.Create(errf)
 	if createErr2 != nil {
 		done <- createErr2
 	}
