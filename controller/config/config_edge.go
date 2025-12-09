@@ -22,11 +22,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/identity"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/pkg/errors"
 	"net"
 	"net/url"
 	"os"
@@ -35,6 +30,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity"
+	"github.com/openziti/ziti/controller/command"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -281,7 +282,7 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 					durationValue = 1 * time.Minute
 				}
 
-				c.Oidc.AccessTokenDuration = durationValue
+				c.Oidc.IdTokenDuration = durationValue
 			}
 
 			if val, ok := oidcSubMap["refreshTokenDuration"]; ok {
@@ -297,7 +298,7 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 					durationValue = newVal
 				}
 
-				c.Oidc.AccessTokenDuration = durationValue
+				c.Oidc.RefreshTokenDuration = durationValue
 			}
 		}
 	}
