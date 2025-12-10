@@ -137,12 +137,12 @@ func Test_CLI_Test_Suite(t *testing.T) {
 	targetDone := make(chan error)
 	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
 
-	exStartErr := testState.externalZiti.WaitForControllerReady(60 * time.Second)
+	exStartErr := testState.externalZiti.WaitForControllerReady(20 * time.Second)
 	if exStartErr != nil {
 		log.Fatalf("externalZiti start failed: %v", exStartErr)
 	}
 
-	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(60 * time.Second)
+	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(20 * time.Second)
 	if cutStartErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 	}
@@ -188,7 +188,6 @@ func Test_CLI_Test_Suite(t *testing.T) {
 	t.Run("cli tests over underlay", testState.cliTests)
 
 	t.Log("Cancelling controllerUnderTest to reconfigure for use with ziti")
-
 	ctrlUnderTestCancel()
 	if se := testState.controllerUnderTest.Stop(); se != nil {
 		t.Fatalf("controllerUnderTest didn't stop? %v", se)
@@ -219,11 +218,10 @@ func Test_CLI_Test_Suite(t *testing.T) {
 
 	targetOverZitiDone := make(chan error)
 	go s.controllerUnderTest.StartExternal(zitiPath, targetOverZitiDone)
-	cutStartOverZitiErr := s.controllerUnderTest.WaitForControllerReady(60 * time.Second)
+	cutStartOverZitiErr := s.controllerUnderTest.WaitForControllerReady(20 * time.Second)
 	if cutStartErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartOverZitiErr)
 	}
-	s.controllerUnderTest.PrintLoginCommand(t)
 	testState.cliTestsOverZiti(t, zitiPath)
 
 	s.controllerUnderTest.ControllerName = s.externalZiti.ControllerName
@@ -232,13 +230,15 @@ func Test_CLI_Test_Suite(t *testing.T) {
 	cutOverZitiCancel()
 	externalCancel()
 
-	t.Run("make sure any ziti instances are stopped", testState.externalZiti.EnsureAllPidsStopped)
-	t.Run("make sure any ziti instances are stopped", testState.controllerUnderTest.EnsureAllPidsStopped)
+	test(t, "make sure any ziti instances are stopped", testState.externalZiti.EnsureAllPidsStopped)
+	test(t, "make sure any ziti instances are stopped", testState.controllerUnderTest.EnsureAllPidsStopped)
 }
 
 func (s *cliTestState) cliTests(t *testing.T) {
 	t.Run("Login Tests", s.loginTests)
+	s.controllerUnderTest.PrintLoginCommand(t)
 	s.testCorrectPasswordSucceeds(t)
+	time.Sleep(1 * time.Second)
 	t.Run("Fabric Tests", s.fabricTests)
 }
 
@@ -262,4 +262,26 @@ func (s *cliTestState) runCLIWithContext(ctx context.Context, cmdToRun string) (
 
 	outBytes, _ := io.ReadAll(r)
 	return string(outBytes), err
+}
+
+func test(t *testing.T, name string, fn func(*testing.T)) {
+	testWithTimeout(t, name, fn, 100*time.Second)
+}
+
+func testWithTimeout(t *testing.T, name string, fn func(*testing.T), d time.Duration) {
+	t.Helper()
+
+	t.Run(name, func(t *testing.T) {
+		done := make(chan struct{})
+		go func() {
+			fn(t)
+			close(done)
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(d):
+			t.Fatal("timeout")
+		}
+	})
 }

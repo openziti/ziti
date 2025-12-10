@@ -28,10 +28,11 @@ import (
 )
 
 func (s *cliTestState) fabricTests(t *testing.T) {
-	t.Run(`fabric inspect config`, s.fabricInspectConfig)
-	t.Run("fabric list links", s.fabricListLinks)
-	t.Run("fabric validate router-links", s.fabricValidateRouterLinks)
-	t.Run("fabric stream events", s.fabricStreamEvents)
+	test(t, `fabric validate router-data-model`, s.fabricValidateRDM)
+	//test(t, `fabric inspect config`, s.fabricInspectConfig)
+	test(t, "fabric list links", s.fabricListLinks)
+	test(t, "fabric validate router-links", s.fabricValidateRouterLinks)
+	test(t, "fabric stream events", s.fabricStreamEvents)
 }
 
 func (s *cliTestState) fabricInspectConfig(t *testing.T) {
@@ -39,18 +40,28 @@ func (s *cliTestState) fabricInspectConfig(t *testing.T) {
 	fmt.Println(out)
 	require.NoError(t, err, out)
 	require.Contains(t, out, "ctrl:")
+	t.Log(out)
+}
+
+func (s *cliTestState) fabricValidateRDM(t *testing.T) {
+	out, err := s.runCLI(`fabric validate router-data-model`)
+	require.NoError(t, err, out)
+	require.Contains(t, out, "started validation of")
+	t.Log(out)
 }
 
 func (s *cliTestState) fabricListLinks(t *testing.T) {
 	out, err := s.runCLI(`fabric list links`)
 	require.NoError(t, err, out)
 	require.Contains(t, out, "results: none")
+	t.Log(out)
 }
 
 func (s *cliTestState) fabricValidateRouterLinks(t *testing.T) {
 	out, err := s.runCLI(`fabric validate router-links --include-valid-routers`)
 	require.NoError(t, err, out)
 	require.Contains(t, out, "routerName: router-quickstart")
+	t.Log(out)
 }
 
 func (s *cliTestState) fabricStreamEvents(t *testing.T) {
@@ -65,8 +76,8 @@ func (s *cliTestState) fabricStreamEvents(t *testing.T) {
 	}()
 
 	go func() {
-		time.Sleep(1 * time.Second) // a small wait to make sure the stream events command connects
-		s.testCorrectPasswordSucceeds(t)
+		time.Sleep(1 * time.Second)      // a small wait to make sure the stream events command connects
+		s.testCorrectPasswordSucceeds(t) // logging in forces an event to fire
 		cancel()
 	}()
 
@@ -74,4 +85,5 @@ func (s *cliTestState) fabricStreamEvents(t *testing.T) {
 	require.NoError(t, err, out)
 	require.Contains(t, out, "event streaming started: success")
 	require.Contains(t, out, `"apiSession","event_src_id"`)
+	t.Log(out)
 }

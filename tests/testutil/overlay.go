@@ -152,11 +152,31 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 }
 
 func (o *Overlay) PrintLoginCommand(t *testing.T) {
-	t.Logf("%s overlay login: ziti edge login -y -u admin -p admin --network-identity %s\n\n", o.NetworkDialingIdFile, o.ControllerHostPort())
+	if o.NetworkDialingIdFile == "" {
+		t.Logf("overlay login: ziti edge login %s -y -u admin -p admin\n\n", o.ControllerHostPort())
+	} else {
+		t.Logf("overlay login: ziti edge login %s -y -u admin -p admin --network-identity %s\n\n", o.ControllerHostPort(), o.NetworkDialingIdFile)
+	}
 }
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
-	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
+	args := append([]string{"edge", "quickstart"})
+	if o.IsHA {
+		args = append(args, "ha")
+	}
+	args = append(args, o.startArgs()...)
+	o.RunZiti(zitiPath, args, done)
+}
+
+func (o *Overlay) StartJoin(zitiPath string, done chan error) {
+	if !o.IsHA {
+		panic("test incorrect. calling join without HA")
+	}
+	args := append([]string{"edge", "quickstart", "join"}, o.startArgs()...)
+	o.RunZiti(zitiPath, args, done)
+}
+
+func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 	fmt.Println("========================================================")
 	fmt.Printf("%s overlay command: %s %s\n", o.Name, zitiPath, strings.Join(args, " "))
 	o.extCmd = exec.CommandContext(
@@ -164,14 +184,15 @@ func (o *Overlay) StartExternal(zitiPath string, done chan error) {
 		zitiPath,
 		args...,
 	)
+	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true")
 	_ = os.Mkdir(o.Home, 0755)
-	outf := filepath.Join(o.Home, "ctrl-stdout.log")
+	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
 	stdoutFile, createErr1 := os.Create(outf)
 	if createErr1 != nil {
 		done <- createErr1
 	}
-	errf := filepath.Join(o.Home, "ctrl-stderr.log")
+	errf := filepath.Join(o.Home, fmt.Sprintf("stderr-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stderr at: %s\n", o.Name, errf)
 	stderrFile, createErr2 := os.Create(errf)
 	if createErr2 != nil {
@@ -498,18 +519,34 @@ func (o *Overlay) getRunningPids() []int {
 }
 
 func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
+	fmt.Printf("Waiting up to %s for controller at %s\n", timeout, o.ControllerHostPort())
+
+	start := time.Now()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	timeoutCh := time.After(timeout)
+	var lastPrint time.Time
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Waiting for controller to start... " + o.ControllerHostPort())
 			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
 			if err == nil {
 				return nil
 			}
-		case <-time.After(timeout):
+
+			if time.Since(lastPrint) >= 5*time.Second {
+				elapsed := time.Since(start)
+				fmt.Printf("Still waiting (%s elapsed, %s remaining)... %s\n",
+					elapsed.Truncate(time.Second),
+					(timeout - elapsed).Truncate(time.Second),
+					o.ControllerHostPort())
+
+				lastPrint = time.Now()
+			}
+
+		case <-timeoutCh:
 			return fmt.Errorf("timeout waiting for controller to become ready at %s", o.ControllerHostPort())
 		}
 	}

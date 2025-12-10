@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/openziti/foundation/v2/stringz"
 	inspectCommon "github.com/openziti/ziti/common/inspect"
@@ -15,9 +19,6 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"io"
-	"os"
-	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
@@ -191,7 +192,9 @@ func (self *InspectAction) prettyPrint(o io.Writer, val interface{}, indent uint
 	}
 
 	if self.Format == "yaml" {
-		return yaml.NewEncoder(o).Encode(val)
+		enc := yaml.NewEncoder(o)
+		err := enc.Encode(val)
+		return err
 	}
 
 	if self.Format == "json" {

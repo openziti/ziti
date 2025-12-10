@@ -66,7 +66,7 @@ type RestClientIdentity interface {
 	NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error)
 	NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error)
 	NewWsHeader() http.Header
-	NewZitiContext(terminator string) (ziti.Context, error)
+	NewZitiContext() (ziti.Context, error)
 }
 
 func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool) (*resty.Request, error) {
@@ -197,7 +197,11 @@ func (self *RestClientEdgeIdentity) GetBaseUrlForApi(api API) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return u.Scheme + "://" + u.Host + "/fabric/v1", nil
+		if u.User != nil {
+			return fmt.Sprintf("%s://%s@%s/fabric/v1", u.Scheme, u.User.Username(), u.Host), nil
+		} else {
+			return fmt.Sprintf("%s://%s/fabric/v1", u.Scheme, u.Host), nil
+		}
 	}
 	return "", errors.Errorf("unsupported api %v", api)
 }
@@ -255,7 +259,7 @@ func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 	return result
 }
 
-func (self *RestClientEdgeIdentity) NewZitiContext(terminator string) (ziti.Context, error) {
+func (self *RestClientEdgeIdentity) NewZitiContext() (ziti.Context, error) {
 	if self.NetworkIdFile != "" {
 		data, err := os.ReadFile(self.NetworkIdFile)
 		if err != nil {
@@ -426,7 +430,16 @@ func newRestClientRequestF(clientOpts ClientOpts, readOnly bool) func(*http.Requ
 }
 
 func (self *RestClientEdgeIdentity) newRestClientTransport(clientOpts ClientOpts) (*http.Client, error) {
-	t, e := self.getHttpTransport(nil, false, "")
+	u, err := url.Parse(self.Url)
+	if err != nil {
+		return nil, err
+	}
+	at := ""
+	if u.User != nil {
+		at = u.User.Username()
+	}
+
+	t, e := self.getHttpTransport(nil, false, at)
 	if e != nil {
 		return nil, e
 	}

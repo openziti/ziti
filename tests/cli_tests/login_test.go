@@ -27,6 +27,7 @@ import (
 
 	"github.com/openziti/ziti/ziti/cmd"
 	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/ziti/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -369,9 +370,8 @@ func (s *cliTestState) reconfigureTargetForZiti(pkiRoot string) error {
 
 func (s *cliTestState) cliTestsOverZiti(t *testing.T, zitiPath string) {
 	t.Run("cli tests over ziti", func(t *testing.T) {
+		util.ReloadConfig() //every iteration needs to call reload to flush/overwrite the cached client in global state
 		cfgDir := filepath.Join(s.homeDir, ".config/overlay")
-		t.Logf("ZITI_CONFIG_DIR: %s", cfgDir)
-		s.controllerUnderTest.PrintLoginCommand(t)
 		_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
 		_ = os.RemoveAll(cfgDir)
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
@@ -384,8 +384,8 @@ func (s *cliTestState) cliTestsOverZiti(t *testing.T, zitiPath string) {
 
 func (s *cliTestState) cliTestsOverAddressableTerminators(t *testing.T, zitiPath string) {
 	t.Run("cli tests over ziti with addressable terminator", func(t *testing.T) {
+		util.ReloadConfig() //every iteration needs to call reload to flush/overwrite the cached client in global state
 		cfgDir := filepath.Join(s.homeDir, ".config/overlay-addressable-terminator")
-		t.Logf("ZITI_CONFIG_DIR: %s", cfgDir)
 		_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
 		_ = os.RemoveAll(cfgDir)
 		s.controllerUnderTest.ControllerAddress = "mgmt-addressable-terminators"
