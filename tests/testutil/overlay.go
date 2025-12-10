@@ -160,7 +160,7 @@ func (o *Overlay) PrintLoginCommand(t *testing.T) {
 }
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
-	args := append([]string{"edge", "quickstart"})
+	args := []string{"edge", "quickstart"}
 	if o.IsHA {
 		args = append(args, "ha")
 	}
