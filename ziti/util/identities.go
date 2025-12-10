@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -66,6 +66,7 @@ type RestClientIdentity interface {
 	NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error)
 	NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error)
 	NewWsHeader() http.Header
+	NewZitiContext() (ziti.Context, error)
 }
 
 func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool) (*resty.Request, error) {
@@ -122,37 +123,45 @@ func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose boo
 	return self.NewClientByTerminator(timeout, verbose, "")
 }
 
-func (self *RestClientEdgeIdentity) NewClientByTerminator(timeout time.Duration, verbose bool, terminator string) (*resty.Client, error) {
-	client := NewClient()
+func (self *RestClientEdgeIdentity) getHttpTransport(log *log.Logger, verbose bool, terminator string) (*http.Transport, error) {
 	if ztFromEnv, ztFromEnvErr := ZitifiedTransportFromEnv(""); ztFromEnvErr != nil {
-		return nil, ztFromEnvErr
+		return &http.Transport{}, ztFromEnvErr
 	} else {
 		if ztFromEnv != nil {
 			if verbose {
-				client.Log.Printf("Using Ziti Transport from environment var: %s", constants.ZitiCliNetworkIdVarName)
+				log.Printf("Using Ziti Transport from environment var: %s", constants.ZitiCliNetworkIdVarName)
 			}
-			client.GetClient().Transport = ztFromEnv
+			return ztFromEnv, nil
 		} else {
 			if self.NetworkIdFile != "" {
 				if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile, terminator); ztFromFileErr != nil {
 					// ignore any error around the networkId file
 					if verbose {
-						client.Log.Printf("Ziti transport from cached file failed: %v", ztFromFileErr)
+						log.Printf("Ziti transport from cached file failed: %v", ztFromFileErr)
 					}
 				} else {
 					if verbose {
-						client.Log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
+						log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
 					}
-					client.GetClient().Transport = ztFromFile
+					return ztFromFile, nil
 				}
 			} else {
 				if verbose {
-					client.Log.Printf("Using default http transport")
+					log.Printf("Using default http transport")
 				}
 			}
 		}
 	}
+	return &http.Transport{}, nil
+}
 
+func (self *RestClientEdgeIdentity) NewClientByTerminator(timeout time.Duration, verbose bool, terminator string) (*resty.Client, error) {
+	client := NewClient()
+	transport, err := self.getHttpTransport(client.Log, verbose, terminator)
+	if err != nil {
+		return nil, err
+	}
+	client.GetClient().Transport = transport
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}
@@ -188,13 +197,17 @@ func (self *RestClientEdgeIdentity) GetBaseUrlForApi(api API) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return u.Scheme + "://" + u.Host + "/fabric/v1", nil
+		if u.User != nil {
+			return fmt.Sprintf("%s://%s@%s/fabric/v1", u.Scheme, u.User.Username(), u.Host), nil
+		} else {
+			return fmt.Sprintf("%s://%s/fabric/v1", u.Scheme, u.Host), nil
+		}
 	}
 	return "", errors.Errorf("unsupported api %v", api)
 }
 
 func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClient, err := newRestClientTransport(clientOpts, self)
+	httpClient, err := self.newRestClientTransport(clientOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +225,7 @@ func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts ClientOpt
 }
 
 func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error) {
-	httpClient, err := newRestClientTransport(clientOpts, self)
+	httpClient, err := self.newRestClientTransport(clientOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -231,23 +244,35 @@ func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientO
 
 func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 	result := http.Header{}
-	result.Set(env.ZitiSession, self.Token)
 
 	if self.ApiSession != nil && self.ApiSession.ApiSession != nil {
-		switch self.ApiSession.ApiSession.GetType() {
-		case edge_apis.ApiSessionTypeOidc:
-			authHeader := "Bearer " + strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken()))
-			result.Set("Authorization", authHeader)
-		case edge_apis.ApiSessionTypeLegacy:
+		if self.ApiSession.ApiSession.GetType() == edge_apis.ApiSessionTypeOidc {
+			result.Set("Authorization", "Bearer "+strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken())))
+		} else {
 			result.Set(env.ZitiSession, string(self.ApiSession.ApiSession.GetToken()))
-		default:
-			panic("unsupported api session type " + self.ApiSession.ApiSession.GetType())
 		}
-	} else {
+	} else if self.Token != "" {
 		result.Set(env.ZitiSession, self.Token)
+	} else {
+		panic("no  authentication mechanism set")
 	}
-
 	return result
+}
+
+func (self *RestClientEdgeIdentity) NewZitiContext() (ziti.Context, error) {
+	if self.NetworkIdFile != "" {
+		data, err := os.ReadFile(self.NetworkIdFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ziti identity file %s: %v", self.NetworkIdFile, err)
+		}
+		return NewZitifiedContextFromSlice(data)
+	} else {
+		data, err := ZitiConfigFromEnv()
+		if err != nil {
+			return nil, err
+		}
+		return NewZitifiedContextFromSlice(data)
+	}
 }
 
 func LoadRestClientConfig() (*RestClientConfig, string, error) {
@@ -404,26 +429,35 @@ func newRestClientRequestF(clientOpts ClientOpts, readOnly bool) func(*http.Requ
 	}
 }
 
-func newRestClientTransport(clientOpts ClientOpts, clientIdentity RestClientIdentity) (*http.Client, error) {
-	httpClientTransport := &edgeTransport{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: 10 * time.Second,
-			}).DialContext,
-
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          10,
-			IdleConnTimeout:       10 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-		ResponseFunc: newRestClientResponseF(clientOpts),
-		RequestFunc:  newRestClientRequestF(clientOpts, clientIdentity.IsReadOnly()),
+func (self *RestClientEdgeIdentity) newRestClientTransport(clientOpts ClientOpts) (*http.Client, error) {
+	u, err := url.Parse(self.Url)
+	if err != nil {
+		return nil, err
+	}
+	at := ""
+	if u.User != nil {
+		at = u.User.Username()
 	}
 
-	tlsClientConfig, err := clientIdentity.NewTlsClientConfig()
+	t, e := self.getHttpTransport(nil, false, at)
+	if e != nil {
+		return nil, e
+	}
+
+	t.Proxy = http.ProxyFromEnvironment
+	t.ForceAttemptHTTP2 = true
+	t.MaxIdleConns = 10
+	t.IdleConnTimeout = 10 * time.Second
+	t.TLSHandshakeTimeout = 10 * time.Second
+	t.ExpectContinueTimeout = 1 * time.Second
+
+	httpClientTransport := &edgeTransport{
+		Transport:    t,
+		ResponseFunc: newRestClientResponseF(clientOpts),
+		RequestFunc:  newRestClientRequestF(clientOpts, self.IsReadOnly()),
+	}
+
+	tlsClientConfig, err := self.NewTlsClientConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +475,11 @@ func (self *RestClientEdgeIdentity) newEdgeAuth() EdgeManagementAuth {
 	ea := EdgeManagementAuth{}
 
 	if self.ApiSession != nil && self.ApiSession.ApiSession != nil {
-		ea.BearerToken = string(self.ApiSession.ApiSession.GetToken())
+		if self.ApiSession.ApiSession.GetType() == edge_apis.ApiSessionTypeOidc {
+			ea.BearerToken = string(self.ApiSession.ApiSession.GetToken())
+		} else {
+			ea.LegacyToken = string(self.ApiSession.ApiSession.GetToken())
+		}
 	} else if self.Token != "" {
 		ea.LegacyToken = self.Token
 	} else {

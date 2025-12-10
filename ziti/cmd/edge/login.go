@@ -204,12 +204,6 @@ func (o *LoginOptions) Run() error {
 		return cfgErr
 	}
 
-	httpClient, newClientErr := o.newHttpClient(false)
-	if newClientErr != nil {
-		return newClientErr
-	}
-	o.client = httpClient
-
 	if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
 		if err != nil {
@@ -232,11 +226,22 @@ func (o *LoginOptions) Run() error {
 		}
 
 		if o.ControllerUrl == "" {
-			host = parsedZtAPI.Host
+			if parsedZtAPI.User != nil {
+				host = parsedZtAPI.User.Username() + "@" + parsedZtAPI.Host
+				o.ControllerUrl = host
+			} else {
+				host = parsedZtAPI.Host
+			}
 		} else {
 			host = o.ControllerUrl
 		}
 	}
+
+	httpClient, newClientErr := o.newHttpClient(false)
+	if newClientErr != nil {
+		return newClientErr
+	}
+	o.client = httpClient
 
 	id := config.GetIdentity()
 

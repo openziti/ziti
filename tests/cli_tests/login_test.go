@@ -18,183 +18,20 @@ limitations under the License.
 package cli_tests
 
 import (
-	"context"
-	"net/http"
 	"os"
-	gopath "path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/tests/testutil"
 	"github.com/openziti/ziti/ziti/cmd"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/stretchr/testify/require"
 )
 
-type loginTestState struct {
-	homeDir             string
-	zitiContext         *ziti.Context
-	zitiTransport       *http.Transport
-	commonOpts          api.Options
-	externalZiti        testutil.Overlay
-	controllerUnderTest testutil.Overlay
-}
-
-func (s *loginTestState) removeZitiDir(t *testing.T) {
-	zitiDir, _ := util.ConfigDir()
-	if err := os.RemoveAll(zitiDir); err != nil {
-		t.Errorf("remove %s: %v", zitiDir, err)
-		t.Fail()
-	}
-	t.Logf("Removed ziti dir from: %s", zitiDir)
-}
-
-func Test_LoginSuite(t *testing.T) {
-	zitiPath := os.Getenv("ZITI_CLI_TEST_ZITI_BIN")
-	if zitiPath == "" {
-		t.Fatalf("ZITI_CLI_TEST_ZITI_BIN not set")
-	}
-	if _, statErr := os.Stat(zitiPath); statErr != nil {
-		t.Fatalf("ziti binary not found at provided location %s: %v", zitiPath, statErr)
-	}
-	baseDir := filepath.Join(os.TempDir(), "cli-tests")
-	if me := os.MkdirAll(baseDir, 0755); me != nil {
-		t.Fatalf("failed creating baseDir dir: %v", baseDir)
-	}
-	testRunHome, mkdirErr := os.MkdirTemp(baseDir, "test-run-*")
-	if mkdirErr != nil {
-		t.Fatalf("failed creating temp dir: %v", mkdirErr)
-	}
-	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
-	cfgDir := filepath.Join(baseDir, ".config/ziti")
-	_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
-	_ = os.RemoveAll(cfgDir)
-	externalCtx, externalCancel := context.WithCancel(context.Background())
-	defer externalCancel()
-	ctrlUnderTestCtx, ctrlUnderTestCancel := context.WithCancel(context.Background())
-	defer ctrlUnderTestCancel()
-
-	testState := &loginTestState{
-		homeDir:             util.HomeDir(),
-		zitiContext:         nil,
-		zitiTransport:       nil,
-		externalZiti:        testutil.CreateOverlay(t, externalCtx, 600*time.Second, testRunHome, "external", false),
-		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 600*time.Second, testRunHome, "target", false),
-		commonOpts: api.Options{
-			CommonOptions: common.CommonOptions{
-				Out: os.Stdout,
-				Err: os.Stderr,
-			},
-		},
-	}
-
-	defer func() {
-		if !t.Failed() {
-			// allow/ensure the processes to exit windows is a pain about rm'ing folders if not
-			errChan := make(chan error, 2)
-
-			go func() { errChan <- testState.externalZiti.Stop() }()
-			go func() { errChan <- testState.controllerUnderTest.Stop() }()
-			success := true
-			for i := 0; i < 2; i++ { // Wait for both
-				if deferErr := <-errChan; deferErr != nil {
-					t.Logf("stop error: %v", deferErr)
-					success = false
-				}
-			}
-			if !success {
-				t.Logf("manual cleanup may be required at %s", testRunHome)
-			} else {
-				t.Logf("tests passed, removing temp dir at %s", testRunHome)
-				if rerr := os.RemoveAll(testRunHome); rerr != nil {
-					t.Logf("remove %s failed... **sigh**: %v", testRunHome, rerr)
-				}
-			}
-		} else {
-			t.Logf("tests failed, temp dir left intact at %s", testRunHome)
-		}
-		testState.externalZiti.CleanupPids()
-		testState.controllerUnderTest.CleanupPids()
-	}()
-
-	extDone := make(chan error)
-	go testState.externalZiti.StartExternal(zitiPath, extDone)
-	targetDone := make(chan error)
-	go testState.controllerUnderTest.StartExternal(zitiPath, targetDone)
-
-	exStartErr := testState.externalZiti.WaitForControllerReady(60 * time.Second)
-	if exStartErr != nil {
-		log.Fatalf("externalZiti start failed: %v", exStartErr)
-	}
-
-	cutStartErr := testState.controllerUnderTest.WaitForControllerReady(60 * time.Second)
-	if cutStartErr != nil {
-		log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
-	}
-
-	if lo, le := testState.controllerUnderTest.Login(); le != nil {
-		t.Fatalf("unable to login before running tests: %v", le)
-	} else {
-		testState.controllerUnderTest.ApiSession = lo.ApiSession
-	}
-
-	require.NotEmpty(t, testState.controllerUnderTest.ApiSession)
-	require.NotEmpty(t, testState.controllerUnderTest.ApiSession.GetToken())
-
-	now := time.Now().Format("150405")
-
-	if ae := testState.controllerUnderTest.CreateAdminIdentity(t, now, testRunHome); ae != nil {
-		t.Fatalf("unable to create controller admin: %v", ae)
-	}
-
-	t.Log("====================================================================================")
-	t.Log("=========================== overlay ready. tests begin =============================")
-	t.Log("====================================================================================")
-
-	testTimeout := 120 * time.Second
-	testDone := make(chan struct{})
-	testTimer := time.NewTimer(testTimeout)
-	defer testTimer.Stop()
-
-	go func() {
-		defer close(testDone)
-		// Just signal when time is up, don't call t methods
-		<-testTimer.C
-	}()
-
-	if lr, le := testState.controllerUnderTest.Login(); le != nil {
-		t.Fatalf("unable to login before running tests: %v", le)
-	} else {
-		//set the valid token for reuse later:
-		require.NotEmpty(t, lr.ApiSession)
-		testState.controllerUnderTest.ApiSession = lr.ApiSession
-	}
-
-	t.Run("login tests over underlay", testState.runLoginTests)
-
-	t.Log("Cancelling controllerUnderTest to reconfigure for use with ziti")
-
-	ctrlUnderTestCancel()
-	if se := testState.controllerUnderTest.Stop(); se != nil {
-		t.Fatalf("controllerUnderTest didn't stop? %v", se)
-	}
-	t.Log("Cancelling controllerUnderTest complete")
-	testState.loginTestsOverZiti(t, now, zitiPath)
-	externalCancel()
-
-	t.Run("make sure any ziti instances are stopped", testState.externalZiti.EnsureAllPidsStopped)
-	t.Run("make sure any ziti instances are stopped", testState.controllerUnderTest.EnsureAllPidsStopped)
-}
-
-func (s *loginTestState) runLoginTests(t *testing.T) {
-	//Authentication Methods
+func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("correct password succeeds", s.testCorrectPasswordSucceeds)
 	t.Run("wrong password fails", s.testWrongPasswordFails)
 	t.Run("token based login", s.testTokenBasedLogin)
@@ -213,13 +50,14 @@ func (s *loginTestState) runLoginTests(t *testing.T) {
 }
 
 // Authentication Methods
-func (s *loginTestState) testCorrectPasswordSucceeds(t *testing.T) {
+func (s *cliTestState) testCorrectPasswordSucceeds(t *testing.T) {
+	s.removeZitiDir(t)
 	opts := s.controllerUnderTest.NewTestLoginOpts()
 
 	err := opts.Run()
 	require.NoError(t, err)
 	require.NotEmpty(t, opts.ApiSession)
-	t.Logf("Login successful, token: %s", opts.Token)
+	t.Logf("Login successful to %s, token: %s", s.controllerUnderTest.ControllerHostPort(), opts.ApiSession.GetToken())
 
 	// Verify we can create a management client
 	client, err := opts.NewManagementClient(false)
@@ -228,7 +66,7 @@ func (s *loginTestState) testCorrectPasswordSucceeds(t *testing.T) {
 	require.NotEmpty(t, opts.ApiSession)
 }
 
-func (s *loginTestState) testWrongPasswordFails(t *testing.T) {
+func (s *cliTestState) testWrongPasswordFails(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
@@ -243,7 +81,7 @@ func (s *loginTestState) testWrongPasswordFails(t *testing.T) {
 	require.Error(t, err, "login with wrong password should fail")
 }
 
-func (s *loginTestState) testTokenBasedLogin(t *testing.T) {
+func (s *cliTestState) testTokenBasedLogin(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		ApiSession:    s.controllerUnderTest.ApiSession,
@@ -259,7 +97,7 @@ func (s *loginTestState) testTokenBasedLogin(t *testing.T) {
 	t.Logf("Login successful, token: %s", opts.ApiSession.GetToken())
 }
 
-func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
+func (s *cliTestState) testClientCertAuthentication(t *testing.T) {
 	// Setup common options
 	baseOpts := edge.LoginOptions{
 		Options:       s.commonOpts,
@@ -326,7 +164,8 @@ func (s *loginTestState) testClientCertAuthentication(t *testing.T) {
 	})
 }
 
-func (s *loginTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T) {
+func (s *cliTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T) {
+	// tests that the file supplied provides the proper url for login
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		ControllerUrl: "",
@@ -335,6 +174,7 @@ func (s *loginTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T
 		File:          s.controllerUnderTest.AdminIdFile,
 		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
 	}
+	t.Log("FILE: ", s.controllerUnderTest.AdminIdFile)
 	err := opts.Run()
 	require.NoError(t, err)
 	client, err := opts.NewManagementClient(false)
@@ -344,7 +184,7 @@ func (s *loginTestState) testIdentityFileAuthenticationCtrlUrlUnset(t *testing.T
 	t.Logf("Login successful, token: %s", opts.Token)
 }
 
-func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
+func (s *cliTestState) testIdentityFileAuthentication(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
@@ -361,21 +201,21 @@ func (s *loginTestState) testIdentityFileAuthentication(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	require.NotEmpty(t, opts.ApiSession)
-	t.Logf("Login successful, token: %s", opts.Token)
+	t.Logf("Login successful for %s, token: %s", s.controllerUnderTest.ControllerHostPort(), opts.Token)
 }
 
-func (s *loginTestState) testExternalJWTAuthentication(t *testing.T) {
+func (s *cliTestState) testExternalJWTAuthentication(t *testing.T) {
 	// TODO: Generate valid JWT token
 	t.Skip("External JWT authentication requires JWT setup")
 }
 
-func (s *loginTestState) testNetworkIdentityZitifiedConnection(t *testing.T) {
+func (s *cliTestState) testNetworkIdentityZitifiedConnection(t *testing.T) {
 	// TODO: Create network identity file
 	t.Skip("Network identity requires identity setup")
 }
 
 // Edge Cases
-func (s *loginTestState) testEmptyUsername(t *testing.T) {
+func (s *cliTestState) testEmptyUsername(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      "",
@@ -392,7 +232,7 @@ func (s *loginTestState) testEmptyUsername(t *testing.T) {
 	t.Logf("Empty username correctly failed: %v", err)
 }
 
-func (s *loginTestState) testEmptyPassword(t *testing.T) {
+func (s *cliTestState) testEmptyPassword(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
@@ -409,7 +249,7 @@ func (s *loginTestState) testEmptyPassword(t *testing.T) {
 	t.Logf("Empty password correctly failed: %v", err)
 }
 
-func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
+func (s *cliTestState) testInvalidControllerURL(t *testing.T) {
 	hostErrors := []string{"i/o timeout", "no such host", "server misbehaving"}
 	t.Run("not-a-url", func(t *testing.T) {
 		opts := &edge.LoginOptions{Options: s.commonOpts, Username: s.controllerUnderTest.Username, Password: s.controllerUnderTest.Password,
@@ -478,7 +318,7 @@ func (s *loginTestState) testInvalidControllerURL(t *testing.T) {
 	})
 }
 
-func (s *loginTestState) testNonExistentUsername(t *testing.T) {
+func (s *cliTestState) testNonExistentUsername(t *testing.T) {
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      "nonexistent-user-12345",
@@ -494,7 +334,7 @@ func (s *loginTestState) testNonExistentUsername(t *testing.T) {
 	t.Logf("Non-existent username correctly failed: %v", err)
 }
 
-func (s *loginTestState) testControllerUnavailable(t *testing.T) {
+func (s *cliTestState) testControllerUnavailable(t *testing.T) {
 	expectedErr := "connection refused"
 	if runtime.GOOS == "windows" { //because of course it's different on linux/windows
 		expectedErr = "the target machine actively refused it"
@@ -519,65 +359,54 @@ func (s *loginTestState) testControllerUnavailable(t *testing.T) {
 	t.Logf("Unavailable controller correctly failed: %v", err)
 }
 
-func (s *loginTestState) reconfigureTargetForZiti(pkiRoot string) error {
+func (s *cliTestState) reconfigureTargetForZiti(pkiRoot string) error {
 	v2 := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
+	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti,mgmt-addressable-terminators --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
 	if zitiCmdErr := v2.Execute(); zitiCmdErr != nil {
 		return zitiCmdErr
 	}
 	return nil
 }
 
-func (s *loginTestState) loginTestsOverZiti(t *testing.T, now, zitiPath string) {
-	t.Run("login tests over ziti", func(t *testing.T) {
-		pkiRoot := gopath.Join(s.controllerUnderTest.Home, "pki")
-		if reconfErr := s.reconfigureTargetForZiti(pkiRoot); reconfErr != nil {
-			t.Fatalf("failed to reconfigure target: %v", reconfErr)
-		}
-
-		if ie := s.externalZiti.CreateOverlayIdentities(t, now); ie != nil {
-			t.Fatalf("failed to initialize ziti transport for controllerUnderTest: %v", ie)
-		}
-		s.controllerUnderTest.NetworkDialingIdFile = s.externalZiti.NetworkDialingIdFile
-		s.controllerUnderTest.NetworkBindingIdFile = s.externalZiti.NetworkBindingIdFile
-
-		controllerUnderTestCtx2, controllerUnderTestCancel := context.WithCancel(context.Background())
-		defer controllerUnderTestCancel()
-		s.controllerUnderTest.Ctx = controllerUnderTestCtx2
-		s.controllerUnderTest.ConfigFile = gopath.Join(s.controllerUnderTest.Home, "ctrl.yaml")
-		newServerCertPath := gopath.Join(s.controllerUnderTest.Home, "pki/intermediate-ca-quickstart/certs/mgmt.ziti.chain.pem")
-		if re := s.controllerUnderTest.ReplaceConfig(newServerCertPath); re != nil {
-			t.Fatalf("failed to replace config: %v", re)
-		}
-
-		targetDone := make(chan error)
-		go s.controllerUnderTest.StartExternal(zitiPath, targetDone)
-		cutStartErr := s.controllerUnderTest.WaitForControllerReady(60 * time.Second)
-		if cutStartErr != nil {
-			log.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
-		}
-
-		s.updateAdminIdFileForZiti(t, "https://mgmt.ziti:443")
-
+func (s *cliTestState) cliTestsOverZiti(t *testing.T, zitiPath string) {
+	t.Run("cli tests over ziti", func(t *testing.T) {
+		util.ReloadConfig() //every iteration needs to call reload to flush/overwrite the cached client in global state
+		cfgDir := filepath.Join(s.homeDir, ".config/overlay")
+		_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
+		_ = os.RemoveAll(cfgDir)
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
 		s.controllerUnderTest.ControllerPort = 443
-
-		s.runLoginTests(t)
-
+		s.updateAdminIdFileForZiti(t, s.controllerUnderTest.ControllerHostPort())
+		s.cliTests(t)
 		s.testZitiThenNot(t)
-
-		controllerUnderTestCancel()
 	})
 }
 
-func (s *loginTestState) updateAdminIdFileForZiti(t *testing.T, newAddr string) {
-	t.Logf("Updating %s with new url: %s from %s", s.controllerUnderTest.AdminIdFile, "https://mgmt.ziti:443", s.controllerUnderTest.ControllerHostPort())
+func (s *cliTestState) cliTestsOverAddressableTerminators(t *testing.T, zitiPath string) {
+	t.Run("cli tests over ziti with addressable terminator", func(t *testing.T) {
+		util.ReloadConfig() //every iteration needs to call reload to flush/overwrite the cached client in global state
+		cfgDir := filepath.Join(s.homeDir, ".config/overlay-addressable-terminator")
+		_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
+		_ = os.RemoveAll(cfgDir)
+		s.controllerUnderTest.ControllerAddress = "mgmt-addressable-terminators"
+		s.controllerUnderTest.ControllerPort = 443
+		s.updateAdminIdFileForZiti(t, s.controllerUnderTest.ControllerHostPort())
+		s.cliTests(t)
+		s.testZitiThenNot(t)
+	})
+}
+func (s *cliTestState) updateAdminIdFileForZiti(t *testing.T, newAddr string) {
+	t.Logf("Updating %s with new url: %s from %s", s.controllerUnderTest.AdminIdFile, newAddr, s.controllerUnderTest.ControllerHostPort())
+
 	data, _ := os.ReadFile(s.controllerUnderTest.AdminIdFile)
-	out := strings.ReplaceAll(string(data), s.controllerUnderTest.ControllerHostPort(), newAddr)
+
+	re := regexp.MustCompile(`https://[^"]*/edge/client/v1`)
+	out := re.ReplaceAllString(string(data), newAddr)
+
 	_ = os.WriteFile(s.controllerUnderTest.AdminIdFile, []byte(out), 0644)
 }
 
-func (s *loginTestState) testZitiThenNot(t *testing.T) {
+func (s *cliTestState) testZitiThenNot(t *testing.T) {
 	// this test should make sure that after logging in with a zitified login, a subsequent login to a non-zitified
 	// controller works as expected
 	opts := &edge.LoginOptions{

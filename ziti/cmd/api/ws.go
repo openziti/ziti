@@ -17,16 +17,19 @@
 package api
 
 import (
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/websockets"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {
@@ -41,16 +44,33 @@ func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) 
 		return nil, err
 	}
 
-	wsUrl := strings.ReplaceAll(baseUrl, "http", "ws") + "/ws-api"
+	parsedUrl, err := url.Parse(baseUrl)
+	at := ""
+	if err != nil {
+		return nil, err
+	}
+	if parsedUrl.User != nil {
+		at = parsedUrl.User.Username()
+		parsedUrl.User = nil //remove it so it won't affect the ws url library
+	}
+
+	wsUrl := strings.ReplaceAll(parsedUrl.String(), "http", "ws") + "/ws-api"
 	tlsConfig, err := restClientIdentity.NewTlsClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	zc, err := restClientIdentity.NewZitiContext()
+	if err != nil {
+		return nil, err
+	}
+
+	zitifiedDialer := util.NewZitiDialContext(zc, ziti.DialOptions{Identity: at})
 	dialer := &websocket.Dialer{
 		Proxy:            http.ProxyFromEnvironment,
 		TLSClientConfig:  tlsConfig,
 		HandshakeTimeout: 5 * time.Second,
+		NetDialContext:   zitifiedDialer,
 	}
 
 	conn, resp, err := dialer.Dial(wsUrl, restClientIdentity.NewWsHeader())

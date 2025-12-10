@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -68,7 +69,7 @@ func NewStreamEventsCmd(p common.OptionsProvider) *cobra.Command {
 		Short:   "Stream events",
 		Example: "ziti fabric stream events --circuits --metrics --metrics-filter '.*'",
 		Args:    cobra.ExactArgs(0),
-		RunE:    action.streamEvents,
+		RunE:    util.CancelableCobraCmd(true, action.streamEvents),
 	}
 
 	action.AddCommonFlags(streamEventsCmd)

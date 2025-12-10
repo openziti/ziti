@@ -63,6 +63,7 @@ type loginCreds struct {
 
 type Overlay struct {
 	loginCreds
+	ControllerName       string
 	NetworkBindingIdFile string // a ziti identity file to use when starting the controller which will bind a given service over an overlay
 	NetworkDialingIdFile string // a ziti identity file used to dial mgmt services hosted/bound by a controller using a ziti overlay
 	t                    *testing.T
@@ -77,7 +78,11 @@ type Overlay struct {
 }
 
 func (o *Overlay) ControllerHostPort() string {
-	return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
+	if o.ControllerName != "" {
+		return fmt.Sprintf("https://%s@%s:%d", o.ControllerName, o.ControllerAddress, o.ControllerPort)
+	} else {
+		return fmt.Sprintf("https://%s:%d", o.ControllerAddress, o.ControllerPort)
+	}
 }
 func (o *Overlay) RouterHostPort() string {
 	return fmt.Sprintf("https://%s:%d", o.RouterAddress, o.RouterPort)
@@ -124,7 +129,11 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
       - identity:
           file: ` + o.NetworkBindingIdFile + `
           service: "mgmt"
-          serveTLS: true
+      - identity:
+          file: ` + o.NetworkBindingIdFile + `
+          service: "mgmt-addressable-terminators"
+          listenOptions:
+            bindUsingEdgeIdentity: true
     apis:
       - binding: edge-management
         options: { }
@@ -142,20 +151,50 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 	return nil
 }
 
+func (o *Overlay) PrintLoginCommand(t *testing.T) {
+	if o.NetworkDialingIdFile == "" {
+		t.Logf("overlay login: ziti edge login %s -y -u admin -p admin\n\n", o.ControllerHostPort())
+	} else {
+		t.Logf("overlay login: ziti edge login %s -y -u admin -p admin --network-identity %s\n\n", o.ControllerHostPort(), o.NetworkDialingIdFile)
+	}
+}
+
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
-	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
+	args := []string{"edge", "quickstart"}
+	if o.IsHA {
+		args = append(args, "ha")
+	}
+	args = append(args, o.startArgs()...)
+	o.RunZiti(zitiPath, args, done)
+}
+
+func (o *Overlay) StartJoin(zitiPath string, done chan error) {
+	if !o.IsHA {
+		panic("test incorrect. calling join without HA")
+	}
+	args := append([]string{"edge", "quickstart", "join"}, o.startArgs()...)
+	o.RunZiti(zitiPath, args, done)
+}
+
+func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
+	fmt.Println("========================================================")
 	fmt.Printf("%s overlay command: %s %s\n", o.Name, zitiPath, strings.Join(args, " "))
 	o.extCmd = exec.CommandContext(
 		o.Ctx,
 		zitiPath,
 		args...,
 	)
+	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true")
 	_ = os.Mkdir(o.Home, 0755)
-	stdoutFile, createErr1 := os.Create(filepath.Join(o.Home, "ctrl-stdout.log"))
+	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
+	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
+	stdoutFile, createErr1 := os.Create(outf)
 	if createErr1 != nil {
 		done <- createErr1
 	}
-	stderrFile, createErr2 := os.Create(filepath.Join(o.Home, "ctrl-stderr.log"))
+	errf := filepath.Join(o.Home, fmt.Sprintf("stderr-ctrl-%s.log", o.InstanceID))
+	fmt.Printf("log for %s stderr at: %s\n", o.Name, errf)
+	stderrFile, createErr2 := os.Create(errf)
 	if createErr2 != nil {
 		done <- createErr2
 	}
@@ -225,10 +264,10 @@ func (o *Overlay) CreateOverlayIdentities(t *testing.T, now string) error {
 		return le
 	}
 
-	controllerIdName := fmt.Sprintf("controller-binder-%s", now)
-	controllerJwtPath := filepath.Join(o.Home, controllerIdName+".jwt")
+	o.ControllerName = fmt.Sprintf("controller-binder-%s", now)
+	controllerJwtPath := filepath.Join(o.Home, o.ControllerName+".jwt")
 	zitiCmd1 := edge.NewCmdEdge(os.Stdout, os.Stderr, p)
-	zitiCmd1.SetArgs(strings.Split("create identity "+controllerIdName+" -o "+controllerJwtPath+" --admin -a mgmtservers", " "))
+	zitiCmd1.SetArgs(strings.Split("create identity "+o.ControllerName+" -o "+controllerJwtPath+" --admin -a mgmtservers", " "))
 	if zitiCmdErr := zitiCmd1.Execute(); zitiCmdErr != nil {
 		t.Fatalf("unable to create identity: %v", zitiCmdErr)
 	}
@@ -480,18 +519,34 @@ func (o *Overlay) getRunningPids() []int {
 }
 
 func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
+	fmt.Printf("Waiting up to %s for controller at %s\n", timeout, o.ControllerHostPort())
+
+	start := time.Now()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	timeoutCh := time.After(timeout)
+	var lastPrint time.Time
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Waiting for controller to start... " + o.ControllerHostPort())
 			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
 			if err == nil {
 				return nil
 			}
-		case <-time.After(timeout):
+
+			if time.Since(lastPrint) >= 5*time.Second {
+				elapsed := time.Since(start)
+				fmt.Printf("Still waiting (%s elapsed, %s remaining)... %s\n",
+					elapsed.Truncate(time.Second),
+					(timeout - elapsed).Truncate(time.Second),
+					o.ControllerHostPort())
+
+				lastPrint = time.Now()
+			}
+
+		case <-timeoutCh:
 			return fmt.Errorf("timeout waiting for controller to become ready at %s", o.ControllerHostPort())
 		}
 	}
