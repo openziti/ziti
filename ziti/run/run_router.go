@@ -58,7 +58,6 @@ type RouterAction struct {
 }
 
 func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
-	//xweb.BindPointListenerFactoryRegistry = append(xweb.BindPointListenerFactoryRegistry, &bindpoints.LegacyBindPointListenerFactory{})
 	xweb.BindPointListenerFactoryRegistry = []xweb.BindPointListenerFactory{&bindpoints.LegacyBindPointListenerFactory{}}
 	startLogger := logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
