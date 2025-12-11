@@ -26,10 +26,15 @@ makeEmptyRestrictedFile() {
 }
 
 loadEnvFile() {
+  # service.env is required - it contains the package defaults
+  if [[ ! -s "${ZITI_ROUTER_SVC_ENV_FILE}" ]]; then
+    echo "ERROR: missing required file '${ZITI_ROUTER_SVC_ENV_FILE}'" >&2
+    exit 1
+  fi
   # shellcheck disable=SC1090
-  source "${ZITI_ROUTER_SVC_ENV_FILE}"
+  [[ -s "${ZITI_ROUTER_SVC_ENV_FILE}" ]] && source "${ZITI_ROUTER_SVC_ENV_FILE}"
   # shellcheck disable=SC1090
-  source "${ZITI_ROUTER_BOOT_ENV_FILE}"
+  [[ -s "${ZITI_ROUTER_BOOT_ENV_FILE}" ]] && source "${ZITI_ROUTER_BOOT_ENV_FILE}"
 }
 
 # initialize a file descriptor for debug output
