@@ -650,22 +650,6 @@ func (self *Router) registerComponents() error {
 	}
 
 	xwo := xweb.InstanceOptions{
-		InstanceValidators: []xweb.InstanceValidator{func(config *xweb.InstanceConfig) error {
-			var errs []error
-			for i, serverConfig := range config.ServerConfigs {
-				for _, bp := range serverConfig.BindPoints {
-					if ve := serverConfig.Identity.ValidFor(strings.Split(bp.ServerAddress(), ":")[0]); ve != nil {
-						if config.Options.DefaultConfigSection != xweb.DefaultConfigSection {
-							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
-						} else {
-							// allow xweb bindings in routers to be misconfigured (health checks)
-							pfxlog.Logger().Warnf("unable to validate XWeb configuration. Router may be unstable: %v", ve)
-						}
-					}
-				}
-			}
-			return stderr.Join(errs...)
-		}},
 		DefaultIdentity:        self.config.Id,
 		DefaultIdentitySection: xweb.DefaultIdentitySection,
 		DefaultConfigSection:   xweb.DefaultConfigSection,
