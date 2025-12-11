@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	transporttls "github.com/openziti/transport/v2/tls"
 	"github.com/openziti/xweb/v3"
@@ -102,9 +101,7 @@ func (u UnderlayBindPoint) Validate(id identity.Identity) error {
 
 	if h, _, err := net.SplitHostPort(u.Address); err == nil {
 		if ve := id.ValidFor(normalizeIp(h)); ve != nil {
-			if u.allowLegacyAddress {
-				pfxlog.Logger().Warnf("unable to validate XWeb configuration. Router may be unstable: %v", ve)
-			} else {
+			if !u.allowLegacyAddress {
 				errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
 			}
 		}
