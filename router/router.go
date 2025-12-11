@@ -659,7 +659,7 @@ func (self *Router) registerComponents() error {
 							errs = append(errs, fmt.Errorf("could not validate server at %s[%d]: %v", config.Options.DefaultConfigSection, i, ve))
 						} else {
 							// allow xweb bindings in routers to be misconfigured (health checks)
-							pfxlog.Logger().Warnf("unable to validate XWeb configuration. Router may be unstable: %v", ve)
+							pfxlog.Logger().Warnf("unable to validate XWeb configuration. %s may be unstable: %v", serverConfig.Name, ve)
 						}
 					}
 				}

@@ -31,7 +31,7 @@ import (
 
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/controller/bindpoints"
+	"github.com/openziti/ziti/common/bindpoints"
 	"github.com/stretchr/testify/require"
 )
 

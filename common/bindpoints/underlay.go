@@ -38,9 +38,10 @@ const (
 // UnderlayBindPoint represents the interface:port address of where a http.Server should listen for a ServerConfig and the public
 // address that should be used to address it.
 type UnderlayBindPoint struct {
-	InterfaceAddress string //<interface>:<port>
-	Address          string //<ip/host>:<port>
-	NewAddress       string //<ip/host>:<port> sent out as a header for clients to alternatively swap to (ip -> hostname moves)
+	InterfaceAddress   string //<interface>:<port>
+	Address            string //<ip/host>:<port>
+	NewAddress         string //<ip/host>:<port> sent out as a header for clients to alternatively swap to (ip -> hostname moves)
+	allowLegacyAddress bool
 }
 
 func (u UnderlayBindPoint) BeforeHandler(next http.Handler) http.Handler {
@@ -62,8 +63,9 @@ func (u UnderlayBindPoint) ServerAddress() string {
 	return u.Address
 }
 
-func newUnderlayBindPoint(conf map[interface{}]interface{}) (xweb.BindPoint, error) {
+func newUnderlayBindPoint(conf map[interface{}]interface{}, legacyValidation bool) (xweb.BindPoint, error) {
 	u := UnderlayBindPoint{}
+	u.allowLegacyAddress = legacyValidation
 	if v, ok := conf["interface"].(string); ok {
 		u.InterfaceAddress = v
 	}
@@ -99,7 +101,9 @@ func (u UnderlayBindPoint) Validate(id identity.Identity) error {
 
 	if h, _, err := net.SplitHostPort(u.Address); err == nil {
 		if ve := id.ValidFor(normalizeIp(h)); ve != nil {
-			errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
+			if !u.allowLegacyAddress {
+				errs = append(errs, fmt.Errorf("address not valid %s: %v", u.Address, ve))
+			}
 		}
 	}
 

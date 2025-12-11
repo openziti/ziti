@@ -25,12 +25,29 @@ import (
 type BindPointListenerFactory struct {
 }
 
-// New checks to see if this bindPoint is for overlay or underlay then calls the expected func.
+// New checks to see if this BindPoint is for overlay or underlay then calls the expected func.
 // As of now there are only two types, OverlayBindPoint and UnderlayBindPoint
 func (c *BindPointListenerFactory) New(conf map[interface{}]interface{}) (xweb.BindPoint, error) {
 	if conf["identity"] != nil {
 		return newOverlayBindPoint(conf)
 	} else { // only two options right now. underlay and overlay...
-		return newUnderlayBindPoint(conf)
+		return newUnderlayBindPoint(conf, false)
+	}
+}
+
+// LegacyBindPointListenerFactory implements the xweb.LegacyBindPointListenerFactory.
+// It provides a factory that generates xweb.LegacyBindPoints based on the provided config section. It also
+// allows for "legacy" validation, specifically with respect to web.bindPoints.addresses where 0.0.0.0 was previously
+// considered a valid address.
+type LegacyBindPointListenerFactory struct {
+}
+
+// New checks to see if this LegacyBindPoint is for overlay or underlay then calls the expected func.
+// As of now there are only two types, OverlayLegacyBindPoint and UnderlayLegacyBindPoint
+func (c *LegacyBindPointListenerFactory) New(conf map[interface{}]interface{}) (xweb.BindPoint, error) {
+	if conf["identity"] != nil {
+		return newOverlayBindPoint(conf)
+	} else { // only two options right now. underlay and overlay...
+		return newUnderlayBindPoint(conf, true)
 	}
 }

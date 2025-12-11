@@ -19,6 +19,8 @@ package run
 import (
 	"fmt"
 
+	"github.com/openziti/xweb/v3"
+	"github.com/openziti/ziti/common/bindpoints"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/env"
@@ -56,6 +58,7 @@ type RouterAction struct {
 }
 
 func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
+	xweb.BindPointListenerFactoryRegistry = []xweb.BindPointListenerFactory{&bindpoints.LegacyBindPointListenerFactory{}}
 	startLogger := logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
