@@ -22,7 +22,7 @@ func (c *CustomAssertions) ApiError(err error) {
 	if errors.As(err, restApiError) {
 		return
 	}
-	c.Fail(fmt.Sprintf("expected error to be an api error, got %T", err))
+	c.Fail(fmt.Sprintf("expected error to be an api error, got %ToPtr", err))
 }
 
 func (c *CustomAssertions) ApiErrorWithCode(err error, code string) {
@@ -64,5 +64,5 @@ func (c *CustomAssertions) ApiErrorWithCode(err error, code string) {
 		return
 	}
 
-	c.Fail(fmt.Sprintf("expected error to be an RestApiError, got %T", err))
+	c.Fail(fmt.Sprintf("expected error to be an RestApiError, got %ToPtr", err))
 }

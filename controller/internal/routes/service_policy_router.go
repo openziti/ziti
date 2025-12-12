@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/service_policy"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	permissions "github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -44,40 +44,49 @@ func NewServicePolicyRouter() *ServicePolicyRouter {
 func (r *ServicePolicyRouter) Register(ae *env.AppEnv) {
 	//CRUD
 	ae.ManagementApi.ServicePolicyDeleteServicePolicyHandler = service_policy.DeleteServicePolicyHandlerFunc(func(params service_policy.DeleteServicePolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyDetailServicePolicyHandler = service_policy.DetailServicePolicyHandlerFunc(func(params service_policy.DetailServicePolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyListServicePoliciesHandler = service_policy.ListServicePoliciesHandlerFunc(func(params service_policy.ListServicePoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyUpdateServicePolicyHandler = service_policy.UpdateServicePolicyHandlerFunc(func(params service_policy.UpdateServicePolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyCreateServicePolicyHandler = service_policy.CreateServicePolicyHandlerFunc(func(params service_policy.CreateServicePolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyPatchServicePolicyHandler = service_policy.PatchServicePolicyHandlerFunc(func(params service_policy.PatchServicePolicyParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	//Additional Lists
 	ae.ManagementApi.ServicePolicyListServicePolicyServicesHandler = service_policy.ListServicePolicyServicesHandlerFunc(func(params service_policy.ListServicePolicyServicesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.ListServices, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyListServicePolicyIdentitiesHandler = service_policy.ListServicePolicyIdentitiesHandlerFunc(func(params service_policy.ListServicePolicyIdentitiesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.ListIdentities, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.ServicePolicyListServicePolicyPostureChecksHandler = service_policy.ListServicePolicyPostureChecksHandlerFunc(func(params service_policy.ListServicePolicyPostureChecksParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ListPostureChecks, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "posture-check", permissions.Read)
+		return ae.IsAllowed(r.ListPostureChecks, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 

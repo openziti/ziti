@@ -399,9 +399,9 @@ func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, r
 
 func NewBadRequestFieldError(fieldError errorz.FieldError) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        ReferencedEntityNotFoundCode,
-		Message:     ReferencedEntityNotFoundMessage,
-		Status:      ReferencedEntityNotFoundStatus,
+		Code:        errorz.InvalidFieldCode,
+		Message:     errorz.InvalidFieldMessage,
+		Status:      errorz.InvalidFieldStatus,
 		Cause:       fieldError,
 		AppendCause: true,
 	}

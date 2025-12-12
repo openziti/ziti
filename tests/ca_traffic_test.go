@@ -9,6 +9,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
+	"math/big"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -16,11 +22,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/eid"
-	"io"
-	"math/big"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
@@ -39,20 +40,20 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 		caCert, caPrivate, caPEM := newTestCaCert()
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
-				Location:        S(rest_model.ExternalIDClaimLocationCOMMONNAME),
-				Matcher:         S(rest_model.ExternalIDClaimMatcherALL),
-				MatcherCriteria: S(""),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -169,10 +170,10 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
 			},
-			Name:       S(uuid.NewString()),
-			IsAdmin:    B(false),
+			Name:       ToPtr(uuid.NewString()),
+			IsAdmin:    ToPtr(false),
 			Type:       &idType,
-			ExternalID: S(commonName),
+			ExternalID: ToPtr(commonName),
 		}
 
 		identityCreateEnv := &rest_model.CreateEnvelope{}

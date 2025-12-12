@@ -16,22 +16,14 @@
 
 package permissions
 
-type RequireOneOf struct {
-	resolvers []Resolver
+type RequireEntityAccess struct{}
+
+var requiredEntityAccess = RequireEntityAccess{}
+
+func HasEntityAccess() RequireEntityAccess {
+	return requiredEntityAccess
 }
 
-func HasOneOf(resolvers ...Resolver) *RequireOneOf {
-	return &RequireOneOf{
-		resolvers: resolvers,
-	}
-}
-
-func (ia *RequireOneOf) IsAllowed(identityPerms ...string) bool {
-	for _, resolver := range ia.resolvers {
-		if resolver.IsAllowed(identityPerms...) {
-			return true
-		}
-	}
-
-	return false
+func (ia RequireEntityAccess) IsAllowed(ctx Context) bool {
+	return ctx.GetEntityType() != "" && ctx.HasPermission(ctx.GetEntityType())
 }

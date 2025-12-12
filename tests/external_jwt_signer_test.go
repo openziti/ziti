@@ -46,16 +46,16 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 		jwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem:         &jwtSignerCertPem,
-			ClaimsProperty:  S("someMadeUpClaim"),
+			ClaimsProperty:  ToPtr("someMadeUpClaim"),
 			Enabled:         &jwtSignerEnabled,
-			ExternalAuthURL: S("https://some-auth-url"),
+			ExternalAuthURL: ToPtr("https://some-auth-url"),
 			Name:            &jwtSignerName,
 			Tags:            nil,
-			UseExternalID:   B(true),
-			Kid:             S(uuid.New().String()),
-			Issuer:          S("i-am-the-issuer"),
-			Audience:        S("you-are-the-audience"),
-			ClientID:        S("you-are-the-client-id"),
+			UseExternalID:   ToPtr(true),
+			Kid:             ToPtr(uuid.New().String()),
+			Issuer:          ToPtr("i-am-the-issuer"),
+			Audience:        ToPtr("you-are-the-audience"),
+			ClientID:        ToPtr("you-are-the-client-id"),
 			Scopes:          []string{"scope1", "scope2"},
 			TargetToken:     ToPtr(rest_model.TargetTokenID),
 		}
@@ -194,9 +194,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					CertPem:  &jwtSignerCertPem,
 					Enabled:  &jwtSignerEnabled,
 					Name:     &jwtSignerName,
-					Kid:      S(uuid.NewString()),
-					Issuer:   S(uuid.NewString()),
-					Audience: S(uuid.NewString()),
+					Kid:      ToPtr(uuid.NewString()),
+					Issuer:   ToPtr(uuid.NewString()),
+					Audience: ToPtr(uuid.NewString()),
 				}
 
 				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(putBody).Put("/external-jwt-signers/" + createResponseEnv.Data.ID)
@@ -219,9 +219,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			CertPem:  &jwtSignerCertPem,
 			Enabled:  &jwtSignerEnabled,
 			Name:     &jwtSignerName,
-			Kid:      S(uuid.New().String()),
-			Issuer:   S(uuid.NewString()),
-			Audience: S(uuid.NewString()),
+			Kid:      ToPtr(uuid.New().String()),
+			Issuer:   ToPtr(uuid.NewString()),
+			Audience: ToPtr(uuid.NewString()),
 		}
 
 		createResponseEnv := &rest_model.CreateEnvelope{}
@@ -281,7 +281,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
 				Enabled: &jwtSignerEnabled,
 				Name:    &jwtSignerName,
-				Kid:     S(uuid.New().String()),
+				Kid:     ToPtr(uuid.New().String()),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -297,7 +297,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
 				CertPem: &jwtSignerCertPem,
 				Name:    &jwtSignerName,
-				Kid:     S(uuid.New().String()),
+				Kid:     ToPtr(uuid.New().String()),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -313,7 +313,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			jwtSigner := &rest_model.ExternalJWTSignerCreate{
 				CertPem: &jwtSignerCertPem,
 				Enabled: &jwtSignerEnabled,
-				Kid:     S(uuid.New().String()),
+				Kid:     ToPtr(uuid.New().String()),
 			}
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
@@ -354,7 +354,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem: &invalidCertPem,
 				Enabled: &jwtSignerEnabled,
 				Name:    &jwtSignerName,
-				Kid:     S(uuid.New().String()),
+				Kid:     ToPtr(uuid.New().String()),
 			}
 
 			errorResponse := &rest_model.APIErrorEnvelope{}
@@ -376,15 +376,15 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 		jwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem:         &jwtSignerCertPem,
-			ClaimsProperty:  S("someMadeUpClaim"),
+			ClaimsProperty:  ToPtr("someMadeUpClaim"),
 			Enabled:         &jwtSignerEnabled,
-			ExternalAuthURL: S("https://some-auth-url"),
+			ExternalAuthURL: ToPtr("https://some-auth-url"),
 			Name:            &jwtSignerName,
 			Tags:            nil,
-			UseExternalID:   B(true),
-			Kid:             S(uuid.New().String()),
-			Issuer:          S(uuid.NewString()),
-			Audience:        S(uuid.NewString()),
+			UseExternalID:   ToPtr(true),
+			Kid:             ToPtr(uuid.New().String()),
+			Issuer:          ToPtr(uuid.NewString()),
+			Audience:        ToPtr(uuid.NewString()),
 		}
 
 		createResponseEnv := &rest_model.CreateEnvelope{}
@@ -398,13 +398,13 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 			jwtSignerReusedCert := &rest_model.ExternalJWTSignerCreate{
 				CertPem:         &jwtSignerCertPem,
-				ClaimsProperty:  S("whatever"),
+				ClaimsProperty:  ToPtr("whatever"),
 				Enabled:         &jwtSignerEnabled,
-				ExternalAuthURL: S("https://some-other-auth-url"),
-				Name:            S("dupe-should fail"),
+				ExternalAuthURL: ToPtr("https://some-other-auth-url"),
+				Name:            ToPtr("dupe-should fail"),
 				Tags:            nil,
-				UseExternalID:   B(true),
-				Kid:             S(uuid.New().String()),
+				UseExternalID:   ToPtr(true),
+				Kid:             ToPtr(uuid.New().String()),
 			}
 
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerReusedCert).SetResult(createResponseEnv).Post("/external-jwt-signers")
@@ -417,12 +417,12 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 			jwtSignerReusedCert := &rest_model.ExternalJWTSignerCreate{
 				CertPem:         &jwtSignerCertPem,
-				ClaimsProperty:  S("whatever"),
+				ClaimsProperty:  ToPtr("whatever"),
 				Enabled:         &jwtSignerEnabled,
-				ExternalAuthURL: S("https://some-other-auth-url"),
-				Name:            S("dupe-should fail"),
+				ExternalAuthURL: ToPtr("https://some-other-auth-url"),
+				Name:            ToPtr("dupe-should fail"),
 				Tags:            nil,
-				UseExternalID:   B(true),
+				UseExternalID:   ToPtr(true),
 				Kid:             jwtSigner.Kid,
 			}
 
@@ -453,9 +453,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			CertPem:     &jwtSignerCertPem,
 			Enabled:     &jwtSignerEnabled,
 			Name:        &jwtSignerName,
-			Kid:         S(uuid.New().String()),
-			Issuer:      S("origIssues"),
-			Audience:    S("origAudience"),
+			Kid:         ToPtr(uuid.New().String()),
+			Issuer:      ToPtr("origIssues"),
+			Audience:    ToPtr("origAudience"),
 			TargetToken: ToPtr(rest_model.TargetTokenACCESS),
 		}
 
@@ -469,9 +469,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			CertPem:     &jwtSignerCertPemUpdated,
 			Enabled:     &jwtSignerEnabledUpdated,
 			Name:        &jwtSignerNameUpdated,
-			Kid:         S(uuid.NewString()),
-			Issuer:      S(uuid.NewString()),
-			Audience:    S(uuid.NewString()),
+			Kid:         ToPtr(uuid.NewString()),
+			Issuer:      ToPtr(uuid.NewString()),
+			Audience:    ToPtr(uuid.NewString()),
 			TargetToken: ToPtr(rest_model.TargetTokenID),
 		}
 
@@ -531,9 +531,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			CertPem:     &jwtSignerCertPem,
 			Enabled:     &jwtSignerEnabled,
 			Name:        &jwtSignerName,
-			Kid:         S(uuid.New().String()),
-			Issuer:      S("origIssues"),
-			Audience:    S("origAudience"),
+			Kid:         ToPtr(uuid.New().String()),
+			Issuer:      ToPtr("origIssues"),
+			Audience:    ToPtr("origAudience"),
 			TargetToken: ToPtr(rest_model.TargetTokenID),
 		}
 
@@ -547,9 +547,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			CertPem:     &jwtSignerCertPemUpdated,
 			Enabled:     &jwtSignerEnabledUpdated,
 			Name:        &jwtSignerNameUpdated,
-			Kid:         S(uuid.NewString()),
-			Issuer:      S(uuid.NewString()),
-			Audience:    S(uuid.NewString()),
+			Kid:         ToPtr(uuid.NewString()),
+			Issuer:      ToPtr(uuid.NewString()),
+			Audience:    ToPtr(uuid.NewString()),
 			TargetToken: nil,
 		}
 
@@ -608,9 +608,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem:     &jwtSignerCertPem,
 				Enabled:     &jwtSignerEnabled,
 				Name:        &jwtSignerName,
-				Kid:         S(uuid.New().String()),
-				Issuer:      S(uuid.NewString()),
-				Audience:    S(uuid.NewString()),
+				Kid:         ToPtr(uuid.New().String()),
+				Issuer:      ToPtr(uuid.NewString()),
+				Audience:    ToPtr(uuid.NewString()),
 				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
@@ -678,9 +678,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem:     &jwtSignerCertPem,
 				Enabled:     &jwtSignerEnabled,
 				Name:        &jwtSignerName,
-				Kid:         S(uuid.New().String()),
-				Issuer:      S(uuid.NewString()),
-				Audience:    S(uuid.NewString()),
+				Kid:         ToPtr(uuid.New().String()),
+				Issuer:      ToPtr(uuid.NewString()),
+				Audience:    ToPtr(uuid.NewString()),
 				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
@@ -746,9 +746,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem:     &jwtSignerCertPem,
 				Enabled:     &jwtSignerEnabled,
 				Name:        &jwtSignerName,
-				Kid:         S(uuid.NewString()),
-				Issuer:      S(uuid.NewString()),
-				Audience:    S(uuid.NewString()),
+				Kid:         ToPtr(uuid.NewString()),
+				Issuer:      ToPtr(uuid.NewString()),
+				Audience:    ToPtr(uuid.NewString()),
 				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
@@ -813,9 +813,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem:     &jwtSignerCertPem,
 				Enabled:     &jwtSignerEnabled,
 				Name:        &jwtSignerName,
-				Kid:         S(uuid.New().String()),
-				Issuer:      S(uuid.NewString()),
-				Audience:    S(uuid.NewString()),
+				Kid:         ToPtr(uuid.New().String()),
+				Issuer:      ToPtr(uuid.NewString()),
+				Audience:    ToPtr(uuid.NewString()),
 				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 
@@ -826,7 +826,7 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
 
 			jwtSignerPatch := &rest_model.ExternalJWTSignerPatch{
-				Kid: S(uuid.New().String()),
+				Kid: ToPtr(uuid.New().String()),
 			}
 
 			patchResponseEnv := &rest_model.Empty{}
@@ -880,9 +880,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 				CertPem:     &jwtSignerCertPem,
 				Enabled:     &jwtSignerEnabled,
 				Name:        &jwtSignerName,
-				Kid:         S(uuid.New().String()),
-				Issuer:      S(uuid.NewString()),
-				Audience:    S(uuid.NewString()),
+				Kid:         ToPtr(uuid.New().String()),
+				Issuer:      ToPtr(uuid.NewString()),
+				Audience:    ToPtr(uuid.NewString()),
 				TargetToken: ToPtr(rest_model.TargetTokenID),
 			}
 

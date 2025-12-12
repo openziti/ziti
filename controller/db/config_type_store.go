@@ -18,6 +18,7 @@ package db
 
 import (
 	"encoding/json"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"
@@ -105,15 +106,17 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 
-	if len(entity.Schema) > 0 {
-		marshalled, err := json.Marshal(entity.Schema)
-		if err != nil {
-			ctx.Bucket.SetError(err)
-			return
+	if ctx.FieldChecker == nil || ctx.FieldChecker.IsUpdated(FieldConfigTypeSchema) {
+		if len(entity.Schema) > 0 {
+			marshalled, err := json.Marshal(entity.Schema)
+			if err != nil {
+				ctx.Bucket.SetError(err)
+				return
+			}
+			ctx.SetString(FieldConfigTypeSchema, string(marshalled))
+		} else {
+			ctx.SetStringP(FieldConfigTypeSchema, nil)
 		}
-		ctx.SetString(FieldConfigTypeSchema, string(marshalled))
-	} else {
-		ctx.SetStringP(FieldConfigTypeSchema, nil)
 	}
 }
 

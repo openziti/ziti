@@ -3,6 +3,10 @@
 package tests
 
 import (
+	"net/url"
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
@@ -14,9 +18,6 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"net/url"
-	"testing"
-	"time"
 )
 
 func TestSdkAuth(t *testing.T) {
@@ -264,12 +265,12 @@ func TestSdkAuth(t *testing.T) {
 
 		validJwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem:       &validJwtSignerCertPem,
-			Enabled:       B(true),
-			Name:          S("Test JWT Signer - Enabled"),
-			Kid:           S(uuid.NewString()),
-			Issuer:        S("the-very-best-iss"),
-			Audience:      S("the-very-best-aud"),
-			UseExternalID: B(true),
+			Enabled:       ToPtr(true),
+			Name:          ToPtr("Test JWT Signer - Enabled"),
+			Kid:           ToPtr(uuid.NewString()),
+			Issuer:        ToPtr("the-very-best-iss"),
+			Audience:      ToPtr("the-very-best-aud"),
+			UseExternalID: ToPtr(true),
 		}
 
 		//valid signed jwt
@@ -302,23 +303,23 @@ func TestSdkAuth(t *testing.T) {
 
 		//auth policy
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
-				Cert:   &rest_model.AuthPolicyPrimaryCert{Allowed: B(false), AllowExpiredCerts: B(false)},
-				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{Allowed: B(true), AllowedSigners: []string{createExtJwtSignerResp.Payload.Data.ID}},
+				Cert:   &rest_model.AuthPolicyPrimaryCert{Allowed: ToPtr(false), AllowExpiredCerts: ToPtr(false)},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{Allowed: ToPtr(true), AllowedSigners: []string{createExtJwtSignerResp.Payload.Data.ID}},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(0),
-					MaxAttempts:            I(0),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					MaxAttempts:            ToPtr[int64](0),
+					MinPasswordLength:      ToPtr[int64](5),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{SubTags: rest_model.SubTags{}},
 		}
@@ -335,10 +336,10 @@ func TestSdkAuth(t *testing.T) {
 		//identity
 		identityType := rest_model.IdentityTypeUser
 		idCreate := &rest_model.IdentityCreate{
-			AuthPolicyID: S(createAuthPolicyResp.Payload.Data.ID),
-			ExternalID:   S(subjectId),
-			IsAdmin:      B(false),
-			Name:         S(uuid.NewString()),
+			AuthPolicyID: ToPtr(createAuthPolicyResp.Payload.Data.ID),
+			ExternalID:   ToPtr(subjectId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(uuid.NewString()),
 			Type:         &identityType,
 		}
 
@@ -424,12 +425,12 @@ func TestSdkAuth(t *testing.T) {
 
 		validJwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem:       &validJwtSignerCertPem,
-			Enabled:       B(true),
-			Name:          S("Test Cert+JWT Signer - Enabled"),
-			Kid:           S(uuid.NewString()),
-			Issuer:        S("the-very-best-iss2"),
-			Audience:      S("the-very-best-aud2"),
-			UseExternalID: B(false),
+			Enabled:       ToPtr(true),
+			Name:          ToPtr("Test Cert+JWT Signer - Enabled"),
+			Kid:           ToPtr(uuid.NewString()),
+			Issuer:        ToPtr("the-very-best-iss2"),
+			Audience:      ToPtr("the-very-best-aud2"),
+			UseExternalID: ToPtr(false),
 		}
 
 		//valid signed jwt
@@ -461,23 +462,23 @@ func TestSdkAuth(t *testing.T) {
 
 		//auth policy
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
-				Cert:   &rest_model.AuthPolicyPrimaryCert{Allowed: B(true), AllowExpiredCerts: B(false)},
-				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{Allowed: B(false), AllowedSigners: make([]string, 0)},
+				Cert:   &rest_model.AuthPolicyPrimaryCert{Allowed: ToPtr(true), AllowExpiredCerts: ToPtr(false)},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{Allowed: ToPtr(false), AllowedSigners: make([]string, 0)},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(0),
-					MaxAttempts:            I(0),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					MaxAttempts:            ToPtr[int64](0),
+					MinPasswordLength:      ToPtr[int64](5),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: ToPtr(createExtJwtSignerResp.Payload.Data.ID),
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{SubTags: rest_model.SubTags{}},
 		}
@@ -495,7 +496,7 @@ func TestSdkAuth(t *testing.T) {
 		identityPatchParams := &management_identity.PatchIdentityParams{
 			ID: certJwtId.Id,
 			Identity: &rest_model.IdentityPatch{
-				AuthPolicyID: S(createAuthPolicyResp.Payload.Data.ID),
+				AuthPolicyID: ToPtr(createAuthPolicyResp.Payload.Data.ID),
 			},
 		}
 

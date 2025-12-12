@@ -17,15 +17,16 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/enrollment"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"time"
 )
 
 func init() {
@@ -45,27 +46,32 @@ func NewEnrollmentRouter() *EnrollmentRouter {
 
 func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.EnrollmentDeleteEnrollmentHandler = enrollment.DeleteEnrollmentHandlerFunc(func(params enrollment.DeleteEnrollmentParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EnrollmentDetailEnrollmentHandler = enrollment.DetailEnrollmentHandlerFunc(func(params enrollment.DetailEnrollmentParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EnrollmentListEnrollmentsHandler = enrollment.ListEnrollmentsHandlerFunc(func(params enrollment.ListEnrollmentsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EnrollmentRefreshEnrollmentHandler = enrollment.RefreshEnrollmentHandlerFunc(func(params enrollment.RefreshEnrollmentParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.Refresh(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EnrollmentCreateEnrollmentHandler = enrollment.CreateEnrollmentHandlerFunc(func(params enrollment.CreateEnrollmentParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Create)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.Create(ae, rc, params)
-		}, params.HTTPRequest, "", "", permissions.IsAdmin())
+		}, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 }
 

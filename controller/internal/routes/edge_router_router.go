@@ -25,9 +25,9 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -49,49 +49,60 @@ func NewEdgeRouterRouter() *EdgeRouterRouter {
 func (r *EdgeRouterRouter) Register(ae *env.AppEnv) {
 	//CRUD
 	ae.ManagementApi.EdgeRouterDeleteEdgeRouterHandler = edge_router.DeleteEdgeRouterHandlerFunc(func(params edge_router.DeleteEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterDetailEdgeRouterHandler = edge_router.DetailEdgeRouterHandlerFunc(func(params edge_router.DetailEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterListEdgeRoutersHandler = edge_router.ListEdgeRoutersHandlerFunc(func(params edge_router.ListEdgeRoutersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterUpdateEdgeRouterHandler = edge_router.UpdateEdgeRouterHandlerFunc(func(params edge_router.UpdateEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterCreateEdgeRouterHandler = edge_router.CreateEdgeRouterHandlerFunc(func(params edge_router.CreateEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterPatchEdgeRouterHandler = edge_router.PatchEdgeRouterHandlerFunc(func(params edge_router.PatchEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	//special actions
 	ae.ManagementApi.EdgeRouterReEnrollEdgeRouterHandler = edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.ReEnroll, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Update)
+		return ae.IsAllowed(r.ReEnroll, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// additional lists
 	ae.ManagementApi.EdgeRouterListEdgeRouterEdgeRouterPoliciesHandler = edge_router.ListEdgeRouterEdgeRouterPoliciesHandlerFunc(func(params edge_router.ListEdgeRouterEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "edge-router-policy", permissions.Read)
+		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterListEdgeRouterServiceEdgeRouterPoliciesHandler = edge_router.ListEdgeRouterServiceEdgeRouterPoliciesHandlerFunc(func(params edge_router.ListEdgeRouterServiceEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServiceEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-edge-router-policy", permissions.Read)
+		return ae.IsAllowed(r.listServiceEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterListEdgeRouterIdentitiesHandler = edge_router.ListEdgeRouterIdentitiesHandlerFunc(func(params edge_router.ListEdgeRouterIdentitiesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.listIdentities, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.EdgeRouterListEdgeRouterServicesHandler = edge_router.ListEdgeRouterServicesHandlerFunc(func(params edge_router.ListEdgeRouterServicesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.listServices, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 

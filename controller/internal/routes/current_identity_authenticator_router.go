@@ -18,6 +18,7 @@ package routes
 
 import (
 	"crypto/x509"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
@@ -27,7 +28,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 

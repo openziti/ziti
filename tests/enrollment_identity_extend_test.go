@@ -305,7 +305,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 			t.Run("with an mangled client cert fails", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				mangledPem := "I am very truly not PEM data"
+				mangledPem := "ToPtr am very truly not PEM data"
 
 				verifyRequest := &rest_model.IdentityExtendValidateEnrollmentRequest{
 					ClientCert: &mangledPem,

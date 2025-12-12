@@ -26,13 +26,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/common/eid"
-	"net/http"
-	"testing"
-	"time"
 )
 
 // Test_EnrollmentOtt uses the generic legacy and deprecated /enroll endpoint. These test ensure it remains
@@ -50,7 +51,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -100,7 +101,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -125,8 +126,8 @@ func Test_EnrollmentOtt(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
-			IdentityID: S("made up"),
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			IdentityID: ToPtr("made up"),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -142,7 +143,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: nil,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -160,7 +161,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(-1 * time.Second).UTC()),
 		}
 
@@ -178,7 +179,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  nil,
 		}
 
@@ -239,8 +240,8 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			CaID:       S(caCreateResp.Data.ID),
-			Method:     S(rest_model.EnrollmentCreateMethodOttca),
+			CaID:       ToPtr(caCreateResp.Data.ID),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOttca),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -336,8 +337,8 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			CaID:       S(caCreateResp.Data.ID),
-			Method:     S(rest_model.EnrollmentCreateMethodOttca),
+			CaID:       ToPtr(caCreateResp.Data.ID),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOttca),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -353,8 +354,8 @@ func Test_EnrollmentOtt(t *testing.T) {
 		t.Run("creating second OTTCA enrollment fails", func(t *testing.T) {
 			enrollmentCreate := &rest_model.EnrollmentCreate{
 				IdentityID: &identity.Id,
-				CaID:       S(caCreateResp.Data.ID),
-				Method:     S(rest_model.EnrollmentCreateMethodOttca),
+				CaID:       ToPtr(caCreateResp.Data.ID),
+				Method:     ToPtr(rest_model.EnrollmentCreateMethodOttca),
 				ExpiresAt:  ST(time.Now().Add(2 * time.Hour).UTC()),
 			}
 
@@ -371,8 +372,8 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			CaID:       S("invalid"),
-			Method:     S(rest_model.EnrollmentCreateMethodOttca),
+			CaID:       ToPtr("invalid"),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOttca),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -389,7 +390,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
 			CaID:       nil,
-			Method:     S(rest_model.EnrollmentCreateMethodOttca),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOttca),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 
@@ -397,7 +398,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 		ctx.NoError(err)
 		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
 	})
-	
+
 	t.Run("can OTT enroll via text/plain", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
@@ -405,7 +406,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
-			Method:     S(rest_model.EnrollmentCreateMethodOtt),
+			Method:     ToPtr(rest_model.EnrollmentCreateMethodOtt),
 			ExpiresAt:  ST(time.Now().Add(1 * time.Hour).UTC()),
 		}
 

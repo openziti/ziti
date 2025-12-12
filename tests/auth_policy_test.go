@@ -41,49 +41,49 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-99"),
-			Audience: S("test-audience-99"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-99"),
+			Audience: ToPtr("test-audience-99"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1"),
+			Name: ToPtr("Original Name 1"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreated.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -96,7 +96,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("get returns 200 and same input values", func(t *testing.T) {
@@ -141,31 +141,31 @@ func Test_AuthPolicies(t *testing.T) {
 
 			authPolicyUpdate := &rest_model.AuthPolicyUpdate{
 				AuthPolicyCreate: rest_model.AuthPolicyCreate{
-					Name: S("Updated Name 1"),
+					Name: ToPtr("Updated Name 1"),
 					Primary: &rest_model.AuthPolicyPrimary{
 						Cert: &rest_model.AuthPolicyPrimaryCert{
-							AllowExpiredCerts: B(false),
-							Allowed:           B(false),
+							AllowExpiredCerts: ToPtr(false),
+							Allowed:           ToPtr(false),
 						},
 						ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-							Allowed: B(true),
+							Allowed: ToPtr(true),
 							AllowedSigners: []string{
 								extJwtSignerCreated.Data.ID,
 							},
 						},
 						Updb: &rest_model.AuthPolicyPrimaryUpdb{
-							Allowed:                B(false),
-							MaxAttempts:            I(1),
-							MinPasswordLength:      I(12),
-							LockoutDurationMinutes: I(1),
-							RequireMixedCase:       B(false),
-							RequireNumberChar:      B(false),
-							RequireSpecialChar:     B(false),
+							Allowed:                ToPtr(false),
+							MaxAttempts:            ToPtr[int64](1),
+							MinPasswordLength:      ToPtr[int64](12),
+							LockoutDurationMinutes: ToPtr[int64](1),
+							RequireMixedCase:       ToPtr(false),
+							RequireNumberChar:      ToPtr(false),
+							RequireSpecialChar:     ToPtr(false),
 						},
 					},
 					Secondary: &rest_model.AuthPolicySecondary{
 						RequireExtJWTSigner: &extJwtSignerCreated.Data.ID,
-						RequireTotp:         B(true),
+						RequireTotp:         ToPtr(true),
 					},
 					Tags: &rest_model.Tags{
 						SubTags: map[string]interface{}{
@@ -177,7 +177,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyUpdate).Put("/auth-policies/" + authPolicyCreated.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PUT %T: %s", extJwtSigner, resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PUT %ToPtr: %s", extJwtSigner, resp.Body())
 
 			t.Run("get returns 200 and updated values", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -234,49 +234,49 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Patch")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy Patch"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-100"),
-			Audience: S("test-audience-100"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy Patch"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-100"),
+			Audience: ToPtr("test-audience-100"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1"),
+			Name: ToPtr("Original Name 1"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreated.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -289,18 +289,18 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("name returns 200", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			authPolicyPatch := &rest_model.AuthPolicyPatch{
-				Name: S("PatchedName"),
+				Name: ToPtr("PatchedName"),
 			}
 
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + authPolicyCreated.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", authPolicy, resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", authPolicy, resp.Body())
 
 			t.Run("get returns 200 and updated values", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -342,49 +342,49 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Patch")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy Patch1"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-101"),
-			Audience: S("test-audience-101"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy Patch1"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-101"),
+			Audience: ToPtr("test-audience-101"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1 - Patch Updb Allowed"),
+			Name: ToPtr("Original Name 1 - Patch Updb Allowed"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreated.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -397,7 +397,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for  %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for  %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("returns 200", func(t *testing.T) {
@@ -407,14 +407,14 @@ func Test_AuthPolicies(t *testing.T) {
 					Cert:   nil,
 					ExtJWT: nil,
 					Updb: &rest_model.AuthPolicyPrimaryUpdbPatch{
-						Allowed: B(false),
+						Allowed: ToPtr(false),
 					},
 				},
 			}
 
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + authPolicyCreated.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", authPolicy, resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", authPolicy, resp.Body())
 
 			t.Run("get returns 200 and updated values", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -457,31 +457,31 @@ func Test_AuthPolicies(t *testing.T) {
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1"),
+			Name: ToPtr("Original Name 1"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						"badId",
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
-				RequireExtJWTSigner: S(""),
-				RequireTotp:         B(false),
+				RequireExtJWTSigner: ToPtr(""),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -492,7 +492,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for POST %ToPtr: %s", authPolicy, resp.Body())
 	})
 
 	t.Run("create with invalid secondary external jwt signers returns 404", func(t *testing.T) {
@@ -501,29 +501,29 @@ func Test_AuthPolicies(t *testing.T) {
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1"),
+			Name: ToPtr("Original Name 1"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
-				RequireExtJWTSigner: S("badId"),
-				RequireTotp:         B(false),
+				RequireExtJWTSigner: ToPtr("badId"),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -534,7 +534,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for POST %ToPtr: %s", authPolicy, resp.Body())
 	})
 
 	t.Run("create auth policy with external jwt signer references", func(t *testing.T) {
@@ -542,66 +542,66 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert1, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy - Delete Scenarios 1")
 
 		extJwtSigner1 := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert1)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Delete Scenarios 1"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-102"),
-			Audience: S("test-audience-102"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert1)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Delete Scenarios 1"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-102"),
+			Audience: ToPtr("test-audience-102"),
 		}
 
 		extJwtSignerCreated1 := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner1).SetResult(extJwtSignerCreated1).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner1, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner1, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated1.Data.ID)
 
 		jwtSignerCert2, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy - Delete Scenarios 2")
 		extJwtSigner2 := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert2)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Delete Scenarios 2"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-200"),
-			Audience: S("test-audience-200"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert2)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Delete Scenarios 2"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-200"),
+			Audience: ToPtr("test-audience-200"),
 		}
 
 		extJwtSignerCreated2 := &rest_model.CreateEnvelope{}
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner2).SetResult(extJwtSignerCreated2).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner2, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner2, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated2.Data.ID)
 
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1"),
+			Name: ToPtr("Original Name 1"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreated1.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: &extJwtSignerCreated2.Data.ID,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -614,14 +614,14 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("can not delete external jwt signer referenced by auth policy", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/external-jwt-signers/" + extJwtSignerCreated1.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 for DELETE %T[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
+			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 for DELETE %ToPtr[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
 
 			t.Run("can remove reference via patch", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -635,19 +635,19 @@ func Test_AuthPolicies(t *testing.T) {
 
 				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + authPolicyCreated.Data.ID)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", authPolicy, resp.Body())
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", authPolicy, resp.Body())
 
 				t.Run("delete ext jwt signer returns 200", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/external-jwt-signers/" + extJwtSignerCreated1.Data.ID)
 					ctx.Req.NoError(err)
-					ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for DELETE %T[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for DELETE %ToPtr[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
 
 					t.Run("get deleted ext jwt signer returns 404", func(t *testing.T) {
 						ctx.testContextChanged(t)
 						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/external-jwt-signers/" + extJwtSignerCreated1.Data.ID)
 						ctx.Req.NoError(err)
-						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for GET %T[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
+						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for GET %ToPtr[%s]: %s", extJwtSigner1, extJwtSignerCreated1.Data.ID, resp.Body())
 					})
 				})
 			})
@@ -670,31 +670,31 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.testContextChanged(t)
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/external-jwt-signers/" + extJwtSignerCreated2.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 on DELETE %T[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
+			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 on DELETE %ToPtr[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
 
 			t.Run("can remove reference via patch", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				authPolicyPatch := &rest_model.AuthPolicyPatch{
 					Secondary: &rest_model.AuthPolicySecondaryPatch{
-						RequireExtJWTSigner: S(""),
+						RequireExtJWTSigner: ToPtr(""),
 					},
 				}
 
 				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + authPolicyCreated.Data.ID)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", authPolicy, resp.Body())
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", authPolicy, resp.Body())
 
 				t.Run("delete secondary ext jwt signer returns 200", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/external-jwt-signers/" + extJwtSignerCreated2.Data.ID)
 					ctx.Req.NoError(err)
-					ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for POST %T[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for POST %ToPtr[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
 
 					t.Run("get deleted ext jwt signer returns 404", func(t *testing.T) {
 						ctx.testContextChanged(t)
 						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/external-jwt-signers/" + extJwtSignerCreated2.Data.ID)
 						ctx.Req.NoError(err)
-						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for GET %T[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
+						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode(), "expected 404 for GET %ToPtr[%s]: %s", extJwtSigner2, extJwtSignerCreated2.Data.ID, resp.Body())
 					})
 				})
 			})
@@ -707,29 +707,29 @@ func Test_AuthPolicies(t *testing.T) {
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1 - Identity Refs"),
+			Name: ToPtr("Original Name 1 - Identity Refs"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -742,14 +742,14 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		identityType := rest_model.IdentityTypeDevice
 		identity := &rest_model.IdentityCreate{
 			AuthPolicyID: &authPolicyCreated.Data.ID,
-			IsAdmin:      B(false),
-			Name:         S("test-identity-auth-policy-ref"),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr("test-identity-auth-policy-ref"),
 			Type:         &identityType,
 		}
 
@@ -757,7 +757,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identity).SetResult(identityCreated).Post("/identities")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("identity has auth policy set", func(t *testing.T) {
@@ -774,24 +774,24 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.testContextChanged(t)
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/auth-policies/" + authPolicyCreated.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 for DELETE %T: %s", authPolicy, resp.Body())
+			ctx.Req.Equal(http.StatusConflict, resp.StatusCode(), "expected 409 for DELETE %ToPtr: %s", authPolicy, resp.Body())
 		})
 
 		t.Run("can delete auth policy after identity assignment removed", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			identityPatch := &rest_model.IdentityPatch{
-				AuthPolicyID: S(db.DefaultAuthPolicyId),
+				AuthPolicyID: ToPtr(db.DefaultAuthPolicyId),
 			}
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identityCreated.Data.ID)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", authPolicy, resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", authPolicy, resp.Body())
 
 			t.Run("delete returns 200", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/auth-policies/" + authPolicyCreated.Data.ID)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for DELETE %T: %s", authPolicy, resp.Body())
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for DELETE %ToPtr: %s", authPolicy, resp.Body())
 			})
 		})
 	})
@@ -808,19 +808,19 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Update Default")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Update Default"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-104"),
-			Audience: S("test-audience-104"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Update Default"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-104"),
+			Audience: ToPtr("test-audience-104"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 		tag1Name := "updatedTag1Name"
@@ -828,31 +828,31 @@ func Test_AuthPolicies(t *testing.T) {
 
 		authPolicyUpdate := &rest_model.AuthPolicyUpdate{
 			AuthPolicyCreate: rest_model.AuthPolicyCreate{
-				Name: S("Updated Name 1"),
+				Name: ToPtr("Updated Name 1"),
 				Primary: &rest_model.AuthPolicyPrimary{
 					Cert: &rest_model.AuthPolicyPrimaryCert{
-						AllowExpiredCerts: B(false),
-						Allowed:           B(false),
+						AllowExpiredCerts: ToPtr(false),
+						Allowed:           ToPtr(false),
 					},
 					ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-						Allowed: B(true),
+						Allowed: ToPtr(true),
 						AllowedSigners: []string{
 							extJwtSignerCreated.Data.ID,
 						},
 					},
 					Updb: &rest_model.AuthPolicyPrimaryUpdb{
-						Allowed:                B(false),
-						MaxAttempts:            I(1),
-						MinPasswordLength:      I(5),
-						LockoutDurationMinutes: I(1),
-						RequireMixedCase:       B(false),
-						RequireNumberChar:      B(false),
-						RequireSpecialChar:     B(false),
+						Allowed:                ToPtr(false),
+						MaxAttempts:            ToPtr[int64](1),
+						MinPasswordLength:      ToPtr[int64](5),
+						LockoutDurationMinutes: ToPtr[int64](1),
+						RequireMixedCase:       ToPtr(false),
+						RequireNumberChar:      ToPtr(false),
+						RequireSpecialChar:     ToPtr(false),
 					},
 				},
 				Secondary: &rest_model.AuthPolicySecondary{
 					RequireExtJWTSigner: &extJwtSignerCreated.Data.ID,
-					RequireTotp:         B(true),
+					RequireTotp:         ToPtr(true),
 				},
 				Tags: &rest_model.Tags{
 					SubTags: map[string]interface{}{
@@ -864,7 +864,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyUpdate).Put("/auth-policies/" + db.DefaultAuthPolicyId)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PUT %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PUT %ToPtr: %s", extJwtSigner, resp.Body())
 
 		t.Run("get returns 200 and updated values", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -903,12 +903,12 @@ func Test_AuthPolicies(t *testing.T) {
 	t.Run("can patch default policy returns 200 and updates only the proper field", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		authPolicyPatch := &rest_model.AuthPolicyPatch{
-			Name: S("PatchedName On Default"),
+			Name: ToPtr("PatchedName On Default"),
 		}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/" + db.DefaultAuthPolicyId)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %T: %s", "default auth policy", resp.Body())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for PATCH %ToPtr: %s", "default auth policy", resp.Body())
 
 		t.Run("get returns 200 and updated values", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -929,49 +929,49 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy 08")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy 08"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-105"),
-			Audience: S("test-audience-105"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy 08"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-105"),
+			Audience: ToPtr("test-audience-105"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 		tag1Name := "originalTag1Name"
 		tag1Value := "originalTag1Value"
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 6"),
+			Name: ToPtr("Original Name 6"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreated.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(true),
-					MaxAttempts:            I(-1),
-					MinPasswordLength:      I(-1),
-					LockoutDurationMinutes: I(-1),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(true),
+					MaxAttempts:            ToPtr[int64](-1),
+					MinPasswordLength:      ToPtr[int64](-1),
+					LockoutDurationMinutes: ToPtr[int64](-1),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -984,7 +984,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		t.Run("get returns 200 and same input values", func(t *testing.T) {
@@ -1026,29 +1026,29 @@ func Test_AuthPolicies(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1 - Stops Auth"),
+			Name: ToPtr("Original Name 1 - Stops Auth"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(false),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(false),
+					Allowed:        ToPtr(false),
 					AllowedSigners: []string{},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 
@@ -1056,7 +1056,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		identityType := rest_model.IdentityTypeDevice
@@ -1065,8 +1065,8 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.testContextChanged(t)
 			identityOtt := &rest_model.IdentityCreate{
 				AuthPolicyID: &authPolicyCreated.Data.ID,
-				IsAdmin:      B(false),
-				Name:         S("test-identity-auth-policy-cert-not-allowed"),
+				IsAdmin:      ToPtr(false),
+				Name:         ToPtr("test-identity-auth-policy-cert-not-allowed"),
 				Type:         &identityType,
 				Enrollment: &rest_model.IdentityCreateEnrollment{
 					Ott: true,
@@ -1077,7 +1077,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityOtt).SetResult(identityOttCreated).Post("/identities")
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityOtt, resp.Body())
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", identityOtt, resp.Body())
 			ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 			certAuthenticator := ctx.completeOttEnrollment(identityOttCreated.Data.ID)
@@ -1094,8 +1094,8 @@ func Test_AuthPolicies(t *testing.T) {
 
 			identityUpdb := &rest_model.IdentityCreate{
 				AuthPolicyID: &authPolicyCreated.Data.ID,
-				IsAdmin:      B(false),
-				Name:         S("test-identity-auth-policy-updb-not-allowed"),
+				IsAdmin:      ToPtr(false),
+				Name:         ToPtr("test-identity-auth-policy-updb-not-allowed"),
 				Type:         &identityType,
 				Enrollment: &rest_model.IdentityCreateEnrollment{
 					Updb: username,
@@ -1106,7 +1106,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityUpdb).SetResult(identityUpdbCreated).Post("/identities")
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityUpdb, resp.Body())
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", identityUpdb, resp.Body())
 			ctx.Req.NotEmpty(identityUpdbCreated.Data.ID)
 
 			ctx.completeUpdbEnrollment(identityUpdbCreated.Data.ID, password)
@@ -1127,25 +1127,25 @@ func Test_AuthPolicies(t *testing.T) {
 			jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 01")
 
 			extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-				Enabled:  B(true),
-				Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
-				Kid:      S(uuid.NewString()),
-				Issuer:   S("test-issuer-106"),
-				Audience: S("test-audience-106"),
+				CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+				Enabled:  ToPtr(true),
+				Name:     ToPtr("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
+				Kid:      ToPtr(uuid.NewString()),
+				Issuer:   ToPtr("test-issuer-106"),
+				Audience: ToPtr("test-audience-106"),
 			}
 
 			extJwtSignerCreated := &rest_model.CreateEnvelope{}
 
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 			ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
 			identityExtJwt := &rest_model.IdentityCreate{
 				AuthPolicyID: &authPolicyCreated.Data.ID,
-				IsAdmin:      B(false),
-				Name:         S("test-identity-auth-policy-ext-jwt-not-allowed"),
+				IsAdmin:      ToPtr(false),
+				Name:         ToPtr("test-identity-auth-policy-ext-jwt-not-allowed"),
 				Type:         &identityType,
 			}
 
@@ -1153,7 +1153,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", identityExtJwt, resp.Body())
 			ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
 
 			jwtToken := jwt.New(jwt.SigningMethodES256)
@@ -1189,65 +1189,65 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCertAllowed, jwtSignerPrivateAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Allowed 01")
 
 		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCertAllowed)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-107"),
-			Audience: S("test-audience-107"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCertAllowed)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-107"),
+			Audience: ToPtr("test-audience-107"),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSignerAllowed).SetResult(extJwtSignerCreatedAllowed).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSignerAllowed, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSignerAllowed, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreatedAllowed.Data.ID)
 
 		jwtSignerCertNotAllowed, jwtSignerPrivateNotAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 02")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S("test-issuer-108"),
-			Audience: S("test-audience-108"),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr("test-issuer-108"),
+			Audience: ToPtr("test-audience-108"),
 		}
 
 		extJwtSignerCreatedNotAllowed := &rest_model.CreateEnvelope{}
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreatedNotAllowed).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreatedNotAllowed.Data.ID)
 
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1 - Limits ext-jwt signers"),
+			Name: ToPtr("Original Name 1 - Limits ext-jwt signers"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(false),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed: B(true),
+					Allowed: ToPtr(true),
 					AllowedSigners: []string{
 						extJwtSignerCreatedAllowed.Data.ID,
 					},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 
@@ -1255,15 +1255,15 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		identityType := rest_model.IdentityTypeDevice
 
 		identityExtJwt := &rest_model.IdentityCreate{
 			AuthPolicyID: &authPolicyCreated.Data.ID,
-			IsAdmin:      B(false),
-			Name:         S("test-identity-auth-policy-ext-jwt-not-allowed 02"),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr("test-identity-auth-policy-ext-jwt-not-allowed 02"),
 			Type:         &identityType,
 		}
 
@@ -1271,7 +1271,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", identityExtJwt, resp.Body())
 		ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
 
 		t.Run("can authenticate with approved external jwt signer", func(t *testing.T) {
@@ -1333,46 +1333,46 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCertAllowed, validJwtSignerPrivateKey := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT FA 01")
 
 		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
-			CertPem:         S(nfpem.EncodeToString(jwtSignerCertAllowed)),
-			Enabled:         B(true),
-			Name:            S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT FA 01"),
-			ExternalAuthURL: S("https://get.some.jwt.here"),
-			Kid:             S(uuid.NewString()),
-			Issuer:          S("test-issuer-109"),
-			Audience:        S("test-audience-109"),
+			CertPem:         ToPtr(nfpem.EncodeToString(jwtSignerCertAllowed)),
+			Enabled:         ToPtr(true),
+			Name:            ToPtr("Test JWT Signer - Auth Policy - Auth Policy Ext JWT FA 01"),
+			ExternalAuthURL: ToPtr("https://get.some.jwt.here"),
+			Kid:             ToPtr(uuid.NewString()),
+			Issuer:          ToPtr("test-issuer-109"),
+			Audience:        ToPtr("test-audience-109"),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSignerAllowed).SetResult(extJwtSignerCreatedAllowed).Post("/external-jwt-signers")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSignerAllowed, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", extJwtSignerAllowed, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreatedAllowed.Data.ID)
 
 		authPolicy := &rest_model.AuthPolicyCreate{
-			Name: S("Original Name 1 - ext jwt FA 01"),
+			Name: ToPtr("Original Name 1 - ext jwt FA 01"),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					AllowExpiredCerts: B(true),
-					Allowed:           B(true),
+					AllowExpiredCerts: ToPtr(true),
+					Allowed:           ToPtr(true),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					MaxAttempts:            I(5),
-					MinPasswordLength:      I(5),
-					LockoutDurationMinutes: I(0),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					MaxAttempts:            ToPtr[int64](5),
+					MinPasswordLength:      ToPtr[int64](5),
+					LockoutDurationMinutes: ToPtr[int64](0),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: &extJwtSignerCreatedAllowed.Data.ID,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 
@@ -1380,15 +1380,15 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
 		identityType := rest_model.IdentityTypeDevice
 
 		identityExtJwt := &rest_model.IdentityCreate{
 			AuthPolicyID: &authPolicyCreated.Data.ID,
-			IsAdmin:      B(false),
-			Name:         S("test-identity-auth-policy-ext-jwt-FA 01"),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr("test-identity-auth-policy-ext-jwt-FA 01"),
 			Type:         &identityType,
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
@@ -1399,7 +1399,7 @@ func Test_AuthPolicies(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %ToPtr: %s", identityExtJwt, resp.Body())
 		ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
 
 		certAuthenticator := ctx.completeOttEnrollment(identityExtJwtCreated.Data.ID)

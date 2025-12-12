@@ -104,22 +104,6 @@ func ToPtr[T any](in T) *T {
 	return &in
 }
 
-func S(s string) *string {
-	return &s
-}
-
-func B(b bool) *bool {
-	return &b
-}
-
-func I(i int64) *int64 {
-	return &i
-}
-
-func T(t time.Time) *time.Time {
-	return &t
-}
-
 // ST returns a pointer to a strfmt.Date time. A helper function
 // for creating rest_model types
 func ST(t time.Time) *strfmt.DateTime {
@@ -174,8 +158,8 @@ func GetTestContext() *TestContext {
 	return defaultTestContext
 }
 
-// testContextChanged is used to update the *testing.T reference used by library
-// level tests. Necessary because, using the wrong *testing.T will cause go test library
+// testContextChanged is used to update the *testing.ToPtr reference used by library
+// level tests. Necessary because, using the wrong *testing.ToPtr will cause go test library
 // errors.
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t

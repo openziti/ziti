@@ -37,8 +37,8 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 

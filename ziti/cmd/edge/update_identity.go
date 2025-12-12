@@ -19,13 +19,14 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"math"
 	"os"
 	"strings"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 
 	"github.com/pkg/errors"
 
@@ -37,6 +38,7 @@ type updateIdentityOptions struct {
 	api.EntityOptions
 	name                     string
 	roleAttributes           []string
+	permissions              []string
 	defaultHostingPrecedence string
 	defaultHostingCost       uint16
 	serviceCosts             map[string]int
@@ -74,6 +76,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.externalId, "external-id", "x", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"comma-separated role attributes for the identity. Use '' to unset.")
+	cmd.Flags().StringSliceVar(&options.permissions, "permissions", nil, "comma-separated permissions for the new identity")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
@@ -109,6 +112,11 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 
 	if o.Cmd.Flags().Changed("role-attributes") {
 		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("permissions") {
+		api.SetJSONValue(entityData, o.permissions, "permissions")
 		change = true
 	}
 

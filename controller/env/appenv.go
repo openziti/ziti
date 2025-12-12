@@ -60,11 +60,11 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/jwtsigner"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	fabricServer "github.com/openziti/ziti/controller/rest_server"
 	fabricOperations "github.com/openziti/ziti/controller/rest_server/operations"
@@ -699,13 +699,17 @@ func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string
 		isPartialAuth := len(rc.AuthQueries) > 0
 
 		if isPartialAuth {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions.PartiallyAuthenticatePermission)
+			rc.ActivePermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
 		} else {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+			rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
 		}
 
 		if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
+			rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
+		}
+
+		for _, permission := range rc.Identity.Permissions {
+			rc.ActivePermissions[permission] = struct{}{}
 		}
 	}
 
@@ -783,10 +787,14 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		}
 	}
 
-	rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+	rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
 
 	if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
-		rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
+		rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
+	}
+
+	for _, permission := range rc.Identity.Permissions {
+		rc.ActivePermissions[permission] = struct{}{}
 	}
 
 	return nil
@@ -1143,7 +1151,7 @@ func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) 
 		Body:              body,
 		Identity:          nil,
 		ApiSession:        nil,
-		ActivePermissions: []string{},
+		ActivePermissions: map[string]struct{}{},
 		StartTime:         time.Now(),
 	}
 
@@ -1188,6 +1196,12 @@ func getMetricTimerName(r *http.Request) string {
 	return fmt.Sprintf("%s.%s", cleanUrl, r.Method)
 }
 
+func (ae *AppEnv) InitPermissionsContext(request *http.Request, api permissions.Api, entityType string, action permissions.Action) {
+	if rc, _ := GetRequestContextFromHttpContext(request); rc != nil {
+		rc.InitPermissionsContext(api, entityType, action)
+	}
+}
+
 // IsAllowed creates a middleware responder that checks permissions before executing the handler.
 func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestContext), request *http.Request, entityId string, entitySubId string, permissions ...permissions.Resolver) openApiMiddleware.Responder {
 	return openApiMiddleware.ResponderFunc(func(writer http.ResponseWriter, producer runtime.Producer) {
@@ -1209,7 +1223,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 		}
 
 		for _, permission := range permissions {
-			if !permission.IsAllowed(rc.ActivePermissions...) {
+			if !permission.IsAllowed(rc) {
 				rc.RespondWithApiError(errorz.NewUnauthorized())
 				return
 			}

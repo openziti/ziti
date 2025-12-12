@@ -136,7 +136,7 @@ func Test_LegacyEvents(t *testing.T) {
 
 	evt := ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
 	apiSession, ok := evt.(*event.ApiSessionEvent)
-	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("apiSession", apiSession.Namespace)
 	ctx.Req.Equal("created", apiSession.EventType)
 	ctx.Req.Equalf(hostIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
@@ -144,7 +144,7 @@ func Test_LegacyEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
-	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal("legacy", edgeSession.Provider)
@@ -152,7 +152,7 @@ func Test_LegacyEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
 	apiSession, ok = evt.(*event.ApiSessionEvent)
-	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("apiSession", apiSession.Namespace)
 	ctx.Req.Equal("created", apiSession.EventType)
 	ctx.Req.Equal("legacy", edgeSession.Provider)
@@ -161,7 +161,7 @@ func Test_LegacyEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*event.SessionEvent)
-	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal("legacy", edgeSession.Provider)
@@ -258,7 +258,7 @@ func Test_OidcEvents(t *testing.T) {
 
 	evt := ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
 	apiSession, ok := evt.(*event.ApiSessionEvent)
-	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("apiSession", apiSession.Namespace)
 	ctx.Req.Equal("created", apiSession.EventType)
 	ctx.Req.Equalf(hostIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
@@ -266,7 +266,7 @@ func Test_OidcEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "sessions.created", time.Second)
 	edgeSession, ok := evt.(*event.SessionEvent)
-	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal("jwt", edgeSession.Provider)
@@ -274,7 +274,7 @@ func Test_OidcEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "api.sessions.created", time.Second)
 	apiSession, ok = evt.(*event.ApiSessionEvent)
-	ctx.Req.Truef(ok, "should have been api session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been api session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("apiSession", apiSession.Namespace)
 	ctx.Req.Equal("created", apiSession.EventType)
 	ctx.Req.Equalf(clientIdentity.Id, apiSession.IdentityId, "host id %s, client id %s", hostIdentity.Id, clientIdentity.Id)
@@ -282,7 +282,7 @@ func Test_OidcEvents(t *testing.T) {
 
 	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*event.SessionEvent)
-	ctx.Req.Truef(ok, "should have been session event, instead of %T", evt)
+	ctx.Req.Truef(ok, "should have been session event, instead of %ToPtr", evt)
 	ctx.Req.Equal("session", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal("jwt", edgeSession.Provider)

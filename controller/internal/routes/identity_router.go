@@ -17,7 +17,11 @@
 package routes
 
 import (
+	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -32,13 +36,11 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 func init() {
@@ -60,115 +62,140 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 
 	//identity crud
 	ae.ManagementApi.IdentityDeleteIdentityHandler = identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityDetailIdentityHandler = identity.DetailIdentityHandlerFunc(func(params identity.DetailIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityListIdentitiesHandler = identity.ListIdentitiesHandlerFunc(func(params identity.ListIdentitiesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityUpdateIdentityHandler = identity.UpdateIdentityHandlerFunc(func(params identity.UpdateIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.Update(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityCreateIdentityHandler = identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityPatchIdentityHandler = identity.PatchIdentityHandlerFunc(func(params identity.PatchIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// authenticators list
 	ae.ManagementApi.IdentityGetIdentityAuthenticatorsHandler = identity.GetIdentityAuthenticatorsHandlerFunc(func(params identity.GetIdentityAuthenticatorsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listAuthenticators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "authenticator", permissions.Read)
+		return ae.IsAllowed(r.listAuthenticators, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// enrollments list
 	ae.ManagementApi.IdentityGetIdentityEnrollmentsHandler = identity.GetIdentityEnrollmentsHandlerFunc(func(params identity.GetIdentityEnrollmentsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEnrollments, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "enrollment", permissions.Read)
+		return ae.IsAllowed(r.listEnrollments, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// edge router policies list
 	ae.ManagementApi.IdentityListIdentitysEdgeRouterPoliciesHandler = identity.ListIdentitysEdgeRouterPoliciesHandlerFunc(func(params identity.ListIdentitysEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "edge-router-policy", permissions.Read)
+		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// edge routers list
 	ae.ManagementApi.IdentityListIdentityEdgeRoutersHandler = identity.ListIdentityEdgeRoutersHandlerFunc(func(params identity.ListIdentityEdgeRoutersParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// service policies list
 	ae.ManagementApi.IdentityListIdentityServicePoliciesHandler = identity.ListIdentityServicePoliciesHandlerFunc(func(params identity.ListIdentityServicePoliciesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service-policy", permissions.Read)
+		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// service list
 	ae.ManagementApi.IdentityListIdentityServicesHandler = identity.ListIdentityServicesHandlerFunc(func(params identity.ListIdentityServicesParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.listServices(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// service configs crud
 	ae.ManagementApi.IdentityListIdentitysServiceConfigsHandler = identity.ListIdentitysServiceConfigsHandlerFunc(func(params identity.ListIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServiceConfigs, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		// permission is for identity, not config, since it's returning identity information not actual configs
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.listServiceConfigs, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityAssociateIdentitysServiceConfigsHandler = identity.AssociateIdentitysServiceConfigsHandlerFunc(func(params identity.AssociateIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.assignServiceConfigs(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityDisassociateIdentitysServiceConfigsHandler = identity.DisassociateIdentitysServiceConfigsHandlerFunc(func(params identity.DisassociateIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.removeServiceConfigs(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// policy advice URL
 	ae.ManagementApi.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, params.ServiceID, permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, params.ServiceID, permissions.DefaultManagementAccess())
 	})
 
 	// posture data
 	ae.ManagementApi.IdentityGetIdentityPostureDataHandler = identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.getPostureData, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.getPostureData, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityGetIdentityFailedServiceRequestsHandler = identity.GetIdentityFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityFailedServiceRequestsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.getPostureDataFailedServiceRequests, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.getPostureDataFailedServiceRequests, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// mfa
 	ae.ManagementApi.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.removeMfa, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
+		return ae.IsAllowed(r.removeMfa, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// trace
 	ae.ManagementApi.IdentityUpdateIdentityTracingHandler = identity.UpdateIdentityTracingHandlerFunc(func(params identity.UpdateIdentityTracingParams, i interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.updateTracing(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	// disable / enable
 	ae.ManagementApi.IdentityEnableIdentityHandler = identity.EnableIdentityHandlerFunc(func(params identity.EnableIdentityParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.Enable(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.IdentityDisableIdentityHandler = identity.DisableIdentityHandlerFunc(func(params identity.DisableIdentityParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.Disable(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 }
 
@@ -208,7 +235,17 @@ func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) str
 
 func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params identity.CreateIdentityParams) {
 	Create(rc, rc, IdentityLinkFactory, func() (string, error) {
-		identityModel, enrollments := MapCreateIdentityToModel(params.Identity, getIdentityTypeId(ae, *params.Identity.Type))
+		if !rc.HasPermission(permissions.AdminPermission) {
+			if len(ValueOrDefault(params.Identity.Permissions)) > 0 {
+				return "", nonAdminNotAllowedError(errors.New("non-admins may not create users with permissions"))
+			}
+
+			if ValueOrDefault(params.Identity.IsAdmin) {
+				return "", nonAdminNotAllowedError(errors.New("non-admins may not create admin users"))
+			}
+		}
+
+		identityModel, enrollments := MapCreateIdentityToModel(params.Identity)
 		err := ae.Managers.Identity.CreateWithEnrollments(identityModel, enrollments, rc.NewChangeContext())
 		if err != nil {
 			return "", err
@@ -218,11 +255,34 @@ func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, par
 }
 
 func (r *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	if !rc.HasPermission(permissions.AdminPermission) {
+		id, err := rc.GetEntityId()
+
+		if err != nil {
+			log := pfxlog.Logger()
+			log.Error(err)
+			rc.RespondWithError(err)
+			return
+		}
+
+		if entity, _ := ae.Managers.Identity.Read(id); entity != nil {
+			if entity.IsAdmin {
+				unauthorizedErr := nonAdminNotAllowedError(errors.New("non-admin may not delete admin identities"))
+				rc.RespondWithError(unauthorizedErr)
+				return
+			}
+		}
+	}
+
 	DeleteWithHandler(rc, ae.Managers.Identity)
 }
 
 func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityParams) {
 	Update(rc, func(id string) error {
+		if !rc.HasPermission(permissions.AdminPermission) {
+			return nonAdminNotAllowedError(errors.New("non-admins may not use the PUT method, use PATCH instead"))
+		}
+
 		return ae.Managers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, *params.Identity.Type)), nil, rc.NewChangeContext())
 	})
 }
@@ -230,8 +290,29 @@ func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, par
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		fields = fields.FilterMaps(boltz.FieldTags, db.FieldIdentityAppData, db.FieldIdentityServiceHostingCosts, db.FieldIdentityServiceHostingPrecedences)
+		if !rc.HasPermission(permissions.AdminPermission) {
+			if entity, _ := ae.Managers.Identity.Read(id); entity != nil {
+				if entity.IsAdmin {
+					return nonAdminNotAllowedError(errors.New("non-admins may not modify admin identities"))
+				}
+			}
+
+			for _, field := range []string{db.FieldIdentityPermissions, db.FieldIdentityIsAdmin, db.FieldIdentityIsDefaultAdmin} {
+				if fields.IsUpdated(field) {
+					return nonAdminNotAllowedError(fmt.Errorf("non-admins may not modify the identity field '%s'", field))
+				}
+			}
+		}
+
 		return ae.Managers.Identity.Update(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields, rc.NewChangeContext())
 	})
+}
+
+func nonAdminNotAllowedError(cause error) error {
+	err := errorz.NewUnauthorized()
+	err.Cause = cause
+	err.AppendCause = true
+	return err
 }
 
 func (r *IdentityRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {

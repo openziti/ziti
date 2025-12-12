@@ -383,6 +383,7 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 	jsonFields, err := api.GetFields(rc.Body)
 	if err != nil {
 		rc.RespondWithCouldNotParseBody(err)
+		return
 	}
 
 	err = patchF(id, jsonFields)

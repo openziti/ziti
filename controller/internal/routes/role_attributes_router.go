@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/role_attributes"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/models"
+	permissions "github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -39,19 +39,23 @@ func NewRoleAttributesRouter() *RoleAttributesRouter {
 
 func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.RoleAttributesListEdgeRouterRoleAttributesHandler = role_attributes.ListEdgeRouterRoleAttributesHandlerFunc(func(params role_attributes.ListEdgeRouterRoleAttributesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listEdgeRouterRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(r.listEdgeRouterRoleAttributes, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.RoleAttributesListIdentityRoleAttributesHandler = role_attributes.ListIdentityRoleAttributesHandlerFunc(func(params role_attributes.ListIdentityRoleAttributesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listIdentityRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(r.listIdentityRoleAttributes, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.RoleAttributesListServiceRoleAttributesHandler = role_attributes.ListServiceRoleAttributesHandlerFunc(func(params role_attributes.ListServiceRoleAttributesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listServiceRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(r.listServiceRoleAttributes, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.RoleAttributesListPostureCheckRoleAttributesHandler = role_attributes.ListPostureCheckRoleAttributesHandlerFunc(func(params role_attributes.ListPostureCheckRoleAttributesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listPostureCheckAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "posture-check", permissions.Read)
+		return ae.IsAllowed(r.listPostureCheckAttributes, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 }
 
