@@ -2,11 +2,12 @@ package controller
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"time"
+
+	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -164,6 +165,17 @@ func (self *Controller) agentOpRaftJoinCluster(m *channel.Message, ch channel.Ch
 		return
 	}
 
+	_, peerAddr, err := self.raftController.Mesh.GetPeerInfo(addr, 5*time.Second)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "cluster.join", "unable to retrieve peer advertise address", false)
+		return
+	}
+
+	if addr != string(peerAddr) {
+		pfxlog.Logger().Infof("using peer advertise address '%s' instead of given address '%s'", peerAddr, addr)
+		addr = string(peerAddr)
+	}
+
 	isVoter, found := m.GetBoolHeader(AgentIsVoterHeader)
 	if !found {
 		isVoter = true
@@ -175,7 +187,7 @@ func (self *Controller) agentOpRaftJoinCluster(m *channel.Message, ch channel.Ch
 		IsVoter: isVoter,
 	}
 
-	if err := self.raftController.ForwardToAddr(addr, req); err != nil {
+	if err = self.raftController.ForwardToAddr(addr, req); err != nil {
 		handler_common.SendOpResult(m, ch, "cluster.join", err.Error(), false)
 		return
 	}
