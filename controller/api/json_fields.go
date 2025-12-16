@@ -40,7 +40,11 @@ func GetJsonFields(prefix string, m map[string]interface{}, result fields.Update
 	for k, v := range m {
 		name := k
 		if subMap, ok := v.(map[string]interface{}); ok {
-			GetJsonFields(prefix+name+".", subMap, result)
+			if len(subMap) > 0 {
+				GetJsonFields(prefix+name+".", subMap, result)
+			} else {
+				result[prefix+name] = struct{}{}
+			}
 		} else if v != nil {
 			result[prefix+name] = struct{}{}
 		}

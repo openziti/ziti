@@ -18,10 +18,11 @@ package routes
 
 import (
 	"encoding/json"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/fields"
 	"reflect"
 	"testing"
+
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/fields"
 
 	"github.com/stretchr/testify/require"
 )
@@ -51,6 +52,13 @@ func Test_getFields(t *testing.T) {
 	test2Bytes, err := json.Marshal(test2)
 	assert.NoError(err)
 
+	test3 := map[string]any{
+		"tags": map[string]any{},
+	}
+
+	test3Bytes, err := json.Marshal(test3)
+	assert.NoError(err)
+
 	tests := []struct {
 		name    string
 		body    []byte
@@ -76,6 +84,14 @@ func Test_getFields(t *testing.T) {
 				"roleAttributes":     struct{}{},
 				"tags":               struct{}{},
 				"configs":            struct{}{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "test3",
+			body: test3Bytes,
+			want: fields.UpdatedFieldsMap{
+				"tags": struct{}{},
 			},
 			wantErr: false,
 		},

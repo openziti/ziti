@@ -17,15 +17,19 @@
 package api
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/Jeffail/gabs"
 	ziticobra "github.com/openziti/ziti/internal/cobra"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const CommonFlagKey = "common"
@@ -93,11 +97,13 @@ type EntityOptions struct {
 
 func (self *EntityOptions) AddCommonFlags(cmd *cobra.Command) {
 	self.Options.AddCommonFlags(cmd)
-	if cmd.Flags().ShorthandLookup("t") == nil {
-		cmd.Flags().StringToStringVarP(&self.Tags, "tags", "t", nil, "Add tags to entity definition")
-	} else {
-		cmd.Flags().StringToStringVar(&self.Tags, "tags", nil, "Add tags to entity definition")
-	}
+	self.Tags = map[string]string{}
+	cmd.Flags().VarP(newStringToStringValue(self.Tags), "tags", func() string {
+		if cmd.Flags().ShorthandLookup("t") == nil {
+			return "t"
+		}
+		return ""
+	}(), "Add tags to entity definition")
 	cmd.Flags().StringVar(&self.TagsJson, "tags-json", "", "Add tags defined in JSON to entity definition")
 }
 
@@ -132,4 +138,59 @@ func NewEntityOptions(out, errOut io.Writer) EntityOptions {
 			},
 		},
 	}
+}
+
+func newStringToStringValue(val map[string]string) pflag.Value {
+	return &stringToStringMap{
+		values: val,
+	}
+}
+
+// stringToStringMap replaces the cobra version with a similar version that allows using
+// a zero-length string to set an empty map. The cobra version doesn't provide a way to
+// set an empty string
+type stringToStringMap struct {
+	values map[string]string
+}
+
+func (self *stringToStringMap) String() string {
+	buf := bytes.Buffer{}
+	first := true
+	for k, v := range self.values {
+		if !first {
+			buf.WriteString(",")
+		} else {
+			first = false
+		}
+		buf.WriteString(k)
+		buf.WriteString("=")
+		buf.WriteString(v)
+	}
+	return buf.String()
+}
+
+func (self *stringToStringMap) Set(s string) error {
+	if s == "" {
+		self.values = map[string]string{}
+		return nil
+	}
+
+	r := csv.NewReader(strings.NewReader(s))
+
+	ss, err := r.Read()
+	if err != nil {
+		return err
+	}
+	for _, pair := range ss {
+		key, value, found := strings.Cut(pair, "=")
+		if !found {
+			return fmt.Errorf("%s must be formatted as key=value", pair)
+		}
+		self.values[key] = value
+	}
+	return nil
+}
+
+func (self *stringToStringMap) Type() string {
+	return "stringToStringMap"
 }

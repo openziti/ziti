@@ -18,6 +18,9 @@ package routes
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
@@ -30,8 +33,6 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"strings"
-	"time"
 
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"

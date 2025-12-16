@@ -17,9 +17,10 @@
 package fields
 
 import (
+	"strings"
+
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 type UpdatedFields interface {
