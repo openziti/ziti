@@ -330,6 +330,8 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 	}))
 
 	go result.manageRouterDataModelSubscription()
+	go result.startConnectionVerification(5 * time.Second)
+
 	result.StartRouterModelSave(cfg.Edge.Db, cfg.Edge.DbSaveInterval)
 
 	return result
@@ -1502,6 +1504,64 @@ func (self *ManagerImpl) NotifyOfReconnect(_ channel.Channel) {
 // purposes, currently returning nil as no specialized tracing is implemented.
 func (self *ManagerImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
+}
+
+// startConnectionVerification periodically verifies active connections for validity, running until the manager is closed.
+func (sm *ManagerImpl) startConnectionVerification(resolution time.Duration) {
+
+	//todo: we can be much smarter about this if we have scale concerns. We can bucket and create workers.
+	//      We could also store lowest next expiration as connections are being made and only tick then.
+	//      We could also use per connection context deadlines (internal timers).
+	//      This should be good <100k connections.
+	for {
+		select {
+		case <-time.After(resolution):
+			sm.CheckConnections()
+		case <-sm.env.GetCloseNotify():
+			return
+		}
+	}
+}
+
+// CheckConnections iterates over tracked channels and closes connections with expired or invalid API session tokens.
+// This only inspections connections backed by JWTs. It will end connections that have no inspectable API Session.
+func (sm *ManagerImpl) CheckConnections() {
+	connections := sm.connectionTracker.GetChannels()
+
+	now := time.Now()
+	for _, channels := range connections {
+		for _, ch := range channels {
+			if !ch.IsClosed() {
+				apiSessionTokenProvider := GetApiSessionTokenProviderFromCh(ch)
+
+				if apiSessionTokenProvider == nil {
+					_ = ch.Close()
+					continue
+				}
+
+				apiSession := apiSessionTokenProvider.GetApiSessionToken()
+
+				if apiSession == nil {
+					_ = ch.Close()
+					continue
+				}
+
+				if apiSession.Type == ApiSessionTokenJwt {
+					if apiSession.Claims == nil {
+						_ = ch.Close()
+						continue
+					}
+
+					exp := apiSession.Claims.Expiration
+
+					if exp.AsTime().Before(now) {
+						_ = ch.Close()
+						continue
+					}
+				}
+			}
+		}
+	}
 }
 
 // GetConnProviderAndSinksFromCh extracts connection provider and sinks
