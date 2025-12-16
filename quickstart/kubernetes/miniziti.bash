@@ -99,13 +99,13 @@ checkDns(){
         logError "need IPv4 of miniziti ingress as only param to checkDns()"
         return 1
     }
-    logDebug "checking dns to ensure miniziti-controller.${MINIZITI_INGRESS_ZONE} resolves to $1"
-    if grep -qE "^${1//./\\.}.*miniziti-controller.${MINIZITI_INGRESS_ZONE}" /etc/hosts \
-        || nslookup "miniziti-controller.${MINIZITI_INGRESS_ZONE}" | grep -q "${1//./\\.}"; then
+    logDebug "checking dns to ensure ${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE} resolves to $1"
+    if grep -qE "^${1//./\\.}.*${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}" /etc/hosts \
+        || nslookup "${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}" | grep -q "${1//./\\.}"; then
         logDebug "host dns found expected minikube ingress IP '$1'"
         return 0
     else
-        logError "miniziti-controller.${MINIZITI_INGRESS_ZONE} does not resolve to '$1'. Did you add the record in /etc/hosts?"
+        logError "${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE} does not resolve to '$1'. Did you add the record in /etc/hosts?"
         return 1
     fi
 }
@@ -180,7 +180,7 @@ pathToNative() {
 
 testClusterDns(){
     if kubectlWrapper run "dnstest" --rm --tty --stdin --image busybox --restart Never -- \
-        nslookup "miniziti-controller.${MINIZITI_INGRESS_ZONE}" | grep "$1" >&3; then
+        nslookup "${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}" | grep "$1" >&3; then
         logInfo "cluster dns test succeeded"
     else
         logError "cluster dns test failed"
@@ -222,8 +222,8 @@ cleanHosts() {
 
 installHosts() {
     hosts=(
-        "miniziti-controller.$MINIZITI_INGRESS_ZONE"
-        "miniziti-router.$MINIZITI_INGRESS_ZONE"
+        "${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}"
+        "${MINIZITI_ROUTER_NAME}.${MINIZITI_INGRESS_ZONE}"
     )
 
     hosts_line="$MINIKUBE_NODE_EXTERNAL ${hosts[*]}"
@@ -276,7 +276,7 @@ getIngressZone() {
 minizitiLogin() {
     checkCommand ziti
     ingress_zone="$(getIngressZone)"
-    getAdminSecret | xargs ziti edge login "https://miniziti-controller.$ingress_zone:443/edge/management/v1" \
+    getAdminSecret | xargs ziti edge login "https://${MINIZITI_CONTROLLER_NAME}.${ingress_zone}:443/edge/management/v1" \
             --cli-identity "$MINIKUBE_PROFILE" \
             --yes \
             --username "admin" \
@@ -288,7 +288,7 @@ minizitiLogin() {
 
 minizitiConsole() {
     ingress_zone="$(getIngressZone)"
-    console_url="https://miniziti-controller.${ingress_zone}/zac/"
+    console_url="https://${MINIZITI_CONTROLLER_NAME}.${ingress_zone}/zac/"
     case "$DETECTED_OS" in
         "Windows")
             checkCommand wslview
@@ -476,6 +476,7 @@ main(){
     DETECTED_OS="$(detectOs)"
     : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
     : "${MINIZITI_TIMEOUT_SECS:=240}"
+    : "${MINIZITI_CONTROLLER_NAME:=miniziti-controller}"
     MINIZITI_CONFIGMAP="miniziti-config"
     ZITI_CLI_HOME="$(getZitiCliHome)"
     ZITI_CLI_CERTS_DIR="$ZITI_CLI_HOME/certs"
@@ -654,7 +655,7 @@ main(){
                 cleanHosts "$ingress_zone"
             fi
 
-            CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "miniziti-controller.$ingress_zone" -print -quit 2> /dev/null)"
+            CERT_FILE="$(find "$ZITI_CLI_CERTS_DIR" -maxdepth 1 -type f -name "${MINIZITI_CONTROLLER_NAME}.$ingress_zone" -print -quit 2> /dev/null)"
             if [[ -n "$CERT_FILE" ]]; then
                 logWarn "Deleting miniziti certificate file: $CERT_FILE"
                 rm -f  "$CERT_FILE"
@@ -842,7 +843,7 @@ main(){
     fi
     local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
         --namespace "${ZITI_NAMESPACE}" --create-namespace
-        --set clientApi.advertisedHost="miniziti-controller.${MINIZITI_INGRESS_ZONE}"
+        --set clientApi.advertisedHost="${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}"
         --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml"
         --set ctrlPlane.service.enabled=false
         --set ctrlPlane.ingress.enabled=false
@@ -885,10 +886,10 @@ main(){
     fi
 
     #
-    ## Ensure Cluster DNS is Resolving miniziti-controller.${MINIZITI_INGRESS_ZONE}
+    ## Ensure Cluster DNS is Resolving ${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}
     #
 
-    if ! testClusterDns "${MINIKUBE_NODE_EXTERNAL}" 2>/dev/null; then
+    if ! testClusterDns "${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}" 2>/dev/null; then
         logDebug "initial cluster dns test failed, doing cluster dns setup"
 
         # xargs trims whitespace because minikube ssh returns a stray trailing '\r' after remote command output
@@ -1009,7 +1010,7 @@ EOF
         --namespace "${ZITI_NAMESPACE}"
         --set-file enrollmentJwt="$ROUTER_OTT"
         --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}"
-        --set ctrl.endpoint="miniziti-controller.${MINIZITI_INGRESS_ZONE}:443"
+        --set ctrl.endpoint="${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}:443"
         --set "tunnel.mode=host"
         --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml"
         --set linkListeners.transport.service.enabled=false
@@ -1164,7 +1165,7 @@ EOF
     fi
 
     echo -e "\n\n"
-    logInfo "Your OpenZiti Console is here: https://miniziti-controller.${MINIZITI_INGRESS_ZONE}/zac/"
+    logInfo "Your OpenZiti Console is here: https://${MINIZITI_CONTROLLER_NAME}.${MINIZITI_INGRESS_ZONE}/zac/"
     showAdminCreds
     echo -e "\n\n"
 
