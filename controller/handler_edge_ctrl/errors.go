@@ -35,7 +35,7 @@ type internalErrorWrapper struct {
 }
 
 func (internalErrorWrapper) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeInternal)
+	return edge.ErrorCodeInternal
 }
 
 type InvalidApiSessionError struct{}
@@ -45,7 +45,7 @@ func (InvalidApiSessionError) Error() string {
 }
 
 func (self InvalidApiSessionError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeInvalidApiSession)
+	return edge.ErrorCodeInvalidApiSession
 }
 
 type InvalidSessionError struct{}
@@ -55,7 +55,7 @@ func (InvalidSessionError) Error() string {
 }
 
 func (self InvalidSessionError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeInvalidSession)
+	return edge.ErrorCodeInvalidSession
 }
 
 type WrongSessionTypeError struct{}
@@ -65,7 +65,7 @@ func (WrongSessionTypeError) Error() string {
 }
 
 func (self WrongSessionTypeError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeWrongSessionType)
+	return edge.ErrorCodeWrongSessionType
 }
 
 type InvalidEdgeRouterForSessionError struct{}
@@ -75,7 +75,7 @@ func (InvalidEdgeRouterForSessionError) Error() string {
 }
 
 func (self InvalidEdgeRouterForSessionError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeInvalidEdgeRouterForSession)
+	return edge.ErrorCodeInvalidEdgeRouterForSession
 }
 
 type InvalidServiceError struct{}
@@ -85,7 +85,7 @@ func (InvalidServiceError) Error() string {
 }
 
 func (self InvalidServiceError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeInvalidService)
+	return edge.ErrorCodeInvalidService
 }
 
 type TunnelingNotEnabledError struct{}
@@ -95,34 +95,34 @@ func (TunnelingNotEnabledError) Error() string {
 }
 
 func (self TunnelingNotEnabledError) ErrorCode() uint32 {
-	return uint32(edge.ErrorCodeTunnelingNotEnabled)
+	return edge.ErrorCodeTunnelingNotEnabled
 }
 
 func invalidTerminator(msg string) controllerError {
 	return &genericControllerError{
 		msg:       msg,
-		errorCode: uint32(edge.ErrorCodeInvalidTerminator),
+		errorCode: edge.ErrorCodeInvalidTerminator,
 	}
 }
 
 func invalidCost(msg string) controllerError {
 	return &genericControllerError{
 		msg:       msg,
-		errorCode: uint32(edge.ErrorCodeInvalidCost),
+		errorCode: edge.ErrorCodeInvalidCost,
 	}
 }
 
 func invalidPrecedence(msg string) controllerError {
 	return &genericControllerError{
 		msg:       msg,
-		errorCode: uint32(edge.ErrorCodeInvalidPrecedence),
+		errorCode: edge.ErrorCodeInvalidPrecedence,
 	}
 }
 
 func encryptionDataMissing(msg string) controllerError {
 	return &genericControllerError{
 		msg:       msg,
-		errorCode: uint32(edge.ErrorCodeEncryptionDataMissing),
+		errorCode: edge.ErrorCodeEncryptionDataMissing,
 	}
 }
 

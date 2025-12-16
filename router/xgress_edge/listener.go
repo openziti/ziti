@@ -1162,37 +1162,70 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {
 	currentApiSession := state.GetApiSessionTokenFromCh(ch)
 
-	if currentApiSession == nil || currentApiSession.JwtToken == nil {
-		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
-		msg.ReplyTo(req)
+	if currentApiSession == nil || currentApiSession.JwtToken == nil || currentApiSession.Claims.ApiSessionId == "" {
+		retErr := NewInvalidApiSessionType("current connection isn't authenticated via JWT beater tokens, unable to switch to them")
+		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
+
+		retErr.ApplyToMsg(reply)
+		reply.ReplyTo(req)
+
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
+		}
 		return
 	}
 
 	newTokenStr := string(req.Body)
 
 	if !xgress_common.IsBearerToken(newTokenStr) {
-		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("message did not contain a valid JWT bearer token"))
-		msg.ReplyTo(req)
+		retErr := NewInvalidApiSessionTokenError("message did not contain a valid JWT bearer token")
+		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
+
+		retErr.ApplyToMsg(reply)
+		reply.ReplyTo(req)
+
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
+		}
 		return
 	}
 
 	newApiSessionToken, err := self.listener.factory.stateManager.ParseApiSessionJwt(newTokenStr)
 
 	if err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "api session JWT bearer token failed to parse or validate"))
+		retErr := NewInvalidApiSessionTokenError("api session JWT bearer token failed to parse or validate")
+		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
+
+		retErr.ApplyToMsg(reply)
 		reply.ReplyTo(req)
+
 		if err := ch.Send(reply); err != nil {
-			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with validation failure")
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
 		return
 	}
 
-	if err := self.listener.factory.stateManager.HandleClientApiSessionTokenUpdate(newApiSessionToken); err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
+	if newApiSessionToken.Claims.ApiSessionId != currentApiSession.Claims.ApiSessionId {
+		retErr := NewInvalidApiSessionTokenError("api session JWT bearer token does not match current connection's api session id")
+		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
+
+		retErr.ApplyToMsg(reply)
 		reply.ReplyTo(req)
 
 		if err := ch.Send(reply); err != nil {
-			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
+		}
+	}
+
+	if err := self.listener.factory.stateManager.HandleClientApiSessionTokenUpdate(newApiSessionToken); err != nil {
+		retErr := NewInvalidApiSessionTokenError(err.Error())
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, ""))
+
+		retErr.ApplyToMsg(reply)
+		reply.ReplyTo(req)
+
+		if err := ch.Send(reply); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
 		return
 	}

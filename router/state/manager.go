@@ -672,7 +672,26 @@ func (self *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSes
 				continue
 			}
 			apiSession := data.GetApiSessionToken()
-			if apiSession != nil && apiSession.Claims.ApiSessionId == newApiSession.Claims.ApiSessionId && apiSession.Claims.Subject == newApiSession.Claims.Subject {
+
+			if apiSession == nil {
+				pfxlog.Logger().WithField("chId", ch.Id()).WithField("identityId", newApiSession.IdentityId).Error("api session not found in channel user data")
+				continue
+			}
+
+			if !apiSession.IsOidc() {
+				// token updates are for OIDC only, not legacy
+				continue
+			}
+
+			if apiSession.Claims == nil {
+				pfxlog.Logger().WithField("chId", ch.Id()).WithField("identityId", newApiSession.IdentityId).Error("api session claims not found in channel user data for OIDC api session type")
+				continue
+			}
+
+			sameApiSessionId := apiSession.Claims.ApiSessionId == newApiSession.Claims.ApiSessionId
+			sameSubject := apiSession.Claims.Subject == newApiSession.Claims.Subject
+
+			if sameApiSessionId && sameSubject {
 				apiSession.UpdateToken(newApiSession)
 			}
 		}
