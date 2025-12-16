@@ -462,7 +462,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
 			fmt.Printf("    --home \"%s\" \\\n", o.Home)
 			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --cluster-member tls:%s:%d\\ \n", o.ControllerAddress, o.ControllerPort)
+			fmt.Printf("    --cluster-member tls:%s:%d \\\n", o.ControllerAddress, o.ControllerPort)
 			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 			fmt.Println("=======================================================================================")
 			fmt.Println()
@@ -473,11 +473,15 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		fmt.Println("=======================================================================================")
 	}
 
-	select {
-	case <-ch:
-		fmt.Println("Signal to shutdown received")
-	case <-ctx.Done():
-		fmt.Println("Cancellation request received")
+	if !o.ConfigureAndExit {
+		select {
+		case <-ch:
+			fmt.Println("Signal to shutdown received")
+		case <-ctx.Done():
+			fmt.Println("Cancellation request received")
+		}
+	} else {
+		fmt.Println("configure-and-exit set to true, closing router and controller")
 	}
 
 	o.cleanupHome()
