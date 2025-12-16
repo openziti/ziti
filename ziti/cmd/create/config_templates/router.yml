@@ -1,10 +1,10 @@
 {{- /*
- Config Format Version
+  Config Format Version
 
- Whenever a breaking change is made to the semantics of this configuration file, the configuration version
- expected by the router will be incremented. When the controller tries to load a configuration file with
- an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
- documentation.*/ -}}
+  Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+  expected by the router will be incremented. When the controller tries to load a configuration file with
+  an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+  documentation.*/ -}}
 v: 3
 
 identity:
@@ -19,9 +19,8 @@ identity:
 ctrl:
   {{- if .Controller.Ctrl.AdvertisedAddress }}
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
-  {{- else }}
-  {}
   {{- end }}
+  endpointsFile:        endpoints.yml
 
 link:
   dialers:
