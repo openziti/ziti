@@ -1,4 +1,4 @@
-name: validation-sdk-terminators
+name: Validation (SDK Terminators)
 
 on:
   workflow_dispatch:

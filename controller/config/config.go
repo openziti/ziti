@@ -90,6 +90,13 @@ const (
 	RaftRateLimiterQueueSizeMetricName  = "raft.rate_limiter.queue_size"
 	RaftRateLimiterWorkTimerMetricName  = "raft.rate_limiter.work_timer"
 	RaftRateLimiterWindowSizeMetricName = "raft.rate_limiter.window_size"
+
+	BackgroundQueueMinSize = 10
+	BackgroundQueueMaxSize = math.MaxUint32
+
+	DefaultBackgroundQueueEnabled      = true
+	DefaultBackgroundQueueSize         = 1000
+	DefaultBackgroundQueueDropWhenFull = true
 )
 
 type Config struct {
@@ -124,8 +131,17 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	RouterDataModel         common.RouterDataModelConfig
-	CommandRateLimiter      command.RateLimiterConfig
+	RouterDataModel common.RouterDataModelConfig
+
+	Command struct {
+		RateLimiter command.RateLimiterConfig
+		Background  struct {
+			Enabled      bool
+			QueueSize    uint32
+			DropWhenFull bool
+		}
+	}
+
 	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
 	Src                     map[interface{}]interface{}
 }
@@ -672,29 +688,59 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	controllerConfig.CommandRateLimiter.Enabled = true
-	controllerConfig.CommandRateLimiter.QueueSize = command.DefaultLimiterSize
+	controllerConfig.Command.RateLimiter.Enabled = true
+	controllerConfig.Command.RateLimiter.QueueSize = command.DefaultLimiterSize
+	controllerConfig.Command.Background.Enabled = DefaultBackgroundQueueEnabled
+	controllerConfig.Command.Background.QueueSize = DefaultBackgroundQueueSize
+	controllerConfig.Command.Background.DropWhenFull = DefaultBackgroundQueueDropWhenFull
 
-	if value, found := cfgmap["commandRateLimiter"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["enabled"]; found {
-				controllerConfig.CommandRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
-			}
+	commandRateLimiterHandled := false
+	if cmdValue, found := cfgmap["command"]; found {
+		if cmdMap, ok := cmdValue.(map[interface{}]interface{}); ok {
+			if backgroundValue, found := cmdMap["background"]; found {
+				if submap, ok := backgroundValue.(map[interface{}]interface{}); ok {
+					if value, found := submap["enabled"]; found {
+						controllerConfig.Command.Background.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+					}
 
-			if value, found := submap["maxQueued"]; found {
-				if intVal, ok := value.(int); ok {
-					v := int64(intVal)
-					if v < command.MinLimiterSize {
-						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at least %v", value, command.MinLimiterSize)
+					if value, found := submap["dropWhenFull"]; found {
+						controllerConfig.Command.Background.DropWhenFull = strings.EqualFold("true", fmt.Sprintf("%v", value))
 					}
-					if v > math.MaxUint32 {
-						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at most %v", value, int64(math.MaxUint32))
+
+					if value, found := submap["queueSize"]; found {
+						if intVal, ok := value.(int); ok {
+							v := int64(intVal)
+							if v < BackgroundQueueMinSize {
+								return nil, errors.Errorf("invalid value %v for command.background.queueSize, must be at least %v", value, BackgroundQueueMinSize)
+							}
+							if v > BackgroundQueueMaxSize {
+								return nil, errors.Errorf("invalid value %v for command.background.queueSize, must be at most %v", value, BackgroundQueueMaxSize)
+							}
+							controllerConfig.Command.Background.QueueSize = uint32(v)
+						} else {
+							return nil, errors.Errorf("invalid value type %T for command.background.queueSize, must be integer value", value)
+						}
 					}
-					controllerConfig.CommandRateLimiter.QueueSize = uint32(v)
+
 				} else {
-					return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be integer value", value)
+					return nil, errors.Errorf("invalid command.background configuration section, should be map, not %T", backgroundValue)
 				}
 			}
+		} else {
+			return nil, errors.Errorf("invalid command configuration section, should be map, not %T", cmdValue)
+		}
+
+		if value, found := cfgmap["rateLimiter"]; found {
+			if err = parseCommandRateLimiter(controllerConfig, value, "command.rateLimiter"); err != nil {
+				return nil, err
+			}
+			commandRateLimiterHandled = true
+		}
+	}
+
+	if value, found := cfgmap["commandRateLimiter"]; found && !commandRateLimiterHandled {
+		if err = parseCommandRateLimiter(controllerConfig, value, "commandRateLimiter"); err != nil {
+			return nil, err
 		}
 	}
 
@@ -717,6 +763,8 @@ func LoadConfig(path string) (*Config, error) {
 			if err = loadTlsHandshakeRateLimiterConfig(&controllerConfig.TlsHandshakeRateLimiter, tlsMap); err != nil {
 				return nil, err
 			}
+		} else {
+			return nil, errors.Errorf("invalid tls configuration section, should be map not %T", value)
 		}
 	}
 
@@ -752,7 +800,7 @@ func LoadConfig(path string) (*Config, error) {
 				}
 			}
 		} else {
-			return nil, errors.Errorf("invalid raft configuration")
+			return nil, errors.Errorf("invalid raft configuration, should be map, not %T", value)
 		}
 	}
 
@@ -763,6 +811,34 @@ func LoadConfig(path string) (*Config, error) {
 	controllerConfig.Edge = edgeConfig
 
 	return controllerConfig, nil
+}
+
+func parseCommandRateLimiter(controllerConfig *Config, rateLimiterValue interface{}, sectionName string) error {
+	submap, ok := rateLimiterValue.(map[interface{}]interface{})
+	if !ok {
+		return errors.Errorf("invalid commandRateLimiter configuration section, should be map, not %T", rateLimiterValue)
+	}
+
+	if value, found := submap["enabled"]; found {
+		controllerConfig.Command.RateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+	}
+
+	if value, found := submap["maxQueued"]; found {
+		if intVal, ok := value.(int); ok {
+			v := int64(intVal)
+			if v < command.MinLimiterSize {
+				return errors.Errorf("invalid value %v for commandRateLimiter, must be at least %v", value, command.MinLimiterSize)
+			}
+			if v > math.MaxUint32 {
+				return errors.Errorf("invalid value %v for commandRateLimiter, must be at most %v", value, int64(math.MaxUint32))
+			}
+			controllerConfig.Command.RateLimiter.QueueSize = uint32(v)
+		} else {
+			return errors.Errorf("invalid value type %T for %s, must be integer value", value, sectionName)
+		}
+	}
+
+	return nil
 }
 
 // isSelfSigned checks if the given certificate is self-signed.

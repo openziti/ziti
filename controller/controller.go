@@ -159,7 +159,7 @@ func (c *Controller) GetCommandDispatcher() command.Dispatcher {
 		version := versions.MustParseSemVer(c.GetVersionProvider().Version())
 		c.localDispatcher = &command.LocalDispatcher{
 			EncodeDecodeCommands: devVersion.Equals(version),
-			Limiter:              command.NewRateLimiter(c.config.CommandRateLimiter, c.metricsRegistry, c.shutdownC),
+			Limiter:              command.NewRateLimiter(c.config.Command.RateLimiter, c.metricsRegistry, c.shutdownC),
 		}
 		return c.localDispatcher
 	}

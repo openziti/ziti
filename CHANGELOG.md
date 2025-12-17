@@ -11,6 +11,7 @@
 * Clustering Performance Improvements
 * Basic permissions model (BETA)
 * Enable the tls handshake rate limiter by default
+* Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
 
 ## Binding Controller APIs With Identity
 
@@ -459,6 +460,53 @@ tls:
     timeout: 30s
 ```
 
+## Background Processing for Identity Updates
+
+Identity environment and authenticator updates that occur during authentication are now processed asynchronously in the background. 
+This prevents authentication requests from blocking when the system is under load, significantly improving resilience during thundering herd scenarios.
+
+When the background queue fills up, updates can be safely dropped as they will be refreshed on the next authentication attempt. 
+This allows the system to gracefully handle load spikes without impacting authentication performance.
+
+### Configuration
+
+A new `command.background` configuration section controls the background processing behavior:
+
+```yaml
+  command:
+    background:
+      enabled: true           # Enable background processing (default: true)
+      queueSize: 1000        # Maximum queue size (default: 1000)
+      dropWhenFull: true     # Drop updates when queue is full (default: true)
+```
+
+Note that the `commandRateLimiter` configuration section may instead be specified under `command` as `rateLimiter`.
+
+Example:
+
+```yaml
+  command:
+    background:
+      enabled: true
+      queueSize: 250
+      dropWhenFull: false
+    rateLimiter:
+      enabled:   true
+      maxQueued: 25
+```
+
+Note that if command rate limiter configuration is specified in both locations, the settings under `command` will take 
+precedence. The standalone `commandRateLimiter` section may be deprecated in the future.
+
+### Metrics
+
+When background processing is enabled, the following metrics are exposed:
+
+- command.background.queue_size - Current number of queued background tasks
+- command.background.worker_count - Current number of worker goroutines
+- command.background.busy_workers - Number of workers currently processing tasks
+- command.background.work_timer - Timer tracking background task execution (includes histogram, meter, and count)
+- command.background.dropped_entries - Count of dropped updates when queue is full (only when dropWhenFull is enabled)
 
 ## Component Updates and Bug Fixes
 

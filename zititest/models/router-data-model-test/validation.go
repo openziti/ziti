@@ -24,7 +24,6 @@ import (
 	"math/rand"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-openapi/runtime"
@@ -45,61 +44,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type CtrlClients struct {
-	ctrls   []*zitirest.Clients
-	ctrlMap map[string]*zitirest.Clients
-	sync.Mutex
-}
-
-func (self *CtrlClients) init(run model.Run, selector string) error {
-	self.ctrlMap = map[string]*zitirest.Clients{}
-	ctrls := run.GetModel().SelectComponents(selector)
-	resultC := make(chan struct {
-		err     error
-		id      string
-		clients *zitirest.Clients
-	}, len(ctrls))
-
-	for _, ctrl := range ctrls {
-		go func() {
-			clients, err := chaos.EnsureLoggedIntoCtrl(run, ctrl, time.Minute)
-			resultC <- struct {
-				err     error
-				id      string
-				clients *zitirest.Clients
-			}{
-				err:     err,
-				id:      ctrl.Id,
-				clients: clients,
-			}
-		}()
-	}
-
-	for i := 0; i < len(ctrls); i++ {
-		result := <-resultC
-		if result.err != nil {
-			return result.err
-		}
-		self.ctrls = append(self.ctrls, result.clients)
-		self.ctrlMap[result.id] = result.clients
-	}
-	return nil
-}
-
-func (self *CtrlClients) getRandomCtrl() *zitirest.Clients {
-	return self.ctrls[rand.Intn(len(self.ctrls))]
-}
-
-func (self *CtrlClients) getCtrl(id string) *zitirest.Clients {
-	return self.ctrlMap[id]
-}
-
 // start with a random scenario then cycle through them
 var scenarioCounter = rand.Intn(7)
 
 func sowChaos(run model.Run) error {
-	ctrls := &CtrlClients{}
-	if err := ctrls.init(run, ".ctrl"); err != nil {
+	ctrls := &models.CtrlClients{}
+	if err := ctrls.Init(run, ".ctrl"); err != nil {
 		return err
 	}
 
@@ -110,7 +60,7 @@ func sowChaos(run model.Run) error {
 		return err
 	}
 
-	applyTasks := func(f func(run model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error)) {
+	applyTasks := func(f func(run model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, error)) {
 		var t []parallel.LabeledTask
 		if err == nil {
 			t, err = f(run, ctrls)
@@ -171,7 +121,7 @@ func sowChaos(run model.Run) error {
 	return parallel.ExecuteLabeled(tasks, 2, retryPolicy)
 }
 
-func getRestartTasks(run model.Run, _ *CtrlClients) ([]parallel.LabeledTask, error) {
+func getRestartTasks(run model.Run, _ *models.CtrlClients) ([]parallel.LabeledTask, error) {
 	var controllers []*model.Component
 	var err error
 
@@ -246,7 +196,7 @@ func newBoolPtr() *bool {
 }
 
 type taskGenerationContext struct {
-	ctrls *CtrlClients
+	ctrls *models.CtrlClients
 
 	configTypes []*rest_model.ConfigTypeDetail
 	configs     []*rest_model.ConfigDetail
@@ -265,19 +215,19 @@ type taskGenerationContext struct {
 }
 
 func (self *taskGenerationContext) loadEntities() {
-	self.configTypes, self.err = models.ListConfigTypes(self.ctrls.getRandomCtrl(), `not (name contains ".v1" or id = "host.v2") limit none`, 15*time.Second)
+	self.configTypes, self.err = models.ListConfigTypes(self.ctrls.GetRandomCtrl(), `not (name contains ".v1" or id = "host.v2") limit none`, 15*time.Second)
 	if self.err != nil {
 		return
 	}
 	chaos.Randomize(self.configTypes)
 
-	self.configs, self.err = models.ListConfigs(self.ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	self.configs, self.err = models.ListConfigs(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
 	if self.err != nil {
 		return
 	}
 	chaos.Randomize(self.configs)
 
-	self.services, self.err = models.ListServices(self.ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+	self.services, self.err = models.ListServices(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
 	if self.err != nil {
 		return
 	}
@@ -336,7 +286,7 @@ func (self *taskGenerationContext) generateConfigTypeTasks() {
 			entityId := *self.configTypes[i].ID
 			self.configTypesDeleted[entityId] = struct{}{}
 			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config-type", fmt.Sprintf("delete config type %s", entityId), func() error {
-				return models.DeleteConfigType(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+				return models.DeleteConfigType(self.ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 			}))
 		}
 	}
@@ -346,13 +296,13 @@ func (self *taskGenerationContext) generateConfigTypeTasks() {
 		entityId := *entity.ID
 		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.config-type", fmt.Sprintf("modify config type %s", entityId), func() error {
 			entity.Name = newId()
-			return models.UpdateConfigTypeFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdateConfigTypeFromDetail(self.ctrls.GetRandomCtrl(), entity, 15*time.Second)
 		}))
 	}
 
 	createConfigTypesCount := 15 - (len(self.configTypes) - len(self.configTypesDeleted)) // target 25 configs available
 	for i := 0; i < createConfigTypesCount; i++ {
-		self.tasks = append(self.tasks, createNewConfigType(self.ctrls.getRandomCtrl()))
+		self.tasks = append(self.tasks, createNewConfigType(self.ctrls.GetRandomCtrl()))
 	}
 }
 
@@ -366,7 +316,7 @@ func (self *taskGenerationContext) generateConfigTasks() {
 			entityId := *self.configs[i].ID
 			self.configsDeleted[entityId] = struct{}{}
 			self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
-				return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+				return models.DeleteConfig(self.ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 			}))
 		}
 	}
@@ -381,7 +331,7 @@ func (self *taskGenerationContext) generateConfigTasks() {
 				entityId := *config.ID
 				self.configsDeleted[entityId] = struct{}{}
 				self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.config", fmt.Sprintf("delete config %s", entityId), func() error {
-					return models.DeleteConfig(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+					return models.DeleteConfig(self.ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 				}))
 			}
 		}
@@ -402,14 +352,14 @@ func (self *taskGenerationContext) generateConfigTasks() {
 				}(),
 				"port": rand.Intn(32000),
 			}
-			return models.UpdateConfigFromDetail(self.ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdateConfigFromDetail(self.ctrls.GetRandomCtrl(), entity, 15*time.Second)
 		}))
 	}
 
 	if len(self.configTypes) > 0 {
 		createConfigCount := 25 - (len(self.configs) - len(self.configsDeleted)) // target 25 configs available
 		for i := 0; i < createConfigCount; i++ {
-			self.tasks = append(self.tasks, createNewConfig(self.ctrls.getRandomCtrl(), self.getConfigTypeId()))
+			self.tasks = append(self.tasks, createNewConfig(self.ctrls.GetRandomCtrl(), self.getConfigTypeId()))
 		}
 	}
 }
@@ -423,7 +373,7 @@ func (self *taskGenerationContext) generateServiceTasks() {
 		entityId := *self.services[i].ID
 		self.servicesDeleted[entityId] = struct{}{}
 		self.tasks = append(self.tasks, parallel.TaskWithLabel("delete.service", fmt.Sprintf("delete service %s", entityId), func() error {
-			return models.DeleteService(self.ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			return models.DeleteService(self.ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 		}))
 	}
 
@@ -448,14 +398,14 @@ func (self *taskGenerationContext) generateServiceTasks() {
 				service.RoleAttributes = getRoleAttributesAsAttrPtr(3)
 				service.Name = newId()
 				service.Configs = self.getTwoValidConfigs()
-				return models.UpdateServiceFromDetail(self.ctrls.getRandomCtrl(), service, 15*time.Second)
+				return models.UpdateServiceFromDetail(self.ctrls.GetRandomCtrl(), service, 15*time.Second)
 			}))
 		}
 	}
 
 	createServicesTarget := 100 - (len(self.services) - len(self.servicesDeleted))
 	for i := 0; i < createServicesTarget; i++ {
-		self.tasks = append(self.tasks, createNewService(self.ctrls.getRandomCtrl(), self.getTwoValidConfigs()))
+		self.tasks = append(self.tasks, createNewService(self.ctrls.GetRandomCtrl(), self.getTwoValidConfigs()))
 	}
 }
 
@@ -469,7 +419,7 @@ func (self *taskGenerationContext) getResults() ([]parallel.LabeledTask, []paral
 	return self.tasks, self.lastTasks, nil
 }
 
-func getServiceAndConfigChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
+func getServiceAndConfigChaosTasks(_ model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
 	ctx := &taskGenerationContext{
 		ctrls:              ctrls,
 		configTypesDeleted: map[string]struct{}{},
@@ -485,9 +435,9 @@ func getServiceAndConfigChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.
 	return ctx.getResults()
 }
 
-func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
+func getIdentityChaosTasks(r model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, error) {
 	tunnelerCount := len(r.GetModel().SelectComponents("tunneler"))
-	entities, err := models.ListIdentities(ctrls.getRandomCtrl(), "not isAdmin limit none", 15*time.Second)
+	entities, err := models.ListIdentities(ctrls.GetRandomCtrl(), "not isAdmin limit none", 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +450,7 @@ func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 		entityId := *entities[i].ID
 		if entities[i].Type.Name != "Router" {
 			result = append(result, parallel.TaskWithLabel("delete.identity", fmt.Sprintf("delete identity %s", entityId), func() error {
-				return models.DeleteIdentity(ctrls.getRandomCtrl(), entityId, 15*time.Second)
+				return models.DeleteIdentity(ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 			}))
 		}
 		i++
@@ -513,20 +463,20 @@ func getIdentityChaosTasks(r model.Run, ctrls *CtrlClients) ([]parallel.LabeledT
 			if entity.Type.Name != "Router" {
 				entity.Name = newId()
 			}
-			return models.UpdateIdentityFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdateIdentityFromDetail(ctrls.GetRandomCtrl(), entity, 15*time.Second)
 		}))
 		i++
 	}
 
 	for i := 0; i < 5; i++ {
-		result = append(result, createNewIdentity(ctrls.getRandomCtrl()))
+		result = append(result, createNewIdentity(ctrls.GetRandomCtrl()))
 	}
 
 	return result, nil
 }
 
-func getPostureTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	entities, err := models.ListPostureChecks(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+func getPostureTasks(_ model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, error) {
+	entities, err := models.ListPostureChecks(ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +488,7 @@ func getPostureTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, e
 	for len(result) < 5+(len(entities)-100) {
 		entityId := *entities[i].ID()
 		result = append(result, parallel.TaskWithLabel("delete.posture-check", fmt.Sprintf("delete posture check %s", entityId), func() error {
-			return models.DeletePostureCheck(ctrls.getRandomCtrl(), entityId, 15*time.Second)
+			return models.DeletePostureCheck(ctrls.GetRandomCtrl(), entityId, 15*time.Second)
 		}))
 		i++
 	}
@@ -570,13 +520,13 @@ func getPostureTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, e
 		}
 
 		result = append(result, parallel.TaskWithLabel("modify.posture-check", fmt.Sprintf("modify %s posture-check %s", entity.TypeID(), *entity.ID()), func() error {
-			return models.UpdatePostureCheckFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdatePostureCheckFromDetail(ctrls.GetRandomCtrl(), entity, 15*time.Second)
 		}))
 		i++
 	}
 
 	for i := 0; i < 55-len(entities); i++ {
-		result = append(result, createNewPostureCheck(ctrls.getRandomCtrl()))
+		result = append(result, createNewPostureCheck(ctrls.GetRandomCtrl()))
 	}
 
 	return result, nil
@@ -697,8 +647,8 @@ func createNewPostureCheck(ctrl *zitirest.Clients) parallel.LabeledTask {
 	})
 }
 
-func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.LabeledTask, error) {
-	entities, err := models.ListServicePolicies(ctrls.getRandomCtrl(), "limit none", 15*time.Second)
+func getServicePolicyChaosTasks(_ model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, error) {
+	entities, err := models.ListServicePolicies(ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -708,7 +658,7 @@ func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.Lab
 
 	for i := 0; i < 5; i++ {
 		result = append(result, parallel.TaskWithLabel("delete.service-policy", fmt.Sprintf("delete service policy %s", *entities[i].ID), func() error {
-			return models.DeleteServicePolicy(ctrls.getRandomCtrl(), *entities[i].ID, 15*time.Second)
+			return models.DeleteServicePolicy(ctrls.GetRandomCtrl(), *entities[i].ID, 15*time.Second)
 		}))
 	}
 
@@ -719,12 +669,12 @@ func getServicePolicyChaosTasks(_ model.Run, ctrls *CtrlClients) ([]parallel.Lab
 			entity.ServiceRoles = getRoles(3)
 			entity.PostureCheckRoles = getRoles(3)
 			entity.Name = newId()
-			return models.UpdateServicePolicyFromDetail(ctrls.getRandomCtrl(), entity, 15*time.Second)
+			return models.UpdateServicePolicyFromDetail(ctrls.GetRandomCtrl(), entity, 15*time.Second)
 		}))
 	}
 
 	for i := 0; i < 5; i++ {
-		result = append(result, createNewServicePolicy(ctrls.getRandomCtrl()))
+		result = append(result, createNewServicePolicy(ctrls.GetRandomCtrl()))
 	}
 
 	return result, nil

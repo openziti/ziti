@@ -18,15 +18,24 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var _ model.ComponentType = (*ZitiEdgeTunnelType)(nil)
 
+type ZitiEdgeTunnelMode int
+
+const (
+	ZitiEdgeTunnelModeDefault ZitiEdgeTunnelMode = 0
+	ZitiEdgeTunnelModeHost    ZitiEdgeTunnelMode = 1
+)
+
 type ZitiEdgeTunnelType struct {
+	Mode           ZitiEdgeTunnelMode
 	Version        string
 	ZitiVersion    string
 	LocalPath      string
@@ -114,9 +123,9 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 	configPath := self.GetConfigPath(c)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 
-	logging := ""
+	env := "ZITI_TIME_FORMAT=utc"
 	if self.LogConfig != "" {
-		logging = "ZITI_LOG=" + self.LogConfig + " "
+		env += " ZITI_LOG=" + self.LogConfig
 	}
 
 	verbosity := ""
@@ -124,7 +133,15 @@ func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
 		verbosity = fmt.Sprintf("-v %v", self.VerbosityLevel)
 	}
 
-	serviceCmd := fmt.Sprintf("ZITI_TIME_FORMAT=utc %ssudo -E %s run %s -i %s > %s 2>&1 &", logging, binaryPath, verbosity, configPath, logsPath)
+	var serviceCmd string
+	if self.Mode == ZitiEdgeTunnelModeDefault {
+		serviceCmd = fmt.Sprintf("%s sudo -E %s run -i %s %s > %s 2>&1 &", env, binaryPath, configPath, verbosity, logsPath)
+	} else if self.Mode == ZitiEdgeTunnelModeHost {
+		serviceCmd = fmt.Sprintf("%s %s run-host -i %s %s > %s 2>&1 &", env, binaryPath, configPath, verbosity, logsPath)
+	} else {
+		return fmt.Errorf("unsupported ziti-edge-tunnel mode: %v", self.Mode)
+	}
+
 	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

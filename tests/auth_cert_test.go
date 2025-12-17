@@ -126,6 +126,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
 
+		time.Sleep(250 * time.Millisecond)
 		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
@@ -215,6 +216,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		token := data.Path("data.token").Data().(string)
 		r.NotEmpty(token)
 
+		time.Sleep(250 * time.Millisecond)
 		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
@@ -256,6 +258,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 
 		identityId := authData.Path("data.identity.id").Data().(string)
 
+		time.Sleep(250 * time.Millisecond)
 		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
