@@ -85,7 +85,17 @@ jobs:
           set -o pipefail
           set -o xtrace
           
-          HIGHEST_VERSION=$(git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          HIGHEST_VERSION=$(
+            gh release list --repo "${GITHUB_REPOSITORY}" \
+                            --limit 999 \
+                            --exclude-drafts \
+                            --exclude-pre-releases \
+                            --json tagName \
+                            --jq '.[].tagName' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1
+          )
           CURRENT_VERSION="${GITHUB_REF_NAME}"
           
           if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
@@ -93,6 +103,8 @@ jobs:
           else
             echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   promote_docker:
     name: Tag Container Image ${{ matrix.image.repo }}:latest
