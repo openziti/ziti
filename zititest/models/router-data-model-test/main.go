@@ -241,42 +241,42 @@ var m = &model.Model{
 			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
+				ctrls := &models.CtrlClients{}
+				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
-					task := createNewService(ctrls.getCtrl("ctrl1"), nil)
+					task := createNewService(ctrls.GetCtrl("ctrl1"), nil)
 					tasks = append(tasks, task)
 				}
 				return parallel.ExecuteLabeled(tasks, 2, nil)
 			}))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
+				ctrls := &models.CtrlClients{}
+				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
-					task := createNewIdentity(ctrls.getCtrl("ctrl1"))
+					task := createNewIdentity(ctrls.GetCtrl("ctrl1"))
 					tasks = append(tasks, task)
 				}
 				return parallel.ExecuteLabeled(tasks, 2, nil)
 			}))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				ctrls := &CtrlClients{}
-				if err := ctrls.init(run, "#ctrl1"); err != nil {
+				ctrls := &models.CtrlClients{}
+				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
-					task := createNewServicePolicy(ctrls.getCtrl("ctrl1"))
+					task := createNewServicePolicy(ctrls.GetCtrl("ctrl1"))
 					tasks = append(tasks, task)
 				}
 				return parallel.ExecuteLabeled(tasks, 2, nil)

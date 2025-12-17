@@ -1,6 +1,7 @@
-name: Validation (Links)
+name: Validation (Circuits)
 
 on:
+  pull_request:
   workflow_call:
   workflow_dispatch:
 
@@ -16,11 +17,11 @@ env:
   AWS_DEFAULT_REGION: "us-east-2"
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
   BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
-
+  TEST_TYPE: "circuit-test"
 
 jobs:
   link-validation:
-    name: Link Validation
+    name: Circuit Validation
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-24.04
@@ -50,34 +51,34 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          pushd zititest && go install ./... && popd
+          pushd zititest && go install -tags all ./... && popd
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/links-test create -d links-test-${GITHUB_RUN_NUMBER} -n links-test-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-links-test,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
-          $(go env GOPATH)/bin/links-test up
-          $(go env GOPATH)/bin/links-test exec validateUp
+          $(go env GOPATH)/bin/${TEST_TYPE} create -d ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -n ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-${TEST_TYPE},ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/${TEST_TYPE} up
+          $(go env GOPATH)/bin/${TEST_TYPE} exec validateUp
 
       - name: Run Loop Validation
         shell: bash
         timeout-minutes: 380
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/links-test exec-loop 4h sowChaos validateUp validateLinks
+          $(go env GOPATH)/bin/${TEST_TYPE} exec-loop 1h testIteration
 
       - name: Create Logs Archive
         if: always()
         run: |
-          $(go env GOPATH)/bin/links-test get files '*' "./logs/{{ .Id }}/" ./logs
+          $(go env GOPATH)/bin/${TEST_TYPE} get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: links-test-logs-${{ github.run_id }}
+          name: ${{ env.TEST_TYPE }}-logs-${{ github.run_id }}
           path: logs/
           compression-level: 7
           retention-days: 5
@@ -87,4 +88,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          $(go env GOPATH)/bin/links-test dispose
+          $(go env GOPATH)/bin/${TEST_TYPE} dispose

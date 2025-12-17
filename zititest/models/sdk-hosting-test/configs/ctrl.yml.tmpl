@@ -15,7 +15,12 @@ identity:
 
 trustDomain: sdk-hosting-test
 
-commandRateLimiter:
+command:
+  background:
+    enabled: true
+    queueSize: 10
+    dropWhenFull: true
+  rateLimiter:
     enabled:   true
     maxQueued: 25
 

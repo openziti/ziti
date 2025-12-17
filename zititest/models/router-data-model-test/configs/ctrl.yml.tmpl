@@ -14,6 +14,11 @@ commandRateLimiter:
     enabled:   true
     maxQueued: 25
 
+tls:
+  handshakeTimeout: 30s
+  rateLimiter:
+    enabled: true
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262
