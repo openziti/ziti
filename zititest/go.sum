@@ -623,8 +623,8 @@ github.com/openziti/identity v1.0.120 h1:CSeN5YoP8dG+FKoBY8RclOzDtC8+8Wmy3YVV9IF
 github.com/openziti/identity v1.0.120/go.mod h1:mrL36/aFHVOpaGljCtFxRR/UameAtVIalqE8gi6aSr8=
 github.com/openziti/jwks v1.0.6 h1:PR+9OVaMO8oHEoVQmHqeUBExWwLWyODEGJQK2DXHaqE=
 github.com/openziti/jwks v1.0.6/go.mod h1:t4xxq8vlXGsPn29kiQVnZBBDDnEoOFqtJoHibkJunQQ=
-github.com/openziti/metrics v1.4.2 h1:zaBj5DrvRGPWPhS1w7XNkTPyX4KUYwToNGMCtJrkCv8=
-github.com/openziti/metrics v1.4.2/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
+github.com/openziti/metrics v1.4.3 h1:KUlhHtTH1rt2Ry59xDMlXIwNwkSnoJbqHWoflKlqvl4=
+github.com/openziti/metrics v1.4.3/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.84 h1:TLJkPfgyj+UXQrtAMlLc1biyOXwhqm5MF7PbG3BN8D0=
 github.com/openziti/runzmd v1.0.84/go.mod h1:oPFspRH9aJ63v4hHlQOghD3vafK6BD928LKlc3+/SFk=
 github.com/openziti/sdk-golang v1.3.1 h1:9BfVDYHnaI9v5cliy1KDQZxxLw20+eWI5/2zrjGWg3M=

@@ -65,7 +65,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.81
 	github.com/openziti/identity v1.0.120
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.4.2
+	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.84
 	github.com/openziti/sdk-golang v1.3.1
 	github.com/openziti/secretstream v0.1.42
