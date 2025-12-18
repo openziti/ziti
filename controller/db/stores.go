@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
@@ -362,7 +363,7 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Cer
 	}
 
 	if err = RunMigrations(db, externalStores, signingCert); err != nil {
-		return nil, err
+		return nil, errorz.NewUnhandled(fmt.Errorf("edge datastore migrations failed: %w", err))
 	}
 
 	return externalStores, nil
