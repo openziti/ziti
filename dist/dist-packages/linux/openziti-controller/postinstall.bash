@@ -27,10 +27,14 @@ makeEmptyRestrictedFile() {
 }
 
 loadEnvFile() {
-  # shellcheck disable=SC1090
-  source "${ZITI_CTRL_SVC_ENV_FILE}"
-  # shellcheck disable=SC1090
-  source "${ZITI_CTRL_BOOT_ENV_FILE}"
+  if [ -s "${ZITI_CTRL_SVC_ENV_FILE}" ]; then
+    # shellcheck disable=SC1090
+    source "${ZITI_CTRL_SVC_ENV_FILE}"
+  fi
+  if [ -s "${ZITI_CTRL_BOOT_ENV_FILE}" ]; then
+    # shellcheck disable=SC1090
+    source "${ZITI_CTRL_BOOT_ENV_FILE}"
+  fi
 }
 
 # initialize a file descriptor for debug output
