@@ -16,14 +16,14 @@
 
 package permissions
 
-type AlwaysAllow struct{}
+type RequireEntityAccess struct{}
 
-var always = &AlwaysAllow{}
+var requiredEntityAccess = RequireEntityAccess{}
 
-func (a *AlwaysAllow) IsAllowed(_ ...string) bool {
-	return true
+func HasEntityAccess() RequireEntityAccess {
+	return requiredEntityAccess
 }
 
-func Always() *AlwaysAllow {
-	return always
+func (ia RequireEntityAccess) IsAllowed(ctx Context) bool {
+	return ctx.GetEntityType() != "" && ctx.HasPermission(ctx.GetEntityType())
 }

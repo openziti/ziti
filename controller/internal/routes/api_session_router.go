@@ -20,8 +20,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/api_session"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -42,15 +42,18 @@ func NewApiSessionRouter() *ApiSessionHandler {
 
 func (ir *ApiSessionHandler) Register(ae *env.AppEnv) {
 	ae.ManagementApi.APISessionDeleteAPISessionsHandler = api_session.DeleteAPISessionsHandlerFunc(func(params api_session.DeleteAPISessionsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(ir.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Delete)
+		return ae.IsAllowed(ir.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 
 	ae.ManagementApi.APISessionDetailAPISessionsHandler = api_session.DetailAPISessionsHandlerFunc(func(params api_session.DetailAPISessionsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(ir.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(ir.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 
 	ae.ManagementApi.APISessionListAPISessionsHandler = api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.DefaultOpsAccess())
 	})
 }
 

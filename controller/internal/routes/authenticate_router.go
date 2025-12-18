@@ -17,6 +17,10 @@
 package routes
 
 import (
+	"net"
+	"net/http"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -30,12 +34,9 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
-	"net"
-	"net/http"
-	"time"
 )
 
 func init() {

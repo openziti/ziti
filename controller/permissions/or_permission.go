@@ -16,17 +16,19 @@
 
 package permissions
 
-type RequireAuthenticated struct{}
-
-var isAuthenticated = &RequireAuthenticated{}
-
-func IsAuthenticated() *RequireAuthenticated {
-	return isAuthenticated
+type RequireOneOf struct {
+	resolvers []Resolver
 }
 
-func (ir *RequireAuthenticated) IsAllowed(identityPerms ...string) bool {
-	for _, p := range identityPerms {
-		if p == AuthenticatedPermission {
+func HasOneOf(resolvers ...Resolver) *RequireOneOf {
+	return &RequireOneOf{
+		resolvers: resolvers,
+	}
+}
+
+func (ia *RequireOneOf) IsAllowed(ctx Context) bool {
+	for _, resolver := range ia.resolvers {
+		if resolver.IsAllowed(ctx) {
 			return true
 		}
 	}

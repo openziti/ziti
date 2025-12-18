@@ -19,8 +19,8 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_server/operations/circuit"
 )
@@ -42,15 +42,18 @@ func NewCircuitRouter() *CircuitRouter {
 
 func (r *CircuitRouter) Register(ae *env.AppEnv) {
 	ae.FabricApi.CircuitDetailCircuitHandler = circuit.DetailCircuitHandlerFunc(func(params circuit.DetailCircuitParams) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 
 	ae.FabricApi.CircuitListCircuitsHandler = circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams) middleware.Responder {
-		return ae.IsAllowed(r.ListCircuits, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(r.ListCircuits, params.HTTPRequest, "", "", permissions.DefaultOpsAccess())
 	})
 
 	ae.FabricApi.CircuitDeleteCircuitHandler = circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 }
 

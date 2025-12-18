@@ -20,8 +20,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/posture_checks"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	permissions "github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -43,11 +43,11 @@ func NewPostureCheckTypeRouter() *PostureCheckTypeRouter {
 func (r *PostureCheckTypeRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.PostureChecksDetailPostureCheckTypeHandler = posture_checks.DetailPostureCheckTypeHandlerFunc(func(params posture_checks.DetailPostureCheckTypeParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	ae.ManagementApi.PostureChecksListPostureCheckTypesHandler = posture_checks.ListPostureCheckTypesHandlerFunc(func(params posture_checks.ListPostureCheckTypesParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
 }

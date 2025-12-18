@@ -41,6 +41,7 @@ import (
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/controller/permissions"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -87,7 +88,20 @@ func (self *IdentityManager) NewModelEntity() *Identity {
 	return &Identity{}
 }
 
+func (self *IdentityManager) validateIdentityPermissions(entity *Identity) error {
+	for _, permission := range entity.Permissions {
+		if _, valid := permissions.AllPermissions[permission]; !valid {
+			reason := fmt.Sprintf("invalid permissions '%s'", permission)
+			return errorz.NewFieldApiError(errorz.NewFieldError(reason, "permissions", permission))
+		}
+	}
+	return nil
+}
+
 func (self *IdentityManager) Create(entity *Identity, ctx *change.Context) error {
+	if err := self.validateIdentityPermissions(entity); err != nil {
+		return err
+	}
 	return DispatchCreate[*Identity](self, entity, ctx)
 }
 
@@ -106,6 +120,10 @@ func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enro
 			enrollment.Id = eid.New()
 		}
 		enrollment.IdentityId = &identityModel.Id
+	}
+
+	if err := self.validateIdentityPermissions(identityModel); err != nil {
+		return err
 	}
 
 	cmd := &CreateIdentityWithEnrollmentsCmd{
@@ -216,6 +234,11 @@ func (self *IdentityManager) ApplyCreateWithAuthenticators(cmd *CreateIdentityWi
 }
 
 func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFields, ctx *change.Context) error {
+	if checker == nil || checker.IsUpdated(db.FieldIdentityPermissions) {
+		if err := self.validateIdentityPermissions(entity); err != nil {
+			return err
+		}
+	}
 	return DispatchUpdate[*Identity](self, entity, checker, ctx)
 }
 
@@ -676,6 +699,7 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 		Disabled:                  entity.Disabled,
 		DisabledAt:                timePtrToPb(entity.DisabledAt),
 		DisabledUntil:             timePtrToPb(entity.DisabledUntil),
+		Permissions:               entity.Permissions,
 	}
 
 	for serviceId, configInfo := range entity.ServiceConfigs {
@@ -826,6 +850,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		DisabledAt:                pbTimeToTimePtr(msg.DisabledAt),
 		DisabledUntil:             pbTimeToTimePtr(msg.DisabledUntil),
 		ServiceConfigs:            serviceConfigs,
+		Permissions:               msg.Permissions,
 	}
 
 	for _, intf := range msg.Interfaces {

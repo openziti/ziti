@@ -27,7 +27,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/model"
+	permissions "github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 )
 
@@ -52,32 +53,36 @@ func (r *SessionRouter) Register(ae *env.AppEnv) {
 
 	//Management
 	ae.ManagementApi.SessionDeleteSessionHandler = managementSession.DeleteSessionHandlerFunc(func(params managementSession.DeleteSessionParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 
 	ae.ManagementApi.SessionDetailSessionHandler = managementSession.DetailSessionHandlerFunc(func(params managementSession.DetailSessionParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultOpsAccess())
 	})
 
 	ae.ManagementApi.SessionListSessionsHandler = managementSession.ListSessionsHandlerFunc(func(params managementSession.ListSessionsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultOpsAccess())
 	})
 
 	ae.ManagementApi.SessionDetailSessionRoutePathHandler = managementSession.DetailSessionRoutePathHandlerFunc(func(params managementSession.DetailSessionRoutePathParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.DetailRoutePath(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.DetailRoutePath(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultOpsAccess())
 	})
 
 	//Client
 	ae.ClientApi.SessionDeleteSessionHandler = clientSession.DeleteSessionHandlerFunc(func(params clientSession.DeleteSessionParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.DeleteClient, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.SessionDetailSessionHandler = clientSession.DetailSessionHandlerFunc(func(params clientSession.DetailSessionParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.DetailClient, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.SessionListSessionsHandler = clientSession.ListSessionsHandlerFunc(func(params clientSession.ListSessionsParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.ListClient, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
 	ae.ClientApi.SessionCreateSessionHandler = clientSession.CreateSessionHandlerFunc(func(params clientSession.CreateSessionParams, _ interface{}) middleware.Responder {
@@ -87,6 +92,10 @@ func (r *SessionRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler[*model.Session](ae, rc, ae.Managers.Session, MapSessionToRestEntity)
+}
+
+func (r *SessionRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Managers.Session.GetStore())
@@ -109,6 +118,17 @@ func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
+		service, err := ae.Managers.Session.Read(id)
+		if err != nil {
+			return nil, err
+		}
+		return MapSessionToRestEntity(ae, rc, service)
+	})
+}
+
+func (r *SessionRouter) DetailClient(ae *env.AppEnv, rc *response.RequestContext) {
+	// DetailWithHandler won't do search limiting by logged in user
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		service, err := ae.Managers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
 		if err != nil {
 			return nil, err
@@ -118,6 +138,12 @@ func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	Delete(rc, func(rc *response.RequestContext, id string) error {
+		return ae.Managers.Session.Delete(id, rc.NewChangeContext())
+	})
+}
+
+func (r *SessionRouter) DeleteClient(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
 		return ae.Managers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId, rc.NewChangeContext())
 	})

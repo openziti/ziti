@@ -18,11 +18,14 @@ package response
 
 import (
 	"errors"
+	"fmt"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 
 	"net/http"
 	"time"
@@ -48,15 +51,49 @@ type RequestContext struct {
 	Identity          *model.Identity
 	AuthPolicy        *model.AuthPolicy
 	AuthQueries       rest_model.AuthQueryList
-	ActivePermissions []string
+	ActivePermissions map[string]struct{}
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
+
+	Api        permissions.Api
+	EntityType string
+	Action     permissions.Action
 
 	entityId    string
 	entitySubId string
 	Body        []byte
 	StartTime   time.Time
 	IsJwtToken  bool
+}
+
+func (rc *RequestContext) GetApi() permissions.Api {
+	return rc.Api
+}
+
+func (rc *RequestContext) HasPermission(s string) bool {
+	_, hasPermission := rc.ActivePermissions[s]
+	return hasPermission
+}
+
+func (rc *RequestContext) GetEntityType() string {
+	return rc.EntityType
+}
+
+func (rc *RequestContext) GetEntityAction() string {
+	if rc.EntityType != "" && string(rc.Action) != "" {
+		return fmt.Sprintf("%s.%s", rc.EntityType, rc.Action)
+	}
+	return ""
+}
+
+func (rc *RequestContext) GetAction() permissions.Action {
+	return rc.Action
+}
+
+func (rc *RequestContext) InitPermissionsContext(api permissions.Api, entityType string, action permissions.Action) {
+	rc.Api = api
+	rc.EntityType = entityType
+	rc.Action = action
 }
 
 func (rc *RequestContext) GetId() string {

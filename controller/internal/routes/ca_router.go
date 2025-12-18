@@ -31,8 +31,8 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/pkg/errors"
 )
@@ -54,39 +54,47 @@ func NewCaRouter() *CaRouter {
 
 func (r *CaRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.CertificateAuthorityDeleteCaHandler = certificate_authority.DeleteCaHandlerFunc(func(params certificate_authority.DeleteCaParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Delete)
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityDetailCaHandler = certificate_authority.DetailCaHandlerFunc(func(params certificate_authority.DetailCaParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Read)
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityListCasHandler = certificate_authority.ListCasHandlerFunc(func(params certificate_authority.ListCasParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Read)
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityUpdateCaHandler = certificate_authority.UpdateCaHandlerFunc(func(params certificate_authority.UpdateCaParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityCreateCaHandler = certificate_authority.CreateCaHandlerFunc(func(params certificate_authority.CreateCaParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Create)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityPatchCaHandler = certificate_authority.PatchCaHandlerFunc(func(params certificate_authority.PatchCaParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Update)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityVerifyCaHandler = certificate_authority.VerifyCaHandlerFunc(func(params certificate_authority.VerifyCaParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Update)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.VerifyCert(ae, rc, params)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 	ae.ManagementApi.CertificateAuthorityGetCaJWTHandler = certificate_authority.GetCaJWTHandlerFunc(func(params certificate_authority.GetCaJWTParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "ca", permissions.Read)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.generateJwt(ae, rc)
-		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		}, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
 	})
 
 }

@@ -22,7 +22,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/internal/permissions"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
@@ -45,7 +45,8 @@ func NewInspectRouter() *InspectRouter {
 
 func (r *InspectRouter) Register(ae *env.AppEnv) {
 	ae.FabricApi.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Inspect(ae, rc, params.Request) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Inspect(ae, rc, params.Request) }, params.HTTPRequest, "", "", permissions.OpsNoReadOnlyAccess())
 	})
 }
 

@@ -19,11 +19,12 @@
 package tests
 
 import (
-	"github.com/google/uuid"
-	"github.com/openziti/edge-api/rest_model"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
 )
 
 func Test_EnrollmentRefresh(t *testing.T) {
@@ -40,8 +41,8 @@ func Test_EnrollmentRefresh(t *testing.T) {
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
 			},
-			Name:    S(uuid.NewString()),
-			IsAdmin: B(false),
+			Name:    ToPtr(uuid.NewString()),
+			IsAdmin: ToPtr(false),
 			Type:    &idType,
 		}
 

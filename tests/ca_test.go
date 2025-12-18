@@ -4,13 +4,14 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
+	"sort"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/model"
-	"net/http"
-	"sort"
-	"testing"
 )
 
 func Test_CA(t *testing.T) {
@@ -374,20 +375,20 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
-				Location:        S(rest_model.ExternalIDClaimLocationCOMMONNAME),
-				Matcher:         S(rest_model.ExternalIDClaimMatcherALL),
-				MatcherCriteria: S(""),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -429,20 +430,20 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
-				Location:        S(rest_model.ExternalIDClaimLocationSANURI),
-				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: S("spiffe"),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: ToPtr("spiffe"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -484,20 +485,20 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
-				Location:        S(rest_model.ExternalIDClaimLocationSANEMAIL),
-				Matcher:         S(rest_model.ExternalIDClaimMatcherSUFFIX),
-				MatcherCriteria: S("@example.org"),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSUFFIX),
+				MatcherCriteria: ToPtr("@example.org"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -539,13 +540,13 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, privKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem:                   S(caPEM.String()),
+			CertPem:                   ToPtr(caPEM.String()),
 			ExternalIDClaim:           nil,
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -578,20 +579,20 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
-				Location:        S(rest_model.ExternalIDClaimLocationSANEMAIL),
-				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: S("@example.org"),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: ToPtr("@example.org"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -607,20 +608,20 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem: S(caPEM.String()),
+			CertPem: ToPtr(caPEM.String()),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I(0),
+				Index:           ToPtr[int64](0),
 				Location:        nil,
-				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: S("@example.org"),
-				Parser:          S(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  S(""),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: ToPtr("@example.org"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			},
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -636,12 +637,12 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem:                   S(caPEM.String()),
+			CertPem:                   ToPtr(caPEM.String()),
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -654,12 +655,12 @@ func Test_CA(t *testing.T) {
 			ctx.testContextChanged(t)
 			caPatch := &rest_model.CaPatch{
 				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
-					Index:           I(0),
-					Location:        S(rest_model.ExternalIDClaimLocationCOMMONNAME),
-					Matcher:         S(rest_model.ExternalIDClaimMatcherALL),
-					MatcherCriteria: S(""),
-					Parser:          S(rest_model.ExternalIDClaimParserNONE),
-					ParserCriteria:  S(""),
+					Index:           ToPtr[int64](0),
+					Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+					Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+					MatcherCriteria: ToPtr(""),
+					Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+					ParserCriteria:  ToPtr(""),
 				},
 			}
 
@@ -696,12 +697,12 @@ func Test_CA(t *testing.T) {
 		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
 
 		caCreate := &rest_model.CaCreate{
-			CertPem:                   S(caPEM.String()),
+			CertPem:                   ToPtr(caPEM.String()),
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(true),
-			IsAutoCaEnrollmentEnabled: B(true),
-			IsOttCaEnrollmentEnabled:  B(true),
-			Name:                      S(eid.New()),
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(eid.New()),
 		}
 
 		caCreateResult := &rest_model.CreateEnvelope{}
@@ -714,12 +715,12 @@ func Test_CA(t *testing.T) {
 			ctx.testContextChanged(t)
 			caPatch := &rest_model.CaPatch{
 				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
-					Index:           I(0),
-					Location:        S(rest_model.ExternalIDClaimPatchLocationSANURI),
-					Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
-					MatcherCriteria: S("spiffe"),
-					Parser:          S(rest_model.ExternalIDClaimParserNONE),
-					ParserCriteria:  S(""),
+					Index:           ToPtr[int64](0),
+					Location:        ToPtr(rest_model.ExternalIDClaimPatchLocationSANURI),
+					Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+					MatcherCriteria: ToPtr("spiffe"),
+					Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+					ParserCriteria:  ToPtr(""),
 				},
 			}
 

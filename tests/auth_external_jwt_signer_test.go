@@ -22,18 +22,19 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/go-openapi/strfmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"github.com/openziti/edge-api/rest_model"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/controller/model"
 	"net"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/go-openapi/strfmt"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/controller/model"
 )
 
 type jsonWebKey struct {
@@ -165,10 +166,10 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	validJwksSigner := &rest_model.ExternalJWTSignerCreate{
 		JwksEndpoint: &jwksEndpoint,
-		Enabled:      B(true),
-		Name:         S("Test JWT Signer - JWKS - Enabled"),
-		Issuer:       S("the-very-best-iss-jwks"),
-		Audience:     S("the-very-best-aud-jwks"),
+		Enabled:      ToPtr(true),
+		Name:         ToPtr("Test JWT Signer - JWKS - Enabled"),
+		Issuer:       ToPtr("the-very-best-iss-jwks"),
+		Audience:     ToPtr("the-very-best-aud-jwks"),
 	}
 
 	createResponseEnv := &rest_model.CreateEnvelope{}
@@ -189,11 +190,11 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	validJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem:         &validJwtSignerCertPem,
-		Enabled:         B(true),
-		Name:            S("Test JWT Signer - Enabled"),
-		Kid:             S(uuid.NewString()),
-		Issuer:          S("the-very-best-iss"),
-		Audience:        S("the-very-best-aud"),
+		Enabled:         ToPtr(true),
+		Name:            ToPtr("Test JWT Signer - Enabled"),
+		Kid:             ToPtr(uuid.NewString()),
+		Issuer:          ToPtr("the-very-best-iss"),
+		Audience:        ToPtr("the-very-best-aud"),
 		ClientID:        &validJwtSignerClientId,
 		Scopes:          validJwtSignerScopes,
 		ExternalAuthURL: &validJwtSignerAuthUrl,
@@ -214,12 +215,12 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	validExtIdJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem:       &validExtIdJwtSignerCertPem,
-		Enabled:       B(true),
-		Name:          S("Test JWT Signer - Enabled - ExternalId"),
-		Kid:           S(uuid.NewString()),
-		Issuer:        S("the-very-best-iss-ext"),
-		Audience:      S("the-very-best-aud-ext"),
-		UseExternalID: B(true),
+		Enabled:       ToPtr(true),
+		Name:          ToPtr("Test JWT Signer - Enabled - ExternalId"),
+		Kid:           ToPtr(uuid.NewString()),
+		Issuer:        ToPtr("the-very-best-iss-ext"),
+		Audience:      ToPtr("the-very-best-aud-ext"),
+		UseExternalID: ToPtr(true),
 	}
 
 	createResponseEnv = &rest_model.CreateEnvelope{}
@@ -236,13 +237,13 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	validAltExtIdJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem:        &validAltExtIdJwtSignerCertPem,
-		Enabled:        B(true),
-		Name:           S("Test JWT Signer - Enabled - ExternalId - Alt"),
-		Kid:            S(uuid.NewString()),
-		Issuer:         S("the-very-best-iss-ext-alt"),
-		Audience:       S("the-very-best-aud-ext-alt"),
-		UseExternalID:  B(true),
-		ClaimsProperty: S("alt"),
+		Enabled:        ToPtr(true),
+		Name:           ToPtr("Test JWT Signer - Enabled - ExternalId - Alt"),
+		Kid:            ToPtr(uuid.NewString()),
+		Issuer:         ToPtr("the-very-best-iss-ext-alt"),
+		Audience:       ToPtr("the-very-best-aud-ext-alt"),
+		UseExternalID:  ToPtr(true),
+		ClaimsProperty: ToPtr("alt"),
 	}
 
 	createResponseEnv = &rest_model.CreateEnvelope{}
@@ -261,11 +262,11 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 	notEnabledJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem:  &notEnabledJwtSignerCertPem,
-		Enabled:  B(false),
-		Name:     S("Test JWT Signer - Not Enabled"),
-		Kid:      S(uuid.NewString()),
-		Issuer:   S("test-issuer"),
-		Audience: S("test-audience"),
+		Enabled:  ToPtr(false),
+		Name:     ToPtr("Test JWT Signer - Not Enabled"),
+		Kid:      ToPtr(uuid.NewString()),
+		Issuer:   ToPtr("test-issuer"),
+		Audience: ToPtr("test-audience"),
 	}
 
 	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(notEnabledJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
@@ -592,29 +593,29 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		externalId := uuid.NewString()
 
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					Allowed:           B(false),
-					AllowExpiredCerts: B(false),
+					Allowed:           ToPtr(false),
+					AllowExpiredCerts: ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{validExtIdJwtSignerId},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(5),
-					MaxAttempts:            I(3),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr(int64(5)),
+					MaxAttempts:            ToPtr(int64(3)),
+					MinPasswordLength:      ToPtr(int64(5)),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 		authPolicyCreateResult := &rest_model.CreateEnvelope{}
@@ -629,10 +630,10 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		identityType := rest_model.IdentityTypeUser
 
 		identityCreate := rest_model.IdentityCreate{
-			AuthPolicyID: S(authPolicyCreateResult.Data.ID),
-			ExternalID:   S(externalId),
-			IsAdmin:      B(false),
-			Name:         S(uuid.NewString()),
+			AuthPolicyID: ToPtr(authPolicyCreateResult.Data.ID),
+			ExternalID:   ToPtr(externalId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(uuid.NewString()),
 			Type:         &identityType,
 		}
 
@@ -679,29 +680,29 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		externalId := uuid.NewString()
 
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					Allowed:           B(false),
-					AllowExpiredCerts: B(false),
+					Allowed:           ToPtr(false),
+					AllowExpiredCerts: ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{validExtIdJwtSignerId},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(5),
-					MaxAttempts:            I(3),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr(int64(5)),
+					MaxAttempts:            ToPtr(int64(3)),
+					MinPasswordLength:      ToPtr(int64(5)),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 		authPolicyCreateResult := &rest_model.CreateEnvelope{}
@@ -716,10 +717,10 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		identityType := rest_model.IdentityTypeUser
 
 		identityCreate := rest_model.IdentityCreate{
-			AuthPolicyID: S(authPolicyCreateResult.Data.ID),
-			ExternalID:   S(externalId),
-			IsAdmin:      B(false),
-			Name:         S(uuid.NewString()),
+			AuthPolicyID: ToPtr(authPolicyCreateResult.Data.ID),
+			ExternalID:   ToPtr(externalId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(uuid.NewString()),
 			Type:         &identityType,
 		}
 
@@ -760,29 +761,29 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		externalId := uuid.NewString()
 
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					Allowed:           B(false),
-					AllowExpiredCerts: B(false),
+					Allowed:           ToPtr(false),
+					AllowExpiredCerts: ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{validExtIdJwtSignerId},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(5),
-					MaxAttempts:            I(3),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr(int64(5)),
+					MaxAttempts:            ToPtr(int64(3)),
+					MinPasswordLength:      ToPtr(int64(5)),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 		authPolicyCreateResult := &rest_model.CreateEnvelope{}
@@ -797,10 +798,10 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		identityType := rest_model.IdentityTypeUser
 
 		identityCreate := rest_model.IdentityCreate{
-			AuthPolicyID: S(authPolicyCreateResult.Data.ID),
-			ExternalID:   S(externalId),
-			IsAdmin:      B(false),
-			Name:         S(uuid.NewString()),
+			AuthPolicyID: ToPtr(authPolicyCreateResult.Data.ID),
+			ExternalID:   ToPtr(externalId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(uuid.NewString()),
 			Type:         &identityType,
 		}
 
@@ -841,29 +842,29 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		externalId := uuid.NewString()
 
 		authPolicyCreate := &rest_model.AuthPolicyCreate{
-			Name: S(uuid.NewString()),
+			Name: ToPtr(uuid.NewString()),
 			Primary: &rest_model.AuthPolicyPrimary{
 				Cert: &rest_model.AuthPolicyPrimaryCert{
-					Allowed:           B(false),
-					AllowExpiredCerts: B(false),
+					Allowed:           ToPtr(false),
+					AllowExpiredCerts: ToPtr(false),
 				},
 				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
-					Allowed:        B(true),
+					Allowed:        ToPtr(true),
 					AllowedSigners: []string{validAltExtIdJwtSignerId},
 				},
 				Updb: &rest_model.AuthPolicyPrimaryUpdb{
-					Allowed:                B(false),
-					LockoutDurationMinutes: I(5),
-					MaxAttempts:            I(3),
-					MinPasswordLength:      I(5),
-					RequireMixedCase:       B(true),
-					RequireNumberChar:      B(true),
-					RequireSpecialChar:     B(true),
+					Allowed:                ToPtr(false),
+					LockoutDurationMinutes: ToPtr(int64(5)),
+					MaxAttempts:            ToPtr(int64(3)),
+					MinPasswordLength:      ToPtr(int64(5)),
+					RequireMixedCase:       ToPtr(true),
+					RequireNumberChar:      ToPtr(true),
+					RequireSpecialChar:     ToPtr(true),
 				},
 			},
 			Secondary: &rest_model.AuthPolicySecondary{
 				RequireExtJWTSigner: nil,
-				RequireTotp:         B(false),
+				RequireTotp:         ToPtr(false),
 			},
 		}
 		authPolicyCreateResult := &rest_model.CreateEnvelope{}
@@ -878,10 +879,10 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		identityType := rest_model.IdentityTypeUser
 
 		identityCreate := rest_model.IdentityCreate{
-			AuthPolicyID: S(authPolicyCreateResult.Data.ID),
-			ExternalID:   S(externalId),
-			IsAdmin:      B(false),
-			Name:         S(uuid.NewString()),
+			AuthPolicyID: ToPtr(authPolicyCreateResult.Data.ID),
+			ExternalID:   ToPtr(externalId),
+			IsAdmin:      ToPtr(false),
+			Name:         ToPtr(uuid.NewString()),
 			Type:         &identityType,
 		}
 

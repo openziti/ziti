@@ -56,15 +56,15 @@ func Test_Identity(t *testing.T) {
 					"two": 2,
 				},
 			},
-			AuthPolicyID:             S("default"),
+			AuthPolicyID:             ToPtr("default"),
 			DefaultHostingCost:       &hostCost,
 			DefaultHostingPrecedence: hostPrecedence,
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
 			},
-			ExternalID:     S(uuid.NewString()),
-			IsAdmin:        B(false),
-			Name:           S(uuid.NewString()),
+			ExternalID:     ToPtr(uuid.NewString()),
+			IsAdmin:        ToPtr(false),
+			Name:           ToPtr(uuid.NewString()),
 			RoleAttributes: &rest_model.Attributes{"one", "two"},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]any{
@@ -111,8 +111,8 @@ func Test_Identity(t *testing.T) {
 		identityType := rest_model.IdentityTypeUser
 		identityCreate := &rest_model.IdentityCreate{
 			Type:    &identityType,
-			Name:    S("identity-name-default-auth-policy"),
-			IsAdmin: B(false),
+			Name:    ToPtr("identity-name-default-auth-policy"),
+			IsAdmin: ToPtr(false),
 		}
 
 		createResponse := &rest_model.CreateEnvelope{}
@@ -175,7 +175,7 @@ func Test_Identity(t *testing.T) {
 		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
 
 		identityPatch := &rest_model.IdentityPatch{
-			IsAdmin: B(false),
+			IsAdmin: ToPtr(false),
 		}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identity.Id)
@@ -203,7 +203,7 @@ func Test_Identity(t *testing.T) {
 		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
 
 		identityPatch := &rest_model.IdentityPatch{
-			IsAdmin: B(true),
+			IsAdmin: ToPtr(true),
 		}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identity.Id)
@@ -338,15 +338,15 @@ func Test_Identity(t *testing.T) {
 					"key1": "value1",
 				},
 			},
-			AuthPolicyID:             S("default"),
+			AuthPolicyID:             ToPtr("default"),
 			DefaultHostingCost:       &terminatorCost,
 			DefaultHostingPrecedence: rest_model.TerminatorPrecedenceFailed,
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
 			},
-			ExternalID:     S("hello-there-external-id"),
-			IsAdmin:        B(true),
-			Name:           S("hello-there-name"),
+			ExternalID:     ToPtr("hello-there-external-id"),
+			IsAdmin:        ToPtr(true),
+			Name:           ToPtr("hello-there-name"),
 			RoleAttributes: &rest_model.Attributes{"attribute1"},
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{
@@ -567,8 +567,8 @@ func Test_Identity(t *testing.T) {
 
 		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
-			IsAdmin: B(false),
-			Name:    S("test-identity-disable-cert"),
+			IsAdmin: ToPtr(false),
+			Name:    ToPtr("test-identity-disable-cert"),
 			Type:    &identityType,
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Ott: true,
@@ -595,7 +595,7 @@ func Test_Identity(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				disable := &rest_model.DisableParams{
-					DurationMinutes: I(0),
+					DurationMinutes: ToPtr[int64](0),
 				}
 				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(disable).Post("identities/" + identityCreated.Data.ID + "/disable")
 				ctx.Req.NoError(err)
@@ -640,8 +640,8 @@ func Test_Identity(t *testing.T) {
 		password := "test-identity-disable-updb-password"
 		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
-			IsAdmin: B(false),
-			Name:    S("test-identity-disable-updb"),
+			IsAdmin: ToPtr(false),
+			Name:    ToPtr("test-identity-disable-updb"),
 			Type:    &identityType,
 			Enrollment: &rest_model.IdentityCreateEnrollment{
 				Updb: username,
@@ -673,7 +673,7 @@ func Test_Identity(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				disable := &rest_model.DisableParams{
-					DurationMinutes: I(0),
+					DurationMinutes: ToPtr[int64](0),
 				}
 				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(disable).Post("identities/" + identityCreated.Data.ID + "/disable")
 				ctx.Req.NoError(err)
@@ -718,12 +718,12 @@ func Test_Identity(t *testing.T) {
 		jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Identity Disabled Test 01")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled:  B(true),
-			Name:     S("Test JWT Signer - Auth Policy - Identity Disable Test 01"),
-			Kid:      S(uuid.NewString()),
-			Issuer:   S(uuid.NewString()),
-			Audience: S(uuid.NewString()),
+			CertPem:  ToPtr(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer - Auth Policy - Identity Disable Test 01"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr(uuid.NewString()),
+			Audience: ToPtr(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -746,8 +746,8 @@ func Test_Identity(t *testing.T) {
 
 		identityType := rest_model.IdentityTypeDefault
 		identity := &rest_model.IdentityCreate{
-			IsAdmin: B(false),
-			Name:    S("test-identity-disable-updb-01"),
+			IsAdmin: ToPtr(false),
+			Name:    ToPtr("test-identity-disable-updb-01"),
 			Type:    &identityType,
 		}
 
@@ -792,7 +792,7 @@ func Test_Identity(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				disable := &rest_model.DisableParams{
-					DurationMinutes: I(0),
+					DurationMinutes: ToPtr[int64](0),
 				}
 				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(disable).Post("identities/" + identityCreated.Data.ID + "/disable")
 				ctx.Req.NoError(err)

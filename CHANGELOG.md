@@ -9,6 +9,7 @@
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 * OIDC/JWT Token-based Enrollment
 * Clustering Performance Improvements
+* Entity level permissions model (BETA)
 
 ## Binding Controller APIs With Identity
 
@@ -357,15 +358,92 @@ The adaptive rate limiter exposes three new metrics:
   3. raft.rate_limiter.window_size (gauge)
     - Current adaptive window size
 
+## Granular Permission System (BETA)
+
+Added a comprehensive granular permission system that allows fine-grained control over identity access to controller management API operations. 
+This replaces the previous binary admin/non-admin model with a flexible role-based permission system.
+
+**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
+but the set of exposed permissions may grow, shrink or change based on user feedback. 
+
+### Permission Model
+
+The permission system supports three levels of authorization:
+
+  1. **Global Permissions**: System-wide access levels
+     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
+     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
+
+  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
+     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
+
+  3. **Action-Level Permissions**: Specific operation access on entity types
+     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
+     - Supports `create`, `read`, `update`, and `delete` actions per entity type
+
+### Supported Entity Permissions
+
+The following entity-level permissions are available:
+
+  - `auth-policy` - Authentication policy management
+  - `ca` - Certificate Authority management
+  - `config` - Configuration management
+  - `config-type` - Configuration type management
+  - `edge-router-policy` - Edge router policy management
+  - `enrollment` - Enrollment management
+  - `external-jwt-signer` - External JWT signer management
+  - `identity` - Identity management
+  - `posture-check` - Posture check management
+  - `router` - Edge and transit router management
+  - `service` - Service management
+  - `service-policy` - Service policy management
+  - `service-edge-router-policy` - Service edge router policy management
+  - `terminator` - Terminator management
+  - `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
+
+### Permission Assignment
+
+Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
+
+### Cross-Entity Operations
+
+Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
+  - Listing services for a service-policy requires `service.read` permission
+  - Listing identities for an edge-router-policy requires `identity.read` permission
+  - Listing configs for a service requires `config.read` permission
+
+**NOTE:** 
+More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
+has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
+as well because it will need to look up the config type id that corresponds to the given config type name.
+
+Similar cross entity read permissions may be required when creating services.
+
+### Admin Protection
+
+Non-admin identities cannot:
+ - Create identities with the `isAdmin` flag
+ - Create identities with any permissions granted
+ - Modify admin-related fields on existing identities
+ - Update or delete admin identities
+ - Grant permissions to identities
+
+These protections ensure that privilege escalation is prevented and admin access remains controlled.
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.41 -> v4.2.42](https://github.com/openziti/channel/compare/v4.2.41...v4.2.42)
-* github.com/openziti/edge-api: [v0.26.50 -> v0.26.51](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.51)
+* github.com/openziti/channel/v4: [v4.2.41 -> v4.2.43](https://github.com/openziti/channel/compare/v4.2.41...v4.2.43)
+* github.com/openziti/edge-api: [v0.26.50 -> v0.26.52](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.52)
+    * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
+
 * github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.81](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.81)
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
 
-* github.com/openziti/identity: [v1.0.118 -> v1.0.119](https://github.com/openziti/identity/compare/v1.0.118...v1.0.119)
-* github.com/openziti/sdk-golang: [v1.2.10 -> v1.3.0](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.3.0)
+* github.com/openziti/identity: [v1.0.118 -> v1.0.120](https://github.com/openziti/identity/compare/v1.0.118...v1.0.120)
+* github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
+    * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
+
+* github.com/openziti/sdk-golang: [v1.2.10 -> v1.3.1](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.3.1)
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
 * github.com/openziti/secretstream: [v0.1.41 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.42)
@@ -374,9 +452,18 @@ The adaptive rate limiter exposes three new metrics:
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.199](https://github.com/openziti/transport/compare/v2.0.198...v2.0.199)
+* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.200](https://github.com/openziti/transport/compare/v2.0.198...v2.0.200)
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
 * github.com/openziti/ziti: [v1.7.0 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.0...v1.8.0)
+    * [Issue #2573](https://github.com/openziti/ziti/issues/2573) - An edge router in a tight restart loop causes a resource leak on routers to which it connects.
+    * [Issue #3430](https://github.com/openziti/ziti/issues/3430) - Add permissions list to identity
+    * [Issue #2109](https://github.com/openziti/ziti/issues/2109) - Add Edge Management Read Only Capability
+    * [Issue #3435](https://github.com/openziti/ziti/issues/3435) - Add edge management API permissions by entity type and action
+    * [Issue #3441](https://github.com/openziti/ziti/issues/3441) - Update router connection tracker to interrogate active connections
+    * [Issue #3451](https://github.com/openziti/ziti/issues/3451) - ci - compare only stable releases when promoting
+    * [Issue #3437](https://github.com/openziti/ziti/issues/3437) - SDK OIDC token updates to routers should return an error if invalid
+    * [Issue #3348](https://github.com/openziti/ziti/issues/3348) - Unable to clear/reset the "tags" property on an entity to an empty object
+    * [Issue #3452](https://github.com/openziti/ziti/issues/3452) - `ziti agent cluster add` has bad behavior if the add address doesn't match the advertise address
     * [Issue #3410](https://github.com/openziti/ziti/issues/3410) - Consolidate fabric REST API code with edge management and edge client code
     * [Issue #3425](https://github.com/openziti/ziti/issues/3425) - RDM not properly responding to tunneler enabled flag changes
     * [Issue #3420](https://github.com/openziti/ziti/issues/3420) - The terminator id cache uses the same id for all terminators in a host.v2 config, resulting in a single terminator
@@ -392,6 +479,7 @@ The adaptive rate limiter exposes three new metrics:
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
     * [Issue #3264](https://github.com/openziti/ziti/issues/3264) - Allow routers to generate alert events in cases of service misconfiguration
+
 
 # Release 1.7.1
 

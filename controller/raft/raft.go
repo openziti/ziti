@@ -31,7 +31,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
+	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/channel/v4"
@@ -112,7 +112,6 @@ func newClusterState(isLeader, isReadWrite bool) ClusterState {
 type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
-	GetCommandRateLimiterConfig() command.RateLimiterConfig
 	GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig
 	GetRaftConfig() *config.RaftConfig
 	GetMetricsRegistry() metrics.Registry

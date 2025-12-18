@@ -36,15 +36,11 @@ import (
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/handler_mgmt"
-	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/controller/permissions"
 	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/controller/xmgmt"
-)
-
-const (
-	ServerHeader = "server"
 )
 
 var _ xweb.ApiHandlerFactory = &FabricManagementApiFactory{}
@@ -217,7 +213,11 @@ func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http
 			return
 		}
 
-		if !permissions.IsAdmin().IsAllowed(rc.ActivePermissions...) {
+		check := permissions.HasOneOf(permissions.IsAdmin(), permissions.HasEntityAccess())
+
+		// require admin or full ops access to access websocket APIs
+		rc.InitPermissionsContext(permissions.Management, permissions.Ops, "")
+		if !check.IsAllowed(rc) {
 			rc.RespondWithApiError(errorz.NewUnauthorized())
 			return
 		}
