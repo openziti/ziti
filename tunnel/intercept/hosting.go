@@ -429,6 +429,9 @@ func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityD
 		if config.ListenOptions.Precedence != nil {
 			options.Precedence = ziti.GetPrecedenceForLabel(*config.ListenOptions.Precedence)
 		}
+		if config.ListenOptions.MaxConnections > 0 {
+			options.MaxTerminators = config.ListenOptions.MaxConnections
+		}
 	}
 
 	if val, ok := identity.ServiceHostingPrecedences[*service.ID]; ok {
