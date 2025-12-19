@@ -56,7 +56,7 @@ const (
 	DefaultRaftCommandHandlerMaxQueueSize = 250
 
 	// DefaultTlsHandshakeRateLimiterEnabled is whether the tls handshake rate limiter is enabled by default
-	DefaultTlsHandshakeRateLimiterEnabled = false
+	DefaultTlsHandshakeRateLimiterEnabled = true
 
 	// TlsHandshakeRateLimiterMinSizeValue is the minimum size that can be configured for the tls handshake rate limiter
 	// window range
@@ -76,11 +76,11 @@ const (
 	TlsHandshakeRateLimiterMetricWorkTimer = "tls_handshake_limiter.work_timer"
 
 	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
-	DefaultTlsHandshakeRateLimiterMaxWindow = 1000
+	DefaultTlsHandshakeRateLimiterMaxWindow = 2500
 
 	DefaultRouterDataModelEnabled            = true
 	MinRouterDataModelLogSize                = 10
-	DefaultRouterDataModelLogSize            = 10_000
+	DefaultRouterDataModelLogSize            = 10000
 	DefaultRouterDataModelListenerBufferSize = 1000
 
 	DefaultRaftSnapshotInterval  = 2 * time.Minute
@@ -937,6 +937,8 @@ func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
 }
 
 func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+	timeoutSpecified := false
+
 	if value, found := cfgmap["rateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
@@ -959,9 +961,15 @@ func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimi
 				return errors.Errorf("invalid value %v for tls.rateLimiter.minSize, must be at most %v",
 					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMaxSizeValue)
 			}
+
+			_, timeoutSpecified = cfgmap["timeout"]
 		} else {
 			return errors.Errorf("invalid type for tls.rateLimiter, should be map instead of %T", value)
 		}
+	}
+
+	if !timeoutSpecified {
+		rateLimitConfig.Timeout = transporttls.GetSharedListenerHandshakeTimeout() + (2 * time.Second)
 	}
 
 	return nil
