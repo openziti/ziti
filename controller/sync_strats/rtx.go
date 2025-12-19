@@ -195,7 +195,9 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		WithField("subscriptionId", rtx.subscriptionId).
 		Info("data model subscription started")
 
-	rtx.handleModelChange()
+	if rtx.routerDataModel.CurrentIndex() > rtx.currentIndex {
+		rtx.handleModelChange()
+	}
 }
 
 func (rtx *RouterSender) handleModelChange() {
@@ -238,7 +240,7 @@ func (rtx *RouterSender) handleModelChange() {
 				WithField("eventIndex", curEvent.Index).
 				WithField("eventType", reflect.TypeOf(curEvent).String()).
 				WithField("synthetic", curEvent.IsSynthetic).
-				Info("data state event sent to router")
+				Debug("data state event sent to router")
 			rtx.currentIndex = curEvent.Index
 		}
 	}
