@@ -80,10 +80,68 @@ while (( $# )); do
 	esac
 done
 
+# Track the explicitly requested artifacts. Some artifacts may be auto-added later
+# (for example, openziti as a docker base image dependency).
+declare -a EXPLICIT_ARTIFACTS=("${ARTIFACTS[@]}")
+
 ARTIFACTS_DIR=./release
 # export to nfpm and assign right after building ziti binary
 export ZITI_VERSION ZITI_REV
 : ${HUB_USER:=kbinghamnetfoundry}
+
+ function buildZitiGoBuilder {
+	# build the builder
+	docker buildx build \
+		--tag=ziti-go-builder \
+		--build-arg uid="$UID" \
+		--load \
+		./dist/docker-images/cross-build/ 2>&3
+	echo "INFO: Built ziti-go-builder"
+}
+
+function runZitiGoBuilder {
+	# Detect go.work and add bind mounts for each 'use' path (other than '.')
+	typeset -a GO_WORK_FILES=("$PWD/go.work" "$PWD/../go.work")
+	GO_WORK_MOUNTS=""
+	for W in ${GO_WORK_FILES[@]}
+	do
+		# use highest precedence workspace file
+		if [[ -s "$W" ]]
+		then
+			while read -r path
+			do
+				path="${path//\"/}" # Remove quotes if any
+				if [[ "$path" != "." && -n "$path" ]]
+				then
+					abs_path="$(realpath "$(dirname ${W})/$path")"
+					base_path="$(basename "$path")"
+					GO_WORK_MOUNTS+=" --volume=$abs_path:/mnt/$base_path"
+				fi
+			done < <(awk '/use *\(/, /\)/ { if ($1 != "use" && $1 != "(" && $1 != ")") print $1 }' "$W")
+			if [[ "$(realpath ${W})" == "$(realpath ${PWD}/../go.work)" ]]
+			then
+				GO_WORK_MOUNTS+=" --volume=${W}:/mnt/go.work"
+				GO_WORK_MOUNTS+=" --volume=${W}.sum:/mnt/go.work.sum"
+			fi
+			break
+		fi
+	done
+	if ! grep -qE '\b/mnt/ziti\b' <<< "${GO_WORK_MOUNTS}"
+	then
+		GO_WORK_MOUNTS+=" --volume=$PWD:/mnt/ziti"
+	fi
+	docker run \
+		--rm \
+		--user "$UID" \
+		--name=ziti-go-builder \
+		${GO_WORK_MOUNTS} \
+		--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
+		${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
+		${GOFIPS140:+--env GOFIPS140="${GOFIPS140:-}"} \
+		--env=TAGS \
+		--env=GOCACHE=/.cache/go-build \
+		ziti-go-builder "$1"
+}
 
 function setArtifactVars {
 	case ${1} in
@@ -105,18 +163,48 @@ function setArtifactVars {
 	esac
 }
 
-# sort to ensure the cli package is built last in case clean is true which must first be run on the services that depend
-# on the CLI
-mapfile -t ARTIFACTS_DESC < <(
-	for i in "${ARTIFACTS[@]}"
+# Build order for packages/binaries:
+# - If CLEAN is requested, clean dependent services before rebuilding the CLI.
+# - Otherwise, ensure openziti (CLI) is built first so other artifacts can use the built
+#   binary for versioning/packaging.
+ARTIFACTS_BUILD=()
+if [[ "${CLEAN}" == true ]]
+then
+	for ARTIFACT in "${ARTIFACTS[@]}"
 	do
-		printf '%d %s\n' ${#i} "$i"
-	done \
-	| sort -unr \
-	| cut -d' ' -f2
-)
-echo "DEBUG: ARTIFACTS_DESC=${ARTIFACTS_DESC[*]}" >&3
-for ARTIFACT in "${ARTIFACTS_DESC[@]}"
+		if [[ "${ARTIFACT}" != openziti ]]
+		then
+			ARTIFACTS_BUILD+=("${ARTIFACT}")
+		fi
+	done
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		if [[ "${ARTIFACT}" == openziti ]]
+		then
+			ARTIFACTS_BUILD+=("${ARTIFACT}")
+			break
+		fi
+	done
+else
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		if [[ "${ARTIFACT}" == openziti ]]
+		then
+			ARTIFACTS_BUILD+=("${ARTIFACT}")
+			break
+		fi
+	done
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		if [[ "${ARTIFACT}" != openziti ]]
+		then
+			ARTIFACTS_BUILD+=("${ARTIFACT}")
+		fi
+	done
+fi
+
+echo "DEBUG: ARTIFACTS_BUILD=${ARTIFACTS_BUILD[*]}" >&3
+for ARTIFACT in "${ARTIFACTS_BUILD[@]}"
 do
 
 	setArtifactVars "$ARTIFACT"
@@ -124,54 +212,8 @@ do
 	do
 		if [[ ${ARTIFACT} == openziti ]]
 		then
-			# build the builder
-			docker buildx build \
-				--tag=ziti-go-builder \
-				--build-arg uid="$UID" \
-				--load \
-				./dist/docker-images/cross-build/ 2>&3
-			echo "INFO: Built ziti-go-builder"
-			# Detect go.work and add bind mounts for each 'use' path (other than '.')
-			typeset -a GO_WORK_FILES=("$PWD/go.work" "$PWD/../go.work")
-			GO_WORK_MOUNTS=""
-			for W in ${GO_WORK_FILES[@]}
-			do
-				# use highest precedence workspace file
-				if [[ -s "$W" ]]
-				then
-					while read -r path
-					do
-						path="${path//\"/}" # Remove quotes if any
-						if [[ "$path" != "." && -n "$path" ]]
-						then
-							abs_path="$(realpath "$(dirname ${W})/$path")"
-							base_path="$(basename "$path")"
-							GO_WORK_MOUNTS+=" --volume=$abs_path:/mnt/$base_path"
-						fi
-					done < <(awk '/use *\(/, /\)/ { if ($1 != "use" && $1 != "(" && $1 != ")") print $1 }' "$W")
-					if [[ "$(realpath ${W})" == "$(realpath ${PWD}/../go.work)" ]]
-					then
-						GO_WORK_MOUNTS+=" --volume=${W}:/mnt/go.work"
-						GO_WORK_MOUNTS+=" --volume=${W}.sum:/mnt/go.work.sum"
-					fi
-					break
-				fi
-			done
-			if ! grep -qE '\b/mnt/ziti\b' <<< "${GO_WORK_MOUNTS}"
-			then
-				GO_WORK_MOUNTS+=" --volume=$PWD:/mnt/ziti"
-			fi
-			docker run \
-				--rm \
-				--user "$UID" \
-				--name=ziti-go-builder \
-				${GO_WORK_MOUNTS} \
-				--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
-				${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
-				${GOFIPS140:+--env GOFIPS140="${GOFIPS140:-}"} \
-				--env=TAGS \
-				--env=GOCACHE=/.cache/go-build \
-				ziti-go-builder $ARCH
+			buildZitiGoBuilder
+			runZitiGoBuilder "$ARCH"
 			echo "INFO: Built ${ARTIFACT} for ${ARCH}"
 			cp -v $ARTIFACTS_DIR/$ARCH/linux/ziti $ARTIFACTS_DIR/ziti;
 		fi
@@ -252,24 +294,79 @@ done
 
 if [[ ${DOCKER} == true ]]
 then
-	# sort to ensure the cli image is built first so it can be source by the controller and router builds
-	mapfile -t ARTIFACTS_ASC < <(
-		for i in "${ARTIFACTS[@]}"
+	# Ensure dependent docker images can reference a locally-built ziti-cli image.
+	# If the requested artifacts include controller or router, make sure openziti is built first.
+	needs_cli=false
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		if [[ ${ARTIFACT} == openziti-controller || ${ARTIFACT} == openziti-router ]]
+		then
+			needs_cli=true
+			break
+		fi
+	done
+	if [[ ${needs_cli} == true ]]
+	then
+		found_cli=false
+		for ARTIFACT in "${ARTIFACTS[@]}"
 		do
-			printf '%d %s\n' "${#i}" "$i"
-		done \
-		| sort -un \
-		| cut -d' ' -f2
-	)
+			if [[ ${ARTIFACT} == openziti ]]
+			then
+				found_cli=true
+				break
+			fi
+		done
+		if [[ ${found_cli} == false ]]
+		then
+			echo "INFO: Adding 'openziti' to artifacts to satisfy docker image dependency (controller/router require ziti-cli base image)" >&4
+			ARTIFACTS=(openziti "${ARTIFACTS[@]}")
+		fi
+	fi
+
+	# Build order: ziti-cli first (if present), then the rest.
+	ARTIFACTS_ASC=()
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		if [[ ${ARTIFACT} != openziti ]]
+		then
+			ARTIFACTS_ASC+=("${ARTIFACT}")
+		fi
+	done
+	if [[ ${needs_cli} == true ]]
+	then
+		ARTIFACTS_ASC=(openziti "${ARTIFACTS_ASC[@]}")
+	fi
 	echo "DEBUG: ARTIFACTS_ASC=${ARTIFACTS_ASC[*]}" >&3
+
+	# Build tag used for the locally-built cli image.
+	LOCAL_ZITI_CLI_IMAGE="ziti-cli"
+	LOCAL_ZITI_CLI_TAG="${ZITI_VERSION#v}-${ZITI_REV}"
 	for ARTIFACT in "${ARTIFACTS_ASC[@]}"
 	do
 		setArtifactVars "$ARTIFACT"
 		for ARCH in "${ARCHS[@]}"
 		do
+			# Controller/router Dockerfiles use a ziti-cli base image. Always reference the local
+			# image (built earlier in this loop) to avoid failing on missing registry tags.
+			ZITI_CLI_IMAGE_BUILD_ARG="${HUB_USER}/ziti-cli"
+			ZITI_CLI_TAG_BUILD_ARG="${ZITI_VERSION#v}-${ZITI_REV}"
+			if [[ ${ARTIFACT} == openziti-controller || ${ARTIFACT} == openziti-router ]]
+			then
+				ZITI_CLI_IMAGE_BUILD_ARG="${LOCAL_ZITI_CLI_IMAGE}"
+				ZITI_CLI_TAG_BUILD_ARG="${LOCAL_ZITI_CLI_TAG}"
+			fi
+
+			# ziti-cli Dockerfile expects the ziti-builder image to exist locally. Build it first,
+			# and ensure it is used during the build.
+			if [[ ${ARTIFACT} == openziti ]]
+			then
+				buildZitiGoBuilder
+				runZitiGoBuilder "$ARCH"
+			fi
+
 			docker buildx build \
-				--build-arg ZITI_CLI_IMAGE="${HUB_USER}/ziti-cli" \
-				--build-arg ZITI_CLI_TAG="${ZITI_VERSION#v}-${ZITI_REV}" \
+				--build-arg ZITI_CLI_IMAGE="${ZITI_CLI_IMAGE_BUILD_ARG}" \
+				--build-arg ZITI_CLI_TAG="${ZITI_CLI_TAG_BUILD_ARG}" \
 				--build-arg DOCKER_BUILD_DIR="./dist/docker-images/${ARTIFACT_SHORT}" \
 				--platform="linux/${ARCH}" \
 				--tag "${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}" \
@@ -279,10 +376,31 @@ then
 				"$PWD" 2>&3
 			echo "INFO: Built Docker image ${HUB_USER}/${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}"
 
+			# Ensure the local cli tag exists for dependent builds, even if HUB_USER differs.
+			if [[ ${ARTIFACT} == openziti ]]
+			then
+				docker tag "${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}" "${LOCAL_ZITI_CLI_IMAGE}:${LOCAL_ZITI_CLI_TAG}" 2>&3 || true
+			fi
+
 			if [[ ${PUSH} == true ]]
 			then
-				docker push "docker.io/${HUB_USER}/${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}"
-				echo "INFO: Pushed Docker image ${HUB_USER}/${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}"
+				# Only push artifacts that were explicitly requested (not auto-added dependencies).
+				explicit=false
+				for EXPLICIT_ARTIFACT in "${EXPLICIT_ARTIFACTS[@]}"
+				do
+					if [[ "${EXPLICIT_ARTIFACT}" == "${ARTIFACT}" ]]
+					then
+						explicit=true
+						break
+					fi
+				done
+				if [[ ${explicit} == true ]]
+				then
+					docker push "docker.io/${HUB_USER}/${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}"
+					echo "INFO: Pushed Docker image ${HUB_USER}/${ARTIFACT_SHORT}:${ZITI_VERSION#v}-${ZITI_REV}"
+				else
+					echo "INFO: Skipping push for auto-added artifact '${ARTIFACT}'" >&4
+				fi
 			fi
 		done
 	done
