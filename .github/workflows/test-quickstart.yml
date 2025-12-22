@@ -95,7 +95,7 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Go Caching
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go-build
