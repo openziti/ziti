@@ -18,6 +18,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,12 +31,43 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+func formatRootCause(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Prefer ApiError cause if present
+	var apiErr *errorz.ApiError
+	if errors.As(err, &apiErr) {
+		if apiErr.Cause != nil {
+			// apiErr may wrap a generic message; print the cause chain
+			return fmt.Sprintf("%v", apiErr.Cause)
+		}
+		return fmt.Sprintf("%v", apiErr)
+	}
+
+	// Fall back to deepest unwrap
+	root := err
+	for {
+		next := errors.Unwrap(root)
+		if next == nil {
+			break
+		}
+		root = next
+	}
+	if root == err {
+		return fmt.Sprintf("%v", err)
+	}
+	return fmt.Sprintf("%v (root cause: %v)", err, root)
+}
 
 func NewRunControllerCmd() *cobra.Command {
 	action := &ControllerAction{}
@@ -83,20 +115,27 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 	ctrlConfig, err := config.LoadConfig(args[0])
 	if err != nil {
 		startLogger.WithError(err).Error("error starting ziti-controller")
-		panic(err)
+		os.Exit(1)
 	}
 
 	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
 	startLogger.Info("starting ziti-controller")
 
 	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
-		fmt.Printf("unable to create fabric controller %+v\n", err)
-		panic(err)
+		cause := formatRootCause(err)
+		startLogger.WithError(err).
+			WithField("cause", cause).
+			Errorf("unable to create fabric controller (cause: %s)", cause)
+		os.Exit(1)
 	}
 
 	self.edgeController, err = server.NewController(self.fabricController)
 	if err != nil {
-		panic(err)
+		cause := formatRootCause(err)
+		startLogger.WithError(err).
+			WithField("cause", cause).
+			Errorf("unable to create edge controller (cause: %s)", cause)
+		os.Exit(1)
 	}
 
 	self.edgeController.Initialize()
@@ -121,7 +160,11 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 
 	self.edgeController.Run()
 	if err := self.fabricController.Run(); err != nil {
-		panic(err)
+		cause := formatRootCause(err)
+		startLogger.WithError(err).
+			WithField("cause", cause).
+			Errorf("fabric controller exited with error (cause: %s)", cause)
+		os.Exit(1)
 	}
 }
 

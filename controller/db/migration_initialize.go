@@ -827,19 +827,33 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 }
 
 func (m *Migrations) createConfigType(step *boltz.MigrationStep, configType *ConfigType) {
-	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
+	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
+	if step.SetError(err) {
+		return
+	}
 	if cfg == nil {
 		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
-	} else {
-		pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", configType.Name)
+		return
 	}
+	if cfg.Id != configType.Id {
+		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
+		return
+	}
+	pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", configType.Name)
 }
 
 func (m *Migrations) createOrUpdateConfigType(step *boltz.MigrationStep, configType *ConfigType) {
-	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
+	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
+	if step.SetError(err) {
+		return
+	}
 	if cfg == nil {
 		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
-	} else {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, configType, nil))
+		return
 	}
+	if cfg.Id != configType.Id {
+		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
+		return
+	}
+	step.SetError(m.stores.ConfigType.Update(step.Ctx, configType, nil))
 }
