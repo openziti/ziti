@@ -66,7 +66,7 @@ jobs:
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
           path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}
@@ -125,7 +125,7 @@ jobs:
             rpm: x86_64
     steps:
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: "*-${{ matrix.arch.gox }}-${{ matrix.distro.type }}"
           merge-multiple: true
@@ -252,7 +252,7 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Install minikube
-        uses: medyagh/setup-minikube@v0.0.20
+        uses: medyagh/setup-minikube@v0.0.21
         with:
           start: false
 
