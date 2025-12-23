@@ -21,6 +21,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -30,8 +33,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"net/http"
-	"time"
 )
 
 const (
@@ -400,8 +401,15 @@ func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *Authentica
 	}
 
 	if needsUpdate {
-		if err := module.env.GetManagers().Authenticator.Update(authCert.Authenticator, false, fieldChecker, ctx); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
+		task := func() {
+			if err := module.env.GetManagers().Authenticator.Update(authCert.Authenticator, false, fieldChecker, ctx); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("error during cert auth update attempt")
+			}
+		}
+
+		if !module.env.GetManagers().Command.backGroundableTask(task) {
+			pfxlog.Logger().WithField("authenticatorId", authCert.Authenticator.Id).
+				Error("system too busy, unable to queue authenticator for synchronization update")
 		}
 	}
 }

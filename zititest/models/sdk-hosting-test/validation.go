@@ -99,7 +99,7 @@ func validateTerminatorsForCtrlWithChan(run model.Run, c *model.Component, deadl
 }
 
 func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
-	expectedTerminatorCount := int64(30000)
+	expectedTerminatorCount := int64(3 * hostsPerRegion * tunnelersPerHost * servicesPerTunneler *terminatorsPerService)
 	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 			}
 		}
 		if time.Since(lastLog) > time.Minute {
-			logger.Infof("current terminator count: %v, elapsed time: %v", terminatorCount, time.Since(start))
+			logger.Infof("current terminator count: %d/%d, elapsed time: %v", terminatorCount, expectedTerminatorCount, time.Since(start))
 			lastLog = time.Now()
 		}
 	}

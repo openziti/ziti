@@ -758,7 +758,13 @@ func (self *IdentityManager) UpdateSdkEnvInfo(identity *Identity, envInfo *EnvIn
 	}
 
 	if len(updateFields) != 0 {
-		self.PatchInfo(identity, updateFields, changeCtx)
+		task := func() {
+			self.PatchInfo(identity, updateFields, changeCtx)
+		}
+
+		if !self.env.GetManagers().Command.backGroundableTask(task) {
+			pfxlog.Logger().WithField("identityId", identity.Id).Warn("background update queue is full, dropping identity env/sdk update")
+		}
 	}
 
 	return nil

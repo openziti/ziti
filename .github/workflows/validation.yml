@@ -1,0 +1,14 @@
+name: Validation (All)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  circuit-validation:
+    name: Circuit Validation
+    uses: ./.github/workflows/validation-circuits.yml
+
+  link-validation:
+    name: Link Validation
+    uses: ./.github/workflows/validation-links.yml
+
