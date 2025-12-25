@@ -34,6 +34,11 @@ services:
       ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # TCP port of the controller
       ZITI_PWD: ${ZITI_PWD:-}                                                         # password for the default admin user
 
+      # *** create or join a cluster ***
+      ZITI_BOOTSTRAP_CLUSTER: true     # create the first node in the cluster
+      ZITI_CLUSTER_TRUST_DOMAIN: ${ZITI_CLUSTER_TRUST_DOMAIN:-}  # spiffe trust domain shared by all nodes
+      ZITI_CLUSTER_NODE_NAME: ${ZITI_CLUSTER_NODE_NAME:-ctrl1}   # node name for spiffe id
+
       # *** less relevant vars below ***
       ZITI_BOOTSTRAP: true             # bootstrap the controller if "true"
       ZITI_BOOTSTRAP_PKI: true         # make the default PKI if "true"; requires ZITI_BOOTSTRAP=true
