@@ -92,7 +92,7 @@ const (
 	RaftRateLimiterWindowSizeMetricName = "raft.rate_limiter.window_size"
 
 	BackgroundQueueMinSize = 10
-	BackgroundQueueMaxSize = math.MaxUint32
+	BackgroundQueueMaxSize = math.MaxUint32 >> 2
 
 	DefaultBackgroundQueueEnabled      = true
 	DefaultBackgroundQueueSize         = 1000

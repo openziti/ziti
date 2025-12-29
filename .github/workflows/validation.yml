@@ -1,14 +1,34 @@
 name: Validation (All)
 
 on:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   circuit-validation:
     name: Circuit Validation
     uses: ./.github/workflows/validation-circuits.yml
+    secrets: inherit
+
+  ert-terminator-validation:
+    name: ER/T Terminator Validation
+    uses: ./.github/workflows/validation-ert-terminators.yml
+    secrets: inherit
+    needs: circuit-validation
 
   link-validation:
     name: Link Validation
     uses: ./.github/workflows/validation-links.yml
+    secrets: inherit
+    needs: ert-terminator-validation
 
+  router-data-model-validation:
+    name: Router Data Model Validation
+    uses: ./.github/workflows/validation-router-data-model.yml
+    secrets: inherit
+    needs: link-validation
+
+  sdk-status-validation:
+    name: SDK Status Validation
+    uses: ./.github/workflows/validation-sdk-status.yml
+    secrets: inherit

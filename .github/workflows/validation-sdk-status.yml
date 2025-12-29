@@ -1,13 +1,13 @@
-name: Validation (Circuits)
+name: Validation (SDK Status)
 
 on:
   workflow_call:
   workflow_dispatch:
 
 jobs:
-  circuit-validation:
-    name: Circuit Validation
+  sdk-status-validation:
+    name: SDK Status Validation
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
     with:
-      test: circuit-test
+      test: sdk-status-test

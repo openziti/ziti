@@ -1,0 +1,13 @@
+name: Validation (Router Data Model)
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  router-data-model-validation:
+    name: Router Data Model Validation
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: router-data-model-test
