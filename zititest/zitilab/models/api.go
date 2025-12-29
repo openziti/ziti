@@ -3,6 +3,8 @@ package models
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
@@ -11,7 +13,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/openziti/ziti/zitirest"
-	"time"
 )
 
 func ListServices(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ServiceDetail, error) {
@@ -27,6 +28,17 @@ func ListServices(clients *zitirest.Clients, filter string, timeout time.Duratio
 		return nil, err
 	}
 	return result.Payload.Data, nil
+}
+
+func GetServiceId(clients *zitirest.Clients, name string, timeout time.Duration) (string, error) {
+	l, err := ListServices(clients, fmt.Sprintf(`name="%s"`, name), timeout)
+	if err != nil {
+		return "", err
+	}
+	if len(l) == 0 {
+		return "", fmt.Errorf("service '%s' not found", name)
+	}
+	return *l[0].ID, nil
 }
 
 func CreateService(clients *zitirest.Clients, svc *rest_model.ServiceCreate, timeout time.Duration) error {
@@ -77,6 +89,17 @@ func UpdateService(clients *zitirest.Clients, id string, svc *rest_model.Service
 	}, nil)
 
 	return err
+}
+
+func GetIdentityId(clients *zitirest.Clients, name string, timeout time.Duration) (string, error) {
+	l, err := ListIdentities(clients, fmt.Sprintf(`name="%s"`, name), timeout)
+	if err != nil {
+		return "", err
+	}
+	if len(l) == 0 {
+		return "", fmt.Errorf("identity '%s' not found", name)
+	}
+	return *l[0].ID, nil
 }
 
 func ListIdentities(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.IdentityDetail, error) {

@@ -1,13 +1,13 @@
-name: Validation (Links)
+name: Validation (Circuits)
 
 on:
   workflow_call:
   workflow_dispatch:
 
 jobs:
-  links-validation:
-    name: Links Validation
+  circuit-validation:
+    name: Circuit Validation
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
     with:
-      test: links-test
+      test: circuit-test

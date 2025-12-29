@@ -419,6 +419,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 					apiSession := edge_apis.ApiSession(apiSessionOidc)
 					managementClient.ApiSession.Store(&apiSession)
 
+					time.Sleep(time.Second)
 					identityDetail, err := managementClient.GetIdentity(accessClaims.Subject)
 
 					ctx.Req.NoError(err)
