@@ -4,6 +4,11 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -23,12 +28,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"github.com/openziti/ziti/zititest/zitilab/models"
 	"go.etcd.io/bbolt"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 // const TargetZitiVersion = "v0.31.0"
@@ -73,14 +73,14 @@ func (d dbStrategy) PostProcess(router *db.EdgeRouter, c *model.Component) {
 	c.Type.(*zitilab.RouterType).Version = TargetZitiVersion
 }
 
-func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	if err := builder.CreateEdgeRouterHosts(tx, m, d); err != nil {
 		return err
 	}
 	return d.CreateIdentityHosts(tx, m, builder)
 }
 
-func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	stores := builder.GetStores()
 	ids, _, err := stores.Identity.QueryIds(tx, "true limit none")
 	if err != nil {
@@ -221,7 +221,7 @@ var m = &model.Model{
 		},
 	},
 	StructureFactories: []model.Factory{
-		&models.ZitiDbBuilder{Strategy: dbStrategyInstance},
+		&zitilab.ZitiDbBuilder{Strategy: dbStrategyInstance},
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),

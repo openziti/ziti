@@ -5,6 +5,11 @@ on:
         description: The test to run
         type: string
         required: true
+      duration:
+        description: How long to run the test for
+        type: string
+        required: false
+        default: '1h'
 
 # cancel older, redundant runs of same workflow on same branch
 concurrency:
@@ -19,6 +24,7 @@ env:
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
   BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
   TEST_TYPE: ${{ inputs.test }}
+  TEST_DURATION: ${{ inputs.duration }}
 
 jobs:
   validation-test:
@@ -68,7 +74,7 @@ jobs:
         timeout-minutes: 380
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/${TEST_TYPE} exec-loop 5m testIteration
+          $(go env GOPATH)/bin/${TEST_TYPE} exec-loop ${TEST_DURATION} testIteration
 
       - name: Create Logs Archive
         if: always()

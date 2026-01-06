@@ -3,6 +3,11 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -23,12 +28,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"github.com/openziti/ziti/zititest/zitilab/models"
 	"go.etcd.io/bbolt"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 func getDbFile() string {
@@ -57,7 +57,7 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 
 type dbStrategy struct{}
 
-func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (d dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	return builder.CreateEdgeRouterHosts(tx, m, d)
 }
 
@@ -107,7 +107,7 @@ var m = &model.Model{
 	},
 	StructureFactories: []model.Factory{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
-		&models.ZitiDbBuilder{Strategy: dbStrategy{}},
+		&zitilab.ZitiDbBuilder{Strategy: dbStrategy{}},
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),

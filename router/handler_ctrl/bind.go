@@ -40,11 +40,13 @@ type InspectRouterEnv interface {
 }
 
 type bindHandler struct {
-	env                      InspectRouterEnv
-	forwarder                *forwarder.Forwarder
-	xgDialerPool             goroutines.Pool
-	terminatorValidationPool goroutines.Pool
-	ctrlAddressUpdater       CtrlAddressUpdater
+	env                        InspectRouterEnv
+	forwarder                  *forwarder.Forwarder
+	xgDialerPool               goroutines.Pool
+	terminatorValidationPool   goroutines.Pool
+	ctrlAddressUpdater         CtrlAddressUpdater
+	ctrlAddrChangeHandler      channel.TypedReceiveHandler
+	clusterLeaderChangeHandler channel.TypedReceiveHandler
 }
 
 func XgressDialerWorker(_ uint32, f func()) {
@@ -91,11 +93,13 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 	}
 
 	return &bindHandler{
-		env:                      routerEnv,
-		forwarder:                forwarder,
-		xgDialerPool:             xgDialerPool,
-		terminatorValidationPool: terminatorValidationPool,
-		ctrlAddressUpdater:       ctrlAddressUpdater,
+		env:                        routerEnv,
+		forwarder:                  forwarder,
+		xgDialerPool:               xgDialerPool,
+		terminatorValidationPool:   terminatorValidationPool,
+		ctrlAddressUpdater:         ctrlAddressUpdater,
+		ctrlAddrChangeHandler:      newUpdateCtrlAddressesHandler(routerEnv, ctrlAddressUpdater),
+		clusterLeaderChangeHandler: newUpdateClusterLeaderHandler(routerEnv, ctrlAddressUpdater),
 	}, nil
 }
 
@@ -114,8 +118,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.env, self.ctrlAddressUpdater))
-	binding.AddTypedReceiveHandler(newUpdateClusterLeaderHandler(self.env, self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
+	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 

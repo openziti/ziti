@@ -21,6 +21,11 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -40,12 +45,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"github.com/openziti/ziti/zititest/zitilab/models"
 	"go.etcd.io/bbolt"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 const (
@@ -68,7 +68,7 @@ type dbStrategy struct {
 	routerMappings map[string]string
 }
 
-func (self *dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (self *dbStrategy) ProcessDbModel(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	dbFile := self.GetDbFile(m)
 	dbDir := path.Dir(dbFile)
 	mapFile := path.Join(dbDir, "edge-router-mapping.csv")
@@ -110,7 +110,7 @@ func (self *dbStrategy) GetDbFile(m *model.Model) string {
 	return m.MustStringVariable("db_file")
 }
 
-func (self *dbStrategy) ProcessEdgeRouters(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (self *dbStrategy) ProcessEdgeRouters(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	ids, _, err := builder.GetStores().EdgeRouter.QueryIds(tx, "true limit none")
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ func (self *dbStrategy) ProcessEdgeRouters(tx *bbolt.Tx, m *model.Model, builder
 	return nil
 }
 
-func (self *dbStrategy) CreateEnrollIdentitiesAction(tx *bbolt.Tx, m *model.Model, builder *models.ZitiDbBuilder) error {
+func (self *dbStrategy) CreateEnrollIdentitiesAction(tx *bbolt.Tx, m *model.Model, builder *zitilab.ZitiDbBuilder) error {
 	ids, _, err := builder.GetStores().Identity.QueryIds(tx, `type != "Router" limit none`)
 	if err != nil {
 		return err
@@ -278,7 +278,7 @@ var m = &model.Model{
 		},
 	},
 	StructureFactories: []model.Factory{
-		&models.ZitiDbBuilder{Strategy: dbStrategyInstance},
+		&zitilab.ZitiDbBuilder{Strategy: dbStrategyInstance},
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),

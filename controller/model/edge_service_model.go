@@ -61,6 +61,11 @@ func (entity *EdgeService) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Edg
 }
 
 func (entity *EdgeService) validateConfigs(tx *bbolt.Tx, env Env) error {
+	// only need to check for config type conflicts if there is more than 1 config
+	if len(entity.Configs) < 2 {
+		return nil
+	}
+
 	typeMap := map[string]*db.Config{}
 	configStore := env.GetStores().Config
 	for _, id := range entity.Configs {

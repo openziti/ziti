@@ -689,7 +689,8 @@ func createNewService(ctrl *zitirest.Clients, configs []string) parallel.Labeled
 			RoleAttributes:     getRoleAttributes(3),
 			TerminatorStrategy: "smartrouting",
 		}
-		return models.CreateService(ctrl, svc, 15*time.Second)
+		_, err := models.CreateService(ctrl, svc, 15*time.Second)
+		return err
 	})
 }
 

@@ -1,10 +1,11 @@
 name: Validation (All)
 
 on:
-  pull_request:
   workflow_dispatch:
 
 jobs:
+  # Run the first three in sequence, and then the rest in sequence
+  # so we don't run out of cloud resources
   circuit-validation:
     name: Circuit Validation
     uses: ./.github/workflows/validation-circuits.yml
@@ -14,19 +15,16 @@ jobs:
     name: ER/T Terminator Validation
     uses: ./.github/workflows/validation-ert-terminators.yml
     secrets: inherit
-    needs: circuit-validation
 
   link-validation:
     name: Link Validation
     uses: ./.github/workflows/validation-links.yml
     secrets: inherit
-    needs: ert-terminator-validation
 
   router-data-model-validation:
     name: Router Data Model Validation
     uses: ./.github/workflows/validation-router-data-model.yml
     secrets: inherit
-    needs: link-validation
 
   sdk-status-validation:
     name: SDK Status Validation

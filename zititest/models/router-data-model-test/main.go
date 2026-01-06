@@ -116,14 +116,6 @@ var m = &model.Model{
 			})
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
-			//for _, host := range m.SelectHosts("component.ha") {
-			//	delete(host.Region.Hosts, host.Id)
-			//}
-			for _, component := range m.SelectComponents("*") {
-				if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-					ztType.HA = true
-				}
-			}
 			for _, c := range m.SelectComponents(".router") {
 				c.Tags = append(c.Tags, "tunneler")
 			}

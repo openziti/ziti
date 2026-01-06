@@ -18,6 +18,10 @@ package smoke
 
 import (
 	"embed"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
@@ -34,9 +38,6 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"os"
-	"strings"
-	"time"
 )
 
 const ZitiEdgeTunnelVersion = "v1.5.10"
@@ -78,12 +79,6 @@ var Model = &model.Model{
 			if val, _ := m.GetBoolVariable("ha"); !val {
 				for _, host := range m.SelectHosts("component.ha") {
 					delete(host.Region.Hosts, host.Id)
-				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
 				}
 			}
 			return nil

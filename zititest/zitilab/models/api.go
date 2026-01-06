@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/openziti/edge-api/rest_management_api_client/config"
+	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
@@ -41,16 +42,20 @@ func GetServiceId(clients *zitirest.Clients, name string, timeout time.Duration)
 	return *l[0].ID, nil
 }
 
-func CreateService(clients *zitirest.Clients, svc *rest_model.ServiceCreate, timeout time.Duration) error {
+func CreateService(clients *zitirest.Clients, svc *rest_model.ServiceCreate, timeout time.Duration) (string, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
 	defer cancelF()
 
-	_, err := clients.Edge.Service.CreateService(&service.CreateServiceParams{
+	resp, err := clients.Edge.Service.CreateService(&service.CreateServiceParams{
 		Context: ctx,
 		Service: svc,
 	}, nil)
 
-	return err
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Payload.Data.ID, nil
 }
 
 func DeleteService(clients *zitirest.Clients, id string, timeout time.Duration) error {
@@ -173,6 +178,30 @@ func UpdateIdentity(clients *zitirest.Clients, id string, entity *rest_model.Ide
 	return err
 }
 
+func PatchIdentity(clients *zitirest.Clients, id string, entity *rest_model.IdentityPatch, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	_, err := clients.Edge.Identity.PatchIdentity(&identity.PatchIdentityParams{
+		Context:  ctx,
+		ID:       id,
+		Identity: entity,
+	}, nil)
+
+	return err
+}
+
+func GetServicePolicyId(clients *zitirest.Clients, name string, timeout time.Duration) (string, error) {
+	l, err := ListServicePolicies(clients, fmt.Sprintf(`name="%s"`, name), timeout)
+	if err != nil {
+		return "", err
+	}
+	if len(l) == 0 {
+		return "", fmt.Errorf("service policy '%s' not found", name)
+	}
+	return *l[0].ID, nil
+}
+
 func ListServicePolicies(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ServicePolicyDetail, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
 	defer cancelF()
@@ -236,6 +265,17 @@ func UpdateServicePolicy(clients *zitirest.Clients, id string, entity *rest_mode
 	}, nil)
 
 	return err
+}
+
+func GetConfigId(clients *zitirest.Clients, name string, timeout time.Duration) (string, error) {
+	l, err := ListConfigs(clients, fmt.Sprintf(`name="%s"`, name), timeout)
+	if err != nil {
+		return "", err
+	}
+	if len(l) == 0 {
+		return "", fmt.Errorf("config '%s' not found", name)
+	}
+	return *l[0].ID, nil
 }
 
 func ListConfigs(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ConfigDetail, error) {
@@ -463,4 +503,35 @@ func UpdatePostureCheck(clients *zitirest.Clients, id string, entity rest_model.
 	}, nil)
 
 	return err
+}
+
+func CreateEdgeRouter(clients *zitirest.Clients, entity *rest_model.EdgeRouterCreate, timeout time.Duration) (string, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	resp, err := clients.Edge.EdgeRouter.CreateEdgeRouter(&edge_router.CreateEdgeRouterParams{
+		Context:    ctx,
+		EdgeRouter: entity,
+	}, nil)
+
+	if err != nil || resp.Payload == nil || resp.Payload.Data == nil {
+		return "", err
+	}
+
+	return resp.Payload.Data.ID, nil
+}
+
+func ListEdgeRouters(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.EdgeRouterDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	result, err := clients.Edge.EdgeRouter.ListEdgeRouters(&edge_router.ListEdgeRoutersParams{
+		Filter:  &filter,
+		Context: ctx,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return result.Payload.Data, nil
 }

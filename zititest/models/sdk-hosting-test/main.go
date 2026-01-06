@@ -149,12 +149,6 @@ var m = &model.Model{
 				for _, host := range m.SelectHosts("component.ha") {
 					delete(host.Region.Hosts, host.Id)
 				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
-				}
 			}
 			return nil
 		}),
@@ -274,7 +268,6 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: targetZitiVersion,
-								HA:      true,
 							},
 						},
 					},

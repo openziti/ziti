@@ -4,6 +4,10 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -26,9 +30,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""
@@ -166,7 +167,6 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
-								HA:      true,
 								Count:   2,
 							},
 						},
@@ -207,7 +207,6 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
-								HA:      true,
 							},
 						},
 					},
@@ -236,7 +235,6 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
 								Version: TargetZitiVersion,
-								HA:      true,
 							},
 						},
 					},

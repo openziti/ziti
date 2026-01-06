@@ -2,6 +2,7 @@ v: 3
 
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+  restartSelfOnSnapshot: true
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem

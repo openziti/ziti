@@ -20,7 +20,13 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -38,19 +44,20 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/foundation/v2/util"
+	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
-	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 const TargetZitiVersion = ""
+const serviceCount = 400
 
 //go:embed configs
 var configResource embed.FS
@@ -67,6 +74,9 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	}
 	return 5
 }
+
+var ctrlClients = models.CtrlClients{}
+var svcIdCache = cmap.New[string]()
 
 var m = &model.Model{
 	Id: "ert-hosting-test",
@@ -228,6 +238,127 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
+		"createHostConfig": model.Bind(zitilib_actions.Edge("create", "config", "host-config", "host.v1", `
+				{
+					"address" : "localhost",
+					"port" : 8080,
+					"protocol" : "tcp"
+				}`),
+		),
+		"createServices": model.ActionBinder(func(m *model.Model) model.Action {
+			var ctrl1 *zitirest.Clients
+
+			workflow := actions.Workflow()
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				if err := ctrlClients.Init(run, "#ctrl1"); err != nil {
+					return err
+				}
+				ctrl1 = ctrlClients.GetCtrl("ctrl1")
+
+				var tasks []parallel.LabeledTask
+
+				hostConfigId, err := models.GetConfigId(ctrl1, "host-config", 10*time.Second)
+				if err != nil {
+					return err
+				}
+
+				for i := 0; i < serviceCount; i++ {
+					name := fmt.Sprintf("service-%04d", i)
+
+					task := func() error {
+						serviceId, err := models.CreateService(ctrl1, &rest_model.ServiceCreate{
+							Configs:            []string{hostConfigId},
+							EncryptionRequired: util.Ptr(true),
+							Name:               &name,
+							TerminatorStrategy: xt_smartrouting.Name,
+						}, 15*time.Second)
+
+						if err != nil {
+							if _, err := models.GetServiceId(ctrl1, name, 5*time.Second); err == nil {
+								return nil
+							}
+						}
+
+						if err == nil && serviceId != "" {
+							svcIdCache.Set(name, serviceId)
+						}
+
+						return err
+					}
+					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
+				}
+				return parallel.ExecuteLabeled(tasks, 10, models.RetryPolicy)
+			}))
+
+			return workflow
+		}),
+
+		"createServicePolicies": model.ActionBinder(func(m *model.Model) model.Action {
+			var ctrl1 *zitirest.Clients
+
+			workflow := actions.Workflow()
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				if err := ctrlClients.Init(run, "#ctrl1"); err != nil {
+					return err
+				}
+				ctrl1 = ctrlClients.GetCtrl("ctrl1")
+
+				var tasks []parallel.LabeledTask
+
+				identities := getRouterIdentities(m)
+				serviceIdx := 0
+
+				for i, identity := range identities {
+					name := fmt.Sprintf("service-policy-%03d", i)
+					identityId, err := models.GetIdentityId(ctrl1, identity, 5*time.Second)
+					if err != nil {
+						return err
+					}
+					identityRole := fmt.Sprintf("@%s", identityId)
+					var serviceRoles []string
+					for j := 0; j < 10; j++ {
+						idx := serviceIdx % serviceCount
+						svcName := fmt.Sprintf("service-%04d", idx)
+						svcId, ok := svcIdCache.Get(svcName)
+						if !ok {
+							svcId, err = models.GetServiceId(ctrl1, svcName, 5*time.Second)
+							if err != nil {
+								return err
+							}
+							svcIdCache.Set(svcName, svcId)
+						}
+						serviceRoles = append(serviceRoles, fmt.Sprintf("@%s", svcId))
+						serviceIdx++
+					}
+
+					task := func() error {
+						err := models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
+							IdentityRoles: []string{identityRole},
+							Name:          &name,
+							Semantic:      util.Ptr(rest_model.SemanticAnyOf),
+							ServiceRoles:  serviceRoles,
+							Type:          util.Ptr(rest_model.DialBindBind),
+						}, 15*time.Second)
+
+						if err != nil {
+							if _, err := models.GetServicePolicyId(ctrl1, name, 5*time.Second); err == nil {
+								return nil
+							}
+						}
+						return err
+					}
+
+					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
+				}
+
+				return parallel.ExecuteLabeled(tasks, 25, models.RetryPolicy)
+			}))
+
+			return workflow
+		}),
+
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
@@ -244,57 +375,20 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(component.StopInParallel(models.RouterTag, 50))
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 50))
+			workflow.AddAction(component.StopInParallel(models.RouterTag, 1000))
+			workflow.AddAction(edge.InitEdgeRoutersWithClients(models.RouterTag, 50, func(r model.Run) (*zitirest.Clients, error) {
+				if err := ctrlClients.Init(r, "#ctrl1"); err != nil {
+					return nil, err
+				}
+				return ctrlClients.GetCtrl("ctrl1"), nil
+			}))
 
 			workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
 			workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
-			workflow.AddAction(zitilib_actions.Edge("create", "config", "host-config", "host.v1", `
-				{
-					"address" : "localhost",
-					"port" : 8080,
-					"protocol" : "tcp"
-				}`))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				var tasks []parallel.LabeledTask
-				for i := 0; i < 2000; i++ {
-					name := fmt.Sprintf("service-%04d", i)
-					task := func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
-						return err
-					}
-					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
-				}
-
-				return parallel.ExecuteLabeled(tasks, 5, parallel.AlwaysReport())
-			}))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				identities := getRouterIdentities(m)
-				serviceIdx := 0
-				var tasks []parallel.Task
-				for i, identity := range identities {
-					name := fmt.Sprintf("service-policy-%03d", i)
-					identityRoles := fmt.Sprintf("@%s", identity)
-					servicesRoles := ""
-					for j := 0; j < 10; j++ {
-						idx := serviceIdx % 2000
-						if j > 0 {
-							servicesRoles += ","
-						}
-						servicesRoles += fmt.Sprintf("@service-%04d", idx)
-						serviceIdx++
-					}
-					tasks = append(tasks, func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
-							"--identity-roles", identityRoles, "--service-roles", servicesRoles, "--timeout", "15")
-						return err
-					})
-				}
-				return parallel.Execute(tasks, 5)
-			}))
+			workflow.AddAction(model.RunAction("createHostConfig"))
+			workflow.AddAction(model.RunAction("createServices"))
+			workflow.AddAction(model.RunAction("createServicePolicies"))
 
 			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 
