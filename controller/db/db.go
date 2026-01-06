@@ -18,10 +18,30 @@ package db
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
+
+type versionedSnapshotDb struct {
+	boltz.Db
+	snapshotVersion atomic.Int64
+}
+
+func (d *versionedSnapshotDb) GetDefaultSnapshotPath() string {
+	// Important: do not open a nested read transaction here.
+	// This method may be called while a write transaction is already in progress
+	// (e.g. snapshot-before-migrate), and attempting to read the DB can deadlock.
+	version := d.snapshotVersion.Load()
+	return fmt.Sprintf("%s-edge-v%d", d.Db.GetDefaultSnapshotPath(), version)
+}
+
+func setSnapshotVersion(db boltz.Db, version int64) {
+	if vdb, ok := db.(*versionedSnapshotDb); ok {
+		vdb.snapshotVersion.Store(version)
+	}
+}
 
 type appEnvKey string
 
@@ -35,10 +55,14 @@ const (
 )
 
 func Open(path string) (boltz.Db, error) {
-	db, err := boltz.Open(path, RootBucket)
+	inner, err := boltz.Open(path, RootBucket)
 	if err != nil {
 		return nil, err
 	}
+
+	db := &versionedSnapshotDb{Db: inner}
+	// Default to 0 (uninitialized) unless explicitly set by callers.
+	db.snapshotVersion.Store(0)
 
 	err = db.Update(nil, func(ctx boltz.MutateContext) error {
 		_, err := ctx.Tx().CreateBucketIfNotExists([]byte(RootBucket))

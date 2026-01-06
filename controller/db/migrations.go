@@ -18,6 +18,7 @@ package db
 
 import (
 	"crypto/x509"
+	"fmt"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
@@ -35,6 +36,18 @@ type Migrations struct {
 }
 
 func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) error {
+	currentVersion, err := boltz.NewMigratorManager(db).GetComponentVersion("edge")
+	if err != nil {
+		return err
+	}
+
+	// Ensure any automatic snapshots taken during migration include the version being migrated from.
+	setSnapshotVersion(db, int64(currentVersion))
+
+	if currentVersion > CurrentDbVersion {
+		return fmt.Errorf("edge datastore version is too high: v%v (this binary supports <= v%v). Either upgrade the controller binary to one that supports datastore version v%v, or downgrade the datastore by restoring a snapshot whose datastore version is <= v%v", currentVersion, CurrentDbVersion, currentVersion, CurrentDbVersion)
+	}
+
 	migrations := &Migrations{
 		stores:      stores,
 		signingCert: signingCert,
