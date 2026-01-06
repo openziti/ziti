@@ -1,3 +1,31 @@
+# Release 1.5.10
+
+## What's New
+
+Update libraries and build with the latest Go version.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.26 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.26...v1.0.33)
+    * [Issue #27](https://github.com/openziti/agent/issues/27) - Add support for generating heap dumps
+
+* github.com/openziti/channel/v3: [v3.0.39 -> v3.0.40](https://github.com/openziti/channel/compare/v3.0.39...v3.0.40)
+* github.com/openziti/foundation/v2: [v2.0.77 -> v2.0.81](https://github.com/openziti/foundation/compare/v2.0.77...v2.0.81)
+    * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
+
+* github.com/openziti/identity: [v1.0.100 -> v1.0.120](https://github.com/openziti/identity/compare/v1.0.100...v1.0.120)
+    * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
+    * [Issue #64](https://github.com/openziti/identity/issues/64) - Support a way to check if a cert/serverCert can be saved
+
+* github.com/openziti/metrics: [v1.3.0 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.3.0...v1.4.3)
+    * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
+    * [Issue #53](https://github.com/openziti/metrics/issues/53) - Add reporter useful for emitting metrics to stdout
+
+* github.com/openziti/runzmd: [v1.0.83 -> v1.0.84](https://github.com/openziti/runzmd/compare/v1.0.83...v1.0.84)
+* github.com/openziti/secretstream: [v0.1.32 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.32...v0.1.42)
+* github.com/openziti/transport/v2: [v2.0.167 -> v2.0.200](https://github.com/openziti/transport/compare/v2.0.167...v2.0.200)
+* github.com/openziti/ziti: [v1.5.9 -> v1.5.10](https://github.com/openziti/ziti/compare/v1.5.9...v1.5.10)
+
 # Release 1.5.9
 
 ## What's New
