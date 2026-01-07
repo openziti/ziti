@@ -465,8 +465,10 @@ tls:
 Identity environment and authenticator updates that occur during authentication are now processed asynchronously in the background. 
 This prevents authentication requests from blocking when the system is under load, significantly improving resilience during thundering herd scenarios.
 
-When the background queue fills up, updates can be safely dropped as they will be refreshed on the next authentication attempt. 
+When the background queue fills up, updates can be dropped as they will be refreshed on the next authentication attempt. 
 This allows the system to gracefully handle load spikes without impacting authentication performance.
+
+For now, dropping entries when the queue fills will be disabled by default, but can be enabled, see below.
 
 ### Configuration
 
@@ -477,7 +479,7 @@ A new `command.background` configuration section controls the background process
     background:
       enabled: true           # Enable background processing (default: true)
       queueSize: 1000        # Maximum queue size (default: 1000)
-      dropWhenFull: true     # Drop updates when queue is full (default: true)
+      dropWhenFull: true     # Drop updates when queue is full (default: false)
 ```
 
 Note that the `commandRateLimiter` configuration section may instead be specified under `command` as `rateLimiter`.
@@ -510,29 +512,35 @@ When background processing is enabled, the following metrics are exposed:
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.41 -> v4.2.43](https://github.com/openziti/channel/compare/v4.2.41...v4.2.43)
+* github.com/openziti/channel/v4: [v4.2.41 -> v4.2.50](https://github.com/openziti/channel/compare/v4.2.41...v4.2.50)
 * github.com/openziti/edge-api: [v0.26.50 -> v0.26.52](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.52)
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
-* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.81](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.81)
+* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.84](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.84)
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
 
-* github.com/openziti/identity: [v1.0.118 -> v1.0.120](https://github.com/openziti/identity/compare/v1.0.118...v1.0.120)
+* github.com/openziti/identity: [v1.0.118 -> v1.0.122](https://github.com/openziti/identity/compare/v1.0.118...v1.0.122)
 * github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
+* github.com/openziti/runzmd: [v1.0.84 -> v1.0.86](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.86)
 * github.com/openziti/sdk-golang: [v1.2.10 -> v1.3.1](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.3.1)
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
 * github.com/openziti/secretstream: [v0.1.41 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.42)
-* github.com/openziti/storage: [v0.4.31 -> v0.4.33](https://github.com/openziti/storage/compare/v0.4.31...v0.4.33)
+* github.com/openziti/storage: [v0.4.31 -> v0.4.35](https://github.com/openziti/storage/compare/v0.4.31...v0.4.35)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.200](https://github.com/openziti/transport/compare/v2.0.198...v2.0.200)
+* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.205](https://github.com/openziti/transport/compare/v2.0.198...v2.0.205)
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
 * github.com/openziti/ziti: [v1.7.0 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.0...v1.8.0)
+    * [Issue #3484](https://github.com/openziti/ziti/issues/3484) - router ctrl channel handler for handling cluster changes has an initialization race condition
+    * [Issue #3477](https://github.com/openziti/ziti/issues/3477) - Optionally enable model changes triggered by login to be non-blocking and to be droppable if the system is under load
+    * [Issue #3473](https://github.com/openziti/ziti/issues/3473) - Enable tls handshake rate limiter by default and tweak default values.
+    * [Issue #3471](https://github.com/openziti/ziti/issues/3471) - Go tunneler is ignoring host config MaxConnections
+    * [Issue #3469](https://github.com/openziti/ziti/issues/3469) - Only send model updates on resubscribe if the RDM index has advanced
     * [Issue #2573](https://github.com/openziti/ziti/issues/2573) - An edge router in a tight restart loop causes a resource leak on routers to which it connects.
     * [Issue #3430](https://github.com/openziti/ziti/issues/3430) - Add permissions list to identity
     * [Issue #2109](https://github.com/openziti/ziti/issues/2109) - Add Edge Management Read Only Capability

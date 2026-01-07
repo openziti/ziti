@@ -96,7 +96,7 @@ const (
 
 	DefaultBackgroundQueueEnabled      = true
 	DefaultBackgroundQueueSize         = 1000
-	DefaultBackgroundQueueDropWhenFull = true
+	DefaultBackgroundQueueDropWhenFull = false
 )
 
 type Config struct {

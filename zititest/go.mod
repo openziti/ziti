@@ -18,15 +18,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.2.43
+	github.com/openziti/channel/v4 v4.2.50
 	github.com/openziti/edge-api v0.26.52
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.81
-	github.com/openziti/identity v1.0.120
+	github.com/openziti/foundation/v2 v2.0.84
+	github.com/openziti/identity v1.0.122
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/sdk-golang v1.3.1
-	github.com/openziti/storage v0.4.33
-	github.com/openziti/transport/v2 v2.0.201-0.20251219212037-0858f6a13146
+	github.com/openziti/storage v0.4.35
+	github.com/openziti/transport/v2 v2.0.205
 	github.com/openziti/ziti v1.6.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -160,7 +160,7 @@ require (
 	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.84 // indirect
+	github.com/openziti/runzmd v1.0.86 // indirect
 	github.com/openziti/secretstream v0.1.42 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.3.4 // indirect
