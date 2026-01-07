@@ -17,6 +17,14 @@
 package model
 
 import (
+	"errors"
+	"runtime/debug"
+	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/metrics"
+	metricsUtil "github.com/openziti/ziti/common/metrics"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
@@ -24,7 +32,13 @@ import (
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/ioc"
 	"github.com/openziti/ziti/controller/models"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+)
+
+const (
+	backgroundQueueMetricsBase    = "command.background"
+	backgroundQueueDroppedEntries = backgroundQueueMetricsBase + ".dropped_entries"
 )
 
 func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
@@ -34,13 +48,44 @@ func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
 		registry: registry,
 		Decoders: command.GetDefaultDecoders(),
 	}
+
+	if env.GetConfig().Command.Background.Enabled {
+		poolConfig := goroutines.PoolConfig{
+			QueueSize:   env.GetConfig().Command.Background.QueueSize,
+			MinWorkers:  0,
+			MaxWorkers:  1,
+			IdleTime:    5 * time.Second,
+			CloseNotify: env.GetCloseNotifyChannel(),
+			PanicHandler: func(err interface{}) {
+				pfxlog.Logger().
+					WithField(logrus.ErrorKey, err).
+					WithField("backtrace", string(debug.Stack())).Error("panic during background command processing")
+			},
+			WorkerFunction: backgroundCommandPoolWorker,
+		}
+
+		metricsUtil.ConfigureGoroutinesPoolMetrics(&poolConfig, env.GetMetricsRegistry(), backgroundQueueMetricsBase)
+
+		pool, err := goroutines.NewPool(poolConfig)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Fatal("could not create background command worker pool")
+		}
+		result.backgroundPool = pool
+
+		if env.GetConfig().Command.Background.DropWhenFull {
+			result.droppedEntries = env.GetMetricsRegistry().Meter(backgroundQueueDroppedEntries)
+		}
+	}
+
 	return result
 }
 
 type CommandManager struct {
-	env      Env
-	registry ioc.Registry
-	Decoders command.Decoders
+	env            Env
+	registry       ioc.Registry
+	Decoders       command.Decoders
+	backgroundPool goroutines.Pool
+	droppedEntries metrics.Meter
 }
 
 func (self *CommandManager) registerGenericCommands() {
@@ -89,6 +134,31 @@ func (self *CommandManager) decodeDeleteEntityCommand(_ int32, data []byte) (com
 	}
 
 	return decoder(msg)
+}
+
+func backgroundCommandPoolWorker(_ uint32, f func()) {
+	f()
+}
+
+func (self *CommandManager) backGroundableTask(f func()) bool {
+	if self.env.GetConfig().Command.Background.Enabled {
+		if self.env.GetConfig().Command.Background.DropWhenFull {
+			if err := self.backgroundPool.QueueOrError(f); err != nil {
+				if errors.Is(err, goroutines.QueueFullError) {
+					self.droppedEntries.Mark(1)
+				}
+				return false
+			}
+		} else {
+			if err := self.backgroundPool.Queue(f); err != nil {
+				return false
+			}
+		}
+		return true
+	}
+
+	f()
+	return true
 }
 
 // CommandMsg is a TypedMessage which is also a pointer type.

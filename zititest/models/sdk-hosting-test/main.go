@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -25,6 +26,9 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
+	"github.com/openziti/foundation/v2/util"
+	errUtil "github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
@@ -32,9 +36,19 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-const TargetZitiVersion = ""
+const (
+	targetZitiVersion = ""
+	useZde            = false
+
+	routersPerRegion      = 2
+	hostsPerRegion        = 5
+	tunnelersPerHost      = 100
+	servicesPerTunneler   = 5
+	terminatorsPerService = 2
+)
 
 //go:embed configs
 var configResource embed.FS
@@ -51,18 +65,14 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeHost {
 		if entity.GetScope().HasTag("router") {
-			return 2
+			return routersPerRegion
 		}
 		if entity.GetScope().HasTag("host") {
-			h := entity.(*model.Host)
-			if h.Region.Id == "us-east-1" {
-				return 8
-			}
-			return 6
+			return hostsPerRegion
 		}
 	}
 	if entity.GetType() == model.EntityTypeComponent {
-		return 10
+		return tunnelersPerHost
 	}
 	return 1
 }
@@ -114,7 +124,14 @@ var m = &model.Model{
 			}
 
 			err = m.ForEachComponent(".host", 1, func(c *model.Component) error {
-				c.Type.(*zitilab.ZitiTunnelType).Mode = zitilab.ZitiTunnelModeHost
+				if useZde {
+					c.Type = &zitilab.ZitiEdgeTunnelType{
+						Version: "1.9.5",
+						Mode:    zitilab.ZitiEdgeTunnelModeHost,
+					}
+				} else {
+					c.Type.(*zitilab.ZitiTunnelType).Mode = zitilab.ZitiTunnelModeHost
+				}
 				return nil
 			})
 
@@ -131,12 +148,6 @@ var m = &model.Model{
 			if val, _ := m.GetBoolVariable("ha"); !val {
 				for _, host := range m.SelectHosts("component.ha") {
 					delete(host.Region.Hosts, host.Id)
-				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
 				}
 			}
 			return nil
@@ -158,7 +169,7 @@ var m = &model.Model{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -169,7 +180,7 @@ var m = &model.Model{
 						"router-us-{{.Host.ScaleIndex}}": {
 							Scope: model.Scope{Tags: model.Tags{"router"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -180,7 +191,7 @@ var m = &model.Model{
 						"host-us-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -196,7 +207,7 @@ var m = &model.Model{
 						"ctrl2": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -207,7 +218,7 @@ var m = &model.Model{
 						"router-eu-{{.Host.ScaleIndex}}": {
 							Scope: model.Scope{Tags: model.Tags{"router"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -218,7 +229,7 @@ var m = &model.Model{
 						"host-eu-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -234,7 +245,7 @@ var m = &model.Model{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -245,7 +256,7 @@ var m = &model.Model{
 						"router-ap-{{.Host.ScaleIndex}}": {
 							Scope: model.Scope{Tags: model.Tags{"router"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -256,8 +267,7 @@ var m = &model.Model{
 						"host-ap-{{ .Host.ScaleIndex }}-{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"host"}},
 							Type: &zitilab.ZitiTunnelType{
-								Version: TargetZitiVersion,
-								HA:      true,
+								Version: targetZitiVersion,
 							},
 						},
 					},
@@ -267,13 +277,136 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
+		"createBaseModel": model.ActionBinder(func(m *model.Model) model.Action {
+			workflow := actions.Workflow()
+			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
+			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
+
+			hostConfig := fmt.Sprintf(`{
+					"address" : "localhost",
+					"port" : 8080,
+					"protocol" : "tcp",
+                    "listenOptions": {
+                         "maxConnections": %d
+                    }
+				}`, terminatorsPerService)
+
+			workflow.AddAction(zitilibActions.Edge("create", "config", "host-config", "host.v1", hostConfig))
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				var tasks []parallel.Task
+				for i := 0; i < 2000; i++ {
+					name := fmt.Sprintf("service-%04d", i)
+					task := func() error {
+						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
+						return err
+					}
+					tasks = append(tasks, task)
+				}
+				return parallel.Execute(tasks, 25)
+			}))
+
+			return workflow
+		}),
+		"createServicePolicies": model.ActionBinder(func(m *model.Model) model.Action {
+			ctrls := models.CtrlClients{}
+			var ctrl1 *zitirest.Clients
+
+			workflow := actions.Workflow()
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				if err := ctrls.Init(run, "#ctrl1"); err != nil {
+					return err
+				}
+				ctrl1 = ctrls.GetCtrl("ctrl1")
+				return nil
+			}))
+
+			svcIdCache := cmap.New[string]()
+
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				identities := getHostNames()
+				serviceIdx := 0
+				var tasks []parallel.Task
+				for i, identity := range identities {
+					tasks = append(tasks, func() error {
+						policyName := fmt.Sprintf("service-policy-%03d", i)
+						identityId, err := models.GetIdentityId(ctrl1, identity, 5*time.Second)
+						if err != nil {
+							return err
+						}
+						identityRole := fmt.Sprintf("@%s", identityId)
+						var serviceRoles []string
+						for j := 0; j < servicesPerTunneler; j++ {
+							idx := serviceIdx % 2000
+							svcName := fmt.Sprintf("service-%04d", idx)
+							svcId, ok := svcIdCache.Get(svcName)
+							if !ok {
+								svcId, err = models.GetServiceId(ctrl1, svcName, 5*time.Second)
+								if err != nil {
+									return err
+								}
+								svcIdCache.Set(svcName, svcId)
+							}
+							serviceRoles = append(serviceRoles, fmt.Sprintf("@%s", svcId))
+							serviceIdx++
+						}
+
+						attempts := 0
+						for {
+							err := models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
+								IdentityRoles: []string{identityRole},
+								Name:          util.Ptr(policyName),
+								Semantic:      util.Ptr(rest_model.SemanticAnyOf),
+								ServiceRoles:  serviceRoles,
+								Type:          util.Ptr(rest_model.DialBindBind),
+							}, 15*time.Second)
+
+							if err == nil {
+								fmt.Printf("creating service policy %s: OK\n", policyName)
+								return nil
+							}
+							err = errUtil.WrapIfApiError(err)
+
+							l, _ := models.ListServicePolicies(ctrl1, fmt.Sprintf(`name="%s"`, policyName), 5*time.Second)
+							if len(l) > 0 {
+								fmt.Printf("creating service policy %s: ALREADY PRESENT\n", policyName)
+								return nil
+							}
+
+							fmt.Printf("creating service policy %s: FAILED (%+v)\n", policyName, err)
+
+							if attempts > 3 {
+								return err
+							}
+							attempts++
+							time.Sleep(time.Duration(attempts) * time.Second)
+						}
+					})
+				}
+				return parallel.Execute(tasks, 25)
+			}))
+
+			return workflow
+		}),
+		"initHA": model.ActionBinder(func(m *model.Model) model.Action {
+			workflow := actions.Workflow()
+			isHA := len(m.SelectComponents(".ctrl")) > 1
+			if isHA {
+				workflow.AddAction(component.StartInParallel(".ctrl", 10))
+				workflow.AddAction(semaphore.Sleep(2 * time.Second))
+				workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
+				workflow.AddAction(semaphore.Sleep(5 * time.Second))
+			}
+			return workflow
+		}),
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
 			isHA := len(m.SelectComponents(".ctrl")) > 1
 
-			workflow.AddAction(component.StopInParallel("*", 300))
-			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
+			workflow.AddAction(component.StopInParallel("*", 10000))
+			workflow.AddAction(host.GroupExec("component.ctrl", 100, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
 			if !isHA {
@@ -292,90 +425,38 @@ var m = &model.Model{
 			workflow.AddAction(edge.Login("#ctrl1"))
 
 			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
-			workflow.AddAction(edge.InitIdentities(".host", 25))
-
-			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "all", "--edge-router-roles", "#all", "--identity-roles", "#all"))
-			workflow.AddAction(zitilibActions.Edge("create", "service-edge-router-policy", "all", "--service-roles", "#all", "--edge-router-roles", "#all"))
-
-			workflow.AddAction(zitilibActions.Edge("create", "config", "host-config", "host.v1", `
-				{
-					"address" : "localhost",
-					"port" : 8080,
-					"protocol" : "tcp"
-				}`))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				var tasks []parallel.Task
-				for i := 0; i < 2000; i++ {
-					name := fmt.Sprintf("service-%04d", i)
-					task := func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
-						return err
-					}
-					tasks = append(tasks, task)
-				}
-				return parallel.Execute(tasks, 25)
-			}))
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				identities := getHostNames()
-				serviceIdx := 0
-				var tasks []parallel.Task
-				for i, identity := range identities {
-					name := fmt.Sprintf("service-policy-%03d", i)
-					identityRoles := fmt.Sprintf("@%s", identity)
-					servicesRoles := ""
-					for j := 0; j < 50; j++ {
-						idx := serviceIdx % 2000
-						if j > 0 {
-							servicesRoles += ","
-						}
-						servicesRoles += fmt.Sprintf("@service-%04d", idx)
-						serviceIdx++
-					}
-					tasks = append(tasks, func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service-policy", name, "Bind",
-							"--identity-roles", identityRoles, "--service-roles", servicesRoles, "--timeout", "15")
-						return err
-					})
-				}
-				return parallel.Execute(tasks, 25)
-			}))
-
-			if isHA {
-				workflow.AddAction(component.StartInParallel(".ctrl", 10))
-				workflow.AddAction(semaphore.Sleep(2 * time.Second))
-				workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-				workflow.AddAction(semaphore.Sleep(5 * time.Second))
-			}
+			workflow.AddAction(edge.InitIdentities(".host", 10))
+			workflow.AddAction(model.RunAction("createBaseModel"))
+			workflow.AddAction(model.RunAction("createServicePolicies"))
+			workflow.AddAction(model.RunAction("initHA"))
 
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(".host", 50))
+			workflow.AddAction(component.StartInParallel(".host", 1000))
 
 			return workflow
 		}),
-		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
+		"stop": model.Bind(component.StopInParallelHostExclusive("*", 10000)),
 		"clean": model.Bind(actions.Workflow(
-			component.StopInParallelHostExclusive("*", 15),
-			host.GroupExec("*", 25, "rm -f logs/*"),
+			component.StopInParallelHostExclusive("*", 10000),
+			host.GroupExec("*", 100, "rm -f logs/*"),
 		)),
 		"login":  model.Bind(edge.Login("#ctrl1")),
 		"login2": model.Bind(edge.Login("#ctrl2")),
 		"login3": model.Bind(edge.Login("#ctrl3")),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
-			workflow.AddAction(component.StopInParallel("*", 100))
-			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
+			workflow.AddAction(component.StopInParallel("*", 10000))
+			workflow.AddAction(host.GroupExec("*", 100, "rm -f logs/*"))
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			workflow.AddAction(component.StartInParallel(".router", 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(".host", 50))
+			workflow.AddAction(component.StartInParallel(".host", 10000))
 			return workflow
 		}),
-		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
-		"validateUp": model.Bind(model.ActionFunc(func(run model.Run) error {
+		"sowChaos": model.BindF(sowChaos),
+		"validateUp": model.BindF(func(run model.Run) error {
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}
@@ -389,16 +470,35 @@ var m = &model.Model{
 				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
 				return component.StartInParallel(".router", 100).Execute(run)
 			}
+
 			return nil
-		})),
-		"validate": model.Bind(model.ActionFunc(validateTerminators)),
-		"testIteration": model.Bind(model.ActionFunc(func(run model.Run) error {
+		}),
+		"validate": model.BindF(validateTerminators),
+		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"sowChaos",
 				"validateUp",
 				"validate",
 			)
-		})),
+		}),
+		"testRouterFlap": model.BindF(func(run model.Run) error {
+			routers := []string{"router-us-0", "router-eu-0", "router-ap-0"}
+			for _, router := range routers {
+				if err := component.Start(router).Execute(run); err != nil {
+					return err
+				}
+			}
+
+			time.Sleep(10 * time.Second)
+
+			for _, router := range routers {
+				if err := component.Stop(router).Execute(run); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}),
 	},
 
 	Infrastructure: model.Stages{
@@ -424,20 +524,18 @@ var m = &model.Model{
 
 func getHostNames() []string {
 	var result []string
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 10; j++ {
+	for i := 0; i < hostsPerRegion; i++ {
+		for j := 0; j < tunnelersPerHost; j++ {
 			result = append(result, fmt.Sprintf("host-us-%d-%d", i, j))
-			if i < 6 {
-				result = append(result, fmt.Sprintf("host-eu-%d-%d", i, j))
-				result = append(result, fmt.Sprintf("host-ap-%d-%d", i, j))
-			}
+			result = append(result, fmt.Sprintf("host-eu-%d-%d", i, j))
+			result = append(result, fmt.Sprintf("host-ap-%d-%d", i, j))
 		}
 	}
 	return result
 }
 
 func main() {
-	m.AddActivationActions("stop", "bootstrap")
+	m.AddActivationActions("bootstrap")
 
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)

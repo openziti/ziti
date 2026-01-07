@@ -1,13 +1,13 @@
-name: Validation (Links)
+name: Validation (ER/T Terminators)
 
 on:
   workflow_call:
   workflow_dispatch:
 
 jobs:
-  links-validation:
-    name: Links Validation
+  ert-terminator-validation:
+    name: ER/T Terminator Validation
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
     with:
-      test: links-test
+      test: ert-hosting-test

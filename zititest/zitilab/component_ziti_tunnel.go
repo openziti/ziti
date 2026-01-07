@@ -56,7 +56,6 @@ type ZitiTunnelType struct {
 	Version                  string
 	LocalPath                string
 	ConfigPathF              func(c *model.Component) string
-	HA                       bool
 	Count                    uint8
 	DefaultRouterConnections uint8
 	ControlRouterConnections uint8

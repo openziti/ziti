@@ -2,6 +2,7 @@ v: 3
 
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+  restartSelfOnSnapshot: true
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
@@ -13,6 +14,11 @@ trustDomain: sdk-hosting-test
 commandRateLimiter:
     enabled:   true
     maxQueued: 25
+
+tls:
+  handshakeTimeout: 30s
+  rateLimiter:
+    enabled: true
 
 # the endpoint that routers will connect to the controller over.
 ctrl:

@@ -1,0 +1,32 @@
+name: Validation (All)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # Run the first three in sequence, and then the rest in sequence
+  # so we don't run out of cloud resources
+  circuit-validation:
+    name: Circuit Validation
+    uses: ./.github/workflows/validation-circuits.yml
+    secrets: inherit
+
+  ert-terminator-validation:
+    name: ER/T Terminator Validation
+    uses: ./.github/workflows/validation-ert-terminators.yml
+    secrets: inherit
+
+  link-validation:
+    name: Link Validation
+    uses: ./.github/workflows/validation-links.yml
+    secrets: inherit
+
+  router-data-model-validation:
+    name: Router Data Model Validation
+    uses: ./.github/workflows/validation-router-data-model.yml
+    secrets: inherit
+
+  sdk-status-validation:
+    name: SDK Status Validation
+    uses: ./.github/workflows/validation-sdk-status.yml
+    secrets: inherit

@@ -1,16 +1,15 @@
 package handler_ctrl
 
 import (
+	"sync/atomic"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"sync/atomic"
 )
-
-var updateClusterLeaderHandlerInstance *updateClusterLeaderHandler
 
 type updateClusterLeaderHandler struct {
 	callback       CtrlAddressUpdater
@@ -49,11 +48,10 @@ func (handler *updateClusterLeaderHandler) HandleReceive(msg *channel.Message, c
 }
 
 func newUpdateClusterLeaderHandler(env env.RouterEnv, callback CtrlAddressUpdater) channel.TypedReceiveHandler {
-	if updateClusterLeaderHandlerInstance == nil {
-		updateClusterLeaderHandlerInstance = &updateClusterLeaderHandler{
-			callback: callback,
-		}
-		env.GetIndexWatchers().AddIndexResetWatcher(updateClusterLeaderHandlerInstance.NotifyIndexReset)
+	result := &updateClusterLeaderHandler{
+		callback: callback,
 	}
-	return updateClusterLeaderHandlerInstance
+	env.GetIndexWatchers().AddIndexResetWatcher(result.NotifyIndexReset)
+
+	return result
 }
