@@ -7,7 +7,7 @@ function describe_instances() {
   cd "${TMPDIR:-$(mktemp -d)}"
   local oldest=$1
   local state=$2
-  for region in us-east-1 us-west-2
+  for region in us-east-1 us-west-2 eu-west-2 eu-central-1 ap-southeast-2
   do
     local old_file="old-fablab-${state}-instances-${region}.json"
     aws --region "$region" ec2 describe-instances \
@@ -21,7 +21,6 @@ function describe_instances() {
         [
           .[][]
           |select(.LaunchTime < $oldest)
-          | select(.Tags[] | select(.Key=="Name").Value | test("flow-control\\.*") | not )
           |{InstanceId: .InstanceId, Region: $region, LaunchTime: .LaunchTime, State: .State, Tags: .Tags}
         ]
       ' \
@@ -33,7 +32,7 @@ function describe_instances() {
 function describe_vpcs {
   cd "${TMPDIR:-$(mktemp -d)}"
   local oldest=$1
-  for region in us-east-1 us-west-2
+  for region in us-east-1 us-west-2 eu-west-2 eu-central-1 ap-southeast-2
   do
     local old_file="old-fablab-vpcs-${region}.json"
     local odd_file="odd-fablab-vpcs-${region}.json"
