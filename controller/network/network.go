@@ -537,16 +537,22 @@ func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
 	return fmt.Errorf("no such link [l/%s]", msg.Id)
 }
 
-func (network *Network) LinkFaulted(l *model.Link, dupe bool) error {
-	l.SetState(model.Failed)
+func (network *Network) LinkFaulted(link *model.Link, dupe bool) {
+	wasUsable := link.IsUsable()
+
+	link.SetState(model.Failed)
 	if dupe {
-		network.NotifyLinkEvent(l, event.LinkDuplicate)
+		network.NotifyLinkEvent(link, event.LinkDuplicate)
 	} else {
-		network.NotifyLinkEvent(l, event.LinkFault)
+		network.NotifyLinkEvent(link, event.LinkFault)
 	}
-	pfxlog.Logger().WithField("linkId", l.Id).Info("removing failed link")
-	network.Link.Remove(l)
-	return nil
+
+	pfxlog.Logger().WithField("linkId", link.Id).Info("removing failed link")
+	network.Link.Remove(link)
+
+	if wasUsable {
+		network.RerouteLink(link)
+	}
 }
 
 func (network *Network) VerifyRouter(routerId string, fingerprints []string) error {

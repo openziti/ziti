@@ -1,12 +1,8 @@
 v: 3
 
-{{if .Component.GetFlag "ha"}}
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
   restartSelfOnSnapshot: true
-{{else}}
-db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
-{{end}}
 
 identity:
   cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
@@ -28,7 +24,12 @@ command:
 ctrl:
   listener: tls:0.0.0.0:6262
   options:
+  {{if .Component.HasTag "private"}}
+    advertiseAddress: tls:{{ .Host.PrivateIp }}:6262
+  {{ else }}
     advertiseAddress: tls:{{ .Host.PublicIp }}:6262
+  {{ end }}
+
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
