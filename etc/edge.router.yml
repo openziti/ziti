@@ -31,6 +31,25 @@ identity:
 
 ctrl:
   endpoint:             tls:127.0.0.1:6262
+#  rateLimiter:
+#    # if disabled, no rate limiting will be enforced on ctrl channel requests
+#    enabled: true
+#    # the smallest window size for concurrent ctrl channel requests
+#    minSize: 1
+#    # the largest allowed window size for concurrent ctrl channel requests
+#    maxSize: 250
+#    # how long before incomplete work is assumed to have failed
+#    timeout: 30s
+#    # success rate threshold above which window will grow, below which it will shrink
+#    successThreshold: 0.9
+#    # multiplier applied to window size when growing
+#    increaseFactor: 1.02
+#    # multiplier applied to window size when shrinking
+#    decreaseFactor: 0.9
+#    # number of successes between window increase checks
+#    increaseCheckInterval: 10
+#    # number of backoffs between window decrease checks
+#    decreaseCheckInterval: 10
 
 link:
   dialers:

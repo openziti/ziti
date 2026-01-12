@@ -419,31 +419,31 @@ model updates to be in-flight at the same time.
 
 New Configuration Options
 
-1. Raft Apply Timeout (raft.applyTimeout)
+1. Raft Apply Timeout (cluster.applyTimeout)
 
-Location: Controller configuration file, under raft section
+Location: Controller configuration file, under the cluster section
 Type: Duration
 Default: 5s
 Description: Timeout for applying commands to the Raft distributed log. Commands that exceed this timeout will trigger adaptive rate limiter backoff.
 
 Example:
 ```
-  raft:
-    applyTimeout: 10s
+cluster:
+  applyTimeout: 10s
 ```
 
-2. Raft Rate Limiter Configuration (raft.rateLimiter)
+2. Command Rate Limiter Configuration (command.rateLimiter)
 
 A new adaptive rate limiter that controls the submission of commands to the Raft cluster. Unlike the existing command rate limiter, this specifically manages in-flight Raft operations with adaptive window sizing.
 
 Configuration Structure:
 ```
-  raft:
-    rateLimiter:
-      enabled: true
-      minSize: 5
-      maxSize: 250
-      timeout: 30s
+command:
+  rateLimiter:
+    enabled: true
+    minSize: 5
+    maxSize: 250
+    timeout: 30s
 ```
 
 Sub-options:
@@ -462,16 +462,16 @@ Sub-options:
     - Default: 30s
     - Description: Time after which outstanding work is assumed to have failed if not marked completed
 
-3. Restart Self on Snapshot (raft.restartSelfOnSnapshot)
+3. Restart Self on Snapshot (cluster.restartSelfOnSnapshot)
 
-Location: Controller configuration file, under raft section
+Location: Controller configuration file, under cluster section
 Type: Boolean
 Default: false
 Description: When true, the controller will automatically restart itself when restoring a snapshot to an initialized system. When false, the controller will exit with code 0, requiring external process management to restart it.
 
 Example:
 ```
-  raft:
+cluster:
     restartSelfOnSnapshot: true
 ```
 
@@ -485,6 +485,22 @@ The adaptive rate limiter exposes three new metrics:
     - Duration of rate-limited operations
   3. raft.rate_limiter.window_size (gauge)
     - Current adaptive window size
+
+## Rate Limiter Algorithm Improvements
+
+The adaptive rate limiter tracker now uses a success rate metric to decide when to grow or shrink its
+concurrency window, instead of using raw queue position. An exponentially decaying histogram tracks the
+ratio of successes to backoffs. When the success rate exceeds a configurable threshold, the window is
+grown by a multiplicative increase factor. When it falls below the threshold, the window is shrunk by a
+multiplicative decrease factor. The check intervals for increase and decrease are independently configurable.
+
+This approach produces smoother, more stable window adjustments under varying load, avoiding the
+over-aggressive shrinking that could occur when queue position alone was used as the signal.
+
+This specific rate limiter implementation is used in three places:
+* **Controller TLS handshake rate limiting** - controls the rate of incoming TLS handshakes on the controller
+* **Raft command submission** - controls the rate of commands submitted to the Raft distributed log
+* **Router control channel rate limiting** - controls the rate of requests from the router to the controller
 
 ## Background Processing for Identity Updates
 
@@ -833,6 +849,8 @@ to the API for hosting applications.
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3636](https://github.com/openziti/ziti/issues/3636) - Adaptive rate limiter should use success rate rather than queue position
+    * [Issue #3600](https://github.com/openziti/ziti/issues/3600) - Add a preferredLeader flag, allow selected nodes to be preferred for raft leader, if they're available
     * [Issue #3642](https://github.com/openziti/ziti/issues/3642) - Use xgress_common.Connection type for xgress_transport and xgress_proxy
     * [Issue #3597](https://github.com/openziti/ziti/issues/3597) - Enable OIDC API by default
     * [Issue #3624](https://github.com/openziti/ziti/issues/3624) - Multi-underlay control channel doesn't correctly handle lack of group secret on non-grouped underlays

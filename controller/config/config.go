@@ -143,7 +143,7 @@ type Config struct {
 		}
 	}
 
-	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
+	TlsHandshakeRateLimiter command.AdaptiveRateLimitTrackerConfig
 	Src                     map[interface{}]interface{}
 }
 
@@ -381,8 +381,8 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.RateLimiter.SetDefaults()
 
 			if value, found := submap["rateLimiter"]; found {
-				if rateLimitterConfig, ok := value.(map[interface{}]interface{}); ok {
-					if err = command.LoadAdaptiveRateLimiterConfig(&controllerConfig.Raft.RateLimiter, rateLimitterConfig); err != nil {
+				if rateLimiterConfig, ok := value.(map[interface{}]interface{}); ok {
+					if err = controllerConfig.Raft.RateLimiter.Load(rateLimiterConfig); err != nil {
 						return nil, fmt.Errorf("error loading cluster rate limiting configuration (%w)", err)
 					}
 				}
@@ -1021,12 +1021,12 @@ func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
 	return spiffeId, nil
 }
 
-func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimitTrackerConfig, cfgmap map[interface{}]interface{}) error {
 	timeoutSpecified := false
 
 	if value, found := cfgmap["rateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+			if err := rateLimitConfig.Load(submap); err != nil {
 				return err
 			}
 			if rateLimitConfig.MaxSize < TlsHandshakeRateLimiterMinSizeValue {

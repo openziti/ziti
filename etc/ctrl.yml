@@ -27,6 +27,16 @@ cluster:
   # If set to true, this controller will be preferred as the raft cluster leader. If the current leader is not a
   # preferred leader, it will transfer leadership to a preferred leader if one is available.
   #preferredLeader: true
+#  rateLimiter:
+#    enabled: true
+#    minSize: 5
+#    maxSize: 250
+#    timeout: 30s
+#    successThreshold: 0.9
+#    increaseFactor: 1.02
+#    decreaseFactor: 0.9
+#    increaseCheckInterval: 10
+#    decreaseCheckInterval: 10
 
 # Network Configuration
 #
@@ -109,10 +119,27 @@ db:                     /tmp/devctrl.db
   #cpu:
     #path:                ctrl.cpuprof
 
+# TLS Configuration
+#
+# Configure TLS handshake settings for incoming connections.
+#
+#tls:
+#  handshakeTimeout: 10s
+#  rateLimiter:
+#    enabled: true
+#    minSize: 5
+#    maxSize: 250
+#    timeout: 30s
+#    successThreshold: 0.9
+#    increaseFactor: 1.02
+#    decreaseFactor: 0.9
+#    increaseCheckInterval: 10
+#    decreaseCheckInterval: 10
+
 # Control Channel Configuration
 #
 # Define the listener for the control (`ctrl`) channel.
-# 
+#
 ctrl:
   listener:             tls:127.0.0.1:6262
     #options:

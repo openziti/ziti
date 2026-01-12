@@ -113,7 +113,7 @@ func newClusterState(isLeader, isReadWrite bool) ClusterState {
 type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
-	GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig
+	GetRaftRateLimiterConfig() command.AdaptiveRateLimitTrackerConfig
 	GetRaftConfig() *config.RaftConfig
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
