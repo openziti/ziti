@@ -8,7 +8,8 @@ variable "key_path" {}
 variable "region" {}
 variable "security_group_ids" {
   type = list(string)
-}variable "ssh_user" { default = "ubuntu" }
+}
+variable "ssh_user" { default = "ubuntu" }
 variable "subnet_id" {}
 variable "spot_price" {}
 variable "spot_type" {}
@@ -50,10 +51,10 @@ resource "aws_instance" "fablab" {
   }
 
   tags = {
-    Name = var.name
+    Name             = var.name
     cost_environment = "non-production"
-    cost_category = "CICD"
-    cost_team_owner = "ADVDEV"
-    source = "fablab"
+    cost_category    = "CICD"
+    cost_team_owner  = "ADVDEV"
+    source           = "fablab"
   }
 }

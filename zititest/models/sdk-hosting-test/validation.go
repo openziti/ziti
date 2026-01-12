@@ -99,7 +99,7 @@ func validateTerminatorsForCtrlWithChan(run model.Run, c *model.Component, deadl
 }
 
 func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
-	expectedTerminatorCount := int64(3 * hostsPerRegion * tunnelersPerHost * servicesPerTunneler *terminatorsPerService)
+	expectedTerminatorCount := int64(3 * hostsPerRegion * tunnelersPerHost * servicesPerTunneler * terminatorsPerService)
 	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
 	if err != nil {
 		return err
@@ -231,7 +231,8 @@ func validateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, er
 			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
 			if !routerDetail.ValidateSuccess {
-				return invalid, fmt.Errorf("error: unable to validate on controller %s (%s)", routerDetail.Message, id)
+				return invalid, fmt.Errorf("error: unable to validate router %s (%s) on controller %s (%s)",
+					routerDetail.RouterId, routerDetail.RouterName, id, routerDetail.Message)
 			}
 			for _, linkDetail := range routerDetail.Details {
 				if !linkDetail.IsValid {

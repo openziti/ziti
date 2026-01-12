@@ -406,10 +406,8 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 
 	var onComplete []func()
 
-	// If controllers are just disconnected and not down, they may miss link faults. when they get this full
-	// set they won't know to remove links that aren't in the set
-	// probably need to add a 'complete links set' flag, which we can use on the controller side to scan for
-	// links from this router not in the set
+	// If controllers are just disconnected and not down, they may miss link faults. When they get the complete set
+	// with the FullRefresh flag set to true, the controller will know to prune any links not in the set
 	routerLinks := &ctrl_pb.RouterLinks{
 		FullRefresh: true,
 	}
