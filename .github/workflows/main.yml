@@ -179,11 +179,13 @@ jobs:
           ZITI_CLI_TEST_ZITI_BIN="$PWD/cli_tests_bin/ziti" go test ./... --tags cli_tests
           
       - name: Upload CLI test logs
-        if: failure()
         uses: actions/upload-artifact@v6
+        if: failure() || steps.cli_tests.outcome == 'failure'
         with:
           name: cli-test-logs-${{ github.run_id }}
-          path: '**/ctrl-std*log'
+          path: |
+            /tmp/cli-tests/**/*-ctrl-*.log
+            /tmp/cli-tests/**/ctrl-stdout.log
           retention-days: 5
 
   fablab-smoketest:
