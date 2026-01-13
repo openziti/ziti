@@ -20,7 +20,7 @@ ctrl:
   {{- if .Controller.Ctrl.AdvertisedAddress }}
   endpoint:             tls:{{ .Controller.Ctrl.AdvertisedAddress }}:{{ .Controller.Ctrl.AdvertisedPort }}
   {{- end }}
-  endpointsFile:        endpoints.yml
+  endpointsFile:        {{ .ZitiHome }}/endpoints.yml
 
 link:
   dialers:
