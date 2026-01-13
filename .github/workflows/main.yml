@@ -184,8 +184,7 @@ jobs:
         with:
           name: cli-test-logs-${{ github.run_id }}
           path: |
-            /tmp/cli-tests/**/stdout-ctrl-*.log
-            /tmp/cli-tests/**/stderr-ctrl-*.log
+            /tmp/cli-tests/**/*-ctrl-*.log
             /tmp/cli-tests/**/ctrl-stdout.log
           retention-days: 5
 
