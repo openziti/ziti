@@ -68,7 +68,7 @@ require (
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.86
 	github.com/openziti/sdk-golang v1.3.1
-	github.com/openziti/secretstream v0.1.42
+	github.com/openziti/secretstream v0.1.46
 	github.com/openziti/storage v0.4.35
 	github.com/openziti/transport/v2 v2.0.205
 	github.com/openziti/x509-claims v1.0.3
