@@ -251,9 +251,6 @@ do
 			echo "INFO: Built ${ARTIFACT} for ${ARCH} with ${PKG}"
 		done
 	done
-	echo -e "\nINFO: Packages built in $TMPDIR:\n\t"
-	ls -lAhtr "$TMPDIR"
-
 	[[ "${CLEAN}" == true ]] && {
 		if [[ "${ARTIFACT}" =~ openziti-(controller|router) ]]
 		then
@@ -418,3 +415,6 @@ then
 		done
 	done
 fi
+
+echo -e "\nINFO: Packages built in $TMPDIR:"
+find "$TMPDIR" -maxdepth 1 -type f -printf '%p\n' | sort
