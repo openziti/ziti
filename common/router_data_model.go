@@ -2545,19 +2545,20 @@ func (rdm *RouterDataModel) ToMap() map[string]interface{} {
 		v.lock.Unlock()
 
 		identities[key] = map[string]interface{}{
-			"id":                        v.Id,
-			"name":                      v.Name,
-			"disabled":                  v.Disabled,
-			"appDataJson":               string(v.AppDataJson),
-			"defaultHostingPrecedence":  v.DefaultHostingPrecedence,
-			"defaultHostingCost":        v.DefaultHostingCost,
-			"serviceHostingPrecedences": v.ServiceHostingPrecedences,
-			"serviceHostingCosts":       v.ServiceHostingCosts,
-			"serviceConfigs":            v.ServiceConfigs,
-			"servicePolicies":           servicePolicies,
-			"services":                  services,
-			"postureChecks":             postureChecks,
-			"identityIndex":             v.identityIndex,
+			"id":                           v.Id,
+			"name":                         v.Name,
+			"disabled":                     v.Disabled,
+			"appDataJson":                  string(v.AppDataJson),
+			"defaultHostingPrecedence":     v.DefaultHostingPrecedence,
+			"defaultHostingCost":           v.DefaultHostingCost,
+			"serviceAccessTrackingEnabled": v.serviceAccessTrackingEnabled.Load(),
+			"serviceHostingPrecedences":    v.ServiceHostingPrecedences,
+			"serviceHostingCosts":          v.ServiceHostingCosts,
+			"serviceConfigs":               v.ServiceConfigs,
+			"servicePolicies":              servicePolicies,
+			"services":                     services,
+			"postureChecks":                postureChecks,
+			"identityIndex":                v.identityIndex,
 		}
 	})
 	result["identities"] = identities

@@ -61,17 +61,35 @@ type ServersWithIndex struct {
 	Index   uint64
 }
 
+func (self *ServersWithIndex) String() string {
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString("ServersWithIndex[")
+	_, _ = fmt.Fprintf(buf, "Index: %d, ", self.Index)
+	buf.WriteString("Servers: ")
+	for i, server := range self.Servers {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(string(server.ID))
+		buf.WriteString("->")
+		buf.WriteString(string(server.Address))
+	}
+	buf.WriteString("]")
+	return buf.String()
+}
+
 type BoltDbFsm struct {
-	db              boltz.Db
-	dbPath          string
-	decoders        command.Decoders
-	indexTracker    IndexTracker
-	eventDispatcher event.Dispatcher
-	currentState    atomic.Pointer[ServersWithIndex]
-	startIndex      uint64
-	index           uint64
-	dbReferenced    atomic.Bool
-	restartSelf     bool
+	db               boltz.Db
+	dbPath           string
+	decoders         command.Decoders
+	indexTracker     IndexTracker
+	eventDispatcher  event.Dispatcher
+	currentState     atomic.Pointer[ServersWithIndex]
+	startIndex       uint64
+	index            uint64
+	dbReferenced     atomic.Bool
+	restartSelf      bool
+	stateInitialized atomic.Bool
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -204,33 +222,58 @@ func (self *BoltDbFsm) updateIndex(index uint64) {
 	}
 }
 
-func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) *ServersWithIndex {
+func (self *BoltDbFsm) GetCurrentState(r *raft.Raft) *ServersWithIndex {
+	if !self.stateInitialized.Load() {
+		self.initializeCurrentState(r)
+	}
 	currentState := self.currentState.Load()
 	if currentState == nil {
-		if err := raft.GetConfiguration().Error(); err != nil {
+		cfgFuture := r.GetConfiguration()
+		if err := cfgFuture.Error(); err != nil {
 			pfxlog.Logger().WithError(err).Error("error getting configuration future")
-		}
-		cfgFuture := raft.GetConfiguration()
-		cfg := cfgFuture.Configuration()
-		currentState = &ServersWithIndex{
-			Servers: cfg.Servers,
-			Index:   cfgFuture.Index(),
-		}
-		if !self.currentState.CompareAndSwap(nil, currentState) {
-			currentState = self.currentState.Load()
+		} else {
+			cfg := cfgFuture.Configuration()
+			currentState = &ServersWithIndex{
+				Servers: cfg.Servers,
+				Index:   cfgFuture.Index(),
+			}
+			if !self.currentState.CompareAndSwap(nil, currentState) {
+				currentState = self.currentState.Load()
+				pfxlog.Logger().WithField("configuration", currentState).Info("initialized servers configuration")
+			}
 		}
 	}
+
+	if currentState == nil {
+		currentState = &ServersWithIndex{
+			Index: 0,
+		}
+	}
+
 	return currentState
+}
+
+func (self *BoltDbFsm) initializeCurrentState(raft *raft.Raft) {
+	cfgFuture := raft.GetConfiguration()
+	if err := cfgFuture.Error(); err != nil {
+		pfxlog.Logger().WithError(err).Error("error getting configuration future")
+	} else {
+		cfg := cfgFuture.Configuration()
+		self.StoreConfiguration(cfgFuture.Index(), cfg)
+		self.stateInitialized.Store(true)
+	}
 }
 
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
 	current := self.currentState.Load()
 	if current == nil || current.Index < index {
 		self.storeConfigurationInRaft(index, configuration.Servers)
-		self.currentState.Store(&ServersWithIndex{
+		serversWithIndex := &ServersWithIndex{
 			Servers: configuration.Servers,
 			Index:   index,
-		})
+		}
+		self.currentState.Store(serversWithIndex)
+		pfxlog.Logger().WithField("configuration", serversWithIndex).Info("updated servers configuration")
 		evt := event.NewClusterEvent(event.ClusterMembersChanged)
 		evt.Index = index
 		for _, srv := range configuration.Servers {

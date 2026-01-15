@@ -80,13 +80,13 @@ func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventTy
 	}
 }
 
-func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, service *common.IdentityService, eventType common.ServiceEventType) {
+func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, oldService, newService *common.IdentityService, eventType common.ServiceEventType) {
 	self.updateIdentityState(state)
 
 	if eventType == common.ServiceAccessGainedEvent {
-		pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, service.GetName())
+		pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, newService.GetName())
 	} else if eventType == common.ServiceAccessLostEvent {
-		pfxlog.Logger().Infof("identity %s lost access to %s", state.Identity.Name, service.GetName())
+		pfxlog.Logger().Infof("identity %s lost access to %s", state.Identity.Name, oldService.GetName())
 	}
 }
 

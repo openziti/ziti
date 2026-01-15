@@ -79,6 +79,7 @@ message SyncSnapshotCommand {
 
 message InitClusterIdCommand {
   string clusterId = 1;
+  string timelineId = 2;
 }
 
 message DeleteTerminatorsBatchCommand {
