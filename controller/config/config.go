@@ -220,6 +220,21 @@ func LoadConfig(path string) (*Config, error) {
 	} else {
 		controllerConfig.Id = identity.NewIdentity(id)
 
+		conflicts := controllerConfig.Id.CheckServerCertSansForConflicts()
+
+		if len(conflicts) > 0 {
+			conflictsStr := ""
+
+			for _, conflict := range conflicts {
+				if conflictsStr != "" {
+					conflictsStr += ", "
+				}
+				conflictsStr += conflict.Error()
+			}
+
+			return nil, fmt.Errorf("conflicting SANs found in root [identity] section server certificate, ensure each server certificate is the sole representation of each DNS/IP SAN: %s", conflictsStr)
+		}
+
 		if err := controllerConfig.Id.WatchFiles(); err != nil {
 			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
 		}
