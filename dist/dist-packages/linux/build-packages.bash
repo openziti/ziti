@@ -233,7 +233,18 @@ do
 			ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
 			GOARCH=$ARCH \
 			MINIMUM_SYSTEMD_VERSION=232 \
-			docker run --rm -v "$PWD:/mnt/ziti" -v "$TMPDIR:/mnt/tmp" -w /mnt/ziti goreleaser/nfpm package \
+			docker run --rm \
+				-e ZITI_HOMEPAGE \
+				-e ZITI_VENDOR \
+				-e ZITI_MAINTAINER \
+				-e ZITI_VERSION \
+				-e ZITI_REV \
+				-e GOARCH \
+				-e MINIMUM_SYSTEMD_VERSION \
+				-v "$PWD:/mnt/ziti" \
+				-v "$TMPDIR:/mnt/tmp" \
+				-w /mnt/ziti \
+				goreleaser/nfpm package \
 				--config "/mnt/ziti/dist/dist-packages/linux/nfpm-${ARTIFACT}.yaml" \
 				--target "/mnt/tmp" \
 				--packager "$PKG"
