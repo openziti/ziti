@@ -20,7 +20,7 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.2.50
 	github.com/openziti/edge-api v0.26.52
-	github.com/openziti/fablab v0.5.115
+	github.com/openziti/fablab v0.6.1
 	github.com/openziti/foundation/v2 v2.0.84
 	github.com/openziti/identity v1.0.122
 	github.com/openziti/metrics v1.4.3

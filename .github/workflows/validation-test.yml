@@ -9,7 +9,7 @@ on:
         description: How long to run the test for
         type: string
         required: false
-        default: '1h'
+        default: '2h'
 
 # cancel older, redundant runs of same workflow on same branch
 concurrency:

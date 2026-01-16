@@ -19,6 +19,11 @@ package link
 import (
 	"container/heap"
 	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -32,10 +37,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type Env interface {
@@ -405,7 +406,11 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 
 	var onComplete []func()
 
-	routerLinks := &ctrl_pb.RouterLinks{}
+	// If controllers are just disconnected and not down, they may miss link faults. When they get the complete set
+	// with the FullRefresh flag set to true, the controller will know to prune any links not in the set
+	routerLinks := &ctrl_pb.RouterLinks{
+		FullRefresh: true,
+	}
 	for link := range self.Iter() {
 		if alwaysSend || link.IsDialed() {
 			routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{

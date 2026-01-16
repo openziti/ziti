@@ -19,6 +19,10 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -34,6 +38,7 @@ import (
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -41,9 +46,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
-	"os"
-	"strings"
-	"time"
 )
 
 //go:embed configs
@@ -164,8 +166,8 @@ var Model = &model.Model{
 				},
 				"ziti-tunnel-client": {
 					InstanceResourceType: "ondemand_iops",
-					EC2: model.EC2Host{
-						Volume: model.EC2Volume{
+					AWS: aws.EC2Host{
+						Volume: aws.EC2Volume{
 							Type:   "gp3",
 							SizeGB: 20,
 							IOPS:   1000,

@@ -25,6 +25,7 @@ import (
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -273,7 +274,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			for _, host := range m.SelectHosts("*") {
 				host.InstanceResourceType = "ondemand_iops"
-				host.EC2.Volume = model.EC2Volume{
+				host.AWS.Volume = aws.EC2Volume{
 					Type:   "gp3",
 					SizeGB: 20,
 					IOPS:   1000,

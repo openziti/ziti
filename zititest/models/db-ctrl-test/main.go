@@ -40,6 +40,7 @@ import (
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/zititest/models/test_resources"
@@ -293,8 +294,8 @@ var m = &model.Model{
 				"ctrl": {
 					InstanceType:         "c5.9xlarge",
 					InstanceResourceType: "ondemand_iops",
-					EC2: model.EC2Host{
-						Volume: model.EC2Volume{
+					AWS: aws.EC2Host{
+						Volume: aws.EC2Volume{
 							Type:   "gp3",
 							SizeGB: 16,
 							IOPS:   3000,

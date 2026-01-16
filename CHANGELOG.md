@@ -10,7 +10,6 @@
 * OIDC/JWT Token-based Enrollment
 * Clustering Performance Improvements
 * Basic permissions model (BETA)
-* Enable the tls handshake rate limiter by default
 * Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
 
 ## Binding Controller APIs With Identity
@@ -431,34 +430,6 @@ Non-admin identities cannot:
 - Grant permissions to identities
 
 These protections ensure that privilege escalation is prevented and admin access remains controlled.
-
-## Enable the TLS Handshake rate limiter by default
-
-The 1.0.0 release introduced a new rate limiter for TLS handshakes, which was disabled by default. As of the 1.8.0 release
-it will be enabled by default, but can still be disabled.
-
-If a controller experiences too many TLS handshakes at a time, the increased cpu load can cause them to start timing out. 
-Client may then retry before the first attempt has finished. The rate limiter tries to ensure that if the controller doesn't 
-have the capacity to process the handshake in time, it will reject it right away, rather than wasting cpu cycles.
-
-Additional changes:
-- The default max window size has also been increased to 2500.
-- The rate limiter timeout will now default to two seconds more than the tls handshake timeout.
-
-```
-tls: 
-  handshakeTimeout: 15s
-
-  rateLimiter:
-    # if disabled, no tls handshake rate limiting with be enforced
-    enabled: true
-    # the smallest window size for tls handshakes
-    minSize: 5
-    # the largest allowed window size for tls handshakes
-    maxSize: 5000
-    # after how long to consider a handshake abandoned if neither success nor failure was reported
-    timeout: 30s
-```
 
 ## Background Processing for Identity Updates
 

@@ -123,29 +123,23 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 		}
 
 		wasConnected := link.IsUsable()
-		if err := h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate); err == nil {
-			if wasConnected {
-				h.network.RerouteLink(link)
-			}
-			otherRouter := link.Src
-			if link.Src.Id == h.r.Id {
-				otherRouter = link.GetDest()
-			}
+		h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
+		otherRouter := link.Src
+		if link.Src.Id == h.r.Id {
+			otherRouter = link.GetDest()
+		}
 
-			if wasConnected && otherRouter != nil {
-				fault.Subject = ctrl_pb.FaultSubject_LinkFault
-				if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
-					if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
-						log.WithField("routerId", otherRouter.Id).
-							WithError(err).Error("failed to forward link fault to other router")
-					}
+		if wasConnected && otherRouter != nil {
+			fault.Subject = ctrl_pb.FaultSubject_LinkFault
+			if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
+				if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
+					log.WithField("routerId", otherRouter.Id).
+						WithError(err).Error("failed to forward link fault to other router")
 				}
 			}
-
-			log.Info("link fault")
-		} else {
-			log.WithError(err).Error("error handling link fault")
 		}
+
+		log.Info("link fault")
 	} else {
 		log.Info("link fault for unknown link")
 		h.network.NotifyLinkIdEvent(linkId, event.LinkFault)

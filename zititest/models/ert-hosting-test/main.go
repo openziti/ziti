@@ -108,7 +108,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "t3.medium"
+					host.InstanceType = "c5.large"
 				}
 				return nil
 			})
@@ -194,7 +194,6 @@ var m = &model.Model{
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
 				"ctrl3": {
-					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},

@@ -180,6 +180,10 @@ func (self *LinkManager) All() []*Link {
 	return self.linkTable.all()
 }
 
+func (self *LinkManager) IterateLinks() <-chan cmap.Tuple[string, *Link] {
+	return self.linkTable.links.IterBuffered()
+}
+
 func (self *LinkManager) GetLinkMap() map[string]*Link {
 	linkMap := make(map[string]*Link)
 	self.linkTable.links.IterCb(func(key string, link *Link) {

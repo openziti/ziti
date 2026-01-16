@@ -18,19 +18,22 @@ package zitilab
 
 import (
 	"fmt"
+	"io/fs"
+
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/ziti/zititest/zitilab/pki"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/pkg/errors"
-	"io/fs"
 )
 
 var _ model.ComponentType = (*ControllerType)(nil)
 var _ model.ServerComponent = (*ControllerType)(nil)
 var _ model.FileStagingComponent = (*ControllerType)(nil)
 var _ model.ActionsComponent = (*ControllerType)(nil)
+var _ model.SecurityGroupComponent = (*ControllerType)(nil)
 
 const (
 	ControllerActionInitStandalone = "initStandalone"
@@ -48,6 +51,23 @@ type ControllerType struct {
 
 func (self *ControllerType) Label() string {
 	return "ziti-controller"
+}
+
+func (self *ControllerType) GetSecurityGroup() aws.SecurityGroup {
+	return aws.SecurityGroup{
+		Rules: []*aws.NetworkRule{
+			{
+				Direction: aws.Ingress,
+				Port:      1280,
+				Protocol:  "tcp",
+			},
+			{
+				Direction: aws.Ingress,
+				Port:      6262,
+				Protocol:  "tcp",
+			},
+		},
+	}
 }
 
 func (self *ControllerType) GetVersion() string {

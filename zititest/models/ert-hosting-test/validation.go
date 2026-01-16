@@ -20,6 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -29,8 +32,6 @@ import (
 	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"time"
 )
 
 // start with a random scenario then cycle through them
@@ -236,7 +237,8 @@ func validateRouterErtTerminators(id string, clients *zitirest.Clients) (int, er
 			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
 			if !routerDetail.ValidateSuccess {
-				return invalid, fmt.Errorf("error: unable to validate on controller %s (%s)", routerDetail.Message, id)
+				return invalid, fmt.Errorf("error: unable to validate router %s (%s) on controller %s (%s)",
+					routerDetail.RouterId, routerDetail.RouterName, id, routerDetail.Message)
 			}
 			for _, linkDetail := range routerDetail.Details {
 				if !linkDetail.IsValid {

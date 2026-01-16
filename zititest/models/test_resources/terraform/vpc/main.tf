@@ -6,7 +6,7 @@ variable "public_cidr" {}
 variable "az" {}
 variable "environment_tag" {}
 
-output "security_group_id" { value = aws_security_group.fablab.id }
+output "fablab_security_group_id" { value = aws_security_group.fablab.id }
 output "subnet_id" { value = aws_subnet.fablab.id }
 
 provider "aws" {
@@ -135,3 +135,27 @@ resource "aws_security_group" "fablab" {
     source = "fablab"
   }
 }
+
+{{ range $sgId, $sg := .Model.AWS.SecurityGroups }}
+resource "aws_security_group" "{{ $sgId }}"  {
+  name = "{{ $sg.Name }}"
+  vpc_id = aws_vpc.fablab.id
+
+{{ range $idx, $rule := $sg.Rules }}
+  {{ $rule.Direction }} {
+    from_port = {{ $rule.Port }}
+    to_port = {{ $rule.Port }}
+    protocol = "{{ $rule.Protocol }}"
+    cidr_blocks = {{ $rule.CidrBlockList }}
+  }
+{{ end }}
+
+  tags = {
+    Name = "{{ $sg.Name}}"
+    source = "fablab"
+  }
+}
+
+output "{{ $sgId }}_security_group_id" { value = aws_security_group.{{ $sgId }}.id }
+
+{{ end }}
