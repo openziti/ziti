@@ -104,7 +104,7 @@ func (self *Faulter) run() {
 
 				if ctrlId != "" {
 					log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-					ch := self.ctrls.GetCtrlChannel(ctrlId)
+					ch := self.ctrls.GetChannel(ctrlId)
 					if ch == nil {
 						log.Error("unable to report circuit fault, no control channel for controller")
 						continue

@@ -104,7 +104,7 @@ func (self *circuitConfirmationHandler) sendUnroute(circuitId string) {
 	unroute.Now = true
 	if body, err := proto.Marshal(unroute); err == nil {
 		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-		if err = self.r.Control.Send(msg); err == nil {
+		if err = self.r.Control.GetHighPrioritySender().Send(msg); err == nil {
 			log.Debug("sent unroute to router for circuit")
 		} else {
 			log.WithError(err).Error("error sending unroute to router for circuit")

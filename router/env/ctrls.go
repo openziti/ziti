@@ -25,14 +25,16 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/capabilities"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/sirupsen/logrus"
 )
 
 type CtrlEventListener interface {
@@ -60,17 +62,26 @@ type CtrlEvent struct {
 	Controller NetworkController
 }
 
+type DialEnv interface {
+	GetDialHeaders() (channel.Headers, error)
+	GetConfig() *Config
+	GetCtrlChannelBindHandler() channel.BindHandler
+	NotifyOfReconnect(ch ctrlchan.CtrlChannel)
+}
+
 type NetworkControllers interface {
 	UpdateControllerEndpoints(endpoints []string) bool
 	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
-	AnyCtrlChannel() channel.Channel
+	AnyChannel() channel.Channel
+	AnyCtrlChannel() ctrlchan.CtrlChannel
 	GetModelUpdateCtrlChannel() channel.Channel
 	GetIfResponsive(ctrlId string) (channel.Channel, bool)
 	AllResponsiveCtrlChannels() []channel.Channel
 	AnyValidCtrlChannel() channel.Channel
-	GetCtrlChannel(ctrlId string) channel.Channel
+	GetCtrlChannel(ctrlId string) ctrlchan.CtrlChannel
+	GetChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
 	Close() error
@@ -86,18 +97,18 @@ type NetworkControllers interface {
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
 
-func NewNetworkControllers(defaultRequestTimeout time.Duration, dialer CtrlDialer, heartbeatOptions *HeartbeatOptions) NetworkControllers {
+func NewNetworkControllers(dialEnv DialEnv, heartbeatOptions *HeartbeatOptions) NetworkControllers {
 	return &networkControllers{
-		ctrlDialer:            dialer,
+		dialEnv:               dialEnv,
 		heartbeatOptions:      heartbeatOptions,
-		defaultRequestTimeout: defaultRequestTimeout,
+		defaultRequestTimeout: dialEnv.GetConfig().Ctrl.DefaultRequestTimeout,
 		ctrlEndpoints:         cmap.New[struct{}](),
 	}
 }
 
 type networkControllers struct {
 	lock                  sync.Mutex
-	ctrlDialer            CtrlDialer
+	dialEnv               DialEnv
 	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
 	ctrlEndpoints         cmap.ConcurrentMap[string, struct{}]
@@ -187,25 +198,13 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 	expBackoff.MaxInterval = 5 * time.Minute
 	expBackoff.MaxElapsedTime = 100 * 365 * 24 * time.Hour
 
-	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
-		id := binding.GetChannel().Id()
-		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), func(m *channel.Message, ch channel.Channel) {
-			if idx, ok := m.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
-				if ctrl := self.GetNetworkController(id); ctrl != nil {
-					ctrl.updateDataModelIndex(idx)
-				}
-			}
-		})
-
-		return self.Add(endpoint, binding.GetChannel())
-	})
-
 	operation := func() error {
 		if !self.ctrlEndpoints.Has(endpoint) {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
 
-		err = self.ctrlDialer(addr, bindHandler)
+		err = self.connectToController(endpoint, addr)
+
 		if err != nil {
 			log.WithError(err).Error("unable to connect controller")
 
@@ -230,10 +229,134 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 	}()
 }
 
-func (self *networkControllers) Add(address string, ch channel.Channel) error {
-	ctrl := newNetworkCtrl(ch, address, self.heartbeatOptions)
+func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
+	headers, err := self.dialEnv.GetDialHeaders()
+	if err != nil {
+		return err
+	}
 
-	if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
+	config := self.dialEnv.GetConfig()
+
+	if config.Ctrl.LocalBinding != "" {
+		logrus.Debugf("Using local interface %s to dial controller", config.Ctrl.LocalBinding)
+	}
+
+	// Build headers for the initial dial, including grouped channel flags
+	headers.PutBoolHeader(channel.IsGroupedHeader, true)
+	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
+	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
+	dialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity:     config.Id,
+		Endpoint:     addr,
+		LocalBinding: config.Ctrl.LocalBinding,
+		Headers:      headers,
+		TransportConfig: transport.Configuration{
+			transport.KeyProtocol:                 "ziti-ctrl",
+			transport.KeyCachedProxyConfiguration: config.Proxy,
+		},
+	})
+
+	// Dial initial underlay
+	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, headers)
+	if err != nil {
+		return fmt.Errorf("error connecting ctrl (%v)", err)
+	}
+
+	// Check if controller supports multi-underlay
+	maxHigh := 0
+	if capabilities.IsCapable(underlay, capabilities.ControllerGroupedCtrlChan) {
+		maxHigh = 1
+	}
+
+	// Track connectivity transitions for reconnect/disconnect notifications
+	var wasDisconnected atomic.Bool
+	changeCallback := func(ch *ctrlchan.DialCtrlChannel, oldCount, newCount uint32) {
+		multiCh := ch.GetChannel()
+		if multiCh == nil || multiCh.IsClosed() {
+			return
+		}
+		if wasDisconnected.Load() && newCount > 0 {
+			self.dialEnv.NotifyOfReconnect(ch)
+			wasDisconnected.Store(false)
+		} else if newCount == 0 {
+			if wasDisconnected.CompareAndSwap(false, true) {
+				self.NotifyOfDisconnect(ch.PeerId())
+			}
+		}
+	}
+
+	dialCtrlChan := ctrlchan.NewDialCtrlChannel(ctrlchan.DialCtrlChannelConfig{
+		Dialer:                  dialer,
+		MaxDefaultChannels:      1,
+		MaxHighPriorityChannels: maxHigh,
+		MaxLowPriorityChannels:  0,
+		StartupDelay:            5 * time.Second,
+		UnderlayChangeCallback:  changeCallback,
+	})
+
+	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
+		id := binding.GetChannel().Id()
+		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), func(m *channel.Message, ch channel.Channel) {
+			if idx, ok := m.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
+				if ctrl := self.GetNetworkController(id); ctrl != nil {
+					ctrl.updateDataModelIndex(idx)
+				}
+			}
+		})
+
+		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
+			return err
+		}
+
+		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+			ctrl := self.GetNetworkController(id)
+			self.ctrls.Delete(id)
+			if ctrl != nil {
+				self.notifyOfChange(ctrl, ControllerDisconnected)
+			}
+			if self.ctrlEndpoints.Has(endpoint) {
+				self.connectToControllerWithBackoff(endpoint)
+			}
+		}))
+
+		return nil
+	})
+
+	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
+
+	multiChannelConfig := &channel.MultiChannelConfig{
+		LogicalName:     fmt.Sprintf("ctrl/%s", underlay.Id()),
+		Options:         config.Ctrl.Options,
+		UnderlayHandler: dialCtrlChan,
+		BindHandler:     combinedBindHandler,
+		Underlay:        underlay,
+	}
+
+	if _, err = channel.NewMultiChannel(multiChannelConfig); err != nil {
+		if closeErr := underlay.Close(); closeErr != nil {
+			pfxlog.Logger().WithError(closeErr).Error("unable to close underlay")
+		}
+
+		if errors.Is(err, &backoff.PermanentError{}) {
+			return err
+		}
+
+		return fmt.Errorf("error connecting ctrl (%w)", err)
+	}
+
+	// If there are multiple controllers we may have to catch up the controllers that connected later
+	// with things that have already happened because we had state from other controllers, such as
+	// links
+	self.dialEnv.NotifyOfReconnect(dialCtrlChan)
+
+	return nil
+}
+
+func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) error {
+	ctrl := newNetworkCtrl(ctrlCh, address, self.heartbeatOptions)
+
+	if versionValue, found := underlay.Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
 			ctrl.versionInfo = versionInfo
 		} else {
@@ -281,7 +404,7 @@ func (self *networkControllers) GetAll() map[string]NetworkController {
 	return self.ctrls.AsMap()
 }
 
-func (self *networkControllers) AnyCtrlChannel() channel.Channel {
+func (self *networkControllers) AnyCtrlChannel() ctrlchan.CtrlChannel {
 	var current NetworkController
 	for _, ctrl := range self.ctrls.AsMap() {
 		if current == nil || ctrl.isMoreResponsive(current) {
@@ -291,7 +414,15 @@ func (self *networkControllers) AnyCtrlChannel() channel.Channel {
 	if current == nil {
 		return nil
 	}
-	return current.Channel()
+	return current.CtrlChannel()
+}
+
+func (self *networkControllers) AnyChannel() channel.Channel {
+	if ctrlCh := self.AnyCtrlChannel(); ctrlCh != nil {
+		return ctrlCh.GetChannel()
+	}
+
+	return nil
 }
 
 func (self *networkControllers) isLeader(controller NetworkController) bool {
@@ -337,7 +468,7 @@ func (self *networkControllers) GetIfResponsive(ctrlId string) (channel.Channel,
 func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {
 	delay := 10 * time.Millisecond
 	for {
-		result := self.AnyCtrlChannel()
+		result := self.AnyChannel()
 		if result != nil {
 			return result
 		}
@@ -349,9 +480,16 @@ func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {
 	}
 }
 
-func (self *networkControllers) GetCtrlChannel(controllerId string) channel.Channel {
+func (self *networkControllers) GetChannel(controllerId string) channel.Channel {
 	if ctrl := self.ctrls.Get(controllerId); ctrl != nil {
 		return ctrl.Channel()
+	}
+	return nil
+}
+
+func (self *networkControllers) GetCtrlChannel(controllerId string) ctrlchan.CtrlChannel {
+	if ctrl := self.ctrls.Get(controllerId); ctrl != nil {
+		return ctrl.CtrlChannel()
 	}
 	return nil
 }
@@ -371,6 +509,7 @@ func (self *networkControllers) ForEach(f func(controllerId string, ch channel.C
 }
 
 func (self *networkControllers) Close() error {
+	self.ctrlEndpoints.Clear()
 	var errList []error
 	self.ForEach(func(_ string, ch channel.Channel) {
 		if err := ch.Close(); err != nil {

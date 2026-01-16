@@ -578,7 +578,7 @@ func (self *linkRegistryImpl) syncRequiredLinkStates() {
 
 			for _, ctrlId := range ctrlIds {
 				log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("linkId", link.Id())
-				ctrlCh := self.ctrls.GetCtrlChannel(ctrlId)
+				ctrlCh := self.ctrls.GetChannel(ctrlId)
 
 				err := self.env.GetRateLimiterPool().QueueOrError(func() {
 					if err := protobufs.MarshalTyped(message).WithTimeout(100 * time.Millisecond).Send(ctrlCh); err != nil {
@@ -801,9 +801,8 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 
 	allSent := true
 	for ctrlId, ctrl := range self.ctrls.GetAll() {
-		connectedChecker := ctrl.Channel().Underlay().(interface{ IsConnected() bool })
 		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("op", "link-notify")
-		if connectedChecker.IsConnected() {
+		if ctrl.IsConnected() {
 			msgEnv := protobufs.MarshalTyped(routerLinks).WithTimeout(10 * time.Second)
 			if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
 				log.WithError(err).Error("timeout sending new router links")
@@ -849,9 +848,7 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 					WithField("linkId", fault.linkId).
 					WithField("iteration", fault.iteration)
 
-				connectedChecker := ctrl.Channel().Underlay().(interface{ IsConnected() bool })
-
-				if connectedChecker.IsConnected() {
+				if ctrl.IsConnected() {
 					msgEnv := protobufs.MarshalTyped(faultMsg).WithTimeout(10 * time.Second)
 					if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
 						log.WithError(err).Error("timeout sending link fault")

@@ -412,6 +412,7 @@ func (c *Controller) Run() error {
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.RouterDataModel, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.ControllerGroupedCtrlChan, 1)
 
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
@@ -451,7 +452,7 @@ func (c *Controller) Run() error {
 		Listener:        ctrlListener,
 		ConnectTimeout:  c.config.Ctrl.Options.ConnectTimeout,
 		Acceptors:       ctrlAcceptors,
-		DefaultAcceptor: ctrlAccepter,
+		DefaultAcceptor: ctrlAccepter.NewMultiListener(),
 	})
 
 	go underlayDispatcher.Run()
@@ -631,7 +632,7 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 				"index": evt.Index,
 			})
 
-			if err := protobufs.MarshalTyped(req).Send(r.Control); err != nil {
+			if err := protobufs.MarshalTyped(req).Send(r.Control.GetDefaultSender()); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
 			} else {
 				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")
@@ -659,7 +660,7 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 		log.Info("syncing updated ctrl addresses to connected routers")
 
 		for _, r := range c.network.AllConnectedRouters() {
-			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
+			if err := protobufs.MarshalTyped(updMsg).Send(r.Control.GetDefaultSender()); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update controller endpoints on router")
 			} else {
 				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with latest ctrl addresses")

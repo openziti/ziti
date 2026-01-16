@@ -250,7 +250,7 @@ func (self *Router) agentOpUpdateRoute(m *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	ctrl := self.ctrls.GetCtrlChannel(ctrlId)
+	ctrl := self.ctrls.GetChannel(ctrlId)
 	if ctrl == nil {
 		handler_common.SendOpResult(m, ch, "update.route", fmt.Sprintf("no control channel found for [%v]", ctrlId), false)
 		return

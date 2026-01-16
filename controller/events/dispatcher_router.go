@@ -131,8 +131,10 @@ func (self *routerEventAdapter) routerChange(eventType event.RouterEventType, r 
 		srcAddr := ""
 		dstAddr := ""
 		if ctrl := r.Control; ctrl != nil {
-			srcAddr = r.Control.Underlay().GetRemoteAddr().String()
-			dstAddr = r.Control.Underlay().GetLocalAddr().String()
+			if underlay := ctrl.GetChannel().Underlay(); underlay != nil {
+				srcAddr = underlay.GetRemoteAddr().String()
+				dstAddr = underlay.GetLocalAddr().String()
+			}
 		}
 
 		connectEvent := &event.ConnectEvent{

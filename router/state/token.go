@@ -25,6 +25,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/sirupsen/logrus"
@@ -142,7 +143,7 @@ func (a *ApiSessionToken) UpdateToken(new *ApiSessionToken) {
 // SelectCtrlCh implements controller affinity for legacy sessions while allowing
 // JWT-based sessions to use any available controller, optimizing for both
 // backwards compatibility and modern load distribution.
-func (a *ApiSessionToken) SelectCtrlCh(ctrls env.NetworkControllers) channel.Channel {
+func (a *ApiSessionToken) SelectCtrlCh(ctrls env.NetworkControllers) ctrlchan.CtrlChannel {
 	if a == nil {
 		return nil
 	}
@@ -166,7 +167,7 @@ func (a *ApiSessionToken) SelectModelUpdateCtrlCh(ctrls env.NetworkControllers) 
 
 	// Maintain controller affinity for legacy sessions
 	if a.ControllerId != "" {
-		return ctrls.GetCtrlChannel(a.ControllerId)
+		return ctrls.GetChannel(a.ControllerId)
 	}
 
 	// Use specialized model update channel for optimal performance

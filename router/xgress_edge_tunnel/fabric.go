@@ -104,7 +104,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return errors.New(errStr)
 	}
 
-	log = log.WithField("ctrlId", ctrlCh.Id())
+	log = log.WithField("ctrlId", ctrlCh.PeerId())
 
 	rdm := self.env.GetRouterDataModel()
 	if policy, err := posture.HasAccess(rdm, self.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
@@ -117,7 +117,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		PeerData:             peerData,
 	}
 
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(ctrlCh)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(ctrlCh.GetHighPrioritySender())
 
 	response := &edge_ctrl_pb.CreateTunnelCircuitV2Response{}
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
@@ -140,7 +140,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		}
 	}
 
-	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
+	x := xgress.NewXgress(response.CircuitId, ctrlCh.PeerId(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
 	self.bindHandler.HandleXgressBind(x)
 	x.Start()
 
@@ -237,7 +237,7 @@ func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed boo
 		WithField("checkPassed", checkPassed)
 	logger.Debug("sending health event")
 
-	if err := msg.WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).Send(ctrlCh); err != nil {
+	if err := msg.WithTimeout(self.env.GetNetworkControllers().DefaultRequestTimeout()).Send(ctrlCh.GetDefaultSender()); err != nil {
 		logger.WithError(err).Error("health event send failed")
 	} else {
 		logger.Debug("health event sent")

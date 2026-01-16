@@ -7,16 +7,46 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/command"
-	"github.com/openziti/ziti/v2/router/env"
-	"github.com/stretchr/testify/require"
-
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+// mockNetworkControllers implements env.NetworkControllers for testing endpoint saving
+// without actually making network connections
+type mockNetworkControllers struct {
+	env.MockNetworkControllers
+	endpoints map[string]struct{}
+}
+
+func newMockNetworkControllers() *mockNetworkControllers {
+	return &mockNetworkControllers{
+		endpoints: make(map[string]struct{}),
+	}
+}
+
+func (m *mockNetworkControllers) UpdateControllerEndpoints(endpoints []string) bool {
+	changed := false
+	newEndpoints := make(map[string]struct{})
+	for _, ep := range endpoints {
+		newEndpoints[ep] = struct{}{}
+		if _, exists := m.endpoints[ep]; !exists {
+			changed = true
+		}
+	}
+	for ep := range m.endpoints {
+		if _, exists := newEndpoints[ep]; !exists {
+			changed = true
+		}
+	}
+	m.endpoints = newEndpoints
+	return changed
+}
 
 func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
@@ -87,27 +117,27 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 	addr2, err := transport.ParseAddress("tls:localhost:6767")
 	req.NoError(err)
 
-	ctrlDialer := func(address transport.Address, bindHandler channel.BindHandler) error {
-		return nil
+	cfg := &env.Config{
+		Ctrl: struct {
+			InitialEndpoints      []*env.UpdatableAddress
+			LocalBinding          string
+			DefaultRequestTimeout time.Duration
+			Options               *channel.Options
+			EndpointsFile         string
+			Heartbeats            env.HeartbeatOptions
+			StartupTimeout        time.Duration
+			RateLimit             command.AdaptiveRateLimiterConfig
+		}{
+			EndpointsFile:         filepath.Join(tmpDir, "endpoints"),
+			InitialEndpoints:      []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},
+			DefaultRequestTimeout: time.Minute,
+			Options:               channel.DefaultOptions(),
+		},
 	}
 
 	r := Router{
-		config: &env.Config{
-			Ctrl: struct {
-				InitialEndpoints      []*env.UpdatableAddress
-				LocalBinding          string
-				DefaultRequestTimeout time.Duration
-				Options               *channel.Options
-				EndpointsFile         string
-				Heartbeats            env.HeartbeatOptions
-				StartupTimeout        time.Duration
-				RateLimit             command.AdaptiveRateLimiterConfig
-			}{
-				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
-				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},
-			},
-		},
-		ctrls: env.NewNetworkControllers(time.Minute, ctrlDialer, env.NewDefaultHeartbeatOptions()),
+		config: cfg,
+		ctrls:  newMockNetworkControllers(),
 	}
 
 	endpoints, err := r.getInitialCtrlEndpoints()

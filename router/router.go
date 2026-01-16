@@ -36,11 +36,9 @@ import (
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
@@ -53,6 +51,7 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/alert"
 	"github.com/openziti/ziti/v2/common/config"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/health"
 	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -121,6 +120,16 @@ type Router struct {
 	alertReporter       *alert.Reporter
 }
 
+func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
+	for _, x := range self.xrctrls {
+		go x.NotifyOfReconnect(ch.GetChannel())
+	}
+}
+
+func (self *Router) GetCtrlChannelBindHandler() channel.BindHandler {
+	return self.ctrlBindhandler
+}
+
 func (self *Router) GetRouterId() *identity.TokenId {
 	return self.config.Id
 }
@@ -172,7 +181,7 @@ func (self *Router) RenderJsonConfig() (string, error) {
 }
 
 func (self *Router) GetChannel(controllerId string) channel.Channel {
-	return self.ctrls.GetCtrlChannel(controllerId)
+	return self.ctrls.GetChannel(controllerId)
 }
 
 func (self *Router) DefaultRequestTimeout() time.Duration {
@@ -216,6 +225,52 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
+func (self *Router) GetDialHeaders() (channel.Headers, error) {
+	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
+
+	if err != nil {
+		return nil, fmt.Errorf("error with version header information value: %w", err)
+	}
+
+	headers := channel.Headers{
+		channel.HelloVersionHeader: routerVersion,
+	}
+
+	listeners := &ctrl_pb.Listeners{}
+	for _, listener := range self.xlinkListeners {
+		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
+			Address:      listener.GetAdvertisement(),
+			Protocol:     listener.GetLinkProtocol(),
+			CostTags:     listener.GetLinkCostTags(),
+			Groups:       listener.GetGroups(),
+			LocalBinding: listener.GetLocalBinding(),
+		})
+	}
+
+	if len(listeners.Listeners) > 0 {
+		buf, err := proto.Marshal(listeners)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal Listeners (%w)", err)
+		}
+		headers[int32(ctrl_pb.ControlHeaders_ListenersHeader)] = buf
+	}
+
+	routerMeta := &ctrl_pb.RouterMetadata{
+		Capabilities: []ctrl_pb.RouterCapability{
+			ctrl_pb.RouterCapability_LinkManagement,
+		},
+	}
+
+	buf, err := proto.Marshal(routerMeta)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to router metadata (%w)", err)
+	}
+
+	headers[int32(ctrl_pb.ControlHeaders_RouterMetadataHeader)] = buf
+	return headers, nil
+}
+
 func createMetricsRegistry(cfg *env.Config, closeNotify <-chan struct{}) metrics.UsageRegistry {
 	metricsConfig := metrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
 	metricsConfig.EventQueueSize = cfg.Metrics.EventQueueSize
@@ -249,7 +304,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		xgMetrics:           routerMetrics.NewXgressMetrics(metricsRegistry),
 	}
 
-	router.ctrls = env.NewNetworkControllers(cfg.Ctrl.DefaultRequestTimeout, router.connectToController, &cfg.Ctrl.Heartbeats)
+	router.ctrls = env.NewNetworkControllers(router, &cfg.Ctrl.Heartbeats)
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
@@ -797,7 +852,7 @@ func (self *Router) startControlPlane() error {
 		})
 	}
 
-	for self.ctrls.AnyCtrlChannel() == nil && !self.isShutdown.Load() {
+	for self.ctrls.AnyChannel() == nil && !self.isShutdown.Load() {
 		time.Sleep(1 * time.Second)
 	}
 
@@ -808,100 +863,6 @@ func (self *Router) startControlPlane() error {
 	}
 
 	interfaces.StartInterfaceReporter(self.ctrls, self.GetCloseNotify(), self.config.IfaceDiscovery)
-
-	return nil
-}
-
-func (self *Router) connectToController(addr transport.Address, bindHandler channel.BindHandler) error {
-	attributes := map[int32][]byte{}
-
-	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
-
-	if err != nil {
-		return fmt.Errorf("error with version header information value: %v", err)
-	}
-
-	attributes[channel.HelloVersionHeader] = routerVersion
-
-	listeners := &ctrl_pb.Listeners{}
-	for _, listener := range self.xlinkListeners {
-		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address:      listener.GetAdvertisement(),
-			Protocol:     listener.GetLinkProtocol(),
-			CostTags:     listener.GetLinkCostTags(),
-			Groups:       listener.GetGroups(),
-			LocalBinding: listener.GetLocalBinding(),
-		})
-	}
-
-	if len(listeners.Listeners) > 0 {
-		if buf, err := proto.Marshal(listeners); err != nil {
-			return errors.Wrap(err, "unable to marshal Listeners")
-		} else {
-			attributes[int32(ctrl_pb.ControlHeaders_ListenersHeader)] = buf
-		}
-	}
-
-	routerMeta := &ctrl_pb.RouterMetadata{
-		Capabilities: []ctrl_pb.RouterCapability{
-			ctrl_pb.RouterCapability_LinkManagement,
-		},
-	}
-
-	if buf, err := proto.Marshal(routerMeta); err != nil {
-		return errors.Wrap(err, "unable to router metadata")
-	} else {
-		attributes[int32(ctrl_pb.ControlHeaders_RouterMetadataHeader)] = buf
-	}
-
-	var channelRef concurrenz.AtomicValue[channel.Channel]
-	reconnectHandler := func() {
-		if ch := channelRef.Load(); ch != nil {
-			for _, x := range self.xrctrls {
-				go x.NotifyOfReconnect(ch)
-			}
-			self.ctrls.NotifyOfReconnect(ch.Id())
-		}
-	}
-	disconnectHandler := func() {
-		if ch := channelRef.Load(); ch != nil {
-			self.ctrls.NotifyOfDisconnect(ch.Id())
-		}
-	}
-
-	if self.config.Ctrl.LocalBinding != "" {
-		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
-	}
-
-	dialer := channel.NewReconnectingDialer(channel.ReconnectingDialerConfig{
-		Identity:          self.config.Id,
-		Endpoint:          addr,
-		LocalBinding:      self.config.Ctrl.LocalBinding,
-		Headers:           attributes,
-		DisconnectHandler: disconnectHandler,
-		ReconnectHandler:  reconnectHandler,
-		TransportConfig: transport.Configuration{
-			transport.KeyProtocol:                 "ziti-ctrl",
-			transport.KeyCachedProxyConfiguration: self.config.Proxy,
-		},
-	})
-
-	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
-	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
-	if err != nil {
-		if errors.Is(err, &backoff.PermanentError{}) {
-			return err
-		}
-		return fmt.Errorf("error connecting ctrl (%v)", err)
-	}
-	channelRef.Store(ch)
-
-	// If there are multiple controllers we may have to catch up the controllers that connected later
-	// with things that have already happened because we had state from other controllers, such as
-	// links. Note that we only do this for xctrls and not the network controllers
-	for _, x := range self.xrctrls {
-		go x.NotifyOfReconnect(ch)
-	}
 
 	return nil
 }

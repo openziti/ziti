@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
@@ -129,7 +130,7 @@ func (handler *validateIdentityConnectionStatusesHandler) ValidateEdgeConnection
 
 func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnections(
 	router *model.Router,
-	m map[string]map[string]channel.Channel,
+	m map[string]map[string]ctrlchan.CtrlChannel,
 	lock *sync.Mutex,
 	cb EdgeConnectionsValidationCallback) {
 
@@ -138,7 +139,7 @@ func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnect
 	if router.Control != nil && !router.Control.IsClosed() {
 		request := &ctrl_pb.InspectRequest{RequestedValues: []string{inspect.RouterIdentityConnectionStatusesKey}}
 		resp := &ctrl_pb.InspectResponse{}
-		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control.GetLowPrioritySender())
 		if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
 			handler.reportError(router, err, cb)
 			return
@@ -217,9 +218,9 @@ func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnect
 		if routerConn := connMap[router.Id]; routerConn != nil {
 			if !routerConn.IsClosed() {
 				errList = append(errList, fmt.Sprintf("ctrl reports identity %s is connected, but router disagrees", identityId))
-			} else if routerConn.GetTimeSinceLastRead() > handler.appEnv.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout {
+			} else if routerConn.GetChannel().GetTimeSinceLastRead() > handler.appEnv.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout {
 				errList = append(errList, fmt.Sprintf("ctrl still has identity %s router conn, even though time since last read %s > timeout of %s",
-					identityId, routerConn.GetTimeSinceLastRead(), handler.appEnv.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout))
+					identityId, routerConn.GetChannel().GetTimeSinceLastRead(), handler.appEnv.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout))
 			}
 		}
 		delete(connMap, router.Id)

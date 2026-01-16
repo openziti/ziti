@@ -92,7 +92,7 @@ func (self *Scanner) scan() {
 			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
 			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitMap))
 
-			if ctrl := self.ctrls.GetCtrlChannel(ctrlId); ctrl != nil {
+			if ctrl := self.ctrls.GetChannel(ctrlId); ctrl != nil {
 				confirm := &ctrl_pb.CircuitConfirmation{IdleTimes: idleCircuitMap}
 				for circuitId := range idleCircuitMap {
 					confirm.CircuitIds = append(confirm.CircuitIds, circuitId)

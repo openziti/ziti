@@ -54,7 +54,6 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	var sdkChannel sdkEdge.SdkChannel
 	if multiChannel, ok := binding.GetChannel().(channel.MultiChannel); ok {
 		sdkChannel = multiChannel.GetUnderlayHandler().(sdkEdge.SdkChannel)
-		sdkChannel.InitChannel(multiChannel)
 	} else {
 		sdkChannel = sdkEdge.NewSingleSdkChannel(binding.GetChannel())
 	}
@@ -250,7 +249,7 @@ func (self *Acceptor) Run() {
 }
 
 func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
-	sdkChannel := NewListenerSdkChannel(underlay)
+	sdkChannel := NewListenerSdkChannel()
 	multiConfig := channel.MultiChannelConfig{
 		LogicalName:     "edge",
 		Options:         self.options,
@@ -284,9 +283,9 @@ func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
 	return nil
 }
 
-func NewListenerSdkChannel(underlay channel.Underlay) sdkEdge.UnderlayHandlerSdkChannel {
+func NewListenerSdkChannel() sdkEdge.UnderlayHandlerSdkChannel {
 	result := &ListenerSdkChannel{
-		BaseSdkChannel: *sdkEdge.NewBaseSdkChannel(underlay),
+		BaseSdkChannel: *sdkEdge.NewBaseSdkChannel(),
 	}
 
 	result.constraints.AddConstraint(sdkEdge.ChannelTypeDefault, 1, 1)

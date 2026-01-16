@@ -77,7 +77,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 					responseMsg.Headers[int32(k)] = v
 				}
 
-				if err := responseMsg.WithTimeout(10 * time.Second).Send(h.r.Control); err != nil {
+				if err := responseMsg.WithTimeout(10 * time.Second).Send(h.r.Control.GetHighPrioritySender()); err != nil {
 					log.Errorf("unable to respond with success to create circuit request for circuit %v (%s)", circuit.Id, err)
 					if err := h.network.RemoveCircuit(circuit.Id, true); err != nil {
 						log.WithError(err).WithField("circuitId", circuit.Id).Error("unable to remove circuit")
@@ -86,7 +86,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 			} else {
 				responseMsg := ctrl_msg.NewCircuitFailedMsg(err.Error())
 				responseMsg.ReplyTo(msg)
-				if err := h.r.Control.Send(responseMsg); err != nil {
+				if err := h.r.Control.GetHighPrioritySender().Send(responseMsg); err != nil {
 					log.WithError(err).Error("unable to respond with failure to create circuit request for service")
 				}
 			}

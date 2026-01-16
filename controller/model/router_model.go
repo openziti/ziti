@@ -20,10 +20,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -41,7 +41,7 @@ type Router struct {
 	Name        string
 	Fingerprint *string
 	Listeners   []*ctrl_pb.Listener
-	Control     channel.Channel
+	Control     ctrlchan.CtrlChannel
 	Connected   atomic.Bool
 	ConnectTime time.Time
 	VersionInfo *versions.VersionInfo

@@ -183,7 +183,7 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModelOnRouter(
 	}
 
 	resp := &edge_ctrl_pb.RouterDataModelValidateResponse{}
-	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control.GetLowPrioritySender())
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
 		details.Errors = []string{fmt.Sprintf("unable to validate router data (%s)", err.Error())}
 		cb(details)

@@ -26,7 +26,6 @@ func NewBaseLinkChannel(underlay channel.Underlay) *BaseLinkChannel {
 
 	result := &BaseLinkChannel{
 		SenderContext:  senderContext,
-		id:             underlay.ConnectionId(),
 		defaultSender:  channel.NewSingleChSender(senderContext, defaultMsgChan),
 		ackSender:      channel.NewSingleChSender(senderContext, controlMsgChan),
 		ackMsgChan:     controlMsgChan,
@@ -37,7 +36,6 @@ func NewBaseLinkChannel(underlay channel.Underlay) *BaseLinkChannel {
 }
 
 type BaseLinkChannel struct {
-	id string
 	ch channel.MultiChannel
 	channel.SenderContext
 	ackSender     channel.Sender
@@ -49,7 +47,7 @@ type BaseLinkChannel struct {
 	connIteration  atomic.Uint32
 }
 
-func (self *BaseLinkChannel) InitChannel(ch channel.MultiChannel) {
+func (self *BaseLinkChannel) ChannelCreated(ch channel.MultiChannel) {
 	self.ch = ch
 }
 
@@ -154,7 +152,6 @@ type UnderlayHandlerLinkChannel interface {
 }
 
 type LinkChannel interface {
-	InitChannel(channel.MultiChannel)
 	GetChannel() channel.Channel
 	GetDefaultSender() channel.Sender
 	GetAckSender() channel.Sender
