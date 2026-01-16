@@ -16,15 +16,33 @@
 
 package change
 
-import "github.com/openziti/channel/v4"
+import (
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
+)
+
+func NewCtrlChannelChange(routerId, routerName, method string, ctrlCh ctrlchan.CtrlChannel) *Context {
+	var ch channel.Channel
+	if ctrlCh != nil {
+		ch = ctrlCh.GetChannel()
+	}
+	return NewControlChannelChange(routerId, routerName, method, ch)
+}
 
 func NewControlChannelChange(routerId, routerName, method string, ch channel.Channel) *Context {
-	return New().
+	result := New().
 		SetChangeAuthorId(routerId).
 		SetChangeAuthorName(routerName).
 		SetChangeAuthorType(AuthorTypeRouter).
 		SetSourceType(SourceTypeControlChannel).
-		SetSourceMethod(method).
-		SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
-		SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
+		SetSourceMethod(method)
+
+	if ch != nil {
+		if underlay := ch.Underlay(); underlay != nil {
+			result.SetSourceLocal(underlay.GetLocalAddr().String()).
+				SetSourceRemote(underlay.GetRemoteAddr().String())
+		}
+	}
+
+	return result
 }

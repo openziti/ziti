@@ -23,8 +23,8 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 )
 
-func IsCapable(ch channel.Channel, capability int) bool {
-	headers := ch.Underlay().Headers()
+func IsCapable(underlay channel.Underlay, capability int) bool {
+	headers := underlay.Headers()
 	if val, found := headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)]; found {
 		capabilitiesMask := &big.Int{}
 		capabilitiesMask.SetBytes(val)

@@ -359,7 +359,6 @@ type dialBindHandler struct {
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
 	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
 		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
-			linkChan.InitChannel(mc)
 			self.link.ch = linkChan
 		}
 	}

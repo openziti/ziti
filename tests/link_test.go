@@ -14,6 +14,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/link"
@@ -122,9 +123,28 @@ func (self *testDial) GetIteration() uint32 {
 	return 1
 }
 
+type dialEnvMock struct{}
+
+func (self *dialEnvMock) GetDialHeaders() (channel.Headers, error) {
+	return channel.Headers{}, nil
+}
+
+func (self *dialEnvMock) GetConfig() *env.Config {
+	cfg := &env.Config{}
+	cfg.Ctrl.DefaultRequestTimeout = time.Second
+	return cfg
+}
+
+func (self *dialEnvMock) GetCtrlChannelBindHandler() channel.BindHandler {
+	return nil
+}
+
+func (self *dialEnvMock) NotifyOfReconnect(ctrlchan.CtrlChannel) {
+}
+
 func setupEnv() link.Env {
 	closeNotify := make(chan struct{})
-	ctrls := env.NewNetworkControllers(time.Second, nil, env.NewDefaultHeartbeatOptions())
+	ctrls := env.NewNetworkControllers(&dialEnvMock{}, env.NewDefaultHeartbeatOptions())
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 	return &testRegistryEnv{

@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/controller/models"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -356,7 +356,7 @@ func NewTestLink(id string, src, dst *Router) *Link {
 	return l
 }
 
-func NewRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
+func NewRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl ctrlchan.CtrlChannel, cost uint16, noTraversal bool) *Router {
 	r := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
 		Name:        id,

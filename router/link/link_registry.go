@@ -801,9 +801,8 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 
 	allSent := true
 	for ctrlId, ctrl := range self.ctrls.GetAll() {
-		connectedChecker := ctrl.Channel().Underlay().(interface{ IsConnected() bool })
 		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("op", "link-notify")
-		if connectedChecker.IsConnected() {
+		if ctrl.IsConnected() {
 			msgEnv := protobufs.MarshalTyped(routerLinks).WithTimeout(10 * time.Second)
 			if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
 				log.WithError(err).Error("timeout sending new router links")
