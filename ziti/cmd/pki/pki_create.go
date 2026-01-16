@@ -111,10 +111,7 @@ func (o *PKICreateOptions) ObtainPKIRoot() (string, error) {
 			if err != nil {
 				return "", err
 			}
-			pkiRoot, err = util.PickValue("Required flag 'pki-root' not specified; Enter PKI Root now:", pkiRootDir, true)
-			if err != nil {
-				return "", err
-			}
+			pkiRoot = pkiRootDir // Use the default directly
 		}
 	}
 	return pkiRoot, nil
