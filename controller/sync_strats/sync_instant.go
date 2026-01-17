@@ -137,7 +137,7 @@ func (strategy *InstantStrategy) AddPublicKey(cert *tls.Certificate) {
 
 // Initialize implements RouterDataModelCache
 func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) error {
-	strategy.RouterDataModelSender = common.NewRouterDataModelSender(strategy.ae.TimelineId(), logSize, bufferSize)
+	strategy.RouterDataModelSender = common.NewRouterDataModelSender(strategy.ae, logSize, bufferSize)
 	pfxlog.Logger().WithField("logSize", logSize).WithField("listenerBufferSizes", bufferSize).
 		Info("initialized controller router data model")
 	if strategy.ae.HostController.IsRaftEnabled() {

@@ -181,10 +181,10 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to list controllers")
 		return
-	} else {
-		for _, ctrl := range result.Entities {
-			controllers[ctrl.Id] = ctrl
-		}
+	}
+
+	for _, ctrl := range result.Entities {
+		controllers[ctrl.Id] = ctrl
 	}
 
 	changeCtx := change.New()

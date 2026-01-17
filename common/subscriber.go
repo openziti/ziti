@@ -265,9 +265,9 @@ func (self *IdentitySubscription) notifyIdentityEvent(state *IdentityState, even
 	}
 }
 
-func (self *IdentitySubscription) notifyServiceChange(state *IdentityState, service *IdentityService, eventType ServiceEventType) {
+func (self *IdentitySubscription) notifyServiceChange(state *IdentityState, previousService, service *IdentityService, eventType ServiceEventType) {
 	for _, subscriber := range self.listeners.Value() {
-		subscriber.NotifyServiceChange(state, service, eventType)
+		subscriber.NotifyServiceChange(state, previousService, service, eventType)
 	}
 }
 
@@ -347,15 +347,15 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	for svcId, service := range oldServices {
 		newService, ok := newServices[svcId]
 		if !ok {
-			self.notifyServiceChange(state, service, ServiceAccessLostEvent)
+			self.notifyServiceChange(state, service, service, ServiceAccessLostEvent)
 		} else if !service.Equals(newService) {
-			self.notifyServiceChange(state, newService, ServiceUpdatedEvent)
+			self.notifyServiceChange(state, service, newService, ServiceUpdatedEvent)
 		}
 	}
 
 	for svcId, service := range newServices {
 		if _, ok := oldServices[svcId]; !ok {
-			self.notifyServiceChange(state, service, ServiceAccessGainedEvent)
+			self.notifyServiceChange(state, nil, service, ServiceAccessGainedEvent)
 		}
 	}
 
@@ -368,10 +368,10 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	for svcId, newService := range newServices {
 		if oldService := oldServices[svcId]; oldService != nil {
 			if newService.DialAllowed && oldService.dialPoliciesIndex != newService.dialPoliciesIndex {
-				self.notifyServiceChange(state, newService, ServiceDialPoliciesChanged)
+				self.notifyServiceChange(state, oldService, newService, ServiceDialPoliciesChanged)
 			}
 			if newService.BindAllowed && oldService.bindPoliciesIndex != newService.bindPoliciesIndex {
-				self.notifyServiceChange(state, newService, ServiceBindPoliciesChanged)
+				self.notifyServiceChange(state, oldService, newService, ServiceBindPoliciesChanged)
 			}
 		}
 	}
@@ -451,6 +451,9 @@ const (
 	ServiceDialPoliciesChanged ServiceEventType = 4
 	ServiceBindPoliciesChanged ServiceEventType = 5
 
+	ServiceDialAccessLostEvent ServiceEventType = 6
+	ServiceBindAccessLostEvent ServiceEventType = 7
+
 	IdentityFullStateState            IdentityEventType = 6
 	IdentityUpdatedEvent              IdentityEventType = 7
 	IdentityPostureChecksUpdatedEvent IdentityEventType = 8
@@ -471,7 +474,7 @@ type IdentityState struct {
 // the identity is created, updated, or deleted, and when services are added, removed, or modified.
 type IdentityEventSubscriber interface {
 	NotifyIdentityEvent(state *IdentityState, eventType IdentityEventType)
-	NotifyServiceChange(state *IdentityState, service *IdentityService, eventType ServiceEventType)
+	NotifyServiceChange(state *IdentityState, previousService, service *IdentityService, eventType ServiceEventType)
 }
 
 // subscriberEvent is an internal interface for events that need to be processed to update

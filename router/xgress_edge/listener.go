@@ -270,6 +270,104 @@ type edgeClientConn struct {
 	apiSessionToken *state.ApiSessionToken
 	forwarder       env.Forwarder
 	xgCircuits      cmap.ConcurrentMap[string, *xgEdgeForwarder]
+	stateListener   atomic.Bool
+}
+
+func (self *edgeClientConn) GetHostedServicesRegistry() *hostedServiceRegistry {
+	return self.listener.factory.hostedServices
+}
+
+func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eventType common.IdentityEventType) {
+	log := pfxlog.Logger().WithField("identityId", state.Identity.Id).
+		WithField("channel", self.ch.GetChannel().Label()).
+		WithField("connectionId", self.ch.GetChannel().ConnectionId())
+
+	closeEvent := false
+	if eventType == common.IdentityDeletedEvent {
+		log.Info("identity deleted, closing connections")
+		closeEvent = true
+	} else if state.Identity.Disabled {
+		log.Info("identity disabled, closing connections")
+		closeEvent = true
+	}
+
+	if closeEvent {
+		if err := self.ch.GetChannel().Close(); err != nil {
+			log.WithError(err).Error("failed to close channel")
+		}
+	}
+}
+
+func (self *edgeClientConn) NotifyServiceChange(_ *common.IdentityState, previousService, service *common.IdentityService, eventType common.ServiceEventType) {
+	dialLost := false
+	bindLost := false
+
+	if eventType == common.ServiceAccessLostEvent {
+		dialLost = service.IsDialAllowed()
+		bindLost = service.IsBindAllowed()
+	} else if eventType == common.ServiceUpdatedEvent {
+		dialLost = previousService.IsDialAllowed() && !service.IsDialAllowed()
+		bindLost = previousService.IsBindAllowed() && !service.IsBindAllowed()
+	}
+
+	if bindLost {
+		self.handleBindAccessLost(service)
+	}
+
+	if dialLost {
+		self.handleDialAccessLost(service)
+	}
+}
+
+func (self *edgeClientConn) handleBindAccessLost(service *common.IdentityService) {
+	log := pfxlog.Logger().
+		WithField("serviceId", service.GetId()).
+		WithField("serviceName", service.GetName())
+
+	terminators := self.GetHostedServicesRegistry().getTerminatorsForService(service.GetId())
+	for _, terminator := range terminators {
+		log.WithField("terminatorId", terminator.terminatorId).
+			Info("bind access to service, closing terminator")
+		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost")
+	}
+}
+
+func (self *edgeClientConn) handleDialAccessLost(service *common.IdentityService) {
+	log := pfxlog.Logger().
+		WithField("serviceId", service.GetId()).
+		WithField("serviceName", service.GetName())
+
+	var toClose []edgeCircuit
+	self.IterateCircuits(func(c edgeCircuit) {
+		if c.GetServiceId() == service.GetId() {
+			toClose = append(toClose, c)
+		}
+	})
+
+	for _, c := range toClose {
+		log.WithField("circuitId", c.GetCircuitId()).Info("closing circuit, dial access lost")
+		c.CloseForDialAccessLoss()
+	}
+}
+
+type edgeCircuit interface {
+	GetCircuitId() string
+	GetServiceId() string
+	CloseForDialAccessLoss()
+}
+
+func (self *edgeClientConn) IterateCircuits(f func(c edgeCircuit)) {
+	for _, sink := range self.msgMux.GetSinks() {
+		if xgConn, ok := sink.(*edgeXgressConn); ok {
+			f(xgConn)
+		} else {
+			pfxlog.Logger().Errorf("tried to iterate msg mux sink, but it wasn't edgeXgressConn, instead was %T", sink)
+		}
+	}
+
+	self.xgCircuits.IterCb(func(_ string, v *xgEdgeForwarder) {
+		f(v)
+	})
 }
 
 // getIdentityId safely retrieves the identity ID from the associated API session.
@@ -289,7 +387,7 @@ func (self *edgeClientConn) getIdentityId() string {
 	return self.apiSessionToken.IdentityId
 }
 
-// GetConns returns all active connections managed by this edgeClientConn's message multiplexer.
+// GetConnIdToSinks returns all active connections managed by this edgeClientConn's message multiplexer.
 // Each connection is identified by a unique connection ID (connId) and represented as a message sink
 // that contains connection state information. This method is used by security enforcement systems
 // to iterate over all connections when applying policy changes, evaluating access permissions,
@@ -396,7 +494,23 @@ func (self *edgeClientConn) ContentType() int32 {
 	return sdkedge.ContentTypeData
 }
 
+func (self *edgeClientConn) checkForStateListener() {
+	if !self.stateListener.Load() {
+		if self.stateListener.CompareAndSwap(false, true) {
+			err := self.listener.factory.stateManager.RouterDataModel().SubscribeToIdentityChanges(self.getIdentityId(), self, false)
+			if err != nil {
+				pfxlog.Logger().
+					WithField("identityId", self.getIdentityId()).
+					WithError(err).
+					Error("failed to subscribe to identity change event")
+				self.stateListener.Store(false)
+			}
+		}
+	}
+}
+
 func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
+	self.checkForStateListener()
 	serviceSessionTokenStr := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(req))
@@ -467,6 +581,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
 		handler = &xgEdgeForwarder{
 			edgeClientConn: self,
+			serviceId:      serviceSessionToken.ServiceId,
 			ctrlId:         ctrlCh.Id(),
 			originator:     xgress.Initiator,
 			metrics:        self.listener.factory.env.GetXgressMetrics(),
@@ -623,7 +738,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 
 	supportsCreateTerminatorV2 := capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateTerminatorV2)
 	if supportsCreateTerminatorV2 {
-		self.processBindV2(serviceSessionToken, req, ch, ctrlCh)
+		self.processBindV2(serviceSessionToken, req, ch)
 	} else {
 		self.processBindV1(serviceSessionToken, req, ch, ctrlCh)
 	}
@@ -748,8 +863,8 @@ func (self *edgeClientConn) processBindV1(serviceSessionToken *state.ServiceSess
 	log.Info("created terminator")
 }
 
-func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSessionToken, req *channel.Message, ch channel.Channel, ctrlCh channel.Channel) {
-
+func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSessionToken, req *channel.Message, ch channel.Channel) {
+	self.checkForStateListener()
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
@@ -1386,7 +1501,7 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 	xgOptions := &ctx.SdkConn.listener.options.Options
 	x := xgress.NewXgress(response.CircuitId, ctx.CtrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
 	ctx.SdkConn.listener.bindHandler.HandleXgressBind(x)
-	self.conn.ctrlRx = x
+	self.conn.x = x
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	ctx.SdkConn.sendConnectedReply(ctx.Req, response)
@@ -1397,6 +1512,7 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 type xgEdgeForwarder struct {
 	*edgeClientConn
 	circuitId  string
+	serviceId  string
 	originator xgress.Originator
 	ctrlId     string
 	address    xgress.Address
@@ -1416,6 +1532,18 @@ func (self *xgEdgeForwarder) GetIntervalId() string {
 
 func (self *xgEdgeForwarder) GetTags() map[string]string {
 	return self.tags
+}
+
+func (self *xgEdgeForwarder) GetCircuitId() string {
+	return self.circuitId
+}
+
+func (self *xgEdgeForwarder) GetServiceId() string {
+	return self.serviceId
+}
+
+func (self *xgEdgeForwarder) CloseForDialAccessLoss() {
+	self.cleanupXgressCircuit(self)
 }
 
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {
@@ -1489,7 +1617,6 @@ func (self *xgEdgeForwarder) RegisterRouting() {
 func (self *xgEdgeForwarder) UnregisterRouting() {
 	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("routing unregistered")
 	self.forwarder.EndCircuit(self.circuitId)
-	self.xgCircuits.Set(self.circuitId, self)
 }
 
 func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
@@ -1529,7 +1656,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	}
 }
 
-// msg from controller that a circuit is unrouted
+// Unrouted signals that a circuit is unrouted, either due to a message from the controller or a policy change
 func (self *xgEdgeForwarder) Unrouted() {
 	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: start")
 	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: complete")

@@ -72,7 +72,7 @@ func (self *testSubscriber) NotifyIdentityEvent(state *common.IdentityState, eve
 	self.currentState = state
 }
 
-func (self *testSubscriber) NotifyServiceChange(state *common.IdentityState, service *common.IdentityService, eventType common.ServiceEventType) {
+func (self *testSubscriber) NotifyServiceChange(state *common.IdentityState, _, service *common.IdentityService, eventType common.ServiceEventType) {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 

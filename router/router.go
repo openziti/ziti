@@ -36,6 +36,7 @@ import (
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
@@ -269,7 +270,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.forwarder.StartScanner(router.ctrls)
 
 	var err error
-	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
+	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder)
 	if err != nil {
 		panic(err)
 	}
@@ -898,14 +899,19 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
 	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
+		if errors.Is(err, &backoff.PermanentError{}) {
+			return err
+		}
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
 	channelRef.Store(ch)
 
 	// If there are multiple controllers we may have to catch up the controllers that connected later
 	// with things that have already happened because we had state from other controllers, such as
-	// links
-	reconnectHandler()
+	// links. Note that we only do this for xctrls and not the network controllers
+	for _, x := range self.xrctrls {
+		go x.NotifyOfReconnect(ch)
+	}
 
 	return nil
 }

@@ -42,6 +42,7 @@ import (
 	managementServer "github.com/openziti/edge-api/rest_management_api_server"
 	managementOperations "github.com/openziti/edge-api/rest_management_api_server/operations"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/stringz"
@@ -118,7 +119,7 @@ type AppEnv struct {
 	clientApiDefaultSigner *jwtsigner.TlsJwtSigner
 
 	TraceManager *TraceManager
-	timelineId   string
+	timelineId   concurrenz.AtomicValue[string]
 
 	TokenIssuerCache *model.TokenIssuerCache
 }
@@ -971,9 +972,9 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 			WindowSizeMetric: metricAuthLimiterCurrentWindowSize,
 		}, host.GetMetricsRegistry(), host.GetCloseNotifyChannel()),
 		TraceManager: NewTraceManager(host.GetCloseNotifyChannel()),
-		timelineId:   timelineId,
 	}
 
+	ae.timelineId.Store(timelineId)
 	ae.TokenIssuerCache = model.NewTokenIssuerCache(ae)
 
 	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
@@ -1292,8 +1293,8 @@ func (ae *AppEnv) RootIssuer() string {
 
 // InitTimelineId sets the timeline ID during startup, panics if already set.
 func (ae *AppEnv) InitTimelineId(timelineId string) {
-	if ae.timelineId == "" {
-		ae.timelineId = timelineId
+	if ae.timelineId.Load() == "" {
+		ae.timelineId.Store(timelineId)
 	} else {
 		panic(errors.New("timelineId initialization attempted after startup"))
 	}
@@ -1301,10 +1302,10 @@ func (ae *AppEnv) InitTimelineId(timelineId string) {
 
 // OverrideTimelineId forcibly sets the timeline ID, bypassing startup checks.
 func (ae *AppEnv) OverrideTimelineId(timelineId string) {
-	ae.timelineId = timelineId
+	ae.timelineId.Store(timelineId)
 }
 
 // TimelineId returns the current timeline identifier for event ordering.
 func (ae *AppEnv) TimelineId() string {
-	return ae.timelineId
+	return ae.timelineId.Load()
 }

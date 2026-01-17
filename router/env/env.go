@@ -62,6 +62,9 @@ type RouterEnv interface {
 	NotifyCertsUpdated()
 	GetAlerter() Alerter
 	GetXgressRegistry() *Registry
+
+	UpdateCtrlEndpoints(endpoints []string)
+	UpdateLeader(leaderId string)
 }
 
 type Alerter interface {

@@ -398,8 +398,8 @@ var m = &model.Model{
 		}),
 		"stop": model.Bind(component.StopInParallelHostExclusive("*", 15)),
 		"clean": model.Bind(actions.Workflow(
-			component.StopInParallelHostExclusive("*", 15),
-			host.GroupExec("*", 25, "rm -f logs/*"),
+			component.StopInParallelHostExclusive("*", 500),
+			host.GroupExec("*", 500, "rm -f logs/*"),
 		)),
 		"login":  model.Bind(edge.Login("#ctrl1")),
 		"login2": model.Bind(edge.Login("#ctrl2")),

@@ -44,7 +44,6 @@ type bindHandler struct {
 	forwarder                  *forwarder.Forwarder
 	xgDialerPool               goroutines.Pool
 	terminatorValidationPool   goroutines.Pool
-	ctrlAddressUpdater         CtrlAddressUpdater
 	ctrlAddrChangeHandler      channel.TypedReceiveHandler
 	clusterLeaderChangeHandler channel.TypedReceiveHandler
 }
@@ -53,7 +52,7 @@ func XgressDialerWorker(_ uint32, f func()) {
 	f()
 }
 
-func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
+func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder) (channel.BindHandler, error) {
 	xgDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
 		MinWorkers:  0,
@@ -97,9 +96,8 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 		forwarder:                  forwarder,
 		xgDialerPool:               xgDialerPool,
 		terminatorValidationPool:   terminatorValidationPool,
-		ctrlAddressUpdater:         ctrlAddressUpdater,
-		ctrlAddrChangeHandler:      newUpdateCtrlAddressesHandler(routerEnv, ctrlAddressUpdater),
-		clusterLeaderChangeHandler: newUpdateClusterLeaderHandler(routerEnv, ctrlAddressUpdater),
+		ctrlAddrChangeHandler:      newUpdateCtrlAddressesHandler(routerEnv),
+		clusterLeaderChangeHandler: newUpdateClusterLeaderHandler(routerEnv),
 	}, nil
 }
 
@@ -116,7 +114,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
-	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)

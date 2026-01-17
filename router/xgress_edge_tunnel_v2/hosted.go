@@ -162,12 +162,6 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 			WithField("terminatorId", terminator.id).
 			WithField("state", terminator.state.Load())
 
-		if terminator.id == "" {
-			log.Info("terminator has been closed, not trying to establish")
-			dequeue()
-			continue
-		}
-
 		if terminator.state.Load() != xgress_common.TerminatorStateEstablishing {
 			dequeue()
 			continue
@@ -389,17 +383,6 @@ func (self *HostedServiceRegistry) queue(event terminatorEvent) {
 	}
 }
 
-func (self *HostedServiceRegistry) queueWithTimeout(event terminatorEvent, timeout time.Duration) error {
-	select {
-	case self.events <- event:
-		return nil
-	case <-time.After(timeout):
-		return errors.New("timed out")
-	case <-self.env.GetCloseNotify():
-		return errors.New("closed")
-	}
-}
-
 func (self *HostedServiceRegistry) queueEstablishTerminatorSync(terminator *tunnelTerminator) {
 	if terminator.IsEstablishing() {
 		terminator.operationActive.Store(false)
@@ -607,46 +590,18 @@ func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 	// only re-establish after we lose connection to the leader
 	if event.Type == routerEnv.ControllerDisconnected && !self.env.GetNetworkControllers().IsLeaderConnected() {
 		self.connectedToLeader.Store(false)
+	} else if self.env.GetNetworkControllers().IsLeaderConnected() {
+		self.connectedToLeader.Store(true)
 	} else if event.Type == routerEnv.ControllerReconnected {
 		if !self.connectedToLeader.Load() {
 			self.HandleReestablish()
 		}
 	}
-
-	if self.env.GetNetworkControllers().IsLeaderConnected() {
-		self.connectedToLeader.Store(true)
-	}
 }
 
-func (self *HostedServiceRegistry) Inspect(timeout time.Duration) *inspect.ErtTerminatorInspectResult {
-	evt := &inspectTerminatorsEvent{
-		result: atomic.Pointer[[]*inspect.ErtTerminatorInspectDetail]{},
-		done:   make(chan struct{}),
-	}
-
-	// if we can't queue, grab the results in a non-thread-safe fashion
-	if err := self.queueWithTimeout(evt, timeout); err != nil {
-		evt.handle(self)
-	}
-
-	result := &inspect.ErtTerminatorInspectResult{}
-
-	var err error
-	result.Entries, err = evt.GetResults(timeout)
-	if err != nil {
-		result.Errors = append(result.Errors, err.Error())
-	}
-	return result
-}
-
-type inspectTerminatorsEvent struct {
-	result atomic.Pointer[[]*inspect.ErtTerminatorInspectDetail]
-	done   chan struct{}
-}
-
-func (self *inspectTerminatorsEvent) handle(registry *HostedServiceRegistry) {
-	var result []*inspect.ErtTerminatorInspectDetail
-	registry.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
+func (self *HostedServiceRegistry) Inspect() *inspect.ErtTerminatorInspectResult {
+	var entries []*inspect.ErtTerminatorInspectDetail
+	self.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
 		detail := &inspect.ErtTerminatorInspectDetail{
 			Key:             key,
 			Id:              terminator.id,
@@ -658,20 +613,14 @@ func (self *inspectTerminatorsEvent) handle(registry *HostedServiceRegistry) {
 			CreateTime:      terminator.createTime.Format("2006-01-02 15:04:05"),
 			LastAttempt:     terminator.lastAttempt.Format("2006-01-02 15:04:05"),
 		}
-		result = append(result, detail)
+		entries = append(entries, detail)
 	})
 
-	self.result.Store(&result)
-	close(self.done)
-}
-
-func (self *inspectTerminatorsEvent) GetResults(timeout time.Duration) ([]*inspect.ErtTerminatorInspectDetail, error) {
-	select {
-	case <-self.done:
-		return *self.result.Load(), nil
-	case <-time.After(timeout):
-		return nil, errors.New("timed out waiting for result")
+	result := &inspect.ErtTerminatorInspectResult{
+		Entries: entries,
 	}
+
+	return result
 }
 
 type markEstablishedEvent struct {

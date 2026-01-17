@@ -9,6 +9,9 @@ identity:
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
   ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
 
+tls:
+  handshakeTimeout: 15s
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262
@@ -185,13 +188,7 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: {}
       - binding: fabric
       - binding: edge-management
-        # options - variable optional/required
-        # This section is used to define values that are specified by the API they are associated with.
-        # These settings are per API. The example below is for the `edge-api` and contains both optional values and
-        # required values.
-        options: {}
       - binding: edge-client
-        options: {}
+      - binding: edge-oidc

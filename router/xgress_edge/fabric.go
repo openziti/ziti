@@ -271,13 +271,27 @@ type edgeXgressConn struct {
 	seq     MsgQueue
 	onClose func()
 	closed  atomic.Bool
-	ctrlRx  xgress.ControlReceiver
+	x       *xgress.Xgress
+	data    atomic.Pointer[state.ConnState]
+}
 
-	data atomic.Pointer[state.ConnState]
+func (self *edgeXgressConn) GetCircuitId() string {
+	if x := self.x; x != nil {
+		return x.CircuitId()
+	}
+	return ""
+}
+
+func (self *edgeXgressConn) GetServiceId() string {
+	return self.data.Load().ServiceSessionToken.ServiceId
 }
 
 func (self *edgeXgressConn) GetData() *state.ConnState {
 	return self.data.Load()
+}
+
+func (self *edgeXgressConn) CloseForDialAccessLoss() {
+	self.close(true, "dial access lost")
 }
 
 func (self *edgeXgressConn) SetData(data *state.ConnState) {
@@ -449,7 +463,7 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 
 		headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		self.x.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
@@ -464,7 +478,7 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 		headers.PutStringHeader(xgress.ControlHopId, hopId)
 		headers.PutUint32Header(xgress.ControlUserVal, sourceRequestId)
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		self.x.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
 	} else {
 		if err := self.seq.Push(msg); err != nil {
 			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)

@@ -19,6 +19,12 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
@@ -29,11 +35,6 @@ import (
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/xt"
 	"google.golang.org/protobuf/proto"
-	"maps"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
@@ -578,6 +579,12 @@ func (self *RouterManager) ValidateRouterErtTerminators(router *Router, cb func(
 		return
 	}
 
+	if len(resp.Errors) > 0 {
+		err = errors.New(strings.Join(resp.Errors, ","))
+		self.ReportRouterErtTerminatorsError(router, err, cb)
+		return
+	}
+
 	var inspectResult *inspect.ErtTerminatorInspectResult
 	for _, val := range resp.Values {
 		if val.Name == inspect.ErtTerminatorsKey {
@@ -589,12 +596,13 @@ func (self *RouterManager) ValidateRouterErtTerminators(router *Router, cb func(
 	}
 
 	if inspectResult == nil {
-		if len(resp.Errors) > 0 {
-			err = errors.New(strings.Join(resp.Errors, ","))
-			self.ReportRouterErtTerminatorsError(router, err, cb)
-			return
-		}
 		self.ReportRouterErtTerminatorsError(router, errors.New("no terminator details returned from router"), cb)
+		return
+	}
+
+	if len(inspectResult.Errors) > 0 {
+		err = errors.New(strings.Join(inspectResult.Errors, ","))
+		self.ReportRouterErtTerminatorsError(router, err, cb)
 		return
 	}
 

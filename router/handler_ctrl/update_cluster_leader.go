@@ -12,7 +12,7 @@ import (
 )
 
 type updateClusterLeaderHandler struct {
-	callback       CtrlAddressUpdater
+	env            env.RouterEnv
 	currentVersion atomic.Uint64
 }
 
@@ -40,16 +40,16 @@ func (handler *updateClusterLeaderHandler) HandleReceive(msg *channel.Message, c
 
 	if handler.currentVersion.Load() == 0 || handler.currentVersion.Load() < upd.Index {
 		log.Info("handling update of cluster leader")
-		handler.callback.UpdateLeader(ch.Id())
+		handler.env.UpdateLeader(ch.Id())
 		handler.currentVersion.Store(upd.Index)
 	} else {
 		log.Info("ignoring outdated update cluster leader message")
 	}
 }
 
-func newUpdateClusterLeaderHandler(env env.RouterEnv, callback CtrlAddressUpdater) channel.TypedReceiveHandler {
+func newUpdateClusterLeaderHandler(env env.RouterEnv) channel.TypedReceiveHandler {
 	result := &updateClusterLeaderHandler{
-		callback: callback,
+		env: env,
 	}
 	env.GetIndexWatchers().AddIndexResetWatcher(result.NotifyIndexReset)
 

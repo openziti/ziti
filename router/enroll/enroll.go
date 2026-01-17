@@ -219,6 +219,19 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return err
 	}
 
+	if re.fullConfig.Edge.Db != "" {
+		var fileInfo os.FileInfo
+		if fileInfo, err = os.Stat(re.fullConfig.Edge.Db); err == nil {
+			if !fileInfo.IsDir() {
+				log.WithField("path", re.fullConfig.Edge.Db).Info("deleting existing router data model save file")
+				if err = os.Remove(re.fullConfig.Edge.Db); err != nil {
+					log.WithField("path", re.fullConfig.Edge.Db).WithError(err).
+						Error("failed to delete existing router data model save file")
+				}
+			}
+		}
+	}
+
 	log.Info("registration complete")
 	return nil
 }

@@ -46,6 +46,10 @@ type SenderServicePolicy struct {
 	PostureChecks cmap.ConcurrentMap[string, struct{}] `json:"postureChecks"`
 }
 
+type TimelineIdSource interface {
+	TimelineId() string
+}
+
 // RouterDataModelSender represents a sub-set of a controller's data model. Enough to validate an identities access to dial/bind
 // a service through policies and posture checks. RouterDataModelSender can operate in two modes: sender (controller) and
 // receiver (router). Sender mode allows a controller support an event cache that supports replays for routers connecting
@@ -69,12 +73,12 @@ type RouterDataModelSender struct {
 
 	// timelineId identifies the database that events are flowing from. This will be reset whenever we change the
 	// underlying datastore
-	timelineId string
+	timelineSource TimelineIdSource
 }
 
 // NewRouterDataModelSender creates a new RouterDataModelSender that will store events in a circular buffer of
 // logSize. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
-func NewRouterDataModelSender(timelineId string, logSize uint64, listenerBufferSize uint) *RouterDataModelSender {
+func NewRouterDataModelSender(timelineSrc TimelineIdSource, logSize uint64, listenerBufferSize uint) *RouterDataModelSender {
 	return &RouterDataModelSender{
 		EventCache:         NewLoggingEventCache(logSize),
 		ConfigTypes:        cmap.New[*edge_ctrl_pb.DataState_ConfigType](),
@@ -86,7 +90,7 @@ func NewRouterDataModelSender(timelineId string, logSize uint64, listenerBufferS
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:        cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		listenerBufferSize: listenerBufferSize,
-		timelineId:         timelineId,
+		timelineSource:     timelineSrc,
 	}
 }
 
@@ -109,7 +113,7 @@ func (rdm *RouterDataModelSender) sendEvent(event *edge_ctrl_pb.DataState_Change
 }
 
 func (rdm *RouterDataModelSender) GetTimelineId() string {
-	return rdm.timelineId
+	return rdm.timelineSource.TimelineId()
 }
 
 // ApplyChangeSet applies the given even to the router data model.
@@ -532,7 +536,7 @@ func (rdm *RouterDataModelSender) getDataStateAlreadyLocked(index uint64) *edge_
 	return &edge_ctrl_pb.DataState{
 		Events:     events,
 		EndIndex:   index,
-		TimelineId: rdm.timelineId,
+		TimelineId: rdm.timelineSource.TimelineId(),
 	}
 }
 

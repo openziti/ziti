@@ -181,6 +181,7 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		req.SubscriptionDurationSeconds = 360
 	}
 
+	timelineChange := rtx.timelineId != req.TimelineId
 	rtx.timelineId = req.TimelineId
 	rtx.subscriptionId = req.SubscriptionId
 
@@ -195,26 +196,27 @@ func (rtx *RouterSender) handleSyncRequest(req *edge_ctrl_pb.SubscribeToDataMode
 		WithField("subscriptionId", rtx.subscriptionId).
 		Info("data model subscription started")
 
-	if rtx.routerDataModel.CurrentIndex() > rtx.currentIndex {
+	if rtx.routerDataModel.CurrentIndex() > rtx.currentIndex || timelineChange {
 		rtx.handleModelChange()
 	}
 }
 
 func (rtx *RouterSender) handleModelChange() {
-	if !rtx.syncRdmUntil.After(time.Now()) {
+	if rtx.syncRdmUntil.Before(time.Now()) {
 		return
 	}
 
 	logger := pfxlog.Logger().WithField("routerId", rtx.Router.Id).
 		WithField("currentIndex", rtx.currentIndex).
 		WithField("routerTimelineId", rtx.timelineId).
-		WithField("ctrlTimelineId", rtx.routerDataModel.GetTimelineId())
+		WithField("ctrlTimelineId", rtx.routerDataModel.GetTimelineId()).
+		WithField("subscriptionId", rtx.subscriptionId)
 
 	var events []*edge_ctrl_pb.DataState_ChangeSet
 	replayResult := common.ReplayResultFullSyncRequired
 
 	if rtx.currentIndex > 0 && rtx.timelineId == rtx.routerDataModel.GetTimelineId() {
-		events, replayResult = rtx.routerDataModel.ReplayFrom(rtx.currentIndex + 1)
+		events, replayResult = rtx.routerDataModel.ReplayFrom(rtx.currentIndex)
 	}
 
 	var err error
@@ -222,6 +224,12 @@ func (rtx *RouterSender) handleModelChange() {
 	logger.Debugf("event retrieval ok? %s, event count: %d for replay to router", replayResult.String(), len(events))
 
 	if replayResult == common.ReplayResultSuccess {
+		// we replay from the current index, that way if we're already caught up due to timing issues with notify events
+		// we won't get a 'request from future' result.
+		if len(events) > 0 {
+			events = events[1:]
+		}
+
 		for _, curEvent := range events {
 			var msg *channel.Message
 			if msg, err = rtx.marshal(curEvent); err == nil {

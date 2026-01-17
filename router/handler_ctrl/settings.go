@@ -20,12 +20,13 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/env"
 	"google.golang.org/protobuf/proto"
 )
 
 // settingsHandler is a catch-all handler for all settings message (currently only sent on router connect).
 type settingsHandler struct {
-	updater CtrlAddressUpdater
+	env env.RouterEnv
 }
 
 func (handler *settingsHandler) ContentType() int32 {
@@ -44,7 +45,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 			switch settingType {
 			case int32(ctrl_pb.SettingTypes_NewCtrlAddress):
 				newAddress := string(settingValue)
-				handler.updater.UpdateCtrlEndpoints([]string{newAddress})
+				handler.env.UpdateCtrlEndpoints([]string{newAddress})
 			default:
 				log.Error("unknown setting type, ignored")
 			}
@@ -54,8 +55,8 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(updater CtrlAddressUpdater) channel.TypedReceiveHandler {
+func newSettingsHandler(env env.RouterEnv) channel.TypedReceiveHandler {
 	return &settingsHandler{
-		updater: updater,
+		env: env,
 	}
 }
