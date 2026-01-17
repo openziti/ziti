@@ -745,6 +745,16 @@ func (self *hostedServiceRegistry) handleSdkReturnedInvalid(terminator *edgeTerm
 	}
 }
 
+func (self *hostedServiceRegistry) getTerminatorsForService(serviceId string) []*edgeTerminator {
+	var result []*edgeTerminator
+	self.terminators.IterCb(func(key string, v *edgeTerminator) {
+		if v.serviceSessionToken.ServiceId == serviceId {
+			result = append(result, v)
+		}
+	})
+	return result
+}
+
 type inspectTerminatorsEvent struct {
 	result atomic.Pointer[[]*inspect.SdkTerminatorInspectDetail]
 	done   chan struct{}
