@@ -1,7 +1,10 @@
 package handler_ctrl
 
 import (
+	"maps"
+	"slices"
 	"sync/atomic"
+	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -11,14 +14,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type CtrlAddressUpdater interface {
-	UpdateCtrlEndpoints(endpoints []string)
-	UpdateLeader(leaderId string)
-}
-
 type updateCtrlAddressesHandler struct {
-	callback       CtrlAddressUpdater
-	currentVersion atomic.Uint64
+	env                    env.RouterEnv
+	currentVersion         atomic.Uint64
+	waitingForLeaderUpdate atomic.Bool
 }
 
 func (handler *updateCtrlAddressesHandler) NotifyIndexReset() {
@@ -47,26 +46,90 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 
 	log.Info("update ctrl endpoints message received")
 
+	if upd.IsLeader {
+		handler.waitingForLeaderUpdate.Store(false)
+	}
+
 	if handler.currentVersion.Load() == 0 || handler.currentVersion.Load() < upd.Index {
+		if len(upd.Addresses) == 0 {
+			log.Info("ctrl list is empty, ignoring and requesting latest set from leader")
+			go handler.requestCtrlListFromLeader()
+			return
+		}
+
+		s := map[string]struct{}{}
+		for _, addr := range upd.Addresses {
+			s[addr] = struct{}{}
+		}
+
+		ctrls := handler.env.GetNetworkControllers()
+		endpoints := ctrls.GetAll()
+
+		hasRemovals := false
+		for _, ctrl := range endpoints {
+			if _, ok := s[ctrl.Address()]; !ok {
+				hasRemovals = true
+			}
+		}
+
+		if !upd.IsLeader && hasRemovals {
+			log.Info("updated ctrl list is not from leader, using only additions and requesting latest set from leader")
+			if !handler.waitingForLeaderUpdate.Load() {
+				go handler.requestCtrlListFromLeader()
+			}
+			for _, ctrl := range endpoints {
+				s[ctrl.Address()] = struct{}{}
+			}
+			upd.Addresses = slices.Collect(maps.Keys(s))
+		}
+
 		if len(upd.Addresses) > 0 {
 			log.Info("updating to newer controller endpoints")
-			handler.callback.UpdateCtrlEndpoints(upd.Addresses)
+			handler.env.UpdateCtrlEndpoints(upd.Addresses)
 			handler.currentVersion.Store(upd.Index)
-
-			if upd.IsLeader {
-				handler.callback.UpdateLeader(ch.Id())
-			}
 		} else {
 			log.Info("ignoring empty controller endpoint list")
 		}
 	} else {
 		log.Info("ignoring outdated controller endpoint list")
 	}
+
+	if upd.IsLeader && (handler.currentVersion.Load() == 0 || handler.currentVersion.Load() <= upd.Index) {
+		log.Infof("updating current leader to %s", ch.Id())
+		handler.env.UpdateLeader(ch.Id())
+	}
 }
 
-func newUpdateCtrlAddressesHandler(env env.RouterEnv, callback CtrlAddressUpdater) channel.TypedReceiveHandler {
+func (handler *updateCtrlAddressesHandler) requestCtrlListFromLeader() {
+	if !handler.waitingForLeaderUpdate.CompareAndSwap(false, true) {
+		return
+	}
+
+	for handler.waitingForLeaderUpdate.Load() {
+		log := pfxlog.Logger().Entry
+		leader := handler.env.GetNetworkControllers().GetLeader()
+		if leader == nil {
+			log.Info("no leader, unable to request latest cluster members from leader")
+		} else {
+			log = log.WithField("ctrlId", leader.Channel().Id())
+
+			if !leader.IsConnected() {
+				log.Info("not connected to leader, unable to request latest cluster members from leader")
+			} else {
+				msg := channel.NewMessage(int32(ctrl_pb.ContentType_RequestClusterMembers), nil)
+				if err := leader.Channel().Send(msg); err != nil {
+					log.WithError(err).Error("error sending request for latest cluster members to leader")
+				}
+			}
+		}
+
+		time.Sleep(30 * time.Second)
+	}
+}
+
+func newUpdateCtrlAddressesHandler(env env.RouterEnv) channel.TypedReceiveHandler {
 	result := &updateCtrlAddressesHandler{
-		callback: callback,
+		env: env,
 	}
 
 	env.GetIndexWatchers().AddIndexResetWatcher(result.NotifyIndexReset)

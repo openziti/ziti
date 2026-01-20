@@ -82,6 +82,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		Type:    int32(ctrl_pb.ContentType_ValidateTerminatorsV2ResponseType),
 		Handler: self.network.RouterMessaging.NewValidationResponseHandler(self.network, self.router),
 	})
+	binding.AddTypedReceiveHandler(newSendClusterMembersHandler(self.router, self.network))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 

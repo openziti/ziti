@@ -81,6 +81,7 @@ type NetworkControllers interface {
 	GetExpectedCtrlCount() uint32
 	IsLeaderConnected() bool
 	ControllersHaveMinVersion(version string) bool
+	GetLeader() NetworkController
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -147,14 +148,14 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bo
 			delete(endpoints, endpoint)
 		} else {
 			// existing endpoint is no longer valid, close and remove it
-			log.WithField("endpoint", endpoints).Info("removing old ctrl endpoint")
+			log.WithField("endpoint", endpoint).Info("removing old ctrl endpoint")
 			changed = true
 			self.CloseAndRemoveByAddress(endpoint)
 		}
 	}
 
 	for endpoint := range endpoints {
-		log.WithField("endpoint", endpoints).Info("adding new ctrl endpoint")
+		log.WithField("endpoint", endpoint).Info("adding new ctrl endpoint")
 		changed = true
 		self.connectToControllerWithBackoff(endpoint)
 	}
@@ -203,9 +204,17 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 		if !self.ctrlEndpoints.Has(endpoint) {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
+
 		err = self.ctrlDialer(addr, bindHandler)
 		if err != nil {
 			log.WithError(err).Error("unable to connect controller")
+
+			for _, v := range self.ctrls.AsMap() {
+				if v.Address() == endpoint {
+					log.Info("already connect to controller, exiting retry")
+					return nil
+				}
+			}
 		}
 		return err
 	}
@@ -388,6 +397,11 @@ func (self *networkControllers) CloseAndRemoveByAddress(address string) {
 func (self *networkControllers) IsLeaderConnected() bool {
 	ctrl := self.ctrls.Get(self.leaderId.Load())
 	return ctrl != nil && ctrl.IsConnected()
+}
+
+func (self *networkControllers) GetLeader() NetworkController {
+	ctrl := self.ctrls.Get(self.leaderId.Load())
+	return ctrl
 }
 
 func (self *networkControllers) Inspect() *inspect.ControllerInspectDetails {

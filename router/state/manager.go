@@ -936,16 +936,21 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 		self.dataModelSubscription.Store(DataModelSubscription{})
 	}
 	logger.Info("replacing router data model")
-	existing := self.routerDataModel.Swap(model)
+	existing := self.routerDataModel.Load()
+	var existingIndex uint64
 	if existing != nil {
 		existing.Stop()
 		model.InheritLocalData(existing)
-		existingIndex := existing.CurrentIndex()
+		existingIndex = existing.CurrentIndex()
 		logger = logger.WithField("existingIndex", existingIndex)
-		if index < existingIndex {
-			self.env.GetIndexWatchers().NotifyOfIndexReset()
-		}
 	}
+
+	self.routerDataModel.Store(model)
+
+	if index < existingIndex {
+		self.env.GetIndexWatchers().NotifyOfIndexReset()
+	}
+
 	model.SyncAllSubscribers()
 
 	if resetSubscription {

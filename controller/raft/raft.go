@@ -53,6 +53,7 @@ import (
 	"github.com/openziti/ziti/controller/peermsg"
 	"github.com/openziti/ziti/controller/raft/mesh"
 	"github.com/sirupsen/logrus"
+	"github.com/teris-io/shortid"
 )
 
 type ClusterEvent uint32
@@ -118,6 +119,7 @@ type Env interface {
 	GetEventDispatcher() event.Dispatcher
 	GetCloseNotify() <-chan struct{}
 	GetHelloHeaderProviders() []mesh.HeaderProvider
+	InitTimelineId(timelineId string)
 }
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
@@ -660,7 +662,6 @@ func (self *Controller) Init() error {
 	}
 
 	self.Raft = r
-	self.Fsm.GetCurrentState(self.Raft) // init cached configuration
 
 	return nil
 }
@@ -861,9 +862,17 @@ func (self *Controller) Bootstrap() error {
 
 		self.clusterId.Store(uuid.NewString())
 		pfxlog.Logger().WithField("clusterId", self.clusterId.Load()).Info("cluster id initialized")
+
+		timelineId, err := shortid.Generate()
+		if err != nil {
+			return fmt.Errorf("unable to generate timeline id (%w)", err)
+		}
+		pfxlog.Logger().WithField("timelineId", timelineId).Info("timelineId initialized")
+
 		return self.Dispatch(&InitClusterIdCmd{
 			ClusterId:      self.clusterId.Load(),
 			raftController: self,
+			TimelineId:     timelineId,
 		})
 	}
 	return nil
@@ -1002,23 +1011,33 @@ type MigrationManager interface {
 
 type InitClusterIdCmd struct {
 	ClusterId      string `json:"clusterId"`
+	TimelineId     string `json:"timelineId"`
 	raftController *Controller
 }
 
 func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
 	self.raftController.clusterId.Store(self.ClusterId)
+	_, err := self.raftController.Fsm.GetDb().GetTimelineId(boltz.TimelineModeForceReset, func() (string, error) {
+		return self.TimelineId, nil
+	})
+	if err != nil {
+		return err
+	}
+	self.raftController.env.InitTimelineId(self.TimelineId)
 	return db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
 }
 
 func (self *InitClusterIdCmd) Encode() ([]byte, error) {
 	cmd := &cmd_pb.InitClusterIdCommand{
-		ClusterId: self.ClusterId,
+		ClusterId:  self.ClusterId,
+		TimelineId: self.TimelineId,
 	}
 	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *InitClusterIdCmd) Decode(env model.Env, msg *cmd_pb.InitClusterIdCommand) error {
 	self.ClusterId = msg.ClusterId
+	self.TimelineId = msg.TimelineId
 	self.raftController = env.GetManagers().Dispatcher.(*Controller)
 	return nil
 }

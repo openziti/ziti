@@ -19,6 +19,8 @@ ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
   startupTimeout: 5m
+  options:
+    connectTimeoutMs: 15000
 
 healthChecks:
   ctrlPingCheck:
@@ -38,10 +40,17 @@ link:
     - binding:          transport
       bind:             tls:0.0.0.0:60{{printf "%02d" .Component.ScaleIndex }}
       advertise:        tls:{{$router_ip}}:60{{printf "%02d" .Component.ScaleIndex }}
+      groups:
+        - {{ .Host.Id }} {{ if eq .Component.ScaleIndex 0 }}
+        - public
+{{ end }}
   dialers:
     - binding:          transport
       options:
         connectTimeout: 30s
+      groups:
+        - {{ .Host.Id }}
+        - public
 
 listeners:
 {{if .Component.HasTag "tunneler"}}

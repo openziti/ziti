@@ -35,7 +35,7 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 	logger = logger.WithField("index", newEvent.Index).WithField("synthetic", newEvent.IsSynthetic)
 
 	// ignore state from controllers we are not currently subscribed to
-	if !currentSubscription.IsCurrentController(ch.Id()) {
+	if !currentSubscription.IsCurrentController(ch.Id()) && !newEvent.IsSynthetic {
 		logger.Info("data state change received from ctrl other than the one currently subscribed to")
 		return
 	}
@@ -44,9 +44,10 @@ func (eventHandler *dataStateChangeSetHandler) HandleReceive(msg *channel.Messag
 	if ok && subscriptionId != currentSubscription.SubscriptionId {
 		logger.WithField("eventSubscriptionId", subscriptionId).
 			Info("data state change received from inactive or invalid subscription")
+		return
 	}
 
-	err := eventHandler.state.GetRouterDataModelPool().Queue(func() {
+	err := eventHandler.state.GetRouterDataModelPool().QueueOrError(func() {
 		model := eventHandler.state.RouterDataModel()
 		logger.Debug("received data state change set")
 		model.ApplyChangeSet(newEvent)

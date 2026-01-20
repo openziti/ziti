@@ -87,9 +87,9 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 	return peerData, nil
 }
 
-func (self *tunneler) Inspect(key string, timeout time.Duration) any {
+func (self *tunneler) Inspect(key string, _ time.Duration) any {
 	if key == inspect.ErtTerminatorsKey {
-		return self.hostedServices.Inspect(timeout)
+		return self.hostedServices.Inspect()
 	}
 	return nil
 }

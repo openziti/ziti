@@ -41,12 +41,13 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 	if ok && subscriptionId != currentSubscription.SubscriptionId {
 		logger.WithField("eventSubscriptionId", subscriptionId).
 			Info("data state received from inactive or invalid subscription")
+		return
 	}
 
-	err := self.state.GetRouterDataModelPool().Queue(func() {
+	err := self.state.GetRouterDataModelPool().QueueOrError(func() {
 		newState := &edge_ctrl_pb.DataState{}
 		if err := proto.Unmarshal(msg.Body, newState); err != nil {
-			logger.WithError(err).Errorf("could not marshal data state event message")
+			logger.WithError(err).Errorf("could not unmarshal data state event message")
 			return
 		}
 
@@ -59,6 +60,8 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("could not queue processing of full router data model state")
+		pfxlog.Logger().WithError(err).Error("could not queue processing of full router data model state, requesting re-sync")
+		// because we were unable to accept events, we're out of sync and will have to completely resync
+		self.state.ResyncRouterDataModel()
 	}
 }

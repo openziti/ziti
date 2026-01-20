@@ -47,6 +47,7 @@ enum ContentType {
   LinkState = 1053;
 
   AlertsType = 1054;
+  RequestClusterMembers = 1055;
 }
 
 enum ControlHeaders {

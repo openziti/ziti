@@ -17,6 +17,8 @@
 package command
 
 import (
+	"reflect"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/sirupsen/logrus"
-	"reflect"
 )
 
 // Command instances represent actions to be taken by the fabric controller. They are serializable,
@@ -56,6 +57,7 @@ type Dispatcher interface {
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
 	Bootstrap() error
+	CtrlAddresses() (uint64, []string)
 }
 
 // LocalDispatcher should be used when running a non-clustered system
@@ -86,6 +88,10 @@ func (self *LocalDispatcher) GetPeers() map[string]channel.Channel {
 
 func (self *LocalDispatcher) GetRateLimiter() rate.RateLimiter {
 	return self.Limiter
+}
+
+func (self *LocalDispatcher) CtrlAddresses() (uint64, []string) {
+	return 0, nil
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {

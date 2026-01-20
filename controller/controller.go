@@ -339,6 +339,10 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 	return c, nil
 }
 
+func (c *Controller) InitTimelineId(timelineId string) {
+	c.env.InitTimelineId(timelineId)
+}
+
 func (c *Controller) initWeb() {
 	healthChecker, err := c.initializeHealthChecks()
 	if err != nil {
