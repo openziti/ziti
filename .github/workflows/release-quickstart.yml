@@ -16,6 +16,10 @@ on:
         type: string
         pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
 
+permissions:
+  contents: read
+  releases: read
+
 jobs:
   release-quickstart:
     name: Release Quickstart Job
@@ -92,7 +96,7 @@ jobs:
         run: |
           function validateSemver() {
             if ! [[ "${1}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "ERROR: ${1}" is not a release semver >&2
+              echo "ERROR: ${1} is not a release semver" >&2
               return 1
             fi
           }
@@ -126,8 +130,39 @@ jobs:
           echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
           echo ZITI_VERSION_OVERRIDE=v${QUICKSTART_VERSION%-*} | tee -a $GITHUB_OUTPUT
 
+      - name: Check if Release is Highest Version
+        id: check_highest
+        if: startsWith(github.ref_name, 'v') || github.event.inputs.release_tag != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ github.event.inputs.release_tag || github.ref_name }}
+        shell: bash
+        run: |
+          H_HIGHEST_VERSION=$(
+            gh release list --repo "${GITHUB_REPOSITORY}" \
+                            --limit 999 \
+                            --exclude-drafts \
+                            --exclude-pre-releases \
+                            --json tagName \
+                            --jq '.[].tagName' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1
+          )
+          CURRENT_VERSION="${GITHUB_REF_NAME}"
+          
+          if [[ "$CURRENT_VERSION" == "$H_HIGHEST_VERSION" ]]; then
+            echo "highest=true" | tee -a $GITHUB_OUTPUT
+            echo "INFO: ${CURRENT_VERSION} is the highest release version"
+          else
+            echo "highest=false" | tee -a $GITHUB_OUTPUT
+            echo "INFO: ${CURRENT_VERSION} is not the highest release (highest is ${H_HIGHEST_VERSION})"
+            echo "INFO: Skipping quickstart release for hotfix"
+          fi
+
       # container image tag :latest is published on merge to default branch "main" and on release tags
       - name: Configure Quickstart Container
+        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
         env:
           IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
           IMAGE_TAG:  ${{ steps.get_version.outputs.QUICKSTART_VERSION }}
@@ -139,6 +174,7 @@ jobs:
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Quickstart Container Image to Hub
+        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
         uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -152,13 +188,14 @@ jobs:
           push: true
 
       - name: Configure Python
+        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
         shell: bash
         run: |
           pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
           python --version
         
       - name: Deploy the CloudFront Function for get.openziti.io
-        if: github.repository_owner == 'openziti'
+        if: (github.repository_owner == 'openziti') && (steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main')
         shell: bash
         run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
         env:
