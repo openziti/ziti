@@ -19,10 +19,11 @@ package pki
 import (
 	"bytes"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/ziti/cmd"
@@ -90,7 +91,8 @@ func loadInfoFile(file string) string {
 	return string(data)
 }
 
-func EnsureServerCertExists(run model.Run, name string, ip string, dns []string, spiffeId string) error {
+func EnsureServerCertExists(run model.Run, name string, ips []string, dns []string, spiffeId string) error {
+	ip := strings.Join(ips, ",")
 	logrus.Infof("generating server certificate [%s:%s]", name, ip)
 
 	certFile := name + "-server"
@@ -153,5 +155,6 @@ func CreateControllerCerts(run model.Run, component *model.Component, dns []stri
 		return errors.Wrapf(err, "error generating public identity for component [%s]", component.Id)
 	}
 
-	return EnsureServerCertExists(run, name, component.Host.PublicIp, dns, "controller/"+name)
+	ips := []string{component.Host.PublicIp, component.Host.PrivateIp}
+	return EnsureServerCertExists(run, name, ips, dns, "controller/"+name)
 }

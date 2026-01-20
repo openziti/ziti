@@ -21,6 +21,7 @@ import (
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -68,6 +69,25 @@ var m = &model.Model{
 		resources.Binaries:  os.DirFS(path.Join(os.Getenv("GOPATH"), "bin")),
 		resources.Terraform: test_resources.TerraformResources(),
 	},
+	AWS: aws.Model{
+		SecurityGroups: aws.SecurityGroups{
+			"private": {
+				Rules: []*aws.NetworkRule{
+					{
+						Direction: aws.Ingress,
+						Port:      1280, // web api
+						Protocol:  "tcp",
+					},
+					{
+						Direction:  aws.Ingress,
+						Port:       6262, // router/peer connections
+						Protocol:   "tcp",
+						CidrBlocks: []string{"var.vpc_cidr", "66.66.118.13/32"},
+					},
+				},
+			},
+		},
+	},
 	Regions: model.Regions{
 		"us-east-1": {
 			Region: "us-east-1",
@@ -76,7 +96,23 @@ var m = &model.Model{
 				"ctrl1": {
 					Components: model.Components{
 						"ctrl1": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							AWS: aws.Component{
+								SecurityGroup: "private",
+							},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "private"}},
+							Type: &zitilab.ControllerType{
+								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"ctrl2": {
+					Components: model.Components{
+						"ctrl2": {
+							AWS: aws.Component{
+								SecurityGroup: "private",
+							},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "private"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
 							},
@@ -100,20 +136,10 @@ var m = &model.Model{
 			Region: "eu-west-2",
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
-				"ctrl2": {
-					Components: model.Components{
-						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
-							Type: &zitilab.ControllerType{
-								Version: targetZitiVersion,
-							},
-						},
-					},
-				},
 				"ctrl3": {
 					Components: model.Components{
 						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
 							},

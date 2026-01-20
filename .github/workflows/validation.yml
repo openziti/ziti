@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Run the first three in sequence, and then the rest in sequence
-  # so we don't run out of cloud resources
   circuit-validation:
     name: Circuit Validation
     uses: ./.github/workflows/validation-circuits.yml

@@ -56,7 +56,7 @@ const (
 	DefaultRaftCommandHandlerMaxQueueSize = 250
 
 	// DefaultTlsHandshakeRateLimiterEnabled is whether the tls handshake rate limiter is enabled by default
-	DefaultTlsHandshakeRateLimiterEnabled = true
+	DefaultTlsHandshakeRateLimiterEnabled = false
 
 	// TlsHandshakeRateLimiterMinSizeValue is the minimum size that can be configured for the tls handshake rate limiter
 	// window range

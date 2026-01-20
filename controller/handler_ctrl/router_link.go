@@ -55,6 +55,29 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 }
 
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
+	if links.FullRefresh {
+		linkIdMap := map[string]struct{}{}
+
+		for _, link := range links.Links {
+			linkIdMap[link.Id] = struct{}{}
+		}
+
+		var toRemove []*model.Link
+
+		for entry := range h.network.Link.IterateLinks() {
+			if entry.Val.Src.Id == h.r.Id {
+				if _, ok := linkIdMap[entry.Key]; !ok {
+					toRemove = append(toRemove, entry.Val)
+				}
+			}
+		}
+
+		for _, link := range toRemove {
+			h.network.LinkFaulted(link, false)
+			pfxlog.Logger().WithField("linkId", link.Id).Info("removed link not present in full reported set")
+		}
+	}
+
 	for _, link := range links.Links {
 		h.network.NotifyExistingLink(h.r, link)
 	}

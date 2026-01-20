@@ -39,6 +39,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
+	"github.com/openziti/ziti/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -94,7 +95,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "t3.medium"
+					host.InstanceType = "c5.large"
 				}
 				return nil
 			})
@@ -186,7 +187,6 @@ var m = &model.Model{
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
 				"ctrl3": {
-					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
@@ -233,9 +233,9 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			workflow.AddAction(host.GroupExec("*", 50, "touch .hushlogin"))
-			workflow.AddAction(component.StopInParallel("*", 100))
-			workflow.AddAction(host.GroupExec("*", 50, "rm -f logs/*"))
+			workflow.AddAction(host.GroupExec("*", 500, "touch .hushlogin"))
+			workflow.AddAction(component.StopInParallel("*", 500))
+			workflow.AddAction(host.GroupExec("*", 500, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
 			workflow.AddAction(component.Start("#ctrl1"))
@@ -246,7 +246,18 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 50))
+			ctrls := models.CtrlClients{}
+			var ctrl1 *zitirest.Clients
+
+			workflow.AddAction(edge.InitEdgeRoutersWithClients(models.RouterTag, 50, func(run model.Run) (*zitirest.Clients, error) {
+				if ctrl1 == nil {
+					if err := ctrls.Init(run, "#ctrl1"); err != nil {
+						return nil, err
+					}
+					ctrl1 = ctrls.GetCtrl("ctrl1")
+				}
+				return ctrl1, nil
+			}))
 
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
@@ -269,7 +280,7 @@ var m = &model.Model{
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
+			if err := chaos.ValidateUp(run, ".router", 500, time.Minute); err != nil {
 				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
 				return component.StartInParallel(".router", 100).Execute(run)
 			}
