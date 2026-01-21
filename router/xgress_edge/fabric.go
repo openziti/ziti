@@ -271,12 +271,12 @@ type edgeXgressConn struct {
 	seq     MsgQueue
 	onClose func()
 	closed  atomic.Bool
-	x       *xgress.Xgress
+	x       atomic.Pointer[xgress.Xgress]
 	data    atomic.Pointer[state.ConnState]
 }
 
 func (self *edgeXgressConn) GetCircuitId() string {
-	if x := self.x; x != nil {
+	if x := self.x.Load(); x != nil {
 		return x.CircuitId()
 	}
 	return ""
@@ -284,6 +284,10 @@ func (self *edgeXgressConn) GetCircuitId() string {
 
 func (self *edgeXgressConn) GetServiceId() string {
 	return self.data.Load().ServiceSessionToken.ServiceId
+}
+
+func (self *edgeXgressConn) GetApiSessionToken() *state.ApiSessionToken {
+	return self.GetData().ApiSessionToken
 }
 
 func (self *edgeXgressConn) GetData() *state.ConnState {
@@ -296,6 +300,19 @@ func (self *edgeXgressConn) CloseForDialAccessLoss() {
 
 func (self *edgeXgressConn) SetData(data *state.ConnState) {
 	self.data.Store(data)
+}
+
+func (self *edgeXgressConn) IsPostCreateAccessCheckDone() bool {
+	if x := self.x.Load(); x != nil {
+		return x.IsPostCreateAccessCheckDone()
+	}
+	return true
+}
+
+func (self *edgeXgressConn) SetPostCreateAccessCheckDone() {
+	if x := self.x.Load(); x != nil {
+		x.SetPostCreateAccessCheckDone()
+	}
 }
 
 func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
@@ -463,7 +480,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 
 		headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
 
-		self.x.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		if x := self.x.Load(); x != nil {
+			x.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		}
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
@@ -478,7 +497,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 		headers.PutStringHeader(xgress.ControlHopId, hopId)
 		headers.PutUint32Header(xgress.ControlUserVal, sourceRequestId)
 
-		self.x.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		if x := self.x.Load(); x != nil {
+			x.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		}
 	} else {
 		if err := self.seq.Push(msg); err != nil {
 			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)

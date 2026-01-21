@@ -129,7 +129,7 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 	// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
 	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
-	conn.x = x
+	conn.x.Store(x)
 	x.Start()
 
 	log.Debug("xgress start, sending dial to SDK")
@@ -315,7 +315,7 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 
 	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
-	conn.x = x
+	conn.x.Store(x)
 	x.Start()
 
 	start := edgeSdk.NewStateConnectedMsg(result.ConnId)
