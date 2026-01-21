@@ -64,8 +64,8 @@ func newOidcTestRp(apiHost string) (*testRpServer, error) {
 	}
 	var err error
 
-	// random port on localhost for our auth callback server, glob pattern mattching in controller must be on
-	result.Listener, err = net.Listen("tcp", ":0")
+	// random port on IPv4 loopback for our auth callback server, glob pattern mattching in controller must be on
+	result.Listener, err = net.Listen("tcp", "127.0.0.1:0")
 
 	if err != nil {
 		return nil, fmt.Errorf("could not listen on a random port: %w", err)
