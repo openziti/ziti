@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -32,6 +33,7 @@ import (
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/metrics"
 	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -165,9 +167,10 @@ type connectionTracker struct {
 	maxQueuedEvents    int64
 	lastFullSync       time.Time
 	queuedEventCounter atomic.Int64
+	stateManager       state.Manager
 }
 
-func newConnectionTracker(env env.RouterEnv) *connectionTracker {
+func newConnectionTracker(env env.RouterEnv, stateManager state.Manager) *connectionTracker {
 	result := &connectionTracker{
 		enabled:          env.GetConnectEventsConfig().Enabled,
 		controllers:      env.GetNetworkControllers(),
@@ -177,6 +180,7 @@ func newConnectionTracker(env env.RouterEnv) *connectionTracker {
 		batchInterval:    env.GetConnectEventsConfig().BatchInterval,
 		fullSyncInterval: env.GetConnectEventsConfig().FullSyncInterval,
 		maxQueuedEvents:  env.GetConnectEventsConfig().MaxQueuedEvents,
+		stateManager:     stateManager,
 	}
 
 	go result.runLoop(env.GetCloseNotify())
@@ -185,20 +189,99 @@ func newConnectionTracker(env env.RouterEnv) *connectionTracker {
 }
 
 func (self *connectionTracker) runLoop(closeNotify <-chan struct{}) {
-	ticker := time.NewTicker(self.batchInterval)
-	defer ticker.Stop()
+	reportTicker := time.NewTicker(self.batchInterval)
+	defer reportTicker.Stop()
+
+	stateListenerScanTicker := time.NewTicker(2 * time.Minute)
+	defer stateListenerScanTicker.Stop()
+
+	circuitPostDialAccessCheckTicker := time.NewTicker(time.Minute)
+	defer circuitPostDialAccessCheckTicker.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-reportTicker.C:
 			self.report()
 			self.sendFullSync()
 		case <-self.notifyFullSync:
 			self.sendFullSync()
+		case <-stateListenerScanTicker.C:
+			self.scanForInactiveStateListeners()
+		case <-circuitPostDialAccessCheckTicker.C:
+			self.scanForCircuitsNeedingPolicyCheck()
 		case <-closeNotify:
 			return
 		}
 	}
+}
+
+func (self *connectionTracker) scanForInactiveStateListeners() {
+	var toCheck []*edgeClientConn
+	self.iterateClientConns(func(conn *edgeClientConn) {
+		if conn.IsStateListenerEligibleForRemovalCheck() {
+			toCheck = append(toCheck, conn)
+		}
+	})
+
+	for _, clientConn := range toCheck {
+		clientConn.removeStateListenerIfEligible()
+	}
+}
+
+func (self *connectionTracker) scanForCircuitsNeedingPolicyCheck() {
+	var toCheck []edgeCircuit
+	self.iterateCircuits(func(conn edgeCircuit) {
+		if conn.IsPostCreateAccessCheckNeeded() {
+			toCheck = append(toCheck, conn)
+		}
+	})
+
+	for _, circuit := range toCheck {
+		apiSessionToken := circuit.GetApiSessionToken()
+		var identityId string
+		var err error
+		if apiSessionToken != nil {
+			var policy *common.ServicePolicy
+			policy, err = self.stateManager.HasDialAccess(apiSessionToken.IdentityId, apiSessionToken.Id, circuit.GetServiceId())
+			if policy == nil && err == nil {
+				err = fmt.Errorf("dial access lost")
+			}
+			identityId = apiSessionToken.IdentityId
+		} else {
+			err = fmt.Errorf("no api session found for circuit")
+			identityId = "unknown"
+		}
+
+		if err != nil {
+			log := pfxlog.Logger().
+				WithField("circuitId", circuit.GetCircuitId()).
+				WithField("serviceId", circuit.GetServiceId()).
+				WithField("identityId", identityId).
+				WithField("circuitType", reflect.TypeOf(circuit).String())
+			log.WithError(err).Info("unable to verify service access, closing circuit")
+			circuit.CloseForDialAccessLoss()
+		} else {
+			circuit.SetPostCreateAccessCheckDone()
+		}
+	}
+}
+
+func (self *connectionTracker) iterateClientConns(f func(conn *edgeClientConn)) {
+	for entry := range self.states.IterBuffered() {
+		st := entry.Val
+		st.Lock()
+		for _, ch := range st.connections {
+			clientConn := ch.GetUserData().(*edgeClientConn)
+			f(clientConn)
+		}
+		st.Unlock()
+	}
+}
+
+func (self *connectionTracker) iterateCircuits(f func(conn edgeCircuit)) {
+	self.iterateClientConns(func(conn *edgeClientConn) {
+		conn.IterateCircuits(f)
+	})
 }
 
 // GetChannels returns a snapshot of all active channels grouped by identity ID.
@@ -567,7 +650,7 @@ func (handler *sessionConnectionHandler) validateByFingerprint(apiSession *state
 	return false
 }
 
-func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
+func (handler *sessionConnectionHandler) HandleClose(channel.Channel) {
 	//no work, interface fulfillment
 }
 

@@ -97,6 +97,7 @@ const (
 	DefaultBackgroundQueueEnabled      = true
 	DefaultBackgroundQueueSize         = 1000
 	DefaultBackgroundQueueDropWhenFull = false
+	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
 )
 
 type Config struct {
@@ -136,9 +137,10 @@ type Config struct {
 	Command struct {
 		RateLimiter command.RateLimiterConfig
 		Background  struct {
-			Enabled      bool
-			QueueSize    uint32
-			DropWhenFull bool
+			Enabled        bool
+			QueueSize      uint32
+			DropWhenFull   bool
+			DelayThreshold time.Duration
 		}
 	}
 
@@ -693,6 +695,7 @@ func LoadConfig(path string) (*Config, error) {
 	controllerConfig.Command.Background.Enabled = DefaultBackgroundQueueEnabled
 	controllerConfig.Command.Background.QueueSize = DefaultBackgroundQueueSize
 	controllerConfig.Command.Background.DropWhenFull = DefaultBackgroundQueueDropWhenFull
+	controllerConfig.Command.Background.DelayThreshold = DefaultBackgroundQueueThreshold
 
 	commandRateLimiterHandled := false
 	if cmdValue, found := cfgmap["command"]; found {
@@ -719,6 +722,14 @@ func LoadConfig(path string) (*Config, error) {
 							controllerConfig.Command.Background.QueueSize = uint32(v)
 						} else {
 							return nil, errors.Errorf("invalid value type %T for command.background.queueSize, must be integer value", value)
+						}
+					}
+
+					if value, found := submap["delayThreshold"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							controllerConfig.Command.Background.DelayThreshold = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse command.background.delayThreshold value '%v", value)
 						}
 					}
 

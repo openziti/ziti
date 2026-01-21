@@ -44,9 +44,11 @@ const (
 func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
 	command.GetDefaultDecoders().Clear()
 	result := &CommandManager{
-		env:      env,
-		registry: registry,
-		Decoders: command.GetDefaultDecoders(),
+		env:                      env,
+		registry:                 registry,
+		Decoders:                 command.GetDefaultDecoders(),
+		backgroundDelayThreshold: env.GetConfig().Command.Background.DelayThreshold,
+		backgroundWorkTimer:      env.GetMetricsRegistry().Timer(backgroundQueueMetricsBase + ".work_timer"),
 	}
 
 	if env.GetConfig().Command.Background.Enabled {
@@ -81,11 +83,13 @@ func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
 }
 
 type CommandManager struct {
-	env            Env
-	registry       ioc.Registry
-	Decoders       command.Decoders
-	backgroundPool goroutines.Pool
-	droppedEntries metrics.Meter
+	env                      Env
+	registry                 ioc.Registry
+	Decoders                 command.Decoders
+	backgroundPool           goroutines.Pool
+	backgroundDelayThreshold time.Duration
+	droppedEntries           metrics.Meter
+	backgroundWorkTimer      metrics.Timer
 }
 
 func (self *CommandManager) registerGenericCommands() {
@@ -141,7 +145,7 @@ func backgroundCommandPoolWorker(_ uint32, f func()) {
 }
 
 func (self *CommandManager) backGroundableTask(f func()) bool {
-	if self.env.GetConfig().Command.Background.Enabled {
+	if self.env.GetConfig().Command.Background.Enabled && !self.isBackgroundWorkTimerBelowThreshold() {
 		if self.env.GetConfig().Command.Background.DropWhenFull {
 			if err := self.backgroundPool.QueueOrError(f); err != nil {
 				if errors.Is(err, goroutines.QueueFullError) {
@@ -157,8 +161,12 @@ func (self *CommandManager) backGroundableTask(f func()) bool {
 		return true
 	}
 
-	f()
+	self.backgroundWorkTimer.Time(f)
 	return true
+}
+
+func (self *CommandManager) isBackgroundWorkTimerBelowThreshold() bool {
+	return self.backgroundWorkTimer.Percentile(0.9) < float64(self.backgroundDelayThreshold.Nanoseconds())
 }
 
 // CommandMsg is a TypedMessage which is also a pointer type.
