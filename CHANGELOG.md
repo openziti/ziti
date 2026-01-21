@@ -451,6 +451,7 @@ A new `command.background` configuration section controls the background process
       enabled: true           # Enable background processing (default: true)
       queueSize: 1000        # Maximum queue size (default: 1000)
       dropWhenFull: true     # Drop updates when queue is full (default: false)
+      delayThreshold: 50ms   # The threshold for how long updates are taking before starting to background updates
 ```
 
 Note that the `commandRateLimiter` configuration section may instead be specified under `command` as `rateLimiter`.
@@ -463,6 +464,7 @@ Example:
       enabled: true
       queueSize: 250
       dropWhenFull: false
+      delayThreshold: 50ms
     rateLimiter:
       enabled:   true
       maxQueued: 25
@@ -498,15 +500,23 @@ When background processing is enabled, the following metrics are exposed:
 * github.com/openziti/sdk-golang: [v1.2.10 -> v1.3.1](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.3.1)
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
-* github.com/openziti/secretstream: [v0.1.41 -> v0.1.42](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.42)
+* github.com/openziti/secretstream: [v0.1.41 -> v0.1.46](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.46)
 * github.com/openziti/storage: [v0.4.31 -> v0.4.35](https://github.com/openziti/storage/compare/v0.4.31...v0.4.35)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
 * github.com/openziti/transport/v2: [v2.0.198 -> v2.0.205](https://github.com/openziti/transport/compare/v2.0.198...v2.0.205)
-* github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.1](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.1)
+* github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.3](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.3)
+    * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
+
 * github.com/openziti/ziti: [v1.7.0 -> v1.8.0](https://github.com/openziti/ziti/compare/v1.7.0...v1.8.0)
+    * [Issue #3509](https://github.com/openziti/ziti/issues/3509) - Enforce policy on the router for oidc sessions, by closing open circuits and terminators when service access is lost
+    * [Issue #3503](https://github.com/openziti/ziti/issues/3503) - Allow routers to request current cluster membership information
+    * [Issue #3501](https://github.com/openziti/ziti/issues/3501) - Get cluster membership information from raft directly, rather than trying to cache it in the DB
+    * [Issue #3500](https://github.com/openziti/ziti/issues/3500) - Set a router data model timeline when initializing a new HA setup, rather than letting it stay blank
+    * [Issue #3504](https://github.com/openziti/ziti/issues/3504) - Reduce router data model full state updates
+    * [Issue #3492](https://github.com/openziti/ziti/pull/3492) - Bump openziti/ziti-console-assets from 3.12.9 to 4.0.0 in /dist/docker-images/ziti-controller in the all group
     * [Issue #3484](https://github.com/openziti/ziti/issues/3484) - router ctrl channel handler for handling cluster changes has an initialization race condition
     * [Issue #3477](https://github.com/openziti/ziti/issues/3477) - Optionally enable model changes triggered by login to be non-blocking and to be droppable if the system is under load
     * [Issue #3473](https://github.com/openziti/ziti/issues/3473) - Enable tls handshake rate limiter by default and tweak default values.
