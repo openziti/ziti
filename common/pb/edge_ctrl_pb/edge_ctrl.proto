@@ -21,8 +21,11 @@ enum ContentType {
   RequestClientReSyncType = 20204;
   CreateCircuitRequestType = 20205;
   CreateCircuitResponseType = 20206;
-  CreateTerminatorRequestType = 20207;
-  CreateTerminatorResponseType = 20208;
+
+  // deprecated, left for historical/debugging purposes
+  // CreateTerminatorRequestType = 20207;
+  // CreateTerminatorResponseType = 20208;
+
   UpdateTerminatorRequestType = 20209;
   UpdateTerminatorResponseType = 20210;
   RemoveTerminatorRequestType = 20211;
@@ -362,17 +365,6 @@ enum TerminatorPrecedence {
   Default = 0;
   Required = 1;
   Failed = 2;
-}
-
-message CreateTerminatorRequest {
-  string sessionToken = 1;
-  repeated string fingerprints = 2;
-  map<uint32, bytes> peerData = 3;
-  uint32 cost = 4;
-  TerminatorPrecedence precedence = 5;
-  string instanceId = 6;
-  bytes instanceSecret = 7;
-  string apiSessionToken = 8;
 }
 
 message CreateTerminatorV2Request {

@@ -17,8 +17,14 @@
 package capabilities
 
 const (
-	ControllerCreateTerminatorV2     int = 1
+	// ControllerCreateTerminatorV2 deprecated, assumed to be supported
+	ControllerCreateTerminatorV2 int = 1
+
+	// ControllerSingleRouterLinkSource deprecated, assumed to be supported
 	ControllerSingleRouterLinkSource int = 2
-	ControllerCreateCircuitV2        int = 3
-	RouterDataModel                  int = 4
+
+	// ControllerCreateCircuitV2 indicates support for the CreateCircuitV2 method
+	ControllerCreateCircuitV2 int = 3
+
+	RouterDataModel int = 4
 )
