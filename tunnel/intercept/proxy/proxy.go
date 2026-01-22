@@ -225,12 +225,22 @@ func (p *interceptor) handleTCP(service *Service) error {
 
 	serviceBinding := p.interceptIP
 	if service.Binding != "" {
-		binding, err := transport.ResolveLocalBinding(service.Binding)
-		if err != nil {
-			return fmt.Errorf("unable to resolve binding '%s' on service '%s' for tcp proxy (%w)",
-				service.Binding, service.Name, err)
+		// Special-case wildcard bindings. ResolveLocalBinding expects an interface-mappable IP,
+		// but 0.0.0.0 is a valid local bind address meaning "all interfaces".
+		if ip := net.ParseIP(service.Binding); ip != nil && ip.IsUnspecified() {
+			if ip.To4() == nil {
+				return fmt.Errorf("unable to resolve binding '%s' on service '%s' for tcp proxy (tcp4 listener does not support IPv6 wildcard)",
+					service.Binding, service.Name)
+			}
+			serviceBinding = ip
+		} else {
+			binding, err := transport.ResolveLocalBinding(service.Binding)
+			if err != nil {
+				return fmt.Errorf("unable to resolve binding '%s' on service '%s' for tcp proxy (%w)",
+					service.Binding, service.Name, err)
+			}
+			serviceBinding = binding
 		}
-		serviceBinding = binding
 	}
 
 	listenAddr := net.TCPAddr{IP: serviceBinding, Port: service.Port}
@@ -268,15 +278,26 @@ func (p *interceptor) handleUDP(service *Service) error {
 
 	serviceBinding := p.interceptIP
 	if service.Binding != "" {
-		binding, err := transport.ResolveLocalBinding(service.Binding)
-		if err != nil {
-			return fmt.Errorf("unable to resolve binding '%s' on service '%s' for udp proxy (%w)", service.Binding, service.Name, err)
+		// Special-case wildcard binding. 0.0.0.0 is a valid local bind address meaning "all interfaces".
+		if ip := net.ParseIP(service.Binding); ip != nil && ip.IsUnspecified() {
+			serviceBinding = ip
+		} else {
+			binding, err := transport.ResolveLocalBinding(service.Binding)
+			if err != nil {
+				return fmt.Errorf("unable to resolve binding '%s' on service '%s' for udp proxy (%w)", service.Binding, service.Name, err)
+			}
+			serviceBinding = binding
 		}
-		serviceBinding = binding
 	}
 
+	if serviceBinding.To4() == nil {
+		return fmt.Errorf("unable to resolve binding '%s' on service '%s' for udp proxy (IPv6 is not supported)",
+			service.Binding, service.Name)
+	}
+	serviceBinding = serviceBinding.To4()
+
 	listenAddr := &net.UDPAddr{IP: serviceBinding, Port: service.Port}
-	udpPacketConn, err := net.ListenUDP("udp", listenAddr)
+	udpPacketConn, err := net.ListenUDP("udp4", listenAddr)
 	if err != nil {
 		return err
 	}
