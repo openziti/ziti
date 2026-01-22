@@ -17,9 +17,10 @@
 package config
 
 import (
-	"github.com/pkg/errors"
 	"math"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirupsen/logrus"
 )
@@ -27,7 +28,6 @@ import (
 const (
 	DefaultOptionsCreateCircuitRetries      = 2
 	DefaultOptionsCycleSeconds              = 60
-	DefaultOptionsEnableLegacyLinkMgmt      = false
 	DefaultOptionsInitialLinkLatency        = 65 * time.Second
 	DefaultOptionsPendingLinkTimeout        = 10 * time.Second
 	DefaultOptionsMetricsReportInterval     = time.Minute
@@ -48,7 +48,6 @@ const (
 type NetworkConfig struct {
 	CreateCircuitRetries    uint32
 	CycleSeconds            uint32
-	EnableLegacyLinkMgmt    bool
 	InitialLinkLatency      time.Duration
 	IntervalAgeThreshold    time.Duration
 	MetricsReportInterval   time.Duration
@@ -71,7 +70,6 @@ func DefaultNetworkConfig() *NetworkConfig {
 	options := &NetworkConfig{
 		CreateCircuitRetries:  DefaultOptionsCreateCircuitRetries,
 		CycleSeconds:          DefaultOptionsCycleSeconds,
-		EnableLegacyLinkMgmt:  DefaultOptionsEnableLegacyLinkMgmt,
 		InitialLinkLatency:    DefaultOptionsInitialLinkLatency,
 		MetricsReportInterval: DefaultOptionsMetricsReportInterval,
 		MinRouterCost:         DefaultOptionsMinRouterCost,
@@ -257,14 +255,6 @@ func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) 
 			options.IntervalAgeThreshold = val
 		} else {
 			return nil, errors.New("invalid value for 'intervalAgeThreshold'")
-		}
-	}
-
-	if value, found := src["enableLegacyLinkMgmt"]; found {
-		if bval, ok := value.(bool); ok {
-			options.EnableLegacyLinkMgmt = bval
-		} else {
-			return nil, errors.New("invalid value for 'enableLegacyLinkMgmt'")
 		}
 	}
 

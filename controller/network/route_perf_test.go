@@ -18,9 +18,10 @@ package network
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/model"
 	"math/rand"
 	"testing"
+
+	"github.com/openziti/ziti/controller/model"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
@@ -145,7 +146,6 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 			addLink(r, newRouter)
 		}
 		replaceIdx--
-		entityHelper.discardControllerEvents()
 	}
 }
 
@@ -219,7 +219,6 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 		if replaceIdx < 0 {
 			replaceIdx = len(routers) - 1
 		}
-		entityHelper.discardControllerEvents()
 
 		dstIndex++
 		for dstIndex >= len(routers) {

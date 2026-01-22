@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/router/env"
@@ -349,7 +348,7 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 	}
 
 	for _, ch := range channels {
-		if !capabilities.IsCapable(ch, capabilities.ControllerSingleRouterLinkSource) || link.IsDialed() {
+		if link.IsDialed() {
 			if err := protobufs.MarshalTyped(linkMsg).Send(ch); err != nil {
 				log.WithError(err).Error("error sending router link message")
 			}
@@ -402,7 +401,6 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	defer self.Unlock()
 
 	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("resending link states after reconnect")
-	alwaysSend := !capabilities.IsCapable(ch, capabilities.ControllerSingleRouterLinkSource)
 
 	var onComplete []func()
 
@@ -412,7 +410,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 		FullRefresh: true,
 	}
 	for link := range self.Iter() {
-		if alwaysSend || link.IsDialed() {
+		if link.IsDialed() {
 			routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{
 				Id:           link.Id(),
 				DestRouterId: link.DestinationId(),
@@ -457,13 +455,6 @@ func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy 
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
 	self.queueEvent(&removeLinkDest{
 		id: id,
-	})
-}
-
-func (self *linkRegistryImpl) DialRequested(ctrlCh channel.Channel, dial *ctrl_pb.Dial) {
-	self.queueEvent(&dialRequest{
-		ctrlCh: ctrlCh,
-		dial:   dial,
 	})
 }
 

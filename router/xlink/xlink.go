@@ -17,6 +17,8 @@
 package xlink
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"time"
 )
 
 // Registry contains known link instances and manages link de-duplication
@@ -34,9 +35,6 @@ type Registry interface {
 
 	// RemoveLinkDest removes the given link destination
 	RemoveLinkDest(id string)
-
-	// DialRequested will set up a one-time dial to support older controllers which don't support sending PeerStatus
-	DialRequested(ctrlCh channel.Channel, dial *ctrl_pb.Dial)
 
 	// GetLink returns the link to the given router, of the given type, if one exists
 	GetLink(linkKey string) (Xlink, bool)

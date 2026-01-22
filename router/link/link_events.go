@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/common/inspect"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
@@ -155,66 +154,6 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 					WithField("linkKey", linkKey)
 				log.Info("closing link as link groups no longer align")
 				_ = v.link.Close()
-			}
-		}
-	}
-}
-
-type dialRequest struct {
-	ctrlCh channel.Channel
-	dial   *ctrl_pb.Dial
-}
-
-func (self *dialRequest) Handle(registry *linkRegistryImpl) {
-	dest := registry.destinations[self.dial.RouterId]
-
-	if dest == nil {
-		dest = newLinkDest(self.dial.RouterId)
-		dest.version.Store(self.dial.RouterVersion)
-		registry.destinations[self.dial.RouterId] = dest
-	}
-
-	for _, dialer := range registry.env.GetXlinkDialers() {
-		if stringz.ContainsAny(dialer.GetGroups(), GroupDefault) {
-			linkKey := registry.GetLinkKey(GroupDefault, self.dial.LinkProtocol, self.dial.RouterId, GroupDefault)
-
-			log := pfxlog.Logger().WithField("routerId", self.dial.RouterId).
-				WithField("address", self.dial.Address).
-				WithField("linkKey", linkKey)
-
-			if link, found := registry.GetLink(linkKey); found {
-				registry.SendRouterLinkMessage(link, self.ctrlCh)
-				continue
-			}
-
-			existingLinkState, ok := dest.linkMap[linkKey]
-			if !ok {
-				newLinkState := &linkState{
-					linkKey: linkKey,
-					linkId:  idgen.MustNewUUIDString(),
-					status:  StatusPending,
-					dest:    dest,
-					listener: &ctrl_pb.Listener{
-						Address:  self.dial.Address,
-						Protocol: self.dial.LinkProtocol,
-						Groups:   []string{GroupDefault},
-					},
-					dialer:       dialer,
-					allowedDials: 1,
-				}
-				log = log.WithField("linkId", newLinkState.linkId)
-				dest.linkMap[linkKey] = newLinkState
-				log.Info("new potential link")
-				registry.evaluateLinkState(newLinkState)
-			} else if existingLinkState.status != StatusEstablished {
-				log = log.WithField("linkId", existingLinkState.linkId)
-
-				existingLinkState.retryDelay = time.Duration(0)
-				existingLinkState.nextDial = time.Now()
-				existingLinkState.allowedDials = 1
-
-				log.Info("dial request received for existing link, re-evaluating")
-				registry.evaluateLinkState(existingLinkState)
 			}
 		}
 	}
