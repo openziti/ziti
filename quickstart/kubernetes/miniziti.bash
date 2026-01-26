@@ -853,6 +853,25 @@ main(){
     fi
     helmWrapper "${_controller_cmd[@]}" >&3
 
+    local web_identity_cert_name
+    web_identity_cert_name="ziti-controller-web-identity-cert"
+    logInfo "waiting for cert-manager certificate '${web_identity_cert_name}' to be ready"
+    for ((i=0; i<MINIZITI_TIMEOUT_SECS; i++)); do
+        if kubectlWrapper get certificate.cert-manager.io "${web_identity_cert_name}" --namespace "${ZITI_NAMESPACE}" >/dev/null 2>&1; then
+            logDebug "certificate '${web_identity_cert_name}' exists"
+            break
+        fi
+        sleep 1
+    done
+    kubectlWrapper wait certificate.cert-manager.io "${web_identity_cert_name}" \
+        --namespace "${ZITI_NAMESPACE}" \
+        --for condition=Ready=True \
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
+
+    logInfo "restarting ziti-controller deployment to reload reissued certificates"
+    kubectlWrapper rollout restart deployment/ziti-controller \
+        --namespace "${ZITI_NAMESPACE}" >&3
+
     logDebug "setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
         kubectlWrapper config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >&3
