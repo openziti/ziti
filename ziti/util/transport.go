@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/v2/ziti/constants"
 )
 
 // NewZitifiedTransportFromSlice creates an HTTP transport configured to route

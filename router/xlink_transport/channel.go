@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/router/env"
 )
 
 const (

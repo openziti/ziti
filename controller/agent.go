@@ -6,14 +6,14 @@ import (
 	"net"
 	"time"
 
-	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
-	"github.com/openziti/ziti/common/handler_common"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/handler_common"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

@@ -19,13 +19,13 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/posture_checks"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/models"
-	permissions "github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
+	permissions "github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

@@ -27,8 +27,8 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
-	fabricMetrics "github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/router/xlink"
+	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

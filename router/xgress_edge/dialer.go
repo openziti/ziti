@@ -25,10 +25,10 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
 	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/logcontext"
+	"github.com/openziti/ziti/v2/controller/xt"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 )
 

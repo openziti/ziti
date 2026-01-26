@@ -19,8 +19,8 @@ package oidc_auth
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"net/http"
 )

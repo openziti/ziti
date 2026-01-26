@@ -8,7 +8,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	gometrics "github.com/rcrowley/go-metrics"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"

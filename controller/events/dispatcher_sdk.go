@@ -17,7 +17,7 @@
 package events
 
 import (
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 	"reflect"
 )
@@ -49,7 +49,7 @@ func (self *Dispatcher) registerSdkEventHandler(_ string, val interface{}, _ map
 	handler, ok := val.(event.SdkEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/SdkEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/SdkEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	self.AddSdkEventHandler(handler)

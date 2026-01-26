@@ -21,12 +21,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	extJwtClient "github.com/openziti/edge-api/rest_client_api_server/operations/external_jwt_signer"
 	extJwtManagement "github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

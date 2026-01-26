@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	metrics2 "github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"

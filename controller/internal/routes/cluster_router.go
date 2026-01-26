@@ -22,15 +22,15 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/raft"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/controller/rest_server/operations/cluster"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/raft"
+	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/rest_model"
+	"github.com/openziti/ziti/v2/controller/rest_server/operations/cluster"
 )
 
 func init() {

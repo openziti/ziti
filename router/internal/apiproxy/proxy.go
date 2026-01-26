@@ -20,7 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/router/env"
 	"net/http"
 	"net/http/httputil"
 	"net/url"

@@ -1,7 +1,7 @@
 package posture
 
 import (
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 type MacCheck struct {

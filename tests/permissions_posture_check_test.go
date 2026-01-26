@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/permissions"
 )
 
 func Test_Permissions_PostureCheck(t *testing.T) {

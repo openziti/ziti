@@ -30,12 +30,12 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/internal/apiproxy"
-	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/internal/apiproxy"
+	"github.com/openziti/ziti/v2/router/state"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 )
 

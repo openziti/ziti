@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openziti/ziti/ziti/cmd/ops/verify/ext-jwt-signer/oidc"
+	"github.com/openziti/ziti/v2/ziti/cmd/ops/verify/ext-jwt-signer/oidc"
 )
 
 func NewVerifyExtJwtSignerCmd(out io.Writer, errOut io.Writer, initialContext context.Context) *cobra.Command {

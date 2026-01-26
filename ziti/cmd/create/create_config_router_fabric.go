@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/openziti/ziti/v2/ziti/cmd/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

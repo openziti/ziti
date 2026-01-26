@@ -19,12 +19,12 @@ package policy
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/runner"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/common/runner"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
 	"time"
 
-	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/v2/controller/env"
 	"go.etcd.io/bbolt"
 )
 

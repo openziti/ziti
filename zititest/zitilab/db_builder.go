@@ -6,8 +6,8 @@ import (
 
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )

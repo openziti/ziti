@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/channel/v4/latency"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/raft"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/sirupsen/logrus"
 	"time"
 )

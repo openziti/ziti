@@ -22,10 +22,10 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/permissions"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/permissions"
 
 	"net/http"
 	"time"

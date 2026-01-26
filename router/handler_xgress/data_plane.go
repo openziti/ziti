@@ -23,7 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/v2/router/forwarder"
 )
 
 type dataPlaneAdapter struct {

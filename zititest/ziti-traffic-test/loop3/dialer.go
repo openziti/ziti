@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/xgress_transport"
+	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"

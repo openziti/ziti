@@ -1,15 +1,15 @@
 package network
 
 import (
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/controller/model"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/openziti/transport/v2/tcp"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/v2/common/logcontext"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/stretchr/testify/assert"
 )
 

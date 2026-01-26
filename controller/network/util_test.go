@@ -19,14 +19,13 @@ package network
 import (
 	"fmt"
 
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 )
 
 func newTestEntityHelper(ctx *model.TestContext, network *Network) *testEntityHelper {

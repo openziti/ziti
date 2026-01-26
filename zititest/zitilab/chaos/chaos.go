@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zitirest"
+	"github.com/openziti/ziti/v2/zitirest"
 	"math/rand"
 	"time"
 )

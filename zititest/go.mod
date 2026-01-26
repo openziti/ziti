@@ -3,7 +3,7 @@ module github.com/openziti/ziti/zititest
 go 1.25.3
 
 // use parent project
-replace github.com/openziti/ziti => ../
+replace github.com/openziti/ziti/v2 => ../
 
 // pinned
 replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
@@ -27,7 +27,7 @@ require (
 	github.com/openziti/sdk-golang v1.3.1
 	github.com/openziti/storage v0.4.35
 	github.com/openziti/transport/v2 v2.0.205
-	github.com/openziti/ziti v1.6.2
+	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9

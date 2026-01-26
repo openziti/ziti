@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 // Test_EnrollmetnCaAutoSpecific uses the ca specific enrollment endpoint rather than the generic enroll endpoint.

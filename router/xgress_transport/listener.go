@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"io"
 )
 

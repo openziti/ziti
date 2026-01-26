@@ -23,10 +23,10 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/objectz"
-	"github.com/openziti/ziti/common/datastructures"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/v2/common/datastructures"
+	"github.com/openziti/ziti/v2/common/logcontext"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/orcaman/concurrent-map/v2"
 )
 

@@ -25,9 +25,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openziti/ziti/ziti/cmd"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/cmd"
+	"github.com/openziti/ziti/v2/ziti/cmd/edge"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/stretchr/testify/require"
 )
 

@@ -29,12 +29,12 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/mempool"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/alert"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/dns"
-	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/ziti/tunnel/intercept"
-	"github.com/openziti/ziti/tunnel/udp_vconn"
+	"github.com/openziti/ziti/v2/common/alert"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/dns"
+	"github.com/openziti/ziti/v2/tunnel/entities"
+	"github.com/openziti/ziti/v2/tunnel/intercept"
+	"github.com/openziti/ziti/v2/tunnel/udp_vconn"
 )
 
 type Service struct {

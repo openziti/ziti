@@ -21,7 +21,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/openziti/ziti/tunnel/intercept/proxy"
+	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

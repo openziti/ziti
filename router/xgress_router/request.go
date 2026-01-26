@@ -27,8 +27,8 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/ctrl_msg"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 )
 

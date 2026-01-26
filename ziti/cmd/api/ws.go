@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/channel/v4/websockets"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/util"
 )
 
 func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) {

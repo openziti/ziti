@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/internal/ascode"
+	"github.com/openziti/ziti/v2/internal/ascode"
 	"slices"
 )
 

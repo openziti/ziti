@@ -21,7 +21,7 @@ import (
 
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )

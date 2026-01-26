@@ -21,8 +21,8 @@ import (
 
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/v2/controller/xt"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"go.etcd.io/bbolt"
 )
 

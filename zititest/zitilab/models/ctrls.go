@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zitirest"
+	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 )
 

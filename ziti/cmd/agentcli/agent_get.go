@@ -21,8 +21,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/internal/log"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/internal/log"
 	"github.com/pkg/errors"
 
 	"github.com/shirou/gopsutil/v3/process"

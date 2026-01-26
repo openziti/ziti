@@ -20,10 +20,10 @@ import (
 	idloader "github.com/openziti/identity"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/rcrowley/go-metrics"
 )
 

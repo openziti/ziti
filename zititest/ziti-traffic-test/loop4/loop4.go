@@ -34,7 +34,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/outputz"
+	"github.com/openziti/ziti/v2/common/outputz"
 	trafficMetrics "github.com/openziti/ziti/zititest/ziti-traffic-test/metrics"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/spf13/cobra"

@@ -19,8 +19,8 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/fields"
 )
 
 func GetFields(body []byte) (fields.UpdatedFields, error) {

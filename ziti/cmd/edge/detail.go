@@ -18,7 +18,7 @@ package edge
 
 import (
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"io"
 )
 

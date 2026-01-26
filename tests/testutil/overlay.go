@@ -36,13 +36,13 @@ import (
 
 	"github.com/openziti/edge-api/rest_util"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/ziti/cmd"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/cmd/ops"
-	"github.com/openziti/ziti/ziti/run"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/cmd"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/edge"
+	"github.com/openziti/ziti/v2/ziti/cmd/ops"
+	"github.com/openziti/ziti/v2/ziti/run"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/stretchr/testify/require"
 )
 

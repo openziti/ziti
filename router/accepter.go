@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/ziti/router/xlink"
+	"github.com/openziti/ziti/v2/router/forwarder"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/sirupsen/logrus"
 )
 

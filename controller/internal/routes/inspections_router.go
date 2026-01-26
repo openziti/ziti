@@ -21,11 +21,11 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/controller/rest_server/operations/inspect"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/rest_model"
+	"github.com/openziti/ziti/v2/controller/rest_server/operations/inspect"
 )
 
 func init() {

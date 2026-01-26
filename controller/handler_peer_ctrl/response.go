@@ -22,9 +22,9 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/peermsg"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/peermsg"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

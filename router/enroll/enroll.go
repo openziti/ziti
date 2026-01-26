@@ -30,7 +30,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/router/env"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"

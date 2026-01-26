@@ -20,15 +20,15 @@ import (
 	"regexp"
 	"time"
 
-	fabForwarder "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdHelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/constants"
+	fabForwarder "github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	cmdHelper "github.com/openziti/ziti/v2/ziti/cmd/helpers"
+	"github.com/openziti/ziti/v2/ziti/constants"
 
 	"github.com/openziti/channel/v4"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v3"
-	edge "github.com/openziti/ziti/controller/config"
+	edge "github.com/openziti/ziti/v2/controller/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

@@ -17,13 +17,13 @@
 package model
 
 import (
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/ioc"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/ioc"
+	"github.com/openziti/ziti/v2/controller/models"
 	"google.golang.org/protobuf/proto"
 )
 

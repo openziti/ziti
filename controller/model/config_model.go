@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 )

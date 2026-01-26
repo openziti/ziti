@@ -21,7 +21,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
 
 	"github.com/pkg/errors"
 

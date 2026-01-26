@@ -10,7 +10,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	edgeapis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/webapis"
+	"github.com/openziti/ziti/v2/controller/webapis"
 )
 
 func Test_Identity_HasErConnection(t *testing.T) {

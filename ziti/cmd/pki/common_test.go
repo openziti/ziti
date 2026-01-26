@@ -18,8 +18,8 @@ package pki
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/ziti/ziti/pki/pki"
-	"github.com/openziti/ziti/ziti/pki/store"
+	"github.com/openziti/ziti/v2/ziti/pki/pki"
+	"github.com/openziti/ziti/v2/ziti/pki/store"
 	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"

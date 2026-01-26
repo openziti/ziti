@@ -28,8 +28,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/stretchr/testify/require"
 )
 

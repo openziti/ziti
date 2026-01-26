@@ -19,7 +19,7 @@ package store
 
 import (
 	"crypto/x509/pkix"
-	"github.com/openziti/ziti/ziti/pki/certificate"
+	"github.com/openziti/ziti/v2/ziti/pki/certificate"
 	"math/big"
 )
 

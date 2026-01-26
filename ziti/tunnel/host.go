@@ -17,7 +17,7 @@
 package tunnel
 
 import (
-	"github.com/openziti/ziti/tunnel/intercept/host"
+	"github.com/openziti/ziti/v2/tunnel/intercept/host"
 	"github.com/spf13/cobra"
 )
 

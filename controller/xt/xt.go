@@ -19,7 +19,7 @@ package xt
 import (
 	"fmt"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/common/logcontext"
+	"github.com/openziti/ziti/v2/common/logcontext"
 	"time"
 )
 

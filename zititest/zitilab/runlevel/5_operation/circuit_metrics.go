@@ -7,9 +7,9 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/sirupsen/logrus"
 	"time"
 )

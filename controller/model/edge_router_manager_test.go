@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
 	"testing"
 )

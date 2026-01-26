@@ -17,9 +17,9 @@
 package helpers
 
 import (
-	edge "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
-	"github.com/openziti/ziti/ziti/constants"
+	edge "github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/router/xgress_edge_tunnel"
+	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
 	"path/filepath"

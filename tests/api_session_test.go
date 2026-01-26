@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"sort"
 	"testing"
 )

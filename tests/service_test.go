@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"net/url"
 	"sort"
 	"testing"

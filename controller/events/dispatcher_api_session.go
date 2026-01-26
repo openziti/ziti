@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
@@ -90,7 +90,7 @@ func (self *Dispatcher) registerApiSessionEventHandler(eventType string, val int
 	handler, ok := val.(event.ApiSessionEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/ApiSessionEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/ApiSessionEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	if eventType != event.ApiSessionEventNS {

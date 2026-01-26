@@ -22,7 +22,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/util"
 )
 
 func DeleteEntitiesOfType(api util.API, o *Options, entityType string, ids []string, body string) error {

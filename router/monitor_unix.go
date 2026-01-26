@@ -20,7 +20,7 @@ package router
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/v2/router/forwarder"
 	"os"
 	"os/signal"
 	"syscall"

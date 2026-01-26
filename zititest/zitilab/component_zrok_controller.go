@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
 	"io/fs"

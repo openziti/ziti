@@ -20,10 +20,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	controllersClient "github.com/openziti/edge-api/rest_client_api_server/operations/controllers"
 	controllersMan "github.com/openziti/edge-api/rest_management_api_server/operations/controllers"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

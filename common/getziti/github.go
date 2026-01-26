@@ -7,7 +7,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
-	c "github.com/openziti/ziti/ziti/constants"
+	c "github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/pkg/errors"
 	"net/http"
 	"net/url"

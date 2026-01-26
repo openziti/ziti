@@ -30,8 +30,8 @@ import (
 	"time"
 
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 
 	"github.com/fatih/color"
 	"github.com/google/uuid"
@@ -45,11 +45,11 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
 
-	"github.com/openziti/ziti/internal"
-	ziticobra "github.com/openziti/ziti/internal/cobra"
-	"github.com/openziti/ziti/internal/rest/client"
-	"github.com/openziti/ziti/ziti/cmd/edge"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/internal"
+	ziticobra "github.com/openziti/ziti/v2/internal/cobra"
+	"github.com/openziti/ziti/v2/internal/rest/client"
+	"github.com/openziti/ziti/v2/ziti/cmd/edge"
+	"github.com/openziti/ziti/v2/ziti/util"
 )
 
 const (

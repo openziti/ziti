@@ -27,8 +27,8 @@ import (
 	"github.com/openziti/channel/v4/latency"
 	"github.com/openziti/metrics"
 	sdkEdge "github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 

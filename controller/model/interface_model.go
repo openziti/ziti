@@ -18,7 +18,7 @@ package model
 
 import (
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/db"
 	"net"
 	"sort"
 )

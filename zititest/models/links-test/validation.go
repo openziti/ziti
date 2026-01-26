@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller/rest_client/link"
-	"github.com/openziti/ziti/zitirest"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/controller/rest_client/link"
+	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"google.golang.org/protobuf/proto"
 )

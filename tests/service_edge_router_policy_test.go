@@ -20,7 +20,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"testing"
 )
 

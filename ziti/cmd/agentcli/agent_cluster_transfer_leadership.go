@@ -20,9 +20,9 @@ import (
 	"fmt"
 
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/controller"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/controller"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )
 

@@ -20,8 +20,8 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	"github.com/openziti/ziti/internal"
-	"github.com/openziti/ziti/internal/rest/mgmt"
+	"github.com/openziti/ziti/v2/internal"
+	"github.com/openziti/ziti/v2/internal/rest/mgmt"
 	"slices"
 )
 

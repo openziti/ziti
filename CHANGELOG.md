@@ -1,4 +1,4 @@
-# Release 1.8.0
+# Release 2.0.0
 
 ## What's New
 

@@ -15,9 +15,9 @@ import (
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/health"
-	"github.com/openziti/ziti/tunnel/utils"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/health"
+	"github.com/openziti/ziti/v2/tunnel/utils"
 	"github.com/pkg/errors"
 )
 

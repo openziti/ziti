@@ -2,7 +2,7 @@ package getziti
 
 import (
 	"fmt"
-	c "github.com/openziti/ziti/ziti/constants"
+	c "github.com/openziti/ziti/v2/ziti/constants"
 )
 
 func InstallZiti(targetVersion, targetOS, targetArch, binDir string, verbose bool) error {

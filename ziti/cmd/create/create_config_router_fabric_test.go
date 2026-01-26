@@ -1,7 +1,7 @@
 package create
 
 import (
-	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"os"

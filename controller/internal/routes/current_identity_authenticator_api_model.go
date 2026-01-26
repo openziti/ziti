@@ -18,8 +18,8 @@ package routes
 
 import (
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
 	"path"
 )
 

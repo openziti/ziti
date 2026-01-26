@@ -10,8 +10,8 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/model"
 )
 
 func Test_CA(t *testing.T) {

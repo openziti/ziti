@@ -3,8 +3,8 @@ package stageziti
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/getziti"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/common/getziti"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"

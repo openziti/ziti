@@ -25,10 +25,10 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	controllerEnv "github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	controllerEnv "github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
 )
 

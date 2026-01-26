@@ -20,7 +20,7 @@ package tests
 
 import (
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"testing"
 	"time"
 )

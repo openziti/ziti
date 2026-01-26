@@ -2,7 +2,7 @@ package mesh
 
 import (
 	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/event"
 	"runtime"
 	"testing"
 	"time"

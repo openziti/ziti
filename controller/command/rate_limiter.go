@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/pkg/errors"
 	"strings"
 	"sync"

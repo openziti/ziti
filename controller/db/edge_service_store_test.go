@@ -19,8 +19,8 @@ package db
 import (
 	"fmt"
 	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
 	"testing"
 	"time"
 

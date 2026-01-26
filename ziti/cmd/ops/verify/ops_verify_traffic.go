@@ -38,9 +38,9 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/internal"
-	"github.com/openziti/ziti/internal/rest/mgmt"
-	"github.com/openziti/ziti/ziti/cmd/edge"
+	"github.com/openziti/ziti/v2/internal"
+	"github.com/openziti/ziti/v2/internal/rest/mgmt"
+	"github.com/openziti/ziti/v2/ziti/cmd/edge"
 )
 
 type traffic struct {

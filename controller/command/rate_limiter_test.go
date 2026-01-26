@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"

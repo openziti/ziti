@@ -18,9 +18,9 @@ package fabric
 
 import (
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/spf13/cobra"
 )
 

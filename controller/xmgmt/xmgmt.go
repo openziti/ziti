@@ -18,7 +18,7 @@ package xmgmt
 
 import (
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/config"
+	"github.com/openziti/ziti/v2/common/config"
 )
 
 type Xmgmt interface {

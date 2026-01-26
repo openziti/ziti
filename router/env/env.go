@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/router/xlink"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/config"
+	"github.com/openziti/ziti/v2/router/xlink"
 )
 
 type RouterEnv interface {

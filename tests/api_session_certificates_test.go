@@ -32,7 +32,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/identity/certtools"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/common/spiffehlp"
+	"github.com/openziti/ziti/v2/common/spiffehlp"
 	"net/http"
 	"net/url"
 	"os"

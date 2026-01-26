@@ -26,11 +26,11 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xlink"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/trace"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/sirupsen/logrus"
 )
 

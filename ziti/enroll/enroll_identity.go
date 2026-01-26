@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/identity/engines"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"os"
 	"strings"
 

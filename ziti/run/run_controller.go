@@ -27,14 +27,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/v2/controller/config"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/controller"
-	"github.com/openziti/ziti/controller/server"
+	"github.com/openziti/ziti/v2/common/version"
+	"github.com/openziti/ziti/v2/controller"
+	"github.com/openziti/ziti/v2/controller/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

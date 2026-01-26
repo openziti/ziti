@@ -21,8 +21,8 @@ package tests
 import (
 	"bytes"
 	"github.com/google/uuid"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"math"
 	"testing"
 	"time"

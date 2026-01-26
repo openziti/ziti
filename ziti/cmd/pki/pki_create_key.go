@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/internal/log"
-	"github.com/openziti/ziti/ziti/pki/certificate"
-	"github.com/openziti/ziti/ziti/pki/pki"
-	"github.com/openziti/ziti/ziti/pki/store"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/internal/log"
+	"github.com/openziti/ziti/v2/ziti/pki/certificate"
+	"github.com/openziti/ziti/v2/ziti/pki/pki"
+	"github.com/openziti/ziti/v2/ziti/pki/store"
 	"github.com/spf13/cobra"
 )
 

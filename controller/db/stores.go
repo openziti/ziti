@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
 	"go4.org/sort"
 	"reflect"

@@ -19,7 +19,7 @@ package routes
 import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/controller/models"
 	"path"
 )
 

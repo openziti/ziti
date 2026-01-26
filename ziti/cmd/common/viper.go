@@ -17,7 +17,7 @@
 package common
 
 import (
-	c "github.com/openziti/ziti/ziti/constants"
+	c "github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/spf13/viper"
 	"strings"
 )

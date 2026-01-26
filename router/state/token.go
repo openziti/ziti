@@ -24,9 +24,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/sirupsen/logrus"
 )
 

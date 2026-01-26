@@ -25,7 +25,7 @@ import (
 	"sync/atomic"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 )
 

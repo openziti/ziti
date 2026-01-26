@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/v2/common"
 	"time"
 )
 

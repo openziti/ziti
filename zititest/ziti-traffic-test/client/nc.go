@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/xgress_transport"
+	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/spf13/cobra"
 	"io"

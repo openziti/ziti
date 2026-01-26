@@ -19,9 +19,9 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
 )

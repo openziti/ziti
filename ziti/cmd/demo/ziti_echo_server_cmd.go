@@ -19,7 +19,7 @@ package demo
 import (
 	"time"
 
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )
 

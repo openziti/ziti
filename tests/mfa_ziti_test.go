@@ -27,7 +27,7 @@ import (
 	"github.com/dgryski/dgoogauth"
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"image/png"
 	"net/http"
 	"net/url"
