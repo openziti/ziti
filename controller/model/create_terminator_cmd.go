@@ -1,15 +1,35 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/cmd_pb"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
+// TerminatorValidationError indicates a non-retriable terminator validation failure
+type TerminatorValidationError struct {
+	msg string
+}
+
+func (e TerminatorValidationError) ErrorCode() uint32 {
+	return edge.ErrorCodeInternal
+}
+
+func (e TerminatorValidationError) GetRetryType() edge_ctrl_pb.CreateTerminatorResult {
+	return edge_ctrl_pb.CreateTerminatorResult_FailedPermanent
+}
+
+func (e TerminatorValidationError) Error() string {
+	return e.msg
+}
 
 type CreateEdgeTerminatorCmd struct {
 	Env     Env
@@ -48,7 +68,9 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.Mutate
 				"terminatorIdentity": terminator.HostId,
 				"existingIdentity":   otherTerminator.HostId,
 			}).Warn("validation of terminator failed, shared identity belongs to different identity")
-			return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", otherTerminator.GetId(), terminator.GetInstanceId())
+			return TerminatorValidationError{
+				msg: fmt.Sprintf("sibling terminator %v with shared identity %v belongs to different identity", otherTerminator.GetId(), terminator.GetInstanceId()),
+			}
 		}
 	}
 

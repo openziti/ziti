@@ -393,6 +393,8 @@ enum CreateTerminatorResult {
   FailedOther = 2;
   FailedBusy = 3;
   FailedInvalidSession = 4;
+  FailedPermanent = 5;
+  FailedStartOver = 6;
 }
 
 message CreateTerminatorV2Response {

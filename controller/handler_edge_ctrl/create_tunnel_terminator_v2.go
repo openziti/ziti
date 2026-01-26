@@ -18,6 +18,9 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -27,11 +30,8 @@ import (
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math"
-	"time"
 )
 
 type createTunnelTerminatorV2Handler struct {
@@ -71,10 +71,10 @@ func (self *createTunnelTerminatorV2Handler) HandleReceive(msg *channel.Message,
 	go self.CreateTerminator(ctx, startTime)
 }
 
-func (self *createTunnelTerminatorV2Handler) returnError(ctx *createTunnelTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
+func (self *createTunnelTerminatorV2Handler) returnError(ctx *createTunnelTerminatorV2RequestContext, err controllerError, logger *logrus.Entry) {
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponseV2{
 		TerminatorId: ctx.req.Address,
-		Result:       resultType,
+		Result:       err.GetRetryType(),
 		Msg:          err.Error(),
 	}
 
@@ -93,13 +93,14 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 	if !ctx.loadRouter() {
 		return
 	}
+	ctx.verifyTerminatorId(ctx.req.Address)
 	ctx.loadIdentity()
 	ctx.loadServiceForId(ctx.req.ServiceId)
 	ctx.verifyEdgeRouterServiceBindAccess()
 	ctx.verifyRouterEdgeRouterAccess()
 
 	if ctx.err != nil {
-		self.logResult(ctx, ctx.err)
+		self.returnError(ctx, ctx.err, logger)
 		return
 	}
 
@@ -107,7 +108,6 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 
 	if ctx.req.Cost > math.MaxUint16 {
 		self.returnError(ctx,
-			edge_ctrl_pb.CreateTerminatorResult_FailedOther,
 			invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)),
 			logger)
 		return
@@ -115,8 +115,8 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil && self.getNetwork().Dispatcher.IsLeader() {
-		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
-			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+		if err := ctx.validateExistingTerminator(terminator, ctx.identity.Id, common.TunnelBinding, logger); err != nil {
+			self.returnError(ctx, err, logger)
 			return
 		}
 	} else {
@@ -141,16 +141,16 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 		if err := self.appEnv.Managers.Terminator.Create(terminator, ctx.newTunnelChangeContext()); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
-				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
-					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, validateError, logger)
+				if validateError := ctx.validateExistingTerminator(terminator, ctx.identity.Id, common.TunnelBinding, logger); validateError != nil {
+					self.returnError(ctx, validateError, logger)
 					return
 				}
 			} else {
 				if command.WasRateLimited(err) {
-					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedBusy, err, logger)
+					self.returnError(ctx, busyError(err), logger)
 					return
 				}
-				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+				self.returnError(ctx, internalError(err), logger)
 				return
 			}
 		} else {
@@ -182,35 +182,4 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 type createTunnelTerminatorV2RequestContext struct {
 	baseTunnelRequestContext
 	req *edge_ctrl_pb.CreateTunnelTerminatorRequestV2
-}
-
-func (self *createTunnelTerminatorV2RequestContext) validateExistingTerminator(terminator *model.Terminator, log *logrus.Entry) controllerError {
-	if terminator.Binding != common.TunnelBinding {
-		log.WithField("binding", common.TunnelBinding).
-			WithField("conflictingBinding", terminator.Binding).
-			Error("selected terminator address conflicts with a terminator for a different binding")
-		return internalError(errors.New("selected id conflicts with terminator for different binding"))
-	}
-
-	if terminator.Service != self.req.ServiceId {
-		log.WithField("conflictingService", terminator.Service).
-			Error("selected terminator address conflicts with a terminator for a different service")
-		return internalError(errors.New("selected id conflicts with terminator for different service"))
-	}
-
-	if terminator.Router != self.sourceRouter.Id {
-		log.WithField("conflictingRouter", terminator.Router).
-			Error("selected terminator address conflicts with a terminator for a different router")
-		return internalError(errors.New("selected id conflicts with terminator for different router"))
-	}
-
-	if terminator.HostId != self.identity.Id {
-		log.WithField("identityId", self.identity.Id).
-			WithField("conflictingIdentity", terminator.HostId).
-			Error("selected terminator address conflicts with a terminator for a different identity")
-		return internalError(errors.New("selected id conflicts with terminator for different identity"))
-	}
-
-	log.Info("terminator already exists")
-	return nil
 }
