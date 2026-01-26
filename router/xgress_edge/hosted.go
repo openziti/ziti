@@ -24,6 +24,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -490,7 +491,7 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	})
 
 	for _, terminator := range toClose {
-		terminator.close(self, false, true, "duplicate terminator") // don't notify, channel is already closed, we can't send messages
+		terminator.close(self, false, true, "duplicate terminator", nil) // don't notify, channel is already closed, we can't send messages
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId()).
 			WithField("instance", terminator.instance).
@@ -510,7 +511,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, serviceSessionTo
 
 	atLeastOneRemoved := false
 	for _, terminator := range toClose {
-		terminator.close(self, false, true, "unbind successful") // don't notify, sdk asked us to unbind
+		terminator.close(self, false, true, "unbind successful", nil) // don't notify, sdk asked us to unbind
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 			WithField("serviceSessionTokenId", serviceSessionToken.TokenId()).
 			WithField("connId", connId).
@@ -623,11 +624,30 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		if terminator.establishCallback != nil {
 			terminator.establishCallback(response.Result)
 		}
-		terminator.close(self, true, false,
-			fmt.Sprintf("received error from controller: %s", response.Msg))
+
+		// If the retry hint is start over or permanent
+		if edge.RetryHint(response.GetRetryHint()) == edge.RetryDefault {
+			if terminator.failureCount.Add(1) == 3 {
+				edgeErr := &EdgeError{
+					Message:   response.Msg,
+					Code:      response.ErrorCode,
+					RetryHint: edge.RetryHint(response.RetryHint),
+				}
+				terminator.close(self, true, false,
+					fmt.Sprintf("received error from controller: %s", response.Msg), edgeErr)
+			}
+		} else {
+			terminator.close(self, true, false, response.Msg, &EdgeError{
+				Message:   response.Msg,
+				Code:      response.ErrorCode,
+				RetryHint: edge.RetryHint(response.RetryHint),
+			})
+		}
+
 		return
 	}
 
+	terminator.failureCount.Store(0)
 	self.markEstablished(terminator, "create notification received")
 
 	// notify the sdk that the terminator was established
@@ -808,7 +828,7 @@ func (self *channelClosedEvent) handle(registry *hostedServiceRegistry) {
 				registry.queueRemoveTerminatorUnchecked(terminator, "channel closed")
 			} else {
 				// don't notify, channel is already closed, we can't send messages
-				go terminator.close(registry, false, true, "channel closed")
+				go terminator.close(registry, false, true, "channel closed", nil)
 			}
 		}
 	})
@@ -884,7 +904,11 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 
 			// sometimes things happen close together. we need to try to notify replaced terminators
 			// that they're being closed in case they're the newer, still open connection
-			existing.close(registry, true, false, "found a newer terminator for listener id")
+			existing.close(registry, true, false, "found a newer terminator for listener id", &EdgeError{
+				Message:   "newer terminator found for listener id",
+				Code:      edge.ErrorCodeInternal,
+				RetryHint: edge.RetryDefault,
+			})
 			existing.setState(xgress_common.TerminatorStateDeleting, "newer terminator found for listener id")
 
 			log = log.WithField("existingTerminatorId", existing.terminatorId)

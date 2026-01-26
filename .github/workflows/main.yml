@@ -167,7 +167,7 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          go test ./... -timeout 15m --tags apitests
+          go test ./... -timeout 15m --tags apitests,dataflow
 
       - name: Run CLI tests and Integration Tests
         if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
@@ -177,7 +177,7 @@ jobs:
           mkdir cli_tests_bin
           go build -o cli_tests_bin ./... 
           ZITI_CLI_TEST_ZITI_BIN="$PWD/cli_tests_bin/ziti" go test ./... --tags cli_tests
-          
+
       - name: Upload CLI test logs
         uses: actions/upload-artifact@v6
         if: failure() || steps.cli_tests.outcome == 'failure'

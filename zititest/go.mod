@@ -24,7 +24,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.84
 	github.com/openziti/identity v1.0.122
 	github.com/openziti/metrics v1.4.3
-	github.com/openziti/sdk-golang v1.3.2-0.20260121015350-1554346a2f60
+	github.com/openziti/sdk-golang v1.3.2-0.20260130232804-e41a3c8fb654
 	github.com/openziti/storage v0.4.35
 	github.com/openziti/transport/v2 v2.0.205
 	github.com/openziti/ziti/v2 v2.0.0

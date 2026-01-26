@@ -335,7 +335,12 @@ func (self *edgeClientConn) handleBindAccessLost(service *common.IdentityService
 	for _, terminator := range terminators {
 		log.WithField("terminatorId", terminator.terminatorId).
 			Info("bind access to service, closing terminator")
-		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost")
+		err := &EdgeError{
+			Message:   "bind access lost",
+			Code:      sdkedge.ErrorCodeAccessDenied,
+			RetryHint: sdkedge.RetryNotRetriable,
+		}
+		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost", err)
 	}
 }
 
@@ -858,7 +863,12 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	if checkResult.previous == nil || checkResult.previous.serviceSessionToken != serviceSessionToken {
 		// need to remove session remove listener on close
 		terminator.onClose = self.listener.factory.stateManager.AddLegacyServiceSessionRemovedListener(serviceSessionToken, func(_ *state.ServiceSessionToken) {
-			terminator.close(self.listener.factory.hostedServices, true, true, "session ended")
+			edgeErr := &EdgeError{
+				Message:   "service session removed",
+				Code:      sdkedge.ErrorCodeInvalidSession,
+				RetryHint: sdkedge.RetryStartOver,
+			}
+			terminator.close(self.listener.factory.hostedServices, true, true, "session ended", edgeErr)
 		})
 	}
 
@@ -872,10 +882,6 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 			} else {
 				log.Info("sdk notified of terminator creation")
 			}
-		} else if result == edge_ctrl_pb.CreateTerminatorResult_FailedInvalidSession {
-			// TODO: notify of invalid session. Currently handling this using the recently removed sessions
-			//       LRU cache in state manager
-			log.Trace("invalid session")
 		}
 	}
 
@@ -913,7 +919,13 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 
 	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
 		log.WithError(err).Error("bind access lost while terminator setup, closing")
-		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost")
+		edgeErr := &EdgeError{
+			Message:   "bind access lost",
+			Code:      sdkedge.ErrorCodeAccessDenied,
+			RetryHint: sdkedge.RetryNotRetriable,
+			Cause:     err,
+		}
+		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost", edgeErr)
 	}
 }
 
@@ -1288,7 +1300,7 @@ func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channe
 	}
 }
 
-func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Channel) {
+func (self *edgeClientConn) handleXgPayload(msg *channel.Message, _ channel.Channel) {
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress payload")
@@ -1318,7 +1330,7 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 	}
 }
 
-func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch channel.Channel) {
+func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ channel.Channel) {
 	ack, err := xgress.UnmarshallAcknowledgement(req)
 	if err != nil {
 		// pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress acknowledgement")

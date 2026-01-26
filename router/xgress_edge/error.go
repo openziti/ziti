@@ -11,9 +11,10 @@ import (
 var _ error = (*EdgeError)(nil)
 
 type EdgeError struct {
-	Message string `json:"message"`
-	Code    uint32 `json:"code"`
-	Cause   error  `json:"cause"`
+	Message   string        `json:"message"`
+	Code      uint32        `json:"code"`
+	Cause     error         `json:"cause"`
+	RetryHint sdk.RetryHint `json:"retryHint"`
 }
 
 func (e EdgeError) Error() string {

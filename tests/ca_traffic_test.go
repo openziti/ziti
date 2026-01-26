@@ -221,7 +221,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 			}()
 
 			listenerEstablished := make(chan struct{}, 1)
-			listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+			listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.RouterHostConn) {
 				if len(conn) > 0 {
 					close(listenerEstablished)
 				}

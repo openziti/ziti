@@ -391,6 +391,8 @@ message CreateTerminatorV2Response {
   string terminatorId = 1;
   CreateTerminatorResult result = 2;
   string msg = 3;
+  uint32 errorCode = 4;
+  uint32 retryHint = 5;
 }
 
 message RemoveTerminatorRequest {
@@ -543,6 +545,8 @@ message CreateTunnelTerminatorResponseV2 {
   int64 startTime = 2;
   CreateTerminatorResult result = 3;
   string msg = 4;
+  uint32 errorCode = 5;
+  uint32 retryHint = 6;
 }
 
 message UpdateTunnelTerminatorRequest {

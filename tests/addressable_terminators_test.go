@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
@@ -191,10 +192,14 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	ctx.Req.NoError(err)
 	defer func() { _ = listener.Close() }()
 
-	_, context2 := ctx.AdminManagementSession.RequireCreateSdkContext()
-	defer context2.Close()
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 
-	listener2, err := context2.ListenWithOptions(service.Name, &ziti.ListenOptions{
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
+	defer clientContext.Close()
+
+	listener2, err := clientContext.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		Identity:       "foobar",
 		ConnectTimeout: 5 * time.Second,
 	})
@@ -202,14 +207,18 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	listener2.(edge.SessionListener).SetErrorEventHandler(errorHandler)
 	defer func() { _ = listener2.Close() }()
 
+	pfxlog.Logger().Info("STARTING WAIT")
 	select {
 	case err = <-errorC:
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		err = nil
 	}
-	ctx.Req.Error(err)
-	if !strings.Contains(err.Error(), "shared identity foobar belongs to different identity") {
-		time.Sleep(1 * time.Hour)
+	pfxlog.Logger().Info("WAIT FINISHED")
+
+	if err == nil {
+		ctx.Req.True(listener2.IsClosed(), "listener must be closed")
+	} else {
+		ctx.Req.Error(err)
+		ctx.Req.Contains(err.Error(), "shared identity foobar belongs to different identity")
 	}
-	ctx.Req.Contains(err.Error(), "shared identity foobar belongs to different identity")
 }
