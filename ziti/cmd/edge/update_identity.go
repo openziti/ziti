@@ -26,8 +26,6 @@ import (
 
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
@@ -60,11 +58,10 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "updates a identity managed by the Ziti Edge Controller",
 		Long:  "updates a identity managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateIdentity(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateIdentity(options)
 		},
 		SuggestFor: []string{},
 	}

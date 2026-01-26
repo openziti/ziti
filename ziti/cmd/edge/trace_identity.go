@@ -18,12 +18,12 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type traceIdentityOptions struct {
@@ -56,11 +56,10 @@ func newTraceIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "identity",
 		Short: "enables/disables tracing for sessions from an identity managed by the Ziti Edge Controller",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runTraceIdentity(options)
-			cmdhelper.CheckErr(err)
+			return runTraceIdentity(options)
 		},
 		SuggestFor: []string{},
 	}

@@ -17,12 +17,12 @@
 package ops
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/spf13/cobra"
 )
 
 // LogFormatOptions contains the command line options
@@ -46,11 +46,10 @@ func NewCmdLogFormat(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:     "log-format",
 		Short:   "Transform pfxlog output into a human readable format",
 		Aliases: []string{"lf"},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

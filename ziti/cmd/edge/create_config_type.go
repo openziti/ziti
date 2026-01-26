@@ -19,11 +19,11 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
 	"io"
 	"os"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -45,11 +45,10 @@ func newCreateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "creates a config type managed by the Ziti Edge Controller",
 		Long:  "creates a config type managed by the Ziti Edge Controller",
 		Args:  cobra.RangeArgs(1, 2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateConfigType(options)
-			cmdhelper.CheckErr(err)
+			return runCreateConfigType(options)
 		},
 		SuggestFor: []string{},
 	}

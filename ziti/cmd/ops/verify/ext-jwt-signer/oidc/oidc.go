@@ -291,7 +291,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 		Short: "test an external JWT signer for OIDC auth",
 		Long:  "tests and verifies an external JWT signer is configured correctly to authenticate using OIDC",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			logLvl := logrus.InfoLevel
 			if opts.Verbose {
 				logLvl = logrus.DebugLevel
@@ -314,8 +314,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 			s := client.ExternalJWTSignerFromFilter(m, `name="`+args[0]+`"`)
 			if s == nil {
-				log.Fatal("no external JWT signer found with name")
-				return
+				return errors.New("no external JWT signer found with name")
 			}
 
 			if opts.RedirectURL == "" {
@@ -344,8 +343,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 			relyingParty, rpErr := opts.NewRelyingParty()
 			if rpErr != nil {
-				log.Fatalf("error creating relying party %s", rpErr.Error())
-				return
+				return fmt.Errorf("error creating relying party %w", rpErr)
 			}
 
 			if opts.Issuer != "" {
@@ -364,7 +362,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 			tokens, oidcErr := GetTokens(ctx, opts.OIDCConfig, relyingParty)
 			if oidcErr != nil {
-				log.Fatalf("error performing OIDC flow: %v", oidcErr)
+				return fmt.Errorf("error performing OIDC flow: %w", oidcErr)
 			}
 
 			log.Tracef("authentication succeeded")
@@ -431,11 +429,11 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				log.Infof("attempting to authenticate to controller with specified target token type: %s", *s.TargetToken)
 				err := newAuth.Run()
 				if err != nil {
-					log.Fatalf("error authenticating with token: %v", err)
-				} else {
-					log.Info("login succeeded")
+					return fmt.Errorf("error authenticating with token: %w", err)
 				}
+				log.Info("login succeeded")
 			}
+			return nil
 		},
 	}
 

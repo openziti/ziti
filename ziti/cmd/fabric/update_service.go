@@ -22,7 +22,6 @@ import (
 
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 
@@ -47,11 +46,10 @@ func newUpdateServiceCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "service <idOrName>",
 		Short: "updates a service managed by the Ziti Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateService(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateService(options)
 		},
 		SuggestFor: []string{},
 	}

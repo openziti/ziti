@@ -17,7 +17,6 @@
 package edge
 
 import (
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -29,10 +28,6 @@ func newVerifyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "verify",
 		Short: "verifies various entities managed by the Ziti Edge Controller",
 		Long:  "Verifies various entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	cmd.AddCommand(newVerifyCaCmd(out, errOut))

@@ -18,12 +18,12 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // versionOptions are the flags for version commands
@@ -43,11 +43,10 @@ func newVersionCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "version",
 		Short: "Returns the version information reported by the edge controller ",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 		SuggestFor: []string{},
 	}

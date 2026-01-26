@@ -18,15 +18,15 @@ package create
 
 import (
 	_ "embed"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/templates"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -54,11 +54,10 @@ func NewCmdCreateConfigRouterFabric(routerOptions *CreateConfigRouterOptions, da
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.Router.IsFabric = true
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			routerOptions.Cmd = cmd
 			routerOptions.Args = args
-			err := routerOptions.runFabricRouter(data)
-			cmdhelper.CheckErr(err)
+			return routerOptions.runFabricRouter(data)
 		},
 	}
 

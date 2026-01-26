@@ -18,16 +18,16 @@ package edge
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
-	"io"
-	"os"
 )
 
 type updateCaOptions struct {
@@ -90,12 +90,10 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateCa(options)
-
-			helpers.CheckErr(err)
+			return runUpdateCa(options)
 		},
 		SuggestFor: []string{},
 	}

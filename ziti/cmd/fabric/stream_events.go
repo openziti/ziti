@@ -19,7 +19,6 @@ package fabric
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/openziti/channel/v4"
@@ -267,8 +266,7 @@ func (self *streamEventsAction) streamEvents(cmd *cobra.Command, _ []string) err
 				fmt.Printf("event streaming started: %v\n", result.Message)
 			}
 		} else {
-			fmt.Printf("error starting event streaming [%s]\n", result.Message)
-			os.Exit(1)
+			return fmt.Errorf("error starting event streaming [%s]", result.Message)
 		}
 	} else {
 		return errors.Errorf("unexpected response type %v", responseMsg.ContentType)

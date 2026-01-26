@@ -17,48 +17,33 @@
 package demo
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	demoCmd := &cobra.Command{
 		Use:   "demo",
 		Short: "Demos and examples for learning about Ziti",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			helpers.CheckErr(err)
-		},
 	}
 
 	setupCmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Setup various demos/examples",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			helpers.CheckErr(err)
-		},
 	}
 
 	echoCmd := &cobra.Command{
 		Use:   "echo",
 		Short: "Setup various echo service demos/examples",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			helpers.CheckErr(err)
-		},
 	}
 
 	agentCmd := agentcli.NewAgentCmd(p)
 	echoServerAgentCmd := &cobra.Command{
 		Use:   "echo-server",
 		Short: "Interact with an echo-server process using the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			helpers.CheckErr(cmd.Help())
-		},
 	}
 
 	demoCmd.AddCommand(newFirstServiceTutorialCmd(p))

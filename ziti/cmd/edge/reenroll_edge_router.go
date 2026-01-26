@@ -18,11 +18,11 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/fatih/color"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type reEnrollEdgeRouterOptions struct {
@@ -40,11 +40,10 @@ func newReEnrollEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Aliases: []string{"er"},
 		Short:   "re-enrolls an edge router managed by the Ziti Edge Controller",
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runReEnrollEdgeRouter(options)
-			cmdhelper.CheckErr(err)
+			return runReEnrollEdgeRouter(options)
 		},
 		SuggestFor: []string{},
 	}

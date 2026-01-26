@@ -18,9 +18,9 @@ package fabric
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 
@@ -47,11 +47,10 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "router <idOrName>",
 		Short: "updates a router managed by the Ziti Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateRouter(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateRouter(options)
 		},
 		SuggestFor: []string{},
 	}

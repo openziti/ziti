@@ -17,9 +17,9 @@
 package lets_encrypt
 
 import (
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/internal/log"
 	"io"
+
+	"github.com/openziti/ziti/ziti/internal/log"
 
 	"github.com/spf13/cobra"
 )
@@ -32,11 +32,10 @@ func newRevokeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "revoke",
 		Short: "Revoke a Let's Encrypt certificate",
 		Long:  "Revoke a Let's Encrypt certificate",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runRevoke(options)
-			cmdhelper.CheckErr(err)
+			return runRevoke(options)
 		},
 	}
 

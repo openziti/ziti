@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -87,12 +86,10 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateExtJwtSigner(options)
-
-			helpers.CheckErr(err)
+			return runUpdateExtJwtSigner(options)
 		},
 		SuggestFor: []string{},
 	}

@@ -18,18 +18,18 @@ package pki
 
 import (
 	"fmt"
+	"io"
+	"net/url"
+	"strings"
+
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/pki/store"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net/url"
-	"strings"
 )
 
 // PKICreateCAOptions the options for the create spring command
@@ -54,11 +54,10 @@ func NewCmdPKICreateCA(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ca",
 		Short: "Creates new Certificate Authority (CA) certificate",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

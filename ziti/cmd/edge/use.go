@@ -17,12 +17,12 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // useOptions are the flags for use commands
@@ -42,11 +42,10 @@ func newUseCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "use <identity>",
 		Short: "changes which saved login to use with a Ziti Edge Controller instance",
 		Args:  cobra.RangeArgs(0, 1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 		SuggestFor: []string{},
 	}

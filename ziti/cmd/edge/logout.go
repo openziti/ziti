@@ -17,12 +17,12 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // logoutOptions are the flags for logout commands
@@ -43,11 +43,10 @@ func newLogoutCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "logs out of a Ziti Edge Controller instance",
 		Long:  `logout removes stored credentials for a given identity`,
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 		SuggestFor: []string{},
 	}

@@ -17,12 +17,12 @@
 package edge
 
 import (
-	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"io"
 	"time"
+
+	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/spf13/cobra"
 )
 
 type createServiceOptions struct {
@@ -45,11 +45,10 @@ func newCreateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "creates a service managed by the Ziti Edge Controller",
 		Long:  "creates a service managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateService(options)
-			cmdhelper.CheckErr(err)
+			return runCreateService(options)
 		},
 		SuggestFor: []string{},
 	}

@@ -18,16 +18,16 @@ package edge
 
 import (
 	"fmt"
+	"io"
+	"regexp"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
-	"regexp"
-	"strings"
 )
 
 // newCreatePostureCheckCmd creates the 'edge controller create posture-check' command
@@ -114,12 +114,10 @@ func newCreatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		Use:   "mac <name>",
 		Short: "creates a posture check for MAC addresses",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreatePostureCheckMac(options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckMac(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -147,12 +145,10 @@ func newCreatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 		Use:   "domain <name>",
 		Short: "creates a posture check for Windows domains",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreatePostureCheckDomain(options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckDomain(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -194,12 +190,10 @@ func newCreatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreatePostureCheckProcess(options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckProcess(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -278,12 +272,10 @@ func newCreatePostureCheckProcessMultiCmd(out io.Writer, errOut io.Writer) *cobr
 			return nil
 
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreatePostureCheckProcessMulti(options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckProcessMulti(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -611,12 +603,10 @@ func newCreatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreatePostureCheckOs(options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckOs(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -712,12 +702,11 @@ func newCreatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
 
-			err := runCreatePostureCheckMfa(&options)
-			cmdhelper.CheckErr(err)
+			return runCreatePostureCheckMfa(&options)
 		},
 		SuggestFor: []string{},
 	}

@@ -18,10 +18,10 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"os"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -44,11 +44,10 @@ func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "creates a transit router managed by the Ziti Edge Controller",
 		Long:  "creates a transit router managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateTransitRouter(options)
-			cmdhelper.CheckErr(err)
+			return runCreateTransitRouter(options)
 		},
 		SuggestFor: []string{},
 	}

@@ -18,14 +18,14 @@ package edge
 
 import (
 	"fmt"
+	"io"
+	"math"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
-	"math"
 )
 
 type createTerminatorOptions struct {
@@ -47,11 +47,10 @@ func newCreateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "creates a service terminator managed by the Ziti Edge Controller",
 		Long:  "creates a service terminator managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(3),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateTerminator(options)
-			cmdhelper.CheckErr(err)
+			return runCreateTerminator(options)
 		},
 		SuggestFor: []string{},
 	}

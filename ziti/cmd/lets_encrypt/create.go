@@ -18,13 +18,13 @@ package lets_encrypt
 
 import (
 	"crypto"
+	"io"
+
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 const acmeStaging string = "https://acme-staging-v02.api.letsencrypt.org/directory"
@@ -55,11 +55,10 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "create -d <domain> -p <path-to-where-data-is-saved>",
 		Short: "Register a Let's Encrypt account, then create and install a certificate",
 		Long:  "Register a Let's Encrypt account, then create and install a certificate",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreate(options)
-			cmdhelper.CheckErr(err)
+			return runCreate(options)
 		},
 		SuggestFor: []string{},
 	}

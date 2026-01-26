@@ -19,11 +19,11 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
 	"io"
 	"os"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -47,11 +47,10 @@ func newUpdateConfigCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "updates a config managed by the Ziti Edge Controller",
 		Long:  "updates a config managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateConfig(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateConfig(options)
 		},
 		SuggestFor: []string{},
 	}

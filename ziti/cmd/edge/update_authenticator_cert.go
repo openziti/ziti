@@ -19,17 +19,17 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"strings"
-	"time"
 )
 
 type updateCertOptions struct {
@@ -49,11 +49,10 @@ func newUpdateAuthenticatorCert(idType string, options api.Options) *cobra.Comma
 		Short: "allows an admin to set request a cert authenticator be extended and optionally key rolled or re-enrolled",
 		Long:  "Request a specific certificate authenticator to --request-extend or --request-key-roll, --request-key-roll implies --request-extend which are both mutually exclusive with --re-enroll.",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateCert(&certOptions)
-			cmdhelper.CheckErr(err)
+			return runUpdateCert(&certOptions)
 		},
 		SuggestFor: []string{},
 	}

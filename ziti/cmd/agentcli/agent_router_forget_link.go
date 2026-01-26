@@ -18,11 +18,11 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -40,11 +40,10 @@ func NewForgetLinkAgentCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Args: cobra.ExactArgs(1),
 		Use:  "forget-link <link-id>",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.Run()
 		},
 	}
 

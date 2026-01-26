@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -45,11 +44,10 @@ func NewAgentEchoServerUpdateTerminatorCmd(p common.OptionsProvider) *cobra.Comm
 	updateTerminatorCmd := &cobra.Command{
 		Args: cobra.RangeArgs(0, 1),
 		Use:  "update-terminator <optional-target>",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.Run()
 		},
 	}
 

@@ -17,7 +17,6 @@
 package edge
 
 import (
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -27,9 +26,6 @@ func newReEnrollCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "re-enroll",
 		Short: "re-enrolls various entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	cmd.AddCommand(newReEnrollEdgeRouterCmd(out, errOut))

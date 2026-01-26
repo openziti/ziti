@@ -19,14 +19,14 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"io"
+	"math"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"math"
 )
 
 type updateTerminatorOptions struct {
@@ -47,11 +47,10 @@ func newUpdateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "terminator <id>",
 		Short: "updates a service terminator",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateTerminator(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateTerminator(options)
 		},
 		SuggestFor: []string{},
 	}

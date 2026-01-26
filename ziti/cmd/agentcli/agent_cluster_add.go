@@ -18,12 +18,12 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type AgentClusterAddAction struct {
@@ -42,13 +42,10 @@ func NewAgentClusterAdd(p common.OptionsProvider) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Use:   "add <addr>",
 		Short: "adds a node to the controller cluster",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			if err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest); err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
+			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 		},
 	}
 

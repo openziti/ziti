@@ -17,13 +17,12 @@
 package agentcli
 
 import (
-	"fmt"
-	"github.com/openziti/agent"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"os"
 	"time"
+
+	"github.com/openziti/agent"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/spf13/cobra"
 )
 
 type AgentStackAction struct {
@@ -42,11 +41,10 @@ func NewStackCmd(p common.OptionsProvider) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Use:   "stack",
 		Short: "Emits a go-routine stack dump from the target application",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -57,10 +55,6 @@ func NewStackCmd(p common.OptionsProvider) *cobra.Command {
 }
 
 // Run implements the command
-func (o *AgentStackAction) Run() error {
-	time.AfterFunc(o.StackTimeout, func() {
-		fmt.Println("operation timed out")
-		os.Exit(-1)
-	})
-	return o.RunCopyOut(agent.StackTrace, nil, os.Stdout)
+func (self *AgentStackAction) Run() error {
+	return self.MakeRequest(agent.StackTrace, nil, self.CopyToWriter(os.Stdout))
 }

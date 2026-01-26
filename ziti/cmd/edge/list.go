@@ -38,7 +38,6 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -63,10 +62,6 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:     "list",
 		Short:   "Lists various entities managed by the Ziti Edge Controller",
 		Aliases: []string{"ls"},
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 		Example: fmt.Sprintf(filterExamplesTemplate, "services"),
 	}
 
@@ -191,10 +186,6 @@ func newEntityListRootCmd(entityType string, aliases ...string) *cobra.Command {
 		Aliases: aliases,
 		Short:   desc,
 		Long:    desc,
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 }
 
@@ -205,11 +196,10 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 		Short:   "lists " + entityType + " managed by the Ziti Edge Controller",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: aliases,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := command(options)
-			cmdhelper.CheckErr(err)
+			return command(options)
 		},
 		SuggestFor: []string{},
 		Example:    fmt.Sprintf(filterExamplesTemplate, entityType),
@@ -235,11 +225,10 @@ func newListServicesCmd(options *api.Options) *cobra.Command {
 		Short: "lists services managed by the Ziti Edge Controller",
 		Long:  "lists services managed by the Ziti Edge Controller",
 		Args:  cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListServices(asIdentity, configTypes, roleFilters, roleSemantic, options)
-			cmdhelper.CheckErr(err)
+			return runListServices(asIdentity, configTypes, roleFilters, roleSemantic, options)
 		},
 		Example:    fmt.Sprintf(filterExamplesTemplate, "services"),
 		SuggestFor: []string{},
@@ -268,11 +257,10 @@ func newListEdgeRoutersCmd(options *api.Options) *cobra.Command {
 		Long:    "lists edge routers managed by the Ziti Edge Controller",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: []string{"ers"},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListEdgeRouters(roleFilters, roleSemantic, options)
-			cmdhelper.CheckErr(err)
+			return runListEdgeRouters(roleFilters, roleSemantic, options)
 		},
 		Example:    fmt.Sprintf(filterExamplesTemplate, "edge-routers"),
 		SuggestFor: []string{},
@@ -298,11 +286,10 @@ func newListIdentitiesCmd(options *api.Options) *cobra.Command {
 		Short: "lists identities managed by the Ziti Edge Controller",
 		Long:  "lists identities managed by the Ziti Edge Controller",
 		Args:  cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListIdentities(roleFilters, roleSemantic, options)
-			cmdhelper.CheckErr(err)
+			return runListIdentities(roleFilters, roleSemantic, options)
 		},
 		Example:    fmt.Sprintf(filterExamplesTemplate, "identities"),
 		SuggestFor: []string{},
@@ -326,11 +313,10 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 		Short: desc,
 		Long:  desc,
 		Args:  cobra.RangeArgs(1, 2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListChildren(entityType, subType, options, outputF)
-			cmdhelper.CheckErr(err)
+			return runListChildren(entityType, subType, options, outputF)
 		},
 		Example:    fmt.Sprintf(filterExamplesTemplate, "service configs"),
 		SuggestFor: []string{},

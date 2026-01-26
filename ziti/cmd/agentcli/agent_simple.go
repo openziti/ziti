@@ -17,11 +17,11 @@
 package agentcli
 
 import (
+	"os"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type SimpleAgentAction struct {
@@ -42,7 +42,9 @@ func NewSimpleAgentCmd(name string, op byte, p common.OptionsProvider, desc stri
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			return action.RunCopyOut(op, nil, os.Stdout)
+			return action.RunWithTimeout(func() error {
+				return action.MakeRequest(op, nil, action.CopyToWriter(os.Stdout))
+			})
 		},
 	}
 
@@ -61,11 +63,10 @@ func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.Op
 	cmd := &cobra.Command{
 		Args: cobra.ExactArgs(0),
 		Use:  name,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run(appId, op)
-			cmdhelper.CheckErr(err)
+			return action.Run(appId, op)
 		},
 	}
 

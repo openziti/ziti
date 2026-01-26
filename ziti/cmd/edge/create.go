@@ -17,11 +17,11 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
-	"io"
 
 	"github.com/spf13/cobra"
 )
@@ -36,9 +36,6 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "create",
 		Short: "creates various entities managed by the Ziti Edge Controller",
 		Long:  "Creates various entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	cmd.AddCommand(newCreateAuthenticatorCmd(out, errOut))

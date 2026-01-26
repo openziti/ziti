@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -31,9 +29,6 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	agentCmd := &cobra.Command{
 		Use:   "agent",
 		Short: "Interact with ziti processes using the the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	agentCmd.AddCommand(NewPsCmd(p))
@@ -56,9 +51,6 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 		Use:     "controller",
 		Aliases: []string{"c"},
 		Short:   "Interact with a ziti controller process using the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	agentCmd.AddCommand(ctrlCmd)
@@ -67,10 +59,8 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	clusterCmd := &cobra.Command{
 		Use:   "cluster",
 		Short: "Manage an HA controller cluster using the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
+
 	agentCmd.AddCommand(clusterCmd)
 	clusterCmd.AddCommand(NewAgentClusterAdd(p))
 	clusterCmd.AddCommand(NewAgentClusterRemove(p))
@@ -84,9 +74,6 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 		Use:     "router",
 		Aliases: []string{"r"},
 		Short:   "Interact with a ziti router process using the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	agentCmd.AddCommand(routerCmd)
@@ -233,14 +220,31 @@ func (self *AgentOptions) CopyToWriter(out io.Writer) func(conn net.Conn) error 
 }
 
 func (self *AgentOptions) RunCopyOut(op byte, params []byte, out io.Writer) error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
+	return self.RunWithTimeout(func() error {
+		return self.MakeRequest(op, params, self.CopyToWriter(out))
+	})
+}
+
+func (self *AgentOptions) RunWithTimeout(f func() error) error {
+	if !self.Cmd.Flags().Changed("timeout") {
+		return f()
 	}
 
-	return self.MakeRequest(op, params, self.CopyToWriter(out))
+	errCh := make(chan error)
+
+	go func() {
+		select {
+		case errCh <- f():
+		default:
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-time.After(self.timeout):
+		return errors.New("operation timed out")
+	}
 }
 
 func NewAgentChannel(conn net.Conn) (channel.Channel, error) {

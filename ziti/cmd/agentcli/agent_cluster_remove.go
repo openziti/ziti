@@ -18,11 +18,11 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -41,11 +41,10 @@ func NewAgentClusterRemove(p common.OptionsProvider) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Use:   "remove <node id>",
 		Short: "removes a node from the controller cluster",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
-			cmdhelper.CheckErr(err)
+			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 		},
 	}
 	action.AddAgentOptions(cmd)

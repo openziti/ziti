@@ -17,10 +17,10 @@
 package demo
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"time"
+
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/spf13/cobra"
 )
 
 // Options are common options for edge controller commands
@@ -49,11 +49,10 @@ func newZitiEchoServerCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "ziti-echo-server",
 		Short: "Runs a ziti-based http echo service",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.run()
-			cmdhelper.CheckErr(err)
+			return options.run()
 		},
 		SuggestFor: []string{},
 	}

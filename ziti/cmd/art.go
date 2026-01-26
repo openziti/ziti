@@ -17,10 +17,10 @@
 package cmd
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/internal/log"
 	"io"
+
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/internal/log"
 
 	"github.com/spf13/cobra"
 )
@@ -43,11 +43,10 @@ func NewCmdArt(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:    "art",
 		Short:  "Print the Ziti logo as ascii art :)",
 		Hidden: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 	options.AddCommonFlags(cmd)

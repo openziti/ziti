@@ -17,14 +17,14 @@
 package pki
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/lets_encrypt"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"io"
 )
 
 // PKIOptions contains the command line options
@@ -85,11 +85,10 @@ func NewCmdPKI(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "pki",
 		Short: "Manage a Ziti PKI",
 		Long:  pkiLong,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

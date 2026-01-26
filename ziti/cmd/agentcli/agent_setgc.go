@@ -18,14 +18,12 @@ package agentcli
 
 import (
 	"encoding/binary"
-	"fmt"
-	"github.com/openziti/agent"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"os"
 	"strconv"
-	"time"
+
+	"github.com/openziti/agent"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/spf13/cobra"
 )
 
 type AgentSetGcAction struct {
@@ -43,11 +41,10 @@ func NewSetGcCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "setgc gc-percentage",
 		Short: "Sets the GC percentage in the target application",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -58,13 +55,6 @@ func NewSetGcCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentSetGcAction) Run() error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
-	}
-
 	pctArg := self.Args[0]
 
 	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)

@@ -18,12 +18,12 @@ package create
 
 import (
 	_ "embed"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"os"
+	"strings"
+
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 const (
@@ -80,9 +80,6 @@ func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCrea
 				// Update router data with options passed in
 				data.Router.Name = validateRouterName(routerOptions.RouterName)
 				SetZitiRouterIdentity(&data.Router, data.Router.Name)
-			},
-			Run: func(cmd *cobra.Command, args []string) {
-				cmdhelper.CheckErr(cmd.Help())
 			},
 		},
 		RenderedValues: data,

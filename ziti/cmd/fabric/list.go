@@ -18,6 +18,11 @@ package fabric
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/controllers"
 	edgeRestModel "github.com/openziti/edge-api/rest_model"
@@ -31,12 +36,6 @@ import (
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"strings"
-	"time"
-
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +45,6 @@ func newListCmd(p common.OptionsProvider) *cobra.Command {
 		Use:     "list",
 		Short:   "Lists various entities managed by the Ziti Controller",
 		Aliases: []string{"ls"},
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	newOptions := func() *api.Options {
@@ -75,11 +70,10 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 		Short:   "lists " + entityType + " managed by the Ziti Controller",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: aliases,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := command(options)
-			cmdhelper.CheckErr(err)
+			return command(options)
 		},
 		SuggestFor: []string{},
 	}

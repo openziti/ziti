@@ -20,11 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -47,11 +47,10 @@ func newUpdateAuthenticatorUpdb(idType string, options api.Options) *cobra.Comma
 		Short: "allows an admin to set the updb authenticator of an identity or an authenticated session to update its authenticator ",
 		Long:  "The --identity and -p flags are used in conjunction to set the password of an already existing updb authenticator. The -o and -n flags are used to update the current authenticated sessions updb authenticator",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateUpdbPassword(idType, &updbOptions)
-			cmdhelper.CheckErr(err)
+			return runUpdateUpdbPassword(idType, &updbOptions)
 		},
 		SuggestFor: []string{},
 	}

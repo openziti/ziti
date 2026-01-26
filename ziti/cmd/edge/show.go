@@ -19,12 +19,12 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // newCreateCmd creates a command object for the "list" command
@@ -32,9 +32,6 @@ func newShowCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	showCmd := &cobra.Command{
 		Use:   "show",
 		Short: "displays various entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	showCmd.AddCommand(newShowConfigTypeAction(out, errOut))

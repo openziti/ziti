@@ -19,16 +19,16 @@ package edge
 import (
 	"context"
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
-	"time"
 )
 
 func newCreateEnrollmentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -63,12 +63,11 @@ func newCreateEnrollmentOtt(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "ott <identityIdOrName> [-duration <minutes>]",
 		Short: "creates a one-time-token (ott) enrollment for the given identity",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
 
-			err := runCreateEnrollmentOtt(options)
-			cmdhelper.CheckErr(err)
+			return runCreateEnrollmentOtt(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -96,12 +95,10 @@ func newCreateEnrollmentOttCa(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "ottca <identityIdOrName> <caIdOrName> [-duration <minutes>]",
 		Short: "creates a one-time-token ca (ottca) enrollment for the given identity and ca",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreateEnrollmentOttCa(options)
-			cmdhelper.CheckErr(err)
+			return runCreateEnrollmentOttCa(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -220,12 +217,10 @@ func newCreateEnrollmentUpdb(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "updb <identityIdOrName> <username> [-duration <minutes>]",
 		Short: "creates a username password (updb) enrollment for the given identity",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-
-			err := runCreateEnrollmentUpdb(options)
-			cmdhelper.CheckErr(err)
+			return runCreateEnrollmentUpdb(options)
 		},
 		SuggestFor: []string{},
 	}
