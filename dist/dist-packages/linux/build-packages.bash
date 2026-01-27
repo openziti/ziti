@@ -135,11 +135,10 @@ function runZitiGoBuilder {
 		--user "$UID" \
 		--name=ziti-go-builder \
 		${GO_WORK_MOUNTS} \
-		--volume="${GOCACHE:-${HOME}/.cache/go-build}:/.cache/go-build" \
+		--volume="${GOCACHE:-${HOME}/.cache/go-build}:/usr/share/go_cache" \
 		${GOEXPERIMENT:+--env GOEXPERIMENT="${GOEXPERIMENT:-}"} \
 		${GOFIPS140:+--env GOFIPS140="${GOFIPS140:-}"} \
 		--env=TAGS \
-		--env=GOCACHE=/.cache/go-build \
 		ziti-go-builder "$1"
 }
 
