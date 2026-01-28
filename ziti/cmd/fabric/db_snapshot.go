@@ -19,11 +19,11 @@ package fabric
 import (
 	"context"
 	"fmt"
+
 	"github.com/openziti/ziti/controller/rest_client/database"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -42,11 +42,10 @@ func newDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
 		Short: "Creates a database snapshot.",
 		Long:  "Creates a database snapshot. The snapshot file destination may optionally be specified. The snapshot will be created on the controller's filesystem",
 		Args:  cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runSnapshotDb(options)
-			cmdhelper.CheckErr(err)
+			return runSnapshotDb(options)
 		},
 		SuggestFor: []string{},
 	}

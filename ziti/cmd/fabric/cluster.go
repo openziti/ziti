@@ -2,12 +2,12 @@ package fabric
 
 import (
 	"context"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/ziti/controller/rest_client/cluster"
 	"github.com/openziti/ziti/controller/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -16,10 +16,6 @@ func NewClusterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cluster",
 		Short: "Controller cluster operations",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	cmd.AddCommand(newClusterListMembersCmd(p))

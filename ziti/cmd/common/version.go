@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )

@@ -29,7 +29,6 @@ import (
 	"sync"
 
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cobra"
@@ -52,11 +51,10 @@ func NewPsCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "ps",
 		Short: "Show Ziti process info",
 		Long:  "Show information about currently running Ziti processes",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.Run()
 		},
 	}
 

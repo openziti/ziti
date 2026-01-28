@@ -46,9 +46,6 @@ type PKICreateOptions struct {
 func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "create",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
 
 	cmd.AddCommand(NewCmdPKICreateCA(out, errOut))

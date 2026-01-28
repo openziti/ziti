@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +56,7 @@ func newCreateAuthenticatorUpdb(idType string, options api.Options) *cobra.Comma
 			}
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
 			updbOptions.idOrName = args[0]
@@ -67,8 +66,7 @@ func newCreateAuthenticatorUpdb(idType string, options api.Options) *cobra.Comma
 				updbOptions.password = args[2]
 			}
 
-			err := runCreateIdentityPassword(idType, updbOptions)
-			helpers.CheckErr(err)
+			return runCreateIdentityPassword(idType, updbOptions)
 		},
 		SuggestFor: []string{},
 	}

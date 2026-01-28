@@ -22,7 +22,6 @@ import (
 	restClient "github.com/openziti/ziti/controller/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
@@ -44,9 +43,6 @@ func newCreateCommand(p common.OptionsProvider) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
 		Short: "creates various entities managed by the Ziti Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	createCmd.AddCommand(newCreateRouterCmd(p))
@@ -60,9 +56,6 @@ func newUpdateCommand(p common.OptionsProvider) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "update various entities managed by the Ziti Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	updateCmd.AddCommand(newUpdateLinkCmd(p))
@@ -77,9 +70,6 @@ func newStreamCommand(p common.OptionsProvider) *cobra.Command {
 	streamCmd := &cobra.Command{
 		Use:   "stream",
 		Short: "stream fabric operational data",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	streamCmd.AddCommand(NewStreamEventsCmd(p))
@@ -89,9 +79,6 @@ func newStreamCommand(p common.OptionsProvider) *cobra.Command {
 	var toggleTracesCmd = &cobra.Command{
 		Use:   "toggle",
 		Short: "Toggle traces on or off",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 	streamTracesCmd.AddCommand(toggleTracesCmd)
 	toggleTracesCmd.AddCommand(NewStreamTogglePipeTracesCmd(p))
@@ -103,9 +90,6 @@ func newValidateCommand(p common.OptionsProvider) *cobra.Command {
 	validateCmd := &cobra.Command{
 		Use:   "validate",
 		Short: "validate model data",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	validateCmd.AddCommand(NewValidateCircuitsCmd(p))

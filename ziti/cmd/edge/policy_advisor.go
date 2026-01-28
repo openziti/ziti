@@ -23,7 +23,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -33,10 +32,6 @@ func newPolicyAdivsorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy-advisor",
 		Short: "runs sanity checks on various policy related entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	cmd.AddCommand(newPolicyAdvisorIdentitiesCmd(out, errOut))
@@ -62,11 +57,10 @@ func newPolicyAdvisorIdentitiesCmd(out io.Writer, errOut io.Writer) *cobra.Comma
 		Use:   "identities <identity name or id>? <service name or id>?",
 		Short: "checks policies/connectivity between identities and services",
 		Args:  cobra.RangeArgs(0, 2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runIdentitiesPolicyAdvisor(options)
-			cmdhelper.CheckErr(err)
+			return runIdentitiesPolicyAdvisor(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -91,11 +85,10 @@ func newPolicyAdvisorServicesCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		Use:   "services <service name or id>? <identity name or id>?",
 		Short: "checks policies/connectivity between services and identities ",
 		Args:  cobra.RangeArgs(0, 2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runServicesPolicyAdvisor(options)
-			cmdhelper.CheckErr(err)
+			return runServicesPolicyAdvisor(options)
 		},
 		SuggestFor: []string{},
 	}

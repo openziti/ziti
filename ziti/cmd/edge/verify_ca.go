@@ -27,18 +27,18 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/foundation/v2/term"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/util"
-	"github.com/spf13/cobra"
-	"gopkg.in/resty.v1"
 	"io"
 	"math/big"
 	"os"
 	"time"
+
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/term"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/util"
+	"github.com/spf13/cobra"
+	"gopkg.in/resty.v1"
 )
 
 type verifyCaOptions struct {
@@ -113,11 +113,10 @@ func newVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			return nil
 
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runValidateCa(options)
-			cmdhelper.CheckErr(err)
+			return runValidateCa(options)
 		},
 		SuggestFor: []string{},
 	}

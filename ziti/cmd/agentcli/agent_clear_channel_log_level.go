@@ -19,13 +19,11 @@ package agentcli
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"os"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 type AgentClearChannelLogLevelAction struct {
@@ -43,11 +41,10 @@ func NewClearChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "clear-channel-log-level target channel",
 		Short: "Clears a channel-specific log level in the target application",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -58,13 +55,6 @@ func NewClearChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentClearChannelLogLevelAction) Run() error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
-	}
-
 	var channelArg string
 
 	if len(self.Args) == 1 {
@@ -87,5 +77,6 @@ func (self *AgentClearChannelLogLevelAction) Run() error {
 	if err != nil {
 		return err
 	}
+
 	return agent.MakeRequest(addr, agent.ClearChannelLogLevel, buf.Bytes(), os.Stdout)
 }

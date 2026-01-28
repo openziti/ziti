@@ -18,12 +18,13 @@ package create
 
 import (
 	_ "embed"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/templates"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/templates"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -80,11 +81,10 @@ func NewCmdCreateConfigRouterEdge(routerOptions *CreateConfigRouterOptions, data
 			data.Router.Edge.DnsSvcIpRange = cmdhelper.GetZitiEdgeRouterDnsSvcIpRange()
 
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			routerOptions.Cmd = cmd
 			routerOptions.Args = args
-			err := routerOptions.runEdgeRouter(data)
-			cmdhelper.CheckErr(err)
+			return routerOptions.runEdgeRouter(data)
 		},
 	}
 

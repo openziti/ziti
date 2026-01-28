@@ -18,14 +18,14 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type updateAuthPolicyOptions struct {
@@ -85,12 +85,10 @@ func newUpdateAuthPolicySignerCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateAuthPolicySigner(options)
-
-			helpers.CheckErr(err)
+			return runUpdateAuthPolicySigner(options)
 		},
 		SuggestFor: []string{},
 	}

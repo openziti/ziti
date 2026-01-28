@@ -17,13 +17,13 @@
 package edge
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/util"
-	"github.com/spf13/cobra"
 	"io"
 	"net/http"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/util"
+	"github.com/spf13/cobra"
 )
 
 type dbSnapshotOptions struct {
@@ -41,11 +41,10 @@ func newDbSnapshotCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "snapshot",
 		Short: "creates a database snapshot",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runSnapshotDb(options)
-			cmdhelper.CheckErr(err)
+			return runSnapshotDb(options)
 		},
 		SuggestFor: []string{},
 	}

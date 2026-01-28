@@ -17,13 +17,13 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
-	"io"
 )
 
 // newUpdateCmd creates a command object for the "controller update" command
@@ -32,10 +32,6 @@ func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "update",
 		Short: "updates various entities managed by the Ziti Edge Controller",
 		Long:  "updates various entities managed by the Ziti Edge Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	cmd.AddCommand(newUpdateAuthenticatorCmd(out, errOut))

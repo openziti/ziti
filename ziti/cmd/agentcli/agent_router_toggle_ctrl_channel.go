@@ -18,11 +18,11 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -42,11 +42,10 @@ func NewToggleCtrlChannelAgentCmd(p common.OptionsProvider, name string, enable 
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(0, 1),
 		Use:  name + " <ctrl-id>",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

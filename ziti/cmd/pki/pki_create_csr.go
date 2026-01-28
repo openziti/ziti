@@ -18,13 +18,13 @@ package pki
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/pki/store"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // PKICreateCSROptions the options for the create spring command
@@ -49,11 +49,10 @@ func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "csr",
 		Short: "Creates new Certificate Signing Request (CSR)",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

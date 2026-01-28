@@ -18,10 +18,10 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"time"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
 
 	"github.com/pkg/errors"
 
@@ -49,11 +49,10 @@ func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "updates a service managed by the Ziti Edge Controller",
 		Long:  "updates a service managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateService(options)
-			cmdhelper.CheckErr(err)
+			return runUpdateService(options)
 		},
 		SuggestFor: []string{},
 	}

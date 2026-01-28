@@ -19,11 +19,12 @@ package ops
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/identity"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/openziti/identity"
+	"github.com/spf13/cobra"
 )
 
 type IdentityConfigFile struct {
@@ -41,7 +42,7 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 		Use:   "unwrap <identity_file>",
 		Short: "unwrap a Ziti Identity file into its separate pieces (supports PEM only)",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			identityFile := args[0]
 
 			rootFileName := strings.TrimSuffix(identityFile, ".json")
@@ -61,31 +62,27 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 			identityJson, err := os.ReadFile(identityFile)
 
 			if err != nil {
-				_, _ = fmt.Fprintf(errOut, "error opening file %s: %v\n", args[0], err)
-				return
+				return fmt.Errorf("error opening file %s: %w", args[0], err)
 			}
 
 			config := &IdentityConfigFile{}
 			if err := json.Unmarshal(identityJson, config); err != nil {
-				_, _ = fmt.Fprintf(errOut, "error unmarshaling identity config JSON: %v\n", err)
-				return
+				return fmt.Errorf("error unmarshaling identity config JSON: %w", err)
 			}
 
 			if strings.HasPrefix(config.ID.Cert, "pem:") {
 				data := strings.TrimPrefix(config.ID.Cert, "pem:")
 				if err := os.WriteFile(outCertFile, []byte(data), getFileMode(false)); err != nil {
-					_, _ = fmt.Fprintf(errOut, "error writing certificate to file [%s]: %v\n", outCertFile, err)
-					return
+					return fmt.Errorf("error writing certificate to file [%s]: %w", outCertFile, err)
 				}
 			} else {
-				_, _ = fmt.Fprintf(errOut, "error writing certificate to file [%s]: missing pem prefix, type is unsupported\n", outCertFile)
+				return fmt.Errorf("error writing certificate to file [%s]: missing pem prefix, type is unsupported", outCertFile)
 			}
 
 			if strings.HasPrefix(config.ID.Key, "pem:") {
 				data := strings.TrimPrefix(config.ID.Key, "pem:")
 				if err := os.WriteFile(outKeyFile, []byte(data), getFileMode(true)); err != nil {
-					_, _ = fmt.Fprintf(errOut, "error writing private key to file [%s]: %v\n", outKeyFile, err)
-					return
+					return fmt.Errorf("error writing private key to file [%s]: %w", outKeyFile, err)
 				}
 			} else {
 				_, _ = fmt.Fprintf(errOut, "error writing private key to file [%s]: missing pem prefix, type is unsupported\n", outKeyFile)
@@ -94,12 +91,12 @@ func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Comman
 			if strings.HasPrefix(config.ID.CA, "pem:") {
 				data := strings.TrimPrefix(config.ID.CA, "pem:")
 				if err := os.WriteFile(outCaFile, []byte(data), getFileMode(false)); err != nil {
-					_, _ = fmt.Fprintf(errOut, "error writing CAs to file [%s]: %v\n", outCaFile, err)
-					return
+					return fmt.Errorf("error writing CAs to file [%s]: %w", outCaFile, err)
 				}
 			} else {
-				_, _ = fmt.Fprintf(errOut, "error writing CAs to file [%s]: missing pem prefix, type is unsupported\n", outCaFile)
+				return fmt.Errorf("error writing CAs to file [%s]: missing pem prefix, type is unsupported", outCaFile)
 			}
+			return nil
 		},
 	}
 

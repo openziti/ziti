@@ -2,16 +2,16 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"io"
 	"math"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 type traceRouteOptions struct {
@@ -34,11 +34,10 @@ func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "traceroute <service> ",
 		Short: "runs a traceroute on the service",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 		SuggestFor: []string{},
 	}

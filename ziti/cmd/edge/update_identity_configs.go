@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 )
 
@@ -44,11 +42,10 @@ func newUpdateIdentityConfigsCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		Use:   "identity-configs <identity id or name> <service id or name> <config id or name>",
 		Short: "for the specified identity, use the given config for the given service",
 		Args:  cobra.ExactArgs(3),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runupdateIdentityConfigs(options)
-			cmdhelper.CheckErr(err)
+			return runupdateIdentityConfigs(options)
 		},
 		SuggestFor: []string{},
 	}

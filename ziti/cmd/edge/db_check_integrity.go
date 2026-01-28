@@ -2,15 +2,15 @@ package edge
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net/http"
 )
 
 type dbCheckIntegrityOptions struct {
@@ -29,11 +29,10 @@ func newDbCheckIntegrityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "start-check-integrity",
 		Short: "starts background operation checking integrity of database references and constraints",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCheckIntegrityDb(options)
-			cmdhelper.CheckErr(err)
+			return runCheckIntegrityDb(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -73,11 +72,10 @@ func newDbCheckIntegrityStatusCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 		Use:   "check-integrity-status",
 		Short: "shows current results from background operation checking integrity of database references and constraints",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCheckIntegrityStatus(options)
-			cmdhelper.CheckErr(err)
+			return runCheckIntegrityStatus(options)
 		},
 		SuggestFor: []string{},
 	}

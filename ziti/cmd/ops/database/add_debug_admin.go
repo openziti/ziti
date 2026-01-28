@@ -18,6 +18,7 @@ package database
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/eid"

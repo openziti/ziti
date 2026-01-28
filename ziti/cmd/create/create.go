@@ -17,11 +17,11 @@
 package create
 
 import (
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/pki"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 var (
@@ -37,9 +37,6 @@ func NewCmdCreate(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "create",
 		Short: "Create a new resource",
 		Long:  createLong,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	cmd.AddCommand(NewCmdCreateConfig())

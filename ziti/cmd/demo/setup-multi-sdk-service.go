@@ -18,13 +18,13 @@ package demo
 
 import (
 	_ "embed"
+	"time"
+
 	"github.com/openziti/runzmd"
 	"github.com/openziti/runzmd/actionz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 //go:embed setup-scripts/multi-sdk-hosted.md
@@ -47,11 +47,10 @@ func newMultiSdkHostedCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "multi-sdk-hosted",
 		Short: "Walks you through hosting configuration for an echo service hosted by a multiple sdk applications",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.run()
-			cmdhelper.CheckErr(err)
+			return options.run()
 		},
 		SuggestFor: []string{},
 	}

@@ -17,15 +17,12 @@
 package agentcli
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -44,11 +41,10 @@ func NewPprofHeapCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pprof-heap",
 		Short: "Returns a memory heap pprof of the target application",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -60,13 +56,6 @@ func NewPprofHeapCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentPprofHeapAction) Run() error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
-	}
-
 	if len(self.Args) == 0 {
 		var out io.WriteCloser = os.Stdout
 		var err error
@@ -81,7 +70,7 @@ func (self *AgentPprofHeapAction) Run() error {
 				}
 			}()
 		}
-		return self.RunCopyOut(agent.HeapProfile, nil, out)
+		return self.MakeRequest(agent.HeapProfile, nil, self.CopyToWriter(out))
 	}
 
 	addr, err := agent.ParseGopsAddress(self.Args)

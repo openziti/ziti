@@ -17,15 +17,12 @@
 package agentcli
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -45,11 +42,10 @@ func NewPprofCpuCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "pprof-cpu",
 		Short: "Runs and emits a 30 second pprof from the target application",
 		Args:  cobra.MaximumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -61,13 +57,6 @@ func NewPprofCpuCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentPprofCpuAction) Run() error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
-	}
-
 	if len(self.Args) == 0 {
 		var out io.WriteCloser = os.Stdout
 		var err error
@@ -82,7 +71,7 @@ func (self *AgentPprofCpuAction) Run() error {
 				}
 			}()
 		}
-		return self.RunCopyOut(agent.CPUProfile, nil, out)
+		return self.MakeRequest(agent.CPUProfile, nil, self.CopyToWriter(out))
 	}
 
 	addr, err := agent.ParseGopsAddress(self.Args)

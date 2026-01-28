@@ -17,12 +17,13 @@
 package create
 
 import (
+	"regexp"
+	"time"
+
 	fabForwarder "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdHelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
-	"regexp"
-	"time"
 
 	"github.com/openziti/channel/v4"
 	foundation "github.com/openziti/transport/v2"
@@ -216,9 +217,6 @@ func NewCmdCreateConfig() *cobra.Command {
 		Use:     "config",
 		Short:   "Creates a config file for specified Ziti component using environment variables",
 		Aliases: []string{"cfg"},
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdHelper.CheckErr(cmd.Help())
-		},
 	}
 
 	opts := &CreateConfigRouterOptions{}

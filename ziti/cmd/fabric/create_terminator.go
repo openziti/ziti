@@ -18,15 +18,15 @@ package fabric
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/router/xgress_edge_transport"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"math"
 )
 
 type createTerminatorOptions struct {
@@ -47,11 +47,10 @@ func newCreateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "terminator service router address",
 		Short: "creates a service terminator managed by the Ziti Controller",
 		Args:  cobra.ExactArgs(3),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateTerminator(options)
-			cmdhelper.CheckErr(err)
+			return runCreateTerminator(options)
 		},
 		SuggestFor: []string{},
 	}

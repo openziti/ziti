@@ -19,7 +19,6 @@ package lets_encrypt
 import (
 	"encoding/json"
 	"fmt"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"net/url"
 	"os"
@@ -38,11 +37,10 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "list",
 		Short: "Display Let's Encrypt certificates and accounts information",
 		Long:  "Display Let's Encrypt certificates and accounts information",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runList(options)
-			cmdhelper.CheckErr(err)
+			return runList(options)
 		},
 	}
 

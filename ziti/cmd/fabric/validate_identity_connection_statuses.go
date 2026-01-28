@@ -18,6 +18,8 @@ package fabric
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -26,8 +28,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"time"
 )
 
 type validateIdentityConnectionStatusesAction struct {
@@ -132,7 +132,7 @@ func (self *validateIdentityConnectionStatusesAction) validateRouterDataModel(_ 
 	}
 	fmt.Printf("%v errors found\n", errCount)
 	if errCount > 0 {
-		os.Exit(1)
+		return fmt.Errorf("%d error(s) occurred", errCount)
 	}
 	return nil
 }

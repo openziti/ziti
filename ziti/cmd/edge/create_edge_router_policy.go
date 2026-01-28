@@ -17,9 +17,9 @@
 package edge
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
 
 	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
@@ -44,11 +44,10 @@ func NewCreateEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 		Short:   "creates an edge-router-policy managed by the Ziti Edge Controller",
 		Long:    "creates an edge-router-policy managed by the Ziti Edge Controller",
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEdgeRouterPolicy(options)
-			cmdhelper.CheckErr(err)
+			return runCreateEdgeRouterPolicy(options)
 		},
 		SuggestFor: []string{},
 	}

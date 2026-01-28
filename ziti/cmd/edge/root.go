@@ -17,12 +17,12 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/enroll"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
@@ -60,9 +60,6 @@ func newValidateCommand(p common.OptionsProvider) *cobra.Command {
 	validateCmd := &cobra.Command{
 		Use:   "validate",
 		Short: "validate model data",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
 	}
 
 	validateCmd.AddCommand(NewValidateServiceHostingCmd(p))

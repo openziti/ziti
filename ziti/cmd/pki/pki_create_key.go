@@ -18,14 +18,14 @@ package pki
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/pki"
 	"github.com/openziti/ziti/ziti/pki/store"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // PKICreateKeyOptions the options for the create spring command
@@ -51,11 +51,10 @@ func NewCmdPKICreateKey(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:     "key",
 		Short:   "Creates new private key (to be used when creating server/client certs)",
 		Aliases: []string{"k"},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			return options.Run()
 		},
 	}
 

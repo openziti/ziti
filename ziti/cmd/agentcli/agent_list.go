@@ -18,12 +18,12 @@ package agentcli
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type AgentListAction struct {
@@ -42,11 +42,10 @@ func NewListCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "list",
 		Short: "List ziti processes",
 		Long:  "Show information about currently running Ziti processes",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.Run()
 		},
 	}
 

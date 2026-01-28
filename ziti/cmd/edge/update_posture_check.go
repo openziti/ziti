@@ -18,10 +18,9 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
+	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
@@ -92,11 +91,10 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		Use:   "mac <idOrName>",
 		Short: "updates a MAC posture check",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdatePostureCheckMac(options)
-			cmdhelper.CheckErr(err)
+			return runUpdatePostureCheckMac(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -164,11 +162,10 @@ func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 		Use:   "domain <idOrName>",
 		Short: "updates a domain posture check",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdatePostureCheckDomain(options)
-			cmdhelper.CheckErr(err)
+			return runUpdatePostureCheckDomain(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -199,11 +196,10 @@ func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		Use:   "mfa <idOrName>",
 		Short: "updates an MFA posture check",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdatePostureCheckMfa(options)
-			cmdhelper.CheckErr(err)
+			return runUpdatePostureCheckMfa(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -355,11 +351,10 @@ func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 		Use:   "process <idOrName>",
 		Short: "updates a process posture check",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdatePostureCheckProcess(options)
-			cmdhelper.CheckErr(err)
+			return runUpdatePostureCheckProcess(options)
 		},
 		SuggestFor: []string{},
 	}
@@ -462,11 +457,10 @@ func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 		Use:   "os <idOrName>",
 		Short: "updates a OS posture check",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdatePostureCheckOs(options)
-			cmdhelper.CheckErr(err)
+			return runUpdatePostureCheckOs(options)
 		},
 		SuggestFor: []string{},
 	}

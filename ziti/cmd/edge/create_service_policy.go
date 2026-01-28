@@ -17,10 +17,10 @@
 package edge
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"strings"
+
+	"github.com/openziti/ziti/ziti/cmd/api"
 
 	"github.com/pkg/errors"
 
@@ -48,11 +48,10 @@ func newCreateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short:   "creates a service-policy managed by the Ziti Edge Controller",
 		Long:    "creates a service-policy managed by the Ziti Edge Controller",
 		Args:    cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateServicePolicy(options)
-			cmdhelper.CheckErr(err)
+			return runCreateServicePolicy(options)
 		},
 		SuggestFor: []string{},
 	}

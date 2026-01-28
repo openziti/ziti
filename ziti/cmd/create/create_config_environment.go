@@ -26,7 +26,6 @@ import (
 	"strings"
 	"text/template"
 
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/constants"
 
@@ -152,12 +151,12 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 			// Figure out the correct comment prefix and variable declaration command
 			if runtime.GOOS == "windows" {
 				environmentOptions.OSCommentPrefix = "rem"
-				if ! environmentOptions.DisableOSVarDeclare {
+				if !environmentOptions.DisableOSVarDeclare {
 					environmentOptions.OSVarDeclare = "SET"
 				}
 			} else {
 				environmentOptions.OSCommentPrefix = "#"
-				if ! environmentOptions.DisableOSVarDeclare {
+				if !environmentOptions.DisableOSVarDeclare {
 					environmentOptions.OSVarDeclare = "export"
 				}
 			}
@@ -172,11 +171,10 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				logrus.SetOutput(logOut)
 			}
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			environmentOptions.Cmd = cmd
 			environmentOptions.Args = args
-			err := environmentOptions.run()
-			cmdhelper.CheckErr(err)
+			return environmentOptions.run()
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			// Reset log output after run completes

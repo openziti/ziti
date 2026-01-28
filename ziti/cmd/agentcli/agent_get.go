@@ -18,12 +18,12 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/internal/log"
-	"github.com/pkg/errors"
 	"math"
 	"strconv"
+
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/internal/log"
+	"github.com/pkg/errors"
 
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cobra"
@@ -44,11 +44,10 @@ func NewGetCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "Returns information about the target process",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.Run()
 		},
 	}
 

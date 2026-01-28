@@ -19,14 +19,14 @@ package lets_encrypt
 import (
 	"crypto"
 	"crypto/x509"
+	"io"
+	"time"
+
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/spf13/cobra"
-	"io"
-	"time"
 )
 
 const (
@@ -44,11 +44,10 @@ func newRenewCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "renew",
 		Short: "Renew a Let's Encrypt certificate",
 		Long:  "Renew a Let's Encrypt certificate",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runRenew(options)
-			cmdhelper.CheckErr(err)
+			return runRenew(options)
 		},
 	}
 

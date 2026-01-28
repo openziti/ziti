@@ -18,12 +18,12 @@ package edge
 
 import (
 	"fmt"
-	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
+
+	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/api"
+	"github.com/spf13/cobra"
 )
 
 type createEdgeRouterOptions struct {
@@ -48,11 +48,10 @@ func NewCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short:   "creates an edge router managed by the Ziti Edge Controller",
 		Long:    "creates an edge router managed by the Ziti Edge Controller",
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEdgeRouter(options)
-			cmdhelper.CheckErr(err)
+			return runCreateEdgeRouter(options)
 		},
 		SuggestFor: []string{},
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -54,10 +53,6 @@ func newDeleteCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "deletes various entities managed by the Ziti Controller",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
-			cmdhelper.CheckErr(err)
-		},
 	}
 
 	newOptions := func(isCircuit bool) *deleteOptions {
@@ -83,11 +78,10 @@ func newDeleteCmdForEntityType(entityType string, options *deleteOptions, aliase
 		Short:   "deletes " + api.GetPlural(entityType) + " managed by the Ziti Controller",
 		Args:    cobra.MinimumNArgs(1),
 		Aliases: append(aliases, api.GetPlural(entityType)),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := runDeleteEntityOfType(options, api.GetPlural(entityType))
-			cmdhelper.CheckErr(err)
+			return runDeleteEntityOfType(options, api.GetPlural(entityType))
 		},
 		SuggestFor: []string{},
 	}
@@ -106,11 +100,10 @@ func newDeleteWhereCmdForEntityType(entityType string, options *deleteOptions) *
 		Use:   "where <filter>",
 		Short: "deletes " + api.GetPlural(entityType) + " matching the filter managed by the Ziti Controller",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			options.Args = args
-			err := api.DeleteEntityOfTypeWhere("fabric", &options.Options, api.GetPlural(entityType), options.GetBody())
-			cmdhelper.CheckErr(err)
+			return api.DeleteEntityOfTypeWhere("fabric", &options.Options, api.GetPlural(entityType), options.GetBody())
 		},
 		SuggestFor: []string{},
 	}

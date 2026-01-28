@@ -18,6 +18,12 @@ package create
 
 import (
 	_ "embed"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+	"time"
+
 	edge "github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
@@ -25,11 +31,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"strings"
-	"text/template"
-	"time"
 )
 
 const (
@@ -131,11 +132,10 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 				SetConsoleConfig(&data.Controller.Web.BindPoints.Console)
 
 			},
-			Run: func(cmd *cobra.Command, args []string) {
+			RunE: func(cmd *cobra.Command, args []string) error {
 				controllerOptions.Cmd = cmd
 				controllerOptions.Args = args
-				err := controllerOptions.run(data)
-				helpers.CheckErr(err)
+				return controllerOptions.run(data)
 			},
 			PostRun: func(cmd *cobra.Command, args []string) {
 				// Reset log output after run completes

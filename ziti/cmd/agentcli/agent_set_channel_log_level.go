@@ -19,16 +19,14 @@ package agentcli
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"os"
+	"strings"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
-	"time"
 )
 
 type AgentSetChannelLogLevelAction struct {
@@ -46,11 +44,10 @@ func NewSetChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "set-channel-log-level channel log-level (panic, fatal, error, warn, info, debug, trace)",
 		Short: "Sets a channel-specific log level in the target application",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunWithTimeout(action.Run)
 		},
 	}
 
@@ -61,13 +58,6 @@ func NewSetChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentSetChannelLogLevelAction) Run() error {
-	if self.Cmd.Flags().Changed("timeout") {
-		time.AfterFunc(self.timeout, func() {
-			fmt.Println("operation timed out")
-			os.Exit(-1)
-		})
-	}
-
 	channelArg := self.Args[0]
 	levelArg := self.Args[1]
 
