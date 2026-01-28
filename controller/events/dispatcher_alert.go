@@ -17,8 +17,6 @@
 package events
 
 import (
-	"reflect"
-
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 )
@@ -50,7 +48,7 @@ func (self *Dispatcher) registerAlertEventHandler(_ string, val interface{}, _ m
 	handler, ok := val.(event.AlertEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/AlertEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.AlertEventHandler interface", val)
 	}
 
 	self.AddAlertEventHandler(handler)

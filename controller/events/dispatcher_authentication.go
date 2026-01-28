@@ -51,7 +51,7 @@ func (self *Dispatcher) registerAuthenticationEventHandler(eventType string, val
 	handler, ok := val.(event.AuthenticationEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/AuthenticationEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.AuthenticationEventHandler interface", val)
 	}
 
 	var includeList []string

@@ -18,7 +18,6 @@ package events
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/openziti/metrics/metrics_pb"
@@ -91,7 +90,7 @@ func (self *Dispatcher) registerUsageEventHandler(eventType string, val interfac
 	if version == 2 {
 		handler, ok := val.(event.UsageEventHandler)
 		if !ok {
-			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/UsageEventHandler interface.", reflect.TypeOf(val))
+			return errors.Errorf("type %T doesn't implement the event.UsageEventHandler interface", val)
 		}
 		if eventType != event.UsageEventNS {
 			handler = &usageEventV2OldNsAdapter{
@@ -103,7 +102,7 @@ func (self *Dispatcher) registerUsageEventHandler(eventType string, val interfac
 	} else {
 		handler, ok := val.(event.UsageEventV3Handler)
 		if !ok {
-			return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/UsageEventV3Handler interface.", reflect.TypeOf(val))
+			return errors.Errorf("type %T doesn't implement the event.UsageEventV3Handler interface", val)
 		}
 
 		if eventType != event.UsageEventNS {

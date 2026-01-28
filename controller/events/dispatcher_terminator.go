@@ -17,7 +17,6 @@
 package events
 
 import (
-	"reflect"
 	"strings"
 	"time"
 
@@ -60,7 +59,7 @@ func (self *Dispatcher) registerTerminatorEventHandler(eventType string, val int
 	handler, ok := val.(event.TerminatorEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/TerminatorEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.TerminatorEventHandler interface", val)
 	}
 
 	if eventType != event.TerminatorEventNS {

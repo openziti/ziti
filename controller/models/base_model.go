@@ -17,7 +17,6 @@
 package models
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -283,7 +282,7 @@ func (ctrl *BaseEntityManager[E]) ValidateNameOnUpdate(ctx boltz.MutateContext, 
 					return errorz.NewFieldError("name must be unique", "name", namedEntity.GetName())
 				}
 			} else {
-				pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(updatedEntity))
+				pfxlog.Logger().Errorf("entity of type %T is named, but store doesn't implement the NamedIndexStore interface", updatedEntity)
 			}
 		}
 	}
@@ -307,7 +306,7 @@ func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity i
 				return errorz.NewFieldError("name must be unique", "name", namedEntity.GetName())
 			}
 		} else {
-			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't implement the NamedIndexStore interface", reflect.TypeOf(entity))
+			pfxlog.Logger().Errorf("entity of type %T is named, but store doesn't implement the NamedIndexStore interface", entity)
 		}
 	}
 	return nil

@@ -17,8 +17,6 @@
 package events
 
 import (
-	"reflect"
-
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 )
@@ -44,7 +42,7 @@ func (self *Dispatcher) registerClusterEventHandler(_ string, val interface{}, _
 	handler, ok := val.(event.ClusterEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/ClusterEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement the event.ClusterEventHandler interface", val)
 	}
 
 	self.clusterEventHandlers.Append(handler)

@@ -19,7 +19,6 @@ package events
 import (
 	"context"
 	"encoding/binary"
-	"reflect"
 	"strings"
 	"time"
 
@@ -66,7 +65,7 @@ func (self *Dispatcher) registerEntityChangeEventHandler(_ string, val interface
 	handler, ok := val.(event.EntityChangeEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.EntityChangeEventHandler interface", val)
 	}
 
 	propagateAlways := false

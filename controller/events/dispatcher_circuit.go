@@ -52,7 +52,7 @@ func (self *Dispatcher) registerCircuitEventHandler(eventType string, val interf
 	handler, ok := val.(event.CircuitEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/v2/controller/event/CircuitEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.CircuitEventHandler interface", val)
 	}
 
 	if eventType != event.CircuitEventNS {
