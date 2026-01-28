@@ -5,11 +5,12 @@ package run
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/helpers"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/ziti/cmd/helpers"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestEdgeQuickstartAutomated(t *testing.T) {

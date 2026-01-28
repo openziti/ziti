@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"google.golang.org/protobuf/proto"
 )
 

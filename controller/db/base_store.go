@@ -17,11 +17,12 @@
 package db
 
 import (
+	"strings"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type initializableStore interface {

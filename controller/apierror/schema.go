@@ -3,6 +3,7 @@ package apierror
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/xeipuuv/gojsonschema"
 )
 

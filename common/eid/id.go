@@ -3,6 +3,7 @@ package eid
 import (
 	"crypto/rand"
 	"encoding/binary"
+
 	"github.com/teris-io/shortid"
 )
 

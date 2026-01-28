@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cobra"

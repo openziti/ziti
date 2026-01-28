@@ -18,9 +18,10 @@ package loop3
 
 import (
 	"crypto/sha512"
+	"math/rand"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
-	"math/rand"
 )
 
 type randomHashedBlockGenerator struct {

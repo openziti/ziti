@@ -20,15 +20,16 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"math/rand"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop3/pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"math/rand"
-	"sync/atomic"
-	"time"
 )
 
 type protocol struct {

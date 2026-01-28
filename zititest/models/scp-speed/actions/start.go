@@ -17,8 +17,9 @@
 package actions
 
 import (
-	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"time"
+
+	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"

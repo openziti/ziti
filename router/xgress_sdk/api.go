@@ -1,8 +1,9 @@
 package xgress_sdk
 
 import (
-	"github.com/openziti/sdk-golang/ziti"
 	"net"
+
+	"github.com/openziti/sdk-golang/ziti"
 )
 
 // The Fabric API allows users to dial services and stay up-to-date with service/identity changes.

@@ -23,7 +23,7 @@ import (
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
-	"github.com/openziti/ziti/ziti/internal/log"
+	"github.com/openziti/ziti/v2/ziti/internal/log"
 	"github.com/spf13/cobra"
 )
 

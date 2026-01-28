@@ -2,16 +2,17 @@ package db
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+	"testing"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"sort"
-	"strings"
-	"testing"
 )
 
 func Test_EdgeRouterPolicyStore(t *testing.T) {

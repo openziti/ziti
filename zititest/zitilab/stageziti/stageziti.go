@@ -2,15 +2,16 @@ package stageziti
 
 import (
 	"fmt"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/getziti"
-	"github.com/openziti/ziti/ziti/util"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/v2/common/getziti"
+	"github.com/openziti/ziti/v2/ziti/util"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 func StageZitiOnce(run model.Run, component *model.Component, version string, source string) error {

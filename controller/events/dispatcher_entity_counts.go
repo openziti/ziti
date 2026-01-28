@@ -17,11 +17,12 @@
 package events
 
 import (
-	"github.com/openziti/ziti/controller/event"
-	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/pkg/errors"
 )
 
 func (self *Dispatcher) AddEntityCountEventHandler(handler event.EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
@@ -96,7 +97,7 @@ func (self *Dispatcher) registerEntityCountEventHandler(eventType string, val in
 	handler, ok := val.(event.EntityCountEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/events/EntityCountEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the events.EntityCountEventHandler interface", val)
 	}
 
 	if eventType != event.EntityCountEventNS {

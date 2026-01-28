@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/v2/controller/network"
 )
 
 type ConnectHandler struct {

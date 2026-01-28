@@ -29,9 +29,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 type identityEvent struct {

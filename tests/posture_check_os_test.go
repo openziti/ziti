@@ -19,10 +19,11 @@
 package tests
 
 import (
-	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
 	"net/http"
 	"testing"
+
+	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 )
 
 func Test_PostureChecks_Os(t *testing.T) {

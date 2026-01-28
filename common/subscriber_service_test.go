@@ -23,8 +23,8 @@ import (
 	"math/rand"
 	"slices"
 
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 func (self *subscriberTest) AddService() {

@@ -2,10 +2,11 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 func Loop3Listener(host *model.Host, joiner chan struct{}, bindAddress string, extraArgs ...string) model.Stage {

@@ -13,9 +13,9 @@ import (
 	enrollment_management "github.com/openziti/edge-api/rest_management_api_server/operations/enrollment"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

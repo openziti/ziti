@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/rand"
 	"encoding/binary"
+
 	"github.com/michaelquigley/pfxlog"
 	"golang.org/x/crypto/argon2"
 )

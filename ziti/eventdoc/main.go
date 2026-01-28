@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/openziti/foundation/v2/stringz"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -16,6 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/openziti/foundation/v2/stringz"
 )
 
 type TypeDef struct {

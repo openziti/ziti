@@ -18,15 +18,17 @@ package tunnel
 
 import (
 	"encoding/json"
-	"github.com/michaelquigley/pfxlog"
 	"strconv"
 	"time"
 
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/sirupsen/logrus"
+	"github.com/michaelquigley/pfxlog"
+
 	"io"
 	"net"
 	"strings"
+
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/sirupsen/logrus"
 )
 
 type Service interface {

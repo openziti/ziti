@@ -18,9 +18,10 @@ package xt
 
 import (
 	"fmt"
-	"github.com/openziti/identity"
-	"github.com/openziti/ziti/common/logcontext"
 	"time"
+
+	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/logcontext"
 )
 
 type Registry interface {

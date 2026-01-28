@@ -22,10 +22,10 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/controller/idgen"
-	"github.com/openziti/ziti/router/xlink"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/idgen"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
 )
 

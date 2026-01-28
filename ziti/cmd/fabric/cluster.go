@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/openziti/ziti/controller/rest_client/cluster"
-	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/controller/rest_client/cluster"
+	"github.com/openziti/ziti/v2/controller/rest_model"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/spf13/cobra"
 )
 

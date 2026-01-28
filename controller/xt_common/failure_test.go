@@ -2,13 +2,14 @@ package xt_common
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/xt"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/xt"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 type mockTerminator struct{}

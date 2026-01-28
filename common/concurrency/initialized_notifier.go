@@ -17,8 +17,9 @@
 package concurrency
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"sync/atomic"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 type InitState interface {

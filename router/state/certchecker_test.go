@@ -18,8 +18,8 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

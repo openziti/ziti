@@ -18,9 +18,10 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/ziti/zititest/zitilab"
-	"time"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"

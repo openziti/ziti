@@ -19,13 +19,14 @@ package router
 import (
 	"errors"
 	"fmt"
+	"net"
+	"os"
+
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	"net"
-	"os"
 )
 
 // AddLocalAddress adds an address (or prefix) to the specified network interface.

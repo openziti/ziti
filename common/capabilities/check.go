@@ -17,9 +17,10 @@
 package capabilities
 
 import (
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"math/big"
+
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 )
 
 func IsCapable(ch channel.Channel, capability int) bool {

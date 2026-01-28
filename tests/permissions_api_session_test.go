@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/openziti/ziti/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/permissions"
 )
 
 func Test_Permissions_ApiSession(t *testing.T) {

@@ -3,6 +3,9 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"os"
+	"time"
+
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -19,8 +22,6 @@ import (
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"os"
-	"time"
 )
 
 //go:embed configs

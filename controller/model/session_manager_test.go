@@ -1,13 +1,14 @@
 package model
 
 import (
-	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSessionManager(t *testing.T) {

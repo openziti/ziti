@@ -24,8 +24,8 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xlink"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/xlink"
 )
 
 type channelType byte

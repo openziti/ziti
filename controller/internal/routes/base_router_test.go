@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/fields"
+	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/fields"
 
 	"github.com/stretchr/testify/require"
 )

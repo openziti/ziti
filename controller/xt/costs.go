@@ -17,8 +17,9 @@
 package xt
 
 import (
-	"github.com/openziti/ziti/common/inspect"
 	"math"
+
+	"github.com/openziti/ziti/v2/common/inspect"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 )

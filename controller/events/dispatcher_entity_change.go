@@ -19,18 +19,18 @@ package events
 import (
 	"context"
 	"encoding/binary"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"strings"
-	"time"
 )
 
 const (
@@ -65,7 +65,7 @@ func (self *Dispatcher) registerEntityChangeEventHandler(_ string, val interface
 	handler, ok := val.(event.EntityChangeEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/EntityChangeEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.EntityChangeEventHandler interface", val)
 	}
 
 	propagateAlways := false

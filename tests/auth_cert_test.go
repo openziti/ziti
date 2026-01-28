@@ -36,11 +36,11 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
 

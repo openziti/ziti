@@ -18,17 +18,18 @@ package loop3
 
 import (
 	"fmt"
+	"net"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/xgress_transport"
+	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/spf13/cobra"
-	"net"
-	"strings"
-	"time"
 )
 
 func init() {

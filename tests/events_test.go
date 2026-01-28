@@ -27,10 +27,10 @@ import (
 
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/events"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
+	"github.com/openziti/ziti/v2/router/env"
 )
 
 type eventsCollector struct {

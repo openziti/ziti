@@ -18,9 +18,10 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestDownloadFiles(t *testing.T) {

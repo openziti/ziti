@@ -19,11 +19,12 @@ package intercept
 import (
 	"encoding/json"
 	"errors"
-	"github.com/michaelquigley/pfxlog"
 	"io"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 // record type

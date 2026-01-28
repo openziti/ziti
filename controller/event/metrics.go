@@ -17,8 +17,9 @@
 package event
 
 import (
-	"github.com/openziti/metrics/metrics_pb"
 	"time"
+
+	"github.com/openziti/metrics/metrics_pb"
 )
 
 const (

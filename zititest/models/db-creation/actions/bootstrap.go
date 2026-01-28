@@ -19,6 +19,9 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -28,8 +31,6 @@ import (
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"time"
 )
 
 const DomainName = "controller.testing.openziti.org"

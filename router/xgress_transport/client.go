@@ -18,9 +18,10 @@ package xgress_transport
 
 import (
 	"errors"
+
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 )
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error

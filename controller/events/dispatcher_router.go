@@ -17,12 +17,12 @@
 package events
 
 import (
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/pkg/errors"
-	"reflect"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/pkg/errors"
 )
 
 func (self *Dispatcher) AddRouterEventHandler(handler event.RouterEventHandler) {
@@ -60,7 +60,7 @@ func (self *Dispatcher) registerRouterEventHandler(eventType string, val interfa
 	handler, ok := val.(event.RouterEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/RouterEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.RouterEventHandler interface", val)
 	}
 
 	if eventType != event.RouterEventNS {

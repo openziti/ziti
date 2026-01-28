@@ -18,11 +18,12 @@ package chaos
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zitirest"
 	"math/rand"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/v2/zitirest"
 )
 
 func StaticNumber(val int) func(int) int {

@@ -17,10 +17,11 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/metrics"
-	"time"
 )
 
 func ConfigureGoroutinesPoolMetrics(config *goroutines.PoolConfig, registry metrics.Registry, poolType string) {

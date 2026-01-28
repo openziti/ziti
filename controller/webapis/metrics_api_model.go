@@ -22,9 +22,9 @@ import (
 	"strings"
 
 	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/events"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/events"
+	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
 )
 

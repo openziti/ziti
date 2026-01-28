@@ -17,13 +17,14 @@
 package handler_xgress
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4/protobufs"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/forwarder"
 	"github.com/openziti/sdk-golang/xgress"
-	"time"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/forwarder"
 )
 
 type closeHandler struct {

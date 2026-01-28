@@ -18,17 +18,18 @@ package loop2
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/xgress_transport"
+	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/spf13/cobra"
 )
 

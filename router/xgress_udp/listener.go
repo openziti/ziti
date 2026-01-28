@@ -17,9 +17,10 @@
 package xgress_udp
 
 import (
-	"github.com/openziti/sdk-golang/xgress"
 	"io"
 	"net"
+
+	"github.com/openziti/sdk-golang/xgress"
 )
 
 type Listener interface {

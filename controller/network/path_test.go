@@ -17,10 +17,11 @@
 package network
 
 import (
-	config2 "github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/model"
 	"testing"
 	"time"
+
+	config2 "github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/controller/model"
 
 	"github.com/stretchr/testify/require"
 

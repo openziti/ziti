@@ -30,11 +30,11 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/proxies"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/ziti/tunnel/health"
-	"github.com/openziti/ziti/tunnel/router"
-	"github.com/openziti/ziti/tunnel/utils"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/entities"
+	"github.com/openziti/ziti/v2/tunnel/health"
+	"github.com/openziti/ziti/v2/tunnel/router"
+	"github.com/openziti/ziti/v2/tunnel/utils"
 	"github.com/pkg/errors"
 )
 

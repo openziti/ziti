@@ -2,12 +2,13 @@ package create
 
 import (
 	"fmt"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/constants"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"testing"
+
+	cmdhelper "github.com/openziti/ziti/v2/ziti/cmd/helpers"
+	"github.com/openziti/ziti/v2/ziti/constants"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 // TEST constants

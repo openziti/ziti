@@ -17,9 +17,10 @@
 package config
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"os"
 	"sync"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 var ensureTmpDirEnvOnce sync.Once
@@ -48,7 +49,7 @@ func EnsureTempDirEnv() {
 
 func InjectEnv(config map[interface{}]interface{}) {
 	ensureTmpDirEnvOnce.Do(EnsureTempDirEnv)
-	
+
 	for key, v := range config {
 		if str, ok := v.(string); ok {
 			config[key] = os.ExpandEnv(str)

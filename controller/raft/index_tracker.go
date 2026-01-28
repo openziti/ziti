@@ -17,9 +17,10 @@
 package raft
 
 import (
-	"github.com/pkg/errors"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type IndexTracker interface {

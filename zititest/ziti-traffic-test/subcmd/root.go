@@ -18,10 +18,11 @@ package subcmd
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func init() {

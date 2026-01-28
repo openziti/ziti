@@ -17,13 +17,13 @@
 package events
 
 import (
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/pkg/errors"
-	"reflect"
 	"strings"
 	"time"
+
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/pkg/errors"
 )
 
 func (self *Dispatcher) AddServiceEventHandler(handler event.ServiceEventHandler) {
@@ -53,7 +53,7 @@ func (self *Dispatcher) AcceptServiceEvent(event *event.ServiceEvent) {
 func (self *Dispatcher) registerServiceEventHandler(eventType string, val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ServiceEventHandler)
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/ServiceEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.ServiceEventHandler interface", val)
 	}
 
 	if eventType == "services" {

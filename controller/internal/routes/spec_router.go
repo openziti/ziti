@@ -28,11 +28,11 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/common/build"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 const EntityNameSpecs = "specs"

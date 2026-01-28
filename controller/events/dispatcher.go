@@ -22,12 +22,12 @@ import (
 	"strings"
 
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
 )
 

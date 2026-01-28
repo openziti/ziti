@@ -17,9 +17,10 @@
 package handler_edge_ctrl
 
 import (
+	"testing"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_ErrorsIs(t *testing.T) {

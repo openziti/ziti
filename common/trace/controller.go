@@ -18,9 +18,10 @@ package trace
 
 import (
 	"fmt"
-	"github.com/openziti/channel/v4/trace/pb"
 	"regexp"
 	"strings"
+
+	"github.com/openziti/channel/v4/trace/pb"
 )
 
 type SourceType int

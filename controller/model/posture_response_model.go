@@ -18,19 +18,20 @@ package model
 
 import (
 	"bytes"
+	"regexp"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/jinzhu/copier"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
-	"regexp"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 const (

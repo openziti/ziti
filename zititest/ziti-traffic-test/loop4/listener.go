@@ -18,12 +18,13 @@ package loop4
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
-	"net/http"
 )
 
 func init() {

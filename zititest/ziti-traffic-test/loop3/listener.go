@@ -18,6 +18,10 @@ package loop3
 
 import (
 	"errors"
+	"net"
+	"net/http"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/identity"
@@ -27,9 +31,6 @@ import (
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop3/pb"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
-	"net/http"
-	"strings"
 )
 
 func init() {

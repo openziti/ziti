@@ -34,7 +34,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/pkg/errors"
 )
 

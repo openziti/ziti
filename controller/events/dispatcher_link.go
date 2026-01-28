@@ -17,9 +17,8 @@
 package events
 
 import (
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
-	"reflect"
 )
 
 func (self *Dispatcher) AddLinkEventHandler(handler event.LinkEventHandler) {
@@ -50,7 +49,7 @@ func (self *Dispatcher) registerLinkEventHandler(eventType string, val interface
 	handler, ok := val.(event.LinkEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/LinkEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.LinkEventHandler interface", val)
 	}
 
 	if eventType != event.LinkEventNS {

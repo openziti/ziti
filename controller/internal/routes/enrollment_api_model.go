@@ -19,10 +19,10 @@ package routes
 import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/response"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 const EntityNameEnrollment = "enrollments"

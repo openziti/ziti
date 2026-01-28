@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/zitirest"
+	"github.com/openziti/ziti/v2/zitirest"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"

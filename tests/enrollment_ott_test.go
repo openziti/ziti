@@ -33,7 +33,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 // Test_EnrollmentOtt uses the generic legacy and deprecated /enroll endpoint. These test ensure it remains

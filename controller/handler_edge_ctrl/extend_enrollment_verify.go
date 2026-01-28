@@ -19,11 +19,12 @@ package handler_edge_ctrl
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/env"
 	"google.golang.org/protobuf/proto"
 )
 

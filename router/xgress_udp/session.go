@@ -17,12 +17,13 @@
 package xgress_udp
 
 import (
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"time"
+
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/pkg/errors"
 )
 
 func NewPacketSesssion(l Listener, addr net.Addr, timeout int64) Session {

@@ -19,11 +19,12 @@
 package tests
 
 import (
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/rcrowley/go-metrics"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/rcrowley/go-metrics"
 )
 
 func Test_AuthPerformance(t *testing.T) {

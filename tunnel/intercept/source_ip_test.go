@@ -1,14 +1,15 @@
 package intercept
 
 import (
+	"net"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/entities"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/entities"
 	"github.com/stretchr/testify/require"
-	"net"
-	"testing"
 )
 
 type testProvider struct {

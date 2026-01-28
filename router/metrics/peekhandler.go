@@ -17,12 +17,13 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/router/env"
-	"time"
+	"github.com/openziti/ziti/v2/router/env"
 )
 
 // NewChannelPeekHandler creates a channel PeekHandler which tracks latency, message rate and message size distribution

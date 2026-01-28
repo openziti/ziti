@@ -19,7 +19,7 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 const (

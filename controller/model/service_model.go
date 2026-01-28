@@ -17,11 +17,12 @@
 package model
 
 import (
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
-	"go.etcd.io/bbolt"
 	"time"
+
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
+	"go.etcd.io/bbolt"
 )
 
 type Service struct {

@@ -17,8 +17,9 @@
 package middleware
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"net/http"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 func RequestDebugLogger(next http.Handler) http.Handler {

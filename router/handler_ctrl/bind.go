@@ -20,16 +20,16 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/openziti/ziti/v2/common/capabilities"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/ziti/common/metrics"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/v2/common/metrics"
+	"github.com/openziti/ziti/v2/common/trace"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

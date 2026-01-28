@@ -28,7 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/apierror"
 )
 
 // Test_EnrollmentToken_Certificate uses a token issued from a 3rd party IdP, usually a JWT, in order to enroll a client

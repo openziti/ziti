@@ -17,11 +17,12 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"net/http"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/change"
 )
 
 type Responder interface {

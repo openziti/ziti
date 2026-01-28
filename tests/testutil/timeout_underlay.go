@@ -1,9 +1,10 @@
 package testutil
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/pkg/errors"
-	"time"
 )
 
 func NewTimeoutUnderlayFactory(factory channel.UnderlayFactory, timeout time.Duration) *UnderlayFactoryWrapper {

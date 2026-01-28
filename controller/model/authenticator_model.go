@@ -18,13 +18,14 @@ package model
 
 import (
 	"encoding/base64"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
-	"go.etcd.io/bbolt"
 	"reflect"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
+	"go.etcd.io/bbolt"
 )
 
 type Authenticator struct {

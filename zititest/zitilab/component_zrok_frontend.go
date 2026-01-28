@@ -18,18 +18,19 @@ package zitilab
 
 import (
 	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"io/fs"
-	"path/filepath"
-	"strings"
 )
 
 var _ model.ComponentType = (*ZrokFrontendType)(nil)

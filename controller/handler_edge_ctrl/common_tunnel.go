@@ -10,10 +10,10 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/common/logcontext"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/sirupsen/logrus"
 )
 

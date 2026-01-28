@@ -20,7 +20,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/openziti/ziti/ziti/cmd/ops/verify/ext-jwt-signer"
+	"github.com/openziti/ziti/v2/ziti/cmd/ops/verify/ext-jwt-signer"
 	"github.com/spf13/cobra"
 )
 

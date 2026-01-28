@@ -17,18 +17,19 @@
 package db
 
 import (
+	"strings"
+	"time"
+
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bolterrors "go.etcd.io/bbolt/errors"
-	"strings"
-	"time"
 )
 
 const (

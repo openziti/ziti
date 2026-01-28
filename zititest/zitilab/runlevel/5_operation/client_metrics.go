@@ -28,7 +28,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"

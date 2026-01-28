@@ -27,12 +27,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/models"
 )
 
 const (

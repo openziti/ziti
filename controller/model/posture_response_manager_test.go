@@ -17,10 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/db"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/stretchr/testify/require"
 )
 
 func mustParseDuration(s string) time.Duration {

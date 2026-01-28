@@ -21,16 +21,17 @@ package command
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_AdaptiveRateLimiter(t *testing.T) {

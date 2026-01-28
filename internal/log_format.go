@@ -17,8 +17,9 @@
 package internal
 
 import (
-	"github.com/sirupsen/logrus"
 	"runtime"
+
+	"github.com/sirupsen/logrus"
 )
 
 func ConfigureLogFormat(level logrus.Level) {

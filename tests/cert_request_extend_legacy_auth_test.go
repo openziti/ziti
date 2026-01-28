@@ -1,10 +1,11 @@
 package tests
 
 import (
+	"testing"
+
 	mangementAuthenticator "github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/edge-api/rest_model"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"testing"
 )
 
 func Test_Cert_Request_Extend_Legacy_Auth(t *testing.T) {

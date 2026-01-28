@@ -19,15 +19,16 @@ package oidc_auth
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v3/pkg/op"
 	"golang.org/x/text/language"
-	"net/http"
 )
 
 const (

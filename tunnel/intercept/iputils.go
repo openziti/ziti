@@ -19,14 +19,15 @@ package intercept
 import (
 	"container/list"
 	"fmt"
-	"github.com/gaissmai/extnetip"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/tunnel/dns"
-	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/ziti/tunnel/utils"
 	"net"
 	"net/netip"
 	"sync"
+
+	"github.com/gaissmai/extnetip"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/tunnel/dns"
+	"github.com/openziti/ziti/v2/tunnel/entities"
+	"github.com/openziti/ziti/v2/tunnel/utils"
 )
 
 var dnsPrefix netip.Prefix

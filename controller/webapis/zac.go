@@ -18,9 +18,10 @@ package webapis
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/xweb/v3"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 const (

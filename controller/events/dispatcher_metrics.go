@@ -17,13 +17,14 @@
 package events
 
 import (
-	"github.com/google/uuid"
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/pkg/errors"
 	"reflect"
 	"regexp"
+
+	"github.com/google/uuid"
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/pkg/errors"
 )
 
 func (self *Dispatcher) AddMetricsEventHandler(handler event.MetricsEventHandler) {
@@ -87,7 +88,7 @@ func (self *Dispatcher) relayMessagesToEventsUnfiltered(msg *metrics_pb.MetricsM
 func (self *Dispatcher) registerMetricsEventHandler(_ string, val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.MetricsEventHandler)
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/MetricsEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.MetricsEventHandler interface", val)
 	}
 
 	var sourceFilterDef = ""

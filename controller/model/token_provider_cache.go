@@ -32,8 +32,8 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )

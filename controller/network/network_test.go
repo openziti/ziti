@@ -1,24 +1,25 @@
 package network
 
 import (
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/pkg/errors"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/pkg/errors"
 
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2/tcp"
-	"github.com/openziti/ziti/common/logcontext"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/xt"
+	"github.com/openziti/ziti/v2/common/logcontext"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

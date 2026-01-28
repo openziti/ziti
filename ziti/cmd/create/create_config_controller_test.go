@@ -2,17 +2,18 @@ package create
 
 import (
 	"fmt"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/constants"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"runtime"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	cmdhelper "github.com/openziti/ziti/v2/ziti/cmd/helpers"
+	"github.com/openziti/ziti/v2/ziti/constants"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 /* BEGIN Controller config template structure */

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openziti/edge-api/rest_util"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/stretchr/testify/require"
 )
 

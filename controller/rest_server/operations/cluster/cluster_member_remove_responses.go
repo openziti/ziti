@@ -34,7 +34,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"github.com/openziti/ziti/controller/rest_model"
+	"github.com/openziti/ziti/v2/controller/rest_model"
 )
 
 // ClusterMemberRemoveOKCode is the HTTP code returned for type ClusterMemberRemoveOK

@@ -2,6 +2,10 @@ package main
 
 import (
 	"embed"
+	"os"
+	"path"
+	"time"
+
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -19,9 +23,6 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"os"
-	"path"
-	"time"
 )
 
 //go:embed configs

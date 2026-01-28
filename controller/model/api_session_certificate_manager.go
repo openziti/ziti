@@ -19,15 +19,16 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
-	"go.etcd.io/bbolt"
 	"net/url"
 	"time"
+
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
+	"go.etcd.io/bbolt"
 )
 
 func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {

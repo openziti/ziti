@@ -25,7 +25,7 @@ import (
 
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 // Helper types and functions

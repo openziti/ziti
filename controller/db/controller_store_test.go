@@ -26,14 +26,15 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
-	"go.etcd.io/bbolt"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/common/eid"
+	"go.etcd.io/bbolt"
 )
 
 func Test_ControllerStore(t *testing.T) {

@@ -17,16 +17,17 @@
 package model
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
-	"sync/atomic"
-	"time"
 )
 
 type Listener interface {

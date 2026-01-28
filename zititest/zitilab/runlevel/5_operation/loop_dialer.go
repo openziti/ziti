@@ -18,10 +18,11 @@ package zitilib_runlevel_5_operation
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 func Loop3Dialer(host *model.Host, scenario, endpoint string, joiner chan struct{}, extraArgs ...string) model.Stage {

@@ -27,8 +27,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/openziti/channel/v4"

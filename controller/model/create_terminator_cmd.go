@@ -3,10 +3,10 @@ package model
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

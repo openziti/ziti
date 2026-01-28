@@ -27,12 +27,12 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 )
 

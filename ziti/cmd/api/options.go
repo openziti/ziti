@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	"github.com/Jeffail/gabs"
-	ziticobra "github.com/openziti/ziti/internal/cobra"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	ziticobra "github.com/openziti/ziti/v2/internal/cobra"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

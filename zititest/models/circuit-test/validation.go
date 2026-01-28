@@ -19,18 +19,19 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/zitirest"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/zitirest"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type simCallback struct {

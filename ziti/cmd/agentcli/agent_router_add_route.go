@@ -18,11 +18,12 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/router"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )

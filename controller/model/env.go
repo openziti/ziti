@@ -22,13 +22,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/jwtsigner"
 )
 
 // Env defines the core environment interface for Ziti Edge controller operations.

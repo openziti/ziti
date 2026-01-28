@@ -19,6 +19,11 @@ package loop4
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -26,10 +31,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"net"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 type ControllerCallback interface {

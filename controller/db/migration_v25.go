@@ -17,8 +17,9 @@
 package db
 
 import (
-	"github.com/openziti/storage/boltz"
 	"time"
+
+	"github.com/openziti/storage/boltz"
 )
 
 func (m *Migrations) addSystemAuthPolicies(step *boltz.MigrationStep) {

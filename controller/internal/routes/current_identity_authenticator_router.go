@@ -26,10 +26,10 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

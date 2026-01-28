@@ -19,12 +19,13 @@ package apiproxy
 import (
 	"crypto/tls"
 	"encoding/base64"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/router/env"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/router/env"
 )
 
 const (

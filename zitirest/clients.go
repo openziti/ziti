@@ -42,10 +42,10 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/env"
-	fabricRestClient "github.com/openziti/ziti/controller/rest_client"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/env"
+	fabricRestClient "github.com/openziti/ziti/v2/controller/rest_client"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 )
 

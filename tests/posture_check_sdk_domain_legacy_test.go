@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/xt_smartrouting"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 )
 
 func Test_PostureCheck_SDK_Domain_Legacy(t *testing.T) {

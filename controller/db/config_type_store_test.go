@@ -18,11 +18,12 @@ package db
 
 import (
 	"fmt"
-	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
-	"go.etcd.io/bbolt"
 	"testing"
 	"time"
+
+	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/common/eid"
+	"go.etcd.io/bbolt"
 )
 
 func Test_ConfigTypeStore(t *testing.T) {

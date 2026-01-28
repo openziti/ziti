@@ -17,18 +17,18 @@
 package events
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/xt"
-	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
-	"reflect"
 	"strings"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/openziti/ziti/v2/controller/xt"
+	"github.com/pkg/errors"
+	"go.etcd.io/bbolt"
 )
 
 func (self *Dispatcher) AddTerminatorEventHandler(handler event.TerminatorEventHandler) {
@@ -59,7 +59,7 @@ func (self *Dispatcher) registerTerminatorEventHandler(eventType string, val int
 	handler, ok := val.(event.TerminatorEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/ziti/controller/event/TerminatorEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %T doesn't implement the event.TerminatorEventHandler interface", val)
 	}
 
 	if eventType != event.TerminatorEventNS {

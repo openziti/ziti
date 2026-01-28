@@ -1,16 +1,17 @@
 package create
 
 import (
-	"github.com/openziti/ziti/ziti/constants"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/ziti/constants"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var defaultArgs = []string{"edge", "--routerName", "test-router"}

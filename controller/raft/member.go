@@ -18,12 +18,13 @@ package raft
 
 import (
 	"fmt"
-	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/controller/apierror"
 	"time"
 
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/controller/apierror"
+
 	"github.com/openziti/channel/v4/protobufs"
-	"github.com/openziti/ziti/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"

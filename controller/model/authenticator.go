@@ -25,8 +25,8 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/event"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/event"
 )
 
 type AuthResult interface {

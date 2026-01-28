@@ -17,11 +17,12 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/db"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostureCheckModelProcessMulti_Evaluate(t *testing.T) {

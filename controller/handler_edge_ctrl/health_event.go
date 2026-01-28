@@ -17,14 +17,15 @@
 package handler_edge_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/env"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/env"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type healthEventHandler struct {

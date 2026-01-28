@@ -25,7 +25,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/eid"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func Test_PostureChecks_ProcessMulti(t *testing.T) {

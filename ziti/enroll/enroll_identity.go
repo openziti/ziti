@@ -19,11 +19,12 @@ package enroll
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/identity/engines"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"os"
 	"strings"
+
+	"github.com/openziti/identity/engines"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/term"

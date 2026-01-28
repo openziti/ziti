@@ -24,12 +24,12 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/router/state"
-	"github.com/openziti/ziti/tunnel/dns"
-	"github.com/openziti/ziti/tunnel/intercept"
-	"github.com/openziti/ziti/tunnel/intercept/host"
-	"github.com/openziti/ziti/tunnel/intercept/proxy"
-	"github.com/openziti/ziti/tunnel/intercept/tproxy"
+	"github.com/openziti/ziti/v2/router/state"
+	"github.com/openziti/ziti/v2/tunnel/dns"
+	"github.com/openziti/ziti/v2/tunnel/intercept"
+	"github.com/openziti/ziti/v2/tunnel/intercept/host"
+	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
+	"github.com/openziti/ziti/v2/tunnel/intercept/tproxy"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 )

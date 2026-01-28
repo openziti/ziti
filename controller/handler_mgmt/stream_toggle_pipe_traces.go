@@ -18,17 +18,18 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/model"
 	"sync"
 	"time"
 
+	"github.com/openziti/ziti/v2/controller/model"
+
 	"github.com/openziti/channel/v4"
 	trace_pb "github.com/openziti/channel/v4/trace/pb"
-	"github.com/openziti/ziti/common/handler_common"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/common/trace"
-	"github.com/openziti/ziti/controller/network"
+	"github.com/openziti/ziti/v2/common/handler_common"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/trace"
+	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -17,10 +17,11 @@
 package loop3
 
 import (
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop3/pb"
-	"gopkg.in/yaml.v2"
 	"os"
 	"time"
+
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop3/pb"
+	"gopkg.in/yaml.v2"
 )
 
 type Scenario struct {

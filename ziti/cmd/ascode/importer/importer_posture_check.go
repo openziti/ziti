@@ -18,14 +18,15 @@ package importer
 
 import (
 	"encoding/json"
+	"slices"
+	"strings"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	"github.com/openziti/ziti/internal"
-	"github.com/openziti/ziti/internal/rest/mgmt"
-	"slices"
-	"strings"
+	"github.com/openziti/ziti/v2/internal"
+	"github.com/openziti/ziti/v2/internal/rest/mgmt"
 )
 
 func (importer *Importer) IsPostureCheckImportRequired(args []string) bool {

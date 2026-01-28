@@ -23,7 +23,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
 )

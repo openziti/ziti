@@ -23,16 +23,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Jeffail/gabs"
-	"github.com/dgryski/dgoogauth"
-	"github.com/google/uuid"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/apierror"
 	"image/png"
 	"net/http"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/Jeffail/gabs"
+	"github.com/dgryski/dgoogauth"
+	"github.com/google/uuid"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/controller/apierror"
 )
 
 func Test_MFA(t *testing.T) {

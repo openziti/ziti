@@ -17,9 +17,10 @@
 package database
 
 import (
+	"math"
+
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
-	"math"
 )
 
 type CompactAction struct {

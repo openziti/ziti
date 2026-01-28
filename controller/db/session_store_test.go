@@ -18,16 +18,17 @@ package db
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
-	"testing"
-	"time"
 )
 
 const apiSessionsSessionsIdxPath = "/" + RootBucket + "/" + boltz.IndexesBucket + "/" + EntityTypeApiSessions + "/" + EntityTypeSessions

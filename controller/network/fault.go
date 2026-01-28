@@ -18,7 +18,7 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/controller/model"
 )
 
 type ForwardingFaultReport struct {

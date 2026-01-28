@@ -24,21 +24,21 @@ import (
 
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/controller/models"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/event"
-	"github.com/openziti/ziti/controller/jwtsigner"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/jwtsigner"
 )
 
 var _ Env = &TestContext{}

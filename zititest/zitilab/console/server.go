@@ -17,9 +17,10 @@
 package console
 
 import (
+	"net/http"
+
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
-	"net/http"
 )
 
 func NewServer() *Server {

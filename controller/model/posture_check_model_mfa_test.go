@@ -17,9 +17,10 @@
 package model
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -650,8 +651,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.Equal(int64(0), result)
 		})
 	})
-	
-	
+
 	t.Run("getTimeoutRemainingAtSeconds", func(t *testing.T) {
 		t.Run("with a timeout of 600s, passedAt 0s ago, wake = NIL, unlock = NIL will result in 600s timeout", func(t *testing.T) {
 			req := require.New(t)
@@ -750,7 +750,6 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			req.Equal(int64(600), timeoutRemaining)
 		})
-
 
 		t.Run("with a timeout of 600s, passedAt 0s ago, wake 10s ago, unlock 10s ago will result in 600s timeout", func(t *testing.T) {
 			req := require.New(t)

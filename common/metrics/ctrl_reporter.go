@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
 )
 

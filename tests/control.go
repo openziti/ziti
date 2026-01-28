@@ -6,9 +6,9 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/capabilities"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/v2/common/capabilities"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/config"
 )
 
 func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {

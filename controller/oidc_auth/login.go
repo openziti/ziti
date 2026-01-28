@@ -33,8 +33,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/model"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )

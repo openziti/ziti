@@ -8,12 +8,13 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/google/uuid"
-	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_validateHostPortString(t *testing.T) {

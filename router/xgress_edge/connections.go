@@ -32,12 +32,12 @@ import (
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/metrics"
 	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/common/inspect"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/common/spiffehlp"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/state"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/spiffehlp"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/state"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 

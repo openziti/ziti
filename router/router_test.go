@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openziti/channel/v4"

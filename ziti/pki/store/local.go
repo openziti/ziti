@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/ziti/ziti/pki/certificate"
+	"github.com/openziti/ziti/v2/ziti/pki/certificate"
 
 	"crypto/x509"
 )

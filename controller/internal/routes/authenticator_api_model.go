@@ -21,11 +21,11 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/models"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 const EntityNameAuthenticator = "authenticators"

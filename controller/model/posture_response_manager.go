@@ -18,13 +18,14 @@ package model
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/db"
-	"go.etcd.io/bbolt"
 	"runtime/debug"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"go.etcd.io/bbolt"
 )
 
 func NewPostureResponseManager(env Env) *PostureResponseManager {

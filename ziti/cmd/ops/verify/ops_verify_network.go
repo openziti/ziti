@@ -29,8 +29,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/internal"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/internal"
 )
 
 var log = pfxlog.Logger()

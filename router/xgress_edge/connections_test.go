@@ -20,13 +20,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/openziti/ziti/common"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/router/state"
-	"github.com/stretchr/testify/require"
 	"net/url"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/router/state"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_validateBySpiffeId(t *testing.T) {

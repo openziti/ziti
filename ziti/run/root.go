@@ -18,12 +18,13 @@ package run
 
 import (
 	"context"
+	"io"
+
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti/tunnel"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/tunnel"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type Options struct {

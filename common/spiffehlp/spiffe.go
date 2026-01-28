@@ -20,8 +20,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 // GetSpiffeIdFromCertChain cycles through a slice of certificates that goes from leaf up CAs. Each certificate

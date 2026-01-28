@@ -1,11 +1,12 @@
 package xgress_router
 
 import (
+	"sync/atomic"
+
 	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
-	"sync/atomic"
 )
 
 type AckForwarder interface {

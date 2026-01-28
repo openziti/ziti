@@ -18,6 +18,9 @@ package actions
 
 import (
 	"fmt"
+	"path/filepath"
+	"time"
+
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -26,8 +29,6 @@ import (
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/sirupsen/logrus"
-	"path/filepath"
-	"time"
 )
 
 func NewBootstrapAction() model.ActionBinder {

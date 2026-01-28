@@ -18,16 +18,17 @@ package webapis
 
 import (
 	"fmt"
-	"github.com/openziti/edge-api/rest_management_api_client"
-	"github.com/openziti/edge-api/rest_management_api_server"
-	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/response"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_management_api_server"
+	"github.com/openziti/xweb/v3"
+	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 const (

@@ -19,10 +19,11 @@
 package tests
 
 import (
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/common/eid"
 	"testing"
 	"time"
+
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 // Test_EnrollmentOttSpecific uses the /enroll/updb specific endpoint.

@@ -19,9 +19,10 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
 	"sort"
 	"testing"
+
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func Test_ApiSession(t *testing.T) {

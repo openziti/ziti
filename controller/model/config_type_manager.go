@@ -18,15 +18,16 @@ package model
 
 import (
 	"encoding/json"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
-	"github.com/openziti/ziti/controller/change"
-	"github.com/openziti/ziti/controller/command"
-	"github.com/openziti/ziti/controller/db"
-	"github.com/openziti/ziti/controller/fields"
-	"github.com/openziti/ziti/controller/models"
+	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
+	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )

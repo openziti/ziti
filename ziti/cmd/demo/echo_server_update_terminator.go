@@ -22,8 +22,8 @@ import (
 
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/ziti/cmd/agentcli"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

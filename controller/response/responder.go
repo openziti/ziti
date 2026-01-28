@@ -18,13 +18,14 @@ package response
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/go-openapi/errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/api"
-	"github.com/openziti/ziti/controller/apierror"
-	"net/http"
+	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/apierror"
 )
 
 // todo: rename to Responder, remove old Responder and RequestResponder

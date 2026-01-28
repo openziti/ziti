@@ -19,8 +19,8 @@ package fabric
 import (
 	"fmt"
 
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"

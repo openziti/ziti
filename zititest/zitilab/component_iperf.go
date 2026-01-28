@@ -18,9 +18,10 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var _ model.ComponentType = (*IPerfServerType)(nil)

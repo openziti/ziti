@@ -17,8 +17,9 @@
 package response
 
 import (
-	"github.com/openziti/ziti/common/build"
 	"strconv"
+
+	"github.com/openziti/ziti/v2/common/build"
 )
 
 const (

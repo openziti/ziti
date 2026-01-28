@@ -23,9 +23,9 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/util"
 	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

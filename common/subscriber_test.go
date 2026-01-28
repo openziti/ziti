@@ -28,8 +28,8 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/version"
 )
 
 type testState struct {

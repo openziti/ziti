@@ -31,12 +31,12 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/dns"
-	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/ziti/tunnel/health"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/dns"
+	"github.com/openziti/ziti/v2/tunnel/entities"
+	"github.com/openziti/ziti/v2/tunnel/health"
 	"github.com/pkg/errors"
-	logrus "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // variables for substitutions in intercept.v1 sourceIp property

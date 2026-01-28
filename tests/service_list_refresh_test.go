@@ -3,9 +3,10 @@
 package tests
 
 import (
-	"github.com/openziti/ziti/common/eid"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func setupServiceListRefreshTest(ctx *TestContext) (string, *identity, *session) {

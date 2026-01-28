@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/db"
 )
 
 func NewPostureCheckTypeManager(env Env) *PostureCheckTypeManager {

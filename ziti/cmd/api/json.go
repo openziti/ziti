@@ -19,10 +19,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	gabs2 "github.com/Jeffail/gabs/v2"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func SetJSONValue(container *gabs.Container, value interface{}, path ...string) {

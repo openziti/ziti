@@ -20,13 +20,14 @@ package dns
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
-	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/miekg/dns"
+	"github.com/sirupsen/logrus"
 )
 
 func NewDnsServer(addr string, upstreamConfig string, unanswered unansweredDisposition) (Resolver, error) {
@@ -53,7 +54,7 @@ func NewDnsServer(addr string, upstreamConfig string, unanswered unansweredDispo
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse upstream DNS configuration '%s': %w", upstreamConfig, err)
 		}
-		
+
 		if upstreamURL.Scheme == "udp" || upstreamURL.Scheme == "tcp" {
 			r.upstreamServer = upstreamURL.Host
 			r.upstreamClient = &dns.Client{

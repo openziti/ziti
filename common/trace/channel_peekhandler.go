@@ -18,16 +18,17 @@ package trace
 
 import (
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/trace/pb"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/common/pb/mgmt_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"google.golang.org/protobuf/proto"
-	"sync/atomic"
-	"time"
 )
 
 var decoders = []channel.TraceMessageDecoder{channel.Decoder{}, ctrl_pb.Decoder{}, xgress.Decoder{}, mgmt_pb.Decoder{}}

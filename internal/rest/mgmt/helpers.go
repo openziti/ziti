@@ -19,6 +19,7 @@ package mgmt
 import (
 	"context"
 	"fmt"
+
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
@@ -32,7 +33,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/internal/rest/consts"
+	"github.com/openziti/ziti/v2/internal/rest/consts"
 	log "github.com/sirupsen/logrus"
 )
 

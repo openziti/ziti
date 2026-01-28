@@ -24,7 +24,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/link"
+	"github.com/openziti/ziti/v2/router/link"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

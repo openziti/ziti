@@ -1,4 +1,4 @@
-module github.com/openziti/ziti
+module github.com/openziti/ziti/v2
 
 go 1.25.3
 

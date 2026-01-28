@@ -17,12 +17,13 @@
 package udp_vconn
 
 import (
-	"github.com/openziti/ziti/tunnel"
-	"github.com/openziti/ziti/tunnel/entities"
-	"github.com/openziti/foundation/v2/mempool"
 	"io"
 	"net"
 	"time"
+
+	"github.com/openziti/foundation/v2/mempool"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/entities"
 )
 
 type UDPWriterTo interface {

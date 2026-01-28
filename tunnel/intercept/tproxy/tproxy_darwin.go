@@ -17,8 +17,8 @@
 package tproxy
 
 import (
-	"github.com/openziti/ziti/tunnel/intercept"
-	"github.com/openziti/ziti/tunnel/intercept/proxy"
+	"github.com/openziti/ziti/v2/tunnel/intercept"
+	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
 	"github.com/pkg/errors"
 )
 

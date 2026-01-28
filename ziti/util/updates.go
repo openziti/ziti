@@ -18,16 +18,17 @@ package util
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/common/getziti"
-	"github.com/openziti/ziti/ziti/constants"
 	"os"
 	"strings"
+
+	"github.com/openziti/ziti/v2/common/getziti"
+	"github.com/openziti/ziti/v2/ziti/constants"
 
 	"github.com/fatih/color"
 
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/v2/common/version"
 )
 
 func LogReleaseVersionCheck() {

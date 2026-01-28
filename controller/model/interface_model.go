@@ -17,10 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/controller/db"
 	"net"
 	"sort"
+
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/controller/db"
 )
 
 type Interface struct {

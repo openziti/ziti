@@ -19,15 +19,16 @@ package demo
 import (
 	"bufio"
 	"fmt"
+	"net"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
-	"os"
-	"strings"
-	"time"
 )
 
 type zcatCloseTestAction struct {

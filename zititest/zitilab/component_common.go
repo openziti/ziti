@@ -18,11 +18,12 @@ package zitilab
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/sirupsen/logrus"
-	"path/filepath"
-	"strings"
 )
 
 func getZitiProcessFilter(c *model.Component, zitiType string) func(string) bool {

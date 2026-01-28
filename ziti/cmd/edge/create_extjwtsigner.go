@@ -25,8 +25,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/ziti/cmd/api"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

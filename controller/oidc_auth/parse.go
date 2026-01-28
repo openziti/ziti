@@ -19,13 +19,14 @@ package oidc_auth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 	"io"
 	"net/http"
 	"reflect"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 )
 
 type TotpRequestBody struct {

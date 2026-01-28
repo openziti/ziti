@@ -18,11 +18,12 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/common/cert"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/change"
 	"time"
+
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/change"
 )
 
 const (

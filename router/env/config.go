@@ -19,13 +19,14 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/controller/command"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/v2/controller/command"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -33,8 +34,8 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/common/config"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/config"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	yaml3 "gopkg.in/yaml.v3"

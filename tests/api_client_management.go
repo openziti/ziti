@@ -20,8 +20,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/openziti/ziti/ziti/util"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/ziti/util"
 )
 
 type ManagementHelperClient struct {

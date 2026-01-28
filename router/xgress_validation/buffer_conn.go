@@ -1,13 +1,14 @@
 package xgress_validation
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"io"
 	"net"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 )
 
 func NewBufferConn(id string) *BufferConn {

@@ -26,11 +26,11 @@ import (
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/xweb/v3"
-	"github.com/openziti/ziti/common/build"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
-	"github.com/openziti/ziti/controller/webapis"
+	"github.com/openziti/ziti/v2/common/build"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/webapis"
 )
 
 func init() {

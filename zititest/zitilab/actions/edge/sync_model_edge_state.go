@@ -1,11 +1,12 @@
 package edge
 
 import (
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/fablab/kernel/model"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func SyncModelEdgeState(componentSpec string) model.Action {

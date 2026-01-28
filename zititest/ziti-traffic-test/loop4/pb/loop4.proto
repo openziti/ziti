@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package ziti.loop4.pb;
-option go_package = "github.com/openziti/ziti/zititest/ziti-test/subcmd/loop4/pb/loop4_pb";
+option go_package = "github.com/openziti/ziti/zititest/v2/ziti-test/subcmd/loop4/pb/loop4_pb";
 
 enum ContentType {
   ZeroContentType = 0;

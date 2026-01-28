@@ -17,9 +17,10 @@
 package xt
 
 import (
-	"github.com/openziti/storage/boltz"
 	"sync"
 	"sync/atomic"
+
+	"github.com/openziti/storage/boltz"
 )
 
 func init() {

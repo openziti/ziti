@@ -21,12 +21,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"time"
 )
 
 var _ AuthProcessor = &AuthModuleUpdb{}

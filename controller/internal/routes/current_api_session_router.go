@@ -25,11 +25,11 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/model"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 func init() {

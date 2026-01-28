@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/tunnel/intercept"
+	"github.com/openziti/ziti/v2/tunnel/intercept"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 )

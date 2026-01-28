@@ -21,10 +21,10 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
-	"github.com/openziti/ziti/common/runner"
-	"github.com/openziti/ziti/controller/env"
-	routerEnv "github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/runner"
+	"github.com/openziti/ziti/v2/controller/env"
+	routerEnv "github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
 )
 

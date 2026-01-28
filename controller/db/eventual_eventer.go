@@ -18,17 +18,18 @@ package db
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/kataras/go-events"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/v2/controller/change"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // An EventualEventer provides a method for storing events in a persistent manner

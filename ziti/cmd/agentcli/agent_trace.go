@@ -17,10 +17,11 @@
 package agentcli
 
 import (
-	"github.com/openziti/agent"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/openziti/agent"
+	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/spf13/cobra"
 )
 
 type AgentTraceAction struct {

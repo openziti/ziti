@@ -19,9 +19,10 @@
 package tests
 
 import (
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti/edge"
 )
 
 func Test_UpdateTerminators(t *testing.T) {

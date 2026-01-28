@@ -17,13 +17,14 @@
 package udp_vconn
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/mempool"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/mempool"
+	"github.com/sirupsen/logrus"
 )
 
 type udpConn struct {

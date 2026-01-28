@@ -3,10 +3,11 @@ package health
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/mitchellh/mapstructure"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_LoadPingTest(t *testing.T) {

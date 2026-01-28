@@ -17,10 +17,11 @@
 package model
 
 import (
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostureCheckModelProcess_Evaluate(t *testing.T) {

@@ -17,6 +17,9 @@
 package loop2
 
 import (
+	"net"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
@@ -24,8 +27,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 	"github.com/spf13/cobra"
-	"net"
-	"strings"
 )
 
 func init() {

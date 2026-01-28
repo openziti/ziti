@@ -28,13 +28,13 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/database"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/controller/apierror"
-	"github.com/openziti/ziti/controller/env"
-	"github.com/openziti/ziti/controller/network"
-	"github.com/openziti/ziti/controller/permissions"
-	"github.com/openziti/ziti/controller/response"
-	fabricRestModel "github.com/openziti/ziti/controller/rest_model"
-	fabricDatabase "github.com/openziti/ziti/controller/rest_server/operations/database"
+	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/response"
+	fabricRestModel "github.com/openziti/ziti/v2/controller/rest_model"
+	fabricDatabase "github.com/openziti/ziti/v2/controller/rest_server/operations/database"
 )
 
 func init() {

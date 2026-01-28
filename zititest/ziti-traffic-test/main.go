@@ -22,6 +22,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"runtime"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/transport/v2"
@@ -36,8 +39,6 @@ import (
 	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/sirupsen/logrus"
-	"runtime"
-	"time"
 )
 
 func init() {

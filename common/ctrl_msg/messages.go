@@ -19,8 +19,9 @@ package ctrl_msg
 import (
 	"errors"
 	"fmt"
+
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 const (
