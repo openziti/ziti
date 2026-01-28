@@ -51,7 +51,7 @@ func newLink(id string, linkProtocol string, dialAddress string, initialLatency 
 		Protocol:    linkProtocol,
 		DialAddress: dialAddress,
 		state: LinkState{
-			Mode:      Pending,
+			Mode:      Connected,
 			Timestamp: time.Now().UnixMilli(),
 		},
 		down:       false,
@@ -167,24 +167,25 @@ func (link *Link) GetCost() int64 {
 type LinkMode byte
 
 const (
-	Pending LinkMode = iota
-	Connected
+	Connected = iota
 	Failed
 	Duplicate
 )
 
 func (t LinkMode) String() string {
-	if t == Pending {
-		return "Pending"
-	} else if t == Connected {
+	if t == Connected {
 		return "Connected"
-	} else if t == Failed {
-		return "Failed"
-	} else if t == Duplicate {
-		return "Duplicate"
-	} else {
-		return ""
 	}
+
+	if t == Failed {
+		return "Failed"
+	}
+
+	if t == Duplicate {
+		return "Duplicate"
+	}
+
+	return "Unknown"
 }
 
 type LinkState struct {

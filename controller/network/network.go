@@ -84,8 +84,6 @@ type Network struct {
 	env                    model.Env
 	nodeId                 string
 	options                *config.NetworkConfig
-	assembleAndCleanC      chan struct{}
-	forwardingFaults       chan struct{}
 	routeSenderController  *routeSenderController
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
@@ -130,8 +128,6 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 		Managers:              env.GetManagers(),
 		nodeId:                config.GetId().Token,
 		options:               config.GetOptions(),
-		assembleAndCleanC:     make(chan struct{}, 1),
-		forwardingFaults:      make(chan struct{}, 1),
 		routeSenderController: newRouteSenderController(),
 		eventDispatcher:       config.GetEventDispatcher(),
 		traceController:       trace.NewController(config.GetCloseNotify()),
@@ -351,8 +347,6 @@ func (network *Network) ConnectRouter(r *model.Router) {
 	network.Link.BuildRouterLinks(r)
 	network.Router.MarkConnected(r)
 
-	time.AfterFunc(250*time.Millisecond, network.notifyAssembleAndClean)
-
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
 			h.RouterConnected(r)
@@ -480,15 +474,6 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 	for _, h := range network.routerPresenceHandlers.Value() {
 		h.RouterDisconnected(r)
 	}
-
-	network.notifyAssembleAndClean()
-}
-
-func (network *Network) notifyAssembleAndClean() {
-	select {
-	case network.assembleAndCleanC <- struct{}{}:
-	default:
-	}
 }
 
 func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink *ctrl_pb.RouterLinks_RouterLink) {
@@ -522,19 +507,6 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
 		log.Info("router reported link already known")
 	}
-}
-
-func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
-	if l, found := network.Link.Get(msg.Id); found {
-		if state := l.CurrentState(); state.Mode != model.Pending {
-			return fmt.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", msg.Id, state.Mode)
-		}
-
-		l.SetState(model.Connected)
-		network.NotifyLinkConnected(l, msg)
-		return nil
-	}
-	return fmt.Errorf("no such link [l/%s]", msg.Id)
 }
 
 func (network *Network) LinkFaulted(link *model.Link, dupe bool) {
@@ -749,11 +721,6 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 }
 
 func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
-	select {
-	case network.forwardingFaults <- struct{}{}:
-	default:
-	}
-
 	go network.handleForwardingFaults(ffr)
 }
 
@@ -958,15 +925,7 @@ func (network *Network) Run() {
 
 	for {
 		select {
-		case <-network.assembleAndCleanC:
-			network.assemble()
-			network.clean()
-
-		case <-network.forwardingFaults:
-			network.clean()
-
 		case <-ticker.C:
-			network.assemble()
 			network.clean()
 			network.smart()
 			network.Link.ScanForDeadLinks()
@@ -1562,13 +1521,13 @@ func minCost(q map[*model.Router]bool, dist map[*model.Router]int64) *model.Rout
 		return nil
 	}
 
-	min := int64(math.MaxInt64)
+	currentMin := int64(math.MaxInt64)
 	var selected *model.Router
 	for r := range q {
 		d := dist[r]
-		if d <= min {
+		if d <= currentMin {
 			selected = r
-			min = d
+			currentMin = d
 		}
 	}
 	return selected

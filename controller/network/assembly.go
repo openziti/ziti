@@ -17,61 +17,13 @@
 package network
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/event"
 	"github.com/openziti/ziti/controller/model"
-	"time"
 )
-
-func (network *Network) assemble() {
-	if !network.options.EnableLegacyLinkMgmt {
-		return
-	}
-
-	log := pfxlog.Logger()
-
-	if network.Router.ConnectedCount() > 1 {
-		log.Tracef("assembling with [%d] routers", network.Router.ConnectedCount())
-
-		missingLinks, err := network.Link.MissingLinks(network.Router.AllConnected(), network.options.PendingLinkTimeout)
-		if err == nil {
-			for _, missingLink := range missingLinks {
-				network.Link.Add(missingLink)
-
-				dial := &ctrl_pb.Dial{
-					LinkId:       missingLink.Id,
-					Address:      missingLink.DialAddress,
-					RouterId:     missingLink.DstId,
-					LinkProtocol: missingLink.Protocol,
-				}
-
-				if versionInfo := missingLink.GetDest().VersionInfo; versionInfo != nil {
-					dial.RouterVersion = missingLink.GetDest().VersionInfo.Version
-				}
-
-				if err = protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
-					log.WithField("linkId", missingLink.Id).
-						WithField("srcRouterId", missingLink.Src.Id).
-						WithField("dstRouterId", missingLink.DstId).
-						WithError(err).Error("unexpected error sending dial")
-				} else {
-					log.WithField("linkId", missingLink.Id).
-						WithField("srcRouterId", missingLink.Src.Id).
-						WithField("dstRouterId", missingLink.DstId).
-						Info("sending link dial")
-					network.NotifyLinkEvent(missingLink, event.LinkDialed)
-				}
-			}
-		} else {
-			log.WithField("err", err).Error("missing link enumeration failed")
-		}
-
-		network.Link.ClearExpiredPending(network.options.PendingLinkTimeout)
-	}
-}
 
 func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEventType) {
 	linkEvent := &event.LinkEvent{
@@ -96,31 +48,6 @@ func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEv
 			})
 		}
 	}
-	network.eventDispatcher.AcceptLinkEvent(linkEvent)
-}
-
-func (network *Network) NotifyLinkConnected(link *model.Link, msg *ctrl_pb.LinkConnected) {
-	linkEvent := &event.LinkEvent{
-		Namespace:   event.LinkEventNS,
-		EventType:   event.LinkConnected,
-		EventSrcId:  network.GetAppId(),
-		Timestamp:   time.Now(),
-		LinkId:      link.Id,
-		SrcRouterId: link.Src.Id,
-		DstRouterId: link.DstId,
-		Protocol:    link.Protocol,
-		Cost:        link.GetStaticCost(),
-		DialAddress: link.DialAddress,
-	}
-
-	for _, conn := range msg.Conns {
-		linkEvent.Connections = append(linkEvent.Connections, &event.LinkConnection{
-			Id:         conn.Type,
-			LocalAddr:  conn.LocalAddr,
-			RemoteAddr: conn.RemoteAddr,
-		})
-	}
-
 	network.eventDispatcher.AcceptLinkEvent(linkEvent)
 }
 

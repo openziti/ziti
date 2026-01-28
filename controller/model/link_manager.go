@@ -22,13 +22,11 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/objectz"
 	"github.com/openziti/ziti/common/datastructures"
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/orcaman/concurrent-map/v2"
 )
@@ -254,68 +252,6 @@ func (self *LinkManager) LeastExpensiveLink(a, b *Router) (*Link, bool) {
 	return nil, false
 }
 
-func (self *LinkManager) MissingLinks(routers []*Router, pendingTimeout time.Duration) ([]*Link, error) {
-	// When there's a flood of router connects at startup we can see the same link
-	// as missing multiple times as the new link will be marked as PENDING until it's
-	// connected. Give ourselves a little window to make the connection before we
-	// send another dial
-	pendingLimit := info.NowInMilliseconds() - pendingTimeout.Milliseconds()
-
-	missingLinks := make([]*Link, 0)
-	for _, srcR := range routers {
-		if srcR.SupportsRouterLinkMgmt() {
-			continue
-		}
-
-		for _, dstR := range routers {
-			if srcR != dstR && len(dstR.Listeners) > 0 {
-				for _, listener := range dstR.Listeners {
-					if !self.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
-						id := idgen.MustNewUUIDString()
-						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), self.initialLatency)
-						link.Src = srcR
-						link.Dst.Store(dstR)
-						link.DstId = dstR.Id
-						missingLinks = append(missingLinks, link)
-					}
-				}
-			}
-		}
-	}
-
-	return missingLinks, nil
-}
-
-func (self *LinkManager) ClearExpiredPending(pendingTimeout time.Duration) {
-	pendingLimit := info.NowInMilliseconds() - pendingTimeout.Milliseconds()
-
-	toRemove := self.linkTable.matching(func(link *Link) bool {
-		state := link.CurrentState()
-		return state.Mode == Pending && state.Timestamp < pendingLimit
-	})
-
-	for _, link := range toRemove {
-		self.Remove(link)
-	}
-}
-
-func (self *LinkManager) hasLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
-	return self.hasDirectedLink(a, b, linkProtocol, pendingLimit) || self.hasDirectedLink(b, a, linkProtocol, pendingLimit)
-}
-
-func (self *LinkManager) hasDirectedLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
-	links := a.routerLinks.GetLinks()
-	for _, link := range links {
-		state := link.CurrentState()
-		if link.Src == a && link.DstId == b.Id && link.Protocol == linkProtocol {
-			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (self *LinkManager) LinksInMode(mode LinkMode) []*Link {
 	return self.linkTable.allInMode(mode)
 }
@@ -359,16 +295,6 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 	links := make([]*Link, 0)
 	lt.links.IterCb(func(_ string, link *Link) {
 		if link.CurrentState().Mode == mode {
-			links = append(links, link)
-		}
-	})
-	return links
-}
-
-func (lt *linkTable) matching(f func(*Link) bool) []*Link {
-	var links []*Link
-	lt.links.IterCb(func(key string, link *Link) {
-		if f(link) {
 			links = append(links, link)
 		}
 	})

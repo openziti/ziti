@@ -10,8 +10,11 @@ enum ContentType {
   CircuitRequestType = 1000;
   // defined in ctrl_msg/messages.go now
   // CircuitSuccessType = 1001;
-  DialType = 1002;
-  LinkConnectedType = 1003;
+
+  // Deprecated now that links are router managed, keeping here for historical and debug purposes
+  // DialType = 1002;
+  // LinkConnectedType = 1003;
+
   FaultType = 1004;
   RouteType = 1005;
   UnrouteType = 1006;
@@ -153,14 +156,6 @@ message UpdateTerminatorRequest {
   uint32 cost = 5;
 }
 
-message Dial {
-  string linkId = 1;
-  string address = 2;
-  string routerId = 3;
-  string linkProtocol = 4;
-  string routerVersion = 5;
-}
-
 message LinkConn {
   string type = 1;
   string localAddr = 2;
@@ -169,11 +164,6 @@ message LinkConn {
 
 message LinkConnState {
   uint32 stateIteration = 1;
-  repeated LinkConn conns = 2;
-}
-
-message LinkConnected {
-  string id = 1;
   repeated LinkConn conns = 2;
 }
 

@@ -18,13 +18,14 @@ package ctrl_pb
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"google.golang.org/protobuf/proto"
-	"strconv"
-	"strings"
 )
 
 type Decoder struct{}
@@ -156,44 +157,6 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 		}
 
 		return data, true
-
-	case int32(ContentType_DialType):
-		connect := &Dial{}
-		if err := proto.Unmarshal(msg.Body, connect); err == nil {
-			meta := channel.NewTraceMessageDecode(DECODER, "Dial")
-			meta["linkId"] = connect.LinkId
-			meta["address"] = connect.Address
-			meta["routerId"] = connect.RouterId
-
-			data, err := meta.MarshalTraceMessageDecode()
-			if err != nil {
-				return nil, true
-			}
-
-			return data, true
-
-		} else {
-			pfxlog.Logger().Errorf("unexpected error (%s)", err)
-			return nil, true
-		}
-
-	case int32(ContentType_LinkConnectedType):
-		link := &LinkConnected{}
-		if err := proto.Unmarshal(msg.Body, link); err == nil {
-			meta := channel.NewTraceMessageDecode(DECODER, "LinkConnected")
-			meta["id"] = link.Id
-
-			data, err := meta.MarshalTraceMessageDecode()
-			if err != nil {
-				return nil, true
-			}
-
-			return data, true
-
-		} else {
-			pfxlog.Logger().Errorf("unexpected error (%s)", err)
-			return nil, true
-		}
 
 	case int32(ContentType_RouterLinksType):
 		links := &RouterLinks{}

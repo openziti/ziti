@@ -24,10 +24,6 @@ func (request *CircuitConfirmation) GetContentType() int32 {
 	return int32(ContentType_CircuitConfirmationType)
 }
 
-func (request *LinkConnected) GetContentType() int32 {
-	return int32(ContentType_LinkConnectedType)
-}
-
 func (request *RouterLinks) GetContentType() int32 {
 	return int32(ContentType_RouterLinksType)
 }
@@ -58,10 +54,6 @@ func (request *ValidateTerminatorsV2Request) GetContentType() int32 {
 
 func (request *ValidateTerminatorsV2Response) GetContentType() int32 {
 	return int32(ContentType_ValidateTerminatorsV2ResponseType)
-}
-
-func (request *Dial) GetContentType() int32 {
-	return int32(ContentType_DialType)
 }
 
 func (request *CircuitRequest) GetContentType() int32 {

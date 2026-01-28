@@ -32,12 +32,6 @@ const (
 	LinkFromRouterKnown            LinkEventType = "routerLinkKnown"
 	LinkFromRouterDisconnectedDest LinkEventType = "routerLinkDisconnectedDest"
 	LinkConnectionsChanged         LinkEventType = "connectionsChanged"
-
-	// LinkDialed is only used when legacy controller link management is enabled
-	LinkDialed LinkEventType = "dialed"
-
-	// LinkConnected is only used when legacy controller link management is enabled
-	LinkConnected LinkEventType = "connected"
 )
 
 // A LinkConnection describes a physical connection that forms a link. A Link may be made

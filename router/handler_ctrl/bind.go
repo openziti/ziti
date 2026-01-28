@@ -107,7 +107,6 @@ func terminatorValidatorWorker(_ uint32, f func()) {
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
-	binding.AddTypedReceiveHandler(newDialHandler(self.env))
 	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))

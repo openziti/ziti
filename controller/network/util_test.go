@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
@@ -84,16 +85,6 @@ func (self *testEntityHelper) addTestService(serviceName string) *model.Service 
 	self.serviceIdx++
 	self.ctx.NoError(self.network.Service.Create(svc, change.New()))
 	return svc
-}
-
-func (self *testEntityHelper) discardControllerEvents() {
-	for {
-		select {
-		case <-self.network.assembleAndCleanC:
-		default:
-			return
-		}
-	}
 }
 
 // these debug methods can be used to dump routing evaluation steps to a file for easier analysis
