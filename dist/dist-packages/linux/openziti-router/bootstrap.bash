@@ -4,6 +4,22 @@
 # bootstrap the OpenZiti Router with a config file and an identity.
 #
 
+stashZitiEnv() {
+  declare -gA _ziti_env_saved=()
+  while IFS='=' read -r _key _value; do
+    _ziti_env_saved["${_key}"]="${_value}"
+  done < <(env | grep '^ZITI_')
+}
+
+restoreZitiEnv() {
+  for _key in "${!_ziti_env_saved[@]}"; do
+    if [[ -n "${_ziti_env_saved[${_key}]}" && -z "${!_key-}" ]]; then
+      printf -v "${_key}" '%s' "${_ziti_env_saved[${_key}]}"
+    fi
+  done
+  unset _ziti_env_saved _key _value
+}
+
 makeConfig() {
   # enforce first argument is a non-empty string that does not begin with "--"
   if [[ -n "${1:-}" && ! "${1}" =~ ^-- ]]; then
@@ -29,9 +45,14 @@ makeConfig() {
 
   export  ZITI_ROUTER_NAME \
           ZITI_ROUTER_ADVERTISED_ADDRESS \
-          ZITI_CTRL_ADVERTISED_PORT \
           ZITI_ROUTER_PORT \
           ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_PORT}"
+
+  if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    export ZITI_CTRL_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
+  else
+    unset ZITI_CTRL_ADVERTISED_ADDRESS ZITI_CTRL_ADVERTISED_PORT
+  fi
 
   if [[ ! -s "${_config_file}" || "${1:-}" == --force ]]; then
     # build config command
@@ -59,12 +80,10 @@ makeConfig() {
       mv --no-clobber "${_config_file}"{,".${ZITI_BOOTSTRAP_NOW}.old"}
     fi
 
-
     exportZitiVars                # export all ZITI_ vars to be used in bootstrap
     # shellcheck disable=SC2068
     ${_command[@]}
-  fi
-
+  fi 
 }
 
 enroll() {
@@ -171,7 +190,7 @@ loadEnvStdin() {
 
 # shellcheck disable=SC2120
 loadEnvFiles() {
-  if (( $#))
+  if (( $# ))
   then
     local -a _env_files=("${@}")
   else
@@ -301,7 +320,11 @@ setAnswer() {
 }
 
 promptCtrlPort() {
-  # if undefined or default value in env file, prompt for router port, preserving default if no answer
+  if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
+    return 0
+  fi
+
+  # if undefined or default value in env file, prompt for controller port, preserving default if no answer
   if [[ -z "${ZITI_CTRL_ADVERTISED_PORT:-}" ]]; then
     if ZITI_CTRL_ADVERTISED_PORT="$(prompt 'Enter the controller port [1280]: ' || echo '1280')"; then
       setAnswer "ZITI_CTRL_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}" "${BOOT_ENV_FILE}"
@@ -470,13 +493,15 @@ else
   fi
 
   prepareWorkingDir "${ZITI_HOME}"
+  stashZitiEnv
   loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
+  restoreZitiEnv
   importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
-  loadEnvStdin                  # slurp answers from stdin if it's not a tty
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptRouterAddress           # prompt for ZITI_ROUTER_ADVERTISED_ADDRESS if not already set
   promptRouterPort              # prompt for ZITI_ROUTER_PORT if not already set
   promptEnrollToken             # prompt for ZITI_ENROLL_TOKEN if not already set
+  loadEnvStdin                  # slurp answers from stdin if it's not a tty
   loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE

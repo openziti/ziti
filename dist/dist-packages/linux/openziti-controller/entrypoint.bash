@@ -37,8 +37,8 @@ elif [[ "${1}" =~ check ]]; then
     echo "ERROR: ${2} does not exist" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ ! -w "$(dbFile "${2}")" ]]; then
-    echo "ERROR: database file '$(dbFile "${2}")' is not writable" >&2
+  elif [[ ! -w "$(dataDir "${2}")" ]]; then
+    echo "ERROR: database file '$(dataDir "${2}")' is not writable" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
   elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
@@ -51,5 +51,23 @@ elif [[ "${1}" =~ check ]]; then
   fi
 fi
 
-# shellcheck disable=SC2068
-exec ziti controller ${@}
+# If cluster initialization is needed, start controller in background, init, then wait
+if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true || "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]] \
+   && [[ -n "${ZITI_PWD:-}" ]]; then
+  echo "INFO: starting controller in background for cluster initialization"
+  # shellcheck disable=SC2068
+  ziti controller ${@} &
+  _ctrl_pid=$!
+
+  # Wait for agent and initialize cluster (no PID arg = direct agent call for Docker)
+  if waitForAgent "" 30 1; then
+    clusterInit ""
+  fi
+
+  # Wait for the controller process
+  wait "${_ctrl_pid}"
+else
+  # No cluster init needed, just exec the controller
+  # shellcheck disable=SC2068
+  exec ziti controller ${@}
+fi
