@@ -18,6 +18,9 @@ package db
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
-	"testing"
-	"time"
 )
 
 func Test_ApiSessionStore(t *testing.T) {

@@ -17,6 +17,8 @@
 package handler_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type linkStateHandler struct {

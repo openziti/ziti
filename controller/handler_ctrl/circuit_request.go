@@ -17,10 +17,11 @@
 package handler_ctrl
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"google.golang.org/protobuf/proto"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"

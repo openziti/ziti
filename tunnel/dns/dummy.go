@@ -1,8 +1,9 @@
 package dns
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"net"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 type dummy struct{}

@@ -19,13 +19,14 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/v2/controller/command"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/v2/controller/command"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"

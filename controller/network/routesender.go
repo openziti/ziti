@@ -18,9 +18,10 @@ package network
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/model"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4/protobufs"

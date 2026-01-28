@@ -17,9 +17,10 @@
 package xt_smartrouting
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/controller/xt_common"
-	"time"
 )
 
 const (

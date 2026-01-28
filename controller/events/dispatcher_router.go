@@ -17,12 +17,13 @@
 package events
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
-	"reflect"
-	"time"
 )
 
 func (self *Dispatcher) AddRouterEventHandler(handler event.RouterEventHandler) {

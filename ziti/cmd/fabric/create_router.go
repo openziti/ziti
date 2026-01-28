@@ -19,6 +19,7 @@ package fabric
 import (
 	"crypto/sha1"
 	"fmt"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"

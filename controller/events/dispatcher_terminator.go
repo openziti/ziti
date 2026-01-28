@@ -17,6 +17,10 @@
 package events
 
 import (
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -26,9 +30,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"strings"
-	"time"
 )
 
 func (self *Dispatcher) AddTerminatorEventHandler(handler event.TerminatorEventHandler) {

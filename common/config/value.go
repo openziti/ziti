@@ -17,8 +17,9 @@
 package config
 
 import (
-	"github.com/openziti/foundation/v2/concurrenz"
 	"sync"
+
+	"github.com/openziti/foundation/v2/concurrenz"
 )
 
 type Listener[T any] interface {

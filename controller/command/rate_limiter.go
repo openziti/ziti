@@ -18,6 +18,11 @@ package command
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -25,10 +30,6 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/pkg/errors"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (

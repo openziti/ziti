@@ -5,11 +5,12 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 func Unzip(src, dest string, filter func(path string) (string, bool)) error {

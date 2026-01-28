@@ -18,6 +18,8 @@ package handler_ctrl
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -28,7 +30,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math"
 )
 
 type updateTerminatorHandler struct {

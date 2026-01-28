@@ -18,6 +18,7 @@ package model
 
 import (
 	"encoding/json"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"

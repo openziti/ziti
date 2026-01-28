@@ -2,8 +2,9 @@ package model
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_IdentityNameFormatter(t *testing.T) {

@@ -17,10 +17,11 @@
 package xt_weighted
 
 import (
-	"github.com/openziti/ziti/v2/controller/xt"
-	"github.com/openziti/ziti/v2/controller/xt_common"
 	"math/rand"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/xt"
+	"github.com/openziti/ziti/v2/controller/xt_common"
 )
 
 /**

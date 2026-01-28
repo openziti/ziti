@@ -3,13 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/v2/common/outputz"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/v2/common/outputz"
 )
 
 type SimMetricsValidator struct {

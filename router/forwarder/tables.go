@@ -18,12 +18,13 @@ package forwarder
 
 import (
 	"fmt"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/v2/router/env"
-	"github.com/orcaman/concurrent-map/v2"
 	"reflect"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/orcaman/concurrent-map/v2"
 )
 
 // circuitTable implements a directory of forwardTables, keyed by circuitId.

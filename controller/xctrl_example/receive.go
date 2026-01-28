@@ -19,6 +19,7 @@ package xctrl_example
 import (
 	"bytes"
 	"encoding/binary"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 )

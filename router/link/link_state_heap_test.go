@@ -18,9 +18,10 @@ package link
 
 import (
 	"container/heap"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLinkStateHeap(t *testing.T) {

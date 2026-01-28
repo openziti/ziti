@@ -1,13 +1,14 @@
 package network
 
 import (
+	"runtime"
+	"testing"
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/pkg/errors"
-	"runtime"
-	"testing"
-	"time"
 
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"

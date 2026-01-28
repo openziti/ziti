@@ -18,6 +18,9 @@ package subcmd
 
 import (
 	"errors"
+	"strconv"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/foundation/v2/versions"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/server"
 	"github.com/spf13/cobra"
-	"strconv"
-	"strings"
 )
 
 const (

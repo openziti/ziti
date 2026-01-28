@@ -18,15 +18,16 @@ package db
 
 import (
 	"fmt"
+	"math"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"go.etcd.io/bbolt"
-	"math"
-	"testing"
-	"time"
 )
 
 func Test_TerminatorStore(t *testing.T) {

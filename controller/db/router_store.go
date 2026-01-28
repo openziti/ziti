@@ -17,10 +17,11 @@
 package db
 
 import (
+	"time"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 const (

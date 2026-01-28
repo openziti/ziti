@@ -17,11 +17,12 @@
 package xgress_transport_udp
 
 import (
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/foundation/v2/info"
-	"github.com/pkg/errors"
 	"net"
+
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/pkg/errors"
 )
 
 func (p *packetConn) LogContext() string {

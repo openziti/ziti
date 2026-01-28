@@ -20,9 +20,10 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"crypto/x509"
+	"time"
+
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/v2/common"
-	"time"
 )
 
 // Config represents the configuration necessary to operate an OIDC Provider

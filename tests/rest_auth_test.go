@@ -3,9 +3,10 @@
 package tests
 
 import (
-	idlib "github.com/openziti/identity"
 	"net/http"
 	"testing"
+
+	idlib "github.com/openziti/identity"
 )
 
 func Test_TestAuthWithCertFromDifferentChain(t *testing.T) {

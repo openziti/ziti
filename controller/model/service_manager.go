@@ -17,6 +17,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
@@ -28,7 +30,6 @@ import (
 	"github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func newServiceManager(env Env) *ServiceManager {

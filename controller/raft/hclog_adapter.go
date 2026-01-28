@@ -18,14 +18,15 @@ package raft
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-hclog"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 )
 
 func NewHcLogrusLogger() hclog.Logger {

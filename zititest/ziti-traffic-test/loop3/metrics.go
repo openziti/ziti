@@ -2,6 +2,8 @@ package loop3
 
 import (
 	"encoding/binary"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
@@ -9,7 +11,6 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 var registry = metrics.NewRegistry()

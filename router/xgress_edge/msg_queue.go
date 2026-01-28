@@ -2,11 +2,12 @@ package xgress_edge
 
 import (
 	"context"
+	"sync/atomic"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"golang.org/x/sync/semaphore"
-	"sync/atomic"
 )
 
 type MsgQueue interface {

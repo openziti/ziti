@@ -2,12 +2,13 @@ package edge
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
-	"time"
 )
 
 func RaftJoin(primaryId string, componentSpec string) model.Action {

@@ -18,6 +18,9 @@ package zitilab
 
 import (
 	"fmt"
+	"io/fs"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"io/fs"
-	"strings"
 )
 
 var _ model.ComponentType = (*ZrokControllerType)(nil)

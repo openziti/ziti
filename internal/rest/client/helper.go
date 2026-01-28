@@ -18,6 +18,7 @@ package client
 
 import (
 	"context"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_client_api_client"
 	"github.com/openziti/edge-api/rest_client_api_client/external_jwt_signer"

@@ -18,8 +18,8 @@ package xctrl
 
 import (
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/config"
 )
 
 // An Xctrl allows adding handlers to the router <-> controller connection

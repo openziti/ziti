@@ -17,10 +17,11 @@
 package db
 
 import (
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"strconv"
 	"time"
+
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 )
 
 const (

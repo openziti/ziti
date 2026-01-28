@@ -18,11 +18,12 @@ package policy
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/runner"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
-	"time"
 
 	"github.com/openziti/ziti/v2/controller/env"
 	"go.etcd.io/bbolt"

@@ -19,6 +19,8 @@ package importer
 import (
 	"encoding/json"
 	"errors"
+	"slices"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
@@ -26,7 +28,6 @@ import (
 	"github.com/openziti/ziti/v2/internal"
 	"github.com/openziti/ziti/v2/internal/ascode"
 	"github.com/openziti/ziti/v2/internal/rest/mgmt"
-	"slices"
 )
 
 func (importer *Importer) IsServiceImportRequired(args []string) bool {

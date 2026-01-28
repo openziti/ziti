@@ -18,13 +18,14 @@ package events
 
 import (
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
-	"reflect"
-	"time"
 )
 
 func (self *Dispatcher) AddApiSessionEventHandler(handler event.ApiSessionEventHandler) {

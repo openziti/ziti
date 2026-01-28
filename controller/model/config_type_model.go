@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"

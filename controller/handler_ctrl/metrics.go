@@ -19,9 +19,9 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/network"
-	"github.com/openziti/metrics/metrics_pb"
 	"google.golang.org/protobuf/proto"
 )
 

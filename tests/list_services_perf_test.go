@@ -5,16 +5,17 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/db"
-	"github.com/openziti/ziti/v2/controller/model"
-	"go.etcd.io/bbolt"
 	"net/url"
 	"os"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/model"
+	"go.etcd.io/bbolt"
 )
 
 func TestServicePerf(t *testing.T) {

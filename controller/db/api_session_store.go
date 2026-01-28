@@ -17,6 +17,9 @@
 package db
 
 import (
+	"strings"
+	"time"
+
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
@@ -27,8 +30,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bolterrors "go.etcd.io/bbolt/errors"
-	"strings"
-	"time"
 )
 
 const (

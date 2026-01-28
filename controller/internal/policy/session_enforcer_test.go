@@ -17,6 +17,9 @@
 package policy
 
 import (
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
@@ -24,8 +27,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/sirupsen/logrus"
-	"testing"
-	"time"
 )
 
 func Test_SessionEnforcer(t *testing.T) {

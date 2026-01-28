@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
@@ -12,7 +14,6 @@ import (
 	gometrics "github.com/rcrowley/go-metrics"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 type ZitiReporter struct {

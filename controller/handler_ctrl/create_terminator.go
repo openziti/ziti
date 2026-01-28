@@ -18,6 +18,8 @@ package handler_ctrl
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/handler_common"
@@ -25,7 +27,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
-	"math"
 )
 
 type createTerminatorHandler struct {

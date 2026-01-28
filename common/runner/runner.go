@@ -18,9 +18,10 @@ package runner
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type ErrorHandler func(error, Operation)

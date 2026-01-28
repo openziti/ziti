@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/openziti/foundation/v2/stringz"
 	inspectCommon "github.com/openziti/ziti/v2/common/inspect"
@@ -15,9 +19,6 @@ import (
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"io"
-	"os"
-	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command

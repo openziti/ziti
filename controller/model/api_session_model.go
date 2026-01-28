@@ -17,13 +17,14 @@
 package model
 
 import (
+	"time"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 type ApiSession struct {

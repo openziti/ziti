@@ -19,8 +19,9 @@ package db
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/storage/boltz"
 	"net"
+
+	"github.com/openziti/storage/boltz"
 )
 
 const (

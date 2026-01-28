@@ -17,12 +17,13 @@
 package importer
 
 import (
+	"slices"
+
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/ziti/v2/internal"
 	"github.com/openziti/ziti/v2/internal/rest/mgmt"
-	"slices"
 )
 
 func (importer *Importer) IsCertificateAuthorityImportRequired(args []string) bool {

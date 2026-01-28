@@ -17,12 +17,13 @@
 package enroll
 
 import (
+	"os"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/router/enroll"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type enrollEdgeRouterAction struct {

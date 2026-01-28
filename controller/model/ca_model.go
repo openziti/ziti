@@ -19,6 +19,8 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"net/url"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/x509-claims/x509claims"
@@ -29,7 +31,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"net/url"
 )
 
 type Ca struct {

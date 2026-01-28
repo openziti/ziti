@@ -17,6 +17,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
-	"time"
 )
 
 type EnrollModuleOtt struct {

@@ -1,6 +1,8 @@
 package db
 
 import (
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
@@ -12,7 +14,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"testing"
 )
 
 func NewTestContext(t testing.TB) *TestContext {

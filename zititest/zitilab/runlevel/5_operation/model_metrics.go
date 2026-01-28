@@ -18,13 +18,14 @@ package zitilib_runlevel_5_operation
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func ModelMetrics(closer <-chan struct{}) model.Stage {

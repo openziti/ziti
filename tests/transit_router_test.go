@@ -19,11 +19,12 @@
 package tests
 
 import (
+	"testing"
+	"time"
+
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
-	"testing"
-	"time"
 )
 
 func Test_TransitRouters(t *testing.T) {

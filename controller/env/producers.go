@@ -17,8 +17,9 @@
 package env
 
 import (
-	"gopkg.in/yaml.v3"
 	"io"
+
+	"gopkg.in/yaml.v3"
 )
 
 type YamlProducer struct{}

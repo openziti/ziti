@@ -18,6 +18,12 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"slices"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/sdk-golang/ziti"
@@ -25,11 +31,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"slices"
-	"time"
 )
 
 type simpleSimAction struct {

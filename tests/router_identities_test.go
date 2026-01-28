@@ -19,10 +19,11 @@
 package tests
 
 import (
-	"github.com/google/uuid"
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestEdgeRouterIdentities(t *testing.T) {

@@ -2,6 +2,8 @@ package zitilib_runlevel_5_operation
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -11,7 +13,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func CircuitMetrics(pollFreq time.Duration, closer <-chan struct{}, f func(string) string) model.Stage {

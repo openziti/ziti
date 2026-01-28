@@ -21,6 +21,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"reflect"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
@@ -29,9 +33,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
 	"go4.org/sort"
-	"reflect"
-	"sync"
-	"time"
 )
 
 func NewStoreDefinition[E boltz.ExtEntity](strategy boltz.EntityStrategy[E]) boltz.StoreDefinition[E] {

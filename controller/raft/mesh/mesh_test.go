@@ -1,11 +1,12 @@
 package mesh
 
 import (
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/v2/controller/event"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/controller/event"
 
 	"github.com/stretchr/testify/assert"
 )

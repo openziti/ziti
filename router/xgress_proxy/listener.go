@@ -19,14 +19,15 @@ package xgress_proxy
 import (
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/router/xgress_router"
-	"io"
 )
 
 func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration, service string) xgress_router.Listener {

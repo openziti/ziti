@@ -19,11 +19,12 @@
 package rest_util
 
 import (
+	"net/url"
+
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
-	fabric_rest_client "github.com/openziti/ziti/v2/controller/rest_client"
 	"github.com/openziti/identity"
-	"net/url"
+	fabric_rest_client "github.com/openziti/ziti/v2/controller/rest_client"
 )
 
 // TransportConfig provides information about how to access a REST API

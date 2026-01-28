@@ -17,10 +17,11 @@
 package routes
 
 import (
+	"path"
+
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
-	"path"
 )
 
 var CurrentIdentityAuthenticatorLinkFactory LinksFactory = NewCurrentIdentityAuthenticatorLinkFactory()

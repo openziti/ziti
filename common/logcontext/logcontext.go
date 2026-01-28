@@ -2,6 +2,7 @@ package logcontext
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 )

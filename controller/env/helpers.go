@@ -1,11 +1,12 @@
 package env
 
 import (
+	"net/http"
+
 	openApiErrors "github.com/go-openapi/errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/controller/apierror"
-	"net/http"
 )
 
 // ServeError is a wrapper for the OpenAPI REST server to allow the Edge API Error message responses to be used

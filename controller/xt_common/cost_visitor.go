@@ -1,13 +1,14 @@
 package xt_common
 
 import (
+	"math"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/controller/xt"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"math"
-	"sync/atomic"
-	"time"
 )
 
 type TerminatorCosts struct {

@@ -17,9 +17,10 @@
 package db
 
 import (
+	"time"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"time"
 )
 
 const (

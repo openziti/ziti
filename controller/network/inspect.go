@@ -19,6 +19,11 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -29,10 +34,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/openziti/ziti/v2/controller/xt"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
 )
 
 type InspectResultValue struct {

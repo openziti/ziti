@@ -18,8 +18,9 @@ package actions
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/zititest/zitilab"
 	"time"
+
+	"github.com/openziti/ziti/zititest/zitilab"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"

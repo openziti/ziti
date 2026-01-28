@@ -4,10 +4,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/openziti/metrics"
-	"github.com/openziti/transport/v2/shaper"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2/shaper"
 )
 
 type metricsWriter struct {

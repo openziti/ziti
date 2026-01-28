@@ -19,10 +19,11 @@ package oidc_auth
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
-	"net/http"
 )
 
 // contextKey is a private type used to restrict context value access

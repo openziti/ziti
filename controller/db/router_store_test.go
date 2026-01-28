@@ -18,9 +18,10 @@ package db
 
 import (
 	"fmt"
-	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"
+
+	"github.com/openziti/storage/boltztest"
 
 	"github.com/google/uuid"
 

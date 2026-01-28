@@ -2,6 +2,7 @@ package cmd_pb
 
 import (
 	"encoding/binary"
+
 	"google.golang.org/protobuf/proto"
 )
 

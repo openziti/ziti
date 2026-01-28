@@ -18,6 +18,7 @@ package oidc_auth
 
 import (
 	"fmt"
+
 	"github.com/openziti/foundation/v2/errorz"
 )
 

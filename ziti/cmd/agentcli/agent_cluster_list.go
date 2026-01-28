@@ -18,6 +18,7 @@ package agentcli
 
 import (
 	"fmt"
+
 	"google.golang.org/protobuf/proto"
 
 	"github.com/jedib0t/go-pretty/v6/table"

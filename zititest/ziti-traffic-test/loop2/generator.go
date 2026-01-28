@@ -18,10 +18,11 @@ package loop2
 
 import (
 	"crypto/sha512"
+	"math/rand"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
-	"math/rand"
 )
 
 type generator struct {

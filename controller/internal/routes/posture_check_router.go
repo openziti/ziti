@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
-	permissions "github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
 )
 

@@ -20,11 +20,11 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
-	"github.com/openziti/ziti/v2/controller/response"
 	"github.com/openziti/ziti/v2/controller/models"
-	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 const EntityNameCa = "cas"

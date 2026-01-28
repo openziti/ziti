@@ -1,8 +1,9 @@
 package dns
 
 import (
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"net"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 func NewRefCountingResolver(resolver Resolver) Resolver {

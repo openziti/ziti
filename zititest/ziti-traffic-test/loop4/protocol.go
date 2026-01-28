@@ -20,6 +20,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"math/rand"
+	"net"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
@@ -28,11 +34,6 @@ import (
 	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"io"
-	"math/rand"
-	"net"
-	"sync/atomic"
-	"time"
 )
 
 type protocol struct {

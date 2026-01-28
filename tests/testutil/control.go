@@ -1,11 +1,12 @@
 package testutil
 
 import (
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/stretchr/testify/require"
-	"time"
 )
 
 func AcceptControl(id string, uf channel.UnderlayFactory, assertions *require.Assertions) (channel.Channel, *MessageCollector) {

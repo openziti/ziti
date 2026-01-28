@@ -18,10 +18,11 @@ package intercept
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/openziti/ziti/v2/tunnel/dns"
 	"github.com/openziti/ziti/v2/tunnel/entities"
 	"github.com/pkg/errors"
-	"net"
 )
 
 type Protocol int

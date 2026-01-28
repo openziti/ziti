@@ -18,10 +18,11 @@ package zitilab
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var _ model.ComponentType = (*SimpleSimType)(nil)

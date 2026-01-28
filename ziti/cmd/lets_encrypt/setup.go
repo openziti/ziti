@@ -17,9 +17,10 @@
 package lets_encrypt
 
 import (
-	"github.com/openziti/ziti/v2/ziti/internal/log"
 	"os"
 	"time"
+
+	"github.com/openziti/ziti/v2/ziti/internal/log"
 
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"

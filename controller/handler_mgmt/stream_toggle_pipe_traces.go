@@ -18,9 +18,10 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/v2/controller/model"
 	"sync"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/model"
 
 	"github.com/openziti/channel/v4"
 	trace_pb "github.com/openziti/channel/v4/trace/pb"

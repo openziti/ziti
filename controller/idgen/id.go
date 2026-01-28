@@ -3,10 +3,11 @@ package idgen
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"math/big"
+
 	"github.com/dineshappavoo/basex"
 	"github.com/google/uuid"
 	"github.com/teris-io/shortid"
-	"math/big"
 )
 
 const Alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-"

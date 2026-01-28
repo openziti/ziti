@@ -19,6 +19,8 @@ package oidc_auth
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common"
@@ -27,7 +29,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v3/pkg/op"
 	"golang.org/x/text/language"
-	"net/http"
 )
 
 const (

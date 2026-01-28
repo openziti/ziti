@@ -18,14 +18,15 @@ package udp_vconn
 
 import (
 	"errors"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/mempool"
-	"github.com/openziti/ziti/v2/tunnel"
-	"github.com/openziti/ziti/v2/tunnel/entities"
 	"io"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/mempool"
+	"github.com/openziti/ziti/v2/tunnel"
+	"github.com/openziti/ziti/v2/tunnel/entities"
 )
 
 type manager struct {

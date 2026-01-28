@@ -1,10 +1,11 @@
 package db
 
 import (
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
-	"testing"
 )
 
 func Test_EdgeRouterEvents(t *testing.T) {

@@ -18,6 +18,9 @@ package link
 
 import (
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
@@ -30,8 +33,6 @@ import (
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 type testEnv struct {

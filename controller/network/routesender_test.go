@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/openziti/ziti/v2/controller/model"
 	"testing"
+
+	"github.com/openziti/ziti/v2/controller/model"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"

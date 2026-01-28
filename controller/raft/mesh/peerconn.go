@@ -17,14 +17,15 @@
 package mesh
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v4"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // raftPeerConn presents a net.Conn API over a channel. This allows us to multiplex raft traffic as well

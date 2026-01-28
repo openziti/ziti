@@ -17,10 +17,11 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // newCreateAuthenticatorCmd creates the 'edge controller create authenticator' command

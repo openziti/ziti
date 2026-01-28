@@ -3,9 +3,10 @@ package entities
 import (
 	"bytes"
 	"encoding/json"
+	"testing"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_LoadHttpCheck(t *testing.T) {

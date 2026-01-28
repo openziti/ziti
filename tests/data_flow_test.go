@@ -20,12 +20,13 @@ package tests
 
 import (
 	"bytes"
-	"github.com/google/uuid"
-	"github.com/openziti/ziti/v2/common/eid"
-	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 )
 
 func Test_Dataflow(t *testing.T) {

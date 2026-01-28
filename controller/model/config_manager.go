@@ -18,6 +18,8 @@ package model
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -27,7 +29,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 func NewConfigManager(env Env) *ConfigManager {

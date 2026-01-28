@@ -18,8 +18,9 @@ package ascode
 
 import (
 	"errors"
-	"github.com/michaelquigley/pfxlog"
 	"reflect"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 type CacheGetter func(id string) (interface{}, error)

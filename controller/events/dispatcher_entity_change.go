@@ -19,6 +19,10 @@ package events
 import (
 	"context"
 	"encoding/binary"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/storage/boltz"
@@ -28,9 +32,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"strings"
-	"time"
 )
 
 const (

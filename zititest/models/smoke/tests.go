@@ -2,9 +2,10 @@ package smoke
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/fablab/kernel/model"
-	"time"
 )
 
 var hashes = map[string]string{

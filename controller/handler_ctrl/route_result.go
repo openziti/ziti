@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"bytes"
 	"encoding/binary"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"

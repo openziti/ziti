@@ -18,6 +18,8 @@ package importer
 
 import (
 	"encoding/json"
+	"slices"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_model"
@@ -25,7 +27,6 @@ import (
 	"github.com/openziti/ziti/v2/internal"
 	"github.com/openziti/ziti/v2/internal/ascode"
 	"github.com/openziti/ziti/v2/internal/rest/mgmt"
-	"slices"
 )
 
 func (importer *Importer) IsAuthPolicyImportRequired(args []string) bool {

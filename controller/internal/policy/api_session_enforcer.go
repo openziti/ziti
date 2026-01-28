@@ -18,13 +18,14 @@ package policy
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/runner"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
-	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 const (

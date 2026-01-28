@@ -17,11 +17,12 @@
 package events
 
 import (
-	"github.com/openziti/ziti/v2/controller/event"
-	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/pkg/errors"
 )
 
 func (self *Dispatcher) AddEntityCountEventHandler(handler event.EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {

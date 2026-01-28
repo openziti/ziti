@@ -2,6 +2,7 @@ package getziti
 
 import (
 	"fmt"
+
 	c "github.com/openziti/ziti/v2/ziti/constants"
 )
 

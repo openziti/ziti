@@ -1,12 +1,13 @@
 package edge
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
-	"path/filepath"
-	"strings"
 )
 
 func InitIdentities(componentSpec string, concurrency int) model.Action {

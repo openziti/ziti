@@ -17,13 +17,14 @@
 package events
 
 import (
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
-	"reflect"
-	"strings"
-	"time"
 )
 
 func (self *Dispatcher) AddServiceEventHandler(handler event.ServiceEventHandler) {

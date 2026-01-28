@@ -1,8 +1,9 @@
 package cmd_pb
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTagEncodeDecode(t *testing.T) {

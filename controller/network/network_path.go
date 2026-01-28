@@ -2,13 +2,14 @@ package network
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/pkg/errors"
-	"math"
-	"time"
 )
 
 func (network *Network) CreateRouteMessages(path *model.Path, attempt uint32, circuitId string, terminator xt.Terminator, deadline time.Time) []*ctrl_pb.Route {

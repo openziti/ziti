@@ -18,10 +18,11 @@ package loop2
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop2/pb"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"

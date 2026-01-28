@@ -18,6 +18,9 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common"
@@ -29,8 +32,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math"
-	"time"
 )
 
 type createTunnelTerminatorHandler struct {

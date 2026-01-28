@@ -18,11 +18,12 @@ package db
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/openziti/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
-	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/foundation/v2/stringz"

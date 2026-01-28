@@ -17,13 +17,14 @@
 package events
 
 import (
+	"reflect"
+	"regexp"
+
 	"github.com/google/uuid"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/pkg/errors"
-	"reflect"
-	"regexp"
 )
 
 func (self *Dispatcher) AddMetricsEventHandler(handler event.MetricsEventHandler) {

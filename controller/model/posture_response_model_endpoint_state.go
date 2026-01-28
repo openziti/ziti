@@ -17,8 +17,9 @@
 package model
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
 type PostureResponseEndpointState struct {

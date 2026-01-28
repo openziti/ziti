@@ -1,10 +1,11 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
-	"testing"
 )
 
 func TestEdgeRouterManager(t *testing.T) {

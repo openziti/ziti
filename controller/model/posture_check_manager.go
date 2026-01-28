@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"strings"
+
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -29,7 +31,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 const (

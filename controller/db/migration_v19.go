@@ -1,11 +1,12 @@
 package db
 
 import (
+	"time"
+
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 var identityTypesMap = map[string]string{

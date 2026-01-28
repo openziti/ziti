@@ -18,11 +18,12 @@ package oidc_auth
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/openziti/foundation/v2/errorz"
 )
 
 // negotiateResponseContentType returns the response content type that should be

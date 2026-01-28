@@ -2,8 +2,9 @@ package env
 
 import (
 	"fmt"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 func NewTraceManager(shutdownNotify <-chan struct{}) *TraceManager {

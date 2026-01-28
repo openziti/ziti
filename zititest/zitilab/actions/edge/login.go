@@ -2,11 +2,12 @@ package edge
 
 import (
 	"errors"
+	"path/filepath"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
-	"path/filepath"
 )
 
 func Login(componentSelector string) model.Action {

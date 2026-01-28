@@ -17,9 +17,10 @@
 package exporter
 
 import (
+	"slices"
+
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
-	"slices"
 )
 
 func (exporter Exporter) IsServicePolicyExportRequired(args []string) bool {

@@ -19,6 +19,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type simCallback struct {

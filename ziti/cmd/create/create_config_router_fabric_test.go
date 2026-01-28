@@ -1,15 +1,16 @@
 package create
 
 import (
-	"github.com/openziti/ziti/v2/ziti/constants"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/ziti/constants"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) {

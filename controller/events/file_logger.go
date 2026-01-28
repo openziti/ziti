@@ -18,11 +18,12 @@ package events
 
 import (
 	"fmt"
-	"github.com/natefinch/lumberjack"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/natefinch/lumberjack"
+	"github.com/pkg/errors"
 )
 
 type fabricFormatterFactory struct{}

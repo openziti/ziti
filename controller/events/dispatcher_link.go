@@ -17,9 +17,10 @@
 package events
 
 import (
+	"reflect"
+
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
-	"reflect"
 )
 
 func (self *Dispatcher) AddLinkEventHandler(handler event.LinkEventHandler) {

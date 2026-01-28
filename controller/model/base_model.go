@@ -17,8 +17,8 @@
 package model
 
 import (
-	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
 )
 

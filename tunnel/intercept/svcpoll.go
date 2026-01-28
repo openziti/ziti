@@ -36,7 +36,7 @@ import (
 	"github.com/openziti/ziti/v2/tunnel/entities"
 	"github.com/openziti/ziti/v2/tunnel/health"
 	"github.com/pkg/errors"
-	logrus "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // variables for substitutions in intercept.v1 sourceIp property

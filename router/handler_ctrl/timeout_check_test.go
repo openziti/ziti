@@ -2,8 +2,9 @@ package handler_ctrl
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type testTimeoutErr struct{}

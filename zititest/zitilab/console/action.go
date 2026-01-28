@@ -18,9 +18,10 @@ package console
 
 import (
 	"embed"
-	"github.com/openziti/fablab/kernel/model"
 	"io/fs"
 	"net/http"
+
+	"github.com/openziti/fablab/kernel/model"
 )
 
 //go:embed webroot

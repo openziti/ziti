@@ -20,6 +20,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
@@ -27,9 +31,6 @@ import (
 	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/subcmd"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"net/http"
 )
 
 func init() {

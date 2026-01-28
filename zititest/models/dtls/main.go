@@ -18,6 +18,10 @@ package main
 
 import (
 	"embed"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -38,9 +42,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilib_5_operation "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
-	"os"
-	"strings"
-	"time"
 )
 
 //go:embed configs

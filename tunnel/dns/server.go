@@ -19,12 +19,13 @@ package dns
 import (
 	"errors"
 	"fmt"
-	"github.com/miekg/dns"
-	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/miekg/dns"
+	"github.com/sirupsen/logrus"
 )
 
 var log = logrus.StandardLogger()
@@ -32,15 +33,15 @@ var log = logrus.StandardLogger()
 type unansweredDisposition int
 
 const (
-    unansweredRefused unansweredDisposition = iota
-    unansweredServfail
-    unansweredTimeout
+	unansweredRefused unansweredDisposition = iota
+	unansweredServfail
+	unansweredTimeout
 )
 
 var unansweredKeywords = map[string]unansweredDisposition{
-    "refused":  unansweredRefused,
-    "servfail": unansweredServfail,
-    "timeout":  unansweredTimeout,
+	"refused":  unansweredRefused,
+	"servfail": unansweredServfail,
+	"timeout":  unansweredTimeout,
 }
 
 type resolver struct {
@@ -192,7 +193,7 @@ func (r *resolver) queryUpstream(query *dns.Msg) (*dns.Msg, error) {
 	}
 
 	log.Debugf("forwarding query to upstream server %s: %s", r.upstreamServer, query.Question[0].Name)
-	
+
 	response, _, err := r.upstreamClient.Exchange(query, r.upstreamServer)
 	if err != nil {
 		log.Warnf("upstream query failed: %v", err)

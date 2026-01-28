@@ -20,11 +20,12 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"fmt"
+	"time"
+
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/model"
-	"time"
 
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )

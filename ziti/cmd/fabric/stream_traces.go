@@ -19,18 +19,19 @@ package fabric
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/trace/pb"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"reflect"
-	"sort"
-	"time"
 )
 
 type streamTracesAction struct {

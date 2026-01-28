@@ -18,12 +18,13 @@ package model
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type ServicePolicy struct {

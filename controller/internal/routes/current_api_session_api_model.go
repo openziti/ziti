@@ -17,6 +17,8 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/response"
-	"time"
 )
 
 const EntityNameCurrentSession = "current-api-session"

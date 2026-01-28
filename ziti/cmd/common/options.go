@@ -19,9 +19,10 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 type Printer interface {

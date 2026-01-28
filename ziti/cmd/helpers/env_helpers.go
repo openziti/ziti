@@ -17,15 +17,16 @@
 package helpers
 
 import (
-	edge "github.com/openziti/ziti/v2/controller/config"
-	"github.com/openziti/ziti/v2/router/xgress_edge_tunnel"
-	"github.com/openziti/ziti/v2/ziti/constants"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	edge "github.com/openziti/ziti/v2/controller/config"
+	"github.com/openziti/ziti/v2/router/xgress_edge_tunnel"
+	"github.com/openziti/ziti/v2/ziti/constants"
+	"github.com/pkg/errors"
 )
 
 func HomeDir() string {

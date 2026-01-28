@@ -18,11 +18,12 @@ package exporter
 
 import (
 	"errors"
+	"slices"
+
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/internal/ascode"
-	"slices"
 )
 
 func (exporter Exporter) IsIdentityExportRequired(args []string) bool {

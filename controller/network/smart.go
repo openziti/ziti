@@ -17,11 +17,12 @@
 package network
 
 import (
+	"sort"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/model"
-	"sort"
-	"time"
 )
 
 func (network *Network) smart() {

@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/rand/v2"
+	"net"
+	"testing"
+	"time"
+
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
@@ -15,10 +20,6 @@ import (
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/stretchr/testify/require"
-	"math/rand/v2"
-	"net"
-	"testing"
-	"time"
 )
 
 func newTestSetup() *testSetup {

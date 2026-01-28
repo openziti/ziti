@@ -17,9 +17,10 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/v2/ziti/util"
-	"io"
 )
 
 func DetailEntityOfType(entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {

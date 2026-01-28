@@ -19,11 +19,12 @@
 package tests
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
-	"net/http"
-	"testing"
 )
 
 // Test_EnrollmentUpdb uses the generic legacy and deprecated /enroll endpoint. These test ensure it remains

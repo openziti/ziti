@@ -17,10 +17,11 @@
 package routes
 
 import (
+	"path"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/controller/models"
-	"path"
 )
 
 func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_model.BaseEntity {

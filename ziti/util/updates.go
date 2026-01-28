@@ -18,10 +18,11 @@ package util
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/v2/common/getziti"
-	"github.com/openziti/ziti/v2/ziti/constants"
 	"os"
 	"strings"
+
+	"github.com/openziti/ziti/v2/common/getziti"
+	"github.com/openziti/ziti/v2/ziti/constants"
 
 	"github.com/fatih/color"
 

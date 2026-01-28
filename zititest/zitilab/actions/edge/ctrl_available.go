@@ -1,10 +1,11 @@
 package edge
 
 import (
+	"time"
+
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/netz"
 	"github.com/pkg/errors"
-	"time"
 )
 
 func ControllerAvailable(componentSpec string, timeout time.Duration) model.Action {

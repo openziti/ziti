@@ -2,8 +2,9 @@ package test_resources
 
 import (
 	"embed"
-	"github.com/openziti/fablab/resources"
 	"io/fs"
+
+	"github.com/openziti/fablab/resources"
 )
 
 //go:embed terraform

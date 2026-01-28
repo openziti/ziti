@@ -18,13 +18,14 @@ package tests
 
 import (
 	"encoding/json"
+	"net/url"
+	"strings"
+	"testing"
+
 	"github.com/Jeffail/gabs"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
-	"net/url"
-	"strings"
-	"testing"
 )
 
 func IsURI(rawurl string) bool {

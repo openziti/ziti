@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	aws_ssh_keys0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	terraform0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilab_5_operation "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
-	"time"
 )
 
 func newStageFactory() model.Factory {

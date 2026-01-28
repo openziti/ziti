@@ -19,15 +19,16 @@ package xgress_transport_udp
 import (
 	"errors"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/openziti/ziti/v2/router/xgress_udp"
-	"net"
-	"time"
 )
 
 func (l *listener) Listen(address string, bindHandler xgress.BindHandler) error {

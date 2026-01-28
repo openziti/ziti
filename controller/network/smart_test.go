@@ -1,9 +1,10 @@
 package network
 
 import (
-	"github.com/openziti/ziti/v2/controller/model"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/model"
 
 	"github.com/google/uuid"
 	"github.com/openziti/transport/v2/tcp"

@@ -17,9 +17,10 @@
 package common
 
 import (
+	"strings"
+
 	c "github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 func NewViper() *viper.Viper {

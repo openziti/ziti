@@ -18,13 +18,14 @@ package link
 
 import (
 	"container/heap"
+	"math/rand"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
-	"math/rand"
-	"sync/atomic"
-	"time"
 )
 
 const (
