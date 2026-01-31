@@ -181,11 +181,6 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 		if self.IsClosed() {
 			return nil, nil, xgress.ErrPeerClosed
 		}
-
-		if self.IsWriteClosed() {
-			<-self.writeDone
-			return nil, nil, xgress.ErrPeerClosed
-		}
 	}
 
 	buffer := make([]byte, self.bufferSize)
@@ -217,17 +212,20 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	}
 
 	if err != nil && n == 0 && errors.Is(err, io.EOF) {
-		if connAliveErr := self.Conn.SetWriteDeadline(time.Time{}); connAliveErr == nil {
+		if connAliveErr := self.Conn.SetWriteDeadline(time.Time{}); connAliveErr != nil {
 			self.flags.Set(closedFlag, true)
-			pfxlog.Logger().WithError(connAliveErr).Debugf("failed to set write deadline, connection is fully closed")
+			pfxlog.Logger().WithError(connAliveErr).Debug("failed to set write deadline, connection is fully closed")
+			return nil, nil, xgress.ErrPeerClosed
 		}
 
 		if self.flags.IsSet(halfCloseFlag) {
+			// first send the fin headers
 			if self.flags.CompareAndSet(sentFinFlag, false, true) {
 				return nil, GetFinHeaders(), nil
-			} else {
-				return nil, nil, xgress.ErrPeerClosed
 			}
+
+			// next time return EOF
+			return nil, nil, io.EOF
 		}
 	}
 
