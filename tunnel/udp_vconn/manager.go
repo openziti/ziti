@@ -79,6 +79,11 @@ func (manager *manager) GetWriteQueue(srcAddr net.Addr) WriteQueue {
 	if result == nil {
 		return nil
 	}
+	if result.closed.Load() {
+		pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("found closed virtual UDP connection, removing")
+		delete(manager.connMap, srcAddr.String())
+		return nil
+	}
 	return result
 }
 

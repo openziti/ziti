@@ -353,7 +353,7 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 		// proxy on port 8688 may not be listening yet, so retry with a longer timeout
 		// until we get a successful round-trip.
 		if i == 0 {
-			deadline := time.Now().Add(30 * time.Second)
+			deadline := time.Now().Add(15 * time.Second)
 			for {
 				ctx.Req.NoError(conn.SetDeadline(time.Now().Add(time.Second)))
 				_, _ = conn.Write(buf)
