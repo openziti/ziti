@@ -76,13 +76,14 @@ func (u UnpooledBuffer) Release() {
 	// does nothing
 }
 
-func NewManager(provider tunnel.FabricProvider, newConnPolicy NewConnPolicy, expirationPolicy ConnExpirationPolicy) Manager {
+func NewManager(provider tunnel.FabricProvider, newConnPolicy NewConnPolicy, expirationPolicy ConnExpirationPolicy, sharedWriteConn bool) Manager {
 	manager := &manager{
 		eventC:           make(chan Event, 4),
 		provider:         provider,
 		connMap:          make(map[string]*udpConn),
 		newConnPolicy:    newConnPolicy,
 		expirationPolicy: expirationPolicy,
+		sharedWriteConn:  sharedWriteConn,
 	}
 
 	go manager.run()

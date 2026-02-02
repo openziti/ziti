@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
@@ -207,13 +206,11 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	listener2.(edge.SessionListener).SetErrorEventHandler(errorHandler)
 	defer func() { _ = listener2.Close() }()
 
-	pfxlog.Logger().Info("STARTING WAIT")
 	select {
 	case err = <-errorC:
 	case <-time.After(10 * time.Second):
 		err = nil
 	}
-	pfxlog.Logger().Info("WAIT FINISHED")
 
 	if err == nil {
 		ctx.Req.True(listener2.IsClosed(), "listener must be closed")

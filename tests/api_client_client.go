@@ -228,9 +228,20 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string
 		},
 	}
 
-	tlsConfig := helper.TlsAwareTransport.GetTlsClientConfig()
-	tlsConfig.Certificates = tlsCerts
+	// Replace the TLS config with a new one that includes the client certs.
+	// We must also close idle connections and replace the transport on the
+	// HttpClient to ensure no previously established TLS connections (which
+	// lack the client cert) are reused. This avoids a race with the background
+	// doOnceCacheVersionInfo goroutine which may have opened a connection
+	// before the client cert was configured.
+	oldTlsConfig := helper.TlsAwareTransport.GetTlsClientConfig()
+	newTlsConfig := oldTlsConfig.Clone()
+	newTlsConfig.Certificates = tlsCerts
 	helper.TlsAwareTransport.CloseIdleConnections()
+	newTransport := edgeApis.NewTlsAwareHttpTransport(nil)
+	newTransport.SetTlsClientConfig(newTlsConfig)
+	helper.TlsAwareTransport = newTransport
+	helper.HttpClient.Transport = newTransport
 
 	if IsJwt(token) {
 		jwtParser := jwt.NewParser()

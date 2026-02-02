@@ -314,7 +314,7 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
 	hostConfig := ctx.newConfig("NH5p4FpGR", map[string]interface{}{
-		"address":          "localhost",
+		"address":          "127.0.0.1",
 		"port":             8690,
 		"forwardProtocol":  true,
 		"allowedProtocols": []string{"tcp", "udp"},
@@ -331,13 +331,13 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 	ctx.AdminManagementSession.requireCreateEntity(service2)
 
 	ctx.CreateEnrollAndStartTunnelerEdgeRouter()
-	l, err := net.ListenPacket("udp", "localhost:8690")
+	l, err := net.ListenPacket("udp4", "127.0.0.1:8690")
 	ctx.Req.NoError(err)
 
 	errC := make(chan error, 10)
 	go echoData(l, errC)
 
-	conn, err := net.Dial("udp", "localhost:8688")
+	conn, err := net.Dial("udp4", "127.0.0.1:8688")
 	ctx.Req.NoError(err)
 
 	counter := byte(0)
@@ -363,6 +363,7 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 					ctx.Req.Equal(buf, readBuf)
 					break
 				}
+				fmt.Printf("waiting for udp proxy to be available. err: %v\n", readErr)
 				ctx.Req.True(time.Now().Before(deadline), "timed out waiting for UDP proxy to be ready")
 			}
 			continue

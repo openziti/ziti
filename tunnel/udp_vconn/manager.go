@@ -35,6 +35,7 @@ type manager struct {
 	connMap          map[string]*udpConn
 	newConnPolicy    NewConnPolicy
 	expirationPolicy ConnExpirationPolicy
+	sharedWriteConn  bool
 }
 
 func (manager *manager) QueueEvent(event Event) {
@@ -95,12 +96,13 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 		return nil, errors.New("max connections exceeded")
 	}
 	conn := &udpConn{
-		readC:       make(chan mempool.PooledBuffer, 4),
-		closeNotify: make(chan struct{}),
-		service:     *service.Name,
-		srcAddr:     srcAddr,
-		manager:     manager,
-		writeConn:   writeConn,
+		readC:         make(chan mempool.PooledBuffer, 16),
+		closeNotify:   make(chan struct{}),
+		service:       *service.Name,
+		srcAddr:       srcAddr,
+		manager:       manager,
+		writeConn:     writeConn,
+		ownsWriteConn: !manager.sharedWriteConn,
 	}
 	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
