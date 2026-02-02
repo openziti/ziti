@@ -53,24 +53,12 @@ type createIdentityOptions struct {
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
 func newCreateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	newOptions := func() *createIdentityOptions {
-		return &createIdentityOptions{
-			EntityOptions: api.NewEntityOptions(out, errOut),
-		}
+	options := &createIdentityOptions{
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
-	cmd := newCreateIdentityOfTypeCmd("identity", newOptions())
-
-	cmd.AddCommand(newCreateIdentityOfTypeCmd("device", newOptions()))
-	cmd.AddCommand(newCreateIdentityOfTypeCmd("user", newOptions()))
-	cmd.AddCommand(newCreateIdentityOfTypeCmd("service", newOptions()))
-
-	return cmd
-}
-
-func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   name + " <name>",
+		Use:   "identity <name>",
 		Short: "creates a new identity managed by the Ziti Edge Controller",
 		Long:  "creates a new identity managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
@@ -80,11 +68,6 @@ func newCreateIdentityOfTypeCmd(name string, options *createIdentityOptions) *co
 			return runCreateIdentity(options)
 		},
 		SuggestFor: []string{},
-	}
-
-	if name != "identity" {
-		cmd.Hidden = true
-		cmd.Deprecated = "this command is deprecated, specifying identity type is no longer required"
 	}
 
 	// allow interspersing positional args and flags
