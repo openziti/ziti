@@ -109,7 +109,6 @@ type Router struct {
 	debugOperations     map[byte]func(c *bufio.ReadWriter) error
 	stateManager        state.Manager
 	certManager         *state.CertExpirationChecker
-	rdmEnabled          *config.Value[bool]
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
 	agentBindHandlers   []channel.BindHandler
@@ -197,14 +196,6 @@ func (self *Router) WithRouterDataModel(f func(*common.RouterDataModel) error) e
 	return self.stateManager.WithRouterDataModel(f)
 }
 
-func (self *Router) IsRouterDataModelEnabled() bool {
-	return self.rdmEnabled.Load()
-}
-
-func (self *Router) GetRouterDataModelEnabledConfig() *config.Value[bool] {
-	return self.rdmEnabled
-}
-
 func (self *Router) GetConnectEventsConfig() *env.ConnectEventsConfig {
 	return &self.config.ConnectEvents
 }
@@ -254,7 +245,6 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
-		rdmEnabled:          config.NewConfigValue[bool](),
 		indexWatchers:       env.NewIndexWatchers(),
 		xgMetrics:           routerMetrics.NewXgressMetrics(metricsRegistry),
 	}

@@ -493,11 +493,6 @@ func (self *ManagerImpl) GetCurrentDataModelSubscription() DataModelSubscription
 // manageRouterDataModelSubscription handles automatic subscription management
 // for router data model updates, including controller failover and timeout handling.
 func (self *ManagerImpl) manageRouterDataModelSubscription() {
-	<-self.env.GetRouterDataModelEnabledConfig().GetInitNotifyChannel()
-	if !self.env.IsRouterDataModelEnabled() {
-		return
-	}
-
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
