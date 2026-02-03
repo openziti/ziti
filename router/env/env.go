@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common"
-	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
 
@@ -49,11 +48,9 @@ type RouterEnv interface {
 	GetRouterDataModel() *common.RouterDataModel
 	WithRouterDataModel(f func(*common.RouterDataModel) error) error
 	GetConnectEventsConfig() *ConnectEventsConfig
-	GetRouterDataModelEnabledConfig() *config.Value[bool]
 	IsRouterDataModelRequired() bool
 	MarkRouterDataModelRequired()
 	GetIndexWatchers() IndexWatchers
-	IsRouterDataModelEnabled() bool
 	DefaultRequestTimeout() time.Duration
 	GetXgressBindHandler() xgress.BindHandler
 	GetConfig() *Config

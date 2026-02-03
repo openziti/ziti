@@ -20,7 +20,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 
 	"github.com/michaelquigley/pfxlog"
@@ -135,13 +134,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		if err := binding.Bind(x); err != nil {
 			return err
 		}
-	}
-
-	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel(), capabilities.RouterDataModel)
-	if self.env.GetNetworkControllers().GetExpectedCtrlCount() < 2 {
-		self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
-	} else {
-		self.env.GetRouterDataModelEnabledConfig().Store(true)
 	}
 
 	return nil
