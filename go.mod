@@ -35,7 +35,7 @@ require (
 	github.com/go-openapi/validate v0.25.1
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
