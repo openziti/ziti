@@ -265,25 +265,44 @@ func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl
 	return result
 }
 
+const (
+	FlagClosed                  = 0
+	FlagPostCreateAccessChecked = 1
+	FlagIsCircuitInitiator      = 2
+
+	FlagPostCreateAccessCheckedMask = 1 << FlagPostCreateAccessChecked
+	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
+)
+
 type edgeXgressConn struct {
 	edge.MsgChannel
 	mux     edge.ConnMux[*state.ConnState]
 	seq     MsgQueue
 	onClose func()
-	closed  atomic.Bool
-	x       *xgress.Xgress
+	flags   concurrenz.AtomicBitSet
+	x       atomic.Pointer[xgress.Xgress]
 	data    atomic.Pointer[state.ConnState]
 }
 
 func (self *edgeXgressConn) GetCircuitId() string {
-	if x := self.x; x != nil {
+	if x := self.x.Load(); x != nil {
 		return x.CircuitId()
 	}
 	return ""
 }
 
 func (self *edgeXgressConn) GetServiceId() string {
-	return self.data.Load().ServiceSessionToken.ServiceId
+	if data := self.GetData(); data != nil && data.ServiceSessionToken != nil {
+		return data.ServiceSessionToken.ServiceId
+	}
+	return ""
+}
+
+func (self *edgeXgressConn) GetApiSessionToken() *state.ApiSessionToken {
+	if data := self.GetData(); data != nil {
+		return data.ApiSessionToken
+	}
+	return nil
 }
 
 func (self *edgeXgressConn) GetData() *state.ConnState {
@@ -295,7 +314,26 @@ func (self *edgeXgressConn) CloseForDialAccessLoss() {
 }
 
 func (self *edgeXgressConn) SetData(data *state.ConnState) {
+	self.flags.Set(FlagIsCircuitInitiator, true)
 	self.data.Store(data)
+}
+
+func (self *edgeXgressConn) IsPostCreateAccessCheckNeeded() bool {
+	flags := self.flags.Load()
+
+	isCircuitInitiator := (flags & FlagIsCircuitInitiatorMask) == FlagIsCircuitInitiatorMask
+	isCheckDone := (flags & FlagPostCreateAccessCheckedMask) == FlagPostCreateAccessCheckedMask
+
+	// Only OIDC sessions need post-create access checks on the router.
+	// Legacy sessions have their access verified by the controller.
+	apiSession := self.GetApiSessionToken()
+	isOidc := apiSession != nil && apiSession.IsOidc()
+
+	return isCircuitInitiator && !isCheckDone && isOidc
+}
+
+func (self *edgeXgressConn) SetPostCreateAccessCheckDone() {
+	self.flags.Set(FlagPostCreateAccessChecked, true)
 }
 
 func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
@@ -420,7 +458,7 @@ func (self *edgeXgressConn) HandleMuxClose() error {
 }
 
 func (self *edgeXgressConn) close(notify bool, reason string) {
-	if !self.closed.CompareAndSwap(false, true) {
+	if !self.flags.CompareAndSet(FlagClosed, false, true) {
 		// already closed
 		return
 	}
@@ -463,7 +501,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 
 		headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
 
-		self.x.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		if x := self.x.Load(); x != nil {
+			x.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		}
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
@@ -478,7 +518,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 		headers.PutStringHeader(xgress.ControlHopId, hopId)
 		headers.PutUint32Header(xgress.ControlUserVal, sourceRequestId)
 
-		self.x.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		if x := self.x.Load(); x != nil {
+			x.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		}
 	} else {
 		if err := self.seq.Push(msg); err != nil {
 			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)

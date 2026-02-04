@@ -20,11 +20,13 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	sdkinspect "github.com/openziti/sdk-golang/inspect"
@@ -270,7 +272,12 @@ type edgeClientConn struct {
 	apiSessionToken *state.ApiSessionToken
 	forwarder       env.Forwarder
 	xgCircuits      cmap.ConcurrentMap[string, *xgEdgeForwarder]
-	stateListener   atomic.Bool
+
+	stateListener struct {
+		sync.Mutex
+		enabled      atomic.Bool
+		lastRequired concurrenz.AtomicValue[time.Time]
+	}
 }
 
 func (self *edgeClientConn) GetHostedServicesRegistry() *hostedServiceRegistry {
@@ -353,7 +360,10 @@ func (self *edgeClientConn) handleDialAccessLost(service *common.IdentityService
 type edgeCircuit interface {
 	GetCircuitId() string
 	GetServiceId() string
+	GetApiSessionToken() *state.ApiSessionToken
 	CloseForDialAccessLoss()
+	IsPostCreateAccessCheckNeeded() bool
+	SetPostCreateAccessCheckDone()
 }
 
 func (self *edgeClientConn) IterateCircuits(f func(c edgeCircuit)) {
@@ -410,6 +420,7 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	self.listener.factory.hostedServices.cleanupServices(ch)
 	self.msgMux.Close()
 	self.cleanupXgressCircuits()
+	self.listener.factory.stateManager.RouterDataModel().UnsubscribeFromIdentityChanges(self.getIdentityId(), self)
 }
 
 func (self *edgeClientConn) cleanupXgressCircuits() {
@@ -495,22 +506,56 @@ func (self *edgeClientConn) ContentType() int32 {
 }
 
 func (self *edgeClientConn) checkForStateListener() {
-	if !self.stateListener.Load() {
-		if self.stateListener.CompareAndSwap(false, true) {
+	// Terminator flow:
+	//   1. Check if we have access
+	//   2. Add state listener
+	//   3. Setup router side terminator structure and start establishing on controller
+	//   4. After router-side terminator setup complete, check again, in case access was lost during setup. If lost, close
+	//
+	// Circuit flow:
+	//   1. Check access before circuit setup
+	//   2. Add state listener
+	//   3. Setup circuit
+	//   4. Scan circuit. If circuit is older than interval N, but younger than N * 2, re-check access, in case access was lost in race condition
+	//
+	if !self.stateListener.enabled.Load() {
+		self.stateListener.Lock()
+		defer self.stateListener.Unlock()
+
+		if self.stateListener.enabled.CompareAndSwap(false, true) {
 			err := self.listener.factory.stateManager.RouterDataModel().SubscribeToIdentityChanges(self.getIdentityId(), self, false)
 			if err != nil {
 				pfxlog.Logger().
 					WithField("identityId", self.getIdentityId()).
 					WithError(err).
 					Error("failed to subscribe to identity change event")
-				self.stateListener.Store(false)
+				self.stateListener.enabled.Store(false)
 			}
 		}
+	}
+
+	self.stateListener.lastRequired.Store(time.Now())
+}
+
+func (self *edgeClientConn) IsStateListenerEligibleForRemovalCheck() bool {
+	return self.stateListener.enabled.Load() && time.Since(self.stateListener.lastRequired.Load()) > 5*time.Minute
+}
+
+func (self *edgeClientConn) removeStateListenerIfEligible() {
+	self.stateListener.Lock()
+	defer self.stateListener.Unlock()
+
+	if !self.IsStateListenerEligibleForRemovalCheck() {
+		return
+	}
+
+	if self.msgMux.GetConnCount() == 0 && self.GetHostedServicesRegistry().terminators.Count() == 0 {
+		self.listener.factory.stateManager.RouterDataModel().UnsubscribeFromIdentityChanges(self.getIdentityId(), self)
+		self.stateListener.enabled.Store(false)
 	}
 }
 
 func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
-	self.checkForStateListener()
 	serviceSessionTokenStr := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(req))
@@ -558,23 +603,12 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	connectCtx.ServiceSessionToken = serviceSessionToken
 
-	if self.apiSessionToken.IsOidc() {
-		//if oidc we check on the router, legacy tokens are checked in the controller during circuit creation
-		grantingPolicy, err := self.listener.factory.stateManager.HasDialAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
-
-		if err != nil {
-			errStr := err.Error()
-			log.Error(err)
-			self.sendStateClosedReply(errStr, req)
-		}
-
-		if grantingPolicy == nil {
-			errStr := "no access to service, failed dial access check"
-			log.Error(errStr)
-			self.sendStateClosedReply(errStr, req)
-			return
-		}
+	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
+		log.WithError(err).Error("access denied")
+		self.sendStateClosedReply(err.Error(), req)
+		return
 	}
+	self.checkForStateListener()
 
 	var handler connectHandler
 	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
@@ -718,29 +752,17 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	if self.apiSessionToken.IsOidc() {
-		//if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
-		grantingPolicy, err := self.listener.factory.stateManager.HasBindAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceSessionToken.ServiceId)
-
-		if err != nil {
-			errStr := err.Error()
-			log.Error(err)
-			self.sendStateClosedReply(errStr, req)
-		}
-
-		if grantingPolicy == nil {
-			errStr := "no access to service, failed bind access check"
-			log.Error(errStr)
-			self.sendStateClosedReply(errStr, req)
-			return
-		}
+	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
+		log.Error(err.Error())
+		self.sendStateClosedReply(err.Error(), req)
+		return
 	}
 
+	self.checkForStateListener()
 	self.processBindV2(serviceSessionToken, req, ch)
 }
 
 func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSessionToken, req *channel.Message, ch channel.Channel) {
-	self.checkForStateListener()
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithFields(sdkedge.GetLoggerFields(req)).
 		WithField("routerId", self.listener.id.Token)
@@ -888,6 +910,32 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 			self.listener.factory.hostedServices.cleanupDuplicates(terminator)
 		}
 	}
+
+	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
+		log.WithError(err).Error("bind access lost while terminator setup, closing")
+		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost")
+	}
+}
+
+func (self *edgeClientConn) checkAccess(serviceId string, policyType edge_ctrl_pb.PolicyType) error {
+	if self.apiSessionToken.IsOidc() {
+		stateManager := self.listener.factory.stateManager
+		//if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
+		grantingPolicy, err := stateManager.HasAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceId, policyType)
+
+		if err != nil {
+			return err
+		}
+
+		if grantingPolicy == nil {
+			policyTypeDescriptor := "dial"
+			if policyType == edge_ctrl_pb.PolicyType_BindPolicy {
+				policyTypeDescriptor = "bind"
+			}
+			return errors.Errorf("no access to service, failed %s access check", policyTypeDescriptor)
+		}
+	}
+	return nil
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
@@ -1377,7 +1425,7 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 	xgOptions := &ctx.SdkConn.listener.options.Options
 	x := xgress.NewXgress(response.CircuitId, ctx.CtrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
 	ctx.SdkConn.listener.bindHandler.HandleXgressBind(x)
-	self.conn.x = x
+	self.conn.x.Store(x)
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	ctx.SdkConn.sendConnectedReply(ctx.Req, response)
@@ -1387,15 +1435,16 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 
 type xgEdgeForwarder struct {
 	*edgeClientConn
-	circuitId  string
-	serviceId  string
-	originator xgress.Originator
-	ctrlId     string
-	address    xgress.Address
-	lastRx     atomic.Int64
-	connId     uint32
-	metrics    env.XgressMetrics
-	tags       map[string]string
+	circuitId       string
+	serviceId       string
+	originator      xgress.Originator
+	ctrlId          string
+	address         xgress.Address
+	lastRx          atomic.Int64
+	connId          uint32
+	metrics         env.XgressMetrics
+	tags            map[string]string
+	accessCheckDone atomic.Bool
 }
 
 func (self *xgEdgeForwarder) GetDestinationType() string {
@@ -1418,8 +1467,23 @@ func (self *xgEdgeForwarder) GetServiceId() string {
 	return self.serviceId
 }
 
+func (self *xgEdgeForwarder) GetApiSessionId() string {
+	return self.edgeClientConn.GetApiSessionToken().Id
+}
+
 func (self *xgEdgeForwarder) CloseForDialAccessLoss() {
 	self.cleanupXgressCircuit(self)
+}
+
+func (self *xgEdgeForwarder) IsPostCreateAccessCheckNeeded() bool {
+	// Only OIDC sessions need post-create access checks on the router.
+	// Legacy sessions have their access verified by the controller.
+	isOidc := self.apiSessionToken != nil && self.apiSessionToken.IsOidc()
+	return self.originator == xgress.Initiator && !self.accessCheckDone.Load() && isOidc
+}
+
+func (self *xgEdgeForwarder) SetPostCreateAccessCheckDone() {
+	self.accessCheckDone.Store(true)
 }
 
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {

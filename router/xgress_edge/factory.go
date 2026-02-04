@@ -138,7 +138,7 @@ func NewFactory(routerConfig *env.Config, env env.RouterEnv, stateManager state.
 		routerConfig:      routerConfig,
 		metricsRegistry:   env.GetMetricsRegistry(),
 		env:               env,
-		connectionTracker: newConnectionTracker(env),
+		connectionTracker: newConnectionTracker(env, stateManager),
 	}
 
 	factory.stateManager.SetConnectionTracker(factory.connectionTracker)
