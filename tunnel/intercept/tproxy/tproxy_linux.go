@@ -334,7 +334,7 @@ func (self *tProxy) acceptTCP() {
 
 func (self *tProxy) acceptUDP() {
 	expirationPolicy := udp_vconn.NewTimeoutExpirationPolicy(self.interceptor.udpIdleTimeout, self.interceptor.udpCheckInterval)
-	vconnMgr := udp_vconn.NewManager(self.service.GetFabricProvider(), udp_vconn.NewUnlimitedConnectionPolicy(), expirationPolicy)
+	vconnMgr := udp_vconn.NewManager(self.service.GetFabricProvider(), udp_vconn.NewUnlimitedConnectionPolicy(), expirationPolicy, false)
 	self.generateReadEvents(vconnMgr)
 }
 

@@ -28,16 +28,17 @@ import (
 )
 
 type udpConn struct {
-	readC       chan mempool.PooledBuffer
-	closeNotify chan struct{}
-	service     string
-	srcAddr     net.Addr
-	manager     *manager
-	writeConn   UDPWriterTo
-	lastUse     atomic.Value
-	closed      atomic.Bool
-	leftOver    []byte
-	leftOverBuf mempool.PooledBuffer
+	readC          chan mempool.PooledBuffer
+	closeNotify    chan struct{}
+	service        string
+	srcAddr        net.Addr
+	manager        *manager
+	writeConn      UDPWriterTo
+	ownsWriteConn  bool
+	lastUse        atomic.Value
+	closed         atomic.Bool
+	leftOver       []byte
+	leftOverBuf    mempool.PooledBuffer
 }
 
 func (conn *udpConn) Service() string {
@@ -45,12 +46,16 @@ func (conn *udpConn) Service() string {
 }
 
 func (conn *udpConn) Accept(buffer mempool.PooledBuffer) {
-	logrus.WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: queuing")
+	log := logrus.WithField("udpConnId", conn.srcAddr.String())
+	log.Debugf("udp->ziti: queuing")
 	select {
 	case conn.readC <- buffer:
 	case <-conn.closeNotify:
 		buffer.Release()
-		logrus.WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: closed, cancelling accept")
+		log.Debugf("udp->ziti: closed, cancelling accept")
+	default:
+		buffer.Release()
+		log.Warnf("udp->ziti: read buffer full, dropping packet")
 	}
 }
 
@@ -156,10 +161,12 @@ func (conn *udpConn) Write(b []byte) (int, error) {
 func (conn *udpConn) Close() error {
 	if conn.closed.CompareAndSwap(false, true) {
 		close(conn.closeNotify)
-		if err := conn.writeConn.Close(); err != nil {
-			logrus.WithField("service", conn.service).
-				WithField("src_addr", conn.srcAddr).
-				WithError(err).Error("error while closing udp connection")
+		if conn.ownsWriteConn {
+			if err := conn.writeConn.Close(); err != nil {
+				logrus.WithField("service", conn.service).
+					WithField("src_addr", conn.srcAddr).
+					WithError(err).Error("error while closing udp connection")
+			}
 		}
 	}
 

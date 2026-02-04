@@ -239,7 +239,7 @@ func (self *baseTunnelRequestContext) isSessionValid(sessionId, sessionType stri
 		session, err := self.handler.getAppEnv().Managers.Session.Read(sessionId)
 		if err != nil {
 			if !boltz.IsErrNotFoundErr(err) {
-				self.err = internalError(err)
+				self.err = InvalidSessionError{}
 				return false
 			}
 		}

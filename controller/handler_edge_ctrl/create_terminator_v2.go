@@ -32,7 +32,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -94,11 +93,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	ctx.loadService()
 
 	if ctx.err != nil {
-		errCode := edge_ctrl_pb.CreateTerminatorResult_FailedOther
-		if errors.Is(ctx.err, InvalidSessionError{}) {
-			errCode = edge_ctrl_pb.CreateTerminatorResult_FailedInvalidSession
-		}
-		self.returnError(ctx, errCode, ctx.err, logger)
+		self.returnError(ctx, ctx.err, logger)
 		return
 	}
 
@@ -106,14 +101,14 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 
 	if ctx.req.Cost > math.MaxUint16 {
 		ctx.err = invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16))
-		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, ctx.err, logger)
+		self.returnError(ctx, ctx.err, logger)
 		return
 	}
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
-		if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
-			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
+		if ctx.err = ctx.validateExistingTerminator(terminator, ctx.session.IdentityId, common.EdgeBinding, logger); ctx.err != nil {
+			self.returnError(ctx, ctx.err, logger)
 			return
 		}
 
@@ -127,7 +122,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 			}, ctx.newChangeContext())
 
 			if err != nil {
-				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+				self.returnError(ctx, internalError(err), logger)
 				return
 			}
 		}
@@ -160,16 +155,16 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		if err := self.appEnv.GetHostController().GetNetwork().Managers.Dispatcher.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
-				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
-					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, validateError, logger)
+				if validateError := ctx.validateExistingTerminator(terminator, ctx.session.IdentityId, common.EdgeBinding, logger); validateError != nil {
+					self.returnError(ctx, validateError, logger)
 					return
 				}
 			} else {
 				if command.WasRateLimited(err) {
-					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedBusy, err, logger)
+					self.returnError(ctx, busyError(err), logger)
 					return
 				}
-				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+				self.returnError(ctx, internalError(err), logger)
 				return
 			}
 		} else {
@@ -199,11 +194,13 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 	logger.WithField("elapsed", time.Since(start)).Info("completed create terminator v2 operation")
 }
 
-func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2RequestContext, resultType edge_ctrl_pb.CreateTerminatorResult, err error, logger *logrus.Entry) {
+func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2RequestContext, err controllerError, logger *logrus.Entry) {
 	response := &edge_ctrl_pb.CreateTerminatorV2Response{
 		TerminatorId: ctx.req.Address,
-		Result:       resultType,
+		Result:       retryHintToResult(err.GetRetryHint()),
 		Msg:          err.Error(),
+		ErrorCode:    err.ErrorCode(),
+		RetryHint:    uint32(err.GetRetryHint()),
 	}
 
 	if sendErr := protobufs.MarshalTyped(response).ReplyTo(ctx.msg).Send(self.ch); sendErr != nil {
@@ -220,35 +217,4 @@ type CreateTerminatorV2RequestContext struct {
 
 func (self *CreateTerminatorV2RequestContext) GetSessionToken() string {
 	return self.req.SessionToken
-}
-
-func (self *CreateTerminatorV2RequestContext) validateExistingTerminator(terminator *model.Terminator, log *logrus.Entry) controllerError {
-	if terminator.Binding != common.EdgeBinding {
-		log.WithField("binding", common.EdgeBinding).
-			WithField("conflictingBinding", terminator.Binding).
-			Error("selected terminator address conflicts with a terminator for a different binding")
-		return internalError(errors.New("selected id conflicts with terminator for different binding"))
-	}
-
-	if terminator.Service != self.session.ServiceId {
-		log.WithField("conflictingService", terminator.Service).
-			Error("selected terminator address conflicts with a terminator for a different service")
-		return internalError(errors.New("selected id conflicts with terminator for different service"))
-	}
-
-	if terminator.Router != self.sourceRouter.Id {
-		log.WithField("conflictingRouter", terminator.Router).
-			Error("selected terminator address conflicts with a terminator for a different router")
-		return internalError(errors.New("selected id conflicts with terminator for different router"))
-	}
-
-	if terminator.HostId != self.session.IdentityId {
-		log.WithField("identityId", self.session.IdentityId).
-			WithField("conflictingIdentity", terminator.HostId).
-			Error("selected terminator address conflicts with a terminator for a different identity")
-		return internalError(errors.New("selected id conflicts with terminator for different identity"))
-	}
-
-	log.Info("terminator already exists")
-	return nil
 }

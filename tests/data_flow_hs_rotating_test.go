@@ -102,7 +102,7 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
 
 				notifyFirst := &sync.Once{}
-				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.RouterHostConn) {
 					if len(conn) > 0 {
 						notifyFirst.Do(func() {
 							for i := 0; i < int(service.maxRequests); i++ {
@@ -247,7 +247,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
 
 				notifyFirst := &sync.Once{}
-				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.RouterHostConn) {
 					if len(conn) > 0 {
 						notifyFirst.Do(func() {
 							for i := 0; i < int(service.maxRequests); i++ {

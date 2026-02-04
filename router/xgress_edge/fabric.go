@@ -68,6 +68,7 @@ type edgeTerminator struct {
 	establishCallback   func(result edge_ctrl_pb.CreateTerminatorResult)
 	lock                sync.Mutex
 	rateLimitCallback   rate.RateLimitControl
+	failureCount        atomic.Uint32
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -80,7 +81,7 @@ func (self *edgeTerminator) getIdentityId() string {
 func (self *edgeTerminator) replace(other *edgeTerminator) {
 	other.lock.Lock()
 	terminatorId := other.terminatorId
-	state := other.state.Load()
+	otherState := other.state.Load()
 	rateLimitCallback := other.rateLimitCallback
 	operationActive := other.operationActive.Load()
 	createTime := other.createTime
@@ -89,7 +90,7 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 
 	self.lock.Lock()
 	self.terminatorId = terminatorId
-	self.setState(state, "replacing existing terminator")
+	self.setState(otherState, "replacing existing terminator")
 	self.rateLimitCallback = rateLimitCallback
 	self.operationActive.Store(operationActive)
 	self.createTime = createTime
@@ -187,7 +188,7 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 	return nextId
 }
 
-func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk bool, notifyCtrl bool, reason string) {
+func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk bool, notifyCtrl bool, reason string, edgeErr *EdgeError) {
 	logger := pfxlog.Logger().
 		WithField("terminatorId", self.terminatorId).
 		WithField("tokenId", self.serviceSessionToken.TokenId()).
@@ -197,6 +198,7 @@ func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk boo
 		// Notify edge client of close
 		logger.Debug("sending closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
+		edgeErr.ApplyToMsg(closeMsg)
 		if err := self.SendState(closeMsg); err != nil {
 			logger.WithError(err).Warn("unable to send close msg to edge client for hosted service")
 		}
@@ -490,7 +492,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) Accept(msg *channel.Message) {
+func (self *edgeXgressConn) AcceptMessage(msg *channel.Message) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)

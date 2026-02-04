@@ -1,15 +1,34 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
+// InvalidTerminatorInstanceIdError indicates a non-retriable terminator validation failure
+type InvalidTerminatorInstanceIdError struct {
+	msg string
+}
+
+func (e InvalidTerminatorInstanceIdError) ErrorCode() uint32 {
+	return edge.ErrorCodeInvalidInstanceId
+}
+
+func (e InvalidTerminatorInstanceIdError) GetRetryHint() edge.RetryHint {
+	return edge.RetryNotRetriable
+}
+
+func (e InvalidTerminatorInstanceIdError) Error() string {
+	return e.msg
+}
 
 type CreateEdgeTerminatorCmd struct {
 	Env     Env
@@ -48,7 +67,9 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.Mutate
 				"terminatorIdentity": terminator.HostId,
 				"existingIdentity":   otherTerminator.HostId,
 			}).Warn("validation of terminator failed, shared identity belongs to different identity")
-			return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", otherTerminator.GetId(), terminator.GetInstanceId())
+			return InvalidTerminatorInstanceIdError{
+				msg: fmt.Sprintf("sibling terminator %v with shared identity %v belongs to different identity", otherTerminator.GetId(), terminator.GetInstanceId()),
+			}
 		}
 	}
 

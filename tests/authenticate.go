@@ -30,7 +30,6 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"sync/atomic"
 	"time"
 
 	"github.com/Jeffail/gabs"
@@ -1110,12 +1109,13 @@ func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
 	return ""
 }
 
-func (request *authenticatedRequests) newTerminatorWatcher(serviceId string) *terminatorWatcher {
+func (request *authenticatedRequests) newTerminatorWatcher(serviceId string, targetCount uint32) *terminatorWatcher {
 	watcher := &terminatorWatcher{
-		testContext: request.testContext,
-		serviceId:   serviceId,
-		closeNotify: make(chan struct{}),
-		notifyAll:   make(chan struct{}, 1),
+		testContext:   request.testContext,
+		serviceId:     serviceId,
+		targetCount:   targetCount,
+		closeNotify:   make(chan struct{}),
+		notifySuccess: make(chan struct{}, 1),
 	}
 
 	go watcher.pollForTerminators()
@@ -1124,22 +1124,20 @@ func (request *authenticatedRequests) newTerminatorWatcher(serviceId string) *te
 }
 
 type terminatorWatcher struct {
-	testContext *TestContext
-	serviceId   string
-	count       atomic.Uint32
-	notifyAll   chan struct{}
-	closeNotify chan struct{}
+	testContext   *TestContext
+	serviceId     string
+	targetCount   uint32
+	notifySuccess chan struct{}
+	closeNotify   chan struct{}
 }
 
 func (self *terminatorWatcher) pollForTerminators() {
 	for {
 		terminators := self.testContext.AdminManagementSession.listTerminators(fmt.Sprintf(`service="%s"`, self.serviceId))
 		newCount := uint32(len(terminators))
-		if oldCount := self.count.Swap(newCount); oldCount != newCount {
-			select {
-			case self.notifyAll <- struct{}{}:
-			default:
-			}
+		if newCount >= self.targetCount {
+			close(self.notifySuccess)
+			return
 		}
 
 		select {
@@ -1154,19 +1152,11 @@ func (self *terminatorWatcher) Close() {
 	close(self.closeNotify)
 }
 
-func (self *terminatorWatcher) waitForTerminators(count uint32, timeout time.Duration) {
-	start := time.Now()
-	for {
-		if self.count.Load() >= count {
-			return
-		}
-
-		self.testContext.False(time.Since(start) > timeout, "timed out waiting for terminator creation")
-
-		select {
-		case <-self.notifyAll:
-		case <-time.After(100 * time.Millisecond):
-		}
+func (self *terminatorWatcher) waitForTerminators(timeout time.Duration) {
+	select {
+	case <-self.notifySuccess:
+	case <-time.After(timeout):
+		self.testContext.Fail("timed out waiting for terminator creation")
 	}
 }
 

@@ -606,6 +606,41 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 	return circuit, returnPeerData
 }
 
+func (self *baseSessionRequestContext) validateExistingTerminator(terminator *model.Terminator, identityId string, binding string, log *logrus.Entry) controllerError {
+	if self.err != nil {
+		return self.err
+	}
+
+	if terminator.Binding != binding {
+		log.WithField("binding", binding).
+			WithField("conflictingBinding", terminator.Binding).
+			Error("selected terminator address conflicts with a terminator for a different binding")
+		return nonRetriableError(errors.New("selected id conflicts with terminator for different binding"))
+	}
+
+	if terminator.Service != self.service.Id {
+		log.WithField("conflictingService", terminator.Service).
+			Error("selected terminator address conflicts with a terminator for a different service")
+		return nonRetriableError(errors.New("selected id conflicts with terminator for different service"))
+	}
+
+	if terminator.Router != self.sourceRouter.Id {
+		log.WithField("conflictingRouter", terminator.Router).
+			Error("selected terminator address conflicts with a terminator for a different router")
+		return nonRetriableError(errors.New("selected id conflicts with terminator for different router"))
+	}
+
+	if terminator.HostId != identityId {
+		log.WithField("identityId", identityId).
+			WithField("conflictingIdentity", terminator.HostId).
+			Error("selected terminator address conflicts with a terminator for a different identity")
+		return nonRetriableError(errors.New("selected id conflicts with terminator for different identity"))
+	}
+
+	log.Info("terminator already exists")
+	return nil
+}
+
 type sessionCircuitParams struct {
 	serviceId    string
 	sourceRouter *model.Router

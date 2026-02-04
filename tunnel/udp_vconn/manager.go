@@ -35,6 +35,7 @@ type manager struct {
 	connMap          map[string]*udpConn
 	newConnPolicy    NewConnPolicy
 	expirationPolicy ConnExpirationPolicy
+	sharedWriteConn  bool
 }
 
 func (manager *manager) QueueEvent(event Event) {
@@ -79,6 +80,11 @@ func (manager *manager) GetWriteQueue(srcAddr net.Addr) WriteQueue {
 	if result == nil {
 		return nil
 	}
+	if result.closed.Load() {
+		pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("found closed virtual UDP connection, removing")
+		delete(manager.connMap, srcAddr.String())
+		return nil
+	}
 	return result
 }
 
@@ -90,12 +96,13 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 		return nil, errors.New("max connections exceeded")
 	}
 	conn := &udpConn{
-		readC:       make(chan mempool.PooledBuffer, 4),
-		closeNotify: make(chan struct{}),
-		service:     *service.Name,
-		srcAddr:     srcAddr,
-		manager:     manager,
-		writeConn:   writeConn,
+		readC:         make(chan mempool.PooledBuffer, 16),
+		closeNotify:   make(chan struct{}),
+		service:       *service.Name,
+		srcAddr:       srcAddr,
+		manager:       manager,
+		writeConn:     writeConn,
+		ownsWriteConn: !manager.sharedWriteConn,
 	}
 	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
@@ -129,6 +136,7 @@ func (manager *manager) dropExpired() {
 	for key, conn := range manager.connMap {
 		if conn.closed.Load() {
 			delete(manager.connMap, conn.srcAddr.String())
+			continue
 		}
 		if manager.expirationPolicy.IsExpired(now, conn.GetLastUsed()) {
 			log.WithField("udpConnId", key).Debug("connection expired. removing from UDP vconn manager")

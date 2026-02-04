@@ -311,7 +311,7 @@ func (p *interceptor) handleUDP(service *Service) error {
 		service: service.TunnelService,
 		conn:    udpPacketConn,
 	}
-	vconnManager := udp_vconn.NewManager(service.TunnelService.FabricProvider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+	vconnManager := udp_vconn.NewManager(service.TunnelService.FabricProvider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy(), true)
 	go reader.generateReadEvents(vconnManager)
 	return nil
 }
