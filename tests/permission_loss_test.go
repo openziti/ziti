@@ -57,8 +57,11 @@ func Test_TerminatorCloseOnBindPermissionLoss(t *testing.T) {
 	bindPolicy1 := ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#"+svcRole1), s("#"+hostRole), nil)
 	ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#"+svcRole2), s("#"+hostRole), nil)
 
-	watcher := ctx.AdminManagementSession.newTerminatorWatcher()
-	defer watcher.Close()
+	service1Watcher := ctx.AdminManagementSession.newTerminatorWatcher(service1.Id, 1)
+	defer service1Watcher.Close()
+
+	service2Watcher := ctx.AdminManagementSession.newTerminatorWatcher(service2.Id, 1)
+	defer service2Watcher.Close()
 
 	// Create a hosting identity with the host role and listen on both services
 	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext(hostRole)
@@ -71,8 +74,8 @@ func Test_TerminatorCloseOnBindPermissionLoss(t *testing.T) {
 	listener2, err := hostContext.Listen(service2.Name)
 	ctx.Req.NoError(err)
 
-	watcher.waitForTerminators(service1.Id, 1, 5*time.Second)
-	watcher.waitForTerminators(service2.Id, 1, 5*time.Second)
+	service1Watcher.waitForTerminators(5 * time.Second)
+	service2Watcher.waitForTerminators(5 * time.Second)
 
 	serverHandler := func(conn *testServerConn) error {
 		for {
@@ -170,8 +173,11 @@ func Test_CircuitCloseOnDialPermissionLoss(t *testing.T) {
 	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+svcRole2), s("#"+clientRole1), nil)
 	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+svcRole2), s("#"+clientRole2), nil)
 
-	watcher := ctx.AdminManagementSession.newTerminatorWatcher()
-	defer watcher.Close()
+	service1Watcher := ctx.AdminManagementSession.newTerminatorWatcher(service1.Id, 1)
+	defer service1Watcher.Close()
+
+	service2Watcher := ctx.AdminManagementSession.newTerminatorWatcher(service2.Id, 1)
+	defer service2Watcher.Close()
 
 	// Host both services
 	_, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
@@ -185,8 +191,8 @@ func Test_CircuitCloseOnDialPermissionLoss(t *testing.T) {
 	ctx.Req.NoError(err)
 	defer func() { _ = listener2.Close() }()
 
-	watcher.waitForTerminators(service1.Id, 1, 5*time.Second)
-	watcher.waitForTerminators(service2.Id, 1, 5*time.Second)
+	service1Watcher.waitForTerminators(5 * time.Second)
+	service2Watcher.waitForTerminators(5 * time.Second)
 
 	// Echo server handler
 	serverHandler := func(conn *testServerConn) error {
@@ -326,7 +332,7 @@ func Test_CircuitCloseOnDialPermissionLoss(t *testing.T) {
 	}
 
 	// Give a bit more time to make sure the other circuits don't fail
-	time.Sleep(2 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// Stop all goroutines
 	for _, cs := range circuits {

@@ -136,6 +136,7 @@ func (manager *manager) dropExpired() {
 	for key, conn := range manager.connMap {
 		if conn.closed.Load() {
 			delete(manager.connMap, conn.srcAddr.String())
+			continue
 		}
 		if manager.expirationPolicy.IsExpired(now, conn.GetLastUsed()) {
 			log.WithField("udpConnId", key).Debug("connection expired. removing from UDP vconn manager")
