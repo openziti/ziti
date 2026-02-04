@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
@@ -101,10 +100,6 @@ func (self *Dispatcher) initTerminatorEvents(n *network.Network) {
 		Dispatcher: self,
 	}
 
-	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorCreated, boltz.EntityCreated)
-	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorUpdated, boltz.EntityUpdated)
-	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorDeleted, boltz.EntityDeleted)
-
 	n.AddRouterPresenceHandler(terminatorEvtAdapter)
 }
 
@@ -144,9 +139,7 @@ func (self *terminatorEventFilter) IsWrapping(value event.TerminatorEventHandler
 }
 
 func (self *terminatorEventFilter) AcceptTerminatorEvent(evt *event.TerminatorEvent) {
-	if !evt.IsModelEvent() || evt.PropagateIndicator {
-		self.TerminatorEventHandler.AcceptTerminatorEvent(evt)
-	}
+	self.TerminatorEventHandler.AcceptTerminatorEvent(evt)
 }
 
 // terminatorEventAdapter converts router presence online/offline events and terminator entity change events to
@@ -187,24 +180,12 @@ func (self *terminatorEventAdapter) routerChange(eventType event.TerminatorEvent
 
 	for _, terminator := range terminators {
 		// This calls Db.View() down the line, so avoid nesting tx
-		self.terminatorChanged(eventType, terminator)
+		self.terminatorRouterOnlineStateChanged(eventType, terminator)
 	}
 }
 
-func (self *terminatorEventAdapter) terminatorCreated(terminator *db.Terminator) {
-	self.terminatorChanged(event.TerminatorCreated, terminator)
-}
-
-func (self *terminatorEventAdapter) terminatorUpdated(terminator *db.Terminator) {
-	self.terminatorChanged(event.TerminatorUpdated, terminator)
-}
-
-func (self *terminatorEventAdapter) terminatorDeleted(terminator *db.Terminator) {
-	self.terminatorChanged(event.TerminatorDeleted, terminator)
-}
-
-func (self *terminatorEventAdapter) terminatorChanged(eventType event.TerminatorEventType, terminator *db.Terminator) {
-	terminator = self.Network.Service.NotifyTerminatorChanged(terminator)
+func (self *terminatorEventAdapter) terminatorRouterOnlineStateChanged(eventType event.TerminatorEventType, terminator *db.Terminator) {
+	terminator = self.Network.Service.NotifyTerminatorChanged(terminator, false)
 	self.createTerminatorEvent(eventType, terminator)
 }
 

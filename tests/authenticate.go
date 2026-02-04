@@ -30,21 +30,18 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
-	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/env"
-	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
@@ -1113,128 +1110,54 @@ func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
 	return ""
 }
 
-func (request *authenticatedRequests) streamEvents(req *subscriptionRequest) (func(), error) {
-	streamEventsRequest := map[string]interface{}{}
-	streamEventsRequest["format"] = "json"
-	streamEventsRequest["subscriptions"] = req.Subscriptions
-
-	bindHandler := func(binding channel.Binding) error {
-		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_StreamEventsEventType), req.Callback)
-		return nil
-	}
-
-	ch, err := request.testContext.NewWsMgmtChannel(channel.BindHandlerF(bindHandler))
-	if err != nil {
-		return nil, err
-	}
-
-	closeF := func() {
-		if err := ch.Close(); err != nil {
-			pfxlog.Logger().WithError(err).Error("failure closing event channel")
-		}
-	}
-
-	msgBytes, err := json.Marshal(streamEventsRequest)
-	if err != nil {
-		closeF()
-		return nil, err
-	}
-
-	if req.Timeout == 0 {
-		req.Timeout = time.Second
-	}
-
-	requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamEventsRequestType), msgBytes)
-	responseMsg, err := requestMsg.WithTimeout(req.Timeout).SendForReply(ch)
-	if err != nil {
-		closeF()
-		return nil, err
-	}
-
-	if responseMsg.ContentType != channel.ContentTypeResultType {
-		closeF()
-		return nil, errors.Errorf("unexpected response type %v", responseMsg.ContentType)
-	}
-
-	result := channel.UnmarshalResult(responseMsg)
-	if !result.Success {
-		closeF()
-		return nil, fmt.Errorf("error starting event streaming [%s]", result.Message)
-	}
-
-	return closeF, nil
-}
-
-func (request *authenticatedRequests) newTerminatorWatcher() *terminatorWatcher {
+func (request *authenticatedRequests) newTerminatorWatcher(serviceId string) *terminatorWatcher {
 	watcher := &terminatorWatcher{
 		testContext: request.testContext,
-		counts:      map[string]int{},
+		serviceId:   serviceId,
+		closeNotify: make(chan struct{}),
 		notifyAll:   make(chan struct{}, 1),
 	}
 
-	req := &subscriptionRequest{
-		Subscriptions: []*event.Subscription{
-			{Type: event.TerminatorEventNS},
-		},
-		Callback: watcher.HandleMessage,
-	}
+	go watcher.pollForTerminators()
 
-	closer, err := request.streamEvents(req)
-	request.testContext.NoError(err)
-
-	watcher.closer = closer
 	return watcher
-}
-
-type subscriptionRequest struct {
-	Timeout       time.Duration
-	Subscriptions []*event.Subscription
-	Callback      func(msg *channel.Message, ch channel.Channel)
 }
 
 type terminatorWatcher struct {
 	testContext *TestContext
-	lock        sync.Mutex
-	counts      map[string]int
+	serviceId   string
+	count       atomic.Uint32
 	notifyAll   chan struct{}
-	closer      func()
+	closeNotify chan struct{}
 }
 
-func (self *terminatorWatcher) Close() {
-	self.closer()
-}
-
-func (self *terminatorWatcher) HandleMessage(msg *channel.Message, _ channel.Channel) {
-	eventType, _ := msg.GetStringHeader(int32(mgmt_pb.Header_EventTypeHeader))
-	if eventType != "terminator" {
-		return
-	}
-	evt := &event.TerminatorEvent{}
-	if err := json.Unmarshal(msg.Body, &evt); err != nil {
-		pfxlog.Logger().WithError(err).Error("unable to unmarshal terminator event")
-	}
-
-	self.lock.Lock()
-	self.counts[evt.ServiceId] = evt.TotalTerminators
-	self.lock.Unlock()
-
+func (self *terminatorWatcher) pollForTerminators() {
 	for {
+		terminators := self.testContext.AdminManagementSession.listTerminators(fmt.Sprintf(`service="%s"`, self.serviceId))
+		newCount := uint32(len(terminators))
+		if oldCount := self.count.Swap(newCount); oldCount != newCount {
+			select {
+			case self.notifyAll <- struct{}{}:
+			default:
+			}
+		}
+
 		select {
-		case self.notifyAll <- struct{}{}:
-		default:
+		case <-self.closeNotify:
 			return
+		case <-time.After(200 * time.Millisecond):
 		}
 	}
 }
 
-func (self *terminatorWatcher) waitForTerminators(service string, count int, timeout time.Duration) {
+func (self *terminatorWatcher) Close() {
+	close(self.closeNotify)
+}
+
+func (self *terminatorWatcher) waitForTerminators(count uint32, timeout time.Duration) {
 	start := time.Now()
 	for {
-		self.lock.Lock()
-		current := self.counts[service]
-		self.lock.Unlock()
-
-		if current >= count {
+		if self.count.Load() >= count {
 			return
 		}
 

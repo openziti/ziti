@@ -26,9 +26,6 @@ type TerminatorEventType string
 const (
 	TerminatorEventNS = "terminator"
 
-	TerminatorCreated       TerminatorEventType = "created"
-	TerminatorUpdated       TerminatorEventType = "updated"
-	TerminatorDeleted       TerminatorEventType = "deleted"
 	TerminatorRouterOnline  TerminatorEventType = "router-online"
 	TerminatorRouterOffline TerminatorEventType = "router-offline"
 )
@@ -38,31 +35,8 @@ const (
 // Note: In version prior to 1.4.0, the namespace was `fabric.terminators`
 //
 // Valid values for terminator event types are:
-//   - created - Note: replaced by entity change events
-//   - updated - Note: replaced by entity changes events
-//   - deleted - Note: replaced by entity change events
 //   - router-online
 //   - router-offline
-//
-// Example: Terminator created event
-//
-//	{
-//	 "namespace": "terminator",
-//	 "event_type": "created",
-//	 "event_src_id": "ctrl_client",
-//	 "timestamp": "2025-01-17T12:35:33.691240129-05:00",
-//	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP",
-//	 "terminator_id": "2c9DGllUFx2GIFWFF5g5FP",
-//	 "router_id": "5g2QrZxFcw",
-//	 "host_id": "IahyE.5Scw",
-//	 "router_online": true,
-//	 "precedence": "default",
-//	 "static_cost": 0,
-//	 "dynamic_cost": 0,
-//	 "total_terminators": 1,
-//	 "usable_default_terminators": 1,
-//	 "usable_required_terminators": 0
-//	}
 //
 // Example: Terminator router offline event
 //
@@ -101,26 +75,6 @@ const (
 //	 "dynamic_cost": 0,
 //	 "total_terminators": 1,
 //	 "usable_default_terminators": 1,
-//	 "usable_required_terminators": 0
-//	}
-//
-// Example: Terminator Deleted Event
-//
-//	{
-//	 "namespace": "terminator",
-//	 "event_type": "deleted",
-//	 "event_src_id": "ctrl_client",
-//	 "timestamp": "2025-01-17T12:35:42.448238469-05:00",
-//	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP",
-//	 "terminator_id": "2c9DGllUFx2GIFWFF5g5FP",
-//	 "router_id": "5g2QrZxFcw",
-//	 "host_id": "IahyE.5Scw",
-//	 "router_online": true,
-//	 "precedence": "default",
-//	 "static_cost": 0,
-//	 "dynamic_cost": 0,
-//	 "total_terminators": 0,
-//	 "usable_default_terminators": 0,
 //	 "usable_required_terminators": 0
 //	}
 type TerminatorEvent struct {
@@ -169,12 +123,6 @@ type TerminatorEvent struct {
 
 	// For internal use.
 	PropagateIndicator bool `json:"-"`
-}
-
-func (event *TerminatorEvent) IsModelEvent() bool {
-	return event.EventType == TerminatorCreated ||
-		event.EventType == TerminatorUpdated ||
-		event.EventType == TerminatorDeleted
 }
 
 func (event *TerminatorEvent) String() string {

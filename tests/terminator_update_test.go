@@ -38,12 +38,12 @@ func Test_UpdateTerminators(t *testing.T) {
 	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
-	watcher := ctx.AdminManagementSession.newTerminatorWatcher()
+	watcher := ctx.AdminManagementSession.newTerminatorWatcher(service.Id)
 	defer watcher.Close()
 
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
-	watcher.waitForTerminators(service.Id, 1, 2*time.Second)
+	watcher.waitForTerminators(1, 2*time.Second)
 	defer func() { _ = listener.Close() }()
 
 	terminators := ctx.AdminManagementSession.listTerminators(`binding="edge"`)

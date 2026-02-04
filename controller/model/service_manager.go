@@ -40,6 +40,9 @@ func newServiceManager(env Env) *ServiceManager {
 	result.impl = result
 
 	env.GetStores().Service.AddEntityIdListener(result.RemoveFromCache, boltz.EntityUpdated, boltz.EntityDeleted)
+	env.GetStores().Terminator.AddEntityEventListenerF(func(terminator *db.Terminator) {
+		result.NotifyTerminatorChanged(terminator, true)
+	}, boltz.EntityCreated, boltz.EntityUpdated, boltz.EntityDeleted)
 
 	RegisterManagerDecoder[*Service](env, result)
 
@@ -55,7 +58,7 @@ func (self *ServiceManager) NewModelEntity() *Service {
 	return &Service{}
 }
 
-func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
+func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator, clearServiceFromCache bool) *db.Terminator {
 	// patched entities may not have all fields, if service is blank, load terminator
 	serviceId := terminator.Service
 	if serviceId == "" {
@@ -73,7 +76,10 @@ func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *
 		serviceId = terminator.Service
 	}
 	pfxlog.Logger().Debugf("clearing service from cache: %v", serviceId)
-	self.RemoveFromCache(serviceId)
+
+	if clearServiceFromCache {
+		self.RemoveFromCache(serviceId)
+	}
 	return terminator
 }
 
