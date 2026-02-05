@@ -14,10 +14,11 @@
 	limitations under the License.
 */
 
-package xgress_edge_tunnel_v2
+package xgress_edge_tunnel
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -42,13 +43,14 @@ import (
 
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *HostedServiceRegistry {
 	result := &HostedServiceRegistry{
-		terminators:  cmap.New[*tunnelTerminator](),
-		events:       make(chan terminatorEvent),
-		env:          env,
-		stateManager: stateManager,
-		triggerEvalC: make(chan struct{}, 1),
-		establishSet: map[string]*tunnelTerminator{},
-		deleteSet:    map[string]*tunnelTerminator{},
+		terminators:       cmap.New[*tunnelTerminator](),
+		events:            make(chan terminatorEvent),
+		env:               env,
+		stateManager:      stateManager,
+		triggerEvalC:      make(chan struct{}, 1),
+		establishSet:      map[string]*tunnelTerminator{},
+		deleteSet:         map[string]*tunnelTerminator{},
+		reestablishNotify: make(chan struct{}, 1),
 	}
 
 	result.Start()
@@ -67,6 +69,10 @@ type HostedServiceRegistry struct {
 
 	connectedToLeader atomic.Bool
 	started           atomic.Bool
+
+	reestablishLock       sync.Mutex
+	reestablishInProgress atomic.Bool
+	reestablishNotify     chan struct{}
 }
 
 type terminatorEvent interface {
@@ -567,6 +573,41 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 }
 
 func (self *HostedServiceRegistry) HandleReestablish() {
+	continueReestablish := func() bool {
+		self.reestablishLock.Lock()
+		defer self.reestablishLock.Unlock()
+
+		select {
+		case <-self.reestablishNotify:
+			return true
+		default:
+			self.reestablishInProgress.Store(false)
+			return false
+		}
+	}
+
+	self.reestablishLock.Lock()
+	runEstablish := self.reestablishInProgress.CompareAndSwap(false, true)
+
+	if runEstablish {
+		self.reestablishLock.Unlock()
+		for {
+			self.handleReestablishInner()
+
+			if !continueReestablish() {
+				return
+			}
+		}
+	} else {
+		select {
+		case self.reestablishNotify <- struct{}{}:
+		default:
+		}
+		self.reestablishLock.Unlock()
+	}
+}
+
+func (self *HostedServiceRegistry) handleReestablishInner() {
 	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
 
 	var reestablishList []*tunnelTerminator
@@ -591,10 +632,13 @@ func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 	if event.Type == routerEnv.ControllerDisconnected && !self.env.GetNetworkControllers().IsLeaderConnected() {
 		self.connectedToLeader.Store(false)
 	} else if self.env.GetNetworkControllers().IsLeaderConnected() {
-		self.connectedToLeader.Store(true)
+		if !self.connectedToLeader.Load() {
+			go self.HandleReestablish()
+			self.connectedToLeader.Store(true)
+		}
 	} else if event.Type == routerEnv.ControllerReconnected {
 		if !self.connectedToLeader.Load() {
-			self.HandleReestablish()
+			go self.HandleReestablish()
 		}
 	}
 }

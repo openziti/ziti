@@ -19,17 +19,18 @@ package xgress_edge_tunnel
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/openziti/ziti/v2/router/handler_edge_ctrl"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
@@ -44,23 +45,37 @@ const (
 	DefaultDnsUnanswerable   = "refused"
 )
 
+var fabricProviderF concurrenz.AtomicValue[func(env.RouterEnv, *HostedServiceRegistry) TunnelFabricProvider]
+
+// OverrideFabricProviderF allows overriding the default TunnelFabricProvider factory function
+// used by the edge tunnel v2 xgress factory. This is primarily useful for wrapping the fabric
+// provider to intercept hosting/tunnel calls for router embedders wishing to customize tunnel
+// behavior.
+//
+// The provided function will be called during CreateListener to create a TunnelFabricProvider
+// instance. If no override is set, the factory will use NewTunnelFabricProvider as the default.
+//
+// Parameters:
+//   - f: A factory function that takes a RouterEnv and HostedServiceRegistry and returns
+//     a TunnelFabricProvider instance. Pass nil to clear any existing override.
+//
+// This function is thread-safe and can be called concurrently with CreateListener.
+func OverrideFabricProviderF(f func(env.RouterEnv, *HostedServiceRegistry) TunnelFabricProvider) {
+	fabricProviderF.Store(f)
+}
+
 type Factory struct {
-	id                 *identity.TokenId
-	ctrls              env.NetworkControllers
-	stateManager       state.Manager
-	serviceListHandler *handler_edge_ctrl.ServiceListHandler
-	tunneler           *tunneler
-	metricsRegistry    metrics.UsageRegistry
-	env                env.RouterEnv
+	id                *identity.TokenId
+	ctrls             env.NetworkControllers
+	stateManager      state.Manager
+	tunneler          *tunneler
+	metricsRegistry   metrics.UsageRegistry
+	env               env.RouterEnv
+	hostedServices    *HostedServiceRegistry
+	dialerInitialized atomic.Bool
 }
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
-	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
-	self.tunneler.HandleReconnect()
-}
-
-func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
-	return nil
 }
 
 func (self *Factory) Enabled() bool {
@@ -68,15 +83,20 @@ func (self *Factory) Enabled() bool {
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(self.serviceListHandler)
-	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseType), self.tunneler.fabricProvider.HandleTunnelResponse)
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.hostedServices.HandleCreateTerminatorResponse)
 	return nil
+}
+
+func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, ch channel.Channel) {
+	self.hostedServices.HandleCreateTerminatorResponse(msg, ch)
 }
 
 func (self *Factory) Run(env env.RouterEnv) error {
 	self.ctrls = env.GetNetworkControllers()
 	if self.tunneler.listenOptions != nil {
-		return self.tunneler.Start(env.GetCloseNotify())
+		return self.tunneler.Start()
+	} else {
+		self.tunneler.initialized.Store(true)
 	}
 	return nil
 }
@@ -89,51 +109,56 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 	return self.env.DefaultRequestTimeout()
 }
 
-type XrctrlFactory interface {
-	xgress_router.Factory
-	env.Xrctrl
-}
-
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(env env.RouterEnv, stateManager state.Manager) XrctrlFactory {
-	return NewFactoryWrapper(env, stateManager)
-}
-
-func NewV1Factory(env env.RouterEnv, stateManager state.Manager) XrctrlFactory {
+func NewFactory(env env.RouterEnv, stateManager state.Manager) *Factory {
 	factory := &Factory{
 		id:              env.GetRouterId(),
 		stateManager:    stateManager,
 		metricsRegistry: env.GetMetricsRegistry(),
 		env:             env,
 	}
-	factory.tunneler = newTunneler(factory, stateManager)
-	factory.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(factory.tunneler.servicePoller.handleServiceListUpdate)
+	factory.tunneler = newTunneler(factory)
 	return factory
 }
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
+	self.env.MarkRouterDataModelRequired()
+
+	self.hostedServices = newHostedServicesRegistry(self.env, self.stateManager)
+	self.tunneler.hostedServices = self.hostedServices
+
+	if fabricProviderFunc := fabricProviderF.Load(); fabricProviderFunc != nil {
+		self.tunneler.fabricProvider = fabricProviderFunc(self.env, self.hostedServices)
+	} else {
+		self.tunneler.fabricProvider = NewTunnelFabricProvider(self.env, self.hostedServices)
+	}
+
 	options := &Options{}
 	if err := options.load(optionsData); err != nil {
 		return nil, err
 	}
-	self.tunneler.listenOptions = options
 
-	pfxlog.Logger().Infof("xgress edge tunnel listener options: %v", options.ToLoggableString())
+	self.tunneler.listenOptions = options
+	self.tunneler.fabricProvider.SetXgressOptions(options.Options)
+
+	pfxlog.Logger().Debugf("xgress edge tunnel options: %v", options.ToLoggableString())
 
 	return self.tunneler, nil
 }
 
 // CreateDialer creates a new Edge Xgress dialer
 func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {
-	options := &Options{}
-	if err := options.load(optionsData); err != nil {
-		return nil, err
+	if self.dialerInitialized.CompareAndSwap(false, true) {
+		self.env.MarkRouterDataModelRequired()
+		options := &Options{}
+		if err := options.load(optionsData); err != nil {
+			return nil, err
+		}
+
+		self.tunneler.dialOptions = options
 	}
 
-	pfxlog.Logger().Debugf("xgress edge tunnel dialer options: %v", options.ToLoggableString())
-
-	self.tunneler.dialOptions = options
 	return self.tunneler, nil
 }
 

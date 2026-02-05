@@ -613,6 +613,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
+
 	self.checkForStateListener()
 
 	var handler connectHandler
