@@ -7,6 +7,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"math/big"
+	"net"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v3"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
@@ -16,11 +22,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"net"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 func Test_CertExpirationChecker(t *testing.T) {
@@ -381,6 +382,10 @@ type SimpleTestIdentity struct {
 	setCertCalled       bool
 	setServerCertCalled bool
 }
+
+func (s *SimpleTestIdentity) IsCertSettable() error { return nil }
+
+func (s *SimpleTestIdentity) IsServerCertSettable() error { return nil }
 
 func (s *SimpleTestIdentity) GetX509ActiveClientCertChain() []*x509.Certificate {
 	return nil
