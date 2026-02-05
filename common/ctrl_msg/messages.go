@@ -43,6 +43,9 @@ const (
 
 	XtStickinessToken = 1114
 
+	DialerIdentityIdHeader   = 1115
+	DialerIdentityNameHeader = 1116
+
 	ErrorTypeGeneric                 = 0
 	ErrorTypeInvalidTerminator       = 1
 	ErrorTypeMisconfiguredTerminator = 2
