@@ -2,7 +2,12 @@
 
 ## What's New
 
-We're making this release a major version bump to 2.0 for a couple of reasons.
+This is the next major version release of OpenZiti, following the 1.0 release in April 2024. 
+Of particular note is that HA controllers are now considered ready for general use. 
+This release also introduces a new permissions model, OIDC/JWT token-based enrollment, 
+clustering performance improvements, and a number of other features and fixes. Because 
+some of these changes are not backwards compatible with older routers, we're marking this 
+as a major version bump.
 
 ### HA Controllers are now considered ready for general use
 
@@ -53,7 +58,7 @@ Since we already have a breaking change, we're removing some other backwards com
     * The `type` can be dropped from the CLI command
     * Github tracking issue: https://github.com/openziti/ziti/issues/3532
 * Terminator create/update/delete events
-    * These have been superceded by entity change events, which also have create/update/delete events for terminators
+    * These have been superseded by entity change events, which also have create/update/delete events for terminators
     * Entity change events were introduced in v0.28.0
     * Github tracking issue: https://github.com/openziti/ziti/issues/3531
 * `xgress_edge_tunnel` v1
