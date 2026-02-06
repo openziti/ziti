@@ -272,38 +272,6 @@ In this mode, the transport extracts the identity from the URL and uses it to es
 the specified service via the addressable terminator.
 
 
-## Binding Controller APIs With Identity
-
-It's now possible to bind controller APIs to an OpenZiti overlay network identity. To bind a given controller
-API to an OpenZiti identity, add a section to the desired `bindPoint` section. For example a common `bindPoint`
-configuration might look like:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-```
-To bind any declared APIs to a given OpenZiti identity add an `identity` block:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-      - identity:
-          file: "c:/temp/ctrl.testing/clint.ctrl.json"
-          service: "mgmt"
-```
-It's possible to refer to an environment variable for the identity file if desired. Add an environment variable with 
-the contents of the environment variable the identity file base64 encoded. For example if an environment is defined 
-with the name `ZITI_ID_EXAMPLE` and contains a base64 encoded identity file, the following `bindPoint` block can be used:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-      - identity:
-          env: ZITI_ID_EXAMPLE
-          service: "mgmt"
-```
-
-
 ## OIDC/JWT Token-based Enrollment
 
 OpenZiti now supports provisioning identities just-in-time through OIDC/JWT token enrollment. External identity 
