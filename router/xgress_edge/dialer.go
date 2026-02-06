@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
 	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/xt"
@@ -115,6 +116,14 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
 	}
 
+	if dialerIdentityId, ok := circuitId.Data[ctrl_msg.DialerIdentityIdHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityId] = dialerIdentityId
+	}
+
+	if dialerIdentityName, ok := circuitId.Data[ctrl_msg.DialerIdentityNameHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityName] = dialerIdentityName
+	}
+
 	connId := terminator.nextDialConnId()
 	log = log.WithField("connId", connId)
 	log.Debugf("router assigned connId %v for dial", connId)
@@ -201,6 +210,14 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
 	}
 
+	if dialerIdentityId, ok := circuitId.Data[ctrl_msg.DialerIdentityIdHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityId] = dialerIdentityId
+	}
+
+	if dialerIdentityName, ok := circuitId.Data[ctrl_msg.DialerIdentityNameHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityName] = dialerIdentityName
+	}
+
 	connId := terminator.nextDialConnId()
 	log = log.WithField("connId", connId)
 	log.Debugf("router assigned connId %v for dial", connId)
@@ -284,6 +301,14 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 	appData, hasAppData := circuitId.Data[uint32(edgeSdk.AppDataHeader)]
 	if hasAppData {
 		dialRequest.Headers[edgeSdk.AppDataHeader] = appData
+	}
+
+	if dialerIdentityId, ok := circuitId.Data[ctrl_msg.DialerIdentityIdHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityId] = dialerIdentityId
+	}
+
+	if dialerIdentityName, ok := circuitId.Data[ctrl_msg.DialerIdentityNameHeader]; ok {
+		dialRequest.Headers[edgeSdk.DialerIdentityName] = dialerIdentityName
 	}
 
 	log.Debug("router not assigning connId for dial")

@@ -643,6 +643,13 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		}
 	}
 
+	if identityId := self.getIdentityId(); identityId != "" {
+		peerData[ctrl_msg.DialerIdentityIdHeader] = []byte(identityId)
+		if identity, found := self.listener.factory.stateManager.RouterDataModel().Identities.Get(identityId); found {
+			peerData[ctrl_msg.DialerIdentityNameHeader] = []byte(identity.Name)
+		}
+	}
+
 	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
 	request := &ctrl_msg.CreateCircuitRequest{
