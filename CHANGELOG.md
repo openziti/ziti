@@ -2,15 +2,165 @@
 
 ## What's New
 
-* controllers can now optionally bind APIs using a OpenZiti identity
+This is the next major version release of OpenZiti, following the 1.0 release in April 2024. 
+Of particular note is that HA controllers are now considered ready for general use. 
+This release also introduces a new permissions model, OIDC/JWT token-based enrollment, 
+clustering performance improvements, and a number of other features and fixes. Because 
+some of these changes are not backwards compatible with older routers, we're marking this 
+as a major version bump.
+
+### HA Controllers are now considered ready for general use
+
+This is a pretty big milestone and marks the completion of work that's been ongoing for a couple of years.
+The HA work has brought with it some notable changes. Authentication now uses JWTs by default. Using JWTs
+means the controllers don't need to store session and propagate them to the routers. This removes a bottleneck
+from the network and allows the load to be more easily distributed among controllers and routers.
+
+To support distributed authentication, the routers now get a bespoke version of the data model. In addition
+to enabling distributed authentication this will allow us to remove the need for service polling and further 
+reduce the load on controllers in the future.
+
+### Router Compatibility
+
+Related to the JWT work, routers with version 2.+ will only work with controllers that are version 2.+. This means
+to upgrade your network, controllers should be upgraded first. Routers can then be upgraded individually.
+
+2.x routers should still work fine with older router versions.
+
+We try very hard to avoid breaking changes like this, but sometimes the engineering trade-offs lead there. This change
+was first made in the 1.7 release. That release has not been marked stable, and we have no plans to do so, because
+of the backwards incompatibility.
+
+### New Permissions Model (BETA)
+
+As one feature goes out of beta, another arrives into beta. This release introduces a new permissions system
+for more fine grained control to the management API. It's not expected to change, but may do so based on feedback
+from users.
+
+### Updated Release Process
+
+We have moved to creating `-preN` releases for major and minor versions. This way we can put out release candidates,
+or feature previews and put them through internal testing and let interested folks from the community try them out.
+Then, when we're ready, we can run the full validation suite against the last pre-release and retag it. 
+
+Patch releases won't have `-preN` and should contain only high priority bug fixes.
+
+### Deprecation Cleanup
+
+Since we already have a breaking change, we're removing some other backwards compatibility code.
+
+* Controller managed links 
+    * Router managed links were introduced in v0.30.0. 
+    * If you're upgrading from an older versions, you'll want to upgrade to the latest 1.x release before jumping to 2.x
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3512
+* `ziti edge create identity <type>`
+    * Identity types other than router were removed in v0.30.2
+    * The `type` can be dropped from the CLI command
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3532
+* Terminator create/update/delete events
+    * These have been superseded by entity change events, which also have create/update/delete events for terminators
+    * Entity change events were introduced in v0.28.0
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3531
+* `xgress_edge_tunnel` v1
+    * This is the first implementation of the tunneler in edge-router code (ER/T) which used legacy api sessions and services
+    * The v2 version uses the router data model and was introduced in v0.30.x
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3516
+
+### Legacy Session Deprecation
+
+OIDC sessions are now preferred. They are the default, or will become the default for SDKs and tunnelers. They are also required
+when running HA. Legacy API and service session are now deprecated and will be removed in the OpenZiti v3.0.0 release. 
+
+### Additional Features
+
+* Controllers can now optionally bind APIs using an OpenZiti identity
 * `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
-* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
+* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be
   provided as just the JWT, not with the "Bearer " prefix
-* identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
-* OIDC/JWT Token-based Enrollment
-* Clustering Performance Improvements
-* Basic permissions model (BETA)
-* Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
+* Identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
+* Identities can now be provisioned just-in-time through OIDC/JWT token-based enrollment
+* Multiple model updates can now be in-flight at the same time, improving clustering performance
+* Authentication-related model updates can now be non-blocking and even dropped if the system is too busy
+* Routers now provide more error context to SDKs for terminator errors, enabling better retry behavior
+* New `proxy.v1` config type for dynamic service proxies (originally released in 1.7.0)
+* New alert event type for surfacing operational issues to network operators - Beta (originally released in 1.7.0)
+* New Azure Service Bus event sink for streaming controller events, contributed by @ffaraone (originally released in 1.7.0)
+* Bundled ZAC upgraded to 4.0
+* Build updated to Go 1.25
+* CLI cleaned up to remove calls to `os.Exit`, making it more friendly for embedding
+
+## Basic Permission System (BETA)
+
+Added a basic permission system that allows more control over identity access to controller management API operations. 
+This replaces the previous binary admin/non-admin model with a more flexible permission system.
+
+**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
+but the set of exposed permissions may grow, shrink or change based on user feedback. 
+
+### Permission Model
+
+The permission system supports three levels of authorization:
+
+  1. **Global Permissions**: System-wide access levels
+     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
+     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
+
+  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
+     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
+
+  3. **Action-Level Permissions**: Specific operation access on entity types
+     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
+     - Supports `create`, `read`, `update`, and `delete` actions per entity type
+
+### Supported Entity Permissions
+
+The following entity-level permissions are available:
+
+- `auth-policy` - Authentication policy management
+- `ca` - Certificate Authority management
+- `config` - Configuration management
+- `config-type` - Configuration type management
+- `edge-router-policy` - Edge router policy management
+- `enrollment` - Enrollment management
+- `external-jwt-signer` - External JWT signer management
+- `identity` - Identity management
+- `posture-check` - Posture check management
+- `router` - Edge and transit router management
+- `service` - Service management
+- `service-policy` - Service policy management
+- `service-edge-router-policy` - Service edge router policy management
+- `terminator` - Terminator management
+- `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
+
+### Permission Assignment
+
+Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
+
+### Cross-Entity Operations
+
+Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
+- Listing services for a service-policy requires `service.read` permission
+- Listing identities for an edge-router-policy requires `identity.read` permission
+- Listing configs for a service requires `config.read` permission
+
+**NOTE:** 
+More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
+has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
+as well because it will need to look up the config type id that corresponds to the given config type name.
+
+Similar cross entity read permissions may be required when creating services.
+
+### Admin Protection
+
+Non-admin identities cannot:
+- Create identities with the `isAdmin` flag
+- Create identities with any permissions granted
+- Modify admin-related fields on existing identities
+- Update or delete admin identities
+- Grant permissions to identities
+
+These protections ensure that privilege escalation is prevented and admin access remains controlled.
+
 
 ## Binding Controller APIs With Identity
 
@@ -136,38 +286,6 @@ ziti edge login https://my-identity@my-service:1280 \
 
 In this mode, the transport extracts the identity from the URL and uses it to establish a direct connection to
 the specified service via the addressable terminator.
-
-
-## Binding Controller APIs With Identity
-
-It's now possible to bind controller APIs to an OpenZiti overlay network identity. To bind a given controller
-API to an OpenZiti identity, add a section to the desired `bindPoint` section. For example a common `bindPoint`
-configuration might look like:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-```
-To bind any declared APIs to a given OpenZiti identity add an `identity` block:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-      - identity:
-          file: "c:/temp/ctrl.testing/clint.ctrl.json"
-          service: "mgmt"
-```
-It's possible to refer to an environment variable for the identity file if desired. Add an environment variable with 
-the contents of the environment variable the identity file base64 encoded. For example if an environment is defined 
-with the name `ZITI_ID_EXAMPLE` and contains a base64 encoded identity file, the following `bindPoint` block can be used:
-```text
-    bindPoints:
-      - interface: 127.0.0.1:18441
-        address: 127.0.0.1:18441
-      - identity:
-          env: ZITI_ID_EXAMPLE
-          service: "mgmt"
-```
 
 
 ## OIDC/JWT Token-based Enrollment
@@ -359,78 +477,6 @@ The adaptive rate limiter exposes three new metrics:
   3. raft.rate_limiter.window_size (gauge)
     - Current adaptive window size
 
-## Basic Permission System (BETA)
-
-Added a basic permission system that allows more control over identity access to controller management API operations. 
-This replaces the previous binary admin/non-admin model with a more flexible permission system.
-
-**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
-but the set of exposed permissions may grow, shrink or change based on user feedback. 
-
-### Permission Model
-
-The permission system supports three levels of authorization:
-
-  1. **Global Permissions**: System-wide access levels
-     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
-     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
-
-  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
-     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
-
-  3. **Action-Level Permissions**: Specific operation access on entity types
-     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
-     - Supports `create`, `read`, `update`, and `delete` actions per entity type
-
-### Supported Entity Permissions
-
-The following entity-level permissions are available:
-
-- `auth-policy` - Authentication policy management
-- `ca` - Certificate Authority management
-- `config` - Configuration management
-- `config-type` - Configuration type management
-- `edge-router-policy` - Edge router policy management
-- `enrollment` - Enrollment management
-- `external-jwt-signer` - External JWT signer management
-- `identity` - Identity management
-- `posture-check` - Posture check management
-- `router` - Edge and transit router management
-- `service` - Service management
-- `service-policy` - Service policy management
-- `service-edge-router-policy` - Service edge router policy management
-- `terminator` - Terminator management
-- `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
-
-### Permission Assignment
-
-Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
-
-### Cross-Entity Operations
-
-Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
-- Listing services for a service-policy requires `service.read` permission
-- Listing identities for an edge-router-policy requires `identity.read` permission
-- Listing configs for a service requires `config.read` permission
-
-**NOTE:** 
-More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
-has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
-as well because it will need to look up the config type id that corresponds to the given config type name.
-
-Similar cross entity read permissions may be required when creating services.
-
-### Admin Protection
-
-Non-admin identities cannot:
-- Create identities with the `isAdmin` flag
-- Create identities with any permissions granted
-- Modify admin-related fields on existing identities
-- Update or delete admin identities
-- Grant permissions to identities
-
-These protections ensure that privilege escalation is prevented and admin access remains controlled.
-
 ## Background Processing for Identity Updates
 
 Identity environment and authenticator updates that occur during authentication are now processed asynchronously in the background. 
@@ -482,6 +528,115 @@ When background processing is enabled, the following metrics are exposed:
 - command.background.busy_workers - Number of workers currently processing tasks
 - command.background.work_timer - Timer tracking background task execution (includes histogram, meter, and count)
 - command.background.dropped_entries - Count of dropped updates when queue is full (only when dropWhenFull is enabled)
+
+## New proxy.v1 Config Type
+
+*Originally released in 1.7.0*
+
+Added support for dynamic service proxies with configurable binding and protocol options.
+This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
+
+This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
+IP addresses or DNS entries to forward to a service using tproxy or tun interface,
+depending on implementation.
+
+A proxy on the other hand will just start a regular TCP/UDP listener on the configured port,
+so traffic will have to be configured for that destination.
+
+Example proxy.v1 Configuration:
+
+```
+  {
+    "port": 8080,
+    "protocols": ["tcp"],
+    "binding": "0.0.0.0"
+  }
+```
+
+Configuration Properties:
+  - port (required): Port number to listen on (1-65535)
+  - protocols (required): Array of supported protocols (tcp, udp)
+  - binding (optional): Interface to bind to. For the ER/T defaults to the configured lanIF config property.
+
+This config type is currently supported by the ER/T when running in either proxy or tproxy mode.
+
+## Alert Events (BETA)
+
+*Originally released in 1.7.0*
+
+A new alert event type has been added to allow Ziti components to emit alerts for issues that network operators can address.
+Alert events are generated when components encounter problems such as service configuration errors or resource
+availability issues.
+
+Alert events include:
+  - Alert source type and ID (currently supports routers, with controller and SDK support planned for future releases)
+  - Severity level (currently supports error, with info and warning planned for future releases)
+  - Alert message and supporting details
+  - Related entities (router, identity, service, etc.) associated with the alert
+
+Example alert event when a router cannot bind a configured network interface:
+
+```
+  {
+    "namespace": "alert",
+    "event_src_id": "ctrl1",
+    "timestamp": "2021-11-08T14:45:45.785561479-05:00",
+    "alert_source_type": "router",
+    "alert_source_id": "DJFljCCoLs",
+    "severity": "error",
+    "message": "error starting proxy listener for service 'test'",
+    "details": [
+      "unable to bind eth0, no address"
+    ],
+    "related_entities": {
+      "router": "DJFljCCoLs",
+      "identity": "DJFljCCoLs",
+      "service": "3DPjxybDvXlo878CB0X2Zs"
+    }
+  }
+```
+
+Alert events can be consumed through the standard event system and logged to configured event handlers for monitoring and alerting purposes.
+
+These events are currently in Beta, as the format is still subject to change. Once they've been in use in production for a while
+and proven useful, they will be marked as stable.
+
+## Azure Service Bus Event Sink
+
+*Originally released in 1.7.0. Contributed by @ffaraone.*
+
+Adds support for streaming controller events to Azure Service Bus.
+The new logger enables real-time event streaming from the OpenZiti controller to Azure Service Bus
+queues or topics, providing integration with Azure-based monitoring and analytics systems.
+
+To enable the Azure Service Bus event logger, add configuration to the controller config file under the events section:
+
+```
+  events:
+    serviceBusLogger:
+      subscriptions:
+        - type: circuit
+        - type: session
+        - type: metrics
+          sourceFilter: .*
+          metricFilter: .*
+        # Add other event types as needed
+      handler:
+        type: servicebus
+        format: json
+        connectionString: "Endpoint=sb://your-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your-key"
+        topic: "ziti-events"          # Use 'topic' for Service Bus topic
+        # queue: "ziti-events-queue"  # Or use 'queue' for Service Bus queue
+        bufferSize: 100                # Optional, defaults to 50
+```
+
+- Required configuration:
+    - format: Event format, currently supports only json
+    - connectionString: Azure Service Bus connection string
+    - Either topic or queue: Destination name (mutually exclusive)
+
+- Optional configuration:
+    - bufferSize: Internal message buffer size (default: 50)
 
 ## Component Updates and Bug Fixes
 
