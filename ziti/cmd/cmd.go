@@ -292,7 +292,12 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		Short: "Various utilities useful when operating a Ziti network",
 	}
 
-	opsCommands.AddCommand(database.NewCmdDb(out, err))
+	dbCmd := database.NewCmdDb(out, err)
+	// Add fabric db commands to ops db for consolidated access
+	dbCmd.AddCommand(fabric.NewDbSnapshotCmd(p))
+	dbCmd.AddCommand(fabric.NewDbCheckIntegrityCmd(p))
+	dbCmd.AddCommand(fabric.NewDbCheckIntegrityStatusCmd(p))
+	opsCommands.AddCommand(dbCmd)
 	opsCommands.AddCommand(fabric.NewClusterCmd(p))
 	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))

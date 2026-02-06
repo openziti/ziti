@@ -45,8 +45,8 @@ func newFabricCmdInternal(p common.OptionsProvider, v1Layout bool) *cobra.Comman
 		fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
 		fabricCmd.AddCommand(NewInspectCmd(p))
 		fabricCmd.AddCommand(newValidateCommand(p))
+		fabricCmd.AddCommand(newDbCmd(p))
 	}
-	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
 	return fabricCmd
 }

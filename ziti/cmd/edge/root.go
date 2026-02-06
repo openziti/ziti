@@ -50,11 +50,11 @@ func newCmdEdgeInternal(out io.Writer, errOut io.Writer, p common.OptionsProvide
 		cmd.AddCommand(NewLogoutCmd(out, errOut))
 		cmd.AddCommand(NewUseCmd(out, errOut))
 		cmd.AddCommand(newValidateCommand(p))
+		cmd.AddCommand(newDbCmd(out, errOut))
 	}
 	cmd.AddCommand(newVersionCmd(out, errOut))
 	cmd.AddCommand(newPolicyAdivsorCmd(out, errOut))
 	cmd.AddCommand(newVerifyCmd(out, errOut))
-	cmd.AddCommand(newDbCmd(out, errOut))
 	cmd.AddCommand(newTraceCmd(out, errOut))
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	cmd.AddCommand(newShowCmd(out, errOut))

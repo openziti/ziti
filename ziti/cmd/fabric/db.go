@@ -11,9 +11,9 @@ func newDbCmd(p common.OptionsProvider) *cobra.Command {
 		Short: "Database management operations for the Ziti Edge Controller",
 	}
 
-	cmd.AddCommand(newDbSnapshotCmd(p))
-	cmd.AddCommand(newDbCheckIntegrityCmd(p))
-	cmd.AddCommand(newDbCheckIntegrityStatusCmd(p))
+	cmd.AddCommand(NewDbSnapshotCmd(p))
+	cmd.AddCommand(NewDbCheckIntegrityCmd(p))
+	cmd.AddCommand(NewDbCheckIntegrityStatusCmd(p))
 
 	return cmd
 }

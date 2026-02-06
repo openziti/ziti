@@ -32,7 +32,7 @@ type dbSnapshotOptions struct {
 	api.Options
 }
 
-func newDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
+func NewDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
 	options := &dbSnapshotOptions{
 		Options: api.Options{CommonOptions: p()},
 	}
