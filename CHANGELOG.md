@@ -2,6 +2,68 @@
 
 ## What's New
 
+We're making this release a major version bump to 2.0 for a couple of reasons.
+
+### HA Controllers are now considered ready for general use
+
+This is a pretty big milestone and marks the completion of work that's been ongoing for a couple of years.
+The HA work has brought with it some notable changes. Authentication now uses JWTs by default. Using JWTs
+means the controllers don't need to store session and propagate them to the routers. This removes a bottleneck
+from the network and allows the load to be more easily distributed among controllers and routers.
+
+To support distributed authentication, the routers now get a bespoke version of the data model. In addition
+to enabling distributed authentication this will allow us to remove the need for service polling and further 
+reduce the load on controllers in the future.
+
+### Router Compatibility
+
+Related to the JWT work, routers with version 2.+ will only work with controllers that are version 2.+. This means
+to upgrade your network, controllers should be upgraded first. Routers can then be upgraded individually.
+
+2.x routers should still work fine with older router versions.
+
+We try very hard to avoid breaking changes like this, but sometimes the engineering trade-offs lead there. This change
+was first made in the 1.7 release. That release has not been marked stable, and we have no plans to do so, because
+of the backwards incompatibility.
+
+### New Permissions Model (BETA)
+
+As one feature goes out of beta, another arrives into beta. This release introduces a new permissions system
+for more fine grained control to the management API. It's not expected to change, but may do so based on feedback
+from users.
+
+### Updated Release Process
+
+We have moved to creating `-preN` releases for major and minor versions. This way we can put out release candidates,
+or feature previews and put them through internal testing and let interested folks from the community try them out.
+Then, when we're ready, we can run the full validation suite against the last pre-release and retag it. 
+
+Patch releases won't have `-preN` and should contain only high priority bug fixes.
+
+### Deprecation Cleanup
+
+Since we already have a breaking change, we're removing some other backwards compatibility code.
+
+* Controller managed links 
+    * Router managed links were introduced in v0.30.0. 
+    * If you're upgrading from an older versions, you'll want to upgrade to the latest 1.x release before jumping to 2.x
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3512
+* `ziti edge create identity <type>`
+    * Identity types other than router were removed in v0.30.2
+    * The `type` can be dropped from the CLI command
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3532
+* Terminator create/update/delete events
+    * These have been superceded by entity change events, which also have create/update/delete events for terminators
+    * Entity change events were introduced in v0.28.0
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3531
+
+### Legacy Session Deprecation
+
+OIDC sessions are now preferred. They are the default, or will become the default for SDKs and tunnelers. They are also required
+when running HA. Legacy API and service session are now deprecated and will be removed in the OpenZiti v3.0.0 release. 
+
+### Additional Features
+
 * controllers can now optionally bind APIs using a OpenZiti identity
 * `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
 * `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
@@ -9,8 +71,80 @@
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 * OIDC/JWT Token-based Enrollment
 * Clustering Performance Improvements
-* Basic permissions model (BETA)
 * Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
+
+## Basic Permission System (BETA)
+
+Added a basic permission system that allows more control over identity access to controller management API operations. 
+This replaces the previous binary admin/non-admin model with a more flexible permission system.
+
+**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
+but the set of exposed permissions may grow, shrink or change based on user feedback. 
+
+### Permission Model
+
+The permission system supports three levels of authorization:
+
+  1. **Global Permissions**: System-wide access levels
+     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
+     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
+
+  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
+     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
+
+  3. **Action-Level Permissions**: Specific operation access on entity types
+     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
+     - Supports `create`, `read`, `update`, and `delete` actions per entity type
+
+### Supported Entity Permissions
+
+The following entity-level permissions are available:
+
+- `auth-policy` - Authentication policy management
+- `ca` - Certificate Authority management
+- `config` - Configuration management
+- `config-type` - Configuration type management
+- `edge-router-policy` - Edge router policy management
+- `enrollment` - Enrollment management
+- `external-jwt-signer` - External JWT signer management
+- `identity` - Identity management
+- `posture-check` - Posture check management
+- `router` - Edge and transit router management
+- `service` - Service management
+- `service-policy` - Service policy management
+- `service-edge-router-policy` - Service edge router policy management
+- `terminator` - Terminator management
+- `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
+
+### Permission Assignment
+
+Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
+
+### Cross-Entity Operations
+
+Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
+- Listing services for a service-policy requires `service.read` permission
+- Listing identities for an edge-router-policy requires `identity.read` permission
+- Listing configs for a service requires `config.read` permission
+
+**NOTE:** 
+More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
+has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
+as well because it will need to look up the config type id that corresponds to the given config type name.
+
+Similar cross entity read permissions may be required when creating services.
+
+### Admin Protection
+
+Non-admin identities cannot:
+- Create identities with the `isAdmin` flag
+- Create identities with any permissions granted
+- Modify admin-related fields on existing identities
+- Update or delete admin identities
+- Grant permissions to identities
+
+These protections ensure that privilege escalation is prevented and admin access remains controlled.
+
 
 ## Binding Controller APIs With Identity
 
@@ -358,78 +492,6 @@ The adaptive rate limiter exposes three new metrics:
     - Duration of rate-limited operations
   3. raft.rate_limiter.window_size (gauge)
     - Current adaptive window size
-
-## Basic Permission System (BETA)
-
-Added a basic permission system that allows more control over identity access to controller management API operations. 
-This replaces the previous binary admin/non-admin model with a more flexible permission system.
-
-**NOTE:** This feature is in BETA, primarily so we can get feedback on which permissions make sense. The implementation is unlikely to change
-but the set of exposed permissions may grow, shrink or change based on user feedback. 
-
-### Permission Model
-
-The permission system supports three levels of authorization:
-
-  1. **Global Permissions**: System-wide access levels
-     - `admin` - Full access to all operations. This is still controlled by the `isAdmin` flag on identity
-     - `admin_readonly` - Read-only access to all resources except debugging facilities inspect and validate
-
-  2. **Entity-Level Permissions**: Full CRUD access to specific entity types
-     - Granting an entity-level permission (e.g., `service`) provides complete create, read, update, and delete access for that entity type
-
-  3. **Action-Level Permissions**: Specific operation access on entity types
-     - Fine-grained control using the pattern `<entity>.<action>` (e.g., `service.read`, `identity.update`)
-     - Supports `create`, `read`, `update`, and `delete` actions per entity type
-
-### Supported Entity Permissions
-
-The following entity-level permissions are available:
-
-- `auth-policy` - Authentication policy management
-- `ca` - Certificate Authority management
-- `config` - Configuration management
-- `config-type` - Configuration type management
-- `edge-router-policy` - Edge router policy management
-- `enrollment` - Enrollment management
-- `external-jwt-signer` - External JWT signer management
-- `identity` - Identity management
-- `posture-check` - Posture check management
-- `router` - Edge and transit router management
-- `service` - Service management
-- `service-policy` - Service policy management
-- `service-edge-router-policy` - Service edge router policy management
-- `terminator` - Terminator management
-- `ops` - Operational resources (API sessions, sessions, circuits, links, inspect and validate)
-
-### Permission Assignment
-
-Permissions are assigned to identities via the `permissions` field in the identity resource. Multiple permissions can be granted to a single identity, and permissions are additive.
-
-### Cross-Entity Operations
-
-Listing related entities through an entity's endpoints requires appropriate permissions for the related entity type. For example:
-- Listing services for a service-policy requires `service.read` permission
-- Listing identities for an edge-router-policy requires `identity.read` permission
-- Listing configs for a service requires `config.read` permission
-
-**NOTE:** 
-More permissions than expected may be required when performing actions through the CLI or ZAC. Take for example, when an identity 
-has `config.create` and is attempting to create a new config. The CLI may fail if the identity doesn't have `config-type.read`
-as well because it will need to look up the config type id that corresponds to the given config type name.
-
-Similar cross entity read permissions may be required when creating services.
-
-### Admin Protection
-
-Non-admin identities cannot:
-- Create identities with the `isAdmin` flag
-- Create identities with any permissions granted
-- Modify admin-related fields on existing identities
-- Update or delete admin identities
-- Grant permissions to identities
-
-These protections ensure that privilege escalation is prevented and admin access remains controlled.
 
 ## Background Processing for Identity Updates
 
