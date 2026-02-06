@@ -29,13 +29,25 @@ import (
 
 // NewFabricCmd creates a command object for the fabric command
 func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
+	return newFabricCmdInternal(p, true)
+}
+
+// NewFabricCmdV2 creates a command object for the fabric command without CRUD subcommands
+// (they are consolidated at the top level in V2)
+func NewFabricCmdV2(p common.OptionsProvider) *cobra.Command {
+	return newFabricCmdInternal(p, false)
+}
+
+func newFabricCmdInternal(p common.OptionsProvider, v1Layout bool) *cobra.Command {
 	fabricCmd := util.NewEmptyParentCmd("fabric", "Manage the Fabric components of a Ziti network using the Ziti Fabric REST and WebSocket APIs")
 
-	fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
-	fabricCmd.AddCommand(NewInspectCmd(p))
+	if v1Layout {
+		fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
+		fabricCmd.AddCommand(NewInspectCmd(p))
+		fabricCmd.AddCommand(newValidateCommand(p))
+	}
 	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
-	fabricCmd.AddCommand(newValidateCommand(p))
 	return fabricCmd
 }
 
@@ -45,11 +57,35 @@ func newCreateCommand(p common.OptionsProvider) *cobra.Command {
 		Short: "creates various entities managed by the Ziti Controller",
 	}
 
-	createCmd.AddCommand(newCreateRouterCmd(p))
-	createCmd.AddCommand(newCreateServiceCmd(p))
-	createCmd.AddCommand(newCreateTerminatorCmd(p))
+	AddCreateCommands(createCmd, p)
 
 	return createCmd
+}
+
+// AddCreateCommands adds all fabric create subcommands to the given parent command
+func AddCreateCommands(cmd *cobra.Command, p common.OptionsProvider) {
+	cmd.AddCommand(newCreateRouterCmd(p))
+	cmd.AddCommand(newCreateServiceCmd(p))
+	cmd.AddCommand(newCreateTerminatorCmd(p))
+}
+
+// AddCreateCommandsConsolidated adds fabric create subcommands for consolidated top-level use
+// - router: prefixed with fabric- and hidden (edge-router is preferred)
+// - service: prefixed with fabric- and hidden (edge service is preferred)
+// - terminator: no prefix, this is the default terminator command
+func AddCreateCommandsConsolidated(cmd *cobra.Command, p common.OptionsProvider) {
+	routerCmd := newCreateRouterCmd(p)
+	routerCmd.Use = "fabric-router <path-to-cert>"
+	routerCmd.Hidden = true
+	cmd.AddCommand(routerCmd)
+
+	serviceCmd := newCreateServiceCmd(p)
+	serviceCmd.Use = "fabric-service <name>"
+	serviceCmd.Hidden = true
+	cmd.AddCommand(serviceCmd)
+
+	// Terminator is the default - no prefix
+	cmd.AddCommand(newCreateTerminatorCmd(p))
 }
 
 func newUpdateCommand(p common.OptionsProvider) *cobra.Command {
@@ -58,12 +94,36 @@ func newUpdateCommand(p common.OptionsProvider) *cobra.Command {
 		Short: "update various entities managed by the Ziti Controller",
 	}
 
-	updateCmd.AddCommand(newUpdateLinkCmd(p))
-	updateCmd.AddCommand(newUpdateRouterCmd(p))
-	updateCmd.AddCommand(newUpdateServiceCmd(p))
-	updateCmd.AddCommand(newUpdateTerminatorCmd(p))
+	AddUpdateCommands(updateCmd, p)
 
 	return updateCmd
+}
+
+// AddUpdateCommands adds all fabric update subcommands to the given parent command
+func AddUpdateCommands(cmd *cobra.Command, p common.OptionsProvider) {
+	cmd.AddCommand(newUpdateLinkCmd(p))
+	cmd.AddCommand(newUpdateRouterCmd(p))
+	cmd.AddCommand(newUpdateServiceCmd(p))
+	cmd.AddCommand(newUpdateTerminatorCmd(p))
+}
+
+// AddUpdateCommandsConsolidated adds fabric update subcommands for consolidated top-level use
+func AddUpdateCommandsConsolidated(cmd *cobra.Command, p common.OptionsProvider) {
+	// link is fabric-only, no prefix needed
+	cmd.AddCommand(newUpdateLinkCmd(p))
+
+	routerCmd := newUpdateRouterCmd(p)
+	routerCmd.Use = "fabric-" + routerCmd.Use
+	routerCmd.Hidden = true
+	cmd.AddCommand(routerCmd)
+
+	serviceCmd := newUpdateServiceCmd(p)
+	serviceCmd.Use = "fabric-" + serviceCmd.Use
+	serviceCmd.Hidden = true
+	cmd.AddCommand(serviceCmd)
+
+	// Terminator is the default - no prefix
+	cmd.AddCommand(newUpdateTerminatorCmd(p))
 }
 
 func newStreamCommand(p common.OptionsProvider) *cobra.Command {

@@ -35,6 +35,7 @@ type createTerminatorOptions struct {
 	cost       int32
 	precedence string
 	instanceId string
+	tags       map[string]string
 }
 
 // newCreateTerminatorCmd creates the 'fabric create terminator' command
@@ -61,6 +62,7 @@ func newCreateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
 	cmd.Flags().StringVar(&options.instanceId, "instance-id", "", "Set the terminator instance-id")
+	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to terminator definition")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -102,6 +104,10 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 			return
 		}
 		api.SetJSONValue(entityData, o.precedence, "precedence")
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 	}
 
 	result, err := createEntityOfType("terminators", entityData.String(), &o.Options)

@@ -66,10 +66,6 @@ type RootCmd struct {
 	cobraCommand *cobra.Command
 }
 
-func GetRootCommand() *cobra.Command {
-	return rootCommand.cobraCommand
-}
-
 var rootCommand = RootCmd{
 	cobraCommand: &cobra.Command{
 		Use:   "ziti",
@@ -283,11 +279,9 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	tunnelCmd := tunnel.NewTunnelCmd(true)
 	tunnelCmd.Hidden = true
 
-	createCommands := create.NewCmdCreate(out, err)
 	pkiCommands := pki.NewCmdPKI(out, err)
-	fabricCommand := fabric.NewFabricCmd(p)
-	edgeCommand := edge.NewCmdEdge(out, err, p)
-	edgeCommand.AddCommand(run.NewQuickStartCmd(out, err, context.Background()))
+	fabricCommand := fabric.NewFabricCmdV2(p)
+	edgeCommand := edge.NewCmdEdgeV2(out, err, p)
 
 	demoCmd := demo.NewDemoCmd(p)
 	enrollCmd := enroll.NewEnrollCmd(p)
@@ -335,11 +329,60 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	loginCmd.AddCommand(forgetCmd)
 	loginCmd.AddCommand(edge.NewUseCmd(out, err))
 
+	// Create top-level CRUD commands that combine edge and fabric subcommands
+	// - Edge commands are the default for most entities
+	// - Fabric service/router commands are hidden (edge versions are preferred)
+	// - Fabric terminator is the default (edge terminator is excluded)
+	topLevelCreateCmd := &cobra.Command{
+		Use:   "create",
+		Short: "creates various entities managed by the Ziti Controller",
+	}
+	edge.AddCreateCommandsConsolidated(topLevelCreateCmd, out, err)
+	fabric.AddCreateCommandsConsolidated(topLevelCreateCmd, p)
+
+	// Add config file generation commands with new names
+	controllerConfigCmd := create.NewCmdCreateConfigController().Command
+	controllerConfigCmd.Use = "controller-config-file"
+	controllerConfigCmd.Aliases = []string{"controller-config"}
+	topLevelCreateCmd.AddCommand(controllerConfigCmd)
+
+	routerConfigCmd := create.NewCmdCreateConfigRouter(nil).Command
+	routerConfigCmd.Use = "router-config-file"
+	routerConfigCmd.Aliases = []string{"router-config"}
+	topLevelCreateCmd.AddCommand(routerConfigCmd)
+
+	topLevelCreateCmd.AddCommand(create.NewCmdCreateConfigEnvironment())
+
+	topLevelDeleteCmd := &cobra.Command{
+		Use:   "delete",
+		Short: "deletes various entities managed by the Ziti Controller",
+	}
+	edge.AddDeleteCommandsConsolidated(topLevelDeleteCmd, out, err)
+	fabric.AddDeleteCommandsConsolidated(topLevelDeleteCmd, p)
+
+	topLevelListCmd := &cobra.Command{
+		Use:     "list",
+		Short:   "lists various entities managed by the Ziti Controller",
+		Aliases: []string{"ls"},
+	}
+	edge.AddListCommandsConsolidated(topLevelListCmd, out, err)
+	fabric.AddListCommandsConsolidated(topLevelListCmd, p)
+
+	topLevelUpdateCmd := &cobra.Command{
+		Use:   "update",
+		Short: "updates various entities managed by the Ziti Controller",
+	}
+	edge.AddUpdateCommandsConsolidated(topLevelUpdateCmd, out, err)
+	fabric.AddUpdateCommandsConsolidated(topLevelUpdateCmd, p)
+
 	groups := templates.CommandGroups{
 		{
 			Message: "Working with Ziti resources:",
 			Commands: []*cobra.Command{
-				createCommands,
+				topLevelCreateCmd,
+				topLevelDeleteCmd,
+				topLevelListCmd,
+				topLevelUpdateCmd,
 			},
 		},
 		{

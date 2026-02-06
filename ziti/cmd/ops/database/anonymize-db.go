@@ -44,8 +44,9 @@ func NewAnonymizeAction() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use: "anonymize <path-to-db-file>",
-		Short: "This utility attempts to remove personal information from the db. It does the following\n" +
+		Use:   "anonymize <path-to-db-file>",
+		Short: "Attempts to remove personal information from the db",
+		Long: "This utility attempts to remove personal information from the db. It does the following\n" +
 			"1. Renames all identities, services, edge-routers, policies and configs with generic names\n" +
 			"2. Removes tags from identities, services, edge-routers, policies and configs \n" +
 			"3. Removes app data from identities and edge-routers\n" +

@@ -47,18 +47,79 @@ func newListCmd(p common.OptionsProvider) *cobra.Command {
 		Aliases: []string{"ls"},
 	}
 
+	AddListCommands(listCmd, p)
+
+	return listCmd
+}
+
+// AddListCommands adds all fabric list subcommands to the given parent command
+func AddListCommands(cmd *cobra.Command, p common.OptionsProvider) {
 	newOptions := func() *api.Options {
 		return &api.Options{CommonOptions: p()}
 	}
 
-	listCmd.AddCommand(newListCmdForEntityType("circuits", runListCircuits, newOptions()))
-	listCmd.AddCommand(newListCmdForEntityType("controllers", runListControllers, newOptions()))
-	listCmd.AddCommand(newListCmdForEntityType("links", runListLinks, newOptions()))
-	listCmd.AddCommand(newListCmdForEntityType("routers", runListRouters, newOptions()))
-	listCmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
-	listCmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("circuits", runListCircuits, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("controllers", runListControllers, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("links", runListLinks, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("routers", runListRouters, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
+}
 
-	return listCmd
+// AddListCommandsWithPrefix adds fabric list subcommands with a prefix to avoid conflicts
+func AddListCommandsWithPrefix(cmd *cobra.Command, p common.OptionsProvider, prefix string) {
+	newOptions := func() *api.Options {
+		return &api.Options{CommonOptions: p()}
+	}
+
+	circuitsCmd := newListCmdForEntityType("circuits", runListCircuits, newOptions())
+	circuitsCmd.Use = prefix + circuitsCmd.Use
+	cmd.AddCommand(circuitsCmd)
+
+	controllersCmd := newListCmdForEntityType("controllers", runListControllers, newOptions())
+	controllersCmd.Use = prefix + controllersCmd.Use
+	cmd.AddCommand(controllersCmd)
+
+	linksCmd := newListCmdForEntityType("links", runListLinks, newOptions())
+	linksCmd.Use = prefix + linksCmd.Use
+	cmd.AddCommand(linksCmd)
+
+	routersCmd := newListCmdForEntityType("routers", runListRouters, newOptions())
+	routersCmd.Use = prefix + routersCmd.Use
+	cmd.AddCommand(routersCmd)
+
+	servicesCmd := newListCmdForEntityType("services", runListServices, newOptions())
+	servicesCmd.Use = prefix + servicesCmd.Use
+	cmd.AddCommand(servicesCmd)
+
+	terminatorsCmd := newListCmdForEntityType("terminators", runListTerminators, newOptions())
+	terminatorsCmd.Use = prefix + terminatorsCmd.Use
+	cmd.AddCommand(terminatorsCmd)
+}
+
+// AddListCommandsConsolidated adds fabric list subcommands for consolidated top-level use
+func AddListCommandsConsolidated(cmd *cobra.Command, p common.OptionsProvider) {
+	newOptions := func() *api.Options {
+		return &api.Options{CommonOptions: p()}
+	}
+
+	// circuits, controllers, and links are fabric-only, no prefix needed
+	cmd.AddCommand(newListCmdForEntityType("circuits", runListCircuits, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("controllers", runListControllers, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("links", runListLinks, newOptions()))
+
+	routersCmd := newListCmdForEntityType("routers", runListRouters, newOptions())
+	routersCmd.Use = "fabric-" + routersCmd.Use
+	routersCmd.Hidden = true
+	cmd.AddCommand(routersCmd)
+
+	servicesCmd := newListCmdForEntityType("services", runListServices, newOptions())
+	servicesCmd.Use = "fabric-" + servicesCmd.Use
+	servicesCmd.Hidden = true
+	cmd.AddCommand(servicesCmd)
+
+	// Terminators is the default - no prefix
+	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 }
 
 type listCommandRunner func(*api.Options) error
