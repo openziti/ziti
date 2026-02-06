@@ -223,6 +223,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
+	cmd.AddCommand(NewCliCmd(out, err))
 
 	return cmd
 }
@@ -367,6 +368,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
+	cmd.AddCommand(NewCliCmd(out, err))
 
 	return cmd
 }
