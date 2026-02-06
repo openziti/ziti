@@ -56,6 +56,10 @@ Since we already have a breaking change, we're removing some other backwards com
     * These have been superceded by entity change events, which also have create/update/delete events for terminators
     * Entity change events were introduced in v0.28.0
     * Github tracking issue: https://github.com/openziti/ziti/issues/3531
+* `xgress_edge_tunnel` v1
+    * This is the first implementation of the tunneler in edge-router code (ER/T) which used legacy api sessions and services
+    * The v2 version uses the router data model and was introduced in v0.30.x
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3516
 
 ### Legacy Session Deprecation
 
