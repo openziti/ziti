@@ -79,6 +79,10 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * New `proxy.v1` config type (originally released in 1.7.0)
 * Alert Events - Beta (originally released in 1.7.0)
 * Azure Service Bus Event Sink, contributed by @ffaraone (originally released in 1.7.0)
+* Routers now provide more error context to SDKs for terminator errors, enabling better retry behavior
+* Bundled ZAC upgraded to 4.0
+* Build updated to Go 1.25
+* CLI cleaned up to remove calls to `os.Exit`, making it more friendly for embedding
 
 ## Basic Permission System (BETA)
 
