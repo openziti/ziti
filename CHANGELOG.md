@@ -70,12 +70,15 @@ when running HA. Legacy API and service session are now deprecated and will be r
 
 * controllers can now optionally bind APIs using a OpenZiti identity
 * `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
-* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be 
+* `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be
   provided as just the JWT, not with the "Bearer " prefix
 * identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
 * OIDC/JWT Token-based Enrollment
 * Clustering Performance Improvements
 * Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
+* New `proxy.v1` config type (originally released in 1.7.0)
+* Alert Events - Beta (originally released in 1.7.0)
+* Azure Service Bus Event Sink, contributed by @ffaraone (originally released in 1.7.0)
 
 ## Basic Permission System (BETA)
 
@@ -516,6 +519,115 @@ When background processing is enabled, the following metrics are exposed:
 - command.background.busy_workers - Number of workers currently processing tasks
 - command.background.work_timer - Timer tracking background task execution (includes histogram, meter, and count)
 - command.background.dropped_entries - Count of dropped updates when queue is full (only when dropWhenFull is enabled)
+
+## New proxy.v1 Config Type
+
+*Originally released in 1.7.0*
+
+Added support for dynamic service proxies with configurable binding and protocol options.
+This allows Edge Routers and Tunnelers to create proxy endpoints that can forward traffic for Ziti services.
+
+This differs from intercept.v1 in that intercept.v1 will intercept traffic on specified
+IP addresses or DNS entries to forward to a service using tproxy or tun interface,
+depending on implementation.
+
+A proxy on the other hand will just start a regular TCP/UDP listener on the configured port,
+so traffic will have to be configured for that destination.
+
+Example proxy.v1 Configuration:
+
+```
+  {
+    "port": 8080,
+    "protocols": ["tcp"],
+    "binding": "0.0.0.0"
+  }
+```
+
+Configuration Properties:
+  - port (required): Port number to listen on (1-65535)
+  - protocols (required): Array of supported protocols (tcp, udp)
+  - binding (optional): Interface to bind to. For the ER/T defaults to the configured lanIF config property.
+
+This config type is currently supported by the ER/T when running in either proxy or tproxy mode.
+
+## Alert Events (BETA)
+
+*Originally released in 1.7.0*
+
+A new alert event type has been added to allow Ziti components to emit alerts for issues that network operators can address.
+Alert events are generated when components encounter problems such as service configuration errors or resource
+availability issues.
+
+Alert events include:
+  - Alert source type and ID (currently supports routers, with controller and SDK support planned for future releases)
+  - Severity level (currently supports error, with info and warning planned for future releases)
+  - Alert message and supporting details
+  - Related entities (router, identity, service, etc.) associated with the alert
+
+Example alert event when a router cannot bind a configured network interface:
+
+```
+  {
+    "namespace": "alert",
+    "event_src_id": "ctrl1",
+    "timestamp": "2021-11-08T14:45:45.785561479-05:00",
+    "alert_source_type": "router",
+    "alert_source_id": "DJFljCCoLs",
+    "severity": "error",
+    "message": "error starting proxy listener for service 'test'",
+    "details": [
+      "unable to bind eth0, no address"
+    ],
+    "related_entities": {
+      "router": "DJFljCCoLs",
+      "identity": "DJFljCCoLs",
+      "service": "3DPjxybDvXlo878CB0X2Zs"
+    }
+  }
+```
+
+Alert events can be consumed through the standard event system and logged to configured event handlers for monitoring and alerting purposes.
+
+These events are currently in Beta, as the format is still subject to change. Once they've been in use in production for a while
+and proven useful, they will be marked as stable.
+
+## Azure Service Bus Event Sink
+
+*Originally released in 1.7.0. Contributed by @ffaraone.*
+
+Adds support for streaming controller events to Azure Service Bus.
+The new logger enables real-time event streaming from the OpenZiti controller to Azure Service Bus
+queues or topics, providing integration with Azure-based monitoring and analytics systems.
+
+To enable the Azure Service Bus event logger, add configuration to the controller config file under the events section:
+
+```
+  events:
+    serviceBusLogger:
+      subscriptions:
+        - type: circuit
+        - type: session
+        - type: metrics
+          sourceFilter: .*
+          metricFilter: .*
+        # Add other event types as needed
+      handler:
+        type: servicebus
+        format: json
+        connectionString: "Endpoint=sb://your-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your-key"
+        topic: "ziti-events"          # Use 'topic' for Service Bus topic
+        # queue: "ziti-events-queue"  # Or use 'queue' for Service Bus queue
+        bufferSize: 100                # Optional, defaults to 50
+```
+
+- Required configuration:
+    - format: Event format, currently supports only json
+    - connectionString: Azure Service Bus connection string
+    - Either topic or queue: Destination name (mutually exclusive)
+
+- Optional configuration:
+    - bufferSize: Internal message buffer size (default: 50)
 
 ## Component Updates and Bug Fixes
 
