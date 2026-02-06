@@ -29,25 +29,12 @@ import (
 
 // NewFabricCmd creates a command object for the fabric command
 func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
-	return newFabricCmdInternal(p, true)
-}
-
-// NewFabricCmdV2 creates a command object for the fabric command without CRUD subcommands
-// (they are consolidated at the top level in V2)
-func NewFabricCmdV2(p common.OptionsProvider) *cobra.Command {
-	return newFabricCmdInternal(p, false)
-}
-
-func newFabricCmdInternal(p common.OptionsProvider, v1Layout bool) *cobra.Command {
 	fabricCmd := util.NewEmptyParentCmd("fabric", "Manage the Fabric components of a Ziti network using the Ziti Fabric REST and WebSocket APIs")
-
-	if v1Layout {
-		fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
-		fabricCmd.AddCommand(NewInspectCmd(p))
-		fabricCmd.AddCommand(newValidateCommand(p))
-		fabricCmd.AddCommand(newDbCmd(p))
-	}
-	fabricCmd.AddCommand(newStreamCommand(p))
+	fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
+	fabricCmd.AddCommand(NewInspectCmd(p))
+	fabricCmd.AddCommand(newValidateCommand(p))
+	fabricCmd.AddCommand(newDbCmd(p))
+	fabricCmd.AddCommand(NewStreamCommand(p))
 	return fabricCmd
 }
 
@@ -126,7 +113,7 @@ func AddUpdateCommandsConsolidated(cmd *cobra.Command, p common.OptionsProvider)
 	cmd.AddCommand(newUpdateTerminatorCmd(p))
 }
 
-func newStreamCommand(p common.OptionsProvider) *cobra.Command {
+func NewStreamCommand(p common.OptionsProvider) *cobra.Command {
 	streamCmd := &cobra.Command{
 		Use:   "stream",
 		Short: "stream fabric operational data",

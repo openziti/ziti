@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd/ops"
 	"github.com/openziti/ziti/v2/ziti/cmd/ops/database"
 	"github.com/openziti/ziti/v2/ziti/cmd/ops/verify"
+	ext_jwt_signer "github.com/openziti/ziti/v2/ziti/cmd/ops/verify/ext-jwt-signer"
 	"github.com/openziti/ziti/v2/ziti/enroll"
 	"github.com/openziti/ziti/v2/ziti/run"
 	"github.com/sirupsen/logrus"
@@ -280,7 +281,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	tunnelCmd.Hidden = true
 
 	pkiCommands := pki.NewCmdPKI(out, err)
-	fabricCommand := fabric.NewFabricCmdV2(p)
 	edgeCommand := edge.NewCmdEdgeV2(out, err, p)
 
 	demoCmd := demo.NewDemoCmd(p)
@@ -301,7 +301,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	opsCommands.AddCommand(fabric.NewClusterCmd(p))
 	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
-	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
@@ -310,6 +309,9 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 
 	// Add inspect under ops
 	opsCommands.AddCommand(fabric.NewInspectCmd(p))
+
+	// Add stream under ops
+	opsCommands.AddCommand(fabric.NewStreamCommand(p))
 
 	// Consolidate validate commands under ops
 	validateCmd := &cobra.Command{
@@ -325,6 +327,22 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	validateCmd.AddCommand(fabric.NewValidateIdentityConnectionStatusesCmd(p))
 	validateCmd.AddCommand(edge.NewValidateServiceHostingCmd(p))
 	opsCommands.AddCommand(validateCmd)
+
+	// Create top-level verify command
+	verifyCmd := &cobra.Command{
+		Use:   "verify",
+		Short: "verify network configuration, policies, and connectivity",
+	}
+	// Rename policy-advisor to policy
+	policyCmd := edge.NewPolicyAdvisorCmd(out, err)
+	policyCmd.Use = "policy"
+	policyCmd.Short = "verify policies between identities and services"
+	verifyCmd.AddCommand(policyCmd)
+	verifyCmd.AddCommand(edge.NewTraceRouteCmd(out, err))
+	verifyCmd.AddCommand(edge.NewVerifyCaCmd(out, err))
+	verifyCmd.AddCommand(verify.NewVerifyNetwork(out, err))
+	verifyCmd.AddCommand(verify.NewVerifyTraffic(out, err))
+	verifyCmd.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, err, context.Background()))
 
 	// Create top-level login command
 	loginCmd := edge.NewLoginCmd(out, err)
@@ -404,7 +422,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		{
 			Message: "Interacting with the Ziti controller",
 			Commands: []*cobra.Command{
-				fabricCommand,
 				edgeCommand,
 			},
 		},
@@ -418,6 +435,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 			Message: "Utilities",
 			Commands: []*cobra.Command{
 				opsCommands,
+				verifyCmd,
 				NewDumpCliCmd(),
 			},
 		},
