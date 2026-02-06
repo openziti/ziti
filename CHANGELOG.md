@@ -68,18 +68,18 @@ when running HA. Legacy API and service session are now deprecated and will be r
 
 ### Additional Features
 
-* controllers can now optionally bind APIs using a OpenZiti identity
+* Controllers can now optionally bind APIs using an OpenZiti identity
 * `ziti edge login` now supports the `--network-identity` flag to authenticate and establish connections through the Ziti overlay network
 * `ziti edge login` now supports using a bearer token with `--token` for authentication. The token is expected to be
   provided as just the JWT, not with the "Bearer " prefix
-* identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
-* OIDC/JWT Token-based Enrollment
-* Clustering Performance Improvements
-* Enable authentication related model updates to be non-blocking and even dropped if the system is too busy
-* New `proxy.v1` config type (originally released in 1.7.0)
-* Alert Events - Beta (originally released in 1.7.0)
-* Azure Service Bus Event Sink, contributed by @ffaraone (originally released in 1.7.0)
+* Identity configuration can now be loaded from files or environment variables for flexible deployment scenarios
+* Identities can now be provisioned just-in-time through OIDC/JWT token-based enrollment
+* Multiple model updates can now be in-flight at the same time, improving clustering performance
+* Authentication-related model updates can now be non-blocking and even dropped if the system is too busy
 * Routers now provide more error context to SDKs for terminator errors, enabling better retry behavior
+* New `proxy.v1` config type for dynamic service proxies (originally released in 1.7.0)
+* New alert event type for surfacing operational issues to network operators - Beta (originally released in 1.7.0)
+* New Azure Service Bus event sink for streaming controller events, contributed by @ffaraone (originally released in 1.7.0)
 * Bundled ZAC upgraded to 4.0
 * Build updated to Go 1.25
 * CLI cleaned up to remove calls to `os.Exit`, making it more friendly for embedding
