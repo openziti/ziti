@@ -48,7 +48,7 @@ type EnvVar struct {
 
 var (
 	createConfigEnvironmentLong = templates.LongDesc(`
-		Displays available environment variable manual overrides
+		displays available environment variable manual overrides
 `)
 
 	createConfigEnvironmentExample = templates.Examples(`
@@ -85,7 +85,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "environment",
-		Short:   "Display config environment variables",
+		Short:   "display config environment variables",
 		Aliases: []string{"env"},
 		Long:    createConfigEnvironmentLong,
 		Example: createConfigEnvironmentExample,

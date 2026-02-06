@@ -39,6 +39,19 @@ As one feature goes out of beta, another arrives into beta. This release introdu
 for more fine grained control to the management API. It's not expected to change, but may do so based on feedback
 from users.
 
+### CLI Reorganization
+
+The `ziti` CLI has been reorganized to consolidate commands that were previously 
+spread across `ziti edge` and `ziti fabric` into unified top-level commands. Entity 
+management is now available directly via `ziti create`, `ziti delete`, `ziti list`, 
+and `ziti update`. Session management has been simplified with top-level `ziti login`. 
+The existing `ziti edge` and `ziti fabric` command trees remain available.
+
+**Breaking change:** `ziti create ca` now creates a Ziti edge Certificate Authority 
+(previously it created a PKI CA). PKI CA creation is still available via `ziti pki create ca`.
+
+See [CLI Reorganization Details](#cli-reorganization-details) for the full command mapping.
+
 ### Updated Release Process
 
 We have moved to creating `-preN` releases for major and minor versions. This way we can put out release candidates,
@@ -977,16 +990,6 @@ ziti agent tunnel dump-sdk
 Returns JSON-formatted inspection data for all SDK contexts registered in the tunnel process,
 including service listeners, connections, and terminator state.
 
-## Current Beta Features
-
-Beta features are still under development and are subject to change. They should
-be usable in their released form. Though unlikely, there is a small chance they will 
-be removed. 
-
-* Basic Permission System
-* Alert Events
-* Controller-Initiated Control Channel Dials
-
 ## Revocation System Improvements
 
 When a session is refreshed, the old refresh token's revocation is no longer created
@@ -1005,6 +1008,67 @@ New configuration tunables under `edge.oidc`:
 | `revocationMaxQueued` | `25000` | Max revocations queued in memory before dropping |
 | `revocationEnforcerFrequency` | `1m` | How often expired revocations are purged (leader only) |
 
+## CLI Reorganization Details
+
+The CLI has been reorganized so that edge and fabric entity management commands are 
+available directly at the top level. The `ziti edge` and `ziti fabric` command trees 
+remain fully functional — the new top-level commands are additional entry points, not 
+replacements.
+
+### Top-Level CRUD Commands
+
+Entity create, delete, list, and update operations that previously required the 
+`ziti edge` or `ziti fabric` prefix are now available directly:
+
+| New command | Previous command |
+|---|---|
+| `ziti create identity ...` | `ziti edge create identity ...` |
+| `ziti delete service ...` | `ziti edge delete service ...` |
+| `ziti list edge-routers` | `ziti edge list edge-routers` |
+| `ziti update identity ...` | `ziti edge update identity ...` |
+| `ziti list circuits` | `ziti fabric list circuits` |
+| `ziti delete terminator ...` | `ziti fabric delete terminator ...` |
+
+All edge and fabric entities are available under the consolidated commands. When an 
+entity name exists in both edge and fabric (e.g., `service`, `router`), the edge 
+version is the default. Fabric equivalents are accessible with a `fabric-` prefix 
+(e.g., `ziti list fabric-services`).
+
+### Top-Level Login
+
+Session management is now available at the top level:
+
+| New command | Previous command |
+|---|---|
+| `ziti login` | `ziti edge login` |
+| `ziti login forget` | `ziti edge login forget` |
+| `ziti login use` | `ziti edge use` |
+
+### Breaking Change: `ziti create ca`
+
+`ziti create ca` now creates a Ziti edge Certificate Authority, matching the 
+behavior of `ziti edge create ca`. Previously, `ziti create ca` was a PKI command 
+for generating CA certificates on the local filesystem.
+
+The PKI command is still available at its original location:
+
+```
+ziti pki create ca ...
+```
+
+Scripts that use `ziti create ca` for PKI operations should be updated to use 
+`ziti pki create ca` instead.
+
+## Current Beta Features
+
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will 
+be removed. 
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.31 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.31...v1.0.33)
@@ -1016,7 +1080,7 @@ New configuration tunables under `edge.oidc`:
     * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
     * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
 
-* github.com/openziti/edge-api: [v0.26.47 -> v0.27.5](https://github.com/openziti/edge-api/compare/v0.26.47...v0.27.5)
+* github.com/openziti/edge-api: [v0.26.47 -> v0.28.1](https://github.com/openziti/edge-api/compare/v0.26.47...v0.28.1)
     * [Issue #175](https://github.com/openziti/edge-api/issues/175) - ctrlChanListeners should have x-omit-empty: false attribute
     * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
@@ -1081,6 +1145,9 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3699](https://github.com/openziti/ziti/issues/3699) - Consolidate CLI edge and fabric commands in top level create/update/delete/list/login commands
+    * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error
+    * [Issue #3680](https://github.com/openziti/ziti/issues/3680) - adds revocation control to CLI and Management API
     * [Issue #3717](https://github.com/openziti/ziti/issues/3717) - Generic error message for specific error
     * [Issue #3543](https://github.com/openziti/ziti/issues/3543) - New Circuit Failure code for sockets not available
     * [Issue #3364](https://github.com/openziti/ziti/issues/3364) - Make no such host error specific
