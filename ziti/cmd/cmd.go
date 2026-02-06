@@ -88,8 +88,29 @@ func exitWithError(err error) {
 
 // Execute is ...
 func Execute() {
+	expandAliases()
 	if err := rootCommand.cobraCommand.Execute(); err != nil {
 		exitWithError(err)
+	}
+}
+
+// expandAliases checks if the first argument is an alias and expands it
+func expandAliases() {
+	if len(os.Args) < 2 {
+		return
+	}
+
+	config, _, err := util.LoadRestClientConfig()
+	if err != nil || config.Aliases == nil {
+		return
+	}
+
+	firstArg := os.Args[1]
+	if target, ok := config.Aliases[firstArg]; ok {
+		targetArgs := strings.Fields(target)
+		newArgs := append([]string{os.Args[0]}, targetArgs...)
+		newArgs = append(newArgs, os.Args[2:]...)
+		os.Args = newArgs
 	}
 }
 
@@ -224,6 +245,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
 	cmd.AddCommand(NewCliCmd(out, err))
+	addAliasCommands(cmd)
 
 	return cmd
 }
@@ -369,8 +391,41 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
 	cmd.AddCommand(NewCliCmd(out, err))
+	addAliasCommands(cmd)
 
 	return cmd
+}
+
+// addAliasCommands adds alias commands to the root command for help and completion support
+func addAliasCommands(rootCmd *cobra.Command) {
+	config, _, err := util.LoadRestClientConfig()
+	if err != nil || config.Aliases == nil {
+		return
+	}
+
+	for aliasName, target := range config.Aliases {
+		// Capture for closure
+		targetPath := target
+
+		aliasCmd := &cobra.Command{
+			Use:                aliasName,
+			Short:              fmt.Sprintf("Alias for 'ziti %s'", target),
+			DisableFlagParsing: true,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				// This shouldn't normally be reached since expandAliases() handles it,
+				// but handle it anyway for completeness
+				targetArgs := strings.Fields(targetPath)
+				fullArgs := append(targetArgs, args...)
+				targetCmd, finalArgs, err := cmd.Root().Find(fullArgs)
+				if err != nil {
+					return fmt.Errorf("alias target 'ziti %s' not found: %w", targetPath, err)
+				}
+				targetCmd.SetArgs(finalArgs)
+				return targetCmd.Execute()
+			},
+		}
+		rootCmd.AddCommand(aliasCmd)
+	}
 }
 
 func NewControllerCmd() *cobra.Command {
