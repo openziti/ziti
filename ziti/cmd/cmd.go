@@ -261,7 +261,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	tunnelCmd.Hidden = true
 
 	createCommands := create.NewCmdCreate(out, err)
-	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := pki.NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err, p)
@@ -284,6 +283,35 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
+	// Add agent under ops
+	opsCommands.AddCommand(agentcli.NewAgentCmd(p))
+
+	// Add inspect under ops
+	opsCommands.AddCommand(fabric.NewInspectCmd(p))
+
+	// Consolidate validate commands under ops
+	validateCmd := &cobra.Command{
+		Use:   "validate",
+		Short: "validate model data",
+	}
+	validateCmd.AddCommand(fabric.NewValidateCircuitsCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateTerminatorsCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateRouterLinksCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateRouterSdkTerminatorsCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateRouterErtTerminatorsCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateRouterDataModelCmd(p))
+	validateCmd.AddCommand(fabric.NewValidateIdentityConnectionStatusesCmd(p))
+	validateCmd.AddCommand(edge.NewValidateServiceHostingCmd(p))
+	opsCommands.AddCommand(validateCmd)
+
+	// Create top-level login command
+	loginCmd := edge.NewLoginCmd(out, err)
+	forgetCmd := edge.NewLogoutCmd(out, err)
+	forgetCmd.Use = "forget"
+	forgetCmd.Short = "removes stored credentials for a given identity"
+	loginCmd.AddCommand(forgetCmd)
+	loginCmd.AddCommand(edge.NewUseCmd(out, err))
+
 	groups := templates.CommandGroups{
 		{
 			Message: "Working with Ziti resources:",
@@ -296,7 +324,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 			Commands: []*cobra.Command{
 				runCmd,
 				enrollCmd,
-				agentCommands,
 				controllerCmd,
 				routerCmd,
 				tunnelCmd,
@@ -308,6 +335,12 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 			Commands: []*cobra.Command{
 				fabricCommand,
 				edgeCommand,
+			},
+		},
+		{
+			Message: "Session Management",
+			Commands: []*cobra.Command{
+				loginCmd,
 			},
 		},
 		{

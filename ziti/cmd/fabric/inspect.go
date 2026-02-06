@@ -21,8 +21,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// newListCmd creates a command object for the "controller list" command
-func newInspectCmd(p common.OptionsProvider) *cobra.Command {
+// NewInspectCmd creates a command object for the "controller list" command
+func NewInspectCmd(p common.OptionsProvider) *cobra.Command {
 	action := newInspectAction(p)
 	cmd := action.newCobraCmd()
 	cmd.AddCommand(action.newInspectSubCmd(p, "stackdump", "gets stackdumps from the requested nodes"))
