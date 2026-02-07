@@ -548,7 +548,7 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 
 	msg.PutBoolHeader(int32(edge_ctrl_pb.Header_RouterDataModel), true)
 
-	if err = msg.WithTimeout(strategy.HelloSendTimeout).Send(rtx.Router.Control); err != nil {
+	if err = msg.WithTimeout(strategy.HelloSendTimeout).Send(rtx.Router.Control.GetHighPrioritySender()); err != nil {
 		if rtx.Router.Control.IsClosed() {
 			rtx.SetSyncStatus(env.RouterSyncDisconnected)
 			rtx.logger().WithError(err).Error("timed out sending serverHello message for edge router, connection closed, giving up")

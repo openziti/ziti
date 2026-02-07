@@ -35,10 +35,10 @@ func (o OnConnectSettingsHandler) RouterConnected(r *model.Router) {
 
 		if body, err := proto.Marshal(settingsMsg); err == nil {
 			msg := channel.NewMessage(int32(ctrl_pb.ContentType_SettingsType), body)
-			if err := r.Control.Send(msg); err == nil {
+			if err := r.Control.GetDefaultSender().Send(msg); err == nil {
 				pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
 					"routerId": r.Id,
-					"channel":  r.Control.LogicalName(),
+					"channel":  r.Control.GetChannel().LogicalName(),
 				}).Error("error sending settings on router connect")
 			}
 		}
@@ -46,7 +46,7 @@ func (o OnConnectSettingsHandler) RouterConnected(r *model.Router) {
 	} else {
 		pfxlog.Logger().WithFields(map[string]interface{}{
 			"routerId": r.Id,
-			"channel":  r.Control.LogicalName(),
+			"channel":  r.Control.GetChannel().LogicalName(),
 		}).Info("no on connect settings to send")
 	}
 }
@@ -71,7 +71,7 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 	index, data := o.raft.CtrlAddresses()
 	log := pfxlog.Logger().WithFields(map[string]interface{}{
 		"routerId":  r.Id,
-		"channel":   r.Control.LogicalName(),
+		"channel":   r.Control.GetChannel().LogicalName(),
 		"addresses": data,
 		"index":     index,
 	})
@@ -89,7 +89,7 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 		Index:     index,
 	}
 
-	if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
+	if err := protobufs.MarshalTyped(updMsg).Send(r.Control.GetDefaultSender()); err != nil {
 		log.WithError(err).Error("error sending UpdateCtrlAddresses on router connect")
 	}
 }

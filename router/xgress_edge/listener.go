@@ -668,7 +668,7 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 }
 
 func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
-	if capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateCircuitV2) {
+	if capabilities.IsCapable(ctrlCh.Underlay(), capabilities.ControllerCreateCircuitV2) {
 		return self.sendCreateCircuitRequestV2(req, ctrlCh)
 	}
 	return self.sendCreateCircuitRequestV1(req, ctrlCh)

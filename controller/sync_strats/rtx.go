@@ -106,7 +106,7 @@ func (rtx *RouterSender) run() {
 		case <-rtx.closeNotify:
 			return
 		case msg := <-rtx.send:
-			_ = rtx.Router.Control.Send(msg)
+			_ = rtx.Router.Control.GetDefaultSender().Send(msg)
 		case req := <-rtx.requestModelSync:
 			rtx.handleSyncRequest(req)
 		case <-rtx.modelChange:
@@ -137,7 +137,7 @@ func (rtx *RouterSender) sendRouterDataModelIndex() {
 	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), nil)
 	msg.PutUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex), idx)
 
-	if err := rtx.Router.Control.Send(msg); err != nil {
+	if err := rtx.Router.Control.GetDefaultSender().Send(msg); err != nil {
 		logger := pfxlog.Logger().WithField("routerId", rtx.Router.Id)
 		logger.WithError(err).Error("could not send current router data model index")
 	} else {
@@ -233,7 +233,7 @@ func (rtx *RouterSender) handleModelChange() {
 		for _, curEvent := range events {
 			var msg *channel.Message
 			if msg, err = rtx.marshal(curEvent); err == nil {
-				err = rtx.Router.Control.Send(msg)
+				err = rtx.Router.Control.GetDefaultSender().Send(msg)
 			}
 
 			if err != nil {
@@ -276,7 +276,7 @@ func (rtx *RouterSender) handleModelChange() {
 
 		var msg *channel.Message
 		if msg, err = rtx.marshal(dataState); err == nil {
-			err = rtx.Router.Control.Send(msg)
+			err = rtx.Router.Control.GetDefaultSender().Send(msg)
 		}
 
 		if err != nil {

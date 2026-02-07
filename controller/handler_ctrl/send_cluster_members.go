@@ -47,7 +47,7 @@ func (self *sendClusterMembersHandler) HandleReceive(msg *channel.Message, ch ch
 		index, data := self.network.Dispatcher.CtrlAddresses()
 		log := pfxlog.Logger().WithFields(map[string]interface{}{
 			"routerId":  self.router.Id,
-			"channel":   self.router.Control.LogicalName(),
+			"channel":   self.router.Control.GetChannel().LogicalName(),
 			"addresses": data,
 			"index":     index,
 		})

@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/xt"
@@ -39,14 +40,14 @@ import (
 
 type routeHandler struct {
 	id        *identity.TokenId
-	ch        channel.Channel
+	ch        ctrlchan.CtrlChannel
 	env       env.RouterEnv
 	dialerCfg map[string]xgress.OptionsData
 	forwarder *forwarder.Forwarder
 	pool      goroutines.Pool
 }
 
-func newRouteHandler(ch channel.Channel, env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
+func newRouteHandler(ch ctrlchan.CtrlChannel, env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
 	handler := &routeHandler{
 		id:        env.GetRouterId(),
 		ch:        ch,
@@ -113,7 +114,7 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 }
 
 func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
-	if err := rh.forwarder.Route(rh.ch.Id(), route); err != nil {
+	if err := rh.forwarder.Route(rh.ch.PeerId(), route); err != nil {
 		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
 		return
 	}
@@ -128,7 +129,7 @@ func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *
 	response.ReplyTo(msg)
 
 	log.Debug("sending success response")
-	if err := response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch); err == nil {
+	if err := response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch.GetHighPrioritySender()); err == nil {
 		log.Debug("handled route")
 	} else {
 		log.WithError(err).Error("send response failed")
@@ -142,7 +143,7 @@ func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.R
 	response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, errorHeader)
 
 	response.ReplyTo(msg)
-	if err = response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch); err != nil {
+	if err = response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch.GetHighPrioritySender()); err != nil {
 		log.WithError(err).Error("send failure response failed")
 	}
 }
@@ -164,7 +165,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 			}
 
-			params := newDialParams(rh.ch.Id(), route, rh.env.GetXgressBindHandler(), ctx, deadline)
+			params := newDialParams(rh.ch.PeerId(), route, rh.env.GetXgressBindHandler(), ctx, deadline)
 			if peerData, err := dialer.Dial(params); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {

@@ -152,7 +152,7 @@ func (handler *validateCircuitsHandler) validRouterCircuits(router *model.Router
 			RequestedValues: []string{inspect.RouterCircuitsKey, inspect.RouterEdgeCircuitsKey, inspect.RouterSdkCircuitsKey},
 		}
 		resp := &ctrl_pb.InspectResponse{}
-		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+		respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control.GetLowPrioritySender())
 		if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
 			handler.reportError(router, err, cb)
 			return

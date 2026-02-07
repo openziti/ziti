@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/openziti/ziti/v2/common/capabilities"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 
 	"github.com/michaelquigley/pfxlog"
@@ -106,8 +107,9 @@ func terminatorValidatorWorker(_ uint32, f func()) {
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	ctrlCh := binding.GetChannel().(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
-	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
+	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
@@ -115,7 +117,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
@@ -137,7 +138,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		}
 	}
 
-	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel(), capabilities.RouterDataModel)
+	enableRouterDataModel := capabilities.IsCapable(binding.GetChannel().Underlay(), capabilities.RouterDataModel)
 	if self.env.GetNetworkControllers().GetExpectedCtrlCount() < 2 {
 		self.env.GetRouterDataModelEnabledConfig().Store(enableRouterDataModel)
 	} else {
