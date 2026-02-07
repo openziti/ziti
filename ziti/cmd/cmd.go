@@ -44,6 +44,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd/demo"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
 	"github.com/openziti/ziti/v2/ziti/cmd/fabric"
+	"github.com/openziti/ziti/v2/ziti/cmd/lets_encrypt"
 	"github.com/openziti/ziti/v2/ziti/cmd/pki"
 	"github.com/openziti/ziti/v2/ziti/cmd/templates"
 	c "github.com/openziti/ziti/v2/ziti/constants"
@@ -248,6 +249,9 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 }
 
 func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Command {
+	// Disable automatic completion command - we provide our own under ops tools
+	cmd.CompletionOptions.DisableDefaultCmd = true
+
 	goflag.CommandLine.VisitAll(func(goflag *goflag.Flag) {
 		switch goflag.Name {
 		// Skip things that are dragged in by our dependencies
@@ -280,7 +284,51 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	tunnelCmd := tunnel.NewTunnelCmd(true)
 	tunnelCmd.Hidden = true
 
+	// Keep pki command hidden for backward compatibility
 	pkiCommands := pki.NewCmdPKI(out, err)
+	pkiCommands.Hidden = true
+
+	// Create setup command for deployment/setup tasks
+	setupCmd := &cobra.Command{
+		Use:   "setup",
+		Short: "Setup Ziti components and infrastructure",
+	}
+
+	// setup controller - controller setup commands
+	setupControllerCmd := &cobra.Command{
+		Use:   "controller",
+		Short: "Setup controller components",
+	}
+	controllerConfigCmd := create.NewCmdCreateConfigController().Command
+	controllerConfigCmd.Use = "config"
+	controllerConfigCmd.Short = "Create a controller config file"
+	setupControllerCmd.AddCommand(controllerConfigCmd)
+
+	controllerDbCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
+	controllerDbCmd.Use = "database <config-file>"
+	controllerDbCmd.Short = "Initialize the controller database"
+	setupControllerCmd.AddCommand(controllerDbCmd)
+	setupCmd.AddCommand(setupControllerCmd)
+
+	// setup router - router setup commands
+	setupRouterCmd := &cobra.Command{
+		Use:   "router",
+		Short: "Setup router components",
+	}
+	routerConfigCmd := create.NewCmdCreateConfigRouter(nil).Command
+	routerConfigCmd.Use = "config"
+	routerConfigCmd.Short = "Create a router config file"
+	setupRouterCmd.AddCommand(routerConfigCmd)
+	setupCmd.AddCommand(setupRouterCmd)
+
+	// setup environment - generate environment file
+	setupCmd.AddCommand(create.NewCmdCreateConfigEnvironment())
+
+	// setup pki - PKI creation commands
+	setupPkiCmd := pki.NewCmdPKICreate(out, err)
+	setupPkiCmd.Use = "pki"
+	setupPkiCmd.Short = "Create PKI artifacts (certificates, keys, CAs)"
+	setupCmd.AddCommand(setupPkiCmd)
 
 	demoCmd := demo.NewDemoCmd(p)
 	enrollCmd := enroll.NewEnrollCmdV2(p)
@@ -303,8 +351,18 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	dbCmd.AddCommand(fabric.NewDbCheckIntegrityStatusCmd(p))
 	opsCommands.AddCommand(dbCmd)
 	opsCommands.AddCommand(fabric.NewClusterCmd(p))
-	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
-	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
+
+	// Group utility tools under ops tools
+	toolsCmd := &cobra.Command{
+		Use:   "tools",
+		Short: "miscellaneous utility tools",
+	}
+	toolsCmd.AddCommand(ops.NewCmdLogFormat(out, err))
+	toolsCmd.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
+	toolsCmd.AddCommand(newCompletionCmd())
+	toolsCmd.AddCommand(lets_encrypt.NewCmdLE(out, err))
+	opsCommands.AddCommand(toolsCmd)
+
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
 
@@ -378,19 +436,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	edge.AddCreateCommandsConsolidated(topLevelCreateCmd, out, err)
 	fabric.AddCreateCommandsConsolidated(topLevelCreateCmd, p)
 
-	// Add config file generation commands with new names
-	controllerConfigCmd := create.NewCmdCreateConfigController().Command
-	controllerConfigCmd.Use = "controller-config-file"
-	controllerConfigCmd.Aliases = []string{"controller-config"}
-	topLevelCreateCmd.AddCommand(controllerConfigCmd)
-
-	routerConfigCmd := create.NewCmdCreateConfigRouter(nil).Command
-	routerConfigCmd.Use = "router-config-file"
-	routerConfigCmd.Aliases = []string{"router-config"}
-	topLevelCreateCmd.AddCommand(routerConfigCmd)
-
-	topLevelCreateCmd.AddCommand(create.NewCmdCreateConfigEnvironment())
-
 	topLevelDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "deletes various entities managed by the Ziti Controller",
@@ -428,6 +473,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 			Commands: []*cobra.Command{
 				runCmd,
 				enrollCmd,
+				setupCmd,
 				controllerCmd,
 				routerCmd,
 				tunnelCmd,
@@ -467,12 +513,23 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	cmd.Version = version.GetVersion()
 	cmd.SetVersionTemplate("{{printf .Version}}\n")
 	cmd.AddCommand(NewCmdArt(out, err))
-	cmd.AddCommand(common.NewVersionCmd())
+	versionCmd := common.NewVersionCmd()
+	versionCmd.Hidden = true
+	cmd.AddCommand(versionCmd)
 
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
 	cmd.AddCommand(NewCliCmd(out, err))
 	addAliasCommands(cmd)
+
+	// Add hidden root-level aliases for power users
+	hiddenAgentCmd := agentcli.NewAgentCmd(p)
+	hiddenAgentCmd.Hidden = true
+	cmd.AddCommand(hiddenAgentCmd)
+
+	hiddenLogFormatCmd := ops.NewCmdLogFormat(out, err)
+	hiddenLogFormatCmd.Hidden = true
+	cmd.AddCommand(hiddenLogFormatCmd)
 
 	return cmd
 }
@@ -682,4 +739,58 @@ func (self *commandTreeAction) printCommandAndChildren(cmd *cobra.Command) {
 	for _, child := range cmd.Commands() {
 		self.printCommandAndChildren(child)
 	}
+}
+
+func newCompletionCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "Generate shell completion scripts",
+		Long: `Generate shell completion scripts for Ziti CLI.
+
+To load completions:
+
+Bash:
+  $ source <(ziti ops tools completion bash)
+  # To load completions for each session, execute once:
+  # Linux:
+  $ ziti ops tools completion bash > /etc/bash_completion.d/ziti
+  # macOS:
+  $ ziti ops tools completion bash > $(brew --prefix)/etc/bash_completion.d/ziti
+
+Zsh:
+  # If shell completion is not already enabled in your environment,
+  # you will need to enable it. You can execute the following once:
+  $ echo "autoload -U compinit; compinit" >> ~/.zshrc
+  # To load completions for each session, execute once:
+  $ ziti ops tools completion zsh > "${fpath[1]}/_ziti"
+
+Fish:
+  $ ziti ops tools completion fish | source
+  # To load completions for each session, execute once:
+  $ ziti ops tools completion fish > ~/.config/fish/completions/ziti.fish
+
+PowerShell:
+  PS> ziti ops tools completion powershell | Out-String | Invoke-Expression
+  # To load completions for every new session, run:
+  PS> ziti ops tools completion powershell > ziti.ps1
+  # and source this file from your PowerShell profile.
+`,
+		DisableFlagsInUseLine: true,
+		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch args[0] {
+			case "bash":
+				return cmd.Root().GenBashCompletionV2(os.Stdout, true)
+			case "zsh":
+				return cmd.Root().GenZshCompletion(os.Stdout)
+			case "fish":
+				return cmd.Root().GenFishCompletion(os.Stdout, true)
+			case "powershell":
+				return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
+			}
+			return nil
+		},
+	}
+	return cmd
 }
