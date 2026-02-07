@@ -54,12 +54,12 @@ func newCmdEdgeInternal(out io.Writer, errOut io.Writer, p common.OptionsProvide
 		cmd.AddCommand(NewPolicyAdvisorCmd(out, errOut))
 		cmd.AddCommand(newVerifyCmd(out, errOut))
 		cmd.AddCommand(NewTraceRouteCmd(out, errOut))
+		cmd.AddCommand(newReEnrollCmd(out, errOut))
+		cmd.AddCommand(enroll.NewEnrollIdentityCommand(p))
+		cmd.AddCommand(NewTraceCmd(out, errOut))
+		cmd.AddCommand(NewVersionCmd(out, errOut))
+		cmd.AddCommand(NewShowCmd(out, errOut))
 	}
-	cmd.AddCommand(newVersionCmd(out, errOut))
-	cmd.AddCommand(newTraceCmd(out, errOut))
-	cmd.AddCommand(newShowCmd(out, errOut))
-	cmd.AddCommand(newReEnrollCmd(out, errOut))
-	cmd.AddCommand(enroll.NewEnrollIdentityCommand(p))
 
 	for _, cmdF := range ExtraEdgeCommands {
 		cmd.AddCommand(cmdF(p))

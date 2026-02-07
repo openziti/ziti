@@ -281,10 +281,14 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	tunnelCmd.Hidden = true
 
 	pkiCommands := pki.NewCmdPKI(out, err)
-	edgeCommand := edge.NewCmdEdgeV2(out, err, p)
 
 	demoCmd := demo.NewDemoCmd(p)
-	enrollCmd := enroll.NewEnrollCmd(p)
+	enrollCmd := enroll.NewEnrollCmdV2(p)
+	// Add reenroll-router to enroll command
+	reenrollRouterCmd := edge.NewReEnrollEdgeRouterCmd(out, err)
+	reenrollRouterCmd.Use = "reenroll-router <idOrName>"
+	reenrollRouterCmd.Short = "re-enroll an edge router"
+	enrollCmd.AddCommand(reenrollRouterCmd)
 	runCmd := run.NewRunCmd(out, err)
 
 	opsCommands := &cobra.Command{
@@ -312,6 +316,9 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 
 	// Add stream under ops
 	opsCommands.AddCommand(fabric.NewStreamCommand(p))
+
+	// Add trace under ops
+	opsCommands.AddCommand(edge.NewTraceCmd(out, err))
 
 	// Consolidate validate commands under ops
 	validateCmd := &cobra.Command{
@@ -343,6 +350,14 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	verifyCmd.AddCommand(verify.NewVerifyNetwork(out, err))
 	verifyCmd.AddCommand(verify.NewVerifyTraffic(out, err))
 	verifyCmd.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, err, context.Background()))
+
+	// Create top-level show command
+	showCmd := edge.NewShowCmd(out, err)
+	// Add controller version under show
+	controllerVersionCmd := edge.NewVersionCmd(out, err)
+	controllerVersionCmd.Use = "controller-version"
+	controllerVersionCmd.Short = "shows the version of the Ziti controller"
+	showCmd.AddCommand(controllerVersionCmd)
 
 	// Create top-level login command
 	loginCmd := edge.NewLoginCmd(out, err)
@@ -422,7 +437,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		{
 			Message: "Interacting with the Ziti controller",
 			Commands: []*cobra.Command{
-				edgeCommand,
+				showCmd,
 			},
 		},
 		{

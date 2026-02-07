@@ -28,7 +28,7 @@ func newReEnrollCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "re-enrolls various entities managed by the Ziti Edge Controller",
 	}
 
-	cmd.AddCommand(newReEnrollEdgeRouterCmd(out, errOut))
+	cmd.AddCommand(NewReEnrollEdgeRouterCmd(out, errOut))
 
 	return cmd
 }

@@ -38,3 +38,22 @@ func NewEnrollCmd(p common.OptionsProvider) *cobra.Command {
 
 	return cmd
 }
+
+// NewEnrollCmdV2 creates a V2 version of the enroll command with router instead of edge-router
+func NewEnrollCmdV2(p common.OptionsProvider) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "enroll",
+		Short: "Enroll Routers and Identities",
+	}
+
+	enrollRouter := NewEnrollEdgeRouterCmd()
+	enrollRouter.Use = "router"
+
+	enrollIdentity := NewEnrollIdentityCommand(p)
+	enrollIdentity.Use = "identity path/to/jwt"
+
+	cmd.AddCommand(enrollRouter)
+	cmd.AddCommand(enrollIdentity)
+
+	return cmd
+}

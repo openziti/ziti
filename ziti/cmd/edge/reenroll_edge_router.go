@@ -30,7 +30,7 @@ type reEnrollEdgeRouterOptions struct {
 	jwtOutputFile string
 }
 
-func newReEnrollEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewReEnrollEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &reEnrollEdgeRouterOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 	}

@@ -33,8 +33,8 @@ type traceIdentityOptions struct {
 	traceId  string
 }
 
-// newCreateIdentityCmd creates the 'edge controller create identity' command
-func newTraceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewTraceCmd creates the 'edge controller trace' command
+func NewTraceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trace",
 		Short: "manages tracing by the Ziti Edge Controller",
