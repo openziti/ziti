@@ -60,9 +60,22 @@ Consolidated operational utilities:
 - `ziti get config-type` - display config type schema
 - `ziti get controller-version` - show controller version (was `ziti edge version`)
 
-### Removed/Hidden in V2
-- `ziti edge` - removed (all functionality moved elsewhere)
-- `ziti fabric` - removed (all functionality moved elsewhere)
+### Deprecated V1 Aliases
+All V1 command paths remain functional as hidden, deprecated aliases. Running any V1 path prints a deprecation notice directing users to the V2 equivalent. This preserves backward compatibility for existing scripts.
+
+- `ziti edge *` - full V1 edge command tree (deprecated, use top-level CRUD/login/verify commands)
+- `ziti fabric *` - full V1 fabric command tree (deprecated, use top-level CRUD and `ziti ops` commands)
+- `ziti create client/server/intermediate/csr` - PKI commands (deprecated, use `ziti setup pki *`)
+- `ziti create config controller/router/environment` - config file generators (deprecated, use `ziti setup *`)
+- `ziti completion` - shell completion (deprecated, use `ziti ops tools completion`)
+- `ziti enroll edge-router` - router enrollment (deprecated, use `ziti enroll router`)
+- `ziti ops log-format` / `ziti ops unwrap` - utilities (deprecated, use `ziti ops tools *`)
+- `ziti ops verify` - verification (deprecated, use `ziti verify`)
+
+**Known exceptions:**
+- `ziti create ca` is NOT aliased — it conflicts with the V2 edge CA create command at the same path.
+
+### Hidden in V2
 - `ziti pki` - hidden (moved to `ziti setup pki`)
 - `ziti agent` - hidden (moved to `ziti ops agent`)
 
@@ -82,6 +95,8 @@ For convenience, these hidden aliases remain functional:
 ---
 
 ## Command Tree
+
+The tree below includes all commands. Deprecated V1 aliases (`ziti edge *`, `ziti fabric *`, etc.) are omitted for brevity — they mirror the full V1 tree and are all marked `(hidden)`. Run `ziti command-tree` to see the complete tree including deprecated aliases.
 
 ```
 ziti
@@ -133,6 +148,7 @@ ziti cli set
 ziti cli set alias
 ziti cli set layout
 ziti command-tree  (hidden)
+ziti completion  (hidden)
 ziti controller  (hidden)
 ziti controller delete-sessions
 ziti controller delete-sessions-from-db
@@ -145,8 +161,15 @@ ziti create auth-policy
 ziti create authenticator
 ziti create authenticator updb
 ziti create ca
+ziti create client  (hidden)
 ziti create config
+ziti create config controller  (hidden)
+ziti create config environment  (hidden)
+ziti create config router  (hidden)
+ziti create config router edge
+ziti create config router fabric
 ziti create config-type
+ziti create csr  (hidden)
 ziti create edge-router
 ziti create edge-router-policy
 ziti create enrollment
@@ -157,6 +180,7 @@ ziti create ext-jwt-signer
 ziti create fabric-router  (hidden)
 ziti create fabric-service  (hidden)
 ziti create identity
+ziti create intermediate  (hidden)
 ziti create posture-check
 ziti create posture-check domain
 ziti create posture-check mac
@@ -164,6 +188,7 @@ ziti create posture-check mfa
 ziti create posture-check os
 ziti create posture-check process
 ziti create posture-check process-multi
+ziti create server  (hidden)
 ziti create service
 ziti create service-edge-router-policy
 ziti create service-policy
@@ -275,6 +300,7 @@ ziti demo ziti-echo-client
 ziti demo ziti-echo-server
 ziti dump-cli  (hidden)
 ziti enroll
+ziti enroll edge-router  (hidden)
 ziti enroll identity
 ziti enroll reenroll-router
 ziti enroll router
@@ -423,6 +449,7 @@ ziti ops inspect router-sdk-circuits
 ziti ops inspect sdk-terminators
 ziti ops inspect stackdump
 ziti ops inspect terminator-costs
+ziti ops log-format  (hidden)
 ziti ops stream
 ziti ops stream events
 ziti ops stream traces
@@ -439,6 +466,7 @@ ziti ops tools log-format
 ziti ops tools unwrap
 ziti ops trace
 ziti ops trace identity
+ziti ops unwrap  (hidden)
 ziti ops validate
 ziti ops validate circuits
 ziti ops validate identity-connection-statuses
@@ -448,6 +476,11 @@ ziti ops validate router-links
 ziti ops validate router-sdk-terminators
 ziti ops validate service-hosting
 ziti ops validate terminators
+ziti ops verify  (hidden)
+ziti ops verify ext-jwt-signer
+ziti ops verify ext-jwt-signer oidc
+ziti ops verify network
+ziti ops verify traffic
 ziti pki  (hidden)
 ziti pki create
 ziti pki create ca

@@ -537,6 +537,8 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	hiddenLogFormatCmd.Hidden = true
 	cmd.AddCommand(hiddenLogFormatCmd)
 
+	addDeprecatedV1Commands(cmd, out, err, p, topLevelCreateCmd, enrollCmd, opsCommands)
+
 	return cmd
 }
 
@@ -799,4 +801,119 @@ PowerShell:
 		},
 	}
 	return cmd
+}
+
+// findSubCommand returns the first direct child of parent whose Name() matches,
+// or nil if none is found.
+func findSubCommand(parent *cobra.Command, name string) *cobra.Command {
+	for _, child := range parent.Commands() {
+		if child.Name() == name {
+			return child
+		}
+	}
+	return nil
+}
+
+// markDeprecated recursively sets Deprecated on cmd and all its children.
+// Cobra automatically prints "Command X is deprecated, <message>" when any
+// deprecated command is executed, and hides it from parent help.
+func markDeprecated(cmd *cobra.Command, message string) {
+	cmd.Deprecated = message
+	for _, child := range cmd.Commands() {
+		markDeprecated(child, message)
+	}
+}
+
+// addDeprecatedV1Commands adds hidden, deprecated V1 command paths to the V2 CLI layout
+// so that existing scripts and muscle memory still work, while guiding users to V2 paths.
+func addDeprecatedV1Commands(
+	cmd *cobra.Command,
+	out, errOut io.Writer,
+	p common.OptionsProvider,
+	topLevelCreateCmd *cobra.Command,
+	enrollCmd *cobra.Command,
+	opsCommands *cobra.Command,
+) {
+	// 1. ziti edge (full V1 edge command tree)
+	deprecatedEdge := edge.NewCmdEdge(out, errOut, p)
+	deprecatedEdge.Hidden = true
+	deprecatedEdge.AddCommand(run.NewQuickStartCmd(out, errOut, context.Background()))
+	markDeprecated(deprecatedEdge, "use CLI layout v2 commands instead. Run 'ziti help' to see the current command layout")
+	cmd.AddCommand(deprecatedEdge)
+
+	// 2. ziti fabric (full V1 fabric command tree)
+	deprecatedFabric := fabric.NewFabricCmd(p)
+	deprecatedFabric.Hidden = true
+	markDeprecated(deprecatedFabric, "use CLI layout v2 commands instead. Run 'ziti help' to see the current command layout")
+	cmd.AddCommand(deprecatedFabric)
+
+	// 3. ziti create <pki commands> (V1 had PKI commands directly under create)
+	// Skip 'ca' because it conflicts with the edge CA create command already at that path
+	deprecatedClient := pki.NewCmdPKICreateClient(out, errOut)
+	deprecatedClient.Hidden = true
+	deprecatedClient.Deprecated = "use 'ziti setup pki client' instead"
+	topLevelCreateCmd.AddCommand(deprecatedClient)
+
+	deprecatedServer := pki.NewCmdPKICreateServer(out, errOut)
+	deprecatedServer.Hidden = true
+	deprecatedServer.Deprecated = "use 'ziti setup pki server' instead"
+	topLevelCreateCmd.AddCommand(deprecatedServer)
+
+	deprecatedIntermediate := pki.NewCmdPKICreateIntermediate(out, errOut)
+	deprecatedIntermediate.Hidden = true
+	deprecatedIntermediate.Deprecated = "use 'ziti setup pki intermediate' instead"
+	topLevelCreateCmd.AddCommand(deprecatedIntermediate)
+
+	deprecatedCSR := pki.NewCmdPKICreateCSR(out, errOut)
+	deprecatedCSR.Hidden = true
+	deprecatedCSR.Deprecated = "use 'ziti setup pki csr' instead"
+	topLevelCreateCmd.AddCommand(deprecatedCSR)
+
+	// ziti create config {controller,router,environment} (V1 config file generators)
+	// V2 already has "ziti create config" for edge config entities, so we can't
+	// add a second "config" parent. Instead, add the V1 children directly to the
+	// existing edge config command. Users who need to create an edge config named
+	// "router" or "controller" can use -- to separate the argument.
+	deprecatedConfigChildren := create.NewCmdCreateConfig()
+	if edgeConfigCmd := findSubCommand(topLevelCreateCmd, "config"); edgeConfigCmd != nil {
+		for _, child := range deprecatedConfigChildren.Commands() {
+			child.Hidden = true
+			child.Deprecated = "use 'ziti setup controller config' or 'ziti setup router config' instead"
+			markDeprecated(child, "use 'ziti setup controller config' or 'ziti setup router config' instead")
+			edgeConfigCmd.AddCommand(child)
+		}
+	}
+
+	// 4. ziti completion (V1 had completion at root level)
+	deprecatedCompletion := newCompletionCmd()
+	deprecatedCompletion.Hidden = true
+	deprecatedCompletion.Deprecated = "use 'ziti ops tools completion' instead"
+	cmd.AddCommand(deprecatedCompletion)
+
+	// 5. ziti enroll edge-router (V1 path, now 'ziti enroll router')
+	deprecatedEnrollEdgeRouter := enroll.NewEnrollEdgeRouterCmd()
+	deprecatedEnrollEdgeRouter.Use = "edge-router"
+	deprecatedEnrollEdgeRouter.Hidden = true
+	deprecatedEnrollEdgeRouter.Deprecated = "use 'ziti enroll router' instead"
+	enrollCmd.AddCommand(deprecatedEnrollEdgeRouter)
+
+	// 6. ziti ops log-format and ziti ops unwrap (V1 paths, now under ops tools)
+	deprecatedLogFormat := ops.NewCmdLogFormat(out, errOut)
+	deprecatedLogFormat.Hidden = true
+	deprecatedLogFormat.Deprecated = "use 'ziti ops tools log-format' instead"
+	opsCommands.AddCommand(deprecatedLogFormat)
+
+	deprecatedUnwrap := ops.NewUnwrapIdentityFileCommand(out, errOut)
+	deprecatedUnwrap.Hidden = true
+	deprecatedUnwrap.Deprecated = "use 'ziti ops tools unwrap' instead"
+	opsCommands.AddCommand(deprecatedUnwrap)
+
+	// 7. ziti ops verify (V1 path, now top-level 'ziti verify')
+	deprecatedVerify := verify.NewVerifyCommand(out, errOut, context.Background())
+	deprecatedVerify.Hidden = true
+	deprecatedVerify.Deprecated = "use 'ziti verify' instead"
+	for _, child := range deprecatedVerify.Commands() {
+		child.Deprecated = "use 'ziti verify " + child.Name() + "' instead"
+	}
+	opsCommands.AddCommand(deprecatedVerify)
 }
