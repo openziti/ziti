@@ -17,6 +17,7 @@ limitations under the License.
 package model
 
 import (
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
@@ -32,35 +33,126 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )
 
+var _ common.TokenIssuerCache = (*TokenIssuerCache)(nil)
+
 // TokenIssuerCache maintains a cache of available JWT token issuers.
 // It handles discovery, validation, and caching of public keys for token verification.
 // Listens for database events to keep cached state synchronized.
 type TokenIssuerCache struct {
-	issuers cmap.ConcurrentMap[string, TokenIssuer]
-	env     Env
+	// extJwt.Issuer -> extJwt issuer
+	externalIssuers cmap.ConcurrentMap[string, common.TokenIssuer]
+
+	// controller.Id -> controller issuer, controllers are stored by id
+	// as we are guarantee they have a KID and issuers may be variable
+	// due to xweb API address binds
+	controllerIssuers cmap.ConcurrentMap[string, common.TokenIssuer]
+
+	env Env
 }
 
 // NewTokenIssuerCache creates a new TokenIssuerCache and loads existing issuers from the database.
 // Registers listeners for issuer creation, update, and deletion events.
 func NewTokenIssuerCache(env Env) *TokenIssuerCache {
 	result := &TokenIssuerCache{
-		env:     env,
-		issuers: cmap.New[TokenIssuer](),
+		env:               env,
+		externalIssuers:   cmap.New[common.TokenIssuer](),
+		controllerIssuers: cmap.New[common.TokenIssuer](),
 	}
 
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(result.onExtJwtCreate, boltz.EntityCreatedAsync)
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(result.onExtJwtUpdate, boltz.EntityUpdatedAsync)
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(result.onExtJwtDelete, boltz.EntityDeletedAsync)
 
+	env.GetStores().Controller.AddEntityEventListenerF(result.onControllerCreate, boltz.EntityCreatedAsync)
+	env.GetStores().Controller.AddEntityEventListenerF(result.onControllerUpdate, boltz.EntityUpdatedAsync)
+	env.GetStores().Controller.AddEntityEventListenerF(result.onControllerDelete, boltz.EntityDeletedAsync)
+
 	result.loadExisting()
 
 	return result
+}
+
+func (a *TokenIssuerCache) onControllerCreate(controller *db.Controller) {
+	logger := pfxlog.Logger().WithFields(map[string]interface{}{
+		"id":   controller.Id,
+		"name": controller.Name,
+	})
+
+	certs := nfPem.PemStringToCertificates(controller.CertPem)
+
+	if len(certs) == 0 {
+		logger.Error("could not add controller token issuer, no certificates found")
+		return
+	}
+
+	cert := certs[0]
+
+	controllerTokenIssuer := &ControllerTokenIssuer{
+		controllerId:   controller.Id,
+		controllerName: controller.Name,
+		pubKey: common.IssuerPublicKey{
+			PubKey: cert.PublicKey,
+			Chain:  certs},
+		kid:              fmt.Sprintf("%x", sha1.Sum(cert.Raw)),
+		controllerIssuer: "",
+	}
+	a.controllerIssuers.Set(controller.Id, controllerTokenIssuer)
+}
+
+func (a *TokenIssuerCache) onControllerUpdate(controller *db.Controller) {
+	//read on update because patches can pass partial data
+	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		controller, _, err = a.env.GetStores().Controller.FindById(tx, controller.Id)
+		return err
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error on controller update, could not update controller token issuer")
+		return
+	}
+
+	a.onControllerCreate(controller)
+}
+
+func (a *TokenIssuerCache) onControllerDelete(controller *db.Controller) {
+	a.controllerIssuers.Remove(controller.Id)
+}
+
+// addControllerIssuer creates a ControllerTokenIssuer from a model Controller and adds it to the cache.
+func (a *TokenIssuerCache) addControllerIssuer(controller *Controller) {
+	logger := pfxlog.Logger().WithFields(map[string]interface{}{
+		"id":   controller.Id,
+		"name": controller.Name,
+	})
+
+	certs := nfPem.PemStringToCertificates(controller.CertPem)
+
+	if len(certs) == 0 {
+		logger.Error("could not add controller token issuer, no certificates found")
+		return
+	}
+
+	cert := certs[0]
+
+	controllerTokenIssuer := &ControllerTokenIssuer{
+		controllerId:   controller.Id,
+		controllerName: controller.Name,
+		pubKey: common.IssuerPublicKey{
+			PubKey: cert.PublicKey,
+			Chain:  certs,
+		},
+		kid:              fmt.Sprintf("%x", sha1.Sum(cert.Raw)),
+		controllerIssuer: "",
+	}
+	a.controllerIssuers.Set(controller.Id, controllerTokenIssuer)
 }
 
 // onExtJwtCreate handles creation of new external JWT signers.
@@ -74,21 +166,21 @@ func (a *TokenIssuerCache) onExtJwtCreate(signer *db.ExternalJwtSigner) {
 	})
 
 	if signer.Issuer == nil {
-		logger.Error("could not add signer, issuer is nil")
+		logger.Error("could not add ext jwt token issuer, issuer is nil")
 		return
 	}
 
 	signerRec := &TokenIssuerExtJwt{
 		externalJwtSigner: signer,
 		jwksResolver:      &jwks.HttpResolver{},
-		kidToPubKey:       map[string]IssuerPublicKey{},
+		kidToPubKey:       map[string]common.IssuerPublicKey{},
 	}
 
 	if err := signerRec.Resolve(false); err != nil {
-		logger.WithError(err).Error("could not resolve signer cert/jwks")
+		logger.WithError(err).Error("could not resolve ext jwt token issuer cert/jwks")
 	}
 
-	a.issuers.Set(*signer.Issuer, signerRec)
+	a.externalIssuers.Set(*signer.Issuer, signerRec)
 
 }
 
@@ -103,7 +195,7 @@ func (a *TokenIssuerCache) onExtJwtUpdate(signer *db.ExternalJwtSigner) {
 	})
 
 	if err != nil {
-		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: could not read entity: %v", a, err)
+		pfxlog.Logger().WithError(err).Error("error on external signature update, could not update ext jwt token issuer")
 	}
 
 	a.onExtJwtCreate(signer)
@@ -120,26 +212,26 @@ func (a *TokenIssuerCache) onExtJwtDelete(signer *db.ExternalJwtSigner) {
 	})
 
 	if signer.Issuer == nil {
-		logger.Error("could not add signer, issuer is nil")
+		logger.Error("could not remove ext jwt token issuer, issuer is nil")
 		return
 	}
 
-	a.issuers.Remove(*signer.Issuer)
+	a.externalIssuers.Remove(*signer.Issuer)
 }
 
-// loadExisting loads all external JWT signers from the database during initialization.
+// loadExisting loads all external JWT signers and controllers during initialization.
 func (a *TokenIssuerCache) loadExisting() {
 	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
-		ids, _, err := a.env.GetStores().ExternalJwtSigner.QueryIds(tx, "")
+		extJwtIds, _, err := a.env.GetStores().ExternalJwtSigner.QueryIds(tx, "")
 
 		if err != nil {
 			return err
 		}
 
-		for _, id := range ids {
+		for _, id := range extJwtIds {
 			signer, err := a.env.GetStores().ExternalJwtSigner.LoadById(tx, id)
 			if err != nil {
-				return err
+				pfxlog.Logger().WithError(err).WithField("extJwtId", id).Error("error loading external jwt as token issuer")
 			}
 
 			a.onExtJwtCreate(signer)
@@ -149,14 +241,24 @@ func (a *TokenIssuerCache) loadExisting() {
 	})
 
 	if err != nil {
-		pfxlog.Logger().Errorf("error loading external jwt signerByIssuer: %v", err)
+		pfxlog.Logger().WithError(err).Error("error loading existing external jwt token issuers")
+	}
+
+	controllers, err := a.env.GetManagers().Controller.ReadAll()
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error loading controllers as token issuers")
+		return
+	}
+
+	for _, controller := range controllers {
+		a.addControllerIssuer(controller)
 	}
 }
 
 // GetByIssuerString returns the TokenIssuer for the given issuer claim string.
 // Returns nil if no issuer is found.
-func (a *TokenIssuerCache) GetByIssuerString(issuer string) TokenIssuer {
-	tokenIssuer, ok := a.issuers.Get(issuer)
+func (a *TokenIssuerCache) GetByIssuerString(issuer string) common.TokenIssuer {
+	tokenIssuer, ok := a.externalIssuers.Get(issuer)
 
 	if !ok {
 		return nil
@@ -167,8 +269,8 @@ func (a *TokenIssuerCache) GetByIssuerString(issuer string) TokenIssuer {
 
 // GetById returns the TokenIssuer with the given ID.
 // Returns nil if no issuer is found.
-func (a *TokenIssuerCache) GetById(issuerId string) TokenIssuer {
-	for _, issuer := range a.issuers.Items() {
+func (a *TokenIssuerCache) GetById(issuerId string) common.TokenIssuer {
+	for _, issuer := range a.externalIssuers.Items() {
 		if issuer.Id() == issuerId {
 			return issuer
 		}
@@ -179,7 +281,7 @@ func (a *TokenIssuerCache) GetById(issuerId string) TokenIssuer {
 
 // GetIssuerStrings returns a list of all known issuer strings.
 func (a *TokenIssuerCache) GetIssuerStrings() []string {
-	return a.issuers.Keys()
+	return a.externalIssuers.Keys()
 }
 
 // pubKeyLookup is a callback for JWT parsing to resolve the public key for signature verification.
@@ -230,9 +332,16 @@ func (a *TokenIssuerCache) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	tokenIssuer := a.GetByIssuerString(issuer)
 
 	if tokenIssuer == nil {
-		issuers := a.GetIssuerStrings()
-		logger.WithField("knownIssuers", issuers).Error("issuer not found, issuers are bit-for-bit compared, they must match exactly")
-		return nil, apierror.NewInvalidAuth()
+
+		tokenIssuer = a.GetIssuerByKid(kid)
+
+		if tokenIssuer == nil {
+			issuers := a.GetIssuerStrings()
+			kids := a.GetKids()
+			logger.WithField("knownIssuers", issuers).WithField("kids", kids).Error("issuer not found, kid not found, issuers and kids are compared and must match")
+			return nil, apierror.NewInvalidAuth()
+		}
+
 	}
 
 	logger = logger.WithField("issuerType", tokenIssuer.TypeName()).WithField("tokenIssuerName", tokenIssuer.Name())
@@ -285,142 +394,140 @@ func (a *TokenIssuerCache) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 // VerifyTokenByInspection verifies a JWT by examining its issuer claim to locate the appropriate issuer.
 // Parses the token and validates signature, audience, and extracts identity/name/attribute claims.
 // Returns the verification result containing extracted claims and the verifying issuer.
-func (a *TokenIssuerCache) VerifyTokenByInspection(candidateToken string) (*TokenVerificationResult, error) {
+func (a *TokenIssuerCache) VerifyTokenByInspection(candidateToken string) (*common.TokenVerificationResult, common.TokenIssuer) {
 
 	claims := jwt.MapClaims{}
 
 	token, err := jwt.ParseWithClaims(candidateToken, claims, a.pubKeyLookup)
 
-	if err != nil {
-		return nil, fmt.Errorf("could not parse token: %w", err)
+	result := &common.TokenVerificationResult{
+		Token:  token,
+		Claims: claims,
+		Error:  err,
 	}
 
-	if !token.Valid {
-		return nil, errors.New("token is not valid")
+	if !result.IsValid() {
+		return result, nil
 	}
 
-	tokenIssuer := claims[InternalTokenIssuerClaim].(TokenIssuer)
+	tokenIssuer := claims[InternalTokenIssuerClaim].(common.TokenIssuer)
 
 	if tokenIssuer == nil {
-		return nil, errors.New("token issuer is nil")
+		result.Error = errors.New("token issuer not found inside of parsed claims")
+		return result, nil
 	}
 
 	if !tokenIssuer.IsEnabled() {
-		return nil, errors.New("token issuer is disabled")
+		result.Error = errors.New("token issuer is disabled")
+		return result, tokenIssuer
 	}
 
-	idClaimValue, err := resolveStringClaimSelector(claims, tokenIssuer.IdentityIdClaimsSelector())
+	result.IdClaimValue, err = resolveStringClaimSelector(claims, tokenIssuer.IdentityIdClaimsSelector())
 
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve identity claim property %s: %w", tokenIssuer.IdentityIdClaimsSelector(), err)
+		result.Error = fmt.Errorf("could not resolve identity claim property %s: %w", tokenIssuer.IdentityIdClaimsSelector(), err)
+		return result, tokenIssuer
 	}
 
-	attributeSelector := tokenIssuer.EnrollmentAttributeClaimsSelector()
-	var attributeClaimValues []string
-	if attributeSelector != "" {
-		attributeClaimValues, err = resolveStringSliceClaimProperty(claims, attributeSelector)
+	result.AttributeClaimSelector = tokenIssuer.EnrollmentAttributeClaimsSelector()
+
+	if result.AttributeClaimSelector != "" {
+		result.AttributeClaimValue, err = resolveStringSliceClaimProperty(claims, result.AttributeClaimSelector)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not resolve attribute claim property %s: %w", tokenIssuer.EnrollmentAttributeClaimsSelector(), err)
+			result.Error = fmt.Errorf("could not resolve attribute claim property %s: %w", tokenIssuer.EnrollmentAttributeClaimsSelector(), err)
+			return result, tokenIssuer
 		}
 	}
 
-	if attributeClaimValues == nil {
-		attributeClaimValues = []string{}
+	if result.AttributeClaimValue == nil {
+		result.AttributeClaimValue = []string{}
 	}
 
-	nameSelector := tokenIssuer.EnrollmentNameClaimSelector()
-	nameClaimValue := ""
+	result.NameClaimSelector = tokenIssuer.EnrollmentNameClaimSelector()
 
-	if nameSelector != "" {
-		nameClaimValue, err = resolveStringClaimSelector(claims, nameSelector)
+	if result.NameClaimSelector != "" {
+		result.NameClaimValue, err = resolveStringClaimSelector(claims, result.NameClaimSelector)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not resolve name claim property %s: %w", tokenIssuer.EnrollmentNameClaimSelector(), err)
+			result.Error = fmt.Errorf("could not resolve name claim property %s: %w", tokenIssuer.EnrollmentNameClaimSelector(), err)
+			return result, tokenIssuer
 		}
 	}
 
-	return &TokenVerificationResult{
-		TokenIssuer:            tokenIssuer,
-		Token:                  token,
-		Claims:                 claims,
-		IdClaimSelector:        tokenIssuer.IdentityIdClaimsSelector(),
-		IdClaimValue:           idClaimValue,
-		AttributeClaimSelector: tokenIssuer.EnrollmentAttributeClaimsSelector(),
-		AttributeClaimValue:    attributeClaimValues,
-		NameClaimSelector:      tokenIssuer.EnrollmentNameClaimSelector(),
-		NameClaimValue:         nameClaimValue,
-	}, nil
+	return result, tokenIssuer
 }
 
-// TokenVerificationResult contains the result of JWT token verification.
-// Includes the parsed token, extracted claims, and the issuer that verified it.
-type TokenVerificationResult struct {
-	TokenIssuer            TokenIssuer
-	Token                  *jwt.Token
-	Claims                 map[string]any
-	IdClaimSelector        string
-	IdClaimValue           string
-	AttributeClaimSelector string
-	AttributeClaimValue    []string
-	NameClaimSelector      string
-	NameClaimValue         string
+// IterateExternalIssuers calls f for each registered external JWT issuer in an unspecified order.
+// Iteration stops early when f returns false. Controller issuers are not included.
+func (a *TokenIssuerCache) IterateExternalIssuers(f func(issuer common.TokenIssuer) bool) {
+	keepGoing := true
+	a.externalIssuers.IterCb(func(key string, v common.TokenIssuer) {
+		if keepGoing {
+			keepGoing = f(v)
+		}
+	})
 }
 
-// IsValid returns true if the JWT token signature is valid.
-func (r *TokenVerificationResult) IsValid() bool {
-	return r.Token.Valid
+// IterateControllerIssuers calls f for each registered controller JWT issuer in an unspecified order.
+// Iteration stops early when f returns false. Controller issuers are not included.
+func (a *TokenIssuerCache) IterateControllerIssuers(f func(issuer common.TokenIssuer) bool) {
+	keepGoing := true
+	a.controllerIssuers.IterCb(func(key string, v common.TokenIssuer) {
+		if keepGoing {
+			keepGoing = f(v)
+		}
+	})
 }
 
-// TokenIssuer represents a JWT token issuer capable of verifying tokens.
-// Implementations provide token verification, configuration queries, and claim extraction.
-type TokenIssuer interface {
-	// Id returns the unique identifier of this token issuer.
-	Id() string
-	// TypeName returns the type name of the token issuer (e.g., "externalJwtSigner").
-	TypeName() string
-	// Name returns the human-readable name of the token issuer.
-	Name() string
-	// IsEnabled returns true if this token issuer is enabled.
-	IsEnabled() bool
+// GetIssuerByKid searches both external JWT signers and controller issuers for the one
+// that owns the given key ID. Returns nil if no issuer claims that kid.
+func (a *TokenIssuerCache) GetIssuerByKid(kid string) common.TokenIssuer {
+	for _, issuer := range a.externalIssuers.Items() {
+		if pubKey, ok := issuer.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
+			return issuer
+		}
+	}
 
-	// PubKeyByKid returns the public key for the given key ID.
-	PubKeyByKid(kid string) (IssuerPublicKey, bool)
-	// Resolve loads the issuer's public keys from certificate or JWKS endpoint.
-	// If force is true, refreshes cached keys even if already loaded.
-	Resolve(force bool) error
+	for _, controller := range a.controllerIssuers.Items() {
+		if pubKey, ok := controller.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
+			return controller
+		}
+	}
 
-	// ExpectedIssuer returns the issuer claim value that tokens from this issuer should contain.
-	ExpectedIssuer() string
-	// ExpectedAudience returns the audience claim value that tokens should contain.
-	ExpectedAudience() string
-
-	// AuthenticatorId returns the authenticator ID for this issuer.
-	AuthenticatorId() string
-
-	// EnrollmentAuthPolicyId returns the auth policy ID to apply to identities enrolled via this issuer.
-	EnrollmentAuthPolicyId() string
-	// EnrollmentAttributeClaimsSelector returns the JSON pointer path to the attributes claim.
-	EnrollmentAttributeClaimsSelector() string
-	// EnrollmentNameClaimSelector returns the JSON pointer path to the identity name claim.
-	EnrollmentNameClaimSelector() string
-
-	// IdentityIdClaimsSelector returns the JSON pointer path to the identity ID claim.
-	IdentityIdClaimsSelector() string
-
-	// UseExternalId returns true if the identity ID should be stored as an external ID.
-	UseExternalId() bool
-
-	// VerifyToken verifies and parses a JWT token, returning the verification result.
-	VerifyToken(token string) (*TokenVerificationResult, error)
-
-	// EnrollToCertEnabled returns true if enrollment to certificate is allowed.
-	EnrollToCertEnabled() bool
-	// EnrollToTokenEnabled returns true if enrollment to token is allowed.
-	EnrollToTokenEnabled() bool
+	return nil
 }
 
-var _ TokenIssuer = (*TokenIssuerExtJwt)(nil)
+// GetKids returns a deduplicated list of all key IDs known across both external JWT signers
+// and controller issuers. Used for diagnostic logging when a token cannot be matched.
+func (a *TokenIssuerCache) GetKids() interface{} {
+	kidMap := map[string]struct{}{}
+
+	for _, issuer := range a.externalIssuers.Items() {
+		issuerKids := issuer.GetKids()
+
+		for _, kid := range issuerKids {
+			kidMap[kid] = struct{}{}
+		}
+	}
+
+	for _, controller := range a.controllerIssuers.Items() {
+		controllerKids := controller.GetKids()
+
+		for _, kid := range controllerKids {
+			kidMap[kid] = struct{}{}
+		}
+	}
+
+	kids := make([]string, 0, len(kidMap))
+	for kid := range kidMap {
+		kids = append(kids, kid)
+	}
+
+	return kids
+}
+
+var _ common.TokenIssuer = (*TokenIssuerExtJwt)(nil)
 
 // TokenIssuerExtJwt is a TokenIssuer implementation for external JWT signers.
 // Supports verification via certificate PEM or JWKS endpoints.
@@ -428,11 +535,31 @@ type TokenIssuerExtJwt struct {
 	sync.Mutex
 	jwksLastRequest time.Time
 
-	kidToPubKey       map[string]IssuerPublicKey
+	kidToPubKey       map[string]common.IssuerPublicKey
 	jwksResponse      *jwks.Response
 	externalJwtSigner *db.ExternalJwtSigner
 
 	jwksResolver jwks.Resolver
+}
+
+// GetKids returns all key IDs currently cached for this external JWT signer, triggering
+// a non-forced Resolve to populate the cache if it is empty.
+func (r *TokenIssuerExtJwt) GetKids() []string {
+	_ = r.Resolve(false)
+
+	kids := make([]string, 0, len(r.kidToPubKey))
+
+	for kid := range r.kidToPubKey {
+		kids = append(kids, kid)
+	}
+
+	return kids
+}
+
+// IsControllerTokenIssuer returns false because this issuer represents an external signer,
+// not a controller-issued token.
+func (r *TokenIssuerExtJwt) IsControllerTokenIssuer() bool {
+	return false
 }
 
 // EnrollToCertEnabled returns true if this issuer allows enrollment to certificate.
@@ -462,7 +589,7 @@ func (r *TokenIssuerExtJwt) EnrollmentAuthPolicyId() string {
 
 // VerifyToken verifies a JWT using this issuer's configuration.
 // Attempts resolution of keys if not already cached before verification.
-func (r *TokenIssuerExtJwt) VerifyToken(token string) (*TokenVerificationResult, error) {
+func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationResult {
 	err := r.Resolve(false)
 
 	pfxlog.Logger().WithError(err).Warn("error during routine resolve of external jwt signer cert/jwks, attempting to verify the token with any cached keys")
@@ -470,27 +597,28 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) (*TokenVerificationResult,
 	claims := jwt.MapClaims{}
 	resultToken, err := jwt.ParseWithClaims(token, claims, r.keyFunc)
 
-	if err != nil {
-		return nil, err
-	}
-
-	if !resultToken.Valid {
-		return nil, errors.New("token is not valid")
-	}
-
-	idClaimValue, err := resolveStringClaimSelector(claims, r.IdentityIdClaimsSelector())
-
-	if err != nil {
-		return nil, fmt.Errorf("could not resolve id claim property: %w", err)
-	}
-
-	return &TokenVerificationResult{
-		TokenIssuer:     r,
+	result := &common.TokenVerificationResult{
+		Error:           err,
 		Token:           resultToken,
 		Claims:          claims,
 		IdClaimSelector: r.IdentityIdClaimsSelector(),
-		IdClaimValue:    idClaimValue,
-	}, nil
+	}
+
+	if resultToken != nil && !resultToken.Valid && result.Error == nil {
+		result.Error = errors.New("token invalid for an unspecified reason")
+	}
+
+	if !result.IsValid() {
+		return result
+	}
+
+	result.IdClaimValue, result.Error = resolveStringClaimSelector(claims, r.IdentityIdClaimsSelector())
+
+	if result.Error != nil {
+		result.Error = fmt.Errorf("could not resolve identity claim property %s: %w", r.IdentityIdClaimsSelector(), err)
+	}
+
+	return result
 }
 
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
@@ -653,7 +781,7 @@ func (r *TokenIssuerExtJwt) keyFunc(token *jwt.Token) (any, error) {
 
 // PubKeyByKid returns the public key for the given key ID from the cache.
 // Thread-safe using internal mutex.
-func (r *TokenIssuerExtJwt) PubKeyByKid(kid string) (IssuerPublicKey, bool) {
+func (r *TokenIssuerExtJwt) PubKeyByKid(kid string) (common.IssuerPublicKey, bool) {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
 
@@ -690,7 +818,7 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 		}
 
 		// first cert only
-		r.kidToPubKey = map[string]IssuerPublicKey{
+		r.kidToPubKey = map[string]common.IssuerPublicKey{
 			kid: {
 				PubKey: certs[0].PublicKey,
 				Chain:  certs,
@@ -733,7 +861,7 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 					return fmt.Errorf("no ceritficates parsed")
 				}
 
-				r.kidToPubKey[key.KeyId] = IssuerPublicKey{
+				r.kidToPubKey[key.KeyId] = common.IssuerPublicKey{
 					PubKey: certs[0].PublicKey,
 					Chain:  certs,
 				}
@@ -745,7 +873,7 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 					return err
 				}
 
-				r.kidToPubKey[key.KeyId] = IssuerPublicKey{
+				r.kidToPubKey[key.KeyId] = common.IssuerPublicKey{
 					PubKey: k,
 				}
 			}
@@ -760,10 +888,143 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 	return errors.New("instructed to add external jwt signer that does not have a certificate PEM or JWKS endpoint")
 }
 
-// IssuerPublicKey represents a public key and associated certificate chain.
-type IssuerPublicKey struct {
-	PubKey any                 // The public key used for signature verification
-	Chain  []*x509.Certificate // Optional X.509 certificate chain
+var _ common.TokenIssuer = (*ControllerTokenIssuer)(nil)
+
+// ControllerTokenIssuer implements TokenIssuer for controller-issued JWTs. Each running
+// controller is represented by one instance keyed by the SHA-1 fingerprint of its TLS
+// certificate (the key ID). It is always considered enabled and does not support enrollment (toCert/toToken enrollment).
+type ControllerTokenIssuer struct {
+	controllerId     string
+	controllerName   string
+	pubKey           common.IssuerPublicKey
+	kid              string
+	controllerIssuer string
+}
+
+// GetKids returns the single key ID derived from the controller's TLS certificate fingerprint.
+func (o *ControllerTokenIssuer) GetKids() []string {
+	return []string{o.kid}
+}
+
+// IsControllerTokenIssuer returns true, distinguishing this issuer from external JWT signers.
+func (o *ControllerTokenIssuer) IsControllerTokenIssuer() bool {
+	return true
+}
+
+func (o *ControllerTokenIssuer) Id() string {
+	return o.controllerId
+}
+
+func (o *ControllerTokenIssuer) TypeName() string {
+	return "openZitiController"
+}
+
+func (o *ControllerTokenIssuer) Name() string {
+	return o.controllerName
+}
+
+func (o *ControllerTokenIssuer) IsEnabled() bool {
+	return true
+}
+
+func (o *ControllerTokenIssuer) PubKeyByKid(kid string) (common.IssuerPublicKey, bool) {
+	if kid == o.kid {
+		return o.pubKey, true
+	}
+
+	return common.IssuerPublicKey{}, false
+}
+
+func (o *ControllerTokenIssuer) Resolve(_ bool) error {
+	return nil
+}
+
+func (o *ControllerTokenIssuer) ExpectedIssuer() string {
+	return o.controllerIssuer
+}
+
+func (o *ControllerTokenIssuer) ExpectedAudience() string {
+	return "openziti"
+}
+
+func (o *ControllerTokenIssuer) AuthenticatorId() string {
+	return "internal"
+}
+
+func (o *ControllerTokenIssuer) EnrollmentAuthPolicyId() string {
+	return ""
+}
+
+func (o *ControllerTokenIssuer) EnrollmentAttributeClaimsSelector() string {
+	return ""
+}
+
+func (o *ControllerTokenIssuer) EnrollmentNameClaimSelector() string {
+	return "name"
+}
+
+func (o *ControllerTokenIssuer) IdentityIdClaimsSelector() string {
+	return "sub"
+}
+
+func (o *ControllerTokenIssuer) UseExternalId() bool {
+	return false
+}
+
+func (o *ControllerTokenIssuer) VerifyToken(token string) *common.TokenVerificationResult {
+	claims := jwt.MapClaims{}
+
+	resultToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+
+		kid := ""
+
+		if token.Header != nil {
+			kid = token.Header["kid"].(string)
+		}
+
+		if kid == "" {
+			kid = "<not set>"
+		}
+
+		key, ok := o.PubKeyByKid(kid)
+
+		if !ok || key.PubKey == nil {
+			return nil, errors.New("pubkey not found by kid " + kid)
+		}
+
+		return key.PubKey, nil
+	})
+
+	result := &common.TokenVerificationResult{
+		Token:           resultToken,
+		Claims:          claims,
+		IdClaimSelector: o.IdentityIdClaimsSelector(),
+		Error:           err,
+	}
+
+	if resultToken != nil && !resultToken.Valid && result.Error == nil {
+		result.Error = errors.New("token invalid for an unspecified reason")
+	}
+
+	if !result.IsValid() {
+		return result
+	}
+
+	result.IdClaimValue = strings.TrimSpace(claims["sub"].(string))
+
+	if result.IdClaimValue == "" {
+		result.Error = errors.New("no sub claim found in token")
+	}
+
+	return result
+}
+
+func (o *ControllerTokenIssuer) EnrollToCertEnabled() bool {
+	return false
+}
+
+func (o *ControllerTokenIssuer) EnrollToTokenEnabled() bool {
+	return false
 }
 
 // getJwtTokenKid extracts the key ID (kid) from a JWT token header.

@@ -24,6 +24,7 @@ import (
 
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_server"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -134,15 +135,14 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 			r.URL.Path = ManagementRestApiBaseUrlLatest + VersionPath
 		}
 
-		rc := ae.CreateRequestContext(rw, r)
+		rc, err := ae.CreateRequestContext(rw, r)
 
-		api.AddRequestContextToHttpContext(r, rc)
-
-		err := ae.FillRequestContext(rc)
 		if err != nil {
-			rc.RespondWithError(err)
+			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
 			return
 		}
+
+		api.AddRequestContextToHttpContext(r, rc)
 
 		//after request context is filled so that api session is present for session expiration headers
 		response.AddHeaders(rc)

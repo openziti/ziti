@@ -22,6 +22,7 @@ import (
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -63,7 +64,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/events"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
 	"github.com/openziti/ziti/v2/controller/model"
-	"github.com/openziti/ziti/v2/controller/models"
+
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
@@ -72,7 +73,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/openziti/ziti/v2/controller/xmgmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -422,9 +422,9 @@ func (ae *AppEnv) getEnrollmentTlsCert() (*tls.Certificate, error) {
 
 	if err == nil {
 		return tlsCert, nil
-	} else {
-		hostnameErrors = append(hostnameErrors, err)
 	}
+
+	hostnameErrors = append(hostnameErrors, err)
 
 	pfxlog.Logger().WithField("hostnameErrors", hostnameErrors).Errorf("could not find a server certificate for the edge.api.address host [%s]", host)
 
@@ -606,220 +606,39 @@ const (
 	EventualEventsGauge = "eventual.events"
 )
 
-func (a authorizer) Authorize(request *http.Request, principal interface{}) error {
-	//principal is an API Session
-	_, ok := principal.(*model.ApiSession)
-
-	if !ok {
-		pfxlog.Logger().Error("principal expected to be an ApiSession and was not")
-		return errorz.NewUnauthorized()
-	}
-
+// Authorize is a simple authorizer that acts as a front door to "authenticated endpoints". If no API Session is found
+// in the current security context, there is no point in proceeding.
+func (a authorizer) Authorize(request *http.Request, _ interface{}) error {
 	rc, err := GetRequestContextFromHttpContext(request)
 
-	if rc == nil || err != nil {
-		pfxlog.Logger().WithError(err).Error("attempting to retrieve request context failed")
+	if err != nil {
 		return errorz.NewUnauthorized()
 	}
 
-	if rc.Identity == nil {
+	if rc == nil {
 		return errorz.NewUnauthorized()
 	}
 
-	return nil
-}
-
-// ProcessZtSession validates a Ziti session token and populates the request context.
-func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string) error {
-	logger := pfxlog.Logger()
-
-	rc.SessionToken = ztSession
-
-	if rc.SessionToken != "" {
-		_, err := uuid.Parse(rc.SessionToken)
-		if err != nil {
-			logger.WithError(err).Debug("failed to parse session id")
-			rc.SessionToken = ""
-		} else {
-			logger.Tracef("authorizing request using session id '%v'", rc.SessionToken)
-		}
-
+	if rc.SecurityCtx == nil {
+		return errorz.NewUnauthorized()
 	}
 
-	if rc.SessionToken != "" {
-		var err error
-		rc.ApiSession, err = ae.GetManagers().ApiSession.ReadByToken(rc.SessionToken)
-		if err != nil {
-			logger.WithError(err).Debugf("looking up ApiConfig session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
-			rc.ApiSession = nil
-			rc.SessionToken = ""
-		}
-	}
-
-	if rc.ApiSession != nil {
-		//updates for api session timeouts
-		ae.GetManagers().ApiSession.MarkLastActivityById(rc.ApiSession.Id)
-
-		var err error
-		rc.Identity, err = ae.GetManagers().Identity.Read(rc.ApiSession.IdentityId)
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				apiErr := errorz.NewUnauthorized()
-				apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
-				apiErr.AppendCause = true
-				return apiErr
-			} else {
-				return err
-			}
-		}
-	}
-
-	if rc.Identity != nil {
-		var err error
-		rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
-
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				apiErr := errorz.NewUnauthorized()
-				apiErr.Cause = fmt.Errorf("associated auth policy %s not found", rc.Identity.AuthPolicyId)
-				apiErr.AppendCause = true
-				return apiErr
-			} else {
-				return err
-			}
-		}
-
-		if rc.AuthPolicy == nil {
-			err := fmt.Errorf("unahndled scenario, nil auth policy [%s] found on identity [%s]", rc.Identity.AuthPolicyId, rc.Identity.Id)
-			logger.Error(err)
-			return err
-		}
-
-		ProcessAuthQueries(ae, rc)
-
-		isPartialAuth := len(rc.AuthQueries) > 0
-
-		if isPartialAuth {
-			rc.ActivePermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
-		} else {
-			rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
-		}
-
-		if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
-			rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
-		}
-
-		for _, permission := range rc.Identity.Permissions {
-			rc.ActivePermissions[permission] = struct{}{}
-		}
-	}
-
-	return nil
-}
-
-// ProcessJwt validates a JWT token and populates the request context with claims and identity.
-func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) error {
-	rc.SessionToken = token.Raw
-	rc.Jwt = token
-	rc.Claims = token.Claims.(*common.AccessClaims)
-
-	if rc.Claims == nil {
-		return fmt.Errorf("could not convert tonek.Claims from %T to %T", rc.Jwt.Claims, rc.Claims)
-	}
-
-	if rc.Claims.Type != common.TokenTypeAccess {
-		return errors.New("invalid token")
-	}
-
-	var err error
-	rc.Identity, err = ae.GetManagers().Identity.Read(rc.Claims.Subject)
+	apiSession, err := rc.SecurityCtx.GetApiSession()
 
 	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			apiErr := errorz.NewUnauthorized()
-			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", rc.Claims.Subject)
-			apiErr.AppendCause = true
-			return apiErr
-		} else {
-			return err
-		}
+		return err
 	}
 
-	configTypes := map[string]struct{}{}
-
-	for _, configType := range rc.Claims.ConfigTypes {
-		configTypes[configType] = struct{}{}
+	if apiSession == nil {
+		return errorz.NewUnauthorized()
 	}
 
-	rc.ApiSession = &model.ApiSession{
-		BaseEntity: models.BaseEntity{
-			Id:        rc.Claims.ApiSessionId,
-			CreatedAt: rc.Claims.IssuedAt.AsTime(),
-			UpdatedAt: rc.Claims.IssuedAt.AsTime(),
-			IsSystem:  false,
-		},
-		Token:                   rc.Jwt.Raw,
-		IdentityId:              rc.Claims.Subject,
-		Identity:                rc.Identity,
-		IPAddress:               rc.Request.RemoteAddr,
-		ConfigTypes:             configTypes,
-		MfaComplete:             rc.Claims.TotpComplete(),
-		MfaRequired:             false,
-		ExpiresAt:               rc.Claims.Expiration.AsTime(),
-		ExpirationDuration:      time.Until(rc.Claims.Expiration.AsTime()),
-		LastActivityAt:          time.Now(),
-		AuthenticatorId:         rc.Claims.AuthenticatorId,
-		IsCertExtendable:        rc.Claims.IsCertExtendable,
-		IsCertExtendRequested:   rc.Claims.IsCertExtendRequested,
-		IsCertKeyRollRequested:  rc.Claims.IsCertKeyRollRequested,
-		ImproperClientCertChain: rc.Claims.ImproperClientCertChain,
+	if apiSession.Identity == nil {
+		return errorz.NewUnauthorized()
 	}
 
-	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
-
-	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			apiErr := errorz.NewUnauthorized()
-			apiErr.Cause = fmt.Errorf("jwt associated auth policy %s not found", rc.Identity.AuthPolicyId)
-			apiErr.AppendCause = true
-			return apiErr
-		} else {
-			return err
-		}
-	}
-
-	rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
-
-	if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
-		rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
-	}
-
-	for _, permission := range rc.Identity.Permissions {
-		rc.ActivePermissions[permission] = struct{}{}
-	}
-
-	return nil
-}
-
-// FillRequestContext extracts authentication information from the HTTP request
-// and populates the request context with session or JWT token data.
-func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
-	// do no process auth headers on authenticate request
-	if strings.HasSuffix(rc.Request.URL.Path, "/v1/authenticate") && !strings.HasSuffix(rc.Request.URL.Path, "/authenticate/mfa") {
-		return nil
-	}
-
-	ztSession := ae.getZtSessionFromRequest(rc.Request)
-
-	if ztSession != "" {
-		return ae.ProcessZtSession(rc, ztSession)
-	}
-
-	token := ae.getJwtTokenFromRequest(rc.Request)
-
-	if token != nil {
-		rc.IsJwtToken = true
-		return ae.ProcessJwt(rc, token)
+	if apiSession.Identity.Disabled {
+		return errorz.NewUnauthorized()
 	}
 
 	return nil
@@ -855,48 +674,6 @@ func NewAuthQueryExtJwt(signer *model.ExternalJwtSigner) *rest_model.AuthQueryDe
 		Scopes:   signer.Scopes,
 		ClientID: stringz.OrEmpty(signer.ClientId),
 		ID:       signer.Id,
-	}
-}
-
-// ProcessAuthQueries will inspect a response.RequestContext and set the AuthQueries
-// with the current outstanding authentication queries.
-func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
-	if rc.ApiSession == nil || rc.AuthPolicy == nil {
-		return
-	}
-
-	totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
-
-	if totpRequired && !rc.ApiSession.MfaComplete {
-		totpAuthQuery := NewAuthQueryZitiMfa()
-
-		mfaDetail, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.ApiSession.IdentityId)
-
-		if err == nil && mfaDetail != nil {
-			totpAuthQuery.IsTotpEnrolled = mfaDetail.IsVerified
-		}
-		rc.AuthQueries = append(rc.AuthQueries, totpAuthQuery)
-	}
-
-	if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {
-		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
-		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
-		if extJwtAuth != nil {
-			authCtx := model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext())
-			authCtx.SetPrimaryIdentity(rc.Identity)
-
-			authResult, err := extJwtAuth.ProcessSecondary(authCtx)
-
-			if err != nil || !authResult.IsSuccessful() {
-				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)
-
-				if err != nil {
-					pfxlog.Logger().Errorf("could not read required external jwt signer: %s: %s", *rc.AuthPolicy.Secondary.RequiredExtJwtSigner, err)
-				}
-				rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(signer))
-
-			}
-		}
 	}
 }
 
@@ -975,7 +752,6 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 	}
 
 	ae.timelineId.Store(timelineId)
-	ae.TokenIssuerCache = model.NewTokenIssuerCache(ae)
 
 	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
 
@@ -992,38 +768,20 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 	clientApi.TextYamlProducer = &YamlProducer{}
 
 	clientApi.Oauth2Auth = func(token string, scopes []string) (principal interface{}, err error) {
-		found := false
-		for _, scope := range scopes {
-			if scope == "openid" {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return nil, errorz.NewUnauthorized()
-		}
-
-		return &model.ApiSession{}, nil
+		return token, nil
 	}
 
 	clientApi.ZtSessionAuth = func(token string) (principal interface{}, err error) {
-		principal, err = ae.GetManagers().ApiSession.ReadByToken(token)
-
-		if err != nil {
-			if !boltz.IsErrNotFoundErr(err) {
-				pfxlog.Logger().WithError(err).Errorf("encountered error checking for session that was not expected; returning masking unauthorized response")
-			}
-
-			return nil, errorz.NewUnauthorized()
-		}
-
-		return principal, nil
+		return token, nil
 	}
 
 	managementApi.TextYamlProducer = &YamlProducer{}
 	managementApi.ZtSessionAuth = clientApi.ZtSessionAuth
 	managementApi.Oauth2Auth = clientApi.Oauth2Auth
+
+	fabricApi.APIAuthorizer = authorizer{}
+	fabricApi.ZtSessionAuth = clientApi.ZtSessionAuth
+	fabricApi.Oauth2Auth = clientApi.Oauth2Auth
 
 	if host.GetConfig().Edge.Enabled {
 		enrollmentCert := host.GetConfig().Edge.Enrollment.SigningCert.Cert()
@@ -1036,6 +794,8 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 
 	ae.Managers = model.NewManagers()
 	ae.Managers.Init(ae)
+
+	ae.TokenIssuerCache = model.NewTokenIssuerCache(ae)
 
 	return ae, nil
 }
@@ -1080,35 +840,6 @@ func (ae *AppEnv) InitPersistence() error {
 	return err
 }
 
-// getZtSessionFromRequest extracts the Ziti session token from HTTP headers.
-func (ae *AppEnv) getZtSessionFromRequest(r *http.Request) string {
-	return r.Header.Get(ZitiSession)
-}
-
-// getJwtTokenFromRequest extracts and validates JWT tokens from Authorization headers.
-func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
-	headers := r.Header.Values("authorization")
-
-	for _, header := range headers {
-		if strings.HasPrefix(header, "Bearer ") {
-			token := header[7:]
-			claims := &common.AccessClaims{}
-			parsedToken, err := jwt.ParseWithClaims(token, claims, ae.ControllersKeyFunc)
-
-			if err != nil {
-				pfxlog.Logger().WithError(err).Debug("JWT provided that did not parse and verify against controller public keys, skipping")
-				continue
-			}
-			if parsedToken.Valid {
-				return parsedToken
-			}
-		}
-
-	}
-
-	return nil
-}
-
 // ControllersKeyFunc provides public keys for JWT token verification from peer controllers.
 func (ae *AppEnv) ControllersKeyFunc(token *jwt.Token) (interface{}, error) {
 	kidVal, ok := token.Header["kid"]
@@ -1139,26 +870,35 @@ func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 }
 
 // CreateRequestContext creates a new request context for handling HTTP requests.
-func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
+func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) (*response.RequestContext, error) {
 	rid := eid.New()
 
 	body, _ := io.ReadAll(r.Body)
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
+	securityTokenCtx, err := common.NewSecurityTokenCtx(r, ae.TokenIssuerCache)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create security token context: %w", err)
+	}
+
+	securityTokenCtx.AddToRequest(r)
+
+	securityCtx := NewSecurityCtx(securityTokenCtx, ae)
+	securityCtx.AddToRequest(r)
+
 	requestContext := &response.RequestContext{
-		Id:                rid,
-		ResponseWriter:    rw,
-		Request:           r,
-		Body:              body,
-		Identity:          nil,
-		ApiSession:        nil,
-		ActivePermissions: map[string]struct{}{},
-		StartTime:         time.Now(),
+		Id:             rid,
+		ResponseWriter: rw,
+		Request:        r,
+		Body:           body,
+		StartTime:      time.Now(),
+		SecurityCtx:    securityCtx,
 	}
 
 	requestContext.Responder = response.NewResponder(requestContext)
 
-	return requestContext
+	return requestContext, nil
 }
 
 func GetRequestContextFromHttpContext(r *http.Request) (*response.RequestContext, error) {
@@ -1189,8 +929,8 @@ func getMetricTimerName(r *http.Request) string {
 			cleanUrl = strings.ReplaceAll(cleanUrl, id, ":id")
 		}
 
-		if subid, err := rc.GetEntitySubId(); err == nil && subid != "" {
-			cleanUrl = strings.ReplaceAll(cleanUrl, subid, ":subid")
+		if subId, err := rc.GetEntitySubId(); err == nil && subId != "" {
+			cleanUrl = strings.ReplaceAll(cleanUrl, subId, ":subid")
 		}
 	}
 
@@ -1209,8 +949,16 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		rc, err := GetRequestContextFromHttpContext(request)
 
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("could not retrieve request context")
+			rc.RespondWithError(err)
+			return
+		}
+
 		if rc == nil {
-			rc = ae.CreateRequestContext(writer, request)
+			pfxlog.Logger().Error("request context was nil")
+			rc.RespondWithError(errors.New("request context was nil"))
+			return
 		}
 
 		rc.SetProducer(producer)
@@ -1225,7 +973,15 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		for _, permission := range permissions {
 			if !permission.IsAllowed(rc) {
-				rc.RespondWithApiError(errorz.NewUnauthorized())
+				var unauthorizedError error = errorz.NewUnauthorized()
+
+				securityErr := rc.SecurityCtx.GetError()
+				if securityErr != nil {
+					// if we have a specific security error, use that instead
+					unauthorizedError = securityErr
+				}
+
+				rc.RespondWithError(unauthorizedError)
 				return
 			}
 		}
@@ -1241,12 +997,12 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 			}).Warn("could not mark metrics for REST ApiConfig endpoint, request context start time is zero")
 		}
 
-		if rc.ApiSession != nil {
+		if apiSession, _ := rc.SecurityCtx.GetApiSession(); apiSession != nil {
 			connectEvent := &event.ConnectEvent{
 				Namespace: event.ConnectEventNS,
 				SrcType:   event.ConnectSourceIdentity,
 				DstType:   event.ConnectDestinationController,
-				SrcId:     rc.ApiSession.IdentityId,
+				SrcId:     apiSession.IdentityId,
 				SrcAddr:   rc.Request.RemoteAddr,
 				DstId:     ae.HostController.GetNetwork().GetAppId(),
 				DstAddr:   rc.Request.Host,
@@ -1300,7 +1056,7 @@ func (ae *AppEnv) InitTimelineId(timelineId string) {
 	}
 }
 
-// OverrideTimelineId forcibly sets the timeline ID, bypassing startup checks.
+// OverrideTimelineId forcibly sets the timeline ID bypassing startup checks.
 func (ae *AppEnv) OverrideTimelineId(timelineId string) {
 	ae.timelineId.Store(timelineId)
 }
@@ -1308,4 +1064,11 @@ func (ae *AppEnv) OverrideTimelineId(timelineId string) {
 // TimelineId returns the current timeline identifier for event ordering.
 func (ae *AppEnv) TimelineId() string {
 	return ae.timelineId.Load()
+}
+
+func WriteHttpApiError(w http.ResponseWriter, apiError *errorz.ApiError) {
+	producer := runtime.JSONProducer()
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(apiError.Status)
+	_ = producer.Produce(w, apiError)
 }

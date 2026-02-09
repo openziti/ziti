@@ -37,8 +37,8 @@ const (
 	FieldApiSessionToken                   = "token"
 	FieldApiSessionConfigTypes             = "configTypes"
 	FieldApiSessionIPAddress               = "ipAddress"
-	FieldApiSessionMfaComplete             = "mfaComplete"
-	FieldApiSessionMfaRequired             = "mfaRequired"
+	FieldApiSessionTotpComplete            = "mfaComplete" //"mfa" is a hold over from when TOTP was the only factor
+	FieldApiSessionTotpRequired            = "mfaRequired"
 	FieldApiSessionLastActivityAt          = "lastActivityAt"
 	FieldApiSessionAuthenticator           = "authenticator"
 	FieldApiSessionIsCertExtendable        = "isCertExtendable"
@@ -55,8 +55,8 @@ type ApiSession struct {
 	Token                   string    `json:"-"`
 	IPAddress               string    `json:"ipAddress"`
 	ConfigTypes             []string  `json:"configTypes"`
-	MfaComplete             bool      `json:"mfaComplete"`
-	MfaRequired             bool      `json:"mfaRequired"`
+	TotpComplete            bool      `json:"mfaComplete"`
+	TotpRequired            bool      `json:"mfaRequired"`
 	LastActivityAt          time.Time `json:"lastActivityAt"`
 	AuthenticatorId         string    `json:"authenticatorId"`
 	IsCertExtendable        bool      `json:"isCertExtendable"`
@@ -115,8 +115,8 @@ func (store *apiSessionStoreImpl) FillEntity(entity *ApiSession, bucket *boltz.T
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
 	entity.ConfigTypes = bucket.GetStringList(FieldApiSessionConfigTypes)
 	entity.IPAddress = bucket.GetStringWithDefault(FieldApiSessionIPAddress, "")
-	entity.MfaComplete = bucket.GetBoolWithDefault(FieldApiSessionMfaComplete, false)
-	entity.MfaRequired = bucket.GetBoolWithDefault(FieldApiSessionMfaRequired, false)
+	entity.TotpComplete = bucket.GetBoolWithDefault(FieldApiSessionTotpComplete, false)
+	entity.TotpRequired = bucket.GetBoolWithDefault(FieldApiSessionTotpRequired, false)
 	entity.AuthenticatorId = bucket.GetStringWithDefault(FieldApiSessionAuthenticator, "")
 	entity.IsCertExtendable = bucket.GetBoolWithDefault(FieldApiSessionIsCertExtendable, false)
 	entity.ImproperClientCertChain = bucket.GetBoolWithDefault(FieldApiSessionImproperClientCertChain, false)
@@ -133,8 +133,8 @@ func (store *apiSessionStoreImpl) PersistEntity(entity *ApiSession, ctx *boltz.P
 	ctx.SetString(FieldApiSessionToken, entity.Token)
 	ctx.SetStringList(FieldApiSessionConfigTypes, entity.ConfigTypes)
 	ctx.SetString(FieldApiSessionIPAddress, entity.IPAddress)
-	ctx.SetBool(FieldApiSessionMfaComplete, entity.MfaComplete)
-	ctx.SetBool(FieldApiSessionMfaRequired, entity.MfaRequired)
+	ctx.SetBool(FieldApiSessionTotpComplete, entity.TotpComplete)
+	ctx.SetBool(FieldApiSessionTotpRequired, entity.TotpRequired)
 	ctx.SetString(FieldApiSessionAuthenticator, entity.AuthenticatorId)
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
 	ctx.SetBool(FieldApiSessionIsCertExtendable, entity.IsCertExtendable)
@@ -208,7 +208,7 @@ func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity *ApiSes
 	err := store.baseStore.Create(ctx, entity)
 
 	if err == nil {
-		if !entity.MfaRequired || entity.MfaComplete {
+		if !entity.TotpRequired || entity.TotpComplete {
 			ctx.AddCommitAction(func() {
 				store.eventsEmitter.Emit(EventFullyAuthenticated, entity)
 			})
@@ -222,7 +222,7 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity *ApiSes
 	err := store.baseStore.Update(ctx, entity, checker)
 
 	if err == nil {
-		if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && entity.MfaComplete {
+		if (checker == nil || checker.IsUpdated(FieldApiSessionTotpComplete)) && entity.TotpComplete {
 			ctx.AddCommitAction(func() {
 				store.eventsEmitter.Emit(EventFullyAuthenticated, entity)
 			})
@@ -274,8 +274,8 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldApiSessionAuthenticator, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionIdentity, ast.NodeTypeString)
 	store.AddSymbol(FieldApiSessionIPAddress, ast.NodeTypeString)
-	store.AddSymbol(FieldApiSessionMfaComplete, ast.NodeTypeBool)
-	store.AddSymbol(FieldApiSessionMfaRequired, ast.NodeTypeBool)
+	store.AddSymbol(FieldApiSessionTotpComplete, ast.NodeTypeBool)
+	store.AddSymbol(FieldApiSessionTotpRequired, ast.NodeTypeBool)
 	store.AddSymbol(FieldApiSessionImproperClientCertChain, ast.NodeTypeBool)
 
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)

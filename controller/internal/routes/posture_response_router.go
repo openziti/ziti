@@ -62,6 +62,20 @@ func (r *PostureResponseRouter) Create(ae *env.AppEnv, rc *response.RequestConte
 }
 
 func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseBulkParams) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	responder := &PostureResponseResponder{
 		Responder: rc,
 		ae:        ae,
@@ -89,10 +103,10 @@ func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestC
 		gracePeriod := model.MfaPromptGracePeriod * -1
 		gracePeriodSeconds := int64(gracePeriod.Seconds())
 
-		postureData := ae.Managers.PostureResponse.PostureData(rc.Identity.Id)
+		postureData := ae.Managers.PostureResponse.PostureData(identity.Id)
 
 		if postureData != nil && postureData.ApiSessions != nil {
-			apiPostureData := postureData.ApiSessions[rc.ApiSession.Id]
+			apiPostureData := postureData.ApiSessions[apiSession.Id]
 			if passedMfaAt := apiPostureData.GetPassedMfaAt(); passedMfaAt != nil {
 				//if the last time Mfa was passed at is outside of the grace period, send timeout update
 				durationSinceLastMfa := time.Since(*passedMfaAt)
@@ -120,6 +134,20 @@ func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *response.RequestContext, apiPostureResponse rest_model.PostureResponseCreate) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	switch apiPostureResponse := apiPostureResponse.(type) {
 	case *rest_model.PostureResponseDomainCreate:
 		postureResponse := &model.PostureResponse{
@@ -136,7 +164,7 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		subType.PostureResponse = postureResponse
 		postureResponse.SubType = subType
 
-		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+		ae.Managers.PostureResponse.Create(identity.Id, []*model.PostureResponse{postureResponse})
 
 	case *rest_model.PostureResponseMacAddressCreate:
 		postureResponse := &model.PostureResponse{
@@ -153,7 +181,7 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		subType.PostureResponse = postureResponse
 		postureResponse.SubType = subType
 
-		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+		ae.Managers.PostureResponse.Create(identity.Id, []*model.PostureResponse{postureResponse})
 
 	case *rest_model.PostureResponseProcessCreate:
 		postureResponse := &model.PostureResponse{
@@ -173,7 +201,7 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		subType.PostureResponse = postureResponse
 		postureResponse.SubType = subType
 
-		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+		ae.Managers.PostureResponse.Create(identity.Id, []*model.PostureResponse{postureResponse})
 	case *rest_model.PostureResponseOperatingSystemCreate:
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
@@ -191,7 +219,7 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		subType.PostureResponse = postureResponse
 		postureResponse.SubType = subType
 
-		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+		ae.Managers.PostureResponse.Create(identity.Id, []*model.PostureResponse{postureResponse})
 	case *rest_model.PostureResponseEndpointStateCreate:
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
@@ -201,7 +229,7 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		}
 
 		subType := &model.PostureResponseEndpointState{
-			ApiSessionId: rc.ApiSession.Id,
+			ApiSessionId: apiSession.Id,
 		}
 		now := time.Now().UTC()
 
@@ -216,6 +244,6 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		subType.PostureResponse = postureResponse
 		postureResponse.SubType = subType
 
-		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+		ae.Managers.PostureResponse.Create(identity.Id, []*model.PostureResponse{postureResponse})
 	}
 }

@@ -36,16 +36,16 @@ import (
 )
 
 // UpdateTerminatorHandlerFunc turns a function with the right signature into a update terminator handler
-type UpdateTerminatorHandlerFunc func(UpdateTerminatorParams) middleware.Responder
+type UpdateTerminatorHandlerFunc func(UpdateTerminatorParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn UpdateTerminatorHandlerFunc) Handle(params UpdateTerminatorParams) middleware.Responder {
-	return fn(params)
+func (fn UpdateTerminatorHandlerFunc) Handle(params UpdateTerminatorParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // UpdateTerminatorHandler interface for that can handle valid update terminator params
 type UpdateTerminatorHandler interface {
-	Handle(UpdateTerminatorParams) middleware.Responder
+	Handle(UpdateTerminatorParams, any) middleware.Responder
 }
 
 // NewUpdateTerminator creates a new http.Handler for the update terminator operation
@@ -53,12 +53,12 @@ func NewUpdateTerminator(ctx *middleware.Context, handler UpdateTerminatorHandle
 	return &UpdateTerminator{Context: ctx, Handler: handler}
 }
 
-/* UpdateTerminator swagger:route PUT /terminators/{id} Terminator updateTerminator
+/*
+	UpdateTerminator swagger:route PUT /terminators/{id} Terminator updateTerminator
 
-Update all fields on a terminator
+# Update all fields on a terminator
 
 Update all fields on a terminator by id. Requires admin access.
-
 */
 type UpdateTerminator struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *UpdateTerminator) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewUpdateTerminatorParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

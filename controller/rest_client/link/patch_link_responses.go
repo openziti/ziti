@@ -30,6 +30,8 @@ package link
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type PatchLinkReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *PatchLinkReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *PatchLinkReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewPatchLinkOK()
@@ -84,7 +86,7 @@ func (o *PatchLinkReader) ReadResponse(response runtime.ClientResponse, consumer
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PATCH /links/{id}] patchLink", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewPatchLinkOK() *PatchLinkOK {
 	return &PatchLinkOK{}
 }
 
-/* PatchLinkOK describes a response with status code 200, with default header values.
+/*
+PatchLinkOK describes a response with status code 200, with default header values.
 
 The patch request was successful and the resource has been altered
 */
@@ -101,9 +104,46 @@ type PatchLinkOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *PatchLinkOK) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this patch link o k response has a 2xx status code
+func (o *PatchLinkOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this patch link o k response has a 3xx status code
+func (o *PatchLinkOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link o k response has a 4xx status code
+func (o *PatchLinkOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this patch link o k response has a 5xx status code
+func (o *PatchLinkOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch link o k response a status code equal to that given
+func (o *PatchLinkOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the patch link o k response
+func (o *PatchLinkOK) Code() int {
+	return 200
+}
+
+func (o *PatchLinkOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkOK %s", 200, payload)
+}
+
+func (o *PatchLinkOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkOK %s", 200, payload)
+}
+
 func (o *PatchLinkOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *PatchLinkOK) readResponse(response runtime.ClientResponse, consumer run
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewPatchLinkBadRequest() *PatchLinkBadRequest {
 	return &PatchLinkBadRequest{}
 }
 
-/* PatchLinkBadRequest describes a response with status code 400, with default header values.
+/*
+PatchLinkBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -133,9 +174,46 @@ type PatchLinkBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *PatchLinkBadRequest) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this patch link bad request response has a 2xx status code
+func (o *PatchLinkBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this patch link bad request response has a 3xx status code
+func (o *PatchLinkBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link bad request response has a 4xx status code
+func (o *PatchLinkBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch link bad request response has a 5xx status code
+func (o *PatchLinkBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch link bad request response a status code equal to that given
+func (o *PatchLinkBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the patch link bad request response
+func (o *PatchLinkBadRequest) Code() int {
+	return 400
+}
+
+func (o *PatchLinkBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkBadRequest %s", 400, payload)
+}
+
+func (o *PatchLinkBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkBadRequest %s", 400, payload)
+}
+
 func (o *PatchLinkBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *PatchLinkBadRequest) readResponse(response runtime.ClientResponse, cons
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewPatchLinkUnauthorized() *PatchLinkUnauthorized {
 	return &PatchLinkUnauthorized{}
 }
 
-/* PatchLinkUnauthorized describes a response with status code 401, with default header values.
+/*
+PatchLinkUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -165,9 +244,46 @@ type PatchLinkUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *PatchLinkUnauthorized) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this patch link unauthorized response has a 2xx status code
+func (o *PatchLinkUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this patch link unauthorized response has a 3xx status code
+func (o *PatchLinkUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link unauthorized response has a 4xx status code
+func (o *PatchLinkUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch link unauthorized response has a 5xx status code
+func (o *PatchLinkUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch link unauthorized response a status code equal to that given
+func (o *PatchLinkUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the patch link unauthorized response
+func (o *PatchLinkUnauthorized) Code() int {
+	return 401
+}
+
+func (o *PatchLinkUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkUnauthorized %s", 401, payload)
+}
+
+func (o *PatchLinkUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkUnauthorized %s", 401, payload)
+}
+
 func (o *PatchLinkUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *PatchLinkUnauthorized) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewPatchLinkNotFound() *PatchLinkNotFound {
 	return &PatchLinkNotFound{}
 }
 
-/* PatchLinkNotFound describes a response with status code 404, with default header values.
+/*
+PatchLinkNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -197,9 +314,46 @@ type PatchLinkNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *PatchLinkNotFound) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this patch link not found response has a 2xx status code
+func (o *PatchLinkNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this patch link not found response has a 3xx status code
+func (o *PatchLinkNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link not found response has a 4xx status code
+func (o *PatchLinkNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch link not found response has a 5xx status code
+func (o *PatchLinkNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch link not found response a status code equal to that given
+func (o *PatchLinkNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the patch link not found response
+func (o *PatchLinkNotFound) Code() int {
+	return 404
+}
+
+func (o *PatchLinkNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkNotFound %s", 404, payload)
+}
+
+func (o *PatchLinkNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkNotFound %s", 404, payload)
+}
+
 func (o *PatchLinkNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *PatchLinkNotFound) readResponse(response runtime.ClientResponse, consum
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewPatchLinkTooManyRequests() *PatchLinkTooManyRequests {
 	return &PatchLinkTooManyRequests{}
 }
 
-/* PatchLinkTooManyRequests describes a response with status code 429, with default header values.
+/*
+PatchLinkTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -229,9 +384,46 @@ type PatchLinkTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *PatchLinkTooManyRequests) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this patch link too many requests response has a 2xx status code
+func (o *PatchLinkTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this patch link too many requests response has a 3xx status code
+func (o *PatchLinkTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link too many requests response has a 4xx status code
+func (o *PatchLinkTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch link too many requests response has a 5xx status code
+func (o *PatchLinkTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch link too many requests response a status code equal to that given
+func (o *PatchLinkTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the patch link too many requests response
+func (o *PatchLinkTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *PatchLinkTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkTooManyRequests %s", 429, payload)
+}
+
+func (o *PatchLinkTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkTooManyRequests %s", 429, payload)
+}
+
 func (o *PatchLinkTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *PatchLinkTooManyRequests) readResponse(response runtime.ClientResponse,
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewPatchLinkServiceUnavailable() *PatchLinkServiceUnavailable {
 	return &PatchLinkServiceUnavailable{}
 }
 
-/* PatchLinkServiceUnavailable describes a response with status code 503, with default header values.
+/*
+PatchLinkServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type PatchLinkServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *PatchLinkServiceUnavailable) Error() string {
-	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this patch link service unavailable response has a 2xx status code
+func (o *PatchLinkServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this patch link service unavailable response has a 3xx status code
+func (o *PatchLinkServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch link service unavailable response has a 4xx status code
+func (o *PatchLinkServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this patch link service unavailable response has a 5xx status code
+func (o *PatchLinkServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this patch link service unavailable response a status code equal to that given
+func (o *PatchLinkServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the patch link service unavailable response
+func (o *PatchLinkServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *PatchLinkServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkServiceUnavailable %s", 503, payload)
+}
+
+func (o *PatchLinkServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkServiceUnavailable %s", 503, payload)
+}
+
 func (o *PatchLinkServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *PatchLinkServiceUnavailable) readResponse(response runtime.ClientRespon
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

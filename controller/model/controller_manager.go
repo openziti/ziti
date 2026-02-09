@@ -18,6 +18,7 @@ package model
 
 import (
 	"crypto/x509"
+	"fmt"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -75,6 +76,54 @@ func (self *ControllerManager) Read(id string) (*Controller, error) {
 		return nil, err
 	}
 	return modelEntity, nil
+}
+
+// ReadAll returns all controllers from the database. If no controllers exist (single-controller
+// non-HA mode), it returns a synthetic controller representing the running instance so that
+// token verification via kid lookup works without special-case fallback paths.
+func (self *ControllerManager) ReadAll() ([]*Controller, error) {
+	result, err := self.BaseList("true limit none")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Entities) > 0 {
+		return result.Entities, nil
+	}
+
+	// No controllers in the DB — single-controller mode. Build a representation of self
+	// so that the token issuer cache can verify controller-issued JWTs via kid lookup.
+	selfController, err := self.buildSelfController()
+	if err != nil {
+		return nil, fmt.Errorf("no controllers in database and could not build self controller: %w", err)
+	}
+
+	return []*Controller{selfController}, nil
+}
+
+// buildSelfController constructs a Controller model representing the running instance by
+// reading the root TLS JWT signer certificate. It is only called in single-controller
+// (non-HA) deployments where no controller records exist in the database.
+func (self *ControllerManager) buildSelfController() (*Controller, error) {
+	signer := self.env.GetRootTlsJwtSigner()
+	if signer == nil || signer.TlsCerts == nil || len(signer.TlsCerts.Certificate) == 0 {
+		return nil, fmt.Errorf("root TLS JWT signer has no certificates")
+	}
+
+	cert, err := x509.ParseCertificate(signer.TlsCerts.Certificate[0])
+	if err != nil {
+		return nil, fmt.Errorf("could not parse root TLS certificate: %w", err)
+	}
+
+	return &Controller{
+		BaseEntity: models.BaseEntity{
+			Id: "single-controller",
+		},
+		Name:        cert.Subject.CommonName,
+		CertPem:     nfpem.EncodeToString(cert),
+		Fingerprint: nfpem.FingerprintFromCertificate(cert),
+		IsOnline:    true,
+	}, nil
 }
 
 func (self *ControllerManager) ReadByName(name string) (*Controller, error) {

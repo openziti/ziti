@@ -17,6 +17,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		jwksResolver.AddKey(leaf2Key, leaf2KeyPair.key)
 
 		signerRec := &TokenIssuerExtJwt{
-			kidToPubKey: map[string]IssuerPublicKey{},
+			kidToPubKey: map[string]common.IssuerPublicKey{},
 			externalJwtSigner: &db.ExternalJwtSigner{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id:        "fake-id",

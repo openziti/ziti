@@ -414,7 +414,7 @@ func (r rateLimitControl) Failed() {
 func WasRateLimited(err error) bool {
 	var apiErr *errorz.ApiError
 	if errors.As(err, &apiErr) {
-		return apiErr.Code == apierror.ServerTooManyRequestsCode
+		return apiErr.AppCode == apierror.ServerTooManyRequestsCode
 	}
 	return false
 }

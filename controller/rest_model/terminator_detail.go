@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -303,11 +304,15 @@ func (m *TerminatorDetail) validateCost(formats strfmt.Registry) error {
 
 	if m.Cost != nil {
 		if err := m.Cost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cost")
 			}
+
 			return err
 		}
 	}
@@ -327,11 +332,15 @@ func (m *TerminatorDetail) validateDynamicCost(formats strfmt.Registry) error {
 
 	if m.DynamicCost != nil {
 		if err := m.DynamicCost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("dynamicCost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("dynamicCost")
 			}
+
 			return err
 		}
 	}
@@ -369,11 +378,15 @@ func (m *TerminatorDetail) validatePrecedence(formats strfmt.Registry) error {
 
 	if m.Precedence != nil {
 		if err := m.Precedence.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("precedence")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("precedence")
 			}
+
 			return err
 		}
 	}
@@ -389,11 +402,15 @@ func (m *TerminatorDetail) validateRouter(formats strfmt.Registry) error {
 
 	if m.Router != nil {
 		if err := m.Router.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("router")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("router")
 			}
+
 			return err
 		}
 	}
@@ -418,11 +435,15 @@ func (m *TerminatorDetail) validateService(formats strfmt.Registry) error {
 
 	if m.Service != nil {
 		if err := m.Service.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("service")
 			}
+
 			return err
 		}
 	}
@@ -477,12 +498,17 @@ func (m *TerminatorDetail) ContextValidate(ctx context.Context, formats strfmt.R
 func (m *TerminatorDetail) contextValidateCost(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Cost != nil {
+
 		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cost")
 			}
+
 			return err
 		}
 	}
@@ -493,12 +519,17 @@ func (m *TerminatorDetail) contextValidateCost(ctx context.Context, formats strf
 func (m *TerminatorDetail) contextValidateDynamicCost(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.DynamicCost != nil {
+
 		if err := m.DynamicCost.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("dynamicCost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("dynamicCost")
 			}
+
 			return err
 		}
 	}
@@ -509,12 +540,17 @@ func (m *TerminatorDetail) contextValidateDynamicCost(ctx context.Context, forma
 func (m *TerminatorDetail) contextValidatePrecedence(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Precedence != nil {
+
 		if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("precedence")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("precedence")
 			}
+
 			return err
 		}
 	}
@@ -525,12 +561,17 @@ func (m *TerminatorDetail) contextValidatePrecedence(ctx context.Context, format
 func (m *TerminatorDetail) contextValidateRouter(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Router != nil {
+
 		if err := m.Router.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("router")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("router")
 			}
+
 			return err
 		}
 	}
@@ -541,12 +582,17 @@ func (m *TerminatorDetail) contextValidateRouter(ctx context.Context, formats st
 func (m *TerminatorDetail) contextValidateService(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Service != nil {
+
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("service")
 			}
+
 			return err
 		}
 	}

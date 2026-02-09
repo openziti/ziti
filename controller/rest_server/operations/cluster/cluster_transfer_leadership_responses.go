@@ -40,7 +40,8 @@ import (
 // ClusterTransferLeadershipOKCode is the HTTP code returned for type ClusterTransferLeadershipOK
 const ClusterTransferLeadershipOKCode int = 200
 
-/*ClusterTransferLeadershipOK Base empty response
+/*
+ClusterTransferLeadershipOK Base empty response
 
 swagger:response clusterTransferLeadershipOK
 */
@@ -84,7 +85,8 @@ func (o *ClusterTransferLeadershipOK) WriteResponse(rw http.ResponseWriter, prod
 // ClusterTransferLeadershipUnauthorizedCode is the HTTP code returned for type ClusterTransferLeadershipUnauthorized
 const ClusterTransferLeadershipUnauthorizedCode int = 401
 
-/*ClusterTransferLeadershipUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ClusterTransferLeadershipUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response clusterTransferLeadershipUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *ClusterTransferLeadershipUnauthorized) WriteResponse(rw http.ResponseWr
 // ClusterTransferLeadershipNotFoundCode is the HTTP code returned for type ClusterTransferLeadershipNotFound
 const ClusterTransferLeadershipNotFoundCode int = 404
 
-/*ClusterTransferLeadershipNotFound The requested resource does not exist
+/*
+ClusterTransferLeadershipNotFound The requested resource does not exist
 
 swagger:response clusterTransferLeadershipNotFound
 */
@@ -172,7 +175,8 @@ func (o *ClusterTransferLeadershipNotFound) WriteResponse(rw http.ResponseWriter
 // ClusterTransferLeadershipTooManyRequestsCode is the HTTP code returned for type ClusterTransferLeadershipTooManyRequests
 const ClusterTransferLeadershipTooManyRequestsCode int = 429
 
-/*ClusterTransferLeadershipTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+ClusterTransferLeadershipTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response clusterTransferLeadershipTooManyRequests
 */
@@ -216,7 +220,8 @@ func (o *ClusterTransferLeadershipTooManyRequests) WriteResponse(rw http.Respons
 // ClusterTransferLeadershipInternalServerErrorCode is the HTTP code returned for type ClusterTransferLeadershipInternalServerError
 const ClusterTransferLeadershipInternalServerErrorCode int = 500
 
-/*ClusterTransferLeadershipInternalServerError The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+ClusterTransferLeadershipInternalServerError The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response clusterTransferLeadershipInternalServerError
 */
@@ -260,7 +265,8 @@ func (o *ClusterTransferLeadershipInternalServerError) WriteResponse(rw http.Res
 // ClusterTransferLeadershipServiceUnavailableCode is the HTTP code returned for type ClusterTransferLeadershipServiceUnavailable
 const ClusterTransferLeadershipServiceUnavailableCode int = 503
 
-/*ClusterTransferLeadershipServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+ClusterTransferLeadershipServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response clusterTransferLeadershipServiceUnavailable
 */

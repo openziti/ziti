@@ -30,6 +30,8 @@ package router
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type CreateRouterReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *CreateRouterReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *CreateRouterReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 201:
 		result := NewCreateRouterCreated()
@@ -78,7 +80,7 @@ func (o *CreateRouterReader) ReadResponse(response runtime.ClientResponse, consu
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /routers] createRouter", response, response.Code())
 	}
 }
 
@@ -87,7 +89,8 @@ func NewCreateRouterCreated() *CreateRouterCreated {
 	return &CreateRouterCreated{}
 }
 
-/* CreateRouterCreated describes a response with status code 201, with default header values.
+/*
+CreateRouterCreated describes a response with status code 201, with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
@@ -95,9 +98,46 @@ type CreateRouterCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateRouterCreated) Error() string {
-	return fmt.Sprintf("[POST /routers][%d] createRouterCreated  %+v", 201, o.Payload)
+// IsSuccess returns true when this create router created response has a 2xx status code
+func (o *CreateRouterCreated) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this create router created response has a 3xx status code
+func (o *CreateRouterCreated) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create router created response has a 4xx status code
+func (o *CreateRouterCreated) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this create router created response has a 5xx status code
+func (o *CreateRouterCreated) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create router created response a status code equal to that given
+func (o *CreateRouterCreated) IsCode(code int) bool {
+	return code == 201
+}
+
+// Code gets the status code for the create router created response
+func (o *CreateRouterCreated) Code() int {
+	return 201
+}
+
+func (o *CreateRouterCreated) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterCreated %s", 201, payload)
+}
+
+func (o *CreateRouterCreated) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterCreated %s", 201, payload)
+}
+
 func (o *CreateRouterCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
@@ -107,7 +147,7 @@ func (o *CreateRouterCreated) readResponse(response runtime.ClientResponse, cons
 	o.Payload = new(rest_model.CreateEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -119,7 +159,8 @@ func NewCreateRouterBadRequest() *CreateRouterBadRequest {
 	return &CreateRouterBadRequest{}
 }
 
-/* CreateRouterBadRequest describes a response with status code 400, with default header values.
+/*
+CreateRouterBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -127,9 +168,46 @@ type CreateRouterBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateRouterBadRequest) Error() string {
-	return fmt.Sprintf("[POST /routers][%d] createRouterBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this create router bad request response has a 2xx status code
+func (o *CreateRouterBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create router bad request response has a 3xx status code
+func (o *CreateRouterBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create router bad request response has a 4xx status code
+func (o *CreateRouterBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create router bad request response has a 5xx status code
+func (o *CreateRouterBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create router bad request response a status code equal to that given
+func (o *CreateRouterBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the create router bad request response
+func (o *CreateRouterBadRequest) Code() int {
+	return 400
+}
+
+func (o *CreateRouterBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterBadRequest %s", 400, payload)
+}
+
+func (o *CreateRouterBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterBadRequest %s", 400, payload)
+}
+
 func (o *CreateRouterBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +217,7 @@ func (o *CreateRouterBadRequest) readResponse(response runtime.ClientResponse, c
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -151,7 +229,8 @@ func NewCreateRouterUnauthorized() *CreateRouterUnauthorized {
 	return &CreateRouterUnauthorized{}
 }
 
-/* CreateRouterUnauthorized describes a response with status code 401, with default header values.
+/*
+CreateRouterUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -159,9 +238,46 @@ type CreateRouterUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateRouterUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /routers][%d] createRouterUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this create router unauthorized response has a 2xx status code
+func (o *CreateRouterUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create router unauthorized response has a 3xx status code
+func (o *CreateRouterUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create router unauthorized response has a 4xx status code
+func (o *CreateRouterUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create router unauthorized response has a 5xx status code
+func (o *CreateRouterUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create router unauthorized response a status code equal to that given
+func (o *CreateRouterUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the create router unauthorized response
+func (o *CreateRouterUnauthorized) Code() int {
+	return 401
+}
+
+func (o *CreateRouterUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterUnauthorized %s", 401, payload)
+}
+
+func (o *CreateRouterUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterUnauthorized %s", 401, payload)
+}
+
 func (o *CreateRouterUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -171,7 +287,7 @@ func (o *CreateRouterUnauthorized) readResponse(response runtime.ClientResponse,
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -183,7 +299,8 @@ func NewCreateRouterTooManyRequests() *CreateRouterTooManyRequests {
 	return &CreateRouterTooManyRequests{}
 }
 
-/* CreateRouterTooManyRequests describes a response with status code 429, with default header values.
+/*
+CreateRouterTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -191,9 +308,46 @@ type CreateRouterTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateRouterTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /routers][%d] createRouterTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this create router too many requests response has a 2xx status code
+func (o *CreateRouterTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create router too many requests response has a 3xx status code
+func (o *CreateRouterTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create router too many requests response has a 4xx status code
+func (o *CreateRouterTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create router too many requests response has a 5xx status code
+func (o *CreateRouterTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create router too many requests response a status code equal to that given
+func (o *CreateRouterTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the create router too many requests response
+func (o *CreateRouterTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *CreateRouterTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterTooManyRequests %s", 429, payload)
+}
+
+func (o *CreateRouterTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterTooManyRequests %s", 429, payload)
+}
+
 func (o *CreateRouterTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -203,7 +357,7 @@ func (o *CreateRouterTooManyRequests) readResponse(response runtime.ClientRespon
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -215,7 +369,8 @@ func NewCreateRouterServiceUnavailable() *CreateRouterServiceUnavailable {
 	return &CreateRouterServiceUnavailable{}
 }
 
-/* CreateRouterServiceUnavailable describes a response with status code 503, with default header values.
+/*
+CreateRouterServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -223,9 +378,46 @@ type CreateRouterServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateRouterServiceUnavailable) Error() string {
-	return fmt.Sprintf("[POST /routers][%d] createRouterServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this create router service unavailable response has a 2xx status code
+func (o *CreateRouterServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create router service unavailable response has a 3xx status code
+func (o *CreateRouterServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create router service unavailable response has a 4xx status code
+func (o *CreateRouterServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this create router service unavailable response has a 5xx status code
+func (o *CreateRouterServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this create router service unavailable response a status code equal to that given
+func (o *CreateRouterServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the create router service unavailable response
+func (o *CreateRouterServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *CreateRouterServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterServiceUnavailable %s", 503, payload)
+}
+
+func (o *CreateRouterServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /routers][%d] createRouterServiceUnavailable %s", 503, payload)
+}
+
 func (o *CreateRouterServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -235,7 +427,7 @@ func (o *CreateRouterServiceUnavailable) readResponse(response runtime.ClientRes
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

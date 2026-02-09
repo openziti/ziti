@@ -76,10 +76,12 @@ func NewDeleteRouterParamsWithHTTPClient(client *http.Client) *DeleteRouterParam
 	}
 }
 
-/* DeleteRouterParams contains all the parameters to send to the API endpoint
-   for the delete router operation.
+/*
+DeleteRouterParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the delete router operation.
+
+	Typically these are written to a http.Request.
 */
 type DeleteRouterParams struct {
 

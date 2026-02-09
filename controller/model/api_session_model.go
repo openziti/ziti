@@ -34,8 +34,8 @@ type ApiSession struct {
 	Identity                *Identity
 	IPAddress               string
 	ConfigTypes             map[string]struct{}
-	MfaComplete             bool
-	MfaRequired             bool
+	TotpComplete            bool
+	TotpRequired            bool
 	ExpiresAt               time.Time
 	ExpirationDuration      time.Duration
 	LastActivityAt          time.Time
@@ -57,8 +57,8 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*db.ApiSession, e
 		IdentityId:              entity.IdentityId,
 		ConfigTypes:             stringz.SetToSlice(entity.ConfigTypes),
 		IPAddress:               entity.IPAddress,
-		MfaComplete:             entity.MfaComplete,
-		MfaRequired:             entity.MfaRequired,
+		TotpComplete:            entity.TotpComplete,
+		TotpRequired:            entity.TotpRequired,
 		AuthenticatorId:         entity.AuthenticatorId,
 		LastActivityAt:          entity.LastActivityAt,
 		IsCertExtendable:        entity.IsCertExtendable,
@@ -82,8 +82,8 @@ func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *db.Api
 	entity.IdentityId = boltApiSession.IdentityId
 	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)
 	entity.IPAddress = boltApiSession.IPAddress
-	entity.MfaRequired = boltApiSession.MfaRequired
-	entity.MfaComplete = boltApiSession.MfaComplete
+	entity.TotpRequired = boltApiSession.TotpRequired
+	entity.TotpComplete = boltApiSession.TotpComplete
 	entity.ExpiresAt = entity.UpdatedAt.Add(env.GetConfig().Edge.Api.SessionTimeout)
 	entity.ExpirationDuration = env.GetConfig().Edge.Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt

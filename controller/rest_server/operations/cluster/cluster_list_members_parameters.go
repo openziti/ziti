@@ -49,7 +49,6 @@ func NewClusterListMembersParams() ClusterListMembersParams {
 //
 // swagger:parameters clusterListMembers
 type ClusterListMembersParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 }

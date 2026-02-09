@@ -36,16 +36,16 @@ import (
 )
 
 // ClusterListMembersHandlerFunc turns a function with the right signature into a cluster list members handler
-type ClusterListMembersHandlerFunc func(ClusterListMembersParams) middleware.Responder
+type ClusterListMembersHandlerFunc func(ClusterListMembersParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ClusterListMembersHandlerFunc) Handle(params ClusterListMembersParams) middleware.Responder {
-	return fn(params)
+func (fn ClusterListMembersHandlerFunc) Handle(params ClusterListMembersParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ClusterListMembersHandler interface for that can handle valid cluster list members params
 type ClusterListMembersHandler interface {
-	Handle(ClusterListMembersParams) middleware.Responder
+	Handle(ClusterListMembersParams, any) middleware.Responder
 }
 
 // NewClusterListMembers creates a new http.Handler for the cluster list members operation
@@ -53,12 +53,12 @@ func NewClusterListMembers(ctx *middleware.Context, handler ClusterListMembersHa
 	return &ClusterListMembers{Context: ctx, Handler: handler}
 }
 
-/* ClusterListMembers swagger:route GET /cluster/list-members Cluster clusterListMembers
+/*
+	ClusterListMembers swagger:route GET /cluster/list-members Cluster clusterListMembers
+
+# Returns all members of a cluster and their current status
 
 Returns all members of a cluster and their current status
-
-Returns all members of a cluster and their current status
-
 */
 type ClusterListMembers struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *ClusterListMembers) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 		*r = *rCtx
 	}
 	var Params = NewClusterListMembersParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

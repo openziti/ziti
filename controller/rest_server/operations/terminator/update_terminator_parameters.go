@@ -30,7 +30,7 @@ package terminator
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
+	stderrors "errors"
 	"io"
 	"net/http"
 
@@ -56,7 +56,6 @@ func NewUpdateTerminatorParams() UpdateTerminatorParams {
 //
 // swagger:parameters updateTerminator
 type UpdateTerminatorParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -65,6 +64,7 @@ type UpdateTerminatorParams struct {
 	  In: path
 	*/
 	ID string
+
 	/*A terminator update object
 	  Required: true
 	  In: body
@@ -87,10 +87,12 @@ func (o *UpdateTerminatorParams) BindRequest(r *http.Request, route *middleware.
 	}
 
 	if runtime.HasBody(r) {
-		defer r.Body.Close()
+		defer func() {
+			_ = r.Body.Close()
+		}()
 		var body rest_model.TerminatorUpdate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
+			if stderrors.Is(err, io.EOF) {
 				res = append(res, errors.Required("terminator", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("terminator", "body", "", err))
@@ -101,7 +103,7 @@ func (o *UpdateTerminatorParams) BindRequest(r *http.Request, route *middleware.
 				res = append(res, err)
 			}
 
-			ctx := validate.WithOperationRequest(context.Background())
+			ctx := validate.WithOperationRequest(r.Context())
 			if err := body.ContextValidate(ctx, route.Formats); err != nil {
 				res = append(res, err)
 			}

@@ -30,6 +30,8 @@ package service
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type DeleteServiceReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *DeleteServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *DeleteServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewDeleteServiceOK()
@@ -84,7 +86,7 @@ func (o *DeleteServiceReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[DELETE /services/{id}] deleteService", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewDeleteServiceOK() *DeleteServiceOK {
 	return &DeleteServiceOK{}
 }
 
-/* DeleteServiceOK describes a response with status code 200, with default header values.
+/*
+DeleteServiceOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -101,9 +104,46 @@ type DeleteServiceOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *DeleteServiceOK) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this delete service o k response has a 2xx status code
+func (o *DeleteServiceOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this delete service o k response has a 3xx status code
+func (o *DeleteServiceOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service o k response has a 4xx status code
+func (o *DeleteServiceOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete service o k response has a 5xx status code
+func (o *DeleteServiceOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete service o k response a status code equal to that given
+func (o *DeleteServiceOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the delete service o k response
+func (o *DeleteServiceOK) Code() int {
+	return 200
+}
+
+func (o *DeleteServiceOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK %s", 200, payload)
+}
+
+func (o *DeleteServiceOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK %s", 200, payload)
+}
+
 func (o *DeleteServiceOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *DeleteServiceOK) readResponse(response runtime.ClientResponse, consumer
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewDeleteServiceBadRequest() *DeleteServiceBadRequest {
 	return &DeleteServiceBadRequest{}
 }
 
-/* DeleteServiceBadRequest describes a response with status code 400, with default header values.
+/*
+DeleteServiceBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -133,9 +174,46 @@ type DeleteServiceBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteServiceBadRequest) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this delete service bad request response has a 2xx status code
+func (o *DeleteServiceBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete service bad request response has a 3xx status code
+func (o *DeleteServiceBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service bad request response has a 4xx status code
+func (o *DeleteServiceBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete service bad request response has a 5xx status code
+func (o *DeleteServiceBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete service bad request response a status code equal to that given
+func (o *DeleteServiceBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the delete service bad request response
+func (o *DeleteServiceBadRequest) Code() int {
+	return 400
+}
+
+func (o *DeleteServiceBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceBadRequest %s", 400, payload)
+}
+
+func (o *DeleteServiceBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceBadRequest %s", 400, payload)
+}
+
 func (o *DeleteServiceBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *DeleteServiceBadRequest) readResponse(response runtime.ClientResponse, 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewDeleteServiceUnauthorized() *DeleteServiceUnauthorized {
 	return &DeleteServiceUnauthorized{}
 }
 
-/* DeleteServiceUnauthorized describes a response with status code 401, with default header values.
+/*
+DeleteServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -165,9 +244,46 @@ type DeleteServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteServiceUnauthorized) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this delete service unauthorized response has a 2xx status code
+func (o *DeleteServiceUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete service unauthorized response has a 3xx status code
+func (o *DeleteServiceUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service unauthorized response has a 4xx status code
+func (o *DeleteServiceUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete service unauthorized response has a 5xx status code
+func (o *DeleteServiceUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete service unauthorized response a status code equal to that given
+func (o *DeleteServiceUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the delete service unauthorized response
+func (o *DeleteServiceUnauthorized) Code() int {
+	return 401
+}
+
+func (o *DeleteServiceUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized %s", 401, payload)
+}
+
+func (o *DeleteServiceUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized %s", 401, payload)
+}
+
 func (o *DeleteServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *DeleteServiceUnauthorized) readResponse(response runtime.ClientResponse
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewDeleteServiceConflict() *DeleteServiceConflict {
 	return &DeleteServiceConflict{}
 }
 
-/* DeleteServiceConflict describes a response with status code 409, with default header values.
+/*
+DeleteServiceConflict describes a response with status code 409, with default header values.
 
 The resource requested to be removed/altered cannot be as it is referenced by another object.
 */
@@ -197,9 +314,46 @@ type DeleteServiceConflict struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteServiceConflict) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceConflict  %+v", 409, o.Payload)
+// IsSuccess returns true when this delete service conflict response has a 2xx status code
+func (o *DeleteServiceConflict) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete service conflict response has a 3xx status code
+func (o *DeleteServiceConflict) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service conflict response has a 4xx status code
+func (o *DeleteServiceConflict) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete service conflict response has a 5xx status code
+func (o *DeleteServiceConflict) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete service conflict response a status code equal to that given
+func (o *DeleteServiceConflict) IsCode(code int) bool {
+	return code == 409
+}
+
+// Code gets the status code for the delete service conflict response
+func (o *DeleteServiceConflict) Code() int {
+	return 409
+}
+
+func (o *DeleteServiceConflict) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceConflict %s", 409, payload)
+}
+
+func (o *DeleteServiceConflict) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceConflict %s", 409, payload)
+}
+
 func (o *DeleteServiceConflict) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *DeleteServiceConflict) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewDeleteServiceTooManyRequests() *DeleteServiceTooManyRequests {
 	return &DeleteServiceTooManyRequests{}
 }
 
-/* DeleteServiceTooManyRequests describes a response with status code 429, with default header values.
+/*
+DeleteServiceTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -229,9 +384,46 @@ type DeleteServiceTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteServiceTooManyRequests) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this delete service too many requests response has a 2xx status code
+func (o *DeleteServiceTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete service too many requests response has a 3xx status code
+func (o *DeleteServiceTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service too many requests response has a 4xx status code
+func (o *DeleteServiceTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete service too many requests response has a 5xx status code
+func (o *DeleteServiceTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete service too many requests response a status code equal to that given
+func (o *DeleteServiceTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the delete service too many requests response
+func (o *DeleteServiceTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *DeleteServiceTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceTooManyRequests %s", 429, payload)
+}
+
+func (o *DeleteServiceTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceTooManyRequests %s", 429, payload)
+}
+
 func (o *DeleteServiceTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *DeleteServiceTooManyRequests) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewDeleteServiceServiceUnavailable() *DeleteServiceServiceUnavailable {
 	return &DeleteServiceServiceUnavailable{}
 }
 
-/* DeleteServiceServiceUnavailable describes a response with status code 503, with default header values.
+/*
+DeleteServiceServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type DeleteServiceServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteServiceServiceUnavailable) Error() string {
-	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this delete service service unavailable response has a 2xx status code
+func (o *DeleteServiceServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete service service unavailable response has a 3xx status code
+func (o *DeleteServiceServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete service service unavailable response has a 4xx status code
+func (o *DeleteServiceServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete service service unavailable response has a 5xx status code
+func (o *DeleteServiceServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this delete service service unavailable response a status code equal to that given
+func (o *DeleteServiceServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the delete service service unavailable response
+func (o *DeleteServiceServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *DeleteServiceServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceServiceUnavailable %s", 503, payload)
+}
+
+func (o *DeleteServiceServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceServiceUnavailable %s", 503, payload)
+}
+
 func (o *DeleteServiceServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *DeleteServiceServiceUnavailable) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

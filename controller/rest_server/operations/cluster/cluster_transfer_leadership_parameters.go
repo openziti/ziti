@@ -30,7 +30,7 @@ package cluster
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
+	stderrors "errors"
 	"io"
 	"net/http"
 
@@ -55,7 +55,6 @@ func NewClusterTransferLeadershipParams() ClusterTransferLeadershipParams {
 //
 // swagger:parameters clusterTransferLeadership
 type ClusterTransferLeadershipParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -76,10 +75,12 @@ func (o *ClusterTransferLeadershipParams) BindRequest(r *http.Request, route *mi
 	o.HTTPRequest = r
 
 	if runtime.HasBody(r) {
-		defer r.Body.Close()
+		defer func() {
+			_ = r.Body.Close()
+		}()
 		var body rest_model.ClusterTransferLeadership
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
+			if stderrors.Is(err, io.EOF) {
 				res = append(res, errors.Required("member", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("member", "body", "", err))
@@ -90,7 +91,7 @@ func (o *ClusterTransferLeadershipParams) BindRequest(r *http.Request, route *mi
 				res = append(res, err)
 			}
 
-			ctx := validate.WithOperationRequest(context.Background())
+			ctx := validate.WithOperationRequest(r.Context())
 			if err := body.ContextValidate(ctx, route.Formats); err != nil {
 				res = append(res, err)
 			}

@@ -50,7 +50,6 @@ func NewDeleteTerminatorParams() DeleteTerminatorParams {
 //
 // swagger:parameters deleteTerminator
 type DeleteTerminatorParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

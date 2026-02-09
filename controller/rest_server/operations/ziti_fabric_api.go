@@ -75,117 +75,279 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 
 		JSONProducer: runtime.JSONProducer(),
 
-		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
 		}),
-		ClusterClusterListMembersHandler: cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
+
+		ClusterClusterListMembersHandler: cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation cluster.ClusterListMembers has not yet been implemented")
 		}),
-		ClusterClusterMemberAddHandler: cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
+
+		ClusterClusterMemberAddHandler: cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation cluster.ClusterMemberAdd has not yet been implemented")
 		}),
-		ClusterClusterMemberRemoveHandler: cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
+
+		ClusterClusterMemberRemoveHandler: cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation cluster.ClusterMemberRemove has not yet been implemented")
 		}),
-		ClusterClusterTransferLeadershipHandler: cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
+
+		ClusterClusterTransferLeadershipHandler: cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation cluster.ClusterTransferLeadership has not yet been implemented")
 		}),
-		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+
+		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
 		}),
-		DatabaseCreateDatabaseSnapshotWithPathHandler: database.CreateDatabaseSnapshotWithPathHandlerFunc(func(params database.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+
+		DatabaseCreateDatabaseSnapshotWithPathHandler: database.CreateDatabaseSnapshotWithPathHandlerFunc(func(params database.CreateDatabaseSnapshotWithPathParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshotWithPath has not yet been implemented")
 		}),
-		RouterCreateRouterHandler: router.CreateRouterHandlerFunc(func(params router.CreateRouterParams) middleware.Responder {
+
+		RouterCreateRouterHandler: router.CreateRouterHandlerFunc(func(params router.CreateRouterParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.CreateRouter has not yet been implemented")
 		}),
-		ServiceCreateServiceHandler: service.CreateServiceHandlerFunc(func(params service.CreateServiceParams) middleware.Responder {
+
+		ServiceCreateServiceHandler: service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
 		}),
-		TerminatorCreateTerminatorHandler: terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams) middleware.Responder {
+
+		TerminatorCreateTerminatorHandler: terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.CreateTerminator has not yet been implemented")
 		}),
-		DatabaseDataIntegrityResultsHandler: database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+
+		DatabaseDataIntegrityResultsHandler: database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
 		}),
-		CircuitDeleteCircuitHandler: circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
+
+		CircuitDeleteCircuitHandler: circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
 		}),
-		LinkDeleteLinkHandler: link.DeleteLinkHandlerFunc(func(params link.DeleteLinkParams) middleware.Responder {
+
+		LinkDeleteLinkHandler: link.DeleteLinkHandlerFunc(func(params link.DeleteLinkParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation link.DeleteLink has not yet been implemented")
 		}),
-		RouterDeleteRouterHandler: router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams) middleware.Responder {
+
+		RouterDeleteRouterHandler: router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.DeleteRouter has not yet been implemented")
 		}),
-		ServiceDeleteServiceHandler: service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams) middleware.Responder {
+
+		ServiceDeleteServiceHandler: service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.DeleteService has not yet been implemented")
 		}),
-		TerminatorDeleteTerminatorHandler: terminator.DeleteTerminatorHandlerFunc(func(params terminator.DeleteTerminatorParams) middleware.Responder {
+
+		TerminatorDeleteTerminatorHandler: terminator.DeleteTerminatorHandlerFunc(func(params terminator.DeleteTerminatorParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.DeleteTerminator has not yet been implemented")
 		}),
-		CircuitDetailCircuitHandler: circuit.DetailCircuitHandlerFunc(func(params circuit.DetailCircuitParams) middleware.Responder {
+
+		CircuitDetailCircuitHandler: circuit.DetailCircuitHandlerFunc(func(params circuit.DetailCircuitParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation circuit.DetailCircuit has not yet been implemented")
 		}),
-		LinkDetailLinkHandler: link.DetailLinkHandlerFunc(func(params link.DetailLinkParams) middleware.Responder {
+
+		LinkDetailLinkHandler: link.DetailLinkHandlerFunc(func(params link.DetailLinkParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation link.DetailLink has not yet been implemented")
 		}),
-		RouterDetailRouterHandler: router.DetailRouterHandlerFunc(func(params router.DetailRouterParams) middleware.Responder {
+
+		RouterDetailRouterHandler: router.DetailRouterHandlerFunc(func(params router.DetailRouterParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.DetailRouter has not yet been implemented")
 		}),
-		ServiceDetailServiceHandler: service.DetailServiceHandlerFunc(func(params service.DetailServiceParams) middleware.Responder {
+
+		ServiceDetailServiceHandler: service.DetailServiceHandlerFunc(func(params service.DetailServiceParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.DetailService has not yet been implemented")
 		}),
-		TerminatorDetailTerminatorHandler: terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
+
+		TerminatorDetailTerminatorHandler: terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
 		}),
-		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
+
+		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		}),
-		InspectInspectHandler: inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
+
+		InspectInspectHandler: inspect.InspectHandlerFunc(func(params inspect.InspectParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation inspect.Inspect has not yet been implemented")
 		}),
-		CircuitListCircuitsHandler: circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams) middleware.Responder {
+
+		CircuitListCircuitsHandler: circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation circuit.ListCircuits has not yet been implemented")
 		}),
-		LinkListLinksHandler: link.ListLinksHandlerFunc(func(params link.ListLinksParams) middleware.Responder {
+
+		LinkListLinksHandler: link.ListLinksHandlerFunc(func(params link.ListLinksParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation link.ListLinks has not yet been implemented")
 		}),
-		RouterListRouterTerminatorsHandler: router.ListRouterTerminatorsHandlerFunc(func(params router.ListRouterTerminatorsParams) middleware.Responder {
+
+		RouterListRouterTerminatorsHandler: router.ListRouterTerminatorsHandlerFunc(func(params router.ListRouterTerminatorsParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.ListRouterTerminators has not yet been implemented")
 		}),
-		RouterListRoutersHandler: router.ListRoutersHandlerFunc(func(params router.ListRoutersParams) middleware.Responder {
+
+		RouterListRoutersHandler: router.ListRoutersHandlerFunc(func(params router.ListRoutersParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.ListRouters has not yet been implemented")
 		}),
-		ServiceListServiceTerminatorsHandler: service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams) middleware.Responder {
+
+		ServiceListServiceTerminatorsHandler: service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.ListServiceTerminators has not yet been implemented")
 		}),
-		ServiceListServicesHandler: service.ListServicesHandlerFunc(func(params service.ListServicesParams) middleware.Responder {
+
+		ServiceListServicesHandler: service.ListServicesHandlerFunc(func(params service.ListServicesParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.ListServices has not yet been implemented")
 		}),
-		TerminatorListTerminatorsHandler: terminator.ListTerminatorsHandlerFunc(func(params terminator.ListTerminatorsParams) middleware.Responder {
+
+		TerminatorListTerminatorsHandler: terminator.ListTerminatorsHandlerFunc(func(params terminator.ListTerminatorsParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.ListTerminators has not yet been implemented")
 		}),
-		LinkPatchLinkHandler: link.PatchLinkHandlerFunc(func(params link.PatchLinkParams) middleware.Responder {
+
+		LinkPatchLinkHandler: link.PatchLinkHandlerFunc(func(params link.PatchLinkParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation link.PatchLink has not yet been implemented")
 		}),
-		RouterPatchRouterHandler: router.PatchRouterHandlerFunc(func(params router.PatchRouterParams) middleware.Responder {
+
+		RouterPatchRouterHandler: router.PatchRouterHandlerFunc(func(params router.PatchRouterParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.PatchRouter has not yet been implemented")
 		}),
-		ServicePatchServiceHandler: service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
+
+		ServicePatchServiceHandler: service.PatchServiceHandlerFunc(func(params service.PatchServiceParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
 		}),
-		TerminatorPatchTerminatorHandler: terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
+
+		TerminatorPatchTerminatorHandler: terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
 		}),
-		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
+
+		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		}),
-		ServiceUpdateServiceHandler: service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams) middleware.Responder {
+
+		ServiceUpdateServiceHandler: service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation service.UpdateService has not yet been implemented")
 		}),
-		TerminatorUpdateTerminatorHandler: terminator.UpdateTerminatorHandlerFunc(func(params terminator.UpdateTerminatorParams) middleware.Responder {
+
+		TerminatorUpdateTerminatorHandler: terminator.UpdateTerminatorHandlerFunc(func(params terminator.UpdateTerminatorParams, principal any) middleware.Responder {
+			_ = params
+			_ = principal
+
 			return middleware.NotImplemented("operation terminator.UpdateTerminator has not yet been implemented")
 		}),
+
+		Oauth2Auth: func(token string, scopes []string) (any, error) {
+			_ = token
+			_ = scopes
+
+			return nil, errors.NotImplemented("oauth2 bearer auth (oauth2) has not yet been implemented")
+		},
+		// Applies when the "zt-session" header is set
+		ZtSessionAuth: func(token string) (any, error) {
+			_ = token
+
+			return nil, errors.NotImplemented("api key auth (ztSession) zt-session from header param [zt-session] has not yet been implemented")
+		},
+		// default authorizer is authorized meaning no requests are blocked
+		APIAuthorizer: security.Authorized(),
 	}
 }
 
@@ -221,6 +383,17 @@ type ZitiFabricAPI struct {
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
+
+	// Oauth2Auth registers a function that takes an access token and a collection of required scopes and returns a principal
+	// it performs authentication based on an oauth2 bearer token provided in the request
+	Oauth2Auth func(string, []string) (any, error)
+
+	// ZtSessionAuth registers a function that takes a token and returns a principal
+	// it performs authentication based on an api key zt-session provided in the header
+	ZtSessionAuth func(string) (any, error)
+
+	// APIAuthorizer provides access control (ACL/RBAC/ABAC) by providing access to the request and authenticated principal
+	APIAuthorizer runtime.Authorizer
 
 	// DatabaseCheckDataIntegrityHandler sets the operation handler for the check data integrity operation
 	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
@@ -313,7 +486,7 @@ type ZitiFabricAPI struct {
 	CommandLineOptionsGroups []swag.CommandLineOptionsGroup
 
 	// User defined logger function.
-	Logger func(string, ...interface{})
+	Logger func(string, ...any)
 }
 
 // UseRedoc for documentation at /docs
@@ -371,6 +544,13 @@ func (o *ZitiFabricAPI) Validate() error {
 
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
+	}
+
+	if o.Oauth2Auth == nil {
+		unregistered = append(unregistered, "Oauth2Auth")
+	}
+	if o.ZtSessionAuth == nil {
+		unregistered = append(unregistered, "ZtSessionAuth")
 	}
 
 	if o.DatabaseCheckDataIntegrityHandler == nil {
@@ -499,21 +679,34 @@ func (o *ZitiFabricAPI) ServeErrorFor(operationID string) func(http.ResponseWrit
 
 // AuthenticatorsFor gets the authenticators for the specified security schemes
 func (o *ZitiFabricAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
-	return nil
+	result := make(map[string]runtime.Authenticator)
+	for name := range schemes {
+		switch name {
+		case "oauth2":
+			result[name] = o.BearerAuthenticator(name, o.Oauth2Auth)
+
+		case "ztSession":
+			scheme := schemes[name]
+			result[name] = o.APIKeyAuthenticator(scheme.Name, scheme.In, o.ZtSessionAuth)
+
+		}
+	}
+
+	return result
 }
 
 // Authorizer returns the registered authorizer
 func (o *ZitiFabricAPI) Authorizer() runtime.Authorizer {
-	return nil
+	return o.APIAuthorizer
 }
 
 // ConsumersFor gets the consumers for the specified media types.
+//
 // MIME type parameters are ignored here.
 func (o *ZitiFabricAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
 	result := make(map[string]runtime.Consumer, len(mediaTypes))
 	for _, mt := range mediaTypes {
-		switch mt {
-		case "application/json":
+		if mt == "application/json" {
 			result["application/json"] = o.JSONConsumer
 		}
 
@@ -521,16 +714,17 @@ func (o *ZitiFabricAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Con
 			result[mt] = c
 		}
 	}
+
 	return result
 }
 
 // ProducersFor gets the producers for the specified media types.
+//
 // MIME type parameters are ignored here.
 func (o *ZitiFabricAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
 	result := make(map[string]runtime.Producer, len(mediaTypes))
 	for _, mt := range mediaTypes {
-		switch mt {
-		case "application/json":
+		if mt == "application/json" {
 			result["application/json"] = o.JSONProducer
 		}
 
@@ -538,6 +732,7 @@ func (o *ZitiFabricAPI) ProducersFor(mediaTypes []string) map[string]runtime.Pro
 			result[mt] = p
 		}
 	}
+
 	return result
 }
 
@@ -761,6 +956,6 @@ func (o *ZitiFabricAPI) AddMiddlewareFor(method, path string, builder middleware
 	}
 	o.Init()
 	if h, ok := o.handlers[um][path]; ok {
-		o.handlers[method][path] = builder(h)
+		o.handlers[um][path] = builder(h)
 	}
 }

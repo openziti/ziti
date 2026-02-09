@@ -96,6 +96,22 @@ type Storage interface {
 	// UpdateSdkEnvInfo will attempt to take the identity in scope of an AuthRequest and update its durable SDK/ENV
 	// info.
 	UpdateSdkEnvInfo(request *AuthRequest) error
+
+	// ProcessSecondaryJwts runs the external-JWT secondary authentication module against the
+	// bearer tokens in securityTokenCtx for the identity identified by authRequest. It is
+	// called during OIDC and legacy authentication/authorization flows.
+	ProcessSecondaryJwts(r *http.Request, authRequest *AuthRequest, securityTokenCtx *common.SecurityTokenCtx) (model.AuthResult, error)
+
+	// GetPrimaryJwtSignerKeyFunc returns the jwt.Keyfunc used to verify controller-issued
+	// access and refresh tokens during OIDC flows.
+	GetPrimaryJwtSignerKeyFunc() jwt.Keyfunc
+
+	// GetTokenIssuerCache returns the cache of known token issuers, covering both external
+	// JWT signers and controller-issued token verifiers.
+	GetTokenIssuerCache() common.TokenIssuerCache
+
+	// Env returns the model.Env that provides access to managers, stores, and configuration.
+	Env() model.Env
 }
 
 func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
@@ -106,6 +122,8 @@ func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
 		ExpiresAt: expiresAt,
 	}
 }
+
+var _ Storage = (*HybridStorage)(nil)
 
 // HybridStorage implements the Storage interface
 // Authentication requests are not synchronized with other controllers. Authentication must happen entirely
@@ -128,6 +146,56 @@ type HybridStorage struct {
 	config    *Config
 
 	keys cmap.ConcurrentMap[string, *pubKey]
+}
+
+// Env returns the model.Env backing this storage, giving callers access to managers,
+// stores, and configuration that are outside the OIDC auth package's scope.
+func (s *HybridStorage) Env() model.Env {
+	return s.env
+}
+
+// GetPrimaryJwtSignerKeyFunc returns the jwt.Keyfunc that verifies controller-issued JWTs.
+func (s *HybridStorage) GetPrimaryJwtSignerKeyFunc() jwt.Keyfunc {
+	return s.env.JwtSignerKeyFunc
+}
+
+// GetTokenIssuerCache returns the shared cache of all known token issuers, spanning both
+// controller-issued tokens and externally configured JWT signers.
+func (s *HybridStorage) GetTokenIssuerCache() common.TokenIssuerCache {
+	return s.env.GetTokenIssuerCache()
+}
+
+// ProcessSecondaryJwts invokes the ext-JWT authentication module in secondary mode for the
+// identity referenced by authRequest, using the bearer tokens already parsed into
+// securityTokenCtx. Returns the AuthResult on success or an error describing the failure.
+func (s *HybridStorage) ProcessSecondaryJwts(r *http.Request, authRequest *AuthRequest, securityTokenCtx *common.SecurityTokenCtx) (model.AuthResult, error) {
+	if authRequest == nil {
+		return nil, errors.New("auth request is nil")
+	}
+
+	if securityTokenCtx == nil {
+		return nil, errors.New("security token ctx is nil")
+	}
+
+	extJwtModule := s.env.GetAuthRegistry().GetByMethod(AuthMethodExtJwt)
+
+	if extJwtModule == nil {
+		return nil, errors.New("no external jwt module found")
+	}
+
+	identity, err := s.env.GetManagers().Identity.Read(authRequest.IdentityId)
+
+	if err != nil {
+		return nil, errors.New("could not read identity")
+	}
+
+	changeCtx := NewChangeCtx()
+	authCtx := model.NewAuthContextHttp(r, AuthMethodExtJwt, nil, changeCtx)
+
+	authCtx.SetPrimaryIdentity(identity)
+	authCtx.SetSecurityTokenCtx(securityTokenCtx)
+
+	return extJwtModule.Process(authCtx)
 }
 
 func (s *HybridStorage) UpdateSdkEnvInfo(request *AuthRequest) error {

@@ -52,7 +52,6 @@ func NewListServiceTerminatorsParams() ListServiceTerminatorsParams {
 //
 // swagger:parameters listServiceTerminators
 type ListServiceTerminatorsParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -60,15 +59,18 @@ type ListServiceTerminatorsParams struct {
 	  In: query
 	*/
 	Filter *string
+
 	/*The id of the requested resource
 	  Required: true
 	  In: path
 	*/
 	ID string
+
 	/*
 	  In: query
 	*/
 	Limit *int64
+
 	/*
 	  In: query
 	*/
@@ -83,7 +85,6 @@ func (o *ListServiceTerminatorsParams) BindRequest(r *http.Request, route *middl
 	var res []error
 
 	o.HTTPRequest = r
-
 	qs := runtime.Values(r.URL.Query())
 
 	qFilter, qhkFilter, _ := qs.GetOK("filter")

@@ -184,15 +184,14 @@ func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) ht
 			return
 		}
 
-		rc := self.ae.CreateRequestContext(rw, r)
+		rc, err := self.ae.CreateRequestContext(rw, r)
 
-		api.AddRequestContextToHttpContext(r, rc)
-
-		err := self.ae.FillRequestContext(rc)
 		if err != nil {
-			rc.RespondWithError(err)
+			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
 			return
 		}
+
+		api.AddRequestContextToHttpContext(r, rc)
 
 		//after request context is filled so that api session is present for session expiration headers
 		response.AddHeaders(rc)
@@ -205,11 +204,11 @@ func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) ht
 
 func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http.Handler {
 	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rc := self.ae.CreateRequestContext(rw, r)
 
-		err := self.ae.FillRequestContext(rc)
+		rc, err := self.ae.CreateRequestContext(rw, r)
+
 		if err != nil {
-			rc.RespondWithError(err)
+			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
 			return
 		}
 

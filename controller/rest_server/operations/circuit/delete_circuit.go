@@ -36,16 +36,16 @@ import (
 )
 
 // DeleteCircuitHandlerFunc turns a function with the right signature into a delete circuit handler
-type DeleteCircuitHandlerFunc func(DeleteCircuitParams) middleware.Responder
+type DeleteCircuitHandlerFunc func(DeleteCircuitParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DeleteCircuitHandlerFunc) Handle(params DeleteCircuitParams) middleware.Responder {
-	return fn(params)
+func (fn DeleteCircuitHandlerFunc) Handle(params DeleteCircuitParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // DeleteCircuitHandler interface for that can handle valid delete circuit params
 type DeleteCircuitHandler interface {
-	Handle(DeleteCircuitParams) middleware.Responder
+	Handle(DeleteCircuitParams, any) middleware.Responder
 }
 
 // NewDeleteCircuit creates a new http.Handler for the delete circuit operation
@@ -53,12 +53,12 @@ func NewDeleteCircuit(ctx *middleware.Context, handler DeleteCircuitHandler) *De
 	return &DeleteCircuit{Context: ctx, Handler: handler}
 }
 
-/* DeleteCircuit swagger:route DELETE /circuits/{id} Circuit deleteCircuit
+/*
+	DeleteCircuit swagger:route DELETE /circuits/{id} Circuit deleteCircuit
 
-Delete a circuit
+# Delete a circuit
 
 Delete a circuit by id. Requires admin access.
-
 */
 type DeleteCircuit struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *DeleteCircuit) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewDeleteCircuitParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

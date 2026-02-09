@@ -105,6 +105,14 @@ func (a *AuthRequest) HasAmrExtJwtId(id string) bool {
 	return a.HasAmr(AuthMethodSecondaryExtJwt + ":" + id)
 }
 
+// AddAmrExtJwtId records that the external JWT signer with the given ID has been satisfied
+// as a secondary authentication method by adding it to the AMR set in the format
+// "<AuthMethodSecondaryExtJwt>:<id>".
+func (a *AuthRequest) AddAmrExtJwtId(id string) {
+	amr := AuthMethodSecondaryExtJwt + ":" + id
+	a.AddAmr(amr)
+}
+
 // AddAmr adds the supplied amr
 func (a *AuthRequest) AddAmr(amr string) {
 	if a.Amr == nil {

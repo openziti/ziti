@@ -58,7 +58,9 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 
 func MapToCurrentApiSessionRestModel(ae *env.AppEnv, rc *response.RequestContext, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 
-	detail, err := MapApiSessionToRestModel(ae, rc.ApiSession)
+	apiSession, _ := rc.SecurityCtx.GetApiSession()
+
+	detail, err := MapApiSessionToRestModel(ae, apiSession)
 
 	MapApiSessionAuthQueriesToRestEntity(ae, rc, detail)
 
@@ -70,7 +72,7 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, rc *response.RequestContext
 		detail = &rest_model.APISessionDetail{}
 	}
 	expiresAt := strfmt.DateTime(time.Time(detail.LastActivityAt).Add(sessionTimeout))
-	expirationSeconds := int64(rc.ApiSession.ExpirationDuration.Seconds())
+	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
 
 	ret := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail:  *detail,
@@ -81,8 +83,8 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, rc *response.RequestContext
 	return ret
 }
 
-func MapApiSessionAuthQueriesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, detail *rest_model.APISessionDetail) {
-	for _, authQuery := range rc.AuthQueries {
+func MapApiSessionAuthQueriesToRestEntity(_ *env.AppEnv, rc *response.RequestContext, detail *rest_model.APISessionDetail) {
+	for _, authQuery := range rc.SecurityCtx.GetMfaAuthQueries() {
 		detail.AuthQueries = append(detail.AuthQueries, &rest_model.AuthQueryDetail{
 			Format:     authQuery.Format,
 			HTTPMethod: authQuery.HTTPMethod,

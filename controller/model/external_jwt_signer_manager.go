@@ -171,3 +171,28 @@ func (self *ExternalJwtSignerManager) PublicQuery(query ast.Query) (*ListExtJwtS
 
 	return result, nil
 }
+
+// Query executes an arbitrary query string against the external JWT signer store and returns
+// the matching signers along with pagination metadata. It accepts the same query syntax as
+// PublicQuery but without the visibility restriction applied to public-facing API calls.
+func (self *ExternalJwtSignerManager) Query(queryStr string) (*ListExtJwtSignerResult, error) {
+	query, err := ast.Parse(self.Store, queryStr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	entityResult, err := self.BasePreparedList(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ListExtJwtSignerResult{
+		manager:       self,
+		QueryMetaData: entityResult.QueryMetaData,
+		ExtJwtSigners: entityResult.Entities,
+	}
+
+	return result, nil
+}

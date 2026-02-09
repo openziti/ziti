@@ -50,7 +50,6 @@ func NewDeleteServiceParams() DeleteServiceParams {
 //
 // swagger:parameters deleteService
 type DeleteServiceParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

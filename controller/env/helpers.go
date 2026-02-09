@@ -44,7 +44,14 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 		} else if openApiError.Code() == http.StatusMethodNotAllowed {
 			apiError = apierror.NewMethodNotAllowed()
 		} else if openApiError.Code() == http.StatusUnauthorized {
-			apiError = errorz.NewUnauthorized()
+			requestContext, _ := GetRequestContextFromHttpContext(r)
+			if requestContext != nil && requestContext.SecurityCtx != nil {
+				if securityCtxErr := requestContext.SecurityCtx.GetError(); securityCtxErr != nil {
+					requestContext.RespondWithError(securityCtxErr)
+					return
+				}
+			}
+			apiError = errorz.NewUnauthorizedTokensMissing()
 		} else if openApiError.Code() == http.StatusForbidden {
 			apiError = errorz.NewUnauthorized()
 		} else if openApiError.Code() >= 600 && openApiError.Code() < 700 {

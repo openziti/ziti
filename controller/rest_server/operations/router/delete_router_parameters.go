@@ -50,7 +50,6 @@ func NewDeleteRouterParams() DeleteRouterParams {
 //
 // swagger:parameters deleteRouter
 type DeleteRouterParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

@@ -137,16 +137,30 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	changeCtx := rc.NewChangeContext()
-	err := ae.Managers.Mfa.CompleteTotpEnrollment(rc.Identity.Id, *body.Code, changeCtx)
+	apiSession, err := rc.SecurityCtx.GetApiSession()
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	if !rc.IsJwtToken {
-		err = ae.Managers.ApiSession.SetMfaPassed(rc.ApiSession, changeCtx)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	changeCtx := rc.NewChangeContext()
+	err = ae.Managers.Mfa.CompleteTotpEnrollment(identity.Id, *body.Code, changeCtx)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if !rc.HasJwtSecurityToken() {
+		err = ae.Managers.ApiSession.SetMfaPassed(apiSession, changeCtx)
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -159,18 +173,32 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	id, err := ae.Managers.Mfa.CreateForIdentity(rc.Identity, rc.NewChangeContext())
+	identity, err := rc.SecurityCtx.GetIdentity()
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RespondWithCreatedId(id, CurrentIdentityMfaLinkFactory.SelfLink(rc.Identity))
+	id, err := ae.Managers.Mfa.CreateForIdentity(identity, rc.NewChangeContext())
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithCreatedId(id, CurrentIdentityMfaLinkFactory.SelfLink(identity))
 }
 
 func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -189,22 +217,36 @@ func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, requestCode *string) {
-	code := stringz.OrEmpty(requestCode)
-
-	err := ae.Managers.Mfa.DeleteForIdentity(rc.Identity, code, rc.NewChangeContext())
+	identity, err := rc.SecurityCtx.GetIdentity()
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	ae.Managers.PostureResponse.SetMfaPostureForIdentity(rc.Identity.Id, false)
+	code := stringz.OrEmpty(requestCode)
+
+	err = ae.Managers.Mfa.DeleteForIdentity(identity, code, rc.NewChangeContext())
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	ae.Managers.PostureResponse.SetMfaPostureForIdentity(identity.Id, false)
 
 	rc.RespondWithEmptyOk()
 }
 
 func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -234,7 +276,14 @@ func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.Req
 }
 
 func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -268,7 +317,14 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 }
 
 func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -314,26 +370,40 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 }
 
 func (r *CurrentIdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	if rc.Identity.IsAdmin {
-		filterTemplate := `isVerified = true`
-		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
-	} else {
-		filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
-		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
-	}
-}
-
-func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
-	result, err := MapIdentityToRestModel(ae, rc.Identity)
+	identity, err := rc.SecurityCtx.GetIdentity()
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	result.BaseEntity.Links = CurrentIdentityLinkFactory.Links(rc.Identity)
+	if identity.IsAdmin {
+		filterTemplate := `isVerified = true`
+		rc.SetEntityId(identity.Id)
+		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+	} else {
+		filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
+		rc.SetEntityId(identity.Id)
+		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+	}
+}
+
+func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	result, err := MapIdentityToRestModel(ae, identity)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	result.BaseEntity.Links = CurrentIdentityLinkFactory.Links(identity)
 
 	rc.RespondWithOk(result, nil)
 }

@@ -53,7 +53,7 @@ type InspectResponseValue struct {
 
 	// value
 	// Required: true
-	Value interface{} `json:"value"`
+	Value any `json:"value"`
 }
 
 // Validate validates this inspect response value

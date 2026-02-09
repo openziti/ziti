@@ -16,13 +16,10 @@ func NewRequestContext(rw http.ResponseWriter, r *http.Request) *response.Reques
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	requestContext := &response.RequestContext{
-		Id:                rid,
-		ResponseWriter:    rw,
-		Request:           r,
-		Body:              body,
-		Identity:          nil,
-		ApiSession:        nil,
-		ActivePermissions: map[string]struct{}{},
+		Id:             rid,
+		ResponseWriter: rw,
+		Request:        r,
+		Body:           body,
 	}
 
 	requestContext.Responder = response.NewResponder(requestContext)

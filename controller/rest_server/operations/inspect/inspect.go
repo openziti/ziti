@@ -36,16 +36,16 @@ import (
 )
 
 // InspectHandlerFunc turns a function with the right signature into a inspect handler
-type InspectHandlerFunc func(InspectParams) middleware.Responder
+type InspectHandlerFunc func(InspectParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn InspectHandlerFunc) Handle(params InspectParams) middleware.Responder {
-	return fn(params)
+func (fn InspectHandlerFunc) Handle(params InspectParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // InspectHandler interface for that can handle valid inspect params
 type InspectHandler interface {
-	Handle(InspectParams) middleware.Responder
+	Handle(InspectParams, any) middleware.Responder
 }
 
 // NewInspect creates a new http.Handler for the inspect operation
@@ -53,13 +53,12 @@ func NewInspect(ctx *middleware.Context, handler InspectHandler) *Inspect {
 	return &Inspect{Context: ctx, Handler: handler}
 }
 
-/* Inspect swagger:route POST /inspections Inspect inspect
+/*
+	Inspect swagger:route POST /inspections Inspect inspect
 
-Inspect system values
+# Inspect system values
 
 Requests system information, such as stack dumps or information about capabilities. Requires admin access.
-
-
 */
 type Inspect struct {
 	Context *middleware.Context
@@ -72,12 +71,26 @@ func (o *Inspect) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewInspectParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

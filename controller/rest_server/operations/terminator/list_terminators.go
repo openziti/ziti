@@ -36,16 +36,16 @@ import (
 )
 
 // ListTerminatorsHandlerFunc turns a function with the right signature into a list terminators handler
-type ListTerminatorsHandlerFunc func(ListTerminatorsParams) middleware.Responder
+type ListTerminatorsHandlerFunc func(ListTerminatorsParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ListTerminatorsHandlerFunc) Handle(params ListTerminatorsParams) middleware.Responder {
-	return fn(params)
+func (fn ListTerminatorsHandlerFunc) Handle(params ListTerminatorsParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ListTerminatorsHandler interface for that can handle valid list terminators params
 type ListTerminatorsHandler interface {
-	Handle(ListTerminatorsParams) middleware.Responder
+	Handle(ListTerminatorsParams, any) middleware.Responder
 }
 
 // NewListTerminators creates a new http.Handler for the list terminators operation
@@ -53,13 +53,12 @@ func NewListTerminators(ctx *middleware.Context, handler ListTerminatorsHandler)
 	return &ListTerminators{Context: ctx, Handler: handler}
 }
 
-/* ListTerminators swagger:route GET /terminators Terminator listTerminators
+/*
+	ListTerminators swagger:route GET /terminators Terminator listTerminators
 
-List terminators
+# List terminators
 
 Retrieves a list of terminator resources; supports filtering, sorting, and pagination. Requires admin access.
-
-
 */
 type ListTerminators struct {
 	Context *middleware.Context
@@ -72,12 +71,26 @@ func (o *ListTerminators) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewListTerminatorsParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

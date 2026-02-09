@@ -93,7 +93,7 @@ func runListCircuits(o *api.Options) error {
 		result, err := client.Circuit.ListCircuits(&circuit.ListCircuitsParams{
 			Filter:  o.GetFilter(),
 			Context: ctx,
-		})
+		}, nil)
 		return outputResult(result, err, o, outputCircuits)
 	})
 }
@@ -142,7 +142,7 @@ func runListLinks(o *api.Options) error {
 		result, err := client.Link.ListLinks(&link.ListLinksParams{
 			Filter:  o.GetFilter(),
 			Context: ctx,
-		})
+		}, nil)
 		return outputResult(result, err, o, outputLinks)
 	})
 }
@@ -199,7 +199,7 @@ func runListTerminators(o *api.Options) error {
 		result, err := client.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 			Filter:  o.GetFilter(),
 			Context: ctx,
-		})
+		}, nil)
 		return outputResult(result, err, o, outputTerminators)
 	})
 }
@@ -236,7 +236,7 @@ func runListServices(o *api.Options) error {
 		result, err := client.Service.ListServices(&service.ListServicesParams{
 			Filter:  o.GetFilter(),
 			Context: ctx,
-		})
+		}, nil)
 		return outputResult(result, err, o, outputServices)
 	})
 }
@@ -267,7 +267,7 @@ func runListRouters(o *api.Options) error {
 		result, err := client.Router.ListRouters(&router.ListRoutersParams{
 			Filter:  o.GetFilter(),
 			Context: ctx,
-		})
+		}, nil)
 		return outputResult(result, err, o, outputRouters)
 	})
 }

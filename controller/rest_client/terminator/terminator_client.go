@@ -33,12 +33,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new terminator API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new terminator API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new terminator API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -49,33 +75,33 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateTerminator(params *CreateTerminatorParams, opts ...ClientOption) (*CreateTerminatorCreated, error)
+	CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateTerminatorCreated, error)
 
-	DeleteTerminator(params *DeleteTerminatorParams, opts ...ClientOption) (*DeleteTerminatorOK, error)
+	DeleteTerminator(params *DeleteTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteTerminatorOK, error)
 
-	DetailTerminator(params *DetailTerminatorParams, opts ...ClientOption) (*DetailTerminatorOK, error)
+	DetailTerminator(params *DetailTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailTerminatorOK, error)
 
-	ListTerminators(params *ListTerminatorsParams, opts ...ClientOption) (*ListTerminatorsOK, error)
+	ListTerminators(params *ListTerminatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListTerminatorsOK, error)
 
-	PatchTerminator(params *PatchTerminatorParams, opts ...ClientOption) (*PatchTerminatorOK, error)
+	PatchTerminator(params *PatchTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchTerminatorOK, error)
 
-	UpdateTerminator(params *UpdateTerminatorParams, opts ...ClientOption) (*UpdateTerminatorOK, error)
+	UpdateTerminator(params *UpdateTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UpdateTerminatorOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-  CreateTerminator creates a terminator resource
+CreateTerminator creates a terminator resource
 
-  Create a terminator resource. Requires admin access.
+Create a terminator resource. Requires admin access.
 */
-func (a *Client) CreateTerminator(params *CreateTerminatorParams, opts ...ClientOption) (*CreateTerminatorCreated, error) {
-	// TODO: Validate the params before sending
+func (a *Client) CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateTerminatorCreated, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewCreateTerminatorParams()
 	}
@@ -88,34 +114,40 @@ func (a *Client) CreateTerminator(params *CreateTerminatorParams, opts ...Client
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &CreateTerminatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*CreateTerminatorCreated)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createTerminator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  DeleteTerminator deletes a terminator
+DeleteTerminator deletes a terminator
 
-  Delete a terminator by id. Requires admin access.
+Delete a terminator by id. Requires admin access.
 */
-func (a *Client) DeleteTerminator(params *DeleteTerminatorParams, opts ...ClientOption) (*DeleteTerminatorOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DeleteTerminator(params *DeleteTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteTerminatorOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDeleteTerminatorParams()
 	}
@@ -128,34 +160,40 @@ func (a *Client) DeleteTerminator(params *DeleteTerminatorParams, opts ...Client
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DeleteTerminatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DeleteTerminatorOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for deleteTerminator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  DetailTerminator retrieves a single terminator
+DetailTerminator retrieves a single terminator
 
-  Retrieves a single terminator by id. Requires admin access.
+Retrieves a single terminator by id. Requires admin access.
 */
-func (a *Client) DetailTerminator(params *DetailTerminatorParams, opts ...ClientOption) (*DetailTerminatorOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DetailTerminator(params *DetailTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailTerminatorOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDetailTerminatorParams()
 	}
@@ -168,35 +206,40 @@ func (a *Client) DetailTerminator(params *DetailTerminatorParams, opts ...Client
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DetailTerminatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DetailTerminatorOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for detailTerminator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  ListTerminators lists terminators
+ListTerminators lists terminators
 
-  Retrieves a list of terminator resources; supports filtering, sorting, and pagination. Requires admin access.
-
+Retrieves a list of terminator resources; supports filtering, sorting, and pagination. Requires admin access.
 */
-func (a *Client) ListTerminators(params *ListTerminatorsParams, opts ...ClientOption) (*ListTerminatorsOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) ListTerminators(params *ListTerminatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListTerminatorsOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewListTerminatorsParams()
 	}
@@ -209,34 +252,40 @@ func (a *Client) ListTerminators(params *ListTerminatorsParams, opts ...ClientOp
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &ListTerminatorsReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*ListTerminatorsOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listTerminators: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  PatchTerminator updates the supplied fields on a terminator
+PatchTerminator updates the supplied fields on a terminator
 
-  Update the supplied fields on a terminator. Requires admin access.
+Update the supplied fields on a terminator. Requires admin access.
 */
-func (a *Client) PatchTerminator(params *PatchTerminatorParams, opts ...ClientOption) (*PatchTerminatorOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) PatchTerminator(params *PatchTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchTerminatorOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewPatchTerminatorParams()
 	}
@@ -249,34 +298,40 @@ func (a *Client) PatchTerminator(params *PatchTerminatorParams, opts ...ClientOp
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &PatchTerminatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*PatchTerminatorOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for patchTerminator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  UpdateTerminator updates all fields on a terminator
+UpdateTerminator updates all fields on a terminator
 
-  Update all fields on a terminator by id. Requires admin access.
+Update all fields on a terminator by id. Requires admin access.
 */
-func (a *Client) UpdateTerminator(params *UpdateTerminatorParams, opts ...ClientOption) (*UpdateTerminatorOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) UpdateTerminator(params *UpdateTerminatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UpdateTerminatorOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewUpdateTerminatorParams()
 	}
@@ -289,23 +344,29 @@ func (a *Client) UpdateTerminator(params *UpdateTerminatorParams, opts ...Client
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &UpdateTerminatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*UpdateTerminatorOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateTerminator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }

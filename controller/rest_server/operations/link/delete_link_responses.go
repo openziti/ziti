@@ -40,7 +40,8 @@ import (
 // DeleteLinkOKCode is the HTTP code returned for type DeleteLinkOK
 const DeleteLinkOKCode int = 200
 
-/*DeleteLinkOK The delete request was successful and the resource has been removed
+/*
+DeleteLinkOK The delete request was successful and the resource has been removed
 
 swagger:response deleteLinkOK
 */
@@ -84,7 +85,8 @@ func (o *DeleteLinkOK) WriteResponse(rw http.ResponseWriter, producer runtime.Pr
 // DeleteLinkBadRequestCode is the HTTP code returned for type DeleteLinkBadRequest
 const DeleteLinkBadRequestCode int = 400
 
-/*DeleteLinkBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+DeleteLinkBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response deleteLinkBadRequest
 */
@@ -128,7 +130,8 @@ func (o *DeleteLinkBadRequest) WriteResponse(rw http.ResponseWriter, producer ru
 // DeleteLinkUnauthorizedCode is the HTTP code returned for type DeleteLinkUnauthorized
 const DeleteLinkUnauthorizedCode int = 401
 
-/*DeleteLinkUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DeleteLinkUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response deleteLinkUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *DeleteLinkUnauthorized) WriteResponse(rw http.ResponseWriter, producer 
 // DeleteLinkTooManyRequestsCode is the HTTP code returned for type DeleteLinkTooManyRequests
 const DeleteLinkTooManyRequestsCode int = 429
 
-/*DeleteLinkTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+DeleteLinkTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response deleteLinkTooManyRequests
 */
@@ -216,7 +220,8 @@ func (o *DeleteLinkTooManyRequests) WriteResponse(rw http.ResponseWriter, produc
 // DeleteLinkServiceUnavailableCode is the HTTP code returned for type DeleteLinkServiceUnavailable
 const DeleteLinkServiceUnavailableCode int = 503
 
-/*DeleteLinkServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+DeleteLinkServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response deleteLinkServiceUnavailable
 */

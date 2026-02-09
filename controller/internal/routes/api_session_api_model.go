@@ -72,8 +72,8 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 		IPAddress:               &apiSession.IPAddress,
 		ConfigTypes:             stringz.SetToSlice(apiSession.ConfigTypes),
 		AuthQueries:             rest_model.AuthQueryList{}, //not in a request context, can't fill
-		IsMfaComplete:           &apiSession.MfaComplete,
-		IsMfaRequired:           &apiSession.MfaRequired,
+		IsMfaComplete:           &apiSession.TotpComplete,
+		IsMfaRequired:           &apiSession.TotpRequired,
 		LastActivityAt:          lastActivityAt,
 		AuthenticatorID:         &apiSession.AuthenticatorId,
 		IsCertExtendable:        &apiSession.IsCertExtendable,

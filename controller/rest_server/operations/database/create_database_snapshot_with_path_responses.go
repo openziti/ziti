@@ -40,7 +40,8 @@ import (
 // CreateDatabaseSnapshotWithPathOKCode is the HTTP code returned for type CreateDatabaseSnapshotWithPathOK
 const CreateDatabaseSnapshotWithPathOKCode int = 200
 
-/*CreateDatabaseSnapshotWithPathOK The path to the created snapshot
+/*
+CreateDatabaseSnapshotWithPathOK The path to the created snapshot
 
 swagger:response createDatabaseSnapshotWithPathOK
 */
@@ -84,7 +85,8 @@ func (o *CreateDatabaseSnapshotWithPathOK) WriteResponse(rw http.ResponseWriter,
 // CreateDatabaseSnapshotWithPathUnauthorizedCode is the HTTP code returned for type CreateDatabaseSnapshotWithPathUnauthorized
 const CreateDatabaseSnapshotWithPathUnauthorizedCode int = 401
 
-/*CreateDatabaseSnapshotWithPathUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+CreateDatabaseSnapshotWithPathUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response createDatabaseSnapshotWithPathUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *CreateDatabaseSnapshotWithPathUnauthorized) WriteResponse(rw http.Respo
 // CreateDatabaseSnapshotWithPathTooManyRequestsCode is the HTTP code returned for type CreateDatabaseSnapshotWithPathTooManyRequests
 const CreateDatabaseSnapshotWithPathTooManyRequestsCode int = 429
 
-/*CreateDatabaseSnapshotWithPathTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+CreateDatabaseSnapshotWithPathTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response createDatabaseSnapshotWithPathTooManyRequests
 */

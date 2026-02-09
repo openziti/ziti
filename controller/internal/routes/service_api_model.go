@@ -152,6 +152,18 @@ func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*
 }
 
 func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail, fillPostureData bool) (*rest_model.ServiceDetail, error) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		return nil, err
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		return nil, err
+	}
+
 	roleAttributes := rest_model.Attributes(service.RoleAttributes)
 
 	maxIdleTime := service.MaxIdleTime.Milliseconds()
@@ -176,7 +188,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 	var policyPostureCheckMap map[string]*model.PolicyPostureChecks
 
 	if !fillPostureData {
-		policyPostureCheckMap = ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
+		policyPostureCheckMap = ae.GetManagers().EdgeService.GetPolicyPostureChecks(identity.Id, *ret.ID)
 	}
 
 	if len(policyPostureCheckMap) == 0 {
@@ -214,22 +226,22 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			isCheckPassing := false
 			found := false
 			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
-				isCheckPassing, _ = ae.Managers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
+				isCheckPassing, _ = ae.Managers.PostureResponse.Evaluate(identity.Id, apiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
 
 			var timeoutRemaining int64
 			var timeoutAt *strfmt.DateTime
 
-			ae.Managers.PostureResponse.WithPostureData(rc.Identity.Id, func(postureData *model.PostureData) {
-				timeoutRemaining = postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, postureData)
+			ae.Managers.PostureResponse.WithPostureData(identity.Id, func(postureData *model.PostureData) {
+				timeoutRemaining = postureCheck.TimeoutRemainingSeconds(apiSession.Id, postureData)
 				if timeoutRemaining >= 0 {
 					newTimeout := strfmt.DateTime(time.Now().Add(time.Duration(timeoutRemaining) * time.Second))
 					timeoutAt = &newTimeout
 				}
 
 				//determine if updatedAt is provided by the source posture check or the posture state
-				if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, postureData); lastUpdatedAt != nil {
+				if lastUpdatedAt := postureCheck.LastUpdatedAt(apiSession.Id, postureData); lastUpdatedAt != nil {
 					if lastUpdatedAt.After(postureCheck.UpdatedAt) {
 						query.UpdatedAt = DateTimePtrOrNil(lastUpdatedAt)
 					}

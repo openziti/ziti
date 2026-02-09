@@ -38,7 +38,7 @@ import (
 // SubTags sub tags
 //
 // swagger:model subTags
-type SubTags map[string]interface{}
+type SubTags map[string]any
 
 // Validate validates this sub tags
 func (m SubTags) Validate(formats strfmt.Registry) error {

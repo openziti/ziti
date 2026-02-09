@@ -49,7 +49,6 @@ func NewFixDataIntegrityParams() FixDataIntegrityParams {
 //
 // swagger:parameters fixDataIntegrity
 type FixDataIntegrityParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 }

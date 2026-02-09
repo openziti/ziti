@@ -1,10 +1,27 @@
 $PSDefaultParameterValues += @{ 'New-RegKey:ErrorAction' = 'Stop' }
 try
 {
+    # Expected version (without leading "v")
+    $ExpectedSwaggerVersion = "0.33.1"
+
     Get-Command swagger -ErrorAction "SilentlyContinue" | Out-Null
     if (-not$?)
     {
-        throw "Command 'swagger' not installed. See: https://github.com/go-swagger/go-swagger for installation"
+        throw "Command 'swagger' not installed. See: https://github.com/go-swagger/go-swagger for installation, install version $ExpectedSwaggerVersion"
+    }
+
+    $output = & swagger version 2>&1
+    $text = ($output | Out-String).Trim()
+
+    $m = [regex]::Match($text, 'version:\s*v(\d+\.\d+\.\d+)')
+    if( -not ($m.Success)) {
+        Pop-Location
+        throw "could not parse swagger version, expected 'version: v#.#.#'"
+    }
+
+    if ($m.Groups[1].Value -ne $ExpectedSwaggerVersion) {
+        Pop-Location
+        throw "swagger version mismatch. Expected v$ExpectedSwaggerVersion, found v" + $m.Groups[1]
     }
 
     $zitiEdgeDir = Join-Path $PSScriptRoot "../" -Resolve

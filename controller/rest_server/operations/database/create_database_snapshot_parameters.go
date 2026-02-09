@@ -49,7 +49,6 @@ func NewCreateDatabaseSnapshotParams() CreateDatabaseSnapshotParams {
 //
 // swagger:parameters createDatabaseSnapshot
 type CreateDatabaseSnapshotParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 }

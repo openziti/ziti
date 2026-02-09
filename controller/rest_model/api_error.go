@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -55,7 +56,7 @@ type APIError struct {
 	Code string `json:"code,omitempty"`
 
 	// data
-	Data interface{} `json:"data,omitempty"`
+	Data any `json:"data,omitempty"`
 
 	// message
 	Message string `json:"message,omitempty"`
@@ -89,11 +90,15 @@ func (m *APIError) validateArgs(formats strfmt.Registry) error {
 
 	if m.Args != nil {
 		if err := m.Args.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("args")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("args")
 			}
+
 			return err
 		}
 	}
@@ -108,11 +113,15 @@ func (m *APIError) validateCause(formats strfmt.Registry) error {
 
 	if m.Cause != nil {
 		if err := m.Cause.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cause")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cause")
 			}
+
 			return err
 		}
 	}
@@ -141,12 +150,21 @@ func (m *APIError) ContextValidate(ctx context.Context, formats strfmt.Registry)
 func (m *APIError) contextValidateArgs(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Args != nil {
+
+		if swag.IsZero(m.Args) { // not required
+			return nil
+		}
+
 		if err := m.Args.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("args")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("args")
 			}
+
 			return err
 		}
 	}
@@ -157,12 +175,21 @@ func (m *APIError) contextValidateArgs(ctx context.Context, formats strfmt.Regis
 func (m *APIError) contextValidateCause(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Cause != nil {
+
+		if swag.IsZero(m.Cause) { // not required
+			return nil
+		}
+
 		if err := m.Cause.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cause")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cause")
 			}
+
 			return err
 		}
 	}

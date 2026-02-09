@@ -36,16 +36,16 @@ import (
 )
 
 // CheckDataIntegrityHandlerFunc turns a function with the right signature into a check data integrity handler
-type CheckDataIntegrityHandlerFunc func(CheckDataIntegrityParams, interface{}) middleware.Responder
+type CheckDataIntegrityHandlerFunc func(CheckDataIntegrityParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CheckDataIntegrityHandlerFunc) Handle(params CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+func (fn CheckDataIntegrityHandlerFunc) Handle(params CheckDataIntegrityParams, principal any) middleware.Responder {
 	return fn(params, principal)
 }
 
 // CheckDataIntegrityHandler interface for that can handle valid check data integrity params
 type CheckDataIntegrityHandler interface {
-	Handle(CheckDataIntegrityParams, interface{}) middleware.Responder
+	Handle(CheckDataIntegrityParams, any) middleware.Responder
 }
 
 // NewCheckDataIntegrity creates a new http.Handler for the check data integrity operation
@@ -53,12 +53,12 @@ func NewCheckDataIntegrity(ctx *middleware.Context, handler CheckDataIntegrityHa
 	return &CheckDataIntegrity{Context: ctx, Handler: handler}
 }
 
-/* CheckDataIntegrity swagger:route POST /database/check-data-integrity Database checkDataIntegrity
+/*
+	CheckDataIntegrity swagger:route POST /database/check-data-integrity Database checkDataIntegrity
 
-Starts a data integrity scan on the datastore
+# Starts a data integrity scan on the datastore
 
 Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
-
 */
 type CheckDataIntegrity struct {
 	Context *middleware.Context
@@ -79,9 +79,9 @@ func (o *CheckDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 	if aCtx != nil {
 		*r = *aCtx
 	}
-	var principal interface{}
+	var principal any
 	if uprinc != nil {
-		principal = uprinc.(interface{}) // this is really a interface{}, I promise
+		principal = uprinc
 	}
 
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
@@ -90,6 +90,7 @@ func (o *CheckDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 	}
 
 	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

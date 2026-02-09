@@ -1,9 +1,14 @@
 #!/bin/bash -e
 
-command -v swagger >/dev/null 2>&1 || {
-  echo >&2 "Command 'swagger' not installed. See: https://github.com/go-swagger/go-swagger for installation"
+GO_SWAGGER_VERSION="v0.33.1"
+GO_SWAGGER_HASH="2af7725271cf99ace5d44ab134acb53bffcc5734"
+if ! command -v swagger &>/dev/null \
+|| [[ "$(swagger version | awk '$1~/^version:/{print $2}')" != "${GO_SWAGGER_VERSION}" \
+|| "$(swagger version | awk '$1~/^commit:/{print $2}')" != "${GO_SWAGGER_HASH}" ]]
+then
+  echo >&2 "Go Swagger executable 'swagger' ${GO_SWAGGER_VERSION} (${GO_SWAGGER_HASH}) is required. Download the binary from GitHub: https://github.com/go-swagger/go-swagger/releases/tag/v0.29.0"
   exit 1
-}
+fi
 
 scriptPath=$(realpath $0)
 scriptDir=$(dirname "$scriptPath")

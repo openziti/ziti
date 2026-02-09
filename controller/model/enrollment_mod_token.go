@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -76,7 +77,7 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 		SetChangeAuthorId(module.env.GetId()).
 		SetChangeAuthorName(module.env.GetId())
 
-	verificationResult, err := module.verifyToken(ctx.GetHeaders())
+	verificationResult, tokenIssuer, err := module.verifyToken(ctx.GetHeaders())
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("could not verify token")
@@ -107,26 +108,26 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 	csrPem := ctx.GetData().ClientCsrPem
 	isCertEnrollment := len(csrPem) != 0
 
-	if isCertEnrollment && !verificationResult.TokenIssuer.EnrollToCertEnabled() {
+	if isCertEnrollment && !tokenIssuer.EnrollToCertEnabled() {
 		pfxlog.Logger().
-			WithField("issuerId", verificationResult.TokenIssuer.Id()).
-			WithField("issuerName", verificationResult.TokenIssuer.Name()).
-			Errorf("token enrollment attempted but issuer %s - %s does not allow cert enrollment", verificationResult.TokenIssuer.Name(), verificationResult.TokenIssuer.Id())
+			WithField("issuerId", tokenIssuer.Id()).
+			WithField("issuerName", tokenIssuer.Name()).
+			Errorf("token enrollment attempted but issuer %s - %s does not allow cert enrollment", tokenIssuer.Name(), tokenIssuer.Id())
 		return nil, apierror.NewInvalidEnrollmentNotAllowed()
 	}
 
-	if !isCertEnrollment && !verificationResult.TokenIssuer.EnrollToTokenEnabled() {
+	if !isCertEnrollment && !tokenIssuer.EnrollToTokenEnabled() {
 		pfxlog.Logger().
-			WithField("issuerId", verificationResult.TokenIssuer.Id()).
-			WithField("issuerName", verificationResult.TokenIssuer.Name()).
-			Errorf("token enrollment attempted but issuer %s - %s does not allow token enrollment", verificationResult.TokenIssuer.Name(), verificationResult.TokenIssuer.Id())
+			WithField("issuerId", tokenIssuer.Id()).
+			WithField("issuerName", tokenIssuer.Name()).
+			Errorf("token enrollment attempted but issuer %s - %s does not allow token enrollment", tokenIssuer.Name(), tokenIssuer.Id())
 		return nil, apierror.NewInvalidEnrollmentNotAllowed()
 	}
 
 	authPolicyId := db.DefaultAuthPolicyId
 
-	if verificationResult.TokenIssuer.EnrollmentAuthPolicyId() != "" {
-		authPolicyId = verificationResult.TokenIssuer.EnrollmentAuthPolicyId()
+	if tokenIssuer.EnrollmentAuthPolicyId() != "" {
+		authPolicyId = tokenIssuer.EnrollmentAuthPolicyId()
 	}
 
 	authPolicy, err := module.env.GetManagers().AuthPolicy.Read(authPolicyId)
@@ -147,8 +148,8 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 			return nil, apierror.NewInvalidEnrollmentNotAllowed()
 		}
 
-		if !authPolicy.Primary.ExtJwt.AllowAllSigners && !stringz.Contains(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners, verificationResult.TokenIssuer.Id()) {
-			pfxlog.Logger().Errorf("token enrollment attempted but auth policy %s does not allow ext-jwt authentication from the matching token issue limited to %v given %s", authPolicyId, authPolicy.Primary.ExtJwt.AllowedExtJwtSigners, verificationResult.TokenIssuer.Id())
+		if !authPolicy.Primary.ExtJwt.AllowAllSigners && !stringz.Contains(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners, tokenIssuer.Id()) {
+			pfxlog.Logger().Errorf("token enrollment attempted but auth policy %s does not allow ext-jwt authentication from the matching token issue limited to %v given %s", authPolicyId, authPolicy.Primary.ExtJwt.AllowedExtJwtSigners, tokenIssuer.Id())
 			return nil, apierror.NewInvalidEnrollmentNotAllowed()
 		}
 	}
@@ -248,11 +249,11 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 // verifyToken extracts and verifies the JWT token from request headers.
 // If a target issuer ID is provided, it verifies the token using that specific issuer.
 // Otherwise, it attempts to identify the issuer from the token's issuer claim.
-func (module *EnrollModuleToken) verifyToken(headers Headers) (*TokenVerificationResult, error) {
+func (module *EnrollModuleToken) verifyToken(headers Headers) (*common.TokenVerificationResult, common.TokenIssuer, error) {
 	candidateTokens := headers.GetStrings(AuthorizationHeader)
 
 	if len(candidateTokens) == 0 {
-		return nil, errors.New("0 candidate tokens were supplied in the enrollment request header")
+		return nil, nil, errors.New("0 candidate tokens were supplied in the enrollment request header")
 	}
 
 	targetTokenIssuerIds := headers.GetStrings(TargetTokenIssuerId)
@@ -266,15 +267,15 @@ func (module *EnrollModuleToken) verifyToken(headers Headers) (*TokenVerificatio
 
 // verifyTokenByTokenIssuerId validates a candidate token using a specific token issuer.
 // Requires the issuer to be enabled and returns the first valid token verification result.
-func (module *EnrollModuleToken) verifyTokenByTokenIssuerId(targetTokenIssuerId string, candidateTokens []string) (*TokenVerificationResult, error) {
+func (module *EnrollModuleToken) verifyTokenByTokenIssuerId(targetTokenIssuerId string, candidateTokens []string) (*common.TokenVerificationResult, common.TokenIssuer, error) {
 	tokenIssuer := module.env.GetTokenIssuerCache().GetById(targetTokenIssuerId)
 
 	if tokenIssuer == nil {
-		return nil, errors.New("no token issuer with id " + targetTokenIssuerId + " was found")
+		return nil, nil, errors.New("no token issuer with id " + targetTokenIssuerId + " was found")
 	}
 
 	if !tokenIssuer.IsEnabled() {
-		return nil, errors.New("token issuer with id " + targetTokenIssuerId + " is not enabled")
+		return nil, nil, errors.New("token issuer with id " + targetTokenIssuerId + " is not enabled")
 	}
 
 	for i, candidateToken := range candidateTokens {
@@ -285,27 +286,22 @@ func (module *EnrollModuleToken) verifyTokenByTokenIssuerId(targetTokenIssuerId 
 
 		candidateToken = strings.TrimPrefix(candidateToken, "Bearer ")
 
-		result, err := tokenIssuer.VerifyToken(candidateToken)
+		result := tokenIssuer.VerifyToken(candidateToken)
 
-		if err != nil {
-			pfxlog.Logger().WithError(err).Debugf("could not verify candidate token at header index %d", i)
-			continue
-		}
-
-		if !result.Token.Valid {
+		if !result.IsValid() {
 			pfxlog.Logger().Debugf("candidate token at header index %d was not valid", i)
 			continue
 		}
 
-		return result, nil
+		return result, tokenIssuer, nil
 	}
 
-	return nil, errors.New("no valid candidate tokens were found")
+	return nil, nil, errors.New("no valid candidate tokens were found")
 }
 
 // verifyTokenIssuerByInspection validates candidate tokens by examining the issuer claim
 // and attempting to verify with all known token issuers. Returns the first valid result.
-func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens []string) (*TokenVerificationResult, error) {
+func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens []string) (*common.TokenVerificationResult, common.TokenIssuer, error) {
 	knownIssuers := module.env.GetTokenIssuerCache().GetIssuerStrings()
 	var seenIssuers []string
 
@@ -323,23 +319,18 @@ func (module *EnrollModuleToken) verifyTokenIssuerByInspection(candidateTokens [
 			continue
 		}
 
-		tokenVerificationResult, err := module.env.GetTokenIssuerCache().VerifyTokenByInspection(candidateToken)
-
-		if err != nil {
-			pfxlog.Logger().WithError(err).Debugf("could not verify candidate token at header index %d, error encountered", i)
-			continue
-		}
+		tokenVerificationResult, tokenIssuer := module.env.GetTokenIssuerCache().VerifyTokenByInspection(candidateToken)
 
 		if !tokenVerificationResult.IsValid() {
 			pfxlog.Logger().Debugf("candidate token at header index %d is not valid", i)
 			continue
 		}
 
-		return tokenVerificationResult, nil
+		return tokenVerificationResult, tokenIssuer, nil
 	}
 
 	pfxlog.Logger().WithField("knownIssuers", knownIssuers).WithField("seenIssuers", seenIssuers).Warnf("no valid candidate tokens were found")
-	return nil, errors.New("no valid candidate tokens were found")
+	return nil, nil, errors.New("no valid candidate tokens were found")
 }
 
 // checkForExistingIdentity verifies that no identity with the same external ID already exists.

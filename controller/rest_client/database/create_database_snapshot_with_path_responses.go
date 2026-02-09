@@ -30,6 +30,8 @@ package database
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type CreateDatabaseSnapshotWithPathReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *CreateDatabaseSnapshotWithPathReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *CreateDatabaseSnapshotWithPathReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewCreateDatabaseSnapshotWithPathOK()
@@ -66,7 +68,7 @@ func (o *CreateDatabaseSnapshotWithPathReader) ReadResponse(response runtime.Cli
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /database/snapshot] createDatabaseSnapshotWithPath", response, response.Code())
 	}
 }
 
@@ -75,7 +77,8 @@ func NewCreateDatabaseSnapshotWithPathOK() *CreateDatabaseSnapshotWithPathOK {
 	return &CreateDatabaseSnapshotWithPathOK{}
 }
 
-/* CreateDatabaseSnapshotWithPathOK describes a response with status code 200, with default header values.
+/*
+CreateDatabaseSnapshotWithPathOK describes a response with status code 200, with default header values.
 
 The path to the created snapshot
 */
@@ -83,9 +86,46 @@ type CreateDatabaseSnapshotWithPathOK struct {
 	Payload *rest_model.DatabaseSnapshotCreateResultEnvelope
 }
 
-func (o *CreateDatabaseSnapshotWithPathOK) Error() string {
-	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this create database snapshot with path o k response has a 2xx status code
+func (o *CreateDatabaseSnapshotWithPathOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this create database snapshot with path o k response has a 3xx status code
+func (o *CreateDatabaseSnapshotWithPathOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create database snapshot with path o k response has a 4xx status code
+func (o *CreateDatabaseSnapshotWithPathOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this create database snapshot with path o k response has a 5xx status code
+func (o *CreateDatabaseSnapshotWithPathOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create database snapshot with path o k response a status code equal to that given
+func (o *CreateDatabaseSnapshotWithPathOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the create database snapshot with path o k response
+func (o *CreateDatabaseSnapshotWithPathOK) Code() int {
+	return 200
+}
+
+func (o *CreateDatabaseSnapshotWithPathOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathOK %s", 200, payload)
+}
+
+func (o *CreateDatabaseSnapshotWithPathOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathOK %s", 200, payload)
+}
+
 func (o *CreateDatabaseSnapshotWithPathOK) GetPayload() *rest_model.DatabaseSnapshotCreateResultEnvelope {
 	return o.Payload
 }
@@ -95,7 +135,7 @@ func (o *CreateDatabaseSnapshotWithPathOK) readResponse(response runtime.ClientR
 	o.Payload = new(rest_model.DatabaseSnapshotCreateResultEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -107,7 +147,8 @@ func NewCreateDatabaseSnapshotWithPathUnauthorized() *CreateDatabaseSnapshotWith
 	return &CreateDatabaseSnapshotWithPathUnauthorized{}
 }
 
-/* CreateDatabaseSnapshotWithPathUnauthorized describes a response with status code 401, with default header values.
+/*
+CreateDatabaseSnapshotWithPathUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -115,9 +156,46 @@ type CreateDatabaseSnapshotWithPathUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateDatabaseSnapshotWithPathUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this create database snapshot with path unauthorized response has a 2xx status code
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create database snapshot with path unauthorized response has a 3xx status code
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create database snapshot with path unauthorized response has a 4xx status code
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create database snapshot with path unauthorized response has a 5xx status code
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create database snapshot with path unauthorized response a status code equal to that given
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the create database snapshot with path unauthorized response
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) Code() int {
+	return 401
+}
+
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathUnauthorized %s", 401, payload)
+}
+
+func (o *CreateDatabaseSnapshotWithPathUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathUnauthorized %s", 401, payload)
+}
+
 func (o *CreateDatabaseSnapshotWithPathUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -127,7 +205,7 @@ func (o *CreateDatabaseSnapshotWithPathUnauthorized) readResponse(response runti
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -139,7 +217,8 @@ func NewCreateDatabaseSnapshotWithPathTooManyRequests() *CreateDatabaseSnapshotW
 	return &CreateDatabaseSnapshotWithPathTooManyRequests{}
 }
 
-/* CreateDatabaseSnapshotWithPathTooManyRequests describes a response with status code 429, with default header values.
+/*
+CreateDatabaseSnapshotWithPathTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -147,9 +226,46 @@ type CreateDatabaseSnapshotWithPathTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateDatabaseSnapshotWithPathTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this create database snapshot with path too many requests response has a 2xx status code
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create database snapshot with path too many requests response has a 3xx status code
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create database snapshot with path too many requests response has a 4xx status code
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create database snapshot with path too many requests response has a 5xx status code
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create database snapshot with path too many requests response a status code equal to that given
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the create database snapshot with path too many requests response
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathTooManyRequests %s", 429, payload)
+}
+
+func (o *CreateDatabaseSnapshotWithPathTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /database/snapshot][%d] createDatabaseSnapshotWithPathTooManyRequests %s", 429, payload)
+}
+
 func (o *CreateDatabaseSnapshotWithPathTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -159,7 +275,7 @@ func (o *CreateDatabaseSnapshotWithPathTooManyRequests) readResponse(response ru
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

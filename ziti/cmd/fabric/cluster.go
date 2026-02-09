@@ -57,7 +57,7 @@ func (self *clusterListMembersAction) run(cmd *cobra.Command, _ []string) error 
 	}
 	members, err := client.Cluster.ClusterListMembers(&cluster.ClusterListMembersParams{
 		Context: context.Background(),
-	})
+	}, nil)
 	return outputResult(members, err, &self.Options, self.outputClusterMembers)
 }
 
@@ -114,7 +114,7 @@ func (self *clusterAddMemberAction) run(cmd *cobra.Command, args []string) error
 			Address: &args[0],
 			IsVoter: &isVoter,
 		},
-	})
+	}, nil)
 
 	return err
 }
@@ -155,7 +155,7 @@ func (self *clusterRemoveMemberAction) run(cmd *cobra.Command, args []string) er
 		Member: &rest_model.ClusterMemberRemove{
 			ID: &args[0],
 		},
-	})
+	}, nil)
 
 	return err
 }
@@ -203,7 +203,7 @@ func (self *clusterTransferLeadershipAction) run(cmd *cobra.Command, args []stri
 		Member: &rest_model.ClusterTransferLeadership{
 			NewLeaderID: newLeader,
 		},
-	})
+	}, nil)
 
 	return err
 }

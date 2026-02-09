@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -79,7 +80,9 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, httpRequest *http.Request, method string, auth *rest_model.Authenticate) {
 	start := time.Now()
 	logger := pfxlog.Logger()
-	authContext := model.NewAuthContextHttp(httpRequest, method, auth, rc.NewChangeContext())
+	authContext := model.NewAuthContextHttp(rc.Request, method, auth, rc.NewChangeContext())
+
+	authContext.SetSecurityTokenCtx(rc.SecurityCtx.GetSecurityTokenCtx())
 
 	authResult, err := ae.Managers.Authenticator.Authorize(authContext)
 
@@ -93,10 +96,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		return
 	}
 
-	rc.AuthPolicy = authResult.AuthPolicy()
-
 	identity := authResult.Identity()
-	rc.Identity = identity
 
 	if identity.EnvInfo == nil {
 		identity.EnvInfo = &model.EnvInfo{}
@@ -106,7 +106,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		identity.SdkInfo = &model.SdkInfo{}
 	}
 
-	changeCtx := rc.NewChangeContext()
+	changeCtx := rc.NewChangeContextForIdentity(identity)
 	err = ae.GetManagers().Identity.UpdateSdkEnvInfo(identity, authContext.GetEnvInfo(), authContext.GetSdkInfo(), changeCtx)
 
 	if err != nil {
@@ -161,8 +161,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	}
 
 	if mfa != nil && mfa.IsVerified {
-		newApiSession.MfaRequired = true
-		newApiSession.MfaComplete = false
+		newApiSession.TotpRequired = true
+		newApiSession.TotpComplete = false
 	}
 
 	var sessionCerts []*model.ApiSessionCertificate
@@ -209,14 +209,21 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	ae.GetManagers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
-	rc.ApiSession = filledApiSession
+	rc.Request.Header.Set("zt-session", filledApiSession.Token)
+	securityToken, err := common.NewSecurityTokenCtx(rc.Request, ae.TokenIssuerCache)
 
-	env.ProcessAuthQueries(ae, rc)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to create security token")
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	rc.SecurityCtx = env.NewSecurityCtx(securityToken, ae)
 
 	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.GetConfig().Edge.SessionTimeoutDuration())
 
 	//re-calc session headers as they were not set when ApiSession == NIL
-	response.AddSessionHeaders(rc)
+	response.AddApiSessionHeaders(rc)
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
@@ -233,7 +240,21 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 }
 
 func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if identity == nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if apiSession == nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -252,12 +273,12 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCo
 		return
 	}
 
-	if err := ae.Managers.ApiSession.MfaCompleted(rc.ApiSession, rc.NewChangeContext()); err != nil {
+	if err := ae.Managers.ApiSession.MfaCompleted(apiSession, rc.NewChangeContext()); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	ae.Managers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
+	ae.Managers.PostureResponse.SetMfaPosture(identity.Id, apiSession.Id, true)
 
 	rc.RespondWithEmptyOk()
 }

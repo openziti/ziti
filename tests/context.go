@@ -963,7 +963,7 @@ func (self *TestContext) EnrollFabricRouter(id string, name string, certFile str
 		},
 		Context: timeoutContext,
 	}
-	_, err = self.RestClients.Fabric.Router.CreateRouter(createRouterParams)
+	_, err = self.RestClients.Fabric.Router.CreateRouter(createRouterParams, nil)
 	if err != nil {
 		js, _ := json.MarshalIndent(err, "", "    ")
 		fmt.Println(string(js))

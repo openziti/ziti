@@ -30,7 +30,7 @@ package service
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
+	stderrors "errors"
 	"io"
 	"net/http"
 
@@ -56,7 +56,6 @@ func NewPatchServiceParams() PatchServiceParams {
 //
 // swagger:parameters patchService
 type PatchServiceParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -65,6 +64,7 @@ type PatchServiceParams struct {
 	  In: path
 	*/
 	ID string
+
 	/*A service patch object
 	  Required: true
 	  In: body
@@ -87,10 +87,12 @@ func (o *PatchServiceParams) BindRequest(r *http.Request, route *middleware.Matc
 	}
 
 	if runtime.HasBody(r) {
-		defer r.Body.Close()
+		defer func() {
+			_ = r.Body.Close()
+		}()
 		var body rest_model.ServicePatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
+			if stderrors.Is(err, io.EOF) {
 				res = append(res, errors.Required("service", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("service", "body", "", err))
@@ -101,7 +103,7 @@ func (o *PatchServiceParams) BindRequest(r *http.Request, route *middleware.Matc
 				res = append(res, err)
 			}
 
-			ctx := validate.WithOperationRequest(context.Background())
+			ctx := validate.WithOperationRequest(r.Context())
 			if err := body.ContextValidate(ctx, route.Formats); err != nil {
 				res = append(res, err)
 			}

@@ -18,11 +18,12 @@ package model
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/apierror"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -44,16 +45,18 @@ const (
 // AuthTokenVerificationResult extends TokenVerificationResult with authentication context.
 // Includes error information, auth policy, and identity from authentication processing.
 type AuthTokenVerificationResult struct {
-	*TokenVerificationResult
+	BearerToken *common.BearerTokenHeader
+	AuthPolicy  *AuthPolicy
+	Identity    *Identity
 
-	Error      error
-	AuthPolicy *AuthPolicy
-	Identity   *Identity
+	Error error
 }
 
 // LogResult logs the authentication verification result with contextual fields.
 // Logs issuer, policy, identity, and audiences when available.
-func (r *AuthTokenVerificationResult) LogResult(logger *logrus.Entry, index int) {
+func (r *AuthTokenVerificationResult) LogResult(logger *logrus.Entry) {
+	headerIndex := -1
+
 	if r.AuthPolicy != nil {
 		logger = logger.WithField("authPolicyId", r.AuthPolicy.Id)
 	}
@@ -62,26 +65,28 @@ func (r *AuthTokenVerificationResult) LogResult(logger *logrus.Entry, index int)
 		logger = logger.WithField("identityId", r.Identity.Id)
 	}
 
-	if r.TokenVerificationResult != nil {
-		if r.TokenVerificationResult.TokenIssuer != nil {
-			logger = logger.WithField("tokenIssuerId", r.TokenVerificationResult.TokenIssuer.Id()).
-				WithField("tokenIssuerType", r.TokenVerificationResult.TokenIssuer.TypeName()).
-				WithField("issuer", r.TokenIssuer.ExpectedIssuer()).
-				WithField("expectedAudience", r.TokenIssuer.ExpectedAudience())
+	if r.BearerToken != nil {
+		headerIndex = r.BearerToken.HeaderIndex
+
+		if r.BearerToken.TokenIssuer != nil {
+			logger = logger.WithField("tokenIssuerId", r.BearerToken.TokenIssuer.Id()).
+				WithField("tokenIssuerType", r.BearerToken.TokenIssuer.TypeName()).
+				WithField("issuer", r.BearerToken.TokenIssuer.ExpectedIssuer()).
+				WithField("expectedAudience", r.BearerToken.TokenIssuer.ExpectedAudience())
 		}
 
-		if r.TokenVerificationResult.Token != nil {
-			if r.TokenVerificationResult.Token != nil && r.TokenVerificationResult.Claims != nil {
-				audiences, _ := r.Token.Claims.GetAudience()
+		if r.BearerToken.TokenVerificationResult != nil {
+			if r.BearerToken.TokenVerificationResult.Token != nil && r.BearerToken.TokenVerificationResult.Claims != nil {
+				audiences := r.BearerToken.Audience()
 				logger = logger.WithField("tokenAudiences", audiences)
 			}
 		}
 	}
 
 	if r.Error == nil {
-		logger.Debugf("validated candidate JWT at index %d", index)
+		logger.Debugf("validated candidate JWT at index %d", headerIndex)
 	} else {
-		logger.WithError(r.Error).Errorf("failed to validate candidate JWT at index %d", index)
+		logger.WithError(r.Error).Errorf("failed to validate candidate JWT at index %d", headerIndex)
 	}
 }
 
@@ -108,20 +113,260 @@ func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
 
-// Process handles primary JWT authentication using external token issuers.
+// Process handles primary and secondary JWT authentication using external token issuers.
 func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
-	return a.process(context)
+	if context.GetPrimaryIdentity() == nil {
+		return a.ProcessPrimary(context)
+	}
+	return a.ProcessSecondary(context)
+}
+
+// ProcessPrimary handles the first-factor phase of external JWT authentication. It retrieves
+// all candidate external bearer tokens from the security token context, selects the first one
+// that passes issuer, audience, and identity-claim checks, and returns an AuthResultIssuer on
+// success. Specific error types are returned to indicate missing, expired, or invalid tokens.
+func (a *AuthModuleExtJwt) ProcessPrimary(context AuthContext) (AuthResult, error) {
+	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
+
+	bundle := &AuthBundle{
+		Identity: context.GetPrimaryIdentity(),
+	}
+
+	if bundle.Identity != nil {
+		return nil, errors.New("primary identity already set, cannot process again")
+	}
+
+	authType := "primary"
+
+	ids := make([]string, 0, 5)
+	issuers := make([]string, 0, 5)
+
+	tokenIssuerCache := a.env.GetTokenIssuerCache()
+	tokenIssuerCache.IterateExternalIssuers(func(issuer common.TokenIssuer) bool {
+		if issuer.IsEnabled() {
+			ids = append(ids, issuer.Id())
+			issuers = append(issuers, issuer.ExpectedIssuer())
+		}
+
+		return true
+	})
+
+	if len(ids) == 0 {
+		return nil, errorz.NewUnauthorized()
+	}
+
+	securityTokenCtx := context.GetSecurityTokenCtx()
+	externalTokens := securityTokenCtx.GetExternalTokens()
+
+	if len(externalTokens) == 0 {
+		reason := "encountered 0 candidate JWTs, verification cannot occur"
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedPrimaryExtTokenMissing(ids, issuers)
+	}
+
+	var candidates []*common.BearerTokenHeader
+	for _, externalToken := range externalTokens {
+		if externalToken.TokenIssuer != nil && externalToken.TokenIssuer.IsEnabled() {
+			candidates = append(candidates, externalToken)
+		}
+	}
+
+	if len(candidates) == 0 {
+		reason := fmt.Sprintf("encountered %d candidate JWTs, none of which were valid for %s authentication", len(externalTokens), authType)
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedPrimaryExtTokenMissing(ids, issuers)
+	}
+
+	var primaryResult *AuthTokenVerificationResult
+
+	candidatesHaveExpired := false
+	candidatesHaveInvalidSignature := false
+
+	for _, candidate := range candidates {
+
+		if !candidate.IsValid() {
+			if candidate.TokenVerificationResult.TokenIsExpired() {
+				candidatesHaveExpired = true
+			} else {
+				candidatesHaveInvalidSignature = true
+			}
+			continue
+		}
+
+		verifyResult := a.verifyTokenClaims(candidate)
+
+		if verifyResult.Error != nil {
+			continue
+		}
+
+		if verifyResult.Identity == nil {
+			continue
+		}
+
+		if verifyResult.AuthPolicy == nil {
+			continue
+		}
+
+		primaryResult = verifyResult
+		break
+	}
+
+	if primaryResult == nil {
+		reason := fmt.Sprintf("encountered %d candidate JWTs, none of which were valid for %s authentication", len(candidates), authType)
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		if candidatesHaveExpired {
+			return nil, errorz.NewUnauthorizedPrimaryExtTokenExpired(ids, issuers)
+		}
+
+		if candidatesHaveInvalidSignature {
+			return nil, errorz.NewUnauthorizedPrimaryExtTokenInvalid(ids, issuers)
+		}
+
+		return nil, errorz.NewUnauthorizedPrimaryExtTokenMissing(ids, issuers)
+	}
+
+	//success
+	result := &AuthResultIssuer{
+		AuthResultBase: AuthResultBase{
+			authPolicy: primaryResult.AuthPolicy,
+			identity:   primaryResult.Identity,
+			env:        a.env,
+		},
+		Issuer: primaryResult.BearerToken.TokenIssuer,
+	}
+
+	bundle.Identity = primaryResult.Identity
+	bundle.AuthPolicy = primaryResult.AuthPolicy
+	bundle.TokenIssuer = primaryResult.BearerToken.TokenIssuer
+
+	successEvent := a.NewAuthEventSuccess(context, bundle)
+	a.DispatchEvent(successEvent)
+
+	primaryResult.LogResult(logger)
+
+	return result, nil
+
 }
 
 // ProcessSecondary handles secondary JWT authentication using external token issuers.
 func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, error) {
-	return a.process(context)
+	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
+
+	bundle := &AuthBundle{
+		Identity: context.GetPrimaryIdentity(),
+	}
+
+	if bundle.Identity == nil {
+		return nil, errors.New("primary identity not set, cannot process again")
+	}
+
+	authPolicy, err := a.env.GetManagers().AuthPolicy.Read(bundle.Identity.AuthPolicyId)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not read auth policy by id %s: %w", bundle.Identity.AuthPolicyId, err)
+	}
+
+	bundle.AuthPolicy = authPolicy
+
+	id := stringz.OrEmpty(bundle.AuthPolicy.Secondary.RequiredExtJwtSigner)
+	if id == "" {
+		return nil, errors.New("no secondary auth policy configured, expected one")
+	}
+
+	securityTokenCtx := context.GetSecurityTokenCtx()
+	candidateToken := securityTokenCtx.GetExternalTokenForExtJwtSigner(id)
+
+	extJwt, err := a.env.GetManagers().ExternalJwtSigner.Read(id)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not read required external jwt by id %s: %w", id, err)
+	}
+
+	ids := []string{
+		id,
+	}
+
+	issuers := []string{
+		stringz.OrEmpty(extJwt.Issuer),
+	}
+
+	if candidateToken == nil {
+		reason := "encountered 0 candidate JWTs, verification cannot occur"
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenMissing(ids, issuers)
+	}
+
+	if candidateToken.TokenVerificationResult == nil {
+		reason := "encountered a candidate but no verification result was found"
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenMissing(ids, issuers)
+	}
+
+	if candidateToken.TokenIssuer == nil {
+		reason := "encountered a candidate but no token issuer was found"
+		failEvent := a.NewAuthEventFailure(context, bundle, reason)
+
+		logger.Error(reason)
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenMissing(ids, issuers)
+	}
+
+	if !candidateToken.TokenVerificationResult.IsValid() {
+		failEvent := a.NewAuthEventFailure(context, bundle, candidateToken.TokenVerificationResult.Error.Error())
+
+		logger.Error(candidateToken.TokenVerificationResult.Error.Error())
+		a.DispatchEvent(failEvent)
+
+		if candidateToken.TokenVerificationResult.TokenIsExpired() {
+			return nil, errorz.NewUnauthorizedSecondaryExtTokenExpired(ids, issuers)
+		}
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenInvalid(ids, issuers)
+	}
+
+	//success
+	bundle.TokenIssuer = candidateToken.TokenIssuer
+
+	result := &AuthResultIssuer{
+		AuthResultBase: AuthResultBase{
+			authPolicy: bundle.AuthPolicy,
+			identity:   bundle.Identity,
+			env:        a.env,
+		},
+		Issuer: candidateToken.TokenIssuer,
+	}
+
+	successEvent := a.NewAuthEventSuccess(context, bundle)
+	a.DispatchEvent(successEvent)
+
+	return result, nil
+
 }
 
 // AuthResultIssuer represents a successful JWT authentication result from an external token issuer.
 type AuthResultIssuer struct {
 	AuthResultBase
-	Issuer TokenIssuer
+	Issuer common.TokenIssuer
 }
 
 // IsSuccessful returns true if the token issuer and identity are both present.
@@ -157,181 +402,72 @@ func (a *AuthResultIssuer) Authenticator() *Authenticator {
 	return authenticator
 }
 
-// process attempts to locate a JWT and ExtJwtSigner that  verifies it. If context.GetPrimaryIdentity()==nil, this will be
-// processed as a secondary authentication factor.
-func (a *AuthModuleExtJwt) process(context AuthContext) (AuthResult, error) {
-	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
-
-	bundle := &AuthBundle{
-		Identity: context.GetPrimaryIdentity(),
+// verifyTokenClaims validates the issuer and audience claims of a pre-parsed bearer token,
+// then resolves the associated identity and auth policy using the configured claim selectors.
+// It does not perform signature verification — that is expected to have been done by the
+// SecurityTokenCtx. An AuthTokenVerificationResult with a non-nil Error indicates failure.
+func (a *AuthModuleExtJwt) verifyTokenClaims(token *common.BearerTokenHeader) *AuthTokenVerificationResult {
+	result := &AuthTokenVerificationResult{
+		BearerToken: token,
 	}
 
-	authType := "secondary"
-	if bundle.Identity == nil {
-		authType = "primary"
-	}
+	issuer := token.Issuer()
 
-	headers := context.GetHeaders()
-	candidateTokens := headers.GetStrings(AuthorizationHeader)
-
-	var verifyResults []*AuthTokenVerificationResult
-
-	if len(candidateTokens) == 0 {
-		reason := "encountered 0 candidate JWTs, verification cannot occur"
-		failEvent := a.NewAuthEventFailure(context, bundle, reason)
-
-		logger.Error(reason)
-		a.DispatchEvent(failEvent)
-
-		return nil, apierror.NewInvalidAuth()
-	}
-
-	for i, candidateToken := range candidateTokens {
-		candidateToken = strings.TrimSpace(candidateToken)
-		if !strings.HasPrefix(candidateToken, "Bearer ") {
-			verifyResult := &AuthTokenVerificationResult{
-				Error: errors.New("authorization header did not not start with Bearer"),
-			}
-			verifyResults = append(verifyResults, verifyResult)
-			continue
-		}
-
-		candidateToken = strings.TrimPrefix(candidateToken, "Bearer ")
-
-		verifyResult := a.verify(context, candidateToken)
-
-		if verifyResult.Error == nil {
-			//success
-			result := &AuthResultIssuer{
-				AuthResultBase: AuthResultBase{
-					authPolicy: verifyResult.AuthPolicy,
-					identity:   verifyResult.Identity,
-					env:        a.env,
-				},
-				Issuer: verifyResult.TokenIssuer,
-			}
-
-			bundle.Identity = verifyResult.Identity
-			bundle.AuthPolicy = verifyResult.AuthPolicy
-			bundle.TokenIssuer = verifyResult.TokenIssuer
-
-			successEvent := a.NewAuthEventSuccess(context, bundle)
-			a.DispatchEvent(successEvent)
-
-			verifyResult.LogResult(logger, i)
-
-			return result, nil
-		} else {
-			verifyResults = append(verifyResults, verifyResult)
-		}
-	}
-
-	logger.Errorf("encountered %d candidate and all failed to validate for %s authentication, see the following log messages", len(candidateTokens), authType)
-	for i, result := range verifyResults {
-		result.LogResult(logger, i)
-	}
-
-	reason := fmt.Sprintf("encountered %d candidate JWTs and all failed to validate for %s authentication", len(verifyResults), authType)
-	failEvent := a.NewAuthEventFailure(context, bundle, reason)
-	a.DispatchEvent(failEvent)
-
-	return nil, apierror.NewInvalidAuth()
-}
-
-func (a *AuthModuleExtJwt) verifyAsPrimary(authPolicy *AuthPolicy, tokenIssuer TokenIssuer) error {
-	if !authPolicy.Primary.ExtJwt.Allowed {
-		return errors.New("primary external jwt authentication on auth policy is disabled")
-	}
-
-	if len(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners) == 0 {
-		//allow any valid JWT
-		return nil
-	}
-
-	for _, allowedId := range authPolicy.Primary.ExtJwt.AllowedExtJwtSigners {
-		if allowedId == tokenIssuer.Id() {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("allowed issuers does not contain the external jwt id: %s, expected one of: %v", tokenIssuer.Id(), authPolicy.Primary.ExtJwt.AllowedExtJwtSigners)
-}
-
-func (a *AuthModuleExtJwt) verify(context AuthContext, jwtStr string) *AuthTokenVerificationResult {
-	result := &AuthTokenVerificationResult{}
-
-	targetIdentity := context.GetPrimaryIdentity()
-	isPrimary := targetIdentity == nil
-
-	var err error
-	result.TokenVerificationResult, err = a.env.GetTokenIssuerCache().VerifyTokenByInspection(jwtStr)
-
-	if err != nil {
-		result.Error = fmt.Errorf("jwt failed validation: %w", err)
+	if issuer == "" {
+		result.Error = errors.New("token claims did not contain an issuer")
 		return result
 	}
 
-	if !result.IsValid() {
-		result.Error = errors.New("authorization failed, jwt did not pass verification")
+	if issuer != token.TokenIssuer.ExpectedIssuer() {
+		result.Error = fmt.Errorf("token issuer [%s] does not match expected issuer [%s]", token.TokenIssuer.Id(), token.TokenIssuer.ExpectedIssuer())
+		return result
+	}
+
+	audience := token.Audience()
+
+	if len(audience) == 0 {
+		result.Error = errors.New("token claims did not contain an audience")
+		return result
+	}
+
+	if !stringz.Contains(audience, token.TokenIssuer.ExpectedAudience()) {
+		result.Error = fmt.Errorf("token audience [%s] does not match expected audience [%s]", audience, token.TokenIssuer.ExpectedAudience())
 		return result
 	}
 
 	var authPolicy *AuthPolicy
+	var err error
 
 	claimIdLookupMethod := ""
-	if result.TokenIssuer.UseExternalId() {
+
+	if token.TokenIssuer.UseExternalId() {
 		claimIdLookupMethod = "external id"
-		authPolicy, result.Identity, err = getAuthPolicyByExternalId(a.env, AuthMethodExtJwt, "", result.IdClaimValue)
+		authPolicy, result.Identity, err = getAuthPolicyByExternalId(a.env, AuthMethodExtJwt, "", token.TokenVerificationResult.IdClaimValue)
 	} else {
 		claimIdLookupMethod = "identity id"
-		authPolicy, result.Identity, err = getAuthPolicyByIdentityId(a.env, AuthMethodExtJwt, "", result.IdClaimValue)
+		authPolicy, result.Identity, err = getAuthPolicyByIdentityId(a.env, AuthMethodExtJwt, "", token.TokenVerificationResult.IdClaimValue)
 	}
 
 	if err != nil {
-		result.Error = fmt.Errorf("error during authentication policy and identity lookup by claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, result.IdClaimValue, err)
+		result.Error = fmt.Errorf("error during authentication policy and identity lookup by claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, token.TokenVerificationResult.IdClaimValue, err)
 		return result
 	}
 
 	if authPolicy == nil {
-		result.Error = fmt.Errorf("no authentication policy found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, result.IdClaimValue, err)
+		result.Error = fmt.Errorf("no authentication policy found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, token.TokenVerificationResult.IdClaimValue, err)
 		return result
 	}
 
 	result.AuthPolicy = authPolicy
 
 	if result.Identity == nil {
-		result.Error = fmt.Errorf("no identity found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, result.IdClaimValue, err)
-		return result
-	}
-
-	if !isPrimary && targetIdentity.Id != result.Identity.Id {
-		result.Error = fmt.Errorf("jwt mapped to identity [%s - %s], which does not match the current sessions identity [%s - %s]", result.Identity.Id, result.Identity.Name, targetIdentity.Id, targetIdentity.Name)
+		result.Error = fmt.Errorf("no identity found for claims type [%s] and claim id [%s]: %w", claimIdLookupMethod, token.TokenVerificationResult.IdClaimValue, err)
 		return result
 	}
 
 	if result.Identity.Disabled {
 		result.Error = fmt.Errorf("the identity [%s] is disabled, disabledAt %v, disabledUntil: %v", result.Identity.Id, result.Identity.DisabledAt, result.Identity.DisabledUntil)
 		return result
-	}
-
-	if isPrimary {
-		err = a.verifyAsPrimary(authPolicy, result.TokenIssuer)
-
-		if err != nil {
-			result.Error = fmt.Errorf("primary external jwt processing failed on authentication policy [%s]: %w", authPolicy.Id, err)
-			return result
-		}
-
-	} else {
-		if authPolicy.Secondary.RequiredExtJwtSigner == nil {
-			result.Error = fmt.Errorf("secondary external jwt authentication on authentication policy [%s] is not configured", authPolicy.Id)
-			return result
-		}
-
-		if result.TokenIssuer.Id() != *authPolicy.Secondary.RequiredExtJwtSigner {
-			result.Error = fmt.Errorf("secondary external jwt authentication failed on authentication policy [%s]: the required ext-jwt signer [%s] did not match the validating id [%s]", authPolicy.Id, *authPolicy.Secondary.RequiredExtJwtSigner, result.TokenIssuer.Id())
-			return result
-		}
 	}
 
 	return result

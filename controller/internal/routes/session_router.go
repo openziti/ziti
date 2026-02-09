@@ -96,6 +96,13 @@ func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *SessionRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Managers.Session.GetStore())
@@ -103,7 +110,7 @@ func (r *SessionRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) 
 			return nil, err
 		}
 
-		result, err := ae.Managers.Session.PublicQueryForIdentity(rc.Identity, query)
+		result, err := ae.Managers.Session.PublicQueryForIdentity(identity, query)
 		if err != nil {
 			return nil, err
 		}
@@ -127,9 +134,16 @@ func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *SessionRouter) DetailClient(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		service, err := ae.Managers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
+		service, err := ae.Managers.Session.ReadForIdentity(id, apiSession.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -144,19 +158,37 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *SessionRouter) DeleteClient(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		return ae.Managers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId, rc.NewChangeContext())
+		return ae.Managers.Session.DeleteForIdentity(id, apiSession.IdentityId, rc.NewChangeContext())
 	})
 }
 
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params clientSession.CreateSessionParams) {
 	start := time.Now()
 
-	// if not JWT-based auth, still create a durable legacy session
-	isLegacy := rc.Claims == nil
+	apiSession, err := rc.SecurityCtx.GetApiSession()
 
-	entity := MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session)
-	jwtStr, err := ae.Managers.Session.CreateJwt(entity, isLegacy)
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	entity := MapCreateSessionToModel(identity.Id, apiSession.Id, params.Session)
+	jwtStr, err := ae.Managers.Session.CreateJwt(entity, rc.HasLegacySecurityToken())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -175,9 +207,9 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 			BaseEntity: rest_model.BaseEntity{
 				ID: &entity.Id,
 			},
-			APISessionID: &rc.ApiSession.Id,
+			APISessionID: &apiSession.Id,
 			EdgeRouters:  edgeRouters,
-			IdentityID:   &rc.Identity.Id,
+			IdentityID:   &identity.Id,
 			ServiceID:    &entity.ServiceId,
 			Token:        &jwtStr,
 			Type:         &sessionType,
@@ -185,7 +217,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 		Meta: &rest_model.Meta{},
 	}
 
-	if isLegacy {
+	if rc.HasLegacySecurityToken() {
 		_, err = ae.Managers.Session.Create(entity, rc.NewChangeContext())
 		if err != nil {
 			rc.RespondWithError(err)

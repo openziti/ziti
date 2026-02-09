@@ -36,16 +36,16 @@ import (
 )
 
 // CreateDatabaseSnapshotHandlerFunc turns a function with the right signature into a create database snapshot handler
-type CreateDatabaseSnapshotHandlerFunc func(CreateDatabaseSnapshotParams, interface{}) middleware.Responder
+type CreateDatabaseSnapshotHandlerFunc func(CreateDatabaseSnapshotParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CreateDatabaseSnapshotHandlerFunc) Handle(params CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+func (fn CreateDatabaseSnapshotHandlerFunc) Handle(params CreateDatabaseSnapshotParams, principal any) middleware.Responder {
 	return fn(params, principal)
 }
 
 // CreateDatabaseSnapshotHandler interface for that can handle valid create database snapshot params
 type CreateDatabaseSnapshotHandler interface {
-	Handle(CreateDatabaseSnapshotParams, interface{}) middleware.Responder
+	Handle(CreateDatabaseSnapshotParams, any) middleware.Responder
 }
 
 // NewCreateDatabaseSnapshot creates a new http.Handler for the create database snapshot operation
@@ -53,12 +53,12 @@ func NewCreateDatabaseSnapshot(ctx *middleware.Context, handler CreateDatabaseSn
 	return &CreateDatabaseSnapshot{Context: ctx, Handler: handler}
 }
 
-/* CreateDatabaseSnapshot swagger:route POST /database Database createDatabaseSnapshot
+/*
+	CreateDatabaseSnapshot swagger:route POST /database Database createDatabaseSnapshot
 
-Create a new database snapshot
+# Create a new database snapshot
 
 Create a new database snapshot. Requires admin access.
-
 */
 type CreateDatabaseSnapshot struct {
 	Context *middleware.Context
@@ -79,9 +79,9 @@ func (o *CreateDatabaseSnapshot) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	if aCtx != nil {
 		*r = *aCtx
 	}
-	var principal interface{}
+	var principal any
 	if uprinc != nil {
-		principal = uprinc.(interface{}) // this is really a interface{}, I promise
+		principal = uprinc
 	}
 
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
@@ -90,6 +90,7 @@ func (o *CreateDatabaseSnapshot) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 
 	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

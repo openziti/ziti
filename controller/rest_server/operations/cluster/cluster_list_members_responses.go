@@ -40,7 +40,8 @@ import (
 // ClusterListMembersOKCode is the HTTP code returned for type ClusterListMembersOK
 const ClusterListMembersOKCode int = 200
 
-/*ClusterListMembersOK A response to a cluster list-members request
+/*
+ClusterListMembersOK A response to a cluster list-members request
 
 swagger:response clusterListMembersOK
 */
@@ -84,7 +85,8 @@ func (o *ClusterListMembersOK) WriteResponse(rw http.ResponseWriter, producer ru
 // ClusterListMembersBadRequestCode is the HTTP code returned for type ClusterListMembersBadRequest
 const ClusterListMembersBadRequestCode int = 400
 
-/*ClusterListMembersBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+ClusterListMembersBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response clusterListMembersBadRequest
 */
@@ -128,7 +130,8 @@ func (o *ClusterListMembersBadRequest) WriteResponse(rw http.ResponseWriter, pro
 // ClusterListMembersUnauthorizedCode is the HTTP code returned for type ClusterListMembersUnauthorized
 const ClusterListMembersUnauthorizedCode int = 401
 
-/*ClusterListMembersUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ClusterListMembersUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response clusterListMembersUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *ClusterListMembersUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // ClusterListMembersTooManyRequestsCode is the HTTP code returned for type ClusterListMembersTooManyRequests
 const ClusterListMembersTooManyRequestsCode int = 429
 
-/*ClusterListMembersTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+ClusterListMembersTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response clusterListMembersTooManyRequests
 */

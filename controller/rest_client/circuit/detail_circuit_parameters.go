@@ -76,10 +76,12 @@ func NewDetailCircuitParamsWithHTTPClient(client *http.Client) *DetailCircuitPar
 	}
 }
 
-/* DetailCircuitParams contains all the parameters to send to the API endpoint
-   for the detail circuit operation.
+/*
+DetailCircuitParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the detail circuit operation.
+
+	Typically these are written to a http.Request.
 */
 type DetailCircuitParams struct {
 

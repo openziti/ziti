@@ -36,16 +36,16 @@ import (
 )
 
 // UpdateRouterHandlerFunc turns a function with the right signature into a update router handler
-type UpdateRouterHandlerFunc func(UpdateRouterParams) middleware.Responder
+type UpdateRouterHandlerFunc func(UpdateRouterParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn UpdateRouterHandlerFunc) Handle(params UpdateRouterParams) middleware.Responder {
-	return fn(params)
+func (fn UpdateRouterHandlerFunc) Handle(params UpdateRouterParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // UpdateRouterHandler interface for that can handle valid update router params
 type UpdateRouterHandler interface {
-	Handle(UpdateRouterParams) middleware.Responder
+	Handle(UpdateRouterParams, any) middleware.Responder
 }
 
 // NewUpdateRouter creates a new http.Handler for the update router operation
@@ -53,12 +53,12 @@ func NewUpdateRouter(ctx *middleware.Context, handler UpdateRouterHandler) *Upda
 	return &UpdateRouter{Context: ctx, Handler: handler}
 }
 
-/* UpdateRouter swagger:route PUT /routers/{id} Router updateRouter
+/*
+	UpdateRouter swagger:route PUT /routers/{id} Router updateRouter
 
-Update all fields on a router
+# Update all fields on a router
 
 Update all fields on a router by id. Requires admin access.
-
 */
 type UpdateRouter struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *UpdateRouter) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewUpdateRouterParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

@@ -36,16 +36,16 @@ import (
 )
 
 // DeleteLinkHandlerFunc turns a function with the right signature into a delete link handler
-type DeleteLinkHandlerFunc func(DeleteLinkParams) middleware.Responder
+type DeleteLinkHandlerFunc func(DeleteLinkParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DeleteLinkHandlerFunc) Handle(params DeleteLinkParams) middleware.Responder {
-	return fn(params)
+func (fn DeleteLinkHandlerFunc) Handle(params DeleteLinkParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // DeleteLinkHandler interface for that can handle valid delete link params
 type DeleteLinkHandler interface {
-	Handle(DeleteLinkParams) middleware.Responder
+	Handle(DeleteLinkParams, any) middleware.Responder
 }
 
 // NewDeleteLink creates a new http.Handler for the delete link operation
@@ -53,12 +53,12 @@ func NewDeleteLink(ctx *middleware.Context, handler DeleteLinkHandler) *DeleteLi
 	return &DeleteLink{Context: ctx, Handler: handler}
 }
 
-/* DeleteLink swagger:route DELETE /links/{id} Link deleteLink
+/*
+	DeleteLink swagger:route DELETE /links/{id} Link deleteLink
 
-Delete a link
+# Delete a link
 
 Delete a link by id. Requires admin access.
-
 */
 type DeleteLink struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *DeleteLink) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewDeleteLinkParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

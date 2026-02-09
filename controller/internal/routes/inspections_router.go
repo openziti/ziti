@@ -44,7 +44,7 @@ func NewInspectRouter() *InspectRouter {
 }
 
 func (r *InspectRouter) Register(ae *env.AppEnv) {
-	ae.FabricApi.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
+	ae.FabricApi.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams, _ any) middleware.Responder {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, permissions.Ops, permissions.Read)
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Inspect(ae, rc, params.Request) }, params.HTTPRequest, "", "", permissions.OpsNoReadOnlyAccess())
 	})

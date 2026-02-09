@@ -30,7 +30,6 @@ package circuit
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/go-openapi/errors"
@@ -55,7 +54,6 @@ func NewDeleteCircuitParams() DeleteCircuitParams {
 //
 // swagger:parameters deleteCircuit
 type DeleteCircuitParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -64,6 +62,7 @@ type DeleteCircuitParams struct {
 	  In: path
 	*/
 	ID string
+
 	/*A circuit delete object
 	  In: body
 	*/
@@ -85,7 +84,9 @@ func (o *DeleteCircuitParams) BindRequest(r *http.Request, route *middleware.Mat
 	}
 
 	if runtime.HasBody(r) {
-		defer r.Body.Close()
+		defer func() {
+			_ = r.Body.Close()
+		}()
 		var body rest_model.CircuitDelete
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			res = append(res, errors.NewParseError("options", "body", "", err))
@@ -95,7 +96,7 @@ func (o *DeleteCircuitParams) BindRequest(r *http.Request, route *middleware.Mat
 				res = append(res, err)
 			}
 
-			ctx := validate.WithOperationRequest(context.Background())
+			ctx := validate.WithOperationRequest(r.Context())
 			if err := body.ContextValidate(ctx, route.Formats); err != nil {
 				res = append(res, err)
 			}

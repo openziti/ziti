@@ -73,7 +73,7 @@ func runSnapshotDb(o *dbSnapshotOptions) error {
 			Path: path,
 		},
 		Context: context.Background(),
-	})
+	}, nil)
 
 	if err != nil {
 		return err

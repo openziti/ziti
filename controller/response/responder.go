@@ -58,7 +58,7 @@ func (self EdgeResponseMapper) toRestModel(e *errorz.ApiError, requestId string)
 	pfxlog.Logger().WithError(e).WithField("code", e.Code).Debug("returning error to REST API")
 	ret := &rest_model.APIError{
 		Args:      nil,
-		Code:      e.Code,
+		Code:      e.AppCode,
 		Message:   e.Message,
 		RequestID: requestId,
 	}

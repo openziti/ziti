@@ -145,9 +145,22 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	//always admin
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		identity := rc.Identity
 		if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
 			identity, _ = ae.Managers.Identity.Read(asId)
 			if identity == nil {
@@ -156,11 +169,15 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 			if identity == nil {
 				return nil, boltz.NewNotFoundError("identity", "id or name", asId)
 			}
-			rc.Identity = identity
+			err := rc.SecurityCtx.MasqueradeAsIdentity(identity)
+
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// allow overriding config types
-		configTypes := rc.ApiSession.ConfigTypes
+		configTypes := apiSession.ConfigTypes
 		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
 			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), identity.Id)
 		}
@@ -213,13 +230,28 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestContext, params clientService.ListServicesParams) {
 	//never in an admin capacity
 	start := time.Now()
+
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 
 		// allow overriding config types
-		configTypes := rc.ApiSession.ConfigTypes
+		configTypes := apiSession.ConfigTypes
 		if len(params.ConfigTypes) > 0 {
-			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(params.ConfigTypes, rc.Identity.Id)
+			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(params.ConfigTypes, identity.Id)
 		}
 
 		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
@@ -227,7 +259,7 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 			return nil, err
 		}
 
-		result, err := ae.Managers.EdgeService.PublicQueryForIdentity(rc.Identity, configTypes, query)
+		result, err := ae.Managers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -244,9 +276,16 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (r *ServiceRouter) DetailClient(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes, false)
+		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, apiSession.IdentityId, apiSession.ConfigTypes, false)
 		if err != nil {
 			return nil, err
 		}
@@ -255,8 +294,15 @@ func (r *ServiceRouter) DetailClient(ae *env.AppEnv, rc *response.RequestContext
 }
 
 func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, nil, true)
+		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, apiSession.IdentityId, nil, true)
 		if err != nil {
 			return nil, err
 		}
@@ -303,6 +349,13 @@ func (r *ServiceRouter) listManagementTerminators(ae *env.AppEnv, rc *response.R
 }
 
 func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.RequestContext) {
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	serviceId, err := rc.GetEntityId()
 
 	if err != nil {
@@ -310,7 +363,7 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 		return
 	}
 
-	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil, false)
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, identity.Id, nil, false)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -351,6 +404,20 @@ func (r *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestCont
 }
 
 func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, params clientService.ListServiceEdgeRoutersParams) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	serviceId, err := rc.GetEntityId()
 
 	if err != nil {
@@ -359,7 +426,7 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 	}
 
 	if params.SessionToken != nil {
-		_, err := ae.ValidateServiceAccessToken(*params.SessionToken, &rc.ApiSession.Id)
+		_, err := ae.ValidateServiceAccessToken(*params.SessionToken, &apiSession.Id)
 		if err != nil {
 			apiErr := errorz.NewUnauthorized()
 			apiErr.Cause = err
@@ -368,7 +435,7 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 		}
 	}
 
-	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil, false)
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, identity.Id, nil, false)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -390,9 +457,15 @@ func (r *ServiceRouter) listClientEdgeRouters(ae *env.AppEnv, rc *response.Reque
 }
 
 func getServiceEdgeRouters(ae *env.AppEnv, rc *response.RequestContext, serviceId string) (*rest_model.ServiceEdgeRouters, error) {
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		return nil, err
+	}
+
 	edgeRouters := &rest_model.ServiceEdgeRouters{}
 
-	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(rc.Identity.Id, serviceId)
+	edgeRoutersForSvc, err := ae.Managers.EdgeRouter.ListForIdentityAndService(identity.Id, serviceId)
 	if err != nil {
 		return nil, err
 	}

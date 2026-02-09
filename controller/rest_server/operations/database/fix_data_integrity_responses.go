@@ -40,7 +40,8 @@ import (
 // FixDataIntegrityAcceptedCode is the HTTP code returned for type FixDataIntegrityAccepted
 const FixDataIntegrityAcceptedCode int = 202
 
-/*FixDataIntegrityAccepted Base empty response
+/*
+FixDataIntegrityAccepted Base empty response
 
 swagger:response fixDataIntegrityAccepted
 */
@@ -84,7 +85,8 @@ func (o *FixDataIntegrityAccepted) WriteResponse(rw http.ResponseWriter, produce
 // FixDataIntegrityUnauthorizedCode is the HTTP code returned for type FixDataIntegrityUnauthorized
 const FixDataIntegrityUnauthorizedCode int = 401
 
-/*FixDataIntegrityUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+FixDataIntegrityUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response fixDataIntegrityUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *FixDataIntegrityUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // FixDataIntegrityTooManyRequestsCode is the HTTP code returned for type FixDataIntegrityTooManyRequests
 const FixDataIntegrityTooManyRequestsCode int = 429
 
-/*FixDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+FixDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response fixDataIntegrityTooManyRequests
 */

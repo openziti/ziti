@@ -76,10 +76,12 @@ func NewDetailTerminatorParamsWithHTTPClient(client *http.Client) *DetailTermina
 	}
 }
 
-/* DetailTerminatorParams contains all the parameters to send to the API endpoint
-   for the detail terminator operation.
+/*
+DetailTerminatorParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the detail terminator operation.
+
+	Typically these are written to a http.Request.
 */
 type DetailTerminatorParams struct {
 

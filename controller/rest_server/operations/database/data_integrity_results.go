@@ -36,16 +36,16 @@ import (
 )
 
 // DataIntegrityResultsHandlerFunc turns a function with the right signature into a data integrity results handler
-type DataIntegrityResultsHandlerFunc func(DataIntegrityResultsParams, interface{}) middleware.Responder
+type DataIntegrityResultsHandlerFunc func(DataIntegrityResultsParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DataIntegrityResultsHandlerFunc) Handle(params DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+func (fn DataIntegrityResultsHandlerFunc) Handle(params DataIntegrityResultsParams, principal any) middleware.Responder {
 	return fn(params, principal)
 }
 
 // DataIntegrityResultsHandler interface for that can handle valid data integrity results params
 type DataIntegrityResultsHandler interface {
-	Handle(DataIntegrityResultsParams, interface{}) middleware.Responder
+	Handle(DataIntegrityResultsParams, any) middleware.Responder
 }
 
 // NewDataIntegrityResults creates a new http.Handler for the data integrity results operation
@@ -53,12 +53,12 @@ func NewDataIntegrityResults(ctx *middleware.Context, handler DataIntegrityResul
 	return &DataIntegrityResults{Context: ctx, Handler: handler}
 }
 
-/* DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
+/*
+	DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
 
-Returns any results found from in-progress integrity checks
+# Returns any results found from in-progress integrity checks
 
 Returns any results found from in-progress integrity checks. Requires admin access.
-
 */
 type DataIntegrityResults struct {
 	Context *middleware.Context
@@ -79,9 +79,9 @@ func (o *DataIntegrityResults) ServeHTTP(rw http.ResponseWriter, r *http.Request
 	if aCtx != nil {
 		*r = *aCtx
 	}
-	var principal interface{}
+	var principal any
 	if uprinc != nil {
-		principal = uprinc.(interface{}) // this is really a interface{}, I promise
+		principal = uprinc
 	}
 
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
@@ -90,6 +90,7 @@ func (o *DataIntegrityResults) ServeHTTP(rw http.ResponseWriter, r *http.Request
 	}
 
 	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

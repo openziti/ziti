@@ -30,6 +30,8 @@ package circuit
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type DetailCircuitReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *DetailCircuitReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *DetailCircuitReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewDetailCircuitOK()
@@ -72,7 +74,7 @@ func (o *DetailCircuitReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /circuits/{id}] detailCircuit", response, response.Code())
 	}
 }
 
@@ -81,7 +83,8 @@ func NewDetailCircuitOK() *DetailCircuitOK {
 	return &DetailCircuitOK{}
 }
 
-/* DetailCircuitOK describes a response with status code 200, with default header values.
+/*
+DetailCircuitOK describes a response with status code 200, with default header values.
 
 A single circuit
 */
@@ -89,9 +92,46 @@ type DetailCircuitOK struct {
 	Payload *rest_model.DetailCircuitEnvelope
 }
 
-func (o *DetailCircuitOK) Error() string {
-	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this detail circuit o k response has a 2xx status code
+func (o *DetailCircuitOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this detail circuit o k response has a 3xx status code
+func (o *DetailCircuitOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit o k response has a 4xx status code
+func (o *DetailCircuitOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this detail circuit o k response has a 5xx status code
+func (o *DetailCircuitOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit o k response a status code equal to that given
+func (o *DetailCircuitOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the detail circuit o k response
+func (o *DetailCircuitOK) Code() int {
+	return 200
+}
+
+func (o *DetailCircuitOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK %s", 200, payload)
+}
+
+func (o *DetailCircuitOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK %s", 200, payload)
+}
+
 func (o *DetailCircuitOK) GetPayload() *rest_model.DetailCircuitEnvelope {
 	return o.Payload
 }
@@ -101,7 +141,7 @@ func (o *DetailCircuitOK) readResponse(response runtime.ClientResponse, consumer
 	o.Payload = new(rest_model.DetailCircuitEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -113,7 +153,8 @@ func NewDetailCircuitUnauthorized() *DetailCircuitUnauthorized {
 	return &DetailCircuitUnauthorized{}
 }
 
-/* DetailCircuitUnauthorized describes a response with status code 401, with default header values.
+/*
+DetailCircuitUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -121,9 +162,46 @@ type DetailCircuitUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailCircuitUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this detail circuit unauthorized response has a 2xx status code
+func (o *DetailCircuitUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail circuit unauthorized response has a 3xx status code
+func (o *DetailCircuitUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit unauthorized response has a 4xx status code
+func (o *DetailCircuitUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail circuit unauthorized response has a 5xx status code
+func (o *DetailCircuitUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit unauthorized response a status code equal to that given
+func (o *DetailCircuitUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the detail circuit unauthorized response
+func (o *DetailCircuitUnauthorized) Code() int {
+	return 401
+}
+
+func (o *DetailCircuitUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized %s", 401, payload)
+}
+
+func (o *DetailCircuitUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized %s", 401, payload)
+}
+
 func (o *DetailCircuitUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -133,7 +211,7 @@ func (o *DetailCircuitUnauthorized) readResponse(response runtime.ClientResponse
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -145,7 +223,8 @@ func NewDetailCircuitNotFound() *DetailCircuitNotFound {
 	return &DetailCircuitNotFound{}
 }
 
-/* DetailCircuitNotFound describes a response with status code 404, with default header values.
+/*
+DetailCircuitNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -153,9 +232,46 @@ type DetailCircuitNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailCircuitNotFound) Error() string {
-	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this detail circuit not found response has a 2xx status code
+func (o *DetailCircuitNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail circuit not found response has a 3xx status code
+func (o *DetailCircuitNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit not found response has a 4xx status code
+func (o *DetailCircuitNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail circuit not found response has a 5xx status code
+func (o *DetailCircuitNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit not found response a status code equal to that given
+func (o *DetailCircuitNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the detail circuit not found response
+func (o *DetailCircuitNotFound) Code() int {
+	return 404
+}
+
+func (o *DetailCircuitNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitNotFound %s", 404, payload)
+}
+
+func (o *DetailCircuitNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitNotFound %s", 404, payload)
+}
+
 func (o *DetailCircuitNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -165,7 +281,7 @@ func (o *DetailCircuitNotFound) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -177,7 +293,8 @@ func NewDetailCircuitTooManyRequests() *DetailCircuitTooManyRequests {
 	return &DetailCircuitTooManyRequests{}
 }
 
-/* DetailCircuitTooManyRequests describes a response with status code 429, with default header values.
+/*
+DetailCircuitTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -185,9 +302,46 @@ type DetailCircuitTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailCircuitTooManyRequests) Error() string {
-	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this detail circuit too many requests response has a 2xx status code
+func (o *DetailCircuitTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail circuit too many requests response has a 3xx status code
+func (o *DetailCircuitTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit too many requests response has a 4xx status code
+func (o *DetailCircuitTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail circuit too many requests response has a 5xx status code
+func (o *DetailCircuitTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit too many requests response a status code equal to that given
+func (o *DetailCircuitTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the detail circuit too many requests response
+func (o *DetailCircuitTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *DetailCircuitTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitTooManyRequests %s", 429, payload)
+}
+
+func (o *DetailCircuitTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitTooManyRequests %s", 429, payload)
+}
+
 func (o *DetailCircuitTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -197,7 +351,7 @@ func (o *DetailCircuitTooManyRequests) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

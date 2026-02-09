@@ -40,7 +40,8 @@ import (
 // DetailTerminatorOKCode is the HTTP code returned for type DetailTerminatorOK
 const DetailTerminatorOKCode int = 200
 
-/*DetailTerminatorOK A single terminator
+/*
+DetailTerminatorOK A single terminator
 
 swagger:response detailTerminatorOK
 */
@@ -84,7 +85,8 @@ func (o *DetailTerminatorOK) WriteResponse(rw http.ResponseWriter, producer runt
 // DetailTerminatorUnauthorizedCode is the HTTP code returned for type DetailTerminatorUnauthorized
 const DetailTerminatorUnauthorizedCode int = 401
 
-/*DetailTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DetailTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response detailTerminatorUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *DetailTerminatorUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // DetailTerminatorNotFoundCode is the HTTP code returned for type DetailTerminatorNotFound
 const DetailTerminatorNotFoundCode int = 404
 
-/*DetailTerminatorNotFound The requested resource does not exist
+/*
+DetailTerminatorNotFound The requested resource does not exist
 
 swagger:response detailTerminatorNotFound
 */
@@ -172,7 +175,8 @@ func (o *DetailTerminatorNotFound) WriteResponse(rw http.ResponseWriter, produce
 // DetailTerminatorTooManyRequestsCode is the HTTP code returned for type DetailTerminatorTooManyRequests
 const DetailTerminatorTooManyRequestsCode int = 429
 
-/*DetailTerminatorTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+DetailTerminatorTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response detailTerminatorTooManyRequests
 */

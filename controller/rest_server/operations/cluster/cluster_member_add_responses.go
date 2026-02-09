@@ -40,7 +40,8 @@ import (
 // ClusterMemberAddOKCode is the HTTP code returned for type ClusterMemberAddOK
 const ClusterMemberAddOKCode int = 200
 
-/*ClusterMemberAddOK Base empty response
+/*
+ClusterMemberAddOK Base empty response
 
 swagger:response clusterMemberAddOK
 */
@@ -84,7 +85,8 @@ func (o *ClusterMemberAddOK) WriteResponse(rw http.ResponseWriter, producer runt
 // ClusterMemberAddBadRequestCode is the HTTP code returned for type ClusterMemberAddBadRequest
 const ClusterMemberAddBadRequestCode int = 400
 
-/*ClusterMemberAddBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+ClusterMemberAddBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response clusterMemberAddBadRequest
 */
@@ -128,7 +130,8 @@ func (o *ClusterMemberAddBadRequest) WriteResponse(rw http.ResponseWriter, produ
 // ClusterMemberAddUnauthorizedCode is the HTTP code returned for type ClusterMemberAddUnauthorized
 const ClusterMemberAddUnauthorizedCode int = 401
 
-/*ClusterMemberAddUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ClusterMemberAddUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response clusterMemberAddUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *ClusterMemberAddUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // ClusterMemberAddTooManyRequestsCode is the HTTP code returned for type ClusterMemberAddTooManyRequests
 const ClusterMemberAddTooManyRequestsCode int = 429
 
-/*ClusterMemberAddTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+ClusterMemberAddTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response clusterMemberAddTooManyRequests
 */
@@ -216,7 +220,8 @@ func (o *ClusterMemberAddTooManyRequests) WriteResponse(rw http.ResponseWriter, 
 // ClusterMemberAddServiceUnavailableCode is the HTTP code returned for type ClusterMemberAddServiceUnavailable
 const ClusterMemberAddServiceUnavailableCode int = 503
 
-/*ClusterMemberAddServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+ClusterMemberAddServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response clusterMemberAddServiceUnavailable
 */

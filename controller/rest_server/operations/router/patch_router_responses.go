@@ -40,7 +40,8 @@ import (
 // PatchRouterOKCode is the HTTP code returned for type PatchRouterOK
 const PatchRouterOKCode int = 200
 
-/*PatchRouterOK The patch request was successful and the resource has been altered
+/*
+PatchRouterOK The patch request was successful and the resource has been altered
 
 swagger:response patchRouterOK
 */
@@ -84,7 +85,8 @@ func (o *PatchRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 // PatchRouterBadRequestCode is the HTTP code returned for type PatchRouterBadRequest
 const PatchRouterBadRequestCode int = 400
 
-/*PatchRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+PatchRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response patchRouterBadRequest
 */
@@ -128,7 +130,8 @@ func (o *PatchRouterBadRequest) WriteResponse(rw http.ResponseWriter, producer r
 // PatchRouterUnauthorizedCode is the HTTP code returned for type PatchRouterUnauthorized
 const PatchRouterUnauthorizedCode int = 401
 
-/*PatchRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+PatchRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response patchRouterUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *PatchRouterUnauthorized) WriteResponse(rw http.ResponseWriter, producer
 // PatchRouterNotFoundCode is the HTTP code returned for type PatchRouterNotFound
 const PatchRouterNotFoundCode int = 404
 
-/*PatchRouterNotFound The requested resource does not exist
+/*
+PatchRouterNotFound The requested resource does not exist
 
 swagger:response patchRouterNotFound
 */
@@ -216,7 +220,8 @@ func (o *PatchRouterNotFound) WriteResponse(rw http.ResponseWriter, producer run
 // PatchRouterTooManyRequestsCode is the HTTP code returned for type PatchRouterTooManyRequests
 const PatchRouterTooManyRequestsCode int = 429
 
-/*PatchRouterTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+PatchRouterTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response patchRouterTooManyRequests
 */
@@ -260,7 +265,8 @@ func (o *PatchRouterTooManyRequests) WriteResponse(rw http.ResponseWriter, produ
 // PatchRouterServiceUnavailableCode is the HTTP code returned for type PatchRouterServiceUnavailable
 const PatchRouterServiceUnavailableCode int = 503
 
-/*PatchRouterServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+PatchRouterServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response patchRouterServiceUnavailable
 */

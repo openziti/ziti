@@ -30,6 +30,8 @@ package service
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type CreateServiceReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *CreateServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *CreateServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 201:
 		result := NewCreateServiceCreated()
@@ -78,7 +80,7 @@ func (o *CreateServiceReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /services] createService", response, response.Code())
 	}
 }
 
@@ -87,7 +89,8 @@ func NewCreateServiceCreated() *CreateServiceCreated {
 	return &CreateServiceCreated{}
 }
 
-/* CreateServiceCreated describes a response with status code 201, with default header values.
+/*
+CreateServiceCreated describes a response with status code 201, with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
@@ -95,9 +98,46 @@ type CreateServiceCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateServiceCreated) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceCreated  %+v", 201, o.Payload)
+// IsSuccess returns true when this create service created response has a 2xx status code
+func (o *CreateServiceCreated) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this create service created response has a 3xx status code
+func (o *CreateServiceCreated) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create service created response has a 4xx status code
+func (o *CreateServiceCreated) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this create service created response has a 5xx status code
+func (o *CreateServiceCreated) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create service created response a status code equal to that given
+func (o *CreateServiceCreated) IsCode(code int) bool {
+	return code == 201
+}
+
+// Code gets the status code for the create service created response
+func (o *CreateServiceCreated) Code() int {
+	return 201
+}
+
+func (o *CreateServiceCreated) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceCreated %s", 201, payload)
+}
+
+func (o *CreateServiceCreated) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceCreated %s", 201, payload)
+}
+
 func (o *CreateServiceCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
@@ -107,7 +147,7 @@ func (o *CreateServiceCreated) readResponse(response runtime.ClientResponse, con
 	o.Payload = new(rest_model.CreateEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -119,7 +159,8 @@ func NewCreateServiceBadRequest() *CreateServiceBadRequest {
 	return &CreateServiceBadRequest{}
 }
 
-/* CreateServiceBadRequest describes a response with status code 400, with default header values.
+/*
+CreateServiceBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -127,9 +168,46 @@ type CreateServiceBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateServiceBadRequest) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this create service bad request response has a 2xx status code
+func (o *CreateServiceBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create service bad request response has a 3xx status code
+func (o *CreateServiceBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create service bad request response has a 4xx status code
+func (o *CreateServiceBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create service bad request response has a 5xx status code
+func (o *CreateServiceBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create service bad request response a status code equal to that given
+func (o *CreateServiceBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the create service bad request response
+func (o *CreateServiceBadRequest) Code() int {
+	return 400
+}
+
+func (o *CreateServiceBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceBadRequest %s", 400, payload)
+}
+
+func (o *CreateServiceBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceBadRequest %s", 400, payload)
+}
+
 func (o *CreateServiceBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +217,7 @@ func (o *CreateServiceBadRequest) readResponse(response runtime.ClientResponse, 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -151,7 +229,8 @@ func NewCreateServiceUnauthorized() *CreateServiceUnauthorized {
 	return &CreateServiceUnauthorized{}
 }
 
-/* CreateServiceUnauthorized describes a response with status code 401, with default header values.
+/*
+CreateServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -159,9 +238,46 @@ type CreateServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateServiceUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this create service unauthorized response has a 2xx status code
+func (o *CreateServiceUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create service unauthorized response has a 3xx status code
+func (o *CreateServiceUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create service unauthorized response has a 4xx status code
+func (o *CreateServiceUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create service unauthorized response has a 5xx status code
+func (o *CreateServiceUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create service unauthorized response a status code equal to that given
+func (o *CreateServiceUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the create service unauthorized response
+func (o *CreateServiceUnauthorized) Code() int {
+	return 401
+}
+
+func (o *CreateServiceUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceUnauthorized %s", 401, payload)
+}
+
+func (o *CreateServiceUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceUnauthorized %s", 401, payload)
+}
+
 func (o *CreateServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -171,7 +287,7 @@ func (o *CreateServiceUnauthorized) readResponse(response runtime.ClientResponse
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -183,7 +299,8 @@ func NewCreateServiceTooManyRequests() *CreateServiceTooManyRequests {
 	return &CreateServiceTooManyRequests{}
 }
 
-/* CreateServiceTooManyRequests describes a response with status code 429, with default header values.
+/*
+CreateServiceTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -191,9 +308,46 @@ type CreateServiceTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateServiceTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this create service too many requests response has a 2xx status code
+func (o *CreateServiceTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create service too many requests response has a 3xx status code
+func (o *CreateServiceTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create service too many requests response has a 4xx status code
+func (o *CreateServiceTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this create service too many requests response has a 5xx status code
+func (o *CreateServiceTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this create service too many requests response a status code equal to that given
+func (o *CreateServiceTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the create service too many requests response
+func (o *CreateServiceTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *CreateServiceTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceTooManyRequests %s", 429, payload)
+}
+
+func (o *CreateServiceTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceTooManyRequests %s", 429, payload)
+}
+
 func (o *CreateServiceTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -203,7 +357,7 @@ func (o *CreateServiceTooManyRequests) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -215,7 +369,8 @@ func NewCreateServiceServiceUnavailable() *CreateServiceServiceUnavailable {
 	return &CreateServiceServiceUnavailable{}
 }
 
-/* CreateServiceServiceUnavailable describes a response with status code 503, with default header values.
+/*
+CreateServiceServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -223,9 +378,46 @@ type CreateServiceServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CreateServiceServiceUnavailable) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this create service service unavailable response has a 2xx status code
+func (o *CreateServiceServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this create service service unavailable response has a 3xx status code
+func (o *CreateServiceServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this create service service unavailable response has a 4xx status code
+func (o *CreateServiceServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this create service service unavailable response has a 5xx status code
+func (o *CreateServiceServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this create service service unavailable response a status code equal to that given
+func (o *CreateServiceServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the create service service unavailable response
+func (o *CreateServiceServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *CreateServiceServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceServiceUnavailable %s", 503, payload)
+}
+
+func (o *CreateServiceServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /services][%d] createServiceServiceUnavailable %s", 503, payload)
+}
+
 func (o *CreateServiceServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -235,7 +427,7 @@ func (o *CreateServiceServiceUnavailable) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

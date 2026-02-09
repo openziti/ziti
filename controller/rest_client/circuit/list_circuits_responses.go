@@ -30,6 +30,8 @@ package circuit
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type ListCircuitsReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *ListCircuitsReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *ListCircuitsReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewListCircuitsOK()
@@ -66,7 +68,7 @@ func (o *ListCircuitsReader) ReadResponse(response runtime.ClientResponse, consu
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /circuits] listCircuits", response, response.Code())
 	}
 }
 
@@ -75,7 +77,8 @@ func NewListCircuitsOK() *ListCircuitsOK {
 	return &ListCircuitsOK{}
 }
 
-/* ListCircuitsOK describes a response with status code 200, with default header values.
+/*
+ListCircuitsOK describes a response with status code 200, with default header values.
 
 A list of circuits
 */
@@ -83,9 +86,46 @@ type ListCircuitsOK struct {
 	Payload *rest_model.ListCircuitsEnvelope
 }
 
-func (o *ListCircuitsOK) Error() string {
-	return fmt.Sprintf("[GET /circuits][%d] listCircuitsOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this list circuits o k response has a 2xx status code
+func (o *ListCircuitsOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this list circuits o k response has a 3xx status code
+func (o *ListCircuitsOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list circuits o k response has a 4xx status code
+func (o *ListCircuitsOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list circuits o k response has a 5xx status code
+func (o *ListCircuitsOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list circuits o k response a status code equal to that given
+func (o *ListCircuitsOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the list circuits o k response
+func (o *ListCircuitsOK) Code() int {
+	return 200
+}
+
+func (o *ListCircuitsOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsOK %s", 200, payload)
+}
+
+func (o *ListCircuitsOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsOK %s", 200, payload)
+}
+
 func (o *ListCircuitsOK) GetPayload() *rest_model.ListCircuitsEnvelope {
 	return o.Payload
 }
@@ -95,7 +135,7 @@ func (o *ListCircuitsOK) readResponse(response runtime.ClientResponse, consumer 
 	o.Payload = new(rest_model.ListCircuitsEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -107,7 +147,8 @@ func NewListCircuitsUnauthorized() *ListCircuitsUnauthorized {
 	return &ListCircuitsUnauthorized{}
 }
 
-/* ListCircuitsUnauthorized describes a response with status code 401, with default header values.
+/*
+ListCircuitsUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -115,9 +156,46 @@ type ListCircuitsUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ListCircuitsUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /circuits][%d] listCircuitsUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this list circuits unauthorized response has a 2xx status code
+func (o *ListCircuitsUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this list circuits unauthorized response has a 3xx status code
+func (o *ListCircuitsUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list circuits unauthorized response has a 4xx status code
+func (o *ListCircuitsUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list circuits unauthorized response has a 5xx status code
+func (o *ListCircuitsUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list circuits unauthorized response a status code equal to that given
+func (o *ListCircuitsUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the list circuits unauthorized response
+func (o *ListCircuitsUnauthorized) Code() int {
+	return 401
+}
+
+func (o *ListCircuitsUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsUnauthorized %s", 401, payload)
+}
+
+func (o *ListCircuitsUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsUnauthorized %s", 401, payload)
+}
+
 func (o *ListCircuitsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -127,7 +205,7 @@ func (o *ListCircuitsUnauthorized) readResponse(response runtime.ClientResponse,
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -139,7 +217,8 @@ func NewListCircuitsTooManyRequests() *ListCircuitsTooManyRequests {
 	return &ListCircuitsTooManyRequests{}
 }
 
-/* ListCircuitsTooManyRequests describes a response with status code 429, with default header values.
+/*
+ListCircuitsTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -147,9 +226,46 @@ type ListCircuitsTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ListCircuitsTooManyRequests) Error() string {
-	return fmt.Sprintf("[GET /circuits][%d] listCircuitsTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this list circuits too many requests response has a 2xx status code
+func (o *ListCircuitsTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this list circuits too many requests response has a 3xx status code
+func (o *ListCircuitsTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list circuits too many requests response has a 4xx status code
+func (o *ListCircuitsTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list circuits too many requests response has a 5xx status code
+func (o *ListCircuitsTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list circuits too many requests response a status code equal to that given
+func (o *ListCircuitsTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the list circuits too many requests response
+func (o *ListCircuitsTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *ListCircuitsTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsTooManyRequests %s", 429, payload)
+}
+
+func (o *ListCircuitsTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /circuits][%d] listCircuitsTooManyRequests %s", 429, payload)
+}
+
 func (o *ListCircuitsTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -159,7 +275,7 @@ func (o *ListCircuitsTooManyRequests) readResponse(response runtime.ClientRespon
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

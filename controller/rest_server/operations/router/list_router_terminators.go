@@ -36,16 +36,16 @@ import (
 )
 
 // ListRouterTerminatorsHandlerFunc turns a function with the right signature into a list router terminators handler
-type ListRouterTerminatorsHandlerFunc func(ListRouterTerminatorsParams) middleware.Responder
+type ListRouterTerminatorsHandlerFunc func(ListRouterTerminatorsParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ListRouterTerminatorsHandlerFunc) Handle(params ListRouterTerminatorsParams) middleware.Responder {
-	return fn(params)
+func (fn ListRouterTerminatorsHandlerFunc) Handle(params ListRouterTerminatorsParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ListRouterTerminatorsHandler interface for that can handle valid list router terminators params
 type ListRouterTerminatorsHandler interface {
-	Handle(ListRouterTerminatorsParams) middleware.Responder
+	Handle(ListRouterTerminatorsParams, any) middleware.Responder
 }
 
 // NewListRouterTerminators creates a new http.Handler for the list router terminators operation
@@ -53,13 +53,12 @@ func NewListRouterTerminators(ctx *middleware.Context, handler ListRouterTermina
 	return &ListRouterTerminators{Context: ctx, Handler: handler}
 }
 
-/* ListRouterTerminators swagger:route GET /routers/{id}/terminators Router listRouterTerminators
+/*
+	ListRouterTerminators swagger:route GET /routers/{id}/terminators Router listRouterTerminators
 
-List of terminators assigned to a router
+# List of terminators assigned to a router
 
 Retrieves a list of terminator resources that are assigned specific router; supports filtering, sorting, and pagination.
-
-
 */
 type ListRouterTerminators struct {
 	Context *middleware.Context
@@ -72,12 +71,26 @@ func (o *ListRouterTerminators) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 		*r = *rCtx
 	}
 	var Params = NewListRouterTerminatorsParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

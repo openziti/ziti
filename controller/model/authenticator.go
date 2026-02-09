@@ -25,6 +25,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/event"
 )
@@ -37,6 +38,7 @@ type AuthResult interface {
 	AuthPolicy() *AuthPolicy
 	IsSuccessful() bool
 	ImproperClientCertChain() bool
+	AdditionalHeaders() map[string][]string
 }
 
 type AuthProcessor interface {
@@ -82,6 +84,12 @@ type AuthContext interface {
 
 	// SetPrimaryIdentity sets the identity already verified by a primary authentication method, used during secondary methods
 	SetPrimaryIdentity(*Identity)
+
+	// GetSecurityTokenCtx returns the security token context associated with this request
+	GetSecurityTokenCtx() *common.SecurityTokenCtx
+
+	// SetSecurityTokenCtx sets the security token context associated with this request
+	SetSecurityTokenCtx(ctx *common.SecurityTokenCtx)
 }
 
 type AuthContextHttp struct {
@@ -94,6 +102,16 @@ type AuthContextHttp struct {
 	RemoteAddr      string
 	SdkInfo         *SdkInfo
 	EnvInfo         *EnvInfo
+
+	SecurityTokenCtx *common.SecurityTokenCtx
+}
+
+func (context *AuthContextHttp) GetSecurityTokenCtx() *common.SecurityTokenCtx {
+	return context.SecurityTokenCtx
+}
+
+func (context *AuthContextHttp) SetSecurityTokenCtx(ctx *common.SecurityTokenCtx) {
+	context.SecurityTokenCtx = ctx
 }
 
 func (context *AuthContextHttp) GetEnvInfo() *EnvInfo {
@@ -201,6 +219,11 @@ type AuthResultBase struct {
 	authPolicy              *AuthPolicy
 	improperClientCertChain bool
 	env                     Env
+	headers                 map[string][]string
+}
+
+func (a *AuthResultBase) AdditionalHeaders() map[string][]string {
+	return a.headers
 }
 
 func (a *AuthResultBase) AuthenticatorId() string {
@@ -238,7 +261,7 @@ type AuthBundle struct {
 	Authenticator           *Authenticator
 	Identity                *Identity
 	AuthPolicy              *AuthPolicy
-	TokenIssuer             TokenIssuer
+	TokenIssuer             common.TokenIssuer
 	ImproperClientCertChain bool
 }
 

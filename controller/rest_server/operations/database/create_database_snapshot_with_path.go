@@ -36,16 +36,16 @@ import (
 )
 
 // CreateDatabaseSnapshotWithPathHandlerFunc turns a function with the right signature into a create database snapshot with path handler
-type CreateDatabaseSnapshotWithPathHandlerFunc func(CreateDatabaseSnapshotWithPathParams) middleware.Responder
+type CreateDatabaseSnapshotWithPathHandlerFunc func(CreateDatabaseSnapshotWithPathParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CreateDatabaseSnapshotWithPathHandlerFunc) Handle(params CreateDatabaseSnapshotWithPathParams) middleware.Responder {
-	return fn(params)
+func (fn CreateDatabaseSnapshotWithPathHandlerFunc) Handle(params CreateDatabaseSnapshotWithPathParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // CreateDatabaseSnapshotWithPathHandler interface for that can handle valid create database snapshot with path params
 type CreateDatabaseSnapshotWithPathHandler interface {
-	Handle(CreateDatabaseSnapshotWithPathParams) middleware.Responder
+	Handle(CreateDatabaseSnapshotWithPathParams, any) middleware.Responder
 }
 
 // NewCreateDatabaseSnapshotWithPath creates a new http.Handler for the create database snapshot with path operation
@@ -53,12 +53,12 @@ func NewCreateDatabaseSnapshotWithPath(ctx *middleware.Context, handler CreateDa
 	return &CreateDatabaseSnapshotWithPath{Context: ctx, Handler: handler}
 }
 
-/* CreateDatabaseSnapshotWithPath swagger:route POST /database/snapshot Database createDatabaseSnapshotWithPath
+/*
+	CreateDatabaseSnapshotWithPath swagger:route POST /database/snapshot Database createDatabaseSnapshotWithPath
 
-Create a new database snapshot with path
+# Create a new database snapshot with path
 
 Create a new database snapshot with path. Requires admin access.
-
 */
 type CreateDatabaseSnapshotWithPath struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *CreateDatabaseSnapshotWithPath) ServeHTTP(rw http.ResponseWriter, r *ht
 		*r = *rCtx
 	}
 	var Params = NewCreateDatabaseSnapshotWithPathParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

@@ -67,7 +67,7 @@ func (r *DatabaseRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateSnapshot(ae, rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.DatabaseCreateDatabaseSnapshotWithPathHandler = fabricDatabase.CreateDatabaseSnapshotWithPathHandlerFunc(func(params fabricDatabase.CreateDatabaseSnapshotWithPathParams) middleware.Responder {
+	ae.FabricApi.DatabaseCreateDatabaseSnapshotWithPathHandler = fabricDatabase.CreateDatabaseSnapshotWithPathHandlerFunc(func(params fabricDatabase.CreateDatabaseSnapshotWithPathParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.CreateSnapshotWithPath(ae, rc, params.Snapshot)
 		}, params.HTTPRequest, "", "")

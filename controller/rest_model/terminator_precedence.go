@@ -65,7 +65,7 @@ const (
 )
 
 // for schema
-var terminatorPrecedenceEnum []interface{}
+var terminatorPrecedenceEnum []any
 
 func init() {
 	var res []TerminatorPrecedence

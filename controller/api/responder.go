@@ -149,6 +149,12 @@ func (responder *ResponderImpl) RespondWithApiError(apiError *errorz.ApiError) {
 		w.Header().Set("content-type", "application/json")
 	}
 
+	for key, values := range apiError.Headers {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
 	w.WriteHeader(apiError.Status)
 	err := producer.Produce(w, data)
 

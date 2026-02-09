@@ -127,9 +127,9 @@ func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fi
 }
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
-	apiSession.MfaComplete = true
+	apiSession.TotpComplete = true
 
-	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(db.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
+	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(db.FieldApiSessionTotpComplete), self}, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionManager) Delete(id string, ctx *change.Context) error {
@@ -301,10 +301,10 @@ func (self *ApiSessionManager) DeleteByIdentityId(identityId string, changeCtx *
 }
 
 func (self *ApiSessionManager) SetMfaPassed(apiSession *ApiSession, changeCtx *change.Context) error {
-	apiSession.MfaComplete = true
-	apiSession.MfaRequired = true
+	apiSession.TotpComplete = true
+	apiSession.TotpRequired = true
 
-	if err := self.UpdateWithFieldChecker(apiSession, boltz.MapFieldChecker{db.FieldApiSessionMfaComplete: struct{}{}, db.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
+	if err := self.UpdateWithFieldChecker(apiSession, boltz.MapFieldChecker{db.FieldApiSessionTotpComplete: struct{}{}, db.FieldApiSessionTotpRequired: struct{}{}}, changeCtx); err != nil {
 		pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
 		return err
 	}

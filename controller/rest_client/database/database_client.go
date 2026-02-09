@@ -33,12 +33,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new database API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new database API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new database API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -49,7 +75,7 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
@@ -58,7 +84,7 @@ type ClientService interface {
 
 	CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotOK, error)
 
-	CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error)
+	CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error)
 
 	DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DataIntegrityResultsOK, error)
 
@@ -68,12 +94,12 @@ type ClientService interface {
 }
 
 /*
-  CheckDataIntegrity starts a data integrity scan on the datastore
+CheckDataIntegrity starts a data integrity scan on the datastore
 
-  Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
+Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 */
 func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckDataIntegrityAccepted, error) {
-	// TODO: Validate the params before sending
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewCheckDataIntegrityParams()
 	}
@@ -93,28 +119,33 @@ func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo r
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*CheckDataIntegrityAccepted)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for checkDataIntegrity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  CreateDatabaseSnapshot creates a new database snapshot
+CreateDatabaseSnapshot creates a new database snapshot
 
-  Create a new database snapshot. Requires admin access.
+Create a new database snapshot. Requires admin access.
 */
 func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotOK, error) {
-	// TODO: Validate the params before sending
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewCreateDatabaseSnapshotParams()
 	}
@@ -134,28 +165,33 @@ func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, au
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*CreateDatabaseSnapshotOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createDatabaseSnapshot: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  CreateDatabaseSnapshotWithPath creates a new database snapshot with path
+CreateDatabaseSnapshotWithPath creates a new database snapshot with path
 
-  Create a new database snapshot with path. Requires admin access.
+Create a new database snapshot with path. Requires admin access.
 */
-func (a *Client) CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWithPathParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotWithPathOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewCreateDatabaseSnapshotWithPathParams()
 	}
@@ -168,34 +204,40 @@ func (a *Client) CreateDatabaseSnapshotWithPath(params *CreateDatabaseSnapshotWi
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &CreateDatabaseSnapshotWithPathReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*CreateDatabaseSnapshotWithPathOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createDatabaseSnapshotWithPath: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  DataIntegrityResults returns any results found from in progress integrity checks
+DataIntegrityResults returns any results found from in progress integrity checks
 
-  Returns any results found from in-progress integrity checks. Requires admin access.
+Returns any results found from in-progress integrity checks. Requires admin access.
 */
 func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DataIntegrityResultsOK, error) {
-	// TODO: Validate the params before sending
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDataIntegrityResultsParams()
 	}
@@ -215,28 +257,33 @@ func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authIn
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DataIntegrityResultsOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for dataIntegrityResults: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
+FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
 
-  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
+Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
 */
 func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*FixDataIntegrityAccepted, error) {
-	// TODO: Validate the params before sending
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewFixDataIntegrityParams()
 	}
@@ -256,17 +303,22 @@ func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runti
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*FixDataIntegrityAccepted)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for fixDataIntegrity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }

@@ -40,7 +40,8 @@ import (
 // ClusterMemberRemoveOKCode is the HTTP code returned for type ClusterMemberRemoveOK
 const ClusterMemberRemoveOKCode int = 200
 
-/*ClusterMemberRemoveOK Base empty response
+/*
+ClusterMemberRemoveOK Base empty response
 
 swagger:response clusterMemberRemoveOK
 */
@@ -84,7 +85,8 @@ func (o *ClusterMemberRemoveOK) WriteResponse(rw http.ResponseWriter, producer r
 // ClusterMemberRemoveBadRequestCode is the HTTP code returned for type ClusterMemberRemoveBadRequest
 const ClusterMemberRemoveBadRequestCode int = 400
 
-/*ClusterMemberRemoveBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+ClusterMemberRemoveBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response clusterMemberRemoveBadRequest
 */
@@ -128,7 +130,8 @@ func (o *ClusterMemberRemoveBadRequest) WriteResponse(rw http.ResponseWriter, pr
 // ClusterMemberRemoveUnauthorizedCode is the HTTP code returned for type ClusterMemberRemoveUnauthorized
 const ClusterMemberRemoveUnauthorizedCode int = 401
 
-/*ClusterMemberRemoveUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ClusterMemberRemoveUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response clusterMemberRemoveUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *ClusterMemberRemoveUnauthorized) WriteResponse(rw http.ResponseWriter, 
 // ClusterMemberRemoveNotFoundCode is the HTTP code returned for type ClusterMemberRemoveNotFound
 const ClusterMemberRemoveNotFoundCode int = 404
 
-/*ClusterMemberRemoveNotFound The requested resource does not exist
+/*
+ClusterMemberRemoveNotFound The requested resource does not exist
 
 swagger:response clusterMemberRemoveNotFound
 */
@@ -216,7 +220,8 @@ func (o *ClusterMemberRemoveNotFound) WriteResponse(rw http.ResponseWriter, prod
 // ClusterMemberRemoveTooManyRequestsCode is the HTTP code returned for type ClusterMemberRemoveTooManyRequests
 const ClusterMemberRemoveTooManyRequestsCode int = 429
 
-/*ClusterMemberRemoveTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+ClusterMemberRemoveTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response clusterMemberRemoveTooManyRequests
 */
@@ -260,7 +265,8 @@ func (o *ClusterMemberRemoveTooManyRequests) WriteResponse(rw http.ResponseWrite
 // ClusterMemberRemoveServiceUnavailableCode is the HTTP code returned for type ClusterMemberRemoveServiceUnavailable
 const ClusterMemberRemoveServiceUnavailableCode int = 503
 
-/*ClusterMemberRemoveServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+ClusterMemberRemoveServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response clusterMemberRemoveServiceUnavailable
 */

@@ -46,23 +46,23 @@ func NewClusterRouter() *ClusterRouter {
 }
 
 func (r *ClusterRouter) Register(ae *env.AppEnv) {
-	ae.FabricApi.ClusterClusterListMembersHandler = cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams) middleware.Responder {
+	ae.FabricApi.ClusterClusterListMembersHandler = cluster.ClusterListMembersHandlerFunc(func(params cluster.ClusterListMembersParams, _ any) middleware.Responder {
 		return ae.IsAllowed(r.listMembers, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ClusterClusterMemberAddHandler = cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams) middleware.Responder {
+	ae.FabricApi.ClusterClusterMemberAddHandler = cluster.ClusterMemberAddHandlerFunc(func(params cluster.ClusterMemberAddParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.addMember(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ClusterClusterMemberRemoveHandler = cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams) middleware.Responder {
+	ae.FabricApi.ClusterClusterMemberRemoveHandler = cluster.ClusterMemberRemoveHandlerFunc(func(params cluster.ClusterMemberRemoveParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.removeMember(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ClusterClusterTransferLeadershipHandler = cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams) middleware.Responder {
+	ae.FabricApi.ClusterClusterTransferLeadershipHandler = cluster.ClusterTransferLeadershipHandlerFunc(func(params cluster.ClusterTransferLeadershipParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.transferLeadership(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAdmin())

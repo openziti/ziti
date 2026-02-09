@@ -36,16 +36,16 @@ import (
 )
 
 // PatchLinkHandlerFunc turns a function with the right signature into a patch link handler
-type PatchLinkHandlerFunc func(PatchLinkParams) middleware.Responder
+type PatchLinkHandlerFunc func(PatchLinkParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn PatchLinkHandlerFunc) Handle(params PatchLinkParams) middleware.Responder {
-	return fn(params)
+func (fn PatchLinkHandlerFunc) Handle(params PatchLinkParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // PatchLinkHandler interface for that can handle valid patch link params
 type PatchLinkHandler interface {
-	Handle(PatchLinkParams) middleware.Responder
+	Handle(PatchLinkParams, any) middleware.Responder
 }
 
 // NewPatchLink creates a new http.Handler for the patch link operation
@@ -53,12 +53,12 @@ func NewPatchLink(ctx *middleware.Context, handler PatchLinkHandler) *PatchLink 
 	return &PatchLink{Context: ctx, Handler: handler}
 }
 
-/* PatchLink swagger:route PATCH /links/{id} Link patchLink
+/*
+	PatchLink swagger:route PATCH /links/{id} Link patchLink
 
-Update the supplied fields on a link
+# Update the supplied fields on a link
 
 Update the supplied fields on a link. Requires admin access.
-
 */
 type PatchLink struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *PatchLink) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewPatchLinkParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

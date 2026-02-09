@@ -50,7 +50,6 @@ func NewDeleteLinkParams() DeleteLinkParams {
 //
 // swagger:parameters deleteLink
 type DeleteLinkParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

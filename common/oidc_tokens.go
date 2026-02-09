@@ -207,6 +207,19 @@ func (r *AccessClaims) ConfigTypesAsMap() map[string]struct{} {
 	return result
 }
 
+// MarshalJSON produces a single flat JSON object that merges AccessTokenClaims and CustomClaims.
+// Custom fields are written first so that standard OIDC fields from AccessTokenClaims take
+// precedence in the event of a name collision.
+func (r *AccessClaims) MarshalJSON() ([]byte, error) {
+	baseData, _ := json.Marshal(r.AccessTokenClaims)
+	customData, _ := json.Marshal(r.CustomClaims)
+
+	mapData := map[string]any{}
+	_ = json.Unmarshal(customData, &mapData)
+	_ = json.Unmarshal(baseData, &mapData)
+	return json.Marshal(mapData)
+}
+
 func (r *AccessClaims) UnmarshalJSON(raw []byte) error {
 	err := json.Unmarshal(raw, &r.AccessTokenClaims)
 	if err != nil {

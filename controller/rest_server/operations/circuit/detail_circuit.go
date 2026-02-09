@@ -36,16 +36,16 @@ import (
 )
 
 // DetailCircuitHandlerFunc turns a function with the right signature into a detail circuit handler
-type DetailCircuitHandlerFunc func(DetailCircuitParams) middleware.Responder
+type DetailCircuitHandlerFunc func(DetailCircuitParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DetailCircuitHandlerFunc) Handle(params DetailCircuitParams) middleware.Responder {
-	return fn(params)
+func (fn DetailCircuitHandlerFunc) Handle(params DetailCircuitParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // DetailCircuitHandler interface for that can handle valid detail circuit params
 type DetailCircuitHandler interface {
-	Handle(DetailCircuitParams) middleware.Responder
+	Handle(DetailCircuitParams, any) middleware.Responder
 }
 
 // NewDetailCircuit creates a new http.Handler for the detail circuit operation
@@ -53,12 +53,12 @@ func NewDetailCircuit(ctx *middleware.Context, handler DetailCircuitHandler) *De
 	return &DetailCircuit{Context: ctx, Handler: handler}
 }
 
-/* DetailCircuit swagger:route GET /circuits/{id} Circuit detailCircuit
+/*
+	DetailCircuit swagger:route GET /circuits/{id} Circuit detailCircuit
 
-Retrieves a single circuit
+# Retrieves a single circuit
 
 Retrieves a single circuit by id. Requires admin access.
-
 */
 type DetailCircuit struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *DetailCircuit) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewDetailCircuitParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

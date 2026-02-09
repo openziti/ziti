@@ -36,16 +36,16 @@ import (
 )
 
 // DetailLinkHandlerFunc turns a function with the right signature into a detail link handler
-type DetailLinkHandlerFunc func(DetailLinkParams) middleware.Responder
+type DetailLinkHandlerFunc func(DetailLinkParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DetailLinkHandlerFunc) Handle(params DetailLinkParams) middleware.Responder {
-	return fn(params)
+func (fn DetailLinkHandlerFunc) Handle(params DetailLinkParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // DetailLinkHandler interface for that can handle valid detail link params
 type DetailLinkHandler interface {
-	Handle(DetailLinkParams) middleware.Responder
+	Handle(DetailLinkParams, any) middleware.Responder
 }
 
 // NewDetailLink creates a new http.Handler for the detail link operation
@@ -53,12 +53,12 @@ func NewDetailLink(ctx *middleware.Context, handler DetailLinkHandler) *DetailLi
 	return &DetailLink{Context: ctx, Handler: handler}
 }
 
-/* DetailLink swagger:route GET /links/{id} Link detailLink
+/*
+	DetailLink swagger:route GET /links/{id} Link detailLink
 
-Retrieves a single link
+# Retrieves a single link
 
 Retrieves a single link by id. Requires admin access.
-
 */
 type DetailLink struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *DetailLink) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewDetailLinkParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

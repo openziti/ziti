@@ -85,7 +85,7 @@ func (self *validateServiceHostingAction) validateServiceHosting(cmd *cobra.Comm
 		Limit:   nil,
 		Offset:  nil,
 		Context: context,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}

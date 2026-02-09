@@ -30,6 +30,8 @@ package cluster
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type ClusterMemberAddReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *ClusterMemberAddReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *ClusterMemberAddReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewClusterMemberAddOK()
@@ -78,7 +80,7 @@ func (o *ClusterMemberAddReader) ReadResponse(response runtime.ClientResponse, c
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /cluster/add-member] clusterMemberAdd", response, response.Code())
 	}
 }
 
@@ -87,7 +89,8 @@ func NewClusterMemberAddOK() *ClusterMemberAddOK {
 	return &ClusterMemberAddOK{}
 }
 
-/* ClusterMemberAddOK describes a response with status code 200, with default header values.
+/*
+ClusterMemberAddOK describes a response with status code 200, with default header values.
 
 Base empty response
 */
@@ -95,9 +98,46 @@ type ClusterMemberAddOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *ClusterMemberAddOK) Error() string {
-	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this cluster member add o k response has a 2xx status code
+func (o *ClusterMemberAddOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this cluster member add o k response has a 3xx status code
+func (o *ClusterMemberAddOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member add o k response has a 4xx status code
+func (o *ClusterMemberAddOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster member add o k response has a 5xx status code
+func (o *ClusterMemberAddOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member add o k response a status code equal to that given
+func (o *ClusterMemberAddOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the cluster member add o k response
+func (o *ClusterMemberAddOK) Code() int {
+	return 200
+}
+
+func (o *ClusterMemberAddOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddOK %s", 200, payload)
+}
+
+func (o *ClusterMemberAddOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddOK %s", 200, payload)
+}
+
 func (o *ClusterMemberAddOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -107,7 +147,7 @@ func (o *ClusterMemberAddOK) readResponse(response runtime.ClientResponse, consu
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -119,7 +159,8 @@ func NewClusterMemberAddBadRequest() *ClusterMemberAddBadRequest {
 	return &ClusterMemberAddBadRequest{}
 }
 
-/* ClusterMemberAddBadRequest describes a response with status code 400, with default header values.
+/*
+ClusterMemberAddBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -127,9 +168,46 @@ type ClusterMemberAddBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberAddBadRequest) Error() string {
-	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this cluster member add bad request response has a 2xx status code
+func (o *ClusterMemberAddBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member add bad request response has a 3xx status code
+func (o *ClusterMemberAddBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member add bad request response has a 4xx status code
+func (o *ClusterMemberAddBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member add bad request response has a 5xx status code
+func (o *ClusterMemberAddBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member add bad request response a status code equal to that given
+func (o *ClusterMemberAddBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the cluster member add bad request response
+func (o *ClusterMemberAddBadRequest) Code() int {
+	return 400
+}
+
+func (o *ClusterMemberAddBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddBadRequest %s", 400, payload)
+}
+
+func (o *ClusterMemberAddBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddBadRequest %s", 400, payload)
+}
+
 func (o *ClusterMemberAddBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +217,7 @@ func (o *ClusterMemberAddBadRequest) readResponse(response runtime.ClientRespons
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -151,7 +229,8 @@ func NewClusterMemberAddUnauthorized() *ClusterMemberAddUnauthorized {
 	return &ClusterMemberAddUnauthorized{}
 }
 
-/* ClusterMemberAddUnauthorized describes a response with status code 401, with default header values.
+/*
+ClusterMemberAddUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -159,9 +238,46 @@ type ClusterMemberAddUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberAddUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this cluster member add unauthorized response has a 2xx status code
+func (o *ClusterMemberAddUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member add unauthorized response has a 3xx status code
+func (o *ClusterMemberAddUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member add unauthorized response has a 4xx status code
+func (o *ClusterMemberAddUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member add unauthorized response has a 5xx status code
+func (o *ClusterMemberAddUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member add unauthorized response a status code equal to that given
+func (o *ClusterMemberAddUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the cluster member add unauthorized response
+func (o *ClusterMemberAddUnauthorized) Code() int {
+	return 401
+}
+
+func (o *ClusterMemberAddUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddUnauthorized %s", 401, payload)
+}
+
+func (o *ClusterMemberAddUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddUnauthorized %s", 401, payload)
+}
+
 func (o *ClusterMemberAddUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -171,7 +287,7 @@ func (o *ClusterMemberAddUnauthorized) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -183,7 +299,8 @@ func NewClusterMemberAddTooManyRequests() *ClusterMemberAddTooManyRequests {
 	return &ClusterMemberAddTooManyRequests{}
 }
 
-/* ClusterMemberAddTooManyRequests describes a response with status code 429, with default header values.
+/*
+ClusterMemberAddTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -191,9 +308,46 @@ type ClusterMemberAddTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberAddTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this cluster member add too many requests response has a 2xx status code
+func (o *ClusterMemberAddTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member add too many requests response has a 3xx status code
+func (o *ClusterMemberAddTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member add too many requests response has a 4xx status code
+func (o *ClusterMemberAddTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member add too many requests response has a 5xx status code
+func (o *ClusterMemberAddTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member add too many requests response a status code equal to that given
+func (o *ClusterMemberAddTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the cluster member add too many requests response
+func (o *ClusterMemberAddTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *ClusterMemberAddTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddTooManyRequests %s", 429, payload)
+}
+
+func (o *ClusterMemberAddTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddTooManyRequests %s", 429, payload)
+}
+
 func (o *ClusterMemberAddTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -203,7 +357,7 @@ func (o *ClusterMemberAddTooManyRequests) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -215,7 +369,8 @@ func NewClusterMemberAddServiceUnavailable() *ClusterMemberAddServiceUnavailable
 	return &ClusterMemberAddServiceUnavailable{}
 }
 
-/* ClusterMemberAddServiceUnavailable describes a response with status code 503, with default header values.
+/*
+ClusterMemberAddServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -223,9 +378,46 @@ type ClusterMemberAddServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberAddServiceUnavailable) Error() string {
-	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this cluster member add service unavailable response has a 2xx status code
+func (o *ClusterMemberAddServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member add service unavailable response has a 3xx status code
+func (o *ClusterMemberAddServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member add service unavailable response has a 4xx status code
+func (o *ClusterMemberAddServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster member add service unavailable response has a 5xx status code
+func (o *ClusterMemberAddServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this cluster member add service unavailable response a status code equal to that given
+func (o *ClusterMemberAddServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the cluster member add service unavailable response
+func (o *ClusterMemberAddServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *ClusterMemberAddServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddServiceUnavailable %s", 503, payload)
+}
+
+func (o *ClusterMemberAddServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/add-member][%d] clusterMemberAddServiceUnavailable %s", 503, payload)
+}
+
 func (o *ClusterMemberAddServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -235,7 +427,7 @@ func (o *ClusterMemberAddServiceUnavailable) readResponse(response runtime.Clien
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

@@ -40,7 +40,8 @@ import (
 // CheckDataIntegrityAcceptedCode is the HTTP code returned for type CheckDataIntegrityAccepted
 const CheckDataIntegrityAcceptedCode int = 202
 
-/*CheckDataIntegrityAccepted Base empty response
+/*
+CheckDataIntegrityAccepted Base empty response
 
 swagger:response checkDataIntegrityAccepted
 */
@@ -84,7 +85,8 @@ func (o *CheckDataIntegrityAccepted) WriteResponse(rw http.ResponseWriter, produ
 // CheckDataIntegrityUnauthorizedCode is the HTTP code returned for type CheckDataIntegrityUnauthorized
 const CheckDataIntegrityUnauthorizedCode int = 401
 
-/*CheckDataIntegrityUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+CheckDataIntegrityUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response checkDataIntegrityUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *CheckDataIntegrityUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // CheckDataIntegrityTooManyRequestsCode is the HTTP code returned for type CheckDataIntegrityTooManyRequests
 const CheckDataIntegrityTooManyRequestsCode int = 429
 
-/*CheckDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+CheckDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response checkDataIntegrityTooManyRequests
 */

@@ -36,16 +36,16 @@ import (
 )
 
 // CreateServiceHandlerFunc turns a function with the right signature into a create service handler
-type CreateServiceHandlerFunc func(CreateServiceParams) middleware.Responder
+type CreateServiceHandlerFunc func(CreateServiceParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CreateServiceHandlerFunc) Handle(params CreateServiceParams) middleware.Responder {
-	return fn(params)
+func (fn CreateServiceHandlerFunc) Handle(params CreateServiceParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // CreateServiceHandler interface for that can handle valid create service params
 type CreateServiceHandler interface {
-	Handle(CreateServiceParams) middleware.Responder
+	Handle(CreateServiceParams, any) middleware.Responder
 }
 
 // NewCreateService creates a new http.Handler for the create service operation
@@ -53,12 +53,12 @@ func NewCreateService(ctx *middleware.Context, handler CreateServiceHandler) *Cr
 	return &CreateService{Context: ctx, Handler: handler}
 }
 
-/* CreateService swagger:route POST /services Service createService
+/*
+	CreateService swagger:route POST /services Service createService
 
-Create a service resource
+# Create a service resource
 
 Create a service resource. Requires admin access.
-
 */
 type CreateService struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *CreateService) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewCreateServiceParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

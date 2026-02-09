@@ -314,11 +314,6 @@ func init() {
     },
     "/database": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Create a new database snapshot. Requires admin access.",
         "tags": [
           "Database"
@@ -340,11 +335,6 @@ func init() {
     },
     "/database/check-data-integrity": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
         "tags": [
           "Database"
@@ -366,11 +356,6 @@ func init() {
     },
     "/database/data-integrity-results": {
       "get": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Returns any results found from in-progress integrity checks. Requires admin access.",
         "tags": [
           "Database"
@@ -392,11 +377,6 @@ func init() {
     },
     "/database/fix-data-integrity": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
@@ -2929,7 +2909,34 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     }
-  }
+  },
+  "securityDefinitions": {
+    "oauth2": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "/oidc/authorize",
+      "tokenUrl": "/oidc/token",
+      "scopes": {
+        "openid": "openid"
+      }
+    },
+    "ztSession": {
+      "description": "An API Key that is provided post authentication",
+      "type": "apiKey",
+      "name": "zt-session",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "ztSession": []
+    },
+    {
+      "oauth2": [
+        "openid"
+      ]
+    }
+  ]
 }`))
 	FlatSwaggerJSON = json.RawMessage([]byte(`{
   "consumes": [
@@ -3795,11 +3802,6 @@ func init() {
     },
     "/database": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Create a new database snapshot. Requires admin access.",
         "tags": [
           "Database"
@@ -3865,11 +3867,6 @@ func init() {
     },
     "/database/check-data-integrity": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
         "tags": [
           "Database"
@@ -3935,11 +3932,6 @@ func init() {
     },
     "/database/data-integrity-results": {
       "get": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Returns any results found from in-progress integrity checks. Requires admin access.",
         "tags": [
           "Database"
@@ -4005,11 +3997,6 @@ func init() {
     },
     "/database/fix-data-integrity": {
       "post": {
-        "security": [
-          {
-            "ztSession": []
-          }
-        ],
         "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
@@ -8736,6 +8723,33 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     }
-  }
+  },
+  "securityDefinitions": {
+    "oauth2": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "/oidc/authorize",
+      "tokenUrl": "/oidc/token",
+      "scopes": {
+        "openid": "openid"
+      }
+    },
+    "ztSession": {
+      "description": "An API Key that is provided post authentication",
+      "type": "apiKey",
+      "name": "zt-session",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "ztSession": []
+    },
+    {
+      "oauth2": [
+        "openid"
+      ]
+    }
+  ]
 }`))
 }

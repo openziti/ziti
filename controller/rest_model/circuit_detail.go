@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -164,11 +165,15 @@ func (m *CircuitDetail) validatePath(formats strfmt.Registry) error {
 
 	if m.Path != nil {
 		if err := m.Path.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("path")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("path")
 			}
+
 			return err
 		}
 	}
@@ -184,11 +189,15 @@ func (m *CircuitDetail) validateService(formats strfmt.Registry) error {
 
 	if m.Service != nil {
 		if err := m.Service.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("service")
 			}
+
 			return err
 		}
 	}
@@ -204,11 +213,15 @@ func (m *CircuitDetail) validateTerminator(formats strfmt.Registry) error {
 
 	if m.Terminator != nil {
 		if err := m.Terminator.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("terminator")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("terminator")
 			}
+
 			return err
 		}
 	}
@@ -246,12 +259,17 @@ func (m *CircuitDetail) ContextValidate(ctx context.Context, formats strfmt.Regi
 func (m *CircuitDetail) contextValidatePath(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Path != nil {
+
 		if err := m.Path.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("path")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("path")
 			}
+
 			return err
 		}
 	}
@@ -262,12 +280,17 @@ func (m *CircuitDetail) contextValidatePath(ctx context.Context, formats strfmt.
 func (m *CircuitDetail) contextValidateService(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Service != nil {
+
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("service")
 			}
+
 			return err
 		}
 	}
@@ -278,12 +301,17 @@ func (m *CircuitDetail) contextValidateService(ctx context.Context, formats strf
 func (m *CircuitDetail) contextValidateTerminator(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Terminator != nil {
+
 		if err := m.Terminator.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("terminator")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("terminator")
 			}
+
 			return err
 		}
 	}

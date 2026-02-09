@@ -36,16 +36,16 @@ import (
 )
 
 // ClusterMemberRemoveHandlerFunc turns a function with the right signature into a cluster member remove handler
-type ClusterMemberRemoveHandlerFunc func(ClusterMemberRemoveParams) middleware.Responder
+type ClusterMemberRemoveHandlerFunc func(ClusterMemberRemoveParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ClusterMemberRemoveHandlerFunc) Handle(params ClusterMemberRemoveParams) middleware.Responder {
-	return fn(params)
+func (fn ClusterMemberRemoveHandlerFunc) Handle(params ClusterMemberRemoveParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ClusterMemberRemoveHandler interface for that can handle valid cluster member remove params
 type ClusterMemberRemoveHandler interface {
-	Handle(ClusterMemberRemoveParams) middleware.Responder
+	Handle(ClusterMemberRemoveParams, any) middleware.Responder
 }
 
 // NewClusterMemberRemove creates a new http.Handler for the cluster member remove operation
@@ -53,12 +53,12 @@ func NewClusterMemberRemove(ctx *middleware.Context, handler ClusterMemberRemove
 	return &ClusterMemberRemove{Context: ctx, Handler: handler}
 }
 
-/* ClusterMemberRemove swagger:route POST /cluster/remove-member Cluster clusterMemberRemove
+/*
+	ClusterMemberRemove swagger:route POST /cluster/remove-member Cluster clusterMemberRemove
 
-Remove a member from the controller cluster
+# Remove a member from the controller cluster
 
 Remove a member from the controller cluster. Requires admin access.
-
 */
 type ClusterMemberRemove struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *ClusterMemberRemove) ServeHTTP(rw http.ResponseWriter, r *http.Request)
 		*r = *rCtx
 	}
 	var Params = NewClusterMemberRemoveParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

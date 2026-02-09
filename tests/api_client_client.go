@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -21,6 +22,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_client_api_client"
+	clientAuthentication "github.com/openziti/edge-api/rest_client_api_client/authentication"
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	clientCurrentIdentity "github.com/openziti/edge-api/rest_client_api_client/current_identity"
 	clientEnroll "github.com/openziti/edge-api/rest_client_api_client/enroll"
@@ -30,6 +33,7 @@ import (
 	"github.com/openziti/identity/certtools"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
 type ClientHelperClient struct {
@@ -141,10 +145,25 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 		return nil, fmt.Errorf("no certificates returned from enrollment")
 	}
 
+	caCerts := nfPem.PemStringToCertificates(resp.Payload.Data.Ca)
+
+	var caPool *x509.CertPool
+
+	if len(caCerts) == 0 {
+		caPool = helper.testCtx.ControllerCaPool()
+	} else {
+		caPool = x509.NewCertPool()
+		for _, caCert := range caCerts {
+			caPool.AddCert(caCert)
+		}
+	}
+
 	return &edgeApis.CertCredentials{
-		BaseCredentials: edgeApis.BaseCredentials{},
-		Certs:           certs,
-		Key:             privateKey,
+		BaseCredentials: edgeApis.BaseCredentials{
+			CaPool: caPool,
+		},
+		Certs: certs,
+		Key:   privateKey,
 	}, nil
 }
 
@@ -486,6 +505,78 @@ func (helper *ClientHelperClient) QueryCurrentApiSession() (*rest_model.CurrentA
 	return resp.Payload.Data, nil
 }
 
+func (helper *ClientHelperClient) RawOidcAuthRequest(credentials edgeApis.Credentials) (*oidc.Tokens[*oidc.IDTokenClaims], *edgeApis.OidcAuthResponses, error) {
+	httpTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:      credentials.GetCaPool(),
+			Certificates: credentials.TlsCerts(),
+		},
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	httpClient := &http.Client{
+		Transport:     httpTransport,
+		CheckRedirect: nil,
+		Timeout:       time.Second * 10,
+	}
+
+	clientRuntime := edgeApis.NewRuntime(helper.testCtx.ClientApiUrl(), rest_client_api_client.DefaultSchemes, httpClient)
+
+	apiClientTransport := &edgeApis.ApiClientTransport{
+		ClientTransport: clientRuntime,
+		ApiUrl:          helper.testCtx.ClientApiUrl(),
+	}
+
+	config := &edgeApis.EdgeOidcAuthConfig{
+		ClientTransportPool: &SingularClientTransportPool{
+			ApiClientTransport: apiClientTransport,
+		},
+		Credentials: credentials,
+		HttpClient:  httpClient,
+		RedirectUri: edgeApis.DefaultOidcRedirectUri,
+		ApiHost:     helper.testCtx.ApiHost,
+	}
+
+	oidcAuthenticator := edgeApis.NewEdgeOidcAuthenticator(config)
+
+	return oidcAuthenticator.AuthenticateWithResponses()
+}
+
+func (helper *ClientHelperClient) RawLegacyAuthRequest(credentials edgeApis.Credentials) (*clientAuthentication.AuthenticateOK, error) {
+	params := clientAuthentication.NewAuthenticateParams()
+	params.Method = string(credentials.Method())
+
+	httpTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:      credentials.GetCaPool(),
+			Certificates: credentials.TlsCerts(),
+		},
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	httpClient := &http.Client{
+		Transport:     httpTransport,
+		CheckRedirect: nil,
+		Timeout:       time.Second * 10,
+	}
+
+	params.HTTPClient = httpClient
+
+	return helper.API.Authentication.Authenticate(params, func(operation *runtime.ClientOperation) {
+		operation.AuthInfo = credentials
+	})
+}
+
 func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer, commonName string) (*x509.Certificate, crypto.Signer, error) {
 	id, _ := rand.Int(rand.Reader, big.NewInt(100000000000000000))
 	verificationCert := &x509.Certificate{
@@ -587,4 +678,52 @@ func (t *TotpProvider) Code() string {
 
 	//pad leading 0s to 6 characters
 	return fmt.Sprintf("%06d", code)
+}
+
+// SingularClientTransportPool is a transport pool that only allows a single transport to be used, implements ClientTransportPool
+type SingularClientTransportPool struct {
+	ApiClientTransport *edgeApis.ApiClientTransport
+}
+
+func (s *SingularClientTransportPool) Submit(operation *runtime.ClientOperation) (any, error) {
+	return s.ApiClientTransport.Submit(operation)
+}
+
+func (s *SingularClientTransportPool) Add(apiUrl *url.URL, transport runtime.ClientTransport) {
+	s.ApiClientTransport = &edgeApis.ApiClientTransport{
+		ClientTransport: transport,
+		ApiUrl:          apiUrl,
+	}
+}
+
+func (s *SingularClientTransportPool) Remove(apiUrl *url.URL) {
+	//do nothing
+}
+
+func (s *SingularClientTransportPool) GetActiveTransport() *edgeApis.ApiClientTransport {
+	return s.ApiClientTransport
+}
+
+func (s *SingularClientTransportPool) SetActiveTransport(transport *edgeApis.ApiClientTransport) {
+	s.ApiClientTransport = transport
+}
+
+func (s *SingularClientTransportPool) GetApiUrls() []*url.URL {
+	return []*url.URL{s.ApiClientTransport.ApiUrl}
+}
+
+func (s *SingularClientTransportPool) IterateTransportsRandomly() chan<- *edgeApis.ApiClientTransport {
+	ch := make(chan *edgeApis.ApiClientTransport, 1)
+
+	ch <- s.ApiClientTransport
+
+	return ch
+}
+
+func (s *SingularClientTransportPool) TryTransportsForOp(operation *runtime.ClientOperation) (any, error) {
+	return s.ApiClientTransport.Submit(operation)
+}
+
+func (s *SingularClientTransportPool) TryTransportForF(cb func(*edgeApis.ApiClientTransport) (any, error)) (any, error) {
+	return cb(s.ApiClientTransport)
 }

@@ -78,10 +78,12 @@ func NewClusterMemberAddParamsWithHTTPClient(client *http.Client) *ClusterMember
 	}
 }
 
-/* ClusterMemberAddParams contains all the parameters to send to the API endpoint
-   for the cluster member add operation.
+/*
+ClusterMemberAddParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the cluster member add operation.
+
+	Typically these are written to a http.Request.
 */
 type ClusterMemberAddParams struct {
 

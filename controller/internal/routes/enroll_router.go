@@ -265,7 +265,7 @@ func (ro *EnrollRouter) legacyGenericEnrollPemHandler(ae *env.AppEnv, rc *respon
 
 	if !willAcceptJson(rc.Request) {
 		rc.RespondWithError(&errorz.ApiError{
-			Code:    "UNSUPPORTED_MEDIA",
+			AppCode: "UNSUPPORTED_MEDIA",
 			Message: "No suitable accept media types were detected, supports: application/json",
 			Status:  http.StatusUnsupportedMediaType,
 		})

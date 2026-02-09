@@ -828,7 +828,7 @@ func (o *QuickstartOpts) waitForLeader() bool {
 		}
 		members, err := client.Cluster.ClusterListMembers(&cluster.ClusterListMembersParams{
 			Context: context.Background(),
-		})
+		}, nil)
 
 		if err != nil {
 			return false

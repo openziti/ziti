@@ -50,7 +50,6 @@ func NewDetailTerminatorParams() DetailTerminatorParams {
 //
 // swagger:parameters detailTerminator
 type DetailTerminatorParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

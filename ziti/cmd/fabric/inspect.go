@@ -112,7 +112,7 @@ func (self *InspectAction) inspect(appRegex string, requestValues ...string) err
 			RequestedValues: requestValues,
 		},
 		Context: context.Background(),
-	})
+	}, nil)
 
 	if err != nil {
 		return err

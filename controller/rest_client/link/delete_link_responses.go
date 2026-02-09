@@ -30,6 +30,8 @@ package link
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type DeleteLinkReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *DeleteLinkReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *DeleteLinkReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewDeleteLinkOK()
@@ -78,7 +80,7 @@ func (o *DeleteLinkReader) ReadResponse(response runtime.ClientResponse, consume
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[DELETE /links/{id}] deleteLink", response, response.Code())
 	}
 }
 
@@ -87,7 +89,8 @@ func NewDeleteLinkOK() *DeleteLinkOK {
 	return &DeleteLinkOK{}
 }
 
-/* DeleteLinkOK describes a response with status code 200, with default header values.
+/*
+DeleteLinkOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -95,9 +98,46 @@ type DeleteLinkOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *DeleteLinkOK) Error() string {
-	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this delete link o k response has a 2xx status code
+func (o *DeleteLinkOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this delete link o k response has a 3xx status code
+func (o *DeleteLinkOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link o k response has a 4xx status code
+func (o *DeleteLinkOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete link o k response has a 5xx status code
+func (o *DeleteLinkOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link o k response a status code equal to that given
+func (o *DeleteLinkOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the delete link o k response
+func (o *DeleteLinkOK) Code() int {
+	return 200
+}
+
+func (o *DeleteLinkOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK %s", 200, payload)
+}
+
+func (o *DeleteLinkOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK %s", 200, payload)
+}
+
 func (o *DeleteLinkOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -107,7 +147,7 @@ func (o *DeleteLinkOK) readResponse(response runtime.ClientResponse, consumer ru
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -119,7 +159,8 @@ func NewDeleteLinkBadRequest() *DeleteLinkBadRequest {
 	return &DeleteLinkBadRequest{}
 }
 
-/* DeleteLinkBadRequest describes a response with status code 400, with default header values.
+/*
+DeleteLinkBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -127,9 +168,46 @@ type DeleteLinkBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteLinkBadRequest) Error() string {
-	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this delete link bad request response has a 2xx status code
+func (o *DeleteLinkBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete link bad request response has a 3xx status code
+func (o *DeleteLinkBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link bad request response has a 4xx status code
+func (o *DeleteLinkBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete link bad request response has a 5xx status code
+func (o *DeleteLinkBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link bad request response a status code equal to that given
+func (o *DeleteLinkBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the delete link bad request response
+func (o *DeleteLinkBadRequest) Code() int {
+	return 400
+}
+
+func (o *DeleteLinkBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest %s", 400, payload)
+}
+
+func (o *DeleteLinkBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest %s", 400, payload)
+}
+
 func (o *DeleteLinkBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +217,7 @@ func (o *DeleteLinkBadRequest) readResponse(response runtime.ClientResponse, con
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -151,7 +229,8 @@ func NewDeleteLinkUnauthorized() *DeleteLinkUnauthorized {
 	return &DeleteLinkUnauthorized{}
 }
 
-/* DeleteLinkUnauthorized describes a response with status code 401, with default header values.
+/*
+DeleteLinkUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -159,9 +238,46 @@ type DeleteLinkUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteLinkUnauthorized) Error() string {
-	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this delete link unauthorized response has a 2xx status code
+func (o *DeleteLinkUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete link unauthorized response has a 3xx status code
+func (o *DeleteLinkUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link unauthorized response has a 4xx status code
+func (o *DeleteLinkUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete link unauthorized response has a 5xx status code
+func (o *DeleteLinkUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link unauthorized response a status code equal to that given
+func (o *DeleteLinkUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the delete link unauthorized response
+func (o *DeleteLinkUnauthorized) Code() int {
+	return 401
+}
+
+func (o *DeleteLinkUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkUnauthorized %s", 401, payload)
+}
+
+func (o *DeleteLinkUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkUnauthorized %s", 401, payload)
+}
+
 func (o *DeleteLinkUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -171,7 +287,7 @@ func (o *DeleteLinkUnauthorized) readResponse(response runtime.ClientResponse, c
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -183,7 +299,8 @@ func NewDeleteLinkTooManyRequests() *DeleteLinkTooManyRequests {
 	return &DeleteLinkTooManyRequests{}
 }
 
-/* DeleteLinkTooManyRequests describes a response with status code 429, with default header values.
+/*
+DeleteLinkTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -191,9 +308,46 @@ type DeleteLinkTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteLinkTooManyRequests) Error() string {
-	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this delete link too many requests response has a 2xx status code
+func (o *DeleteLinkTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete link too many requests response has a 3xx status code
+func (o *DeleteLinkTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link too many requests response has a 4xx status code
+func (o *DeleteLinkTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete link too many requests response has a 5xx status code
+func (o *DeleteLinkTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link too many requests response a status code equal to that given
+func (o *DeleteLinkTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the delete link too many requests response
+func (o *DeleteLinkTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *DeleteLinkTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkTooManyRequests %s", 429, payload)
+}
+
+func (o *DeleteLinkTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkTooManyRequests %s", 429, payload)
+}
+
 func (o *DeleteLinkTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -203,7 +357,7 @@ func (o *DeleteLinkTooManyRequests) readResponse(response runtime.ClientResponse
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -215,7 +369,8 @@ func NewDeleteLinkServiceUnavailable() *DeleteLinkServiceUnavailable {
 	return &DeleteLinkServiceUnavailable{}
 }
 
-/* DeleteLinkServiceUnavailable describes a response with status code 503, with default header values.
+/*
+DeleteLinkServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -223,9 +378,46 @@ type DeleteLinkServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteLinkServiceUnavailable) Error() string {
-	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this delete link service unavailable response has a 2xx status code
+func (o *DeleteLinkServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete link service unavailable response has a 3xx status code
+func (o *DeleteLinkServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link service unavailable response has a 4xx status code
+func (o *DeleteLinkServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete link service unavailable response has a 5xx status code
+func (o *DeleteLinkServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this delete link service unavailable response a status code equal to that given
+func (o *DeleteLinkServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the delete link service unavailable response
+func (o *DeleteLinkServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *DeleteLinkServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkServiceUnavailable %s", 503, payload)
+}
+
+func (o *DeleteLinkServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkServiceUnavailable %s", 503, payload)
+}
+
 func (o *DeleteLinkServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -235,7 +427,7 @@ func (o *DeleteLinkServiceUnavailable) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

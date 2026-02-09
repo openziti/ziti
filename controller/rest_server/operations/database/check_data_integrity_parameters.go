@@ -49,7 +49,6 @@ func NewCheckDataIntegrityParams() CheckDataIntegrityParams {
 //
 // swagger:parameters checkDataIntegrity
 type CheckDataIntegrityParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 }

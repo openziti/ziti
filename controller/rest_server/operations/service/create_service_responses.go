@@ -40,7 +40,8 @@ import (
 // CreateServiceCreatedCode is the HTTP code returned for type CreateServiceCreated
 const CreateServiceCreatedCode int = 201
 
-/*CreateServiceCreated The create request was successful and the resource has been added at the following location
+/*
+CreateServiceCreated The create request was successful and the resource has been added at the following location
 
 swagger:response createServiceCreated
 */
@@ -84,7 +85,8 @@ func (o *CreateServiceCreated) WriteResponse(rw http.ResponseWriter, producer ru
 // CreateServiceBadRequestCode is the HTTP code returned for type CreateServiceBadRequest
 const CreateServiceBadRequestCode int = 400
 
-/*CreateServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+CreateServiceBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response createServiceBadRequest
 */
@@ -128,7 +130,8 @@ func (o *CreateServiceBadRequest) WriteResponse(rw http.ResponseWriter, producer
 // CreateServiceUnauthorizedCode is the HTTP code returned for type CreateServiceUnauthorized
 const CreateServiceUnauthorizedCode int = 401
 
-/*CreateServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+CreateServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response createServiceUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *CreateServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // CreateServiceTooManyRequestsCode is the HTTP code returned for type CreateServiceTooManyRequests
 const CreateServiceTooManyRequestsCode int = 429
 
-/*CreateServiceTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+CreateServiceTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response createServiceTooManyRequests
 */
@@ -216,7 +220,8 @@ func (o *CreateServiceTooManyRequests) WriteResponse(rw http.ResponseWriter, pro
 // CreateServiceServiceUnavailableCode is the HTTP code returned for type CreateServiceServiceUnavailable
 const CreateServiceServiceUnavailableCode int = 503
 
-/*CreateServiceServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
+/*
+CreateServiceServiceUnavailable The request could not be completed due to the server being busy or in a temporarily bad state
 
 swagger:response createServiceServiceUnavailable
 */

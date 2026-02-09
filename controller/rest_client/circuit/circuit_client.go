@@ -33,12 +33,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new circuit API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new circuit API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new circuit API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -49,27 +75,27 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	DeleteCircuit(params *DeleteCircuitParams, opts ...ClientOption) (*DeleteCircuitOK, error)
+	DeleteCircuit(params *DeleteCircuitParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteCircuitOK, error)
 
-	DetailCircuit(params *DetailCircuitParams, opts ...ClientOption) (*DetailCircuitOK, error)
+	DetailCircuit(params *DetailCircuitParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailCircuitOK, error)
 
-	ListCircuits(params *ListCircuitsParams, opts ...ClientOption) (*ListCircuitsOK, error)
+	ListCircuits(params *ListCircuitsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListCircuitsOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-  DeleteCircuit deletes a circuit
+DeleteCircuit deletes a circuit
 
-  Delete a circuit by id. Requires admin access.
+Delete a circuit by id. Requires admin access.
 */
-func (a *Client) DeleteCircuit(params *DeleteCircuitParams, opts ...ClientOption) (*DeleteCircuitOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DeleteCircuit(params *DeleteCircuitParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteCircuitOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDeleteCircuitParams()
 	}
@@ -82,34 +108,40 @@ func (a *Client) DeleteCircuit(params *DeleteCircuitParams, opts ...ClientOption
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DeleteCircuitReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DeleteCircuitOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for deleteCircuit: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  DetailCircuit retrieves a single circuit
+DetailCircuit retrieves a single circuit
 
-  Retrieves a single circuit by id. Requires admin access.
+Retrieves a single circuit by id. Requires admin access.
 */
-func (a *Client) DetailCircuit(params *DetailCircuitParams, opts ...ClientOption) (*DetailCircuitOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DetailCircuit(params *DetailCircuitParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailCircuitOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDetailCircuitParams()
 	}
@@ -122,35 +154,40 @@ func (a *Client) DetailCircuit(params *DetailCircuitParams, opts ...ClientOption
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DetailCircuitReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DetailCircuitOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for detailCircuit: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  ListCircuits lists circuits
+ListCircuits lists circuits
 
-  Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
-
+Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
 */
-func (a *Client) ListCircuits(params *ListCircuitsParams, opts ...ClientOption) (*ListCircuitsOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) ListCircuits(params *ListCircuitsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListCircuitsOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewListCircuitsParams()
 	}
@@ -163,23 +200,29 @@ func (a *Client) ListCircuits(params *ListCircuitsParams, opts ...ClientOption) 
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &ListCircuitsReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*ListCircuitsOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listCircuits: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }

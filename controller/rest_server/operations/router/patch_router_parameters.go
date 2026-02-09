@@ -30,7 +30,7 @@ package router
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
+	stderrors "errors"
 	"io"
 	"net/http"
 
@@ -56,7 +56,6 @@ func NewPatchRouterParams() PatchRouterParams {
 //
 // swagger:parameters patchRouter
 type PatchRouterParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
@@ -65,6 +64,7 @@ type PatchRouterParams struct {
 	  In: path
 	*/
 	ID string
+
 	/*A router patch object
 	  Required: true
 	  In: body
@@ -87,10 +87,12 @@ func (o *PatchRouterParams) BindRequest(r *http.Request, route *middleware.Match
 	}
 
 	if runtime.HasBody(r) {
-		defer r.Body.Close()
+		defer func() {
+			_ = r.Body.Close()
+		}()
 		var body rest_model.RouterPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
+			if stderrors.Is(err, io.EOF) {
 				res = append(res, errors.Required("router", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("router", "body", "", err))
@@ -101,7 +103,7 @@ func (o *PatchRouterParams) BindRequest(r *http.Request, route *middleware.Match
 				res = append(res, err)
 			}
 
-			ctx := validate.WithOperationRequest(context.Background())
+			ctx := validate.WithOperationRequest(r.Context())
 			if err := body.ContextValidate(ctx, route.Formats); err != nil {
 				res = append(res, err)
 			}

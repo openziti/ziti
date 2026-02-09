@@ -30,6 +30,8 @@ package terminator
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type DeleteTerminatorReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *DeleteTerminatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *DeleteTerminatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewDeleteTerminatorOK()
@@ -84,7 +86,7 @@ func (o *DeleteTerminatorReader) ReadResponse(response runtime.ClientResponse, c
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[DELETE /terminators/{id}] deleteTerminator", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewDeleteTerminatorOK() *DeleteTerminatorOK {
 	return &DeleteTerminatorOK{}
 }
 
-/* DeleteTerminatorOK describes a response with status code 200, with default header values.
+/*
+DeleteTerminatorOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -101,9 +104,46 @@ type DeleteTerminatorOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *DeleteTerminatorOK) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this delete terminator o k response has a 2xx status code
+func (o *DeleteTerminatorOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this delete terminator o k response has a 3xx status code
+func (o *DeleteTerminatorOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator o k response has a 4xx status code
+func (o *DeleteTerminatorOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete terminator o k response has a 5xx status code
+func (o *DeleteTerminatorOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete terminator o k response a status code equal to that given
+func (o *DeleteTerminatorOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the delete terminator o k response
+func (o *DeleteTerminatorOK) Code() int {
+	return 200
+}
+
+func (o *DeleteTerminatorOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK %s", 200, payload)
+}
+
+func (o *DeleteTerminatorOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK %s", 200, payload)
+}
+
 func (o *DeleteTerminatorOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *DeleteTerminatorOK) readResponse(response runtime.ClientResponse, consu
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewDeleteTerminatorBadRequest() *DeleteTerminatorBadRequest {
 	return &DeleteTerminatorBadRequest{}
 }
 
-/* DeleteTerminatorBadRequest describes a response with status code 400, with default header values.
+/*
+DeleteTerminatorBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -133,9 +174,46 @@ type DeleteTerminatorBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteTerminatorBadRequest) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this delete terminator bad request response has a 2xx status code
+func (o *DeleteTerminatorBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete terminator bad request response has a 3xx status code
+func (o *DeleteTerminatorBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator bad request response has a 4xx status code
+func (o *DeleteTerminatorBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete terminator bad request response has a 5xx status code
+func (o *DeleteTerminatorBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete terminator bad request response a status code equal to that given
+func (o *DeleteTerminatorBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the delete terminator bad request response
+func (o *DeleteTerminatorBadRequest) Code() int {
+	return 400
+}
+
+func (o *DeleteTerminatorBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorBadRequest %s", 400, payload)
+}
+
+func (o *DeleteTerminatorBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorBadRequest %s", 400, payload)
+}
+
 func (o *DeleteTerminatorBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *DeleteTerminatorBadRequest) readResponse(response runtime.ClientRespons
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewDeleteTerminatorUnauthorized() *DeleteTerminatorUnauthorized {
 	return &DeleteTerminatorUnauthorized{}
 }
 
-/* DeleteTerminatorUnauthorized describes a response with status code 401, with default header values.
+/*
+DeleteTerminatorUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -165,9 +244,46 @@ type DeleteTerminatorUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteTerminatorUnauthorized) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this delete terminator unauthorized response has a 2xx status code
+func (o *DeleteTerminatorUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete terminator unauthorized response has a 3xx status code
+func (o *DeleteTerminatorUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator unauthorized response has a 4xx status code
+func (o *DeleteTerminatorUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete terminator unauthorized response has a 5xx status code
+func (o *DeleteTerminatorUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete terminator unauthorized response a status code equal to that given
+func (o *DeleteTerminatorUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the delete terminator unauthorized response
+func (o *DeleteTerminatorUnauthorized) Code() int {
+	return 401
+}
+
+func (o *DeleteTerminatorUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized %s", 401, payload)
+}
+
+func (o *DeleteTerminatorUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized %s", 401, payload)
+}
+
 func (o *DeleteTerminatorUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *DeleteTerminatorUnauthorized) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewDeleteTerminatorConflict() *DeleteTerminatorConflict {
 	return &DeleteTerminatorConflict{}
 }
 
-/* DeleteTerminatorConflict describes a response with status code 409, with default header values.
+/*
+DeleteTerminatorConflict describes a response with status code 409, with default header values.
 
 The resource requested to be removed/altered cannot be as it is referenced by another object.
 */
@@ -197,9 +314,46 @@ type DeleteTerminatorConflict struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteTerminatorConflict) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorConflict  %+v", 409, o.Payload)
+// IsSuccess returns true when this delete terminator conflict response has a 2xx status code
+func (o *DeleteTerminatorConflict) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete terminator conflict response has a 3xx status code
+func (o *DeleteTerminatorConflict) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator conflict response has a 4xx status code
+func (o *DeleteTerminatorConflict) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete terminator conflict response has a 5xx status code
+func (o *DeleteTerminatorConflict) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete terminator conflict response a status code equal to that given
+func (o *DeleteTerminatorConflict) IsCode(code int) bool {
+	return code == 409
+}
+
+// Code gets the status code for the delete terminator conflict response
+func (o *DeleteTerminatorConflict) Code() int {
+	return 409
+}
+
+func (o *DeleteTerminatorConflict) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorConflict %s", 409, payload)
+}
+
+func (o *DeleteTerminatorConflict) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorConflict %s", 409, payload)
+}
+
 func (o *DeleteTerminatorConflict) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *DeleteTerminatorConflict) readResponse(response runtime.ClientResponse,
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewDeleteTerminatorTooManyRequests() *DeleteTerminatorTooManyRequests {
 	return &DeleteTerminatorTooManyRequests{}
 }
 
-/* DeleteTerminatorTooManyRequests describes a response with status code 429, with default header values.
+/*
+DeleteTerminatorTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -229,9 +384,46 @@ type DeleteTerminatorTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteTerminatorTooManyRequests) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this delete terminator too many requests response has a 2xx status code
+func (o *DeleteTerminatorTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete terminator too many requests response has a 3xx status code
+func (o *DeleteTerminatorTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator too many requests response has a 4xx status code
+func (o *DeleteTerminatorTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete terminator too many requests response has a 5xx status code
+func (o *DeleteTerminatorTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete terminator too many requests response a status code equal to that given
+func (o *DeleteTerminatorTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the delete terminator too many requests response
+func (o *DeleteTerminatorTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *DeleteTerminatorTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorTooManyRequests %s", 429, payload)
+}
+
+func (o *DeleteTerminatorTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorTooManyRequests %s", 429, payload)
+}
+
 func (o *DeleteTerminatorTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *DeleteTerminatorTooManyRequests) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewDeleteTerminatorServiceUnavailable() *DeleteTerminatorServiceUnavailable
 	return &DeleteTerminatorServiceUnavailable{}
 }
 
-/* DeleteTerminatorServiceUnavailable describes a response with status code 503, with default header values.
+/*
+DeleteTerminatorServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type DeleteTerminatorServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DeleteTerminatorServiceUnavailable) Error() string {
-	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this delete terminator service unavailable response has a 2xx status code
+func (o *DeleteTerminatorServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this delete terminator service unavailable response has a 3xx status code
+func (o *DeleteTerminatorServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete terminator service unavailable response has a 4xx status code
+func (o *DeleteTerminatorServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete terminator service unavailable response has a 5xx status code
+func (o *DeleteTerminatorServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this delete terminator service unavailable response a status code equal to that given
+func (o *DeleteTerminatorServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the delete terminator service unavailable response
+func (o *DeleteTerminatorServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *DeleteTerminatorServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorServiceUnavailable %s", 503, payload)
+}
+
+func (o *DeleteTerminatorServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorServiceUnavailable %s", 503, payload)
+}
+
 func (o *DeleteTerminatorServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *DeleteTerminatorServiceUnavailable) readResponse(response runtime.Clien
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

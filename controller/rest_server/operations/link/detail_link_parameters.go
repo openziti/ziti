@@ -50,7 +50,6 @@ func NewDetailLinkParams() DetailLinkParams {
 //
 // swagger:parameters detailLink
 type DetailLinkParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

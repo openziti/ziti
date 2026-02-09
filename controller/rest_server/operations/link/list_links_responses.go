@@ -40,7 +40,8 @@ import (
 // ListLinksOKCode is the HTTP code returned for type ListLinksOK
 const ListLinksOKCode int = 200
 
-/*ListLinksOK A list of links
+/*
+ListLinksOK A list of links
 
 swagger:response listLinksOK
 */
@@ -84,7 +85,8 @@ func (o *ListLinksOK) WriteResponse(rw http.ResponseWriter, producer runtime.Pro
 // ListLinksUnauthorizedCode is the HTTP code returned for type ListLinksUnauthorized
 const ListLinksUnauthorizedCode int = 401
 
-/*ListLinksUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ListLinksUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response listLinksUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *ListLinksUnauthorized) WriteResponse(rw http.ResponseWriter, producer r
 // ListLinksTooManyRequestsCode is the HTTP code returned for type ListLinksTooManyRequests
 const ListLinksTooManyRequestsCode int = 429
 
-/*ListLinksTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+/*
+ListLinksTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
 
 swagger:response listLinksTooManyRequests
 */

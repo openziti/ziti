@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -162,11 +163,15 @@ func (m *LinkDetail) validateConnections(formats strfmt.Registry) error {
 
 		if m.Connections[i] != nil {
 			if err := m.Connections[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("connections" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("connections" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -202,11 +207,15 @@ func (m *LinkDetail) validateDestRouter(formats strfmt.Registry) error {
 
 	if m.DestRouter != nil {
 		if err := m.DestRouter.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("destRouter")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("destRouter")
 			}
+
 			return err
 		}
 	}
@@ -267,11 +276,15 @@ func (m *LinkDetail) validateSourceRouter(formats strfmt.Registry) error {
 
 	if m.SourceRouter != nil {
 		if err := m.SourceRouter.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("sourceRouter")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("sourceRouter")
 			}
+
 			return err
 		}
 	}
@@ -324,12 +337,21 @@ func (m *LinkDetail) contextValidateConnections(ctx context.Context, formats str
 	for i := 0; i < len(m.Connections); i++ {
 
 		if m.Connections[i] != nil {
+
+			if swag.IsZero(m.Connections[i]) { // not required
+				return nil
+			}
+
 			if err := m.Connections[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("connections" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("connections" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -342,12 +364,17 @@ func (m *LinkDetail) contextValidateConnections(ctx context.Context, formats str
 func (m *LinkDetail) contextValidateDestRouter(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.DestRouter != nil {
+
 		if err := m.DestRouter.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("destRouter")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("destRouter")
 			}
+
 			return err
 		}
 	}
@@ -358,12 +385,17 @@ func (m *LinkDetail) contextValidateDestRouter(ctx context.Context, formats strf
 func (m *LinkDetail) contextValidateSourceRouter(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.SourceRouter != nil {
+
 		if err := m.SourceRouter.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("sourceRouter")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("sourceRouter")
 			}
+
 			return err
 		}
 	}

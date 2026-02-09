@@ -49,7 +49,6 @@ func NewDataIntegrityResultsParams() DataIntegrityResultsParams {
 //
 // swagger:parameters dataIntegrityResults
 type DataIntegrityResultsParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 }

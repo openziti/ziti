@@ -50,7 +50,6 @@ func NewDetailCircuitParams() DetailCircuitParams {
 //
 // swagger:parameters detailCircuit
 type DetailCircuitParams struct {
-
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 

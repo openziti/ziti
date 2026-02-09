@@ -36,16 +36,16 @@ import (
 )
 
 // DeleteTerminatorHandlerFunc turns a function with the right signature into a delete terminator handler
-type DeleteTerminatorHandlerFunc func(DeleteTerminatorParams) middleware.Responder
+type DeleteTerminatorHandlerFunc func(DeleteTerminatorParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DeleteTerminatorHandlerFunc) Handle(params DeleteTerminatorParams) middleware.Responder {
-	return fn(params)
+func (fn DeleteTerminatorHandlerFunc) Handle(params DeleteTerminatorParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // DeleteTerminatorHandler interface for that can handle valid delete terminator params
 type DeleteTerminatorHandler interface {
-	Handle(DeleteTerminatorParams) middleware.Responder
+	Handle(DeleteTerminatorParams, any) middleware.Responder
 }
 
 // NewDeleteTerminator creates a new http.Handler for the delete terminator operation
@@ -53,12 +53,12 @@ func NewDeleteTerminator(ctx *middleware.Context, handler DeleteTerminatorHandle
 	return &DeleteTerminator{Context: ctx, Handler: handler}
 }
 
-/* DeleteTerminator swagger:route DELETE /terminators/{id} Terminator deleteTerminator
+/*
+	DeleteTerminator swagger:route DELETE /terminators/{id} Terminator deleteTerminator
 
-Delete a terminator
+# Delete a terminator
 
 Delete a terminator by id. Requires admin access.
-
 */
 type DeleteTerminator struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *DeleteTerminator) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewDeleteTerminatorParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

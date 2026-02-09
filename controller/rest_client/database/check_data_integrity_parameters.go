@@ -76,10 +76,12 @@ func NewCheckDataIntegrityParamsWithHTTPClient(client *http.Client) *CheckDataIn
 	}
 }
 
-/* CheckDataIntegrityParams contains all the parameters to send to the API endpoint
-   for the check data integrity operation.
+/*
+CheckDataIntegrityParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the check data integrity operation.
+
+	Typically these are written to a http.Request.
 */
 type CheckDataIntegrityParams struct {
 	timeout    time.Duration

@@ -30,6 +30,8 @@ package cluster
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type ClusterMemberRemoveReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *ClusterMemberRemoveReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *ClusterMemberRemoveReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewClusterMemberRemoveOK()
@@ -84,7 +86,7 @@ func (o *ClusterMemberRemoveReader) ReadResponse(response runtime.ClientResponse
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /cluster/remove-member] clusterMemberRemove", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewClusterMemberRemoveOK() *ClusterMemberRemoveOK {
 	return &ClusterMemberRemoveOK{}
 }
 
-/* ClusterMemberRemoveOK describes a response with status code 200, with default header values.
+/*
+ClusterMemberRemoveOK describes a response with status code 200, with default header values.
 
 Base empty response
 */
@@ -101,9 +104,46 @@ type ClusterMemberRemoveOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *ClusterMemberRemoveOK) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this cluster member remove o k response has a 2xx status code
+func (o *ClusterMemberRemoveOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this cluster member remove o k response has a 3xx status code
+func (o *ClusterMemberRemoveOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove o k response has a 4xx status code
+func (o *ClusterMemberRemoveOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster member remove o k response has a 5xx status code
+func (o *ClusterMemberRemoveOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member remove o k response a status code equal to that given
+func (o *ClusterMemberRemoveOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the cluster member remove o k response
+func (o *ClusterMemberRemoveOK) Code() int {
+	return 200
+}
+
+func (o *ClusterMemberRemoveOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveOK %s", 200, payload)
+}
+
+func (o *ClusterMemberRemoveOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveOK %s", 200, payload)
+}
+
 func (o *ClusterMemberRemoveOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *ClusterMemberRemoveOK) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewClusterMemberRemoveBadRequest() *ClusterMemberRemoveBadRequest {
 	return &ClusterMemberRemoveBadRequest{}
 }
 
-/* ClusterMemberRemoveBadRequest describes a response with status code 400, with default header values.
+/*
+ClusterMemberRemoveBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -133,9 +174,46 @@ type ClusterMemberRemoveBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberRemoveBadRequest) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this cluster member remove bad request response has a 2xx status code
+func (o *ClusterMemberRemoveBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member remove bad request response has a 3xx status code
+func (o *ClusterMemberRemoveBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove bad request response has a 4xx status code
+func (o *ClusterMemberRemoveBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member remove bad request response has a 5xx status code
+func (o *ClusterMemberRemoveBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member remove bad request response a status code equal to that given
+func (o *ClusterMemberRemoveBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the cluster member remove bad request response
+func (o *ClusterMemberRemoveBadRequest) Code() int {
+	return 400
+}
+
+func (o *ClusterMemberRemoveBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveBadRequest %s", 400, payload)
+}
+
+func (o *ClusterMemberRemoveBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveBadRequest %s", 400, payload)
+}
+
 func (o *ClusterMemberRemoveBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *ClusterMemberRemoveBadRequest) readResponse(response runtime.ClientResp
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewClusterMemberRemoveUnauthorized() *ClusterMemberRemoveUnauthorized {
 	return &ClusterMemberRemoveUnauthorized{}
 }
 
-/* ClusterMemberRemoveUnauthorized describes a response with status code 401, with default header values.
+/*
+ClusterMemberRemoveUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -165,9 +244,46 @@ type ClusterMemberRemoveUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberRemoveUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this cluster member remove unauthorized response has a 2xx status code
+func (o *ClusterMemberRemoveUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member remove unauthorized response has a 3xx status code
+func (o *ClusterMemberRemoveUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove unauthorized response has a 4xx status code
+func (o *ClusterMemberRemoveUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member remove unauthorized response has a 5xx status code
+func (o *ClusterMemberRemoveUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member remove unauthorized response a status code equal to that given
+func (o *ClusterMemberRemoveUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the cluster member remove unauthorized response
+func (o *ClusterMemberRemoveUnauthorized) Code() int {
+	return 401
+}
+
+func (o *ClusterMemberRemoveUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveUnauthorized %s", 401, payload)
+}
+
+func (o *ClusterMemberRemoveUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveUnauthorized %s", 401, payload)
+}
+
 func (o *ClusterMemberRemoveUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *ClusterMemberRemoveUnauthorized) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewClusterMemberRemoveNotFound() *ClusterMemberRemoveNotFound {
 	return &ClusterMemberRemoveNotFound{}
 }
 
-/* ClusterMemberRemoveNotFound describes a response with status code 404, with default header values.
+/*
+ClusterMemberRemoveNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -197,9 +314,46 @@ type ClusterMemberRemoveNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberRemoveNotFound) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this cluster member remove not found response has a 2xx status code
+func (o *ClusterMemberRemoveNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member remove not found response has a 3xx status code
+func (o *ClusterMemberRemoveNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove not found response has a 4xx status code
+func (o *ClusterMemberRemoveNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member remove not found response has a 5xx status code
+func (o *ClusterMemberRemoveNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member remove not found response a status code equal to that given
+func (o *ClusterMemberRemoveNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the cluster member remove not found response
+func (o *ClusterMemberRemoveNotFound) Code() int {
+	return 404
+}
+
+func (o *ClusterMemberRemoveNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveNotFound %s", 404, payload)
+}
+
+func (o *ClusterMemberRemoveNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveNotFound %s", 404, payload)
+}
+
 func (o *ClusterMemberRemoveNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *ClusterMemberRemoveNotFound) readResponse(response runtime.ClientRespon
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewClusterMemberRemoveTooManyRequests() *ClusterMemberRemoveTooManyRequests
 	return &ClusterMemberRemoveTooManyRequests{}
 }
 
-/* ClusterMemberRemoveTooManyRequests describes a response with status code 429, with default header values.
+/*
+ClusterMemberRemoveTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -229,9 +384,46 @@ type ClusterMemberRemoveTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberRemoveTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this cluster member remove too many requests response has a 2xx status code
+func (o *ClusterMemberRemoveTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member remove too many requests response has a 3xx status code
+func (o *ClusterMemberRemoveTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove too many requests response has a 4xx status code
+func (o *ClusterMemberRemoveTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster member remove too many requests response has a 5xx status code
+func (o *ClusterMemberRemoveTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster member remove too many requests response a status code equal to that given
+func (o *ClusterMemberRemoveTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the cluster member remove too many requests response
+func (o *ClusterMemberRemoveTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *ClusterMemberRemoveTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveTooManyRequests %s", 429, payload)
+}
+
+func (o *ClusterMemberRemoveTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveTooManyRequests %s", 429, payload)
+}
+
 func (o *ClusterMemberRemoveTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *ClusterMemberRemoveTooManyRequests) readResponse(response runtime.Clien
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewClusterMemberRemoveServiceUnavailable() *ClusterMemberRemoveServiceUnava
 	return &ClusterMemberRemoveServiceUnavailable{}
 }
 
-/* ClusterMemberRemoveServiceUnavailable describes a response with status code 503, with default header values.
+/*
+ClusterMemberRemoveServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type ClusterMemberRemoveServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterMemberRemoveServiceUnavailable) Error() string {
-	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this cluster member remove service unavailable response has a 2xx status code
+func (o *ClusterMemberRemoveServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster member remove service unavailable response has a 3xx status code
+func (o *ClusterMemberRemoveServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster member remove service unavailable response has a 4xx status code
+func (o *ClusterMemberRemoveServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster member remove service unavailable response has a 5xx status code
+func (o *ClusterMemberRemoveServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this cluster member remove service unavailable response a status code equal to that given
+func (o *ClusterMemberRemoveServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the cluster member remove service unavailable response
+func (o *ClusterMemberRemoveServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *ClusterMemberRemoveServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveServiceUnavailable %s", 503, payload)
+}
+
+func (o *ClusterMemberRemoveServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/remove-member][%d] clusterMemberRemoveServiceUnavailable %s", 503, payload)
+}
+
 func (o *ClusterMemberRemoveServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *ClusterMemberRemoveServiceUnavailable) readResponse(response runtime.Cl
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

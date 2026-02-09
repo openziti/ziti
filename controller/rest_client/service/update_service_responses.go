@@ -30,6 +30,8 @@ package service
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type UpdateServiceReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *UpdateServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *UpdateServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewUpdateServiceOK()
@@ -84,7 +86,7 @@ func (o *UpdateServiceReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /services/{id}] updateService", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewUpdateServiceOK() *UpdateServiceOK {
 	return &UpdateServiceOK{}
 }
 
-/* UpdateServiceOK describes a response with status code 200, with default header values.
+/*
+UpdateServiceOK describes a response with status code 200, with default header values.
 
 The update request was successful and the resource has been altered
 */
@@ -101,9 +104,46 @@ type UpdateServiceOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *UpdateServiceOK) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this update service o k response has a 2xx status code
+func (o *UpdateServiceOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this update service o k response has a 3xx status code
+func (o *UpdateServiceOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service o k response has a 4xx status code
+func (o *UpdateServiceOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this update service o k response has a 5xx status code
+func (o *UpdateServiceOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this update service o k response a status code equal to that given
+func (o *UpdateServiceOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the update service o k response
+func (o *UpdateServiceOK) Code() int {
+	return 200
+}
+
+func (o *UpdateServiceOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceOK %s", 200, payload)
+}
+
+func (o *UpdateServiceOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceOK %s", 200, payload)
+}
+
 func (o *UpdateServiceOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *UpdateServiceOK) readResponse(response runtime.ClientResponse, consumer
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewUpdateServiceBadRequest() *UpdateServiceBadRequest {
 	return &UpdateServiceBadRequest{}
 }
 
-/* UpdateServiceBadRequest describes a response with status code 400, with default header values.
+/*
+UpdateServiceBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -133,9 +174,46 @@ type UpdateServiceBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *UpdateServiceBadRequest) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceBadRequest  %+v", 400, o.Payload)
+// IsSuccess returns true when this update service bad request response has a 2xx status code
+func (o *UpdateServiceBadRequest) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this update service bad request response has a 3xx status code
+func (o *UpdateServiceBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service bad request response has a 4xx status code
+func (o *UpdateServiceBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this update service bad request response has a 5xx status code
+func (o *UpdateServiceBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this update service bad request response a status code equal to that given
+func (o *UpdateServiceBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
+// Code gets the status code for the update service bad request response
+func (o *UpdateServiceBadRequest) Code() int {
+	return 400
+}
+
+func (o *UpdateServiceBadRequest) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceBadRequest %s", 400, payload)
+}
+
+func (o *UpdateServiceBadRequest) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceBadRequest %s", 400, payload)
+}
+
 func (o *UpdateServiceBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *UpdateServiceBadRequest) readResponse(response runtime.ClientResponse, 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewUpdateServiceUnauthorized() *UpdateServiceUnauthorized {
 	return &UpdateServiceUnauthorized{}
 }
 
-/* UpdateServiceUnauthorized describes a response with status code 401, with default header values.
+/*
+UpdateServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -165,9 +244,46 @@ type UpdateServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *UpdateServiceUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this update service unauthorized response has a 2xx status code
+func (o *UpdateServiceUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this update service unauthorized response has a 3xx status code
+func (o *UpdateServiceUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service unauthorized response has a 4xx status code
+func (o *UpdateServiceUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this update service unauthorized response has a 5xx status code
+func (o *UpdateServiceUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this update service unauthorized response a status code equal to that given
+func (o *UpdateServiceUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the update service unauthorized response
+func (o *UpdateServiceUnauthorized) Code() int {
+	return 401
+}
+
+func (o *UpdateServiceUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceUnauthorized %s", 401, payload)
+}
+
+func (o *UpdateServiceUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceUnauthorized %s", 401, payload)
+}
+
 func (o *UpdateServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *UpdateServiceUnauthorized) readResponse(response runtime.ClientResponse
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewUpdateServiceNotFound() *UpdateServiceNotFound {
 	return &UpdateServiceNotFound{}
 }
 
-/* UpdateServiceNotFound describes a response with status code 404, with default header values.
+/*
+UpdateServiceNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -197,9 +314,46 @@ type UpdateServiceNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *UpdateServiceNotFound) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this update service not found response has a 2xx status code
+func (o *UpdateServiceNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this update service not found response has a 3xx status code
+func (o *UpdateServiceNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service not found response has a 4xx status code
+func (o *UpdateServiceNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this update service not found response has a 5xx status code
+func (o *UpdateServiceNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this update service not found response a status code equal to that given
+func (o *UpdateServiceNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the update service not found response
+func (o *UpdateServiceNotFound) Code() int {
+	return 404
+}
+
+func (o *UpdateServiceNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceNotFound %s", 404, payload)
+}
+
+func (o *UpdateServiceNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceNotFound %s", 404, payload)
+}
+
 func (o *UpdateServiceNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *UpdateServiceNotFound) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewUpdateServiceTooManyRequests() *UpdateServiceTooManyRequests {
 	return &UpdateServiceTooManyRequests{}
 }
 
-/* UpdateServiceTooManyRequests describes a response with status code 429, with default header values.
+/*
+UpdateServiceTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -229,9 +384,46 @@ type UpdateServiceTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *UpdateServiceTooManyRequests) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this update service too many requests response has a 2xx status code
+func (o *UpdateServiceTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this update service too many requests response has a 3xx status code
+func (o *UpdateServiceTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service too many requests response has a 4xx status code
+func (o *UpdateServiceTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this update service too many requests response has a 5xx status code
+func (o *UpdateServiceTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this update service too many requests response a status code equal to that given
+func (o *UpdateServiceTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the update service too many requests response
+func (o *UpdateServiceTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *UpdateServiceTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceTooManyRequests %s", 429, payload)
+}
+
+func (o *UpdateServiceTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceTooManyRequests %s", 429, payload)
+}
+
 func (o *UpdateServiceTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *UpdateServiceTooManyRequests) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewUpdateServiceServiceUnavailable() *UpdateServiceServiceUnavailable {
 	return &UpdateServiceServiceUnavailable{}
 }
 
-/* UpdateServiceServiceUnavailable describes a response with status code 503, with default header values.
+/*
+UpdateServiceServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type UpdateServiceServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *UpdateServiceServiceUnavailable) Error() string {
-	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this update service service unavailable response has a 2xx status code
+func (o *UpdateServiceServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this update service service unavailable response has a 3xx status code
+func (o *UpdateServiceServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this update service service unavailable response has a 4xx status code
+func (o *UpdateServiceServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this update service service unavailable response has a 5xx status code
+func (o *UpdateServiceServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this update service service unavailable response a status code equal to that given
+func (o *UpdateServiceServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the update service service unavailable response
+func (o *UpdateServiceServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *UpdateServiceServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceServiceUnavailable %s", 503, payload)
+}
+
+func (o *UpdateServiceServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceServiceUnavailable %s", 503, payload)
+}
+
 func (o *UpdateServiceServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *UpdateServiceServiceUnavailable) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

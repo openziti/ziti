@@ -106,7 +106,13 @@ func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	err := ae.GetManagers().ApiSession.Delete(rc.ApiSession.Id, rc.NewChangeContext())
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if apiSession == nil {
+		rc.RespondWithError(err)
+		return
+	}
+	err = ae.GetManagers().ApiSession.Delete(apiSession.Id, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -138,9 +144,23 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 }
 
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		newApiSessionCert, err := ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.Identity, rc.ApiSession, rc.IsJwtToken, 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
+		newApiSessionCert, err := ae.GetManagers().ApiSessionCertificate.CreateFromCSR(identity, apiSession, rc.HasJwtSecurityToken(), 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
 
 		if err != nil {
 			return "", err
@@ -153,6 +173,13 @@ func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *respon
 }
 
 func (router *CurrentSessionRouter) DetailCertificate(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	certId, _ := rc.GetEntityId()
 	cert, err := ae.GetManagers().ApiSessionCertificate.Read(certId)
 
@@ -161,7 +188,7 @@ func (router *CurrentSessionRouter) DetailCertificate(ae *env.AppEnv, rc *respon
 		return
 	}
 
-	if cert.ApiSessionId != rc.ApiSession.Id {
+	if cert.ApiSessionId != apiSession.Id {
 		rc.RespondWithNotFound()
 		return
 	}
@@ -177,6 +204,13 @@ func (router *CurrentSessionRouter) DetailCertificate(ae *env.AppEnv, rc *respon
 }
 
 func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	certId, _ := rc.GetEntityId()
 	cert, err := ae.GetManagers().ApiSessionCertificate.Read(certId)
 
@@ -185,7 +219,7 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 		return
 	}
 
-	if cert.ApiSessionId != rc.ApiSession.Id {
+	if cert.ApiSessionId != apiSession.Id {
 		rc.RespondWithNotFound()
 		return
 	}
@@ -199,8 +233,22 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 }
 
 func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *response.RequestContext) {
-	lastUpdate := rc.ApiSession.CreatedAt
-	if val, found := ae.IdentityRefreshMap.Get(rc.Identity.Id); found {
+	apiSession, err := rc.SecurityCtx.GetApiSession()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	lastUpdate := apiSession.CreatedAt
+	if val, found := ae.IdentityRefreshMap.Get(identity.Id); found {
 		lastUpdate = val
 	} else if lastUpdate.Before(ae.StartupTime) {
 		lastUpdate = ae.StartupTime
@@ -213,7 +261,15 @@ func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *respo
 }
 
 func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response.RequestContext, totpCode *rest_model.MfaCode) {
-	if !rc.IsJwtToken {
+
+	identity, err := rc.SecurityCtx.GetIdentity()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if !rc.HasJwtSecurityToken() {
 		rc.RespondWithApiError(apierror.NewInvalidBackingTokenTypeError())
 		return
 	}
@@ -223,7 +279,7 @@ func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response
 		return
 	}
 
-	mfa, err := ae.GetManagers().Mfa.ReadOneByIdentityId(rc.Identity.Id)
+	mfa, err := ae.GetManagers().Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -248,7 +304,14 @@ func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response
 		return
 	}
 
-	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), rc.Claims)
+	apiSessionToken, err := rc.SecurityCtx.GetSecurityTokenCtx().GetVerifiedApiSessionToken()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), apiSessionToken.OidcToken.AccessClaims)
 
 	if err != nil {
 		rc.RespondWithError(err)

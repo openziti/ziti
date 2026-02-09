@@ -36,16 +36,16 @@ import (
 )
 
 // ClusterTransferLeadershipHandlerFunc turns a function with the right signature into a cluster transfer leadership handler
-type ClusterTransferLeadershipHandlerFunc func(ClusterTransferLeadershipParams) middleware.Responder
+type ClusterTransferLeadershipHandlerFunc func(ClusterTransferLeadershipParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ClusterTransferLeadershipHandlerFunc) Handle(params ClusterTransferLeadershipParams) middleware.Responder {
-	return fn(params)
+func (fn ClusterTransferLeadershipHandlerFunc) Handle(params ClusterTransferLeadershipParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ClusterTransferLeadershipHandler interface for that can handle valid cluster transfer leadership params
 type ClusterTransferLeadershipHandler interface {
-	Handle(ClusterTransferLeadershipParams) middleware.Responder
+	Handle(ClusterTransferLeadershipParams, any) middleware.Responder
 }
 
 // NewClusterTransferLeadership creates a new http.Handler for the cluster transfer leadership operation
@@ -53,12 +53,12 @@ func NewClusterTransferLeadership(ctx *middleware.Context, handler ClusterTransf
 	return &ClusterTransferLeadership{Context: ctx, Handler: handler}
 }
 
-/* ClusterTransferLeadership swagger:route POST /cluster/transfer-leadership Cluster clusterTransferLeadership
+/*
+	ClusterTransferLeadership swagger:route POST /cluster/transfer-leadership Cluster clusterTransferLeadership
 
-Attempts to transfer leadership to a different member of the cluster
+# Attempts to transfer leadership to a different member of the cluster
 
 Attempts to transfer leadership to a different member of the cluster. Requires admin access.
-
 */
 type ClusterTransferLeadership struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *ClusterTransferLeadership) ServeHTTP(rw http.ResponseWriter, r *http.Re
 		*r = *rCtx
 	}
 	var Params = NewClusterTransferLeadershipParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

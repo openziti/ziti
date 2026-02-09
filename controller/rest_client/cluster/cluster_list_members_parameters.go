@@ -76,10 +76,12 @@ func NewClusterListMembersParamsWithHTTPClient(client *http.Client) *ClusterList
 	}
 }
 
-/* ClusterListMembersParams contains all the parameters to send to the API endpoint
-   for the cluster list members operation.
+/*
+ClusterListMembersParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the cluster list members operation.
+
+	Typically these are written to a http.Request.
 */
 type ClusterListMembersParams struct {
 	timeout    time.Duration

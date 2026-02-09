@@ -42,27 +42,27 @@ func NewFabricServiceRouter() *FabricServiceRouter {
 }
 
 func (r *FabricServiceRouter) Register(ae *env.AppEnv) {
-	ae.FabricApi.ServiceDeleteServiceHandler = service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams) middleware.Responder {
+	ae.FabricApi.ServiceDeleteServiceHandler = service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams, _ any) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServiceDetailServiceHandler = service.DetailServiceHandlerFunc(func(params service.DetailServiceParams) middleware.Responder {
+	ae.FabricApi.ServiceDetailServiceHandler = service.DetailServiceHandlerFunc(func(params service.DetailServiceParams, _ any) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServiceListServicesHandler = service.ListServicesHandlerFunc(func(params service.ListServicesParams) middleware.Responder {
+	ae.FabricApi.ServiceListServicesHandler = service.ListServicesHandlerFunc(func(params service.ListServicesParams, _ any) middleware.Responder {
 		return ae.IsAllowed(r.ListServices, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServiceUpdateServiceHandler = service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams) middleware.Responder {
+	ae.FabricApi.ServiceUpdateServiceHandler = service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams) middleware.Responder {
+	ae.FabricApi.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
+	ae.FabricApi.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams, _ any) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			Patch(rc, func(id string, fields fields.UpdatedFields) error {
 				return ae.Managers.Service.Update(
@@ -73,7 +73,7 @@ func (r *FabricServiceRouter) Register(ae *env.AppEnv) {
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.FabricApi.ServiceListServiceTerminatorsHandler = service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams) middleware.Responder {
+	ae.FabricApi.ServiceListServiceTerminatorsHandler = service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams, _ any) middleware.Responder {
 		return ae.IsAllowed(r.listManagementTerminators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }

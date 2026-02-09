@@ -24,7 +24,7 @@ import (
 
 func NewCouldNotParseBody(err error) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CouldNotParseBodyCode,
+		AppCode: CouldNotParseBodyCode,
 		Message: CouldNotParseBodyMessage,
 		Status:  CouldNotParseBodyStatus,
 		Cause:   err,
@@ -33,7 +33,7 @@ func NewCouldNotParseBody(err error) *errorz.ApiError {
 
 func NewInvalidContentType(contentType string) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidContentTypeCode,
+		AppCode: InvalidContentTypeCode,
 		Message: InvalidContentTypeMessage + ": " + contentType,
 		Status:  InvalidContentTypeStatus,
 	}
@@ -41,7 +41,7 @@ func NewInvalidContentType(contentType string) *errorz.ApiError {
 
 func NewCouldNotReadBody(err error) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        CouldNotReadBodyCode,
+		AppCode:     CouldNotReadBodyCode,
 		Message:     CouldNotReadBodyMessage,
 		Status:      CouldNotReadBodyStatus,
 		Cause:       err,
@@ -51,7 +51,7 @@ func NewCouldNotReadBody(err error) *errorz.ApiError {
 
 func NewInvalidAuth() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidAuthCode,
+		AppCode: InvalidAuthCode,
 		Message: InvalidAuthMessage,
 		Status:  InvalidAuthStatus,
 	}
@@ -59,7 +59,7 @@ func NewInvalidAuth() *errorz.ApiError {
 
 func NewInvalidAuthMethod() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidAuthMethodCode,
+		AppCode: InvalidAuthMethodCode,
 		Message: InvalidAuthMethodMessage,
 		Status:  InvalidAuthMethodStatus,
 	}
@@ -67,7 +67,7 @@ func NewInvalidAuthMethod() *errorz.ApiError {
 
 func NewEnrollmentExpired() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    EnrollmentExpiredCode,
+		AppCode: EnrollmentExpiredCode,
 		Message: EnrollmentExpiredMessage,
 		Status:  EnrollmentExpiredStatus,
 	}
@@ -75,7 +75,7 @@ func NewEnrollmentExpired() *errorz.ApiError {
 
 func NewEnrollmentIdentityAlreadyEnrolled() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    EnrollmentIdentityAlreadyEnrolledCode,
+		AppCode: EnrollmentIdentityAlreadyEnrolledCode,
 		Message: EnrollmentIdentityAlreadyEnrolledMessage,
 		Status:  EnrollmentIdentityAlreadyEnrolledStatus,
 	}
@@ -83,7 +83,7 @@ func NewEnrollmentIdentityAlreadyEnrolled() *errorz.ApiError {
 
 func NewCouldNotProcessCsr() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CouldNotProcessCsrCode,
+		AppCode: CouldNotProcessCsrCode,
 		Message: CouldNotProcessCsrMessage,
 		Status:  CouldNotProcessCsrStatus,
 	}
@@ -91,7 +91,7 @@ func NewCouldNotProcessCsr() *errorz.ApiError {
 
 func NewEnrollmentCaNoLongValid() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    EnrollmentCaNoLongValidCode,
+		AppCode: EnrollmentCaNoLongValidCode,
 		Message: EnrollmentCaNoLongValidMessage,
 		Status:  EnrollmentCaNoLongValidStatus,
 	}
@@ -99,7 +99,7 @@ func NewEnrollmentCaNoLongValid() *errorz.ApiError {
 
 func NewEnrollmentNoValidCas() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    EnrollmentNoValidCasCode,
+		AppCode: EnrollmentNoValidCasCode,
 		Message: EnrollmentNoValidCasMessage,
 		Status:  EnrollmentNoValidCasStatus,
 	}
@@ -107,7 +107,7 @@ func NewEnrollmentNoValidCas() *errorz.ApiError {
 
 func NewInvalidEnrollmentToken() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidEnrollmentTokenCode,
+		AppCode: InvalidEnrollmentTokenCode,
 		Message: InvalidEnrollmentTokenMessage,
 		Status:  InvalidEnrollmentTokenStatus,
 	}
@@ -115,7 +115,7 @@ func NewInvalidEnrollmentToken() *errorz.ApiError {
 
 func NewInvalidEnrollmentNotAllowed() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidEnrollmentNotAllowedCode,
+		AppCode: InvalidEnrollmentNotAllowedCode,
 		Message: InvalidEnrollmentNotAllowedMessage,
 		Status:  InvalidEnrollmentNotAllowedStatus,
 	}
@@ -123,7 +123,7 @@ func NewInvalidEnrollmentNotAllowed() *errorz.ApiError {
 
 func NewInvalidEnrollmentAlreadyEnrolled() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidEnrollmentAlreadyEnrolledCode,
+		AppCode: InvalidEnrollmentAlreadyEnrolledCode,
 		Message: InvalidEnrollmentAlreadyEnrolledMessage,
 		Status:  InvalidEnrollmentAlreadyEnrolledStatus,
 	}
@@ -131,7 +131,7 @@ func NewInvalidEnrollmentAlreadyEnrolled() *errorz.ApiError {
 
 func NewInvalidEnrollMethod() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidEnrollMethodCode,
+		AppCode: InvalidEnrollMethodCode,
 		Message: InvalidEnrollMethodMessage,
 		Status:  InvalidEnrollMethodStatus,
 	}
@@ -139,7 +139,7 @@ func NewInvalidEnrollMethod() *errorz.ApiError {
 
 func NewCouldNotParseX509FromDer() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CouldNotParseX509FromDerCode,
+		AppCode: CouldNotParseX509FromDerCode,
 		Message: CouldNotParseX509FromDerMessage,
 		Status:  CouldNotParseX509FromDerStatus,
 	}
@@ -147,7 +147,7 @@ func NewCouldNotParseX509FromDer() *errorz.ApiError {
 
 func NewCertFailedValidation() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CertFailedValidationCode,
+		AppCode: CertFailedValidationCode,
 		Message: CertFailedValidationMessage,
 		Status:  CertFailedValidationStatus,
 	}
@@ -155,7 +155,7 @@ func NewCertFailedValidation() *errorz.ApiError {
 
 func NewCertInUse() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CertInUseCode,
+		AppCode: CertInUseCode,
 		Message: CertInUseMessage,
 		Status:  CertInUseStatus,
 	}
@@ -163,7 +163,7 @@ func NewCertInUse() *errorz.ApiError {
 
 func NewCaAlreadyVerified() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CaAlreadyVerifiedCode,
+		AppCode: CaAlreadyVerifiedCode,
 		Message: CaAlreadyVerifiedMessage,
 		Status:  CaAlreadyVerifiedStatus,
 	}
@@ -171,7 +171,7 @@ func NewCaAlreadyVerified() *errorz.ApiError {
 
 func NewExpectedPemBlockCertificate() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    ExpectedPemBlockCertificateCode,
+		AppCode: ExpectedPemBlockCertificateCode,
 		Message: ExpectedPemBlockCertificateMessage,
 		Status:  ExpectedPemBlockCertificateStatus,
 	}
@@ -179,7 +179,7 @@ func NewExpectedPemBlockCertificate() *errorz.ApiError {
 
 func NewCouldNotParseDerBlock() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CouldNotParseDerBlockCode,
+		AppCode: CouldNotParseDerBlockCode,
 		Message: CouldNotParseDerBlockMessage,
 		Status:  CouldNotParseDerBlockStatus,
 	}
@@ -187,7 +187,7 @@ func NewCouldNotParseDerBlock() *errorz.ApiError {
 
 func NewCouldNotParsePem() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CouldNotParsePemCode,
+		AppCode: CouldNotParsePemCode,
 		Message: CouldNotParsePemMessage,
 		Status:  CouldNotParsePemStatus,
 	}
@@ -195,7 +195,7 @@ func NewCouldNotParsePem() *errorz.ApiError {
 
 func NewInvalidCommonName() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidCommonNameCode,
+		AppCode: InvalidCommonNameCode,
 		Message: InvalidCommonNameMessage,
 		Status:  InvalidCommonNameStatus,
 	}
@@ -203,7 +203,7 @@ func NewInvalidCommonName() *errorz.ApiError {
 
 func NewFailedCertificateValidation() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    FailedCertificateValidationCode,
+		AppCode: FailedCertificateValidationCode,
 		Message: FailedCertificateValidationMessage,
 		Status:  FailedCertificateValidationStatus,
 	}
@@ -212,7 +212,7 @@ func NewFailedCertificateValidation() *errorz.ApiError {
 func NewInvalidEnrollmentMissingCsr(cause error) *errorz.ApiError {
 	return &errorz.ApiError{
 		Cause:   cause,
-		Code:    InvalidEnrollmentMissingCsrCode,
+		AppCode: InvalidEnrollmentMissingCsrCode,
 		Message: InvalidEnrollmentMissingCsrMessage,
 		Status:  InvalidEnrollmentMissingCsrStatus,
 	}
@@ -220,7 +220,7 @@ func NewInvalidEnrollmentMissingCsr(cause error) *errorz.ApiError {
 
 func NewCertificateIsNotCa() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    CertificateIsNotCaCode,
+		AppCode: CertificateIsNotCaCode,
 		Message: CertificateIsNotCaMessage,
 		Status:  CertificateIsNotCaStatus,
 	}
@@ -228,7 +228,7 @@ func NewCertificateIsNotCa() *errorz.ApiError {
 
 func NewInvalidUuid(val string) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidUuidCode,
+		AppCode: InvalidUuidCode,
 		Message: InvalidUuidMessage,
 		Status:  InvalidUuidStatus,
 		Cause: &GenericCauseError{
@@ -242,7 +242,7 @@ func NewInvalidUuid(val string) *errorz.ApiError {
 
 func NewInvalidAuthenticatorProperties() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidAuthenticatorPropertiesCode,
+		AppCode: InvalidAuthenticatorPropertiesCode,
 		Message: InvalidAuthenticatorPropertiesMessage,
 		Status:  InvalidAuthenticatorPropertiesStatus,
 	}
@@ -250,7 +250,7 @@ func NewInvalidAuthenticatorProperties() *errorz.ApiError {
 
 func NewAuthenticatorCannotBeUpdated() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    AuthenticatorCanNotBeUpdatedCode,
+		AppCode: AuthenticatorCanNotBeUpdatedCode,
 		Message: AuthenticatorCanNotBeUpdatedMessage,
 		Status:  AuthenticatorCanNotBeUpdatedStatus,
 	}
@@ -258,7 +258,7 @@ func NewAuthenticatorCannotBeUpdated() *errorz.ApiError {
 
 func NewFabricRouterCannotBeUpdate() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    RouterCanNotBeUpdatedCode,
+		AppCode: RouterCanNotBeUpdatedCode,
 		Message: RouterCanNotBeUpdatedMessage,
 		Status:  RouterCanNotBeUpdatedStatus,
 	}
@@ -266,7 +266,7 @@ func NewFabricRouterCannotBeUpdate() *errorz.ApiError {
 
 func NewAuthenticatorMethodMax() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    AuthenticatorMethodMaxCode,
+		AppCode: AuthenticatorMethodMaxCode,
 		Message: AuthenticatorMethodMaxMessage,
 		Status:  AuthenticatorMethodMaxStatus,
 	}
@@ -274,7 +274,7 @@ func NewAuthenticatorMethodMax() *errorz.ApiError {
 
 func NewMethodNotAllowed() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MethodNotAllowedCode,
+		AppCode: MethodNotAllowedCode,
 		Message: MethodNotAllowedMessage,
 		Status:  MethodNotAllowedStatus,
 	}
@@ -282,7 +282,7 @@ func NewMethodNotAllowed() *errorz.ApiError {
 
 func NewRateLimited() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    RateLimitedCode,
+		AppCode: RateLimitedCode,
 		Message: RateLimitedMessage,
 		Status:  RateLimitedStatus,
 	}
@@ -290,7 +290,7 @@ func NewRateLimited() *errorz.ApiError {
 
 func NewTimeoutError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    TimeoutCode,
+		AppCode: TimeoutCode,
 		Message: TimeoutMessage,
 		Status:  TimeoutStatus,
 	}
@@ -298,7 +298,7 @@ func NewTimeoutError() *errorz.ApiError {
 
 func NewNoEdgeRoutersAvailable() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    NoEdgeRoutersAvailableCode,
+		AppCode: NoEdgeRoutersAvailableCode,
 		Message: NoEdgeRoutersAvailableMessage,
 		Status:  NoEdgeRoutersAvailableStatus,
 	}
@@ -306,7 +306,7 @@ func NewNoEdgeRoutersAvailable() *errorz.ApiError {
 
 func NewMissingCertClaim() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MissingCertClaimCode,
+		AppCode: MissingCertClaimCode,
 		Message: MissingCertClaimMessage,
 		Status:  MissingCertClaimStatus,
 	}
@@ -315,7 +315,7 @@ func NewMissingCertClaim() *errorz.ApiError {
 func NewInvalidPosture(cause error) *errorz.ApiError {
 	return &errorz.ApiError{
 		Cause:   cause,
-		Code:    InvalidPostureCode,
+		AppCode: InvalidPostureCode,
 		Message: InvalidPostureMessage,
 		Status:  InvalidPostureStatus,
 	}
@@ -323,7 +323,7 @@ func NewInvalidPosture(cause error) *errorz.ApiError {
 
 func NewMfaExistsError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MfaExistsCode,
+		AppCode: MfaExistsCode,
 		Message: MfaExistsMessage,
 		Status:  MfaExistsStatus,
 	}
@@ -331,7 +331,7 @@ func NewMfaExistsError() *errorz.ApiError {
 
 func NewMfaEnrollmentNotStarted() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MfaEnrollmentNotStartedCode,
+		AppCode: MfaEnrollmentNotStartedCode,
 		Message: MfaEnrollmentNotStartedMessage,
 		Status:  MfaEnrollmentNotStartedStatus,
 	}
@@ -339,7 +339,7 @@ func NewMfaEnrollmentNotStarted() *errorz.ApiError {
 
 func NewMfaNotEnrolledError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MfaNotEnrolledCode,
+		AppCode: MfaNotEnrolledCode,
 		Message: MfaNotEnrolledMessage,
 		Status:  MfaNotEnrolledStatus,
 	}
@@ -347,7 +347,7 @@ func NewMfaNotEnrolledError() *errorz.ApiError {
 
 func NewInvalidMfaTokenError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    MfaInvalidTokenCode,
+		AppCode: MfaInvalidTokenCode,
 		Message: MfaInvalidTokenMessage,
 		Status:  MfaInvalidTokenStatus,
 	}
@@ -355,7 +355,7 @@ func NewInvalidMfaTokenError() *errorz.ApiError {
 
 func NewInvalidBackingTokenTypeError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidBackingTokenTypeCode,
+		AppCode: InvalidBackingTokenTypeCode,
 		Message: InvalidBackingTokenTypeMessage,
 		Status:  InvalidBackingTokenTypeStatus,
 	}
@@ -363,7 +363,7 @@ func NewInvalidBackingTokenTypeError() *errorz.ApiError {
 
 func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        EdgeRouterFailedReEnrollmentCode,
+		AppCode:     EdgeRouterFailedReEnrollmentCode,
 		Message:     EdgeRouterFailedReEnrollmentMessage,
 		Status:      EdgeRouterFailedReEnrollmentStatus,
 		Cause:       cause,
@@ -373,7 +373,7 @@ func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError {
 
 func NewInvalidClientCertificate() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidClientCertCode,
+		AppCode: InvalidClientCertCode,
 		Message: InvalidClientCertMessage,
 		Status:  InvalidClientCertStatus,
 	}
@@ -381,7 +381,7 @@ func NewInvalidClientCertificate() *errorz.ApiError {
 
 func NewInvalidCertificatePem() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    InvalidCertificatePemCode,
+		AppCode: InvalidCertificatePemCode,
 		Message: InvalidCertificatePemMessage,
 		Status:  InvalidCertificatePemStatus,
 	}
@@ -389,7 +389,7 @@ func NewInvalidCertificatePem() *errorz.ApiError {
 
 func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, referencingEntityTypeIds []string, fieldName string) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        CanNotDeleteReferencedEntityCode,
+		AppCode:     CanNotDeleteReferencedEntityCode,
 		Message:     CanNotDeleteReferencedEntityMessage,
 		Status:      CanNotDeleteReferencedEntityStatus,
 		Cause:       errorz.NewFieldError(fmt.Sprintf("entity type %s referenced by %s: %v", localEntityType, remoteEntityType, referencingEntityTypeIds), fieldName, referencingEntityTypeIds),
@@ -399,7 +399,7 @@ func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, r
 
 func NewBadRequestFieldError(fieldError errorz.FieldError) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        errorz.InvalidFieldCode,
+		AppCode:     errorz.InvalidFieldCode,
 		Message:     errorz.InvalidFieldMessage,
 		Status:      errorz.InvalidFieldStatus,
 		Cause:       fieldError,
@@ -409,7 +409,7 @@ func NewBadRequestFieldError(fieldError errorz.FieldError) *errorz.ApiError {
 
 func NewEnrollmentExists(enrollmentMethod string) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        EnrollmentExistsCode,
+		AppCode:     EnrollmentExistsCode,
 		Message:     EnrollmentExistsMessage,
 		Status:      EnrollmentExistsStatus,
 		Cause:       errorz.NewFieldError("enrollment of same method exists", "method", enrollmentMethod),
@@ -419,7 +419,7 @@ func NewEnrollmentExists(enrollmentMethod string) *errorz.ApiError {
 
 func NewTooManyUpdatesError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    ServerTooManyRequestsCode,
+		AppCode: ServerTooManyRequestsCode,
 		Message: ServerTooManyRequestsMessage,
 		Status:  ServerTooManyRequestsStatus,
 	}
@@ -427,7 +427,7 @@ func NewTooManyUpdatesError() *errorz.ApiError {
 
 func NewNotRunningInHAModeError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    ServerNotRunningInHAModeCode,
+		AppCode: ServerNotRunningInHAModeCode,
 		Message: ServerNotRunningInHAModeMessage,
 		Status:  ServerNotRunningInHAModeStatus,
 	}
@@ -435,7 +435,7 @@ func NewNotRunningInHAModeError() *errorz.ApiError {
 
 func NewClusterHasNoLeaderError() *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:    ClusterHasNoLeaderCode,
+		AppCode: ClusterHasNoLeaderCode,
 		Message: ClusterHasNoLeaderMessage,
 		Status:  ClusterHasNoLeaderStatus,
 	}
@@ -443,7 +443,7 @@ func NewClusterHasNoLeaderError() *errorz.ApiError {
 
 func NewTransferLeadershipError(err error) *errorz.ApiError {
 	return &errorz.ApiError{
-		Code:        TransferLeadershipErrorCode,
+		AppCode:     TransferLeadershipErrorCode,
 		Message:     TransferLeadershipErrorMessage,
 		Status:      TransferLeadershipErrorStatus,
 		Cause:       err,

@@ -33,12 +33,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new link API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new link API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new link API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -49,29 +75,29 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	DeleteLink(params *DeleteLinkParams, opts ...ClientOption) (*DeleteLinkOK, error)
+	DeleteLink(params *DeleteLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteLinkOK, error)
 
-	DetailLink(params *DetailLinkParams, opts ...ClientOption) (*DetailLinkOK, error)
+	DetailLink(params *DetailLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailLinkOK, error)
 
-	ListLinks(params *ListLinksParams, opts ...ClientOption) (*ListLinksOK, error)
+	ListLinks(params *ListLinksParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListLinksOK, error)
 
-	PatchLink(params *PatchLinkParams, opts ...ClientOption) (*PatchLinkOK, error)
+	PatchLink(params *PatchLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchLinkOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-  DeleteLink deletes a link
+DeleteLink deletes a link
 
-  Delete a link by id. Requires admin access.
+Delete a link by id. Requires admin access.
 */
-func (a *Client) DeleteLink(params *DeleteLinkParams, opts ...ClientOption) (*DeleteLinkOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DeleteLink(params *DeleteLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteLinkOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDeleteLinkParams()
 	}
@@ -84,34 +110,40 @@ func (a *Client) DeleteLink(params *DeleteLinkParams, opts ...ClientOption) (*De
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DeleteLinkReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DeleteLinkOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for deleteLink: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  DetailLink retrieves a single link
+DetailLink retrieves a single link
 
-  Retrieves a single link by id. Requires admin access.
+Retrieves a single link by id. Requires admin access.
 */
-func (a *Client) DetailLink(params *DetailLinkParams, opts ...ClientOption) (*DetailLinkOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) DetailLink(params *DetailLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailLinkOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewDetailLinkParams()
 	}
@@ -124,35 +156,40 @@ func (a *Client) DetailLink(params *DetailLinkParams, opts ...ClientOption) (*De
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &DetailLinkReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*DetailLinkOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for detailLink: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  ListLinks lists links
+ListLinks lists links
 
-  Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
-
+Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
 */
-func (a *Client) ListLinks(params *ListLinksParams, opts ...ClientOption) (*ListLinksOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) ListLinks(params *ListLinksParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListLinksOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewListLinksParams()
 	}
@@ -165,34 +202,40 @@ func (a *Client) ListLinks(params *ListLinksParams, opts ...ClientOption) (*List
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &ListLinksReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*ListLinksOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listLinks: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
 /*
-  PatchLink updates the supplied fields on a link
+PatchLink updates the supplied fields on a link
 
-  Update the supplied fields on a link. Requires admin access.
+Update the supplied fields on a link. Requires admin access.
 */
-func (a *Client) PatchLink(params *PatchLinkParams, opts ...ClientOption) (*PatchLinkOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) PatchLink(params *PatchLinkParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchLinkOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewPatchLinkParams()
 	}
@@ -205,23 +248,29 @@ func (a *Client) PatchLink(params *PatchLinkParams, opts ...ClientOption) (*Patc
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &PatchLinkReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*PatchLinkOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for patchLink: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }

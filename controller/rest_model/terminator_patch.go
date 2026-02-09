@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -96,11 +97,15 @@ func (m *TerminatorPatch) validateCost(formats strfmt.Registry) error {
 
 	if m.Cost != nil {
 		if err := m.Cost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cost")
 			}
+
 			return err
 		}
 	}
@@ -114,11 +119,15 @@ func (m *TerminatorPatch) validatePrecedence(formats strfmt.Registry) error {
 	}
 
 	if err := m.Precedence.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("precedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("precedence")
 		}
+
 		return err
 	}
 
@@ -132,11 +141,15 @@ func (m *TerminatorPatch) validateTags(formats strfmt.Registry) error {
 
 	if m.Tags != nil {
 		if err := m.Tags.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("tags")
 			}
+
 			return err
 		}
 	}
@@ -169,12 +182,21 @@ func (m *TerminatorPatch) ContextValidate(ctx context.Context, formats strfmt.Re
 func (m *TerminatorPatch) contextValidateCost(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Cost != nil {
+
+		if swag.IsZero(m.Cost) { // not required
+			return nil
+		}
+
 		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("cost")
 			}
+
 			return err
 		}
 	}
@@ -184,12 +206,20 @@ func (m *TerminatorPatch) contextValidateCost(ctx context.Context, formats strfm
 
 func (m *TerminatorPatch) contextValidatePrecedence(ctx context.Context, formats strfmt.Registry) error {
 
+	if swag.IsZero(m.Precedence) { // not required
+		return nil
+	}
+
 	if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("precedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("precedence")
 		}
+
 		return err
 	}
 
@@ -199,12 +229,21 @@ func (m *TerminatorPatch) contextValidatePrecedence(ctx context.Context, formats
 func (m *TerminatorPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Tags != nil {
+
+		if swag.IsZero(m.Tags) { // not required
+			return nil
+		}
+
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("tags")
 			}
+
 			return err
 		}
 	}

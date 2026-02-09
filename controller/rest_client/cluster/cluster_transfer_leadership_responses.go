@@ -30,6 +30,8 @@ package cluster
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type ClusterTransferLeadershipReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *ClusterTransferLeadershipReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *ClusterTransferLeadershipReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewClusterTransferLeadershipOK()
@@ -84,7 +86,7 @@ func (o *ClusterTransferLeadershipReader) ReadResponse(response runtime.ClientRe
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /cluster/transfer-leadership] clusterTransferLeadership", response, response.Code())
 	}
 }
 
@@ -93,7 +95,8 @@ func NewClusterTransferLeadershipOK() *ClusterTransferLeadershipOK {
 	return &ClusterTransferLeadershipOK{}
 }
 
-/* ClusterTransferLeadershipOK describes a response with status code 200, with default header values.
+/*
+ClusterTransferLeadershipOK describes a response with status code 200, with default header values.
 
 Base empty response
 */
@@ -101,9 +104,46 @@ type ClusterTransferLeadershipOK struct {
 	Payload *rest_model.Empty
 }
 
-func (o *ClusterTransferLeadershipOK) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership o k response has a 2xx status code
+func (o *ClusterTransferLeadershipOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this cluster transfer leadership o k response has a 3xx status code
+func (o *ClusterTransferLeadershipOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership o k response has a 4xx status code
+func (o *ClusterTransferLeadershipOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster transfer leadership o k response has a 5xx status code
+func (o *ClusterTransferLeadershipOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster transfer leadership o k response a status code equal to that given
+func (o *ClusterTransferLeadershipOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the cluster transfer leadership o k response
+func (o *ClusterTransferLeadershipOK) Code() int {
+	return 200
+}
+
+func (o *ClusterTransferLeadershipOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipOK %s", 200, payload)
+}
+
+func (o *ClusterTransferLeadershipOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipOK %s", 200, payload)
+}
+
 func (o *ClusterTransferLeadershipOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +153,7 @@ func (o *ClusterTransferLeadershipOK) readResponse(response runtime.ClientRespon
 	o.Payload = new(rest_model.Empty)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -125,7 +165,8 @@ func NewClusterTransferLeadershipUnauthorized() *ClusterTransferLeadershipUnauth
 	return &ClusterTransferLeadershipUnauthorized{}
 }
 
-/* ClusterTransferLeadershipUnauthorized describes a response with status code 401, with default header values.
+/*
+ClusterTransferLeadershipUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -133,9 +174,46 @@ type ClusterTransferLeadershipUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterTransferLeadershipUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership unauthorized response has a 2xx status code
+func (o *ClusterTransferLeadershipUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster transfer leadership unauthorized response has a 3xx status code
+func (o *ClusterTransferLeadershipUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership unauthorized response has a 4xx status code
+func (o *ClusterTransferLeadershipUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster transfer leadership unauthorized response has a 5xx status code
+func (o *ClusterTransferLeadershipUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster transfer leadership unauthorized response a status code equal to that given
+func (o *ClusterTransferLeadershipUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the cluster transfer leadership unauthorized response
+func (o *ClusterTransferLeadershipUnauthorized) Code() int {
+	return 401
+}
+
+func (o *ClusterTransferLeadershipUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipUnauthorized %s", 401, payload)
+}
+
+func (o *ClusterTransferLeadershipUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipUnauthorized %s", 401, payload)
+}
+
 func (o *ClusterTransferLeadershipUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +223,7 @@ func (o *ClusterTransferLeadershipUnauthorized) readResponse(response runtime.Cl
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -157,7 +235,8 @@ func NewClusterTransferLeadershipNotFound() *ClusterTransferLeadershipNotFound {
 	return &ClusterTransferLeadershipNotFound{}
 }
 
-/* ClusterTransferLeadershipNotFound describes a response with status code 404, with default header values.
+/*
+ClusterTransferLeadershipNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -165,9 +244,46 @@ type ClusterTransferLeadershipNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterTransferLeadershipNotFound) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership not found response has a 2xx status code
+func (o *ClusterTransferLeadershipNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster transfer leadership not found response has a 3xx status code
+func (o *ClusterTransferLeadershipNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership not found response has a 4xx status code
+func (o *ClusterTransferLeadershipNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster transfer leadership not found response has a 5xx status code
+func (o *ClusterTransferLeadershipNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster transfer leadership not found response a status code equal to that given
+func (o *ClusterTransferLeadershipNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the cluster transfer leadership not found response
+func (o *ClusterTransferLeadershipNotFound) Code() int {
+	return 404
+}
+
+func (o *ClusterTransferLeadershipNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipNotFound %s", 404, payload)
+}
+
+func (o *ClusterTransferLeadershipNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipNotFound %s", 404, payload)
+}
+
 func (o *ClusterTransferLeadershipNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +293,7 @@ func (o *ClusterTransferLeadershipNotFound) readResponse(response runtime.Client
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -189,7 +305,8 @@ func NewClusterTransferLeadershipTooManyRequests() *ClusterTransferLeadershipToo
 	return &ClusterTransferLeadershipTooManyRequests{}
 }
 
-/* ClusterTransferLeadershipTooManyRequests describes a response with status code 429, with default header values.
+/*
+ClusterTransferLeadershipTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -197,9 +314,46 @@ type ClusterTransferLeadershipTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterTransferLeadershipTooManyRequests) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership too many requests response has a 2xx status code
+func (o *ClusterTransferLeadershipTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster transfer leadership too many requests response has a 3xx status code
+func (o *ClusterTransferLeadershipTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership too many requests response has a 4xx status code
+func (o *ClusterTransferLeadershipTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this cluster transfer leadership too many requests response has a 5xx status code
+func (o *ClusterTransferLeadershipTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this cluster transfer leadership too many requests response a status code equal to that given
+func (o *ClusterTransferLeadershipTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the cluster transfer leadership too many requests response
+func (o *ClusterTransferLeadershipTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *ClusterTransferLeadershipTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipTooManyRequests %s", 429, payload)
+}
+
+func (o *ClusterTransferLeadershipTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipTooManyRequests %s", 429, payload)
+}
+
 func (o *ClusterTransferLeadershipTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -209,7 +363,7 @@ func (o *ClusterTransferLeadershipTooManyRequests) readResponse(response runtime
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -221,7 +375,8 @@ func NewClusterTransferLeadershipInternalServerError() *ClusterTransferLeadershi
 	return &ClusterTransferLeadershipInternalServerError{}
 }
 
-/* ClusterTransferLeadershipInternalServerError describes a response with status code 500, with default header values.
+/*
+ClusterTransferLeadershipInternalServerError describes a response with status code 500, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -229,9 +384,46 @@ type ClusterTransferLeadershipInternalServerError struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterTransferLeadershipInternalServerError) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipInternalServerError  %+v", 500, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership internal server error response has a 2xx status code
+func (o *ClusterTransferLeadershipInternalServerError) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster transfer leadership internal server error response has a 3xx status code
+func (o *ClusterTransferLeadershipInternalServerError) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership internal server error response has a 4xx status code
+func (o *ClusterTransferLeadershipInternalServerError) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster transfer leadership internal server error response has a 5xx status code
+func (o *ClusterTransferLeadershipInternalServerError) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this cluster transfer leadership internal server error response a status code equal to that given
+func (o *ClusterTransferLeadershipInternalServerError) IsCode(code int) bool {
+	return code == 500
+}
+
+// Code gets the status code for the cluster transfer leadership internal server error response
+func (o *ClusterTransferLeadershipInternalServerError) Code() int {
+	return 500
+}
+
+func (o *ClusterTransferLeadershipInternalServerError) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipInternalServerError %s", 500, payload)
+}
+
+func (o *ClusterTransferLeadershipInternalServerError) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipInternalServerError %s", 500, payload)
+}
+
 func (o *ClusterTransferLeadershipInternalServerError) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -241,7 +433,7 @@ func (o *ClusterTransferLeadershipInternalServerError) readResponse(response run
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -253,7 +445,8 @@ func NewClusterTransferLeadershipServiceUnavailable() *ClusterTransferLeadership
 	return &ClusterTransferLeadershipServiceUnavailable{}
 }
 
-/* ClusterTransferLeadershipServiceUnavailable describes a response with status code 503, with default header values.
+/*
+ClusterTransferLeadershipServiceUnavailable describes a response with status code 503, with default header values.
 
 The request could not be completed due to the server being busy or in a temporarily bad state
 */
@@ -261,9 +454,46 @@ type ClusterTransferLeadershipServiceUnavailable struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *ClusterTransferLeadershipServiceUnavailable) Error() string {
-	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipServiceUnavailable  %+v", 503, o.Payload)
+// IsSuccess returns true when this cluster transfer leadership service unavailable response has a 2xx status code
+func (o *ClusterTransferLeadershipServiceUnavailable) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this cluster transfer leadership service unavailable response has a 3xx status code
+func (o *ClusterTransferLeadershipServiceUnavailable) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this cluster transfer leadership service unavailable response has a 4xx status code
+func (o *ClusterTransferLeadershipServiceUnavailable) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this cluster transfer leadership service unavailable response has a 5xx status code
+func (o *ClusterTransferLeadershipServiceUnavailable) IsServerError() bool {
+	return true
+}
+
+// IsCode returns true when this cluster transfer leadership service unavailable response a status code equal to that given
+func (o *ClusterTransferLeadershipServiceUnavailable) IsCode(code int) bool {
+	return code == 503
+}
+
+// Code gets the status code for the cluster transfer leadership service unavailable response
+func (o *ClusterTransferLeadershipServiceUnavailable) Code() int {
+	return 503
+}
+
+func (o *ClusterTransferLeadershipServiceUnavailable) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipServiceUnavailable %s", 503, payload)
+}
+
+func (o *ClusterTransferLeadershipServiceUnavailable) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /cluster/transfer-leadership][%d] clusterTransferLeadershipServiceUnavailable %s", 503, payload)
+}
+
 func (o *ClusterTransferLeadershipServiceUnavailable) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -273,7 +503,7 @@ func (o *ClusterTransferLeadershipServiceUnavailable) readResponse(response runt
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

@@ -36,16 +36,16 @@ import (
 )
 
 // FixDataIntegrityHandlerFunc turns a function with the right signature into a fix data integrity handler
-type FixDataIntegrityHandlerFunc func(FixDataIntegrityParams, interface{}) middleware.Responder
+type FixDataIntegrityHandlerFunc func(FixDataIntegrityParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn FixDataIntegrityHandlerFunc) Handle(params FixDataIntegrityParams, principal interface{}) middleware.Responder {
+func (fn FixDataIntegrityHandlerFunc) Handle(params FixDataIntegrityParams, principal any) middleware.Responder {
 	return fn(params, principal)
 }
 
 // FixDataIntegrityHandler interface for that can handle valid fix data integrity params
 type FixDataIntegrityHandler interface {
-	Handle(FixDataIntegrityParams, interface{}) middleware.Responder
+	Handle(FixDataIntegrityParams, any) middleware.Responder
 }
 
 // NewFixDataIntegrity creates a new http.Handler for the fix data integrity operation
@@ -53,12 +53,12 @@ func NewFixDataIntegrity(ctx *middleware.Context, handler FixDataIntegrityHandle
 	return &FixDataIntegrity{Context: ctx, Handler: handler}
 }
 
-/* FixDataIntegrity swagger:route POST /database/fix-data-integrity Database fixDataIntegrity
+/*
+	FixDataIntegrity swagger:route POST /database/fix-data-integrity Database fixDataIntegrity
 
-Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+# Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
 
 Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
-
 */
 type FixDataIntegrity struct {
 	Context *middleware.Context
@@ -79,9 +79,9 @@ func (o *FixDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if aCtx != nil {
 		*r = *aCtx
 	}
-	var principal interface{}
+	var principal any
 	if uprinc != nil {
-		principal = uprinc.(interface{}) // this is really a interface{}, I promise
+		principal = uprinc
 	}
 
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
@@ -90,6 +90,7 @@ func (o *FixDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

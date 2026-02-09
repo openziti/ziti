@@ -30,6 +30,8 @@ package terminator
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -45,7 +47,7 @@ type DetailTerminatorReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *DetailTerminatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *DetailTerminatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewDetailTerminatorOK()
@@ -72,7 +74,7 @@ func (o *DetailTerminatorReader) ReadResponse(response runtime.ClientResponse, c
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /terminators/{id}] detailTerminator", response, response.Code())
 	}
 }
 
@@ -81,7 +83,8 @@ func NewDetailTerminatorOK() *DetailTerminatorOK {
 	return &DetailTerminatorOK{}
 }
 
-/* DetailTerminatorOK describes a response with status code 200, with default header values.
+/*
+DetailTerminatorOK describes a response with status code 200, with default header values.
 
 A single terminator
 */
@@ -89,9 +92,46 @@ type DetailTerminatorOK struct {
 	Payload *rest_model.DetailTerminatorEnvelope
 }
 
-func (o *DetailTerminatorOK) Error() string {
-	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorOK  %+v", 200, o.Payload)
+// IsSuccess returns true when this detail terminator o k response has a 2xx status code
+func (o *DetailTerminatorOK) IsSuccess() bool {
+	return true
 }
+
+// IsRedirect returns true when this detail terminator o k response has a 3xx status code
+func (o *DetailTerminatorOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail terminator o k response has a 4xx status code
+func (o *DetailTerminatorOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this detail terminator o k response has a 5xx status code
+func (o *DetailTerminatorOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail terminator o k response a status code equal to that given
+func (o *DetailTerminatorOK) IsCode(code int) bool {
+	return code == 200
+}
+
+// Code gets the status code for the detail terminator o k response
+func (o *DetailTerminatorOK) Code() int {
+	return 200
+}
+
+func (o *DetailTerminatorOK) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorOK %s", 200, payload)
+}
+
+func (o *DetailTerminatorOK) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorOK %s", 200, payload)
+}
+
 func (o *DetailTerminatorOK) GetPayload() *rest_model.DetailTerminatorEnvelope {
 	return o.Payload
 }
@@ -101,7 +141,7 @@ func (o *DetailTerminatorOK) readResponse(response runtime.ClientResponse, consu
 	o.Payload = new(rest_model.DetailTerminatorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -113,7 +153,8 @@ func NewDetailTerminatorUnauthorized() *DetailTerminatorUnauthorized {
 	return &DetailTerminatorUnauthorized{}
 }
 
-/* DetailTerminatorUnauthorized describes a response with status code 401, with default header values.
+/*
+DetailTerminatorUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -121,9 +162,46 @@ type DetailTerminatorUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailTerminatorUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorUnauthorized  %+v", 401, o.Payload)
+// IsSuccess returns true when this detail terminator unauthorized response has a 2xx status code
+func (o *DetailTerminatorUnauthorized) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail terminator unauthorized response has a 3xx status code
+func (o *DetailTerminatorUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail terminator unauthorized response has a 4xx status code
+func (o *DetailTerminatorUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail terminator unauthorized response has a 5xx status code
+func (o *DetailTerminatorUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail terminator unauthorized response a status code equal to that given
+func (o *DetailTerminatorUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
+// Code gets the status code for the detail terminator unauthorized response
+func (o *DetailTerminatorUnauthorized) Code() int {
+	return 401
+}
+
+func (o *DetailTerminatorUnauthorized) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorUnauthorized %s", 401, payload)
+}
+
+func (o *DetailTerminatorUnauthorized) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorUnauthorized %s", 401, payload)
+}
+
 func (o *DetailTerminatorUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -133,7 +211,7 @@ func (o *DetailTerminatorUnauthorized) readResponse(response runtime.ClientRespo
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -145,7 +223,8 @@ func NewDetailTerminatorNotFound() *DetailTerminatorNotFound {
 	return &DetailTerminatorNotFound{}
 }
 
-/* DetailTerminatorNotFound describes a response with status code 404, with default header values.
+/*
+DetailTerminatorNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -153,9 +232,46 @@ type DetailTerminatorNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailTerminatorNotFound) Error() string {
-	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorNotFound  %+v", 404, o.Payload)
+// IsSuccess returns true when this detail terminator not found response has a 2xx status code
+func (o *DetailTerminatorNotFound) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail terminator not found response has a 3xx status code
+func (o *DetailTerminatorNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail terminator not found response has a 4xx status code
+func (o *DetailTerminatorNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail terminator not found response has a 5xx status code
+func (o *DetailTerminatorNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail terminator not found response a status code equal to that given
+func (o *DetailTerminatorNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the detail terminator not found response
+func (o *DetailTerminatorNotFound) Code() int {
+	return 404
+}
+
+func (o *DetailTerminatorNotFound) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorNotFound %s", 404, payload)
+}
+
+func (o *DetailTerminatorNotFound) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorNotFound %s", 404, payload)
+}
+
 func (o *DetailTerminatorNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -165,7 +281,7 @@ func (o *DetailTerminatorNotFound) readResponse(response runtime.ClientResponse,
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -177,7 +293,8 @@ func NewDetailTerminatorTooManyRequests() *DetailTerminatorTooManyRequests {
 	return &DetailTerminatorTooManyRequests{}
 }
 
-/* DetailTerminatorTooManyRequests describes a response with status code 429, with default header values.
+/*
+DetailTerminatorTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -185,9 +302,46 @@ type DetailTerminatorTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *DetailTerminatorTooManyRequests) Error() string {
-	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorTooManyRequests  %+v", 429, o.Payload)
+// IsSuccess returns true when this detail terminator too many requests response has a 2xx status code
+func (o *DetailTerminatorTooManyRequests) IsSuccess() bool {
+	return false
 }
+
+// IsRedirect returns true when this detail terminator too many requests response has a 3xx status code
+func (o *DetailTerminatorTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail terminator too many requests response has a 4xx status code
+func (o *DetailTerminatorTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail terminator too many requests response has a 5xx status code
+func (o *DetailTerminatorTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail terminator too many requests response a status code equal to that given
+func (o *DetailTerminatorTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
+// Code gets the status code for the detail terminator too many requests response
+func (o *DetailTerminatorTooManyRequests) Code() int {
+	return 429
+}
+
+func (o *DetailTerminatorTooManyRequests) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorTooManyRequests %s", 429, payload)
+}
+
+func (o *DetailTerminatorTooManyRequests) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorTooManyRequests %s", 429, payload)
+}
+
 func (o *DetailTerminatorTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -197,7 +351,7 @@ func (o *DetailTerminatorTooManyRequests) readResponse(response runtime.ClientRe
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

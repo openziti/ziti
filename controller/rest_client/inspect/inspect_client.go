@@ -33,12 +33,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new inspect API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new inspect API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new inspect API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -49,24 +75,23 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	Inspect(params *InspectParams, opts ...ClientOption) (*InspectOK, error)
+	Inspect(params *InspectParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*InspectOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-  Inspect inspects system values
+Inspect inspects system values
 
-  Requests system information, such as stack dumps or information about capabilities. Requires admin access.
-
+Requests system information, such as stack dumps or information about capabilities. Requires admin access.
 */
-func (a *Client) Inspect(params *InspectParams, opts ...ClientOption) (*InspectOK, error) {
-	// TODO: Validate the params before sending
+func (a *Client) Inspect(params *InspectParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*InspectOK, error) {
+	// NOTE: parameters are not validated before sending
 	if params == nil {
 		params = NewInspectParams()
 	}
@@ -79,23 +104,29 @@ func (a *Client) Inspect(params *InspectParams, opts ...ClientOption) (*InspectO
 		Schemes:            []string{"https"},
 		Params:             params,
 		Reader:             &InspectReader{formats: a.formats},
+		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
 	for _, opt := range opts {
 		opt(op)
 	}
-
 	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
+
+	// only one success response has to be checked
 	success, ok := result.(*InspectOK)
 	if ok {
 		return success, nil
 	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for inspect: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }

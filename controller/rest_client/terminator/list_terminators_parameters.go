@@ -77,10 +77,12 @@ func NewListTerminatorsParamsWithHTTPClient(client *http.Client) *ListTerminator
 	}
 }
 
-/* ListTerminatorsParams contains all the parameters to send to the API endpoint
-   for the list terminators operation.
+/*
+ListTerminatorsParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the list terminators operation.
+
+	Typically these are written to a http.Request.
 */
 type ListTerminatorsParams struct {
 

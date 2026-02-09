@@ -36,16 +36,16 @@ import (
 )
 
 // ClusterMemberAddHandlerFunc turns a function with the right signature into a cluster member add handler
-type ClusterMemberAddHandlerFunc func(ClusterMemberAddParams) middleware.Responder
+type ClusterMemberAddHandlerFunc func(ClusterMemberAddParams, any) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ClusterMemberAddHandlerFunc) Handle(params ClusterMemberAddParams) middleware.Responder {
-	return fn(params)
+func (fn ClusterMemberAddHandlerFunc) Handle(params ClusterMemberAddParams, principal any) middleware.Responder {
+	return fn(params, principal)
 }
 
 // ClusterMemberAddHandler interface for that can handle valid cluster member add params
 type ClusterMemberAddHandler interface {
-	Handle(ClusterMemberAddParams) middleware.Responder
+	Handle(ClusterMemberAddParams, any) middleware.Responder
 }
 
 // NewClusterMemberAdd creates a new http.Handler for the cluster member add operation
@@ -53,12 +53,12 @@ func NewClusterMemberAdd(ctx *middleware.Context, handler ClusterMemberAddHandle
 	return &ClusterMemberAdd{Context: ctx, Handler: handler}
 }
 
-/* ClusterMemberAdd swagger:route POST /cluster/add-member Cluster clusterMemberAdd
+/*
+	ClusterMemberAdd swagger:route POST /cluster/add-member Cluster clusterMemberAdd
 
-Add a member to the controller cluster
+# Add a member to the controller cluster
 
 Add a member to the controller cluster. Requires admin access.
-
 */
 type ClusterMemberAdd struct {
 	Context *middleware.Context
@@ -71,12 +71,26 @@ func (o *ClusterMemberAdd) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewClusterMemberAddParams()
+	uprinc, aCtx, err := o.Context.Authorize(r, route)
+	if err != nil {
+		o.Context.Respond(rw, r, route.Produces, route, err)
+		return
+	}
+	if aCtx != nil {
+		*r = *aCtx
+	}
+	var principal any
+	if uprinc != nil {
+		principal = uprinc
+	}
+
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params) // actually handle the request
+	res := o.Handler.Handle(Params, principal) // actually handle the request
+
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

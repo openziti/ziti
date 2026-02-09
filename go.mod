@@ -5,8 +5,6 @@ go 1.25.3
 // pinned
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
-replace github.com/openziti/foundation/v2 => github.com/openziti/foundation/v2 v2.0.86
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
@@ -35,7 +33,7 @@ require (
 	github.com/go-openapi/swag v0.25.4
 	github.com/go-openapi/swag/jsonutils v0.25.4
 	github.com/go-openapi/validate v0.25.1
-	github.com/go-resty/resty/v2 v2.17.1
+	github.com/go-resty/resty/v2 v2.17.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
@@ -63,13 +61,13 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.3.5
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.52
+	github.com/openziti/edge-api v0.26.53
 	github.com/openziti/foundation/v2 v2.0.87
 	github.com/openziti/identity v1.0.125
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.88
-	github.com/openziti/sdk-golang v1.4.1
+	github.com/openziti/sdk-golang v1.4.2
 	github.com/openziti/secretstream v0.1.47
 	github.com/openziti/storage v0.4.37
 	github.com/openziti/transport/v2 v2.0.209
@@ -162,7 +160,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.13 // indirect
-	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect
+	github.com/lufia/plan9stats v0.0.0-20260216142805-b3301c5f2a88 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
@@ -203,7 +201,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/logging v0.7.0 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
-	go.mongodb.org/mongo-driver v1.17.7 // indirect
+	go.mongodb.org/mongo-driver v1.17.9 // indirect
 	go.mozilla.org/pkcs7 v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.40.0 // indirect
