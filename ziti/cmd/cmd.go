@@ -131,6 +131,10 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	}
 
 	if layout == 1 {
+		_, _ = fmt.Fprintln(err, "WARNING: CLI layout v1 is deprecated and will be removed in a future release.")
+		_, _ = fmt.Fprintln(err, "Switch to layout v2 using: ziti cli set layout 2")
+		_, _ = fmt.Fprintln(err, "Or set the environment variable: export ZITI_CLI_LAYOUT=2")
+		_, _ = fmt.Fprintln(err, "")
 		return NewV1CmdRoot(in, out, err, cmd)
 	} else {
 		return NewV2CmdRoot(in, out, err, cmd)
