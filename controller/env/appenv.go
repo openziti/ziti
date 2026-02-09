@@ -22,6 +22,7 @@ import (
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -72,7 +73,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/openziti/ziti/v2/controller/xmgmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -622,173 +622,111 @@ func (a authorizer) Authorize(request *http.Request, principal interface{}) erro
 		return errorz.NewUnauthorized()
 	}
 
+	if rc.SecurityTokenCtx == nil {
+		//no tokens
+		return errorz.NewUnauthorizedTokensMissing()
+	}
+
+	if rc.SecurityTokenCtx.Error != nil {
+		//error due to security token issues
+		return rc.SecurityTokenCtx.Error
+	}
 	if rc.Identity == nil {
+		//no idea what happened
+		pfxlog.Logger().WithError(err).Error("attempting to retrieve request context succeeded, request context had a security toke, identity information missing")
 		return errorz.NewUnauthorized()
 	}
 
 	return nil
 }
 
-// ProcessZtSession validates a Ziti session token and populates the request context.
-func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, ztSession string) error {
+// ProcessZtSession validates a Ziti session token and populates the request context. If any value is provided,
+// it must be valid.
+func (ae *AppEnv) ProcessZtSession(rc *response.RequestContext, securityToken *common.SecurityTokenCtx) {
 	logger := pfxlog.Logger()
 
-	rc.SessionToken = ztSession
-
-	if rc.SessionToken != "" {
-		_, err := uuid.Parse(rc.SessionToken)
+	if securityToken.ZtSession != "" {
+		_, err := uuid.Parse(securityToken.ZtSession)
 		if err != nil {
 			logger.WithError(err).Debug("failed to parse session id")
-			rc.SessionToken = ""
-		} else {
-			logger.Tracef("authorizing request using session id '%v'", rc.SessionToken)
+			securityToken.Error = errorz.NewUnauthorizedZtSessionInvalid()
+			return
 		}
 
-	}
-
-	if rc.SessionToken != "" {
-		var err error
-		rc.ApiSession, err = ae.GetManagers().ApiSession.ReadByToken(rc.SessionToken)
-		if err != nil {
-			logger.WithError(err).Debugf("looking up ApiConfig session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
-			rc.ApiSession = nil
-			rc.SessionToken = ""
-		}
-	}
-
-	if rc.ApiSession != nil {
-		//updates for api session timeouts
-		ae.GetManagers().ApiSession.MarkLastActivityById(rc.ApiSession.Id)
-
-		var err error
-		rc.Identity, err = ae.GetManagers().Identity.Read(rc.ApiSession.IdentityId)
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				apiErr := errorz.NewUnauthorized()
-				apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
-				apiErr.AppendCause = true
-				return apiErr
-			} else {
-				return err
-			}
-		}
-	}
-
-	if rc.Identity != nil {
-		var err error
-		rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
-
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				apiErr := errorz.NewUnauthorized()
-				apiErr.Cause = fmt.Errorf("associated auth policy %s not found", rc.Identity.AuthPolicyId)
-				apiErr.AppendCause = true
-				return apiErr
-			} else {
-				return err
-			}
-		}
-
-		if rc.AuthPolicy == nil {
-			err := fmt.Errorf("unahndled scenario, nil auth policy [%s] found on identity [%s]", rc.Identity.AuthPolicyId, rc.Identity.Id)
-			logger.Error(err)
-			return err
-		}
-
-		ProcessAuthQueries(ae, rc)
-
-		isPartialAuth := len(rc.AuthQueries) > 0
-
-		if isPartialAuth {
-			rc.ActivePermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
-		} else {
-			rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
-		}
-
-		if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
-			rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
-		}
-
-		for _, permission := range rc.Identity.Permissions {
-			rc.ActivePermissions[permission] = struct{}{}
-		}
-	}
-
-	return nil
-}
-
-// ProcessJwt validates a JWT token and populates the request context with claims and identity.
-func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) error {
-	rc.SessionToken = token.Raw
-	rc.Jwt = token
-	rc.Claims = token.Claims.(*common.AccessClaims)
-
-	if rc.Claims == nil {
-		return fmt.Errorf("could not convert tonek.Claims from %T to %T", rc.Jwt.Claims, rc.Claims)
-	}
-
-	if rc.Claims.Type != common.TokenTypeAccess {
-		return errors.New("invalid token")
+		logger.Tracef("authorizing request using session id '%v'", securityToken.ZtSession)
 	}
 
 	var err error
-	rc.Identity, err = ae.GetManagers().Identity.Read(rc.Claims.Subject)
+	rc.ApiSession, err = ae.GetManagers().ApiSession.ReadByToken(securityToken.ZtSession)
+	if err != nil {
+		logger.WithError(err).Debugf("looking up ApiConfig session for %s resulted in an error, request will continue unauthenticated", securityToken.ZtSession)
+		rc.ApiSession = nil
+		securityToken.Error = errorz.NewUnauthorizedZtSessionInvalid()
+		return
+	}
 
+	if rc.ApiSession == nil {
+		securityToken.Error = errorz.NewUnauthorizedZtSessionInvalid()
+		return
+	}
+
+	//updates for api session timeouts
+	ae.GetManagers().ApiSession.MarkLastActivityById(rc.ApiSession.Id)
+
+	rc.Identity, err = ae.GetManagers().Identity.Read(rc.ApiSession.IdentityId)
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			apiErr := errorz.NewUnauthorized()
-			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", rc.Claims.Subject)
+			apiErr := errorz.NewUnauthorizedZtSessionInvalid()
+			apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
 			apiErr.AppendCause = true
-			return apiErr
-		} else {
-			return err
+			securityToken.Error = apiErr
+			return
 		}
+
+		securityToken.Error = err
+		return
 	}
 
-	configTypes := map[string]struct{}{}
-
-	for _, configType := range rc.Claims.ConfigTypes {
-		configTypes[configType] = struct{}{}
-	}
-
-	rc.ApiSession = &model.ApiSession{
-		BaseEntity: models.BaseEntity{
-			Id:        rc.Claims.ApiSessionId,
-			CreatedAt: rc.Claims.IssuedAt.AsTime(),
-			UpdatedAt: rc.Claims.IssuedAt.AsTime(),
-			IsSystem:  false,
-		},
-		Token:                   rc.Jwt.Raw,
-		IdentityId:              rc.Claims.Subject,
-		Identity:                rc.Identity,
-		IPAddress:               rc.Request.RemoteAddr,
-		ConfigTypes:             configTypes,
-		MfaComplete:             rc.Claims.TotpComplete(),
-		MfaRequired:             false,
-		ExpiresAt:               rc.Claims.Expiration.AsTime(),
-		ExpirationDuration:      time.Until(rc.Claims.Expiration.AsTime()),
-		LastActivityAt:          time.Now(),
-		AuthenticatorId:         rc.Claims.AuthenticatorId,
-		IsCertExtendable:        rc.Claims.IsCertExtendable,
-		IsCertExtendRequested:   rc.Claims.IsCertExtendRequested,
-		IsCertKeyRollRequested:  rc.Claims.IsCertKeyRollRequested,
-		ImproperClientCertChain: rc.Claims.ImproperClientCertChain,
+	if rc.Identity == nil {
+		apiErr := errorz.NewUnauthorizedZtSessionInvalid()
+		apiErr.Cause = fmt.Errorf("associated identity %s resulted in an empty record", rc.ApiSession.IdentityId)
+		apiErr.AppendCause = true
+		securityToken.Error = apiErr
+		return
 	}
 
 	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			apiErr := errorz.NewUnauthorized()
-			apiErr.Cause = fmt.Errorf("jwt associated auth policy %s not found", rc.Identity.AuthPolicyId)
+			apiErr := errorz.NewUnauthorizedZtSessionInvalid()
+			apiErr.Cause = fmt.Errorf("associated auth policy %s not found", rc.Identity.AuthPolicyId)
 			apiErr.AppendCause = true
-			return apiErr
-		} else {
-			return err
+			securityToken.Error = apiErr
+			return
 		}
+
+		securityToken.Error = err
+		return
 	}
 
-	rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
+	if rc.AuthPolicy == nil {
+		apiErr := errorz.NewUnauthorizedZtSessionInvalid()
+		apiErr.Cause = fmt.Errorf("associated auth policy %s for identity id %s resulted in an empty record", rc.Identity.AuthPolicyId, rc.Identity.Id)
+		apiErr.AppendCause = true
+		securityToken.Error = apiErr
+		return
+	}
+
+	ProcessAuthQueries(ae, rc)
+
+	isPartialAuth := len(rc.AuthQueries) > 0
+
+	if isPartialAuth {
+		rc.ActivePermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
+	} else {
+		rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
+	}
 
 	if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
 		rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
@@ -797,32 +735,137 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 	for _, permission := range rc.Identity.Permissions {
 		rc.ActivePermissions[permission] = struct{}{}
 	}
+}
 
-	return nil
+// ProcessJwt validates a JWT token and populates the request context with claims and identity.
+func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, securityToken *common.SecurityTokenCtx) {
+	if securityToken.Claims == nil {
+		pfxlog.Logger().Debug(fmt.Errorf("could not convert token.Claims from %T to %T", securityToken.Jwt.Claims, securityToken.Claims))
+		securityToken.Error = errorz.NewUnauthorizedOidcInvalid()
+		return
+	}
+
+	if securityToken.Claims.Type != common.TokenTypeAccess {
+		pfxlog.Logger().Errorf("correctly signed token has an invalid type, expected %s, got %s", common.TokenTypeAccess, securityToken.Claims.Type)
+		securityToken.Error = errorz.NewUnauthorizedOidcInvalid()
+		return
+	}
+
+	var err error
+	rc.Identity, err = ae.GetManagers().Identity.Read(securityToken.Claims.Subject)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			apiErr := errorz.NewUnauthorizedOidcInvalid()
+			apiErr.Cause = fmt.Errorf("jwt associated identity %s not found", securityToken.Claims.Subject)
+			apiErr.AppendCause = true
+			securityToken.Error = apiErr
+		}
+
+		securityToken.Error = err
+		return
+	}
+
+	configTypes := map[string]struct{}{}
+
+	for _, configType := range securityToken.Claims.ConfigTypes {
+		configTypes[configType] = struct{}{}
+	}
+
+	rc.ApiSession = &model.ApiSession{
+		BaseEntity: models.BaseEntity{
+			Id:        securityToken.Claims.ApiSessionId,
+			CreatedAt: securityToken.Claims.IssuedAt.AsTime(),
+			UpdatedAt: securityToken.Claims.IssuedAt.AsTime(),
+			IsSystem:  false,
+		},
+		Token:                   securityToken.Jwt.Raw,
+		IdentityId:              securityToken.Claims.Subject,
+		Identity:                rc.Identity,
+		IPAddress:               rc.Request.RemoteAddr,
+		ConfigTypes:             configTypes,
+		MfaComplete:             securityToken.Claims.TotpComplete(),
+		MfaRequired:             false,
+		ExpiresAt:               securityToken.Claims.Expiration.AsTime(),
+		ExpirationDuration:      time.Until(securityToken.Claims.Expiration.AsTime()),
+		LastActivityAt:          time.Now(),
+		AuthenticatorId:         securityToken.Claims.AuthenticatorId,
+		IsCertExtendable:        securityToken.Claims.IsCertExtendable,
+		IsCertExtendRequested:   securityToken.Claims.IsCertExtendRequested,
+		IsCertKeyRollRequested:  securityToken.Claims.IsCertKeyRollRequested,
+		ImproperClientCertChain: securityToken.Claims.ImproperClientCertChain,
+	}
+
+	rc.AuthPolicy, err = ae.GetManagers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			apiErr := errorz.NewUnauthorizedOidcInvalid()
+			apiErr.Cause = fmt.Errorf("jwt associated auth policy %s not found", rc.Identity.AuthPolicyId)
+			apiErr.AppendCause = true
+			securityToken.Error = apiErr
+			return
+		}
+
+		securityToken.Error = err
+		return
+	}
+
+	ProcessAuthQueries(ae, rc)
+
+	isPartialAuth := len(rc.AuthQueries) > 0
+
+	if isPartialAuth {
+		rc.ActivePermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
+	} else {
+		rc.ActivePermissions[permissions.AuthenticatedPermission] = struct{}{}
+	}
+
+	if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
+		rc.ActivePermissions[permissions.AdminPermission] = struct{}{}
+	}
+
+	for _, permission := range rc.Identity.Permissions {
+		rc.ActivePermissions[permission] = struct{}{}
+	}
 }
 
 // FillRequestContext extracts authentication information from the HTTP request
-// and populates the request context with session or JWT token data.
-func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
+// and populates the request context with the security session token. It does not enforce
+// authorization returns as processing may allow unauthenticated access. Down stream code
+// is expected to inspect rc.SecurityTokenCtx
+func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) {
 	// do no process auth headers on authenticate request
 	if strings.HasSuffix(rc.Request.URL.Path, "/v1/authenticate") && !strings.HasSuffix(rc.Request.URL.Path, "/authenticate/mfa") {
-		return nil
+		return
 	}
 
-	ztSession := ae.getZtSessionFromRequest(rc.Request)
+	var err error
+	rc.SecurityTokenCtx, err = common.NewSecurityTokenCtx(rc.Request, ae.ControllersKeyFunc)
 
-	if ztSession != "" {
-		return ae.ProcessZtSession(rc, ztSession)
+	if err != nil {
+		pfxlog.Logger().WithError(err).
+			WithField("path", rc.Request.URL.Path).
+			WithField("requestId", rc.Id).
+			Error("failed to create security token context from request")
+		return
 	}
 
-	token := ae.getJwtTokenFromRequest(rc.Request)
-
-	if token != nil {
-		rc.IsJwtToken = true
-		return ae.ProcessJwt(rc, token)
+	if rc.SecurityTokenCtx.Error != nil {
+		return
 	}
 
-	return nil
+	// if we have a zt session, prefer it
+	if rc.SecurityTokenCtx.ZtSession != "" {
+		ae.ProcessZtSession(rc, rc.SecurityTokenCtx)
+		return
+	}
+
+	if rc.SecurityTokenCtx.Jwt != nil && rc.SecurityTokenCtx.Claims != nil && rc.SecurityTokenCtx.Jwt.Valid {
+		ae.ProcessJwt(rc, rc.SecurityTokenCtx)
+		return
+	}
+
 }
 
 func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
@@ -865,6 +908,17 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 		return
 	}
 
+	if rc.SecurityTokenCtx == nil {
+		var err error
+		rc.SecurityTokenCtx, err = common.NewSecurityTokenCtx(rc.Request, ae.ControllersKeyFunc)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to create security token context from request")
+			rc.RespondWithError(errorz.NewUnauthorized())
+			return
+		}
+	}
+
 	totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
 
 	if totpRequired && !rc.ApiSession.MfaComplete {
@@ -883,18 +937,43 @@ func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
 		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
 		if extJwtAuth != nil {
 			authCtx := model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext())
+
+			var err error
+
+			if err != nil {
+				pfxlog.Logger().WithError(err).
+					WithField("path", rc.Request.URL.Path).
+					WithField("requestId", rc.Id).
+					Error("failed to create security token context from request")
+
+				rc.RespondWithError(err)
+				return
+			}
+
+			authCtx.SetSecurityTokenCtx(rc.SecurityTokenCtx)
 			authCtx.SetPrimaryIdentity(rc.Identity)
 
 			authResult, err := extJwtAuth.ProcessSecondary(authCtx)
 
+			apiErr := &errorz.ApiError{}
+
+			if errors.As(err, &apiErr) {
+				for k, vs := range apiErr.Headers {
+					for _, v := range vs {
+						rc.ResponseWriter.Header().Add(k, v)
+					}
+				}
+			}
+
 			if err != nil || !authResult.IsSuccessful() {
 				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)
 
-				if err != nil {
+				if err == nil {
+					rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(signer))
+
+				} else {
 					pfxlog.Logger().Errorf("could not read required external jwt signer: %s: %s", *rc.AuthPolicy.Secondary.RequiredExtJwtSigner, err)
 				}
-				rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(signer))
-
 			}
 		}
 	}
@@ -1001,7 +1080,7 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 		}
 
 		if !found {
-			return nil, errorz.NewUnauthorized()
+			return nil, errorz.NewUnauthorizedOidcInvalid()
 		}
 
 		return &model.ApiSession{}, nil
@@ -1015,7 +1094,7 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 				pfxlog.Logger().WithError(err).Errorf("encountered error checking for session that was not expected; returning masking unauthorized response")
 			}
 
-			return nil, errorz.NewUnauthorized()
+			return nil, errorz.NewUnauthorizedZtSessionInvalid()
 		}
 
 		return principal, nil
@@ -1083,30 +1162,6 @@ func (ae *AppEnv) InitPersistence() error {
 // getZtSessionFromRequest extracts the Ziti session token from HTTP headers.
 func (ae *AppEnv) getZtSessionFromRequest(r *http.Request) string {
 	return r.Header.Get(ZitiSession)
-}
-
-// getJwtTokenFromRequest extracts and validates JWT tokens from Authorization headers.
-func (ae *AppEnv) getJwtTokenFromRequest(r *http.Request) *jwt.Token {
-	headers := r.Header.Values("authorization")
-
-	for _, header := range headers {
-		if strings.HasPrefix(header, "Bearer ") {
-			token := header[7:]
-			claims := &common.AccessClaims{}
-			parsedToken, err := jwt.ParseWithClaims(token, claims, ae.ControllersKeyFunc)
-
-			if err != nil {
-				pfxlog.Logger().WithError(err).Debug("JWT provided that did not parse and verify against controller public keys, skipping")
-				continue
-			}
-			if parsedToken.Valid {
-				return parsedToken
-			}
-		}
-
-	}
-
-	return nil
 }
 
 // ControllersKeyFunc provides public keys for JWT token verification from peer controllers.
@@ -1225,7 +1280,17 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		for _, permission := range permissions {
 			if !permission.IsAllowed(rc) {
-				rc.RespondWithApiError(errorz.NewUnauthorized())
+				var unauthorizedError error = errorz.NewUnauthorized()
+
+				if rc.SecurityTokenCtx.Error != nil {
+					// if we have a specific security token error use that instead
+					unauthorizedError = rc.SecurityTokenCtx.Error
+				} else if !rc.SecurityTokenProvided() {
+					// if we failed w/ no tokens, instead provide an unauthorized that conveys that
+					unauthorizedError = errorz.NewUnauthorizedTokensMissing()
+				}
+
+				rc.RespondWithError(unauthorizedError)
 				return
 			}
 		}

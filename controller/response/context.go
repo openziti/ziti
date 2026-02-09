@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -42,11 +41,7 @@ type RequestContext struct {
 	// The unique id of the current request
 	Id string
 
-	// An opaque session token
-	SessionToken string
-	Jwt          *jwt.Token
-	Claims       *common.AccessClaims
-	ApiSession   *model.ApiSession
+	ApiSession *model.ApiSession
 
 	Identity          *model.Identity
 	AuthPolicy        *model.AuthPolicy
@@ -63,11 +58,32 @@ type RequestContext struct {
 	entitySubId string
 	Body        []byte
 	StartTime   time.Time
-	IsJwtToken  bool
+
+	SecurityTokenCtx *common.SecurityTokenCtx
+}
+
+// HasJwtSecurityToken returns true if the request context has a valid JWT security token
+func (rc *RequestContext) HasJwtSecurityToken() bool {
+	return rc.SecurityTokenCtx != nil && rc.SecurityTokenCtx.Jwt != nil && rc.SecurityTokenCtx.Jwt.Valid
+}
+
+// HasLegacySecurityToken returns true if the request context has a legacy zt-session security token
+func (rc *RequestContext) HasLegacySecurityToken() bool {
+	return rc.SecurityTokenCtx != nil && rc.SecurityTokenCtx.ZtSession != ""
 }
 
 func (rc *RequestContext) GetApi() permissions.Api {
 	return rc.Api
+}
+
+// SecurityTokenProvided returns true if a security token was provided. It does not represent whether that token
+// is valid or not.
+func (rc *RequestContext) SecurityTokenProvided() bool {
+	if rc.SecurityTokenCtx == nil {
+		return false
+	}
+
+	return rc.SecurityTokenCtx.Jwt != nil || rc.SecurityTokenCtx.ZtSession != ""
 }
 
 func (rc *RequestContext) HasPermission(s string) bool {

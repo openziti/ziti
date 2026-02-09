@@ -33,6 +33,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/pkg/errors"
@@ -260,7 +261,7 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	if verifyErr != nil {
 		if responseType == JsonContentType {
 			renderJsonApiError(w, &errorz.ApiError{
-				Code:    "INVALID TOTP CODE",
+				AppCode: "INVALID TOTP CODE",
 				Message: "an invalid TOTP code was supplied",
 				Status:  http.StatusBadRequest,
 			})
@@ -301,31 +302,53 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	credentials := &OidcUpdbCreds{}
-	apiErr := parsePayload(r, credentials)
+	authErr := parsePayload(r, credentials)
 
-	if apiErr != nil {
-		renderJsonError(w, apiErr)
+	if authErr != nil {
+		renderJsonError(w, authErr)
 		return
 	}
 
 	authCtx := model.NewAuthContextHttp(r, method, credentials, NewHttpChangeCtx(r))
 
-	authRequest, apiErr := l.store.Authenticate(authCtx, credentials.AuthRequestId, credentials.ConfigTypes)
+	securityTokenCtx, securityTokenCtxErr := common.NewSecurityTokenCtx(r, l.store.GetPrimaryJwtSignerKeyFunc())
 
-	if apiErr != nil {
-		invalid := apierror.NewInvalidAuth()
+	if securityTokenCtxErr != nil {
+		renderJsonError(w, securityTokenCtxErr)
+		return
+	}
+
+	authCtx.SetSecurityTokenCtx(securityTokenCtx)
+
+	authRequest, authErr := l.store.Authenticate(authCtx, credentials.AuthRequestId, credentials.ConfigTypes)
+
+	if authErr != nil {
+
+		authApiErr := &errorz.ApiError{}
+		authApiErrOk := errors.As(authErr, &authApiErr)
+
+		if authApiErrOk {
+			for k, vs := range authApiErr.Headers {
+				for _, v := range vs {
+					w.Header().Add(k, v)
+				}
+			}
+		} else {
+			authApiErr = errorz.NewUnauthorized()
+		}
+
 		if responseType == HtmlContentType {
 
 			if method == AuthMethodPassword {
-				w.WriteHeader(invalid.Status)
-				renderLogin(w, credentials.AuthRequestId, invalid)
+				w.WriteHeader(authApiErr.Status)
+				renderLogin(w, credentials.AuthRequestId, authApiErr)
 				return
 			}
 
-			http.Error(w, invalid.Message, invalid.Status)
+			http.Error(w, authApiErr.Message, authApiErr.Status)
 			return
 		}
-		renderJsonError(w, apiErr)
+		renderJsonError(w, authApiErr)
 		return
 	}
 
@@ -334,6 +357,33 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	authRequest.AuthTime = time.Now()
 
 	var authQueries []*rest_model.AuthQueryDetail
+
+	if authRequest.SecondaryExtJwtSigner != nil {
+
+		securityTokenCtx, err := common.NewSecurityTokenCtx(r, l.store.GetPrimaryJwtSignerKeyFunc())
+
+		if err != nil {
+			renderJsonError(w, err)
+			return
+		}
+
+		secondaryJwtResult, secondaryJwtErr := l.store.ProcessSecondaryJwts(r, authRequest, securityTokenCtx)
+
+		if secondaryJwtErr != nil {
+			secondaryJwtApiErr := &errorz.ApiError{}
+			secondaryJwtApiErrOk := errors.As(secondaryJwtErr, &secondaryJwtApiErr)
+
+			if secondaryJwtApiErrOk {
+				for k, v := range secondaryJwtApiErr.Headers {
+					for _, vv := range v {
+						w.Header().Add(k, vv)
+					}
+				}
+			}
+		} else if secondaryJwtResult != nil && secondaryJwtResult.IsSuccessful() {
+			authRequest.AddAmrExtJwtId(authRequest.SecondaryExtJwtSigner.Id)
+		}
+	}
 
 	if !authRequest.HasSecondaryAuth() {
 		authQueries = authRequest.GetAuthQueries()
@@ -344,7 +394,6 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(authQueries) > 0 {
-
 		if responseType == HtmlContentType {
 			renderTotp(w, credentials.AuthRequestId, err, authQueries)
 		} else if responseType == JsonContentType {
@@ -357,10 +406,10 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiErr = l.store.UpdateSdkEnvInfo(authRequest)
+	authErr = l.store.UpdateSdkEnvInfo(authRequest)
 
-	if apiErr != nil {
-		pfxlog.Logger().WithError(apiErr).Errorf("cannot update sdk env info, continuing with authentication")
+	if authErr != nil {
+		pfxlog.Logger().WithError(authErr).Errorf("cannot update sdk env info, continuing with authentication")
 	}
 
 	callbackUrl := l.callback(r.Context(), credentials.AuthRequestId)
@@ -379,6 +428,7 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authQueries []*rest_model.AuthQueryDetail
+	var authHeaders http.Header
 
 	if !authRequest.HasSecondaryAuth() {
 		authQueries = authRequest.GetAuthQueries()
@@ -386,6 +436,12 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 
 	if authRequest.NeedsTotp() {
 		w.Header().Set(TotpRequiredHeader, "true")
+	}
+
+	for k, vs := range authHeaders {
+		for _, v := range vs {
+			w.Header().Add(k, v)
+		}
 	}
 
 	respBody := JsonMap(map[string]interface{}{

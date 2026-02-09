@@ -145,7 +145,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 		return
 	}
 
-	if !rc.IsJwtToken {
+	if !rc.HasJwtSecurityToken() {
 		err = ae.Managers.ApiSession.SetMfaPassed(rc.ApiSession, changeCtx)
 
 		if err != nil {

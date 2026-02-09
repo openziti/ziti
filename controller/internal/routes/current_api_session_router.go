@@ -140,7 +140,7 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		newApiSessionCert, err := ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.Identity, rc.ApiSession, rc.IsJwtToken, 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
+		newApiSessionCert, err := ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.Identity, rc.ApiSession, rc.HasJwtSecurityToken(), 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
 
 		if err != nil {
 			return "", err
@@ -213,7 +213,7 @@ func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *respo
 }
 
 func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response.RequestContext, totpCode *rest_model.MfaCode) {
-	if !rc.IsJwtToken {
+	if !rc.HasJwtSecurityToken() {
 		rc.RespondWithApiError(apierror.NewInvalidBackingTokenTypeError())
 		return
 	}
@@ -248,7 +248,7 @@ func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response
 		return
 	}
 
-	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), rc.Claims)
+	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), rc.SecurityTokenCtx.Claims)
 
 	if err != nil {
 		rc.RespondWithError(err)

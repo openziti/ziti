@@ -81,7 +81,7 @@ func negotiateBodyContentType(r *http.Request) (string, *errorz.ApiError) {
 
 	return "", &errorz.ApiError{
 
-		Code:        "UNSUPPORTED_MEDIA_TYPE",
+		AppCode:     "UNSUPPORTED_MEDIA_TYPE",
 		Message:     fmt.Sprintf("the content type: %s, is not supported (supported: %s, %s)", contentType, FormContentType, JsonContentType),
 		Status:      http.StatusUnsupportedMediaType,
 		Cause:       nil,

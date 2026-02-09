@@ -152,11 +152,8 @@ func (r *SessionRouter) DeleteClient(ae *env.AppEnv, rc *response.RequestContext
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params clientSession.CreateSessionParams) {
 	start := time.Now()
 
-	// if not JWT-based auth, still create a durable legacy session
-	isLegacy := rc.Claims == nil
-
 	entity := MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session)
-	jwtStr, err := ae.Managers.Session.CreateJwt(entity, isLegacy)
+	jwtStr, err := ae.Managers.Session.CreateJwt(entity, rc.HasLegacySecurityToken())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -185,7 +182,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 		Meta: &rest_model.Meta{},
 	}
 
-	if isLegacy {
+	if rc.HasLegacySecurityToken() {
 		_, err = ae.Managers.Session.Create(entity, rc.NewChangeContext())
 		if err != nil {
 			rc.RespondWithError(err)

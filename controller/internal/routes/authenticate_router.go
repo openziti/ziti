@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -79,7 +80,19 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, httpRequest *http.Request, method string, auth *rest_model.Authenticate) {
 	start := time.Now()
 	logger := pfxlog.Logger()
-	authContext := model.NewAuthContextHttp(httpRequest, method, auth, rc.NewChangeContext())
+	authContext := model.NewAuthContextHttp(rc.Request, method, auth, rc.NewChangeContext())
+
+	if rc.SecurityTokenCtx == nil {
+		var err error
+		rc.SecurityTokenCtx, err = common.NewSecurityTokenCtx(httpRequest, ae.ControllersKeyFunc)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to create security token context from request")
+			rc.RespondWithError(errorz.NewUnauthorized())
+			return
+		}
+	}
+	authContext.SetSecurityTokenCtx(rc.SecurityTokenCtx)
 
 	authResult, err := ae.Managers.Authenticator.Authorize(authContext)
 
@@ -216,7 +229,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.GetConfig().Edge.SessionTimeoutDuration())
 
 	//re-calc session headers as they were not set when ApiSession == NIL
-	response.AddSessionHeaders(rc)
+	response.AddApiSessionHeaders(rc)
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
