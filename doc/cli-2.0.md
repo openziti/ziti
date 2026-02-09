@@ -55,10 +55,10 @@ Consolidated operational utilities:
 - `ziti enroll router` - enroll a router (was `edge-router`)
 - `ziti enroll reenroll-router` - re-enroll a router
 
-### Show Commands
-- `ziti show config` - display config definition
-- `ziti show config-type` - display config type schema
-- `ziti show controller-version` - show controller version (was `ziti edge version`)
+### Get Commands
+- `ziti get config` - display config definition
+- `ziti get config-type` - display config type schema
+- `ziti get controller-version` - show controller version (was `ziti edge version`)
 
 ### Removed/Hidden in V2
 - `ziti edge` - removed (all functionality moved elsewhere)
@@ -492,10 +492,10 @@ ziti setup router
 ziti setup router config
 ziti setup router config edge
 ziti setup router config fabric
-ziti show
-ziti show config
-ziti show config-type
-ziti show controller-version
+ziti get
+ziti get config
+ziti get config-type
+ziti get controller-version
 ziti tunnel  (hidden)
 ziti tunnel host
 ziti tunnel proxy

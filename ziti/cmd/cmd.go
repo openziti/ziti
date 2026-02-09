@@ -409,13 +409,15 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	verifyCmd.AddCommand(verify.NewVerifyTraffic(out, err))
 	verifyCmd.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, err, context.Background()))
 
-	// Create top-level show command
-	showCmd := edge.NewShowCmd(out, err)
-	// Add controller version under show
+	// Create top-level get command
+	getCmd := edge.NewShowCmd(out, err)
+	getCmd.Use = "get"
+	getCmd.Short = "gets various entities managed by the Ziti Edge Controller"
+	// Add controller version under get
 	controllerVersionCmd := edge.NewVersionCmd(out, err)
 	controllerVersionCmd.Use = "controller-version"
 	controllerVersionCmd.Short = "shows the version of the Ziti controller"
-	showCmd.AddCommand(controllerVersionCmd)
+	getCmd.AddCommand(controllerVersionCmd)
 
 	// Create top-level login command
 	loginCmd := edge.NewLoginCmd(out, err)
@@ -483,7 +485,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		{
 			Message: "Interacting with the Ziti controller",
 			Commands: []*cobra.Command{
-				showCmd,
+				getCmd,
 			},
 		},
 		{
