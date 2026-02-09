@@ -36,6 +36,17 @@ checkCommand() {
     fi
 }
 
+eval_mode=0
+for arg in "$@"; do
+    if [[ "${arg}" == "--eval" ]]; then
+        eval_mode=1
+    fi
+done
+
+if (( ! eval_mode )); then
+    set -o xtrace
+fi
+
 BASEDIR="$(cd "$(dirname "${0}")" && pwd)"
 REPOROOT="$(cd "${BASEDIR}/../.." && pwd)"
 cd "${REPOROOT}"
@@ -49,20 +60,37 @@ done
 : "${ZIGGY_UID:=$(id -u)}"
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 
-export COMPOSE_FILE=\
-./dist/docker-images/ziti-controller/compose.yml\
-:./dist/docker-images/ziti-controller/compose.test.yml\
-:./dist/docker-images/ziti-router/compose.yml\
-:./dist/docker-images/ziti-router/compose.test.yml \
+COMPOSE_FILE_VALUE="${REPOROOT}/dist/docker-images/ziti-controller/compose.yml:${REPOROOT}/dist/docker-images/ziti-controller/compose.test.yml:${REPOROOT}/dist/docker-images/ziti-router/compose.yml:${REPOROOT}/dist/docker-images/ziti-router/compose.test.yml"
+
+if (( eval_mode )); then
+    printf 'export COMPOSE_FILE=%q\n' "${COMPOSE_FILE_VALUE}"
+    exit 0
+fi
+
+ZITI_USER="admin"
+ZITI_PWD="ziggypw"
+ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.0.0.1.sslip.io"
+ZITI_CTRL_ADVERTISED_PORT="12800"
+ZITI_CLUSTER_NODE_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}"
+ZITI_CLUSTER_TRUST_DOMAIN="${ZITI_CTRL_ADVERTISED_ADDRESS#*.}"
+ZITI_ROUTER_PORT="30222"
+ZITI_CONTROLLER_IMAGE="ziti-controller:local"
+ZITI_ROUTER_IMAGE="ziti-router:local"
+ZITI_ROUTER_NAME="router1"
+
+export COMPOSE_FILE="${COMPOSE_FILE_VALUE}" \
 ZIGGY_UID \
 ZITI_GO_VERSION \
-ZITI_PWD="ziggypw" \
-ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.0.0.1.sslip.io" \
-ZITI_CTRL_ADVERTISED_PORT="12800" \
-ZITI_ROUTER_PORT="30222" \
-ZITI_CONTROLLER_IMAGE="ziti-controller:local" \
-ZITI_ROUTER_IMAGE="ziti-router:local" \
-ZITI_ROUTER_NAME="router1"
+ZITI_USER \
+ZITI_PWD \
+ZITI_CTRL_ADVERTISED_ADDRESS \
+ZITI_CTRL_ADVERTISED_PORT \
+ZITI_CLUSTER_NODE_NAME \
+ZITI_CLUSTER_TRUST_DOMAIN \
+ZITI_ROUTER_PORT \
+ZITI_CONTROLLER_IMAGE \
+ZITI_ROUTER_IMAGE \
+ZITI_ROUTER_NAME
 
 export ZITI_ROUTER_ADVERTISED_ADDRESS="${ZITI_ROUTER_NAME}.127.0.0.1.sslip.io" \
 ZITI_ENROLL_TOKEN="/home/ziggy/.config/ziti/${ZITI_ROUTER_NAME}.jwt" \
@@ -106,17 +134,27 @@ docker build \
 --file "./dist/docker-images/ziti-router/Dockerfile" \
 "${PWD}"
 
+# entrypoint.bash now handles cluster initialization automatically when
+# ZITI_BOOTSTRAP_CLUSTER=true and ZITI_PWD is set
 docker compose up wait-for-controller
 
-docker compose run --rm --entrypoint=/bin/bash --env ZITI_ROUTER_NAME ziti-controller -euxc '
+docker compose exec -T --env ZITI_ROUTER_NAME ziti-controller /bin/bash -euxc '
 
-ziti edge login \
+ATTEMPTS=10
+DELAY=2
+until ziti edge login \
 ${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} \
 --ca=/ziti-controller/pki/root/certs/root.cert \
 --username=${ZITI_USER} \
 --password=${ZITI_PWD} \
 --timeout=1 \
---verbose;
+--verbose
+do
+  if (( ATTEMPTS-- == 0 )); then
+    exit 1
+  fi
+  sleep ${DELAY}
+done
 
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to ~ziggy/.config/ziti/"${ZITI_ROUTER_NAME}.jwt";
 '
@@ -127,6 +165,22 @@ unset GOOS
 export \
 ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=${ZITI_CTRL_ADVERTISED_ADDRESS} \
 ZITI_CTRL_EDGE_ADVERTISED_PORT=${ZITI_CTRL_ADVERTISED_PORT}
+
+ATTEMPTS=10
+DELAY=3
+until ! ((ATTEMPTS)) || [[ $(docker compose exec -T ziti-controller ziti edge list edge-routers -j | jq -r '.data[0].isOnline') == "true" ]]
+do
+    (( ATTEMPTS-- ))
+    echo "INFO: waiting for router to be online"
+    sleep ${DELAY}
+done
+if [[ $(docker compose exec -T ziti-controller ziti edge list edge-routers -j | jq -r '.data[0].isOnline') == "true" ]]
+then
+    echo "INFO: router is online"
+else
+    echo "INFO: router is offline"
+    exit 1
+fi
 
 _test_result=$(go test -v -count=1 -tags="quickstart manual" ./ziti/run/...)
 
