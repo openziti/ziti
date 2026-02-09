@@ -78,7 +78,6 @@ const (
 	// DefaultTlsHandshakeRateLimiterMaxWindow is the default max size for the tls handshake rate limiter
 	DefaultTlsHandshakeRateLimiterMaxWindow = 2500
 
-	DefaultRouterDataModelEnabled            = true
 	MinRouterDataModelLogSize                = 10
 	DefaultRouterDataModelLogSize            = 10000
 	DefaultRouterDataModelListenerBufferSize = 1000
@@ -779,16 +778,11 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	controllerConfig.RouterDataModel.Enabled = DefaultRouterDataModelEnabled
 	controllerConfig.RouterDataModel.LogSize = DefaultRouterDataModelLogSize
 	controllerConfig.RouterDataModel.ListenerBufferSize = DefaultRouterDataModelListenerBufferSize
 
 	if value, found := cfgmap["routerDataModel"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["enabled"]; found {
-				controllerConfig.RouterDataModel.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
-			}
-
 			if value, found := submap["logSize"]; found {
 				if val, ok := value.(int); ok {
 					if val < MinRouterDataModelLogSize {

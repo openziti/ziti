@@ -48,7 +48,6 @@ const (
 
 // RouterDataModelConfig contains the configuration values for a RouterDataModel
 type RouterDataModelConfig struct {
-	Enabled            bool
 	LogSize            uint64
 	ListenerBufferSize uint
 }
