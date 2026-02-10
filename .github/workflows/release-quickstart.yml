@@ -14,11 +14,9 @@ on:
         description: 'Release tag (e.g., v1.2.3)'
         required: true
         type: string
-        pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
 
 permissions:
   contents: read
-  releases: read
 
 jobs:
   release-quickstart:
