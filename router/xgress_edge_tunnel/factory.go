@@ -87,10 +87,6 @@ func (self *Factory) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, ch channel.Channel) {
-	self.hostedServices.HandleCreateTerminatorResponse(msg, ch)
-}
-
 func (self *Factory) Run(env env.RouterEnv) error {
 	self.ctrls = env.GetNetworkControllers()
 	if self.tunneler.listenOptions != nil {
@@ -118,15 +114,15 @@ func NewFactory(env env.RouterEnv, stateManager state.Manager) *Factory {
 		env:             env,
 	}
 	factory.tunneler = newTunneler(factory)
+	factory.hostedServices = newHostedServicesRegistry(env, stateManager)
+	factory.tunneler.hostedServices = factory.hostedServices
 	return factory
 }
 
 // CreateListener creates a new Edge Tunnel Xgress listener
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.env.MarkRouterDataModelRequired()
-
-	self.hostedServices = newHostedServicesRegistry(self.env, self.stateManager)
-	self.tunneler.hostedServices = self.hostedServices
+	self.hostedServices.Start()
 
 	if fabricProviderFunc := fabricProviderF.Load(); fabricProviderFunc != nil {
 		self.tunneler.fabricProvider = fabricProviderFunc(self.env, self.hostedServices)

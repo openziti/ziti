@@ -614,8 +614,6 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	}
 	self.checkForStateListener()
 
-	self.checkForStateListener()
-
 	var handler connectHandler
 	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
 		log.Debug("use sdk xgress set, setting up sdk flow-control connection")

@@ -51,8 +51,6 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manag
 		deleteSet:    map[string]*tunnelTerminator{},
 	}
 
-	result.Start()
-
 	return result
 }
 
