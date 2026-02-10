@@ -19,6 +19,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,8 @@ func TestDownloadFiles(t *testing.T) {
 			}
 		}
 	}
+
+	waitForTerminators(t, 30*time.Second, "ert-files", "zet-files", "ziti-tunnel-files")
 
 	t.Run("download-tests", func(t *testing.T) {
 		t.Run("test-ert-downloads", func(t *testing.T) {

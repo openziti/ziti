@@ -30,6 +30,8 @@ func TestScp(t *testing.T) {
 	allZetHostedFailed := true
 	allZetClientsFailed := true
 
+	waitForTerminators(t, 30*time.Second, "ert-ssh", "zet-ssh", "ziti-tunnel-ssh")
+
 	t.Run("scp-tests", func(t *testing.T) {
 		t.Run("test-ert-scp", func(t *testing.T) {
 			t.Parallel()
@@ -45,7 +47,6 @@ func TestScp(t *testing.T) {
 
 		t.Run("test-zet-scp", func(t *testing.T) {
 			t.Parallel()
-
 			for _, hostType := range []string{"zet", "ziti-tunnel", "ert"} {
 				for _, encrypted := range []bool{true, false} {
 					success := testScp(t, "zet", hostType, encrypted)
@@ -61,7 +62,6 @@ func TestScp(t *testing.T) {
 
 		t.Run("test-ziti-tunnel-scp", func(t *testing.T) {
 			t.Parallel()
-
 			for _, hostType := range []string{"ziti-tunnel", "ert", "zet"} {
 				for _, encrypted := range []bool{true, false} {
 					success := testScp(t, "ziti-tunnel", hostType, encrypted)
