@@ -276,7 +276,7 @@ func (o *getAliasOptions) Run() error {
 		return err
 	}
 
-	if config.Aliases == nil || len(config.Aliases) == 0 {
+	if len(config.Aliases) == 0 {
 		if len(o.Args) > 0 {
 			return fmt.Errorf("alias '%s' not found", o.Args[0])
 		}
