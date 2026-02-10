@@ -226,6 +226,7 @@ func (self *CostVisitor) NotifyEvent(event xt.TerminatorEvent) {
 func (self *CostVisitor) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
 	for _, t := range event.GetRemoved() {
 		self.Costs.Remove(t.GetId())
+		xt.GlobalCosts().ClearCost(t.GetId())
 	}
 	return nil
 }
