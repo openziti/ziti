@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xgress_edge_tunnel_v2
+package xgress_edge_tunnel
 
 import (
 	"fmt"
@@ -50,8 +50,6 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manag
 		establishSet: map[string]*tunnelTerminator{},
 		deleteSet:    map[string]*tunnelTerminator{},
 	}
-
-	result.Start()
 
 	return result
 }
@@ -591,7 +589,10 @@ func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 	if event.Type == routerEnv.ControllerDisconnected && !self.env.GetNetworkControllers().IsLeaderConnected() {
 		self.connectedToLeader.Store(false)
 	} else if self.env.GetNetworkControllers().IsLeaderConnected() {
-		self.connectedToLeader.Store(true)
+		if !self.connectedToLeader.Load() {
+			self.HandleReestablish()
+			self.connectedToLeader.Store(true)
+		}
 	} else if event.Type == routerEnv.ControllerReconnected {
 		if !self.connectedToLeader.Load() {
 			self.HandleReestablish()

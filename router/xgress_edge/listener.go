@@ -35,7 +35,6 @@ import (
 	sdkedge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common"
-	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/inspect"
@@ -675,37 +674,6 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 }
 
 func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
-	if capabilities.IsCapable(ctrlCh, capabilities.ControllerCreateCircuitV2) {
-		return self.sendCreateCircuitRequestV2(req, ctrlCh)
-	}
-	return self.sendCreateCircuitRequestV1(req, ctrlCh)
-}
-
-func (self *edgeClientConn) sendCreateCircuitRequestV1(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
-	request := &edge_ctrl_pb.CreateCircuitRequest{
-		SessionToken:         req.SessionToken,
-		ApiSessionToken:      req.ApiSessionToken,
-		Fingerprints:         req.Fingerprints,
-		TerminatorInstanceId: req.TerminatorInstanceId,
-		PeerData:             req.PeerData,
-	}
-
-	response := &edge_ctrl_pb.CreateCircuitResponse{}
-	timeout := self.listener.options.Options.GetCircuitTimeout
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-	if err = getResultOrFailure(responseMsg, err, response); err != nil {
-		return nil, err
-	}
-
-	return &ctrl_msg.CreateCircuitResponse{
-		CircuitId: response.CircuitId,
-		Address:   response.Address,
-		PeerData:  response.PeerData,
-		Tags:      response.Tags,
-	}, nil
-}
-
-func (self *edgeClientConn) sendCreateCircuitRequestV2(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
 	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh)
 	if err != nil {
@@ -1360,26 +1328,6 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ chan
 	if err = self.forwarder.ForwardAcknowledgement(edgeFwd.address, ack); err != nil {
 		pfxlog.Logger().WithFields(ack.GetLoggerFields()).WithError(err).Error("failed to forward acknowledgement")
 	}
-}
-
-func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
-	if err != nil {
-		return err
-	}
-
-	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
-		msg := string(msg.Body)
-		if msg == "" {
-			msg = "error state returned from controller with no message"
-		}
-		return errors.New(msg)
-	}
-
-	if msg.ContentType != result.GetContentType() {
-		return errors.Errorf("unexpected response type %v to request. expected %v", msg.ContentType, result.GetContentType())
-	}
-
-	return proto.Unmarshal(msg.Body, result)
 }
 
 type connectHandler interface {

@@ -19,12 +19,15 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
 )
 
 func TestIPerf(t *testing.T) {
+	waitForTerminators(t, 30*time.Second, "ert-iperf", "ziti-tunnel-iperf")
+
 	t.Run("iperf-tests", func(t *testing.T) {
 		t.Run("ert-hosted", func(t *testing.T) {
 			t.Parallel()

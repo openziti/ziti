@@ -17,10 +17,13 @@
 package xgress_edge_tunnel
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/router/xgress_common"
@@ -29,11 +32,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
-	terminator, found := self.terminators.Get(destination)
-	if terminator != nil {
-		terminator.created.Store(true)
-		terminator.NotifyCreated()
+func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
+	self.WaitForInitialized()
+	terminator, found := self.hostedServices.Get(id)
+	if found {
+		self.hostedServices.markEstablished(terminator, "validation message received")
 	}
 	return found
 }
@@ -46,7 +49,7 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
-	terminator, ok := self.terminators.Get(destination)
+	terminator, ok := self.hostedServices.Get(destination)
 	if !ok {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
@@ -82,4 +85,11 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 	x.Start()
 
 	return peerData, nil
+}
+
+func (self *tunneler) Inspect(key string, _ time.Duration) any {
+	if key == inspect.ErtTerminatorsKey {
+		return self.hostedServices.Inspect()
+	}
+	return nil
 }
