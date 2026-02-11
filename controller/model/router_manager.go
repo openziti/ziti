@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -333,6 +334,74 @@ func (self *RouterManager) UpdateRouterInterfaces(routerId string, interfaces []
 	return self.Update(r, updatedFields, ctx)
 }
 
+// UpdateCtrlChanListeners persists a router's advertised ctrl channel listener addresses if they have changed.
+func (self *RouterManager) UpdateCtrlChanListeners(router *Router, listeners map[string][]string, ctx *change.Context) {
+	logger := pfxlog.Logger().WithField("routerId", router.Id).WithField("listeners", listeners)
+	logger.Debug("checking for router ctrl listeners change")
+	r, err := self.Read(router.Id)
+	if err != nil {
+		logger.WithError(err).Error("router not found")
+		return
+	}
+
+	if !didCtrlChanListenersChange(r.CtrlChanListeners, listeners) {
+		logger.Debug("router ctrl chan listeners submitted, but no change detected")
+		return
+	}
+
+	go func() {
+		attempt := 1
+		for {
+			r.CtrlChanListeners = listeners
+			updatedFields := fields.UpdatedFieldsMap{
+				db.FieldRouterCtrlChanListeners: struct{}{},
+			}
+
+			logger.Debug("updating router ctrl listeners")
+			if err = self.Update(r, updatedFields, ctx); err != nil {
+				logger.WithField("attempt", attempt).WithError(err).Error("router ctrl listeners update failed")
+				attempt++
+				time.Sleep(time.Duration(min(60, attempt)) * time.Second)
+				if self.GetConnected(router.Id) != router {
+					logger.WithField("attempt", attempt).WithError(err).Error("router changed, halting attempts to update control channel listeners")
+					return
+				}
+			} else {
+				return
+			}
+		}
+	}()
+}
+
+func didCtrlChanListenersChange(old, new map[string][]string) bool {
+	if len(old) != len(new) {
+		return true
+	}
+	for addr, oldGroups := range old {
+		newGroups, ok := new[addr]
+
+		if !ok {
+			return true
+		}
+
+		if len(oldGroups) != len(newGroups) {
+			return true
+		}
+
+		oldSorted := slices.Clone(oldGroups)
+		newSorted := slices.Clone(newGroups)
+		slices.Sort(oldSorted)
+		slices.Sort(newSorted)
+
+		for i, g := range oldSorted {
+			if g != newSorted[i] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateContext, f func(terminator *db.Terminator) error) error {
 	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		terminatorIds := self.Store.GetRelatedEntitiesIdList(ctx.Tx(), router.Id, db.EntityTypeTerminators)
@@ -383,6 +452,7 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 			v.Cost = router.Cost
 			v.NoTraversal = router.NoTraversal
 			v.Disabled = router.Disabled
+			v.CtrlChanListeners = router.CtrlChanListeners
 
 			if v.Disabled {
 				if ctrl := v.Control; ctrl != nil {
@@ -415,13 +485,14 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 	}
 
 	msg := &cmd_pb.Router{
-		Id:          entity.Id,
-		Name:        entity.Name,
-		Fingerprint: fingerprint,
-		Cost:        uint32(entity.Cost),
-		NoTraversal: entity.NoTraversal,
-		Disabled:    entity.Disabled,
-		Tags:        tags,
+		Id:                entity.Id,
+		Name:              entity.Name,
+		Fingerprint:       fingerprint,
+		Cost:              uint32(entity.Cost),
+		NoTraversal:       entity.NoTraversal,
+		Disabled:          entity.Disabled,
+		Tags:              tags,
+		CtrlChanListeners: cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -455,11 +526,12 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 			Id:   msg.Id,
 			Tags: cmd_pb.DecodeTags(msg.Tags),
 		},
-		Name:        msg.Name,
-		Fingerprint: fingerprint,
-		Cost:        uint16(msg.Cost),
-		NoTraversal: msg.NoTraversal,
-		Disabled:    msg.Disabled,
+		Name:              msg.Name,
+		Fingerprint:       fingerprint,
+		Cost:              uint16(msg.Cost),
+		NoTraversal:       msg.NoTraversal,
+		Disabled:          msg.Disabled,
+		CtrlChanListeners: cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 	}
 
 	for _, intf := range msg.Interfaces {

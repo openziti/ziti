@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math/big"
 	"net"
@@ -95,6 +96,7 @@ type Router struct {
 	xrctrls             []env.Xrctrl
 	xlinkFactories      map[string]xlink.Factory
 	xlinkListeners      []xlink.Listener
+	ctrlListeners       []io.Closer
 	xlinkDialers        []xlink.Dialer
 	xlinkRegistry       xlink.Registry
 	xgressListeners     []xgress_router.Listener
@@ -227,7 +229,7 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
-func (self *Router) GetDialHeaders() (channel.Headers, error) {
+func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
 
 	if err != nil {
@@ -260,6 +262,26 @@ func (self *Router) GetDialHeaders() (channel.Headers, error) {
 	capabilityMask := &big.Int{}
 	capabilityMask.SetBit(capabilityMask, capabilities.RouterMultiChannel, 1)
 	headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = capabilityMask.Bytes()
+
+	ctrlListeners := &ctrl_pb.CtrlChanListeners{}
+	for _, listener := range self.config.Ctrl.Listeners {
+		addr := listener.Advertise
+		if addr == nil {
+			addr = listener.Bind
+		}
+		ctrlListeners.Listeners = append(ctrlListeners.Listeners, &ctrl_pb.CtrlChanListener{
+			Address: addr.String(),
+			Groups:  listener.Groups,
+		})
+	}
+
+	if len(ctrlListeners.Listeners) > 0 {
+		buf, err := proto.Marshal(ctrlListeners)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal CtrlChanListeners (%w)", err)
+		}
+		headers[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)] = buf
+	}
 
 	return headers, nil
 }
@@ -475,6 +497,12 @@ func (self *Router) Shutdown() error {
 		}
 
 		close(self.shutdownC)
+
+		for _, ctrlListener := range self.ctrlListeners {
+			if err := ctrlListener.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
@@ -821,15 +849,23 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	endpoints, err := self.getInitialCtrlEndpoints()
+	endpoints, controllers, err := self.getInitialCtrlEndpoints()
 	if err != nil {
 		return err
 	}
 
 	log := pfxlog.Logger()
-	log.Infof("router configured with %v controller endpoints", len(endpoints))
+	log.Infof("router configured with %v controller endpoints, %d controller details", len(endpoints), len(controllers))
 
-	self.ctrls.UpdateControllerEndpoints(endpoints)
+	if err := self.startCtrlListeners(); err != nil {
+		return err
+	}
+
+	if len(controllers) > 0 {
+		self.ctrls.UpdateControllerDetails(controllers)
+	} else {
+		self.ctrls.ConnectToInitialEndpoints(endpoints)
+	}
 
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
@@ -858,6 +894,50 @@ func (self *Router) startControlPlane() error {
 	interfaces.StartInterfaceReporter(self.ctrls, self.GetCloseNotify(), self.config.IfaceDiscovery)
 
 	return nil
+}
+
+func (self *Router) startCtrlListeners() error {
+	if len(self.config.Ctrl.Listeners) == 0 {
+		return nil
+	}
+
+	log := pfxlog.Logger()
+
+	for _, listenerCfg := range self.config.Ctrl.Listeners {
+		log.Infof("starting ctrl channel listener on %s", listenerCfg.Bind.String())
+
+		ctrlAcceptor := &ctrlChannelAcceptor{
+			router:  self,
+			options: listenerCfg.Options,
+		}
+
+		listenerConfig := channel.ListenerConfig{
+			ConnectOptions:   listenerCfg.Options.ConnectOptions,
+			TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
+			PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.ctrl"),
+			HeadersF:         self.ctrlHelloHeaders,
+		}
+
+		multiListener := channel.NewMultiListener(ctrlAcceptor.HandleGroupedUnderlay, ctrlAcceptor.AcceptUnderlay)
+
+		listener, err := channel.NewClassicListenerF(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener.AcceptUnderlay)
+		if err != nil {
+			return fmt.Errorf("error starting ctrl channel listener on %s (%w)", listenerCfg.Bind.String(), err)
+		}
+
+		self.ctrlListeners = append(self.ctrlListeners, listener)
+	}
+
+	return nil
+}
+
+func (self *Router) ctrlHelloHeaders() map[int32][]byte {
+	headers, err := self.GetChannelHeaders()
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error generating ctrl listener hello headers")
+		return map[int32][]byte{}
+	}
+	return headers
 }
 
 func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
@@ -913,15 +993,16 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 	return self.xwebFactoryRegistry.Add(x)
 }
 
-func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
+func (self *Router) getInitialCtrlEndpoints() ([]string, []*ctrl_pb.CtrlDetail, error) {
 	log := pfxlog.Logger()
 	if self.config.Ctrl.EndpointsFile == "" {
-		return nil, errors.New("ctrl endpointsFile not configured")
+		return nil, nil, errors.New("ctrl endpointsFile not configured")
 	}
 
 	endpointsFile := self.config.Ctrl.EndpointsFile
 
 	var endpoints []string
+	var controllers []*ctrl_pb.CtrlDetail
 
 	if _, err := os.Stat(endpointsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
 		log.Infof("controller endpoints file [%v] doesn't exist. Using initial endpoints from config", endpointsFile)
@@ -949,6 +1030,41 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 				if len(endpoints) == 0 {
 					log.Info("empty endpoint list in endpoints file, falling back to initial endpoints from config")
 				}
+
+				// Load controller details if present
+				if ctrlsVal, ok := endpointCfg["controllers"]; ok {
+					if ctrlsList, ok := ctrlsVal.([]any); ok {
+						for _, item := range ctrlsList {
+							if ctrlMap, ok := item.(map[string]any); ok {
+								detail := &ctrl_pb.CtrlDetail{}
+								if id, ok := ctrlMap["id"].(string); ok {
+									detail.Id = id
+								}
+								if epsList, ok := ctrlMap["endpoints"].([]any); ok {
+									for _, epItem := range epsList {
+										if epMap, ok := epItem.(map[string]any); ok {
+											ep := &ctrl_pb.CtrlEndpoint{}
+											if addr, ok := epMap["address"].(string); ok {
+												ep.Address = addr
+											}
+											if groups, ok := epMap["groups"].([]any); ok {
+												for _, g := range groups {
+													if gs, ok := g.(string); ok {
+														ep.Groups = append(ep.Groups, gs)
+													}
+												}
+											}
+											detail.Endpoints = append(detail.Endpoints, ep)
+										}
+									}
+								}
+								if detail.Id != "" {
+									controllers = append(controllers, detail)
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -960,16 +1076,13 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 		}
 	}
 
-	return endpoints, nil
+	return endpoints, controllers, nil
 }
 
-func (self *Router) UpdateCtrlEndpoints(endpoints []string) {
-	log := pfxlog.Logger().WithField("endpoints", endpoints).WithField("filepath", self.config.Ctrl.EndpointsFile)
-	if changed := self.ctrls.UpdateControllerEndpoints(endpoints); changed {
-		log.Info("Attempting to save file")
-		if err := self.config.SaveControllerEndpoints(endpoints); err != nil {
-			log.WithError(err).Error("unable to save updated endpoints file")
-		}
+func (self *Router) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail) {
+	self.ctrls.UpdateControllerDetails(controllers)
+	if err := self.config.SaveControllerDetails(controllers); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to save updated controller details")
 	}
 }
 

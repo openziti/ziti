@@ -26,6 +26,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ParseCtrlChanListeners parses CLI flags of the form "address=group1,group2" into a map.
+func ParseCtrlChanListeners(vals []string) map[string][]string {
+	result := make(map[string][]string, len(vals))
+	for _, val := range vals {
+		addr, groupsStr, found := strings.Cut(val, "=")
+		if found && groupsStr != "" {
+			result[addr] = strings.Split(groupsStr, ",")
+		} else {
+			result[addr] = nil
+		}
+	}
+	return result
+}
+
 func SetJSONValue(container *gabs.Container, value interface{}, path ...string) {
 	if _, err := container.Set(value, path...); err != nil {
 		panic(err)

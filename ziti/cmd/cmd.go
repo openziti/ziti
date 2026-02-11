@@ -74,6 +74,9 @@ var rootCommand = RootCmd{
 	cobraCommand: &cobra.Command{
 		Use:   "ziti",
 		Short: "ziti is a CLI for working with Ziti",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			cmd.SilenceUsage = true
+		},
 		Long: `
 'ziti' is a CLI for working with a Ziti deployment.
 `},

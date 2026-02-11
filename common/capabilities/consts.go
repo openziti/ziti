@@ -16,6 +16,8 @@
 
 package capabilities
 
+import "math/big"
+
 const (
 	// ControllerCreateTerminatorV2 deprecated, assumed to be supported
 	// indicates support for create terminator v2
@@ -51,3 +53,14 @@ const (
 	// and supports multi-underlay control channels
 	RouterMultiChannel int = 1
 )
+
+func GetControllerCapabilitiesMask() *big.Int {
+	capabilityMask := &big.Int{}
+	capabilityMask.SetBit(capabilityMask, ControllerCreateTerminatorV2, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerSingleRouterLinkSource, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerCreateCircuitV2, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerRouterDataModel, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerGroupedCtrlChan, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerSupportsJWTLegacySessions, 1)
+	return capabilityMask
+}

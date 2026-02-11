@@ -77,7 +77,11 @@ enum ContentType {
   ValidateCircuitsResponseType = 10119;
   ValidateCircuitsResultType = 10120;
 
-  // next id 10122
+  ValidateControllerDialersRequestType = 10122;
+  ValidateControllerDialersResponseType = 10123;
+  ValidateControllerDialersResultType = 10124;
+
+  // next id 10125
 }
 
 enum Header {
@@ -396,4 +400,20 @@ message RouterCircuitDetail {
   bool missingInSdk = 5;
 
   map<string, string> destinations = 6;
+}
+
+message ValidateControllerDialersRequest {
+}
+
+message ValidateControllerDialersResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 componentCount = 3;
+}
+
+message ControllerDialerDetails {
+  string componentId = 1;
+  string componentName = 2;
+  bool validateSuccess = 3;
+  repeated string errors = 4;
 }

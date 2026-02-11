@@ -97,6 +97,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Dial failures now return the circuit ID and error information for easier debugging
 * Router-to-controller control channels now support multiple underlays with priority-based message routing
 * The dialing identity's ID and name are now forwarded to the hosting SDK
+* Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
 
 ## Basic Permission System (BETA)
 
@@ -800,16 +801,105 @@ established. This allows hosting applications to identify which identity initiat
 enabling identity-aware request handling on the server side. This will require SDK updates to add this
 to the API for hosting applications.
 
+## Controller-Initiated Control Channel Dials (BETA)
+
+Controllers can now dial routers to establish control channels. Previously, routers were solely
+responsible for dialing controllers. This feature is designed for deployments where one or more
+controllers are in a private network that routers cannot reach, but the controllers can dial out.
+A common scenario is an HA cluster where some controllers are publicly reachable and some are in
+a private network. External routers connect to the public controllers normally, and the private
+controllers dial out to the routers.
+
+### Router Configuration
+
+Routers can configure one or more control channel listeners. Each listener specifies a bind address,
+an advertise address (reported to the controller), and optional groups for matching.
+
+```yaml
+ctrl:
+  listeners:
+    - bind: tls://0.0.0.0:6262
+      advertise: tls://router.example.com:6262
+      groups:
+        - default
+```
+
+The router is the authoritative source of ctrl channel listener information, similar to link
+listeners. When a router connects to any controller, it reports its configured `ctrlChanListeners`
+and the controller data model is updated automatically. This means that in most deployments —
+where the router can reach at least one controller — no manual configuration of listener addresses
+is needed on the controller side.
+
+The `ctrlChanListeners` field can also be set via the CLI for cases where a router cannot reach
+any controller and thus cannot initialize the data model itself:
+
+```bash
+ziti edge update edge-router myRouter --bootstrap-ctrl-chan-listener 'tls://router.example.com:6262=group1,group2'
+```
+
+Groups default to `["default"]` if not specified.
+
+### Controller Configuration
+
+The controller dialer is disabled by default and must be explicitly enabled. When enabled, the
+controller will dial routers that have control channel listeners configured and are not already
+connected.
+
+```yaml
+ctrl:
+  dialer:
+    enabled: true
+    groups:
+      - default
+    dialDelay: 30s
+    minRetryInterval: 1s
+    maxRetryInterval: 5m
+    retryBackoffFactor: 1.5
+    fastFailureWindow: 5s
+    queueSize: 32
+    maxWorkers: 10
+```
+
+- `enabled` - Enables the controller dialer (default: `false`)
+- `groups` - List of groups to match against router listener groups (default: `["default"]`)
+- `dialDelay` - Delay before the controller starts dialing after boot (default: `30s`)
+- `minRetryInterval` - Minimum backoff delay between dial retries (default: `1s`)
+- `maxRetryInterval` - Maximum backoff delay between dial retries (default: `5m`)
+- `retryBackoffFactor` - Multiplier applied to the retry delay on each failure, jittered +/- 0.5 (default: `1.5`)
+- `fastFailureWindow` - If a connection drops within this window after connecting, backoff continues rather than resetting (default: `5s`)
+- `queueSize` - Maximum number of pending dial jobs in the worker pool queue (default: `32`)
+- `maxWorkers` - Maximum number of concurrent dial workers (default: `10`)
+
+The controller will only dial routers whose listener groups overlap with the controller's configured
+groups. When a router advertises multiple ctrl channel listener addresses, the dialer rotates through
+them on each failure so that an unreachable address does not block attempts to the others.
+
+### Metrics
+
+The controller dialer worker pool exposes the following metrics under the `ctrl_channel.dialer` prefix:
+
+- `ctrl_channel.dialer.queue_size` - Current number of pending dial jobs in the queue
+- `ctrl_channel.dialer.worker_count` - Current number of dial worker goroutines
+- `ctrl_channel.dialer.busy_workers` - Number of workers currently executing a dial
+- `ctrl_channel.dialer.work_timer` - Timer tracking the duration of each dial attempt
+
+## Current Beta Features
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.41 -> v4.3.6](https://github.com/openziti/channel/compare/v4.2.41...v4.3.6)
+* github.com/openziti/channel/v4: [v4.2.41 -> v4.3.7](https://github.com/openziti/channel/compare/v4.2.41...v4.3.7)
     * [Issue #228](https://github.com/openziti/channel/issues/228) - Ensure that Underlay never return nil on MultiChannel
     * [Issue #226](https://github.com/openziti/channel/issues/226) - Allow specifying a minimum number of underlays for a channel, regardless of underlay type
     * [Issue #225](https://github.com/openziti/channel/issues/225) - Add ChannelCreated to the UnderlayHandler API to allow handlers to be initialized with the channel before binding
     * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
     * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
 
-* github.com/openziti/edge-api: [v0.26.50 -> v0.27.0](https://github.com/openziti/edge-api/compare/v0.26.50...v0.27.0)
+* github.com/openziti/edge-api: [v0.26.50 -> v0.27.4](https://github.com/openziti/edge-api/compare/v0.26.50...v0.27.4)
+    * [Issue #175](https://github.com/openziti/edge-api/issues/175) - ctrlChanListeners should have x-omit-empty: false attribute
     * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
@@ -823,7 +913,12 @@ to the API for hosting applications.
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.84 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.1](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.1)
+* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.2](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.2)
+    * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
+    * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
+    * [Issue #885](https://github.com/openziti/sdk-golang/issues/885) - Only compare relevant service fields when looking for changes
+    * [Issue #884](https://github.com/openziti/sdk-golang/issues/884) - Add deadline for bind establishment
+    * [Issue #883](https://github.com/openziti/sdk-golang/issues/883) - Router level listener can be left open if multi-listener closes during listener establishment
     * [Issue #877](https://github.com/openziti/sdk-golang/issues/877) - Handle differences in xgress eof/end-of-circuit handling by adding a capabilities exchange
     * [Issue #832](https://github.com/openziti/sdk-golang/issues/832) - Fuzz session refresh timers
     * [Issue #879](https://github.com/openziti/sdk-golang/issues/879) - Return the connId in inspect response
@@ -836,13 +931,13 @@ to the API for hosting applications.
     * [Issue #847](https://github.com/openziti/sdk-golang/issues/847) - Ensure the initial version check succeeds, to ensure we don't legacy sessions on ha or oidc-enabled controllers
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
-* github.com/openziti/secretstream: [v0.1.41 -> v0.1.47](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.47)
+* github.com/openziti/secretstream: [v0.1.41 -> v0.1.48](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.48)
 * github.com/openziti/storage: [v0.4.31 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.31...v0.4.39)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.211](https://github.com/openziti/transport/compare/v2.0.198...v2.0.211)
+* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.214](https://github.com/openziti/transport/compare/v2.0.198...v2.0.214)
     * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
     * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
 
@@ -850,6 +945,9 @@ to the API for hosting applications.
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3635](https://github.com/openziti/ziti/issues/3635) - Allow controllers to dial routers to support more topologies
+    * [Issue #3607](https://github.com/openziti/ziti/issues/3607) - linux installer not upgradable from v1
+    * [Issue #3650](https://github.com/openziti/ziti/issues/3650) - Reroute doesn't proactively clean up orphaned route entries
     * [Issue #3571](https://github.com/openziti/ziti/issues/3571) - Ensure 2.0 backwards compatibility with 1.6 and 1.5 using the smoketest
     * [Issue #3636](https://github.com/openziti/ziti/issues/3636) - Adaptive rate limiter should use success rate rather than queue position
     * [Issue #3600](https://github.com/openziti/ziti/issues/3600) - Add a preferredLeader flag, allow selected nodes to be preferred for raft leader, if they're available

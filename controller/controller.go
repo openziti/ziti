@@ -23,7 +23,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"strings"
 	"sync"
@@ -508,13 +507,7 @@ func (c *Controller) Run() error {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
 
-	capabilityMask := &big.Int{}
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerRouterDataModel, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerGroupedCtrlChan, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSupportsJWTLegacySessions, 1)
+	capabilityMask := capabilities.GetControllerCapabilitiesMask()
 
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
@@ -577,6 +570,25 @@ func (c *Controller) Run() error {
 
 	if c.raftController != nil {
 		c.raftController.StartEventGeneration()
+	}
+
+	if c.config.Ctrl.Dialer.Enabled {
+		ctrlDialer := handler_ctrl.NewCtrlDialer(
+			&c.config.Ctrl.Dialer,
+			c.network,
+			ctrlAccepter,
+			c.config.Id,
+			headers,
+			c.shutdownC,
+			c.metricsRegistry,
+		)
+		c.network.AddRouterPresenceHandler(ctrlDialer)
+		c.network.Router.Store.AddEntityIdListener(ctrlDialer.RouterUpdated, boltz.EntityUpdated)
+		c.network.Router.Store.AddEntityIdListener(ctrlDialer.RouterCreated, boltz.EntityCreated)
+		c.network.Router.Store.AddEntityIdListener(ctrlDialer.RouterDeleted, boltz.EntityDeleted)
+		c.network.AddInspectTarget(ctrlDialer.Inspect)
+		c.network.SetCtrlDialerValidator(ctrlDialer.Validate)
+		go ctrlDialer.Run()
 	}
 
 	c.network.Run()
@@ -745,14 +757,20 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 
 	if evt.EventType == event.ClusterMembersChanged {
 		var endpoints []string
+		var controllers []*ctrl_pb.CtrlDetail
 		for _, peer := range evt.Peers {
 			endpoints = append(endpoints, peer.Addr)
+			controllers = append(controllers, &ctrl_pb.CtrlDetail{
+				Id:        peer.Id,
+				Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: peer.Addr}},
+			})
 		}
 
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
-			Addresses: endpoints,
-			IsLeader:  c.raftController.IsLeader(),
-			Index:     evt.Index,
+			Addresses:   endpoints,
+			IsLeader:    c.raftController.IsLeader(),
+			Index:       evt.Index,
+			Controllers: controllers,
 		}
 
 		log := pfxlog.Logger().WithFields(map[string]interface{}{

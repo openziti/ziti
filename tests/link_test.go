@@ -125,7 +125,7 @@ func (self *testDial) GetIteration() uint32 {
 
 type dialEnvMock struct{}
 
-func (self *dialEnvMock) GetDialHeaders() (channel.Headers, error) {
+func (self *dialEnvMock) GetChannelHeaders() (channel.Headers, error) {
 	return channel.Headers{}, nil
 }
 

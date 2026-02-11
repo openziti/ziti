@@ -18,10 +18,11 @@ var TransitRouterLinkFactory = NewBasicLinkFactory(EntityNameTransitRouter)
 
 func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRouter {
 	ret := &model.TransitRouter{
-		BaseEntity:  models.BaseEntity{},
-		Name:        stringz.OrEmpty(router.Name),
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
+		BaseEntity:        models.BaseEntity{},
+		Name:              stringz.OrEmpty(router.Name),
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -33,10 +34,11 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:        stringz.OrEmpty(router.Name),
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
-		Disabled:    BoolOrDefault(router.Disabled),
+		Name:              stringz.OrEmpty(router.Name),
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -48,10 +50,11 @@ func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *mo
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:        router.Name,
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
-		Disabled:    BoolOrDefault(router.Disabled),
+		Name:              router.Name,
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -75,6 +78,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 		Cost:                  &cost,
 		NoTraversal:           &router.NoTraversal,
 		Disabled:              &router.Disabled,
+		CtrlChanListeners:     router.CtrlChanListeners,
 	}
 
 	if !router.IsBase && !router.IsVerified {

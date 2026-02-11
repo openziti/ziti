@@ -88,6 +88,12 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 		Handler: validateErtTerminatorsRequestHandler.HandleReceive,
 	})
 
+	validateControllerDialersRequestHandler := newValidateControllerDialersHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type:    validateControllerDialersRequestHandler.ContentType(),
+		Handler: validateControllerDialersRequestHandler.HandleReceive,
+	})
+
 	tracesHandler := newStreamTracesHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(tracesHandler)
 	binding.AddCloseHandler(tracesHandler)

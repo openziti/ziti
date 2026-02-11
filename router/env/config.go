@@ -74,8 +74,6 @@ const (
 	// CtrlRateLimiterMetricWorkTimer is the name of the metric tracking how long successful tasks are taking to complete
 	CtrlRateLimiterMetricWorkTimer = "ctrl_limiter.work_timer"
 
-	CtrlHaMapKey = "ha"
-
 	ConnectEventsMapKey = "connectEvents"
 
 	DefaultConnectEventsEnabled = true
@@ -150,6 +148,7 @@ type Config struct {
 		Heartbeats            HeartbeatOptions
 		StartupTimeout        time.Duration
 		RateLimit             command.AdaptiveRateLimitTrackerConfig
+		Listeners             []*CtrlListenerConfig
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -551,6 +550,23 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			}
 			if err = cfg.loadCtrlRateLimiterConfig(submap); err != nil {
 				return nil, err
+			}
+			if value, found := submap["listeners"]; found {
+				if listeners, ok := value.([]interface{}); ok {
+					for _, listenerData := range listeners {
+						if listenerMap, ok := listenerData.(map[interface{}]interface{}); ok {
+							listenerCfg, err := loadCtrlListenerConfig(listenerMap)
+							if err != nil {
+								return nil, fmt.Errorf("error loading ctrl listener config: %w", err)
+							}
+							cfg.Ctrl.Listeners = append(cfg.Ctrl.Listeners, listenerCfg)
+						} else {
+							return nil, fmt.Errorf("[ctrl/listeners] entry must be a map")
+						}
+					}
+				} else {
+					return nil, fmt.Errorf("[ctrl/listeners] must be a list")
+				}
 			}
 		}
 	}
@@ -1008,19 +1024,43 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 	return nil
 }
 
-func (c *Config) SaveControllerEndpoints(endpoints []string) error {
+func (c *Config) SaveControllerDetails(controllers []*ctrl_pb.CtrlDetail) error {
 	endpointsFile := c.Ctrl.EndpointsFile
 
-	configData := map[string]interface{}{
-		"endpoints": endpoints,
+	// Extract flat endpoints
+	var endpoints []string
+	for _, ctrl := range controllers {
+		for _, ep := range ctrl.Endpoints {
+			endpoints = append(endpoints, ep.Address)
+		}
 	}
 
-	if data, err := yaml.Marshal(configData); err != nil {
-		return fmt.Errorf("unable to marshal updated controller endpoints to yaml (%w)", err)
-	} else if err = os.WriteFile(endpointsFile, data, 0600); err != nil {
-		return fmt.Errorf("unable to write updated controller endpoints to file '%s' (%w)", c.Ctrl.EndpointsFile, err)
+	// Build controllers structure for YAML
+	var ctrlList []map[string]interface{}
+	for _, ctrl := range controllers {
+		var eps []map[string]interface{}
+		for _, ep := range ctrl.Endpoints {
+			eps = append(eps, map[string]interface{}{
+				"address": ep.Address,
+				"groups":  ep.Groups,
+			})
+		}
+		ctrlList = append(ctrlList, map[string]interface{}{
+			"id":        ctrl.Id,
+			"endpoints": eps,
+		})
 	}
-	return nil
+
+	configData := map[string]interface{}{
+		"endpoints":   endpoints,
+		"controllers": ctrlList,
+	}
+
+	data, err := yaml.Marshal(configData)
+	if err != nil {
+		return fmt.Errorf("unable to marshal updated controller details to yaml (%w)", err)
+	}
+	return os.WriteFile(endpointsFile, data, 0600)
 }
 
 func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Config, error) {
@@ -1035,4 +1075,86 @@ func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Co
 type ListenerBinding struct {
 	Name    string
 	Options xgress.OptionsData
+}
+
+type CtrlListenerConfig struct {
+	Bind          transport.Address
+	Advertise     transport.Address
+	BindInterface string
+	Groups        []string
+	Options       *channel.Options
+}
+
+func loadCtrlListenerConfig(data map[interface{}]interface{}) (*CtrlListenerConfig, error) {
+	cfg := &CtrlListenerConfig{}
+
+	if value, found := data["bind"]; found {
+		if addressString, ok := value.(string); ok {
+			if address, err := transport.ParseAddress(addressString); err == nil {
+				cfg.Bind = address
+				cfg.Advertise = address
+			} else {
+				return nil, fmt.Errorf("error parsing 'bind' address in ctrl listener config (%w)", err)
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'bind' address in ctrl listener config (%T)", value)
+		}
+	} else {
+		return nil, fmt.Errorf("missing 'bind' address in ctrl listener config")
+	}
+
+	if value, found := data["advertise"]; found {
+		if addressString, ok := value.(string); ok {
+			if address, err := transport.ParseAddress(addressString); err == nil {
+				cfg.Advertise = address
+			} else {
+				return nil, fmt.Errorf("error parsing 'advertise' address in ctrl listener config (%w)", err)
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'advertise' address in ctrl listener config (%T)", value)
+		}
+	}
+
+	if value, found := data["bindInterface"]; found {
+		if addressString, ok := value.(string); ok {
+			cfg.BindInterface = addressString
+		} else {
+			return nil, fmt.Errorf("invalid 'bindInterface' in ctrl listener config (%T)", value)
+		}
+	} else {
+		if addr, ok := cfg.Bind.(transport.HostPortAddress); ok {
+			intf, err := transport.ResolveInterface(addr.Hostname())
+			if err != nil {
+				pfxlog.Logger().WithError(err).WithField("addr", addr.String()).Warn("unable to get interface for ctrl listener bind address")
+			} else {
+				pfxlog.Logger().Infof("found interface %v for ctrl listener bind address %v", intf.Name, addr.String())
+				cfg.BindInterface = intf.Name
+			}
+		}
+	}
+
+	if value, found := data["groups"]; found {
+		if group, ok := value.(string); ok {
+			cfg.Groups = append(cfg.Groups, group)
+		} else if groups, ok := value.([]interface{}); ok {
+			for _, group := range groups {
+				cfg.Groups = append(cfg.Groups, fmt.Sprint(group))
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'groups' value in ctrl listener config (%T)", value)
+		}
+	}
+
+	cfg.Options = channel.DefaultOptions()
+	if value, found := data["options"]; found {
+		if optionsMap, ok := value.(map[interface{}]interface{}); ok {
+			options, err := channel.LoadOptions(optionsMap)
+			if err != nil {
+				return nil, fmt.Errorf("error loading ctrl listener options (%w)", err)
+			}
+			cfg.Options = options
+		}
+	}
+
+	return cfg, nil
 }

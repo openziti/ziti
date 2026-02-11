@@ -107,3 +107,15 @@ func (request *RouterCircuitDetails) GetContentType() int32 {
 func (msg *RouterCircuitDetail) IsInErrorState() bool {
 	return msg.MissingInCtrl || msg.MissingInForwarder || msg.MissingInEdge || msg.MissingInSdk
 }
+
+func (request *ValidateControllerDialersRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateControllerDialersRequestType)
+}
+
+func (request *ValidateControllerDialersResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateControllerDialersResponseType)
+}
+
+func (request *ControllerDialerDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateControllerDialersResultType)
+}

@@ -145,7 +145,7 @@ func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		fieldChecker := fields.FilterMaps(boltz.FieldTags, db.FieldEdgeRouterAppData)
+		fieldChecker := fields.FilterMaps(boltz.FieldTags, db.FieldEdgeRouterAppData, db.FieldRouterCtrlChanListeners)
 		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fieldChecker, rc.NewChangeContext())
 	})
 }

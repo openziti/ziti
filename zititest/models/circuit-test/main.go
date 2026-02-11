@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
+	"github.com/openziti/ziti/zititest/zitilab/validations"
 )
 
 var DefaultVersion = "v1.7.0"
@@ -586,7 +587,9 @@ var m = &model.Model{
 			}
 			return nil
 		})),
-		"validateCircuits": model.BindF(validateCircuits),
+		"validateCircuits": model.BindF(func(run model.Run) error {
+			return validations.ValidateCircuits(run, time.Minute, "limit none")
+		}),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"enableMetrics",
