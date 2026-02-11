@@ -59,18 +59,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.2.52
+	github.com/openziti/channel/v4 v4.3.3
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.52
-	github.com/openziti/foundation/v2 v2.0.85
-	github.com/openziti/identity v1.0.123
+	github.com/openziti/foundation/v2 v2.0.87
+	github.com/openziti/identity v1.0.125
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
-	github.com/openziti/runzmd v1.0.87
+	github.com/openziti/runzmd v1.0.89
 	github.com/openziti/sdk-golang v1.4.1-0.20260206141645-831161f1bd9e
-	github.com/openziti/secretstream v0.1.46
-	github.com/openziti/storage v0.4.36
-	github.com/openziti/transport/v2 v2.0.206
+	github.com/openziti/secretstream v0.1.47
+	github.com/openziti/storage v0.4.38
+	github.com/openziti/transport/v2 v2.0.209
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -97,8 +97,8 @@ require (
 	golang.org/x/net v0.49.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0
-	golang.org/x/term v0.39.0
+	golang.org/x/sys v0.41.0
+	golang.org/x/term v0.40.0
 	golang.org/x/text v0.33.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
@@ -177,9 +177,9 @@ require (
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pion/dtls/v3 v3.0.9 // indirect
+	github.com/pion/dtls/v3 v3.0.10 // indirect
 	github.com/pion/logging v0.2.4 // indirect
-	github.com/pion/transport/v3 v3.1.1 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
