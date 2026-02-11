@@ -30,7 +30,7 @@ func newVerifyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long:  "Verifies various entities managed by the Ziti Edge Controller",
 	}
 
-	cmd.AddCommand(newVerifyCaCmd(out, errOut))
+	cmd.AddCommand(NewVerifyCaCmd(out, errOut))
 
 	return cmd
 }

@@ -29,25 +29,37 @@ var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
 
 // NewCmdEdge creates a command object for the "controller" command
 func NewCmdEdge(out io.Writer, errOut io.Writer, p common.OptionsProvider) *cobra.Command {
+	return newCmdEdgeInternal(out, errOut, p, true)
+}
+
+// NewCmdEdgeV2 creates a command object for the "controller" command without CRUD subcommands
+// (they are consolidated at the top level in V2)
+func NewCmdEdgeV2(out io.Writer, errOut io.Writer, p common.OptionsProvider) *cobra.Command {
+	return newCmdEdgeInternal(out, errOut, p, false)
+}
+
+func newCmdEdgeInternal(out io.Writer, errOut io.Writer, p common.OptionsProvider, v1Layout bool) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Manage the Edge components of a Ziti network using the Ziti Edge REST API")
 
-	cmd.AddCommand(newCreateCmd(out, errOut))
-	cmd.AddCommand(newDeleteCmd(out, errOut))
-	cmd.AddCommand(NewLoginCmd(out, errOut))
-	cmd.AddCommand(newLogoutCmd(out, errOut))
-	cmd.AddCommand(newUseCmd(out, errOut))
-	cmd.AddCommand(newListCmd(out, errOut))
-	cmd.AddCommand(newUpdateCmd(out, errOut))
-	cmd.AddCommand(newVersionCmd(out, errOut))
-	cmd.AddCommand(newPolicyAdivsorCmd(out, errOut))
-	cmd.AddCommand(newVerifyCmd(out, errOut))
-	cmd.AddCommand(newDbCmd(out, errOut))
-	cmd.AddCommand(newTraceCmd(out, errOut))
-	cmd.AddCommand(newTraceRouteCmd(out, errOut))
-	cmd.AddCommand(newShowCmd(out, errOut))
-	cmd.AddCommand(newReEnrollCmd(out, errOut))
-	cmd.AddCommand(newValidateCommand(p))
-	cmd.AddCommand(enroll.NewEnrollIdentityCommand(p))
+	if v1Layout {
+		cmd.AddCommand(newCreateCmd(out, errOut))
+		cmd.AddCommand(newDeleteCmd(out, errOut))
+		cmd.AddCommand(newListCmd(out, errOut))
+		cmd.AddCommand(newUpdateCmd(out, errOut))
+		cmd.AddCommand(NewLoginCmd(out, errOut))
+		cmd.AddCommand(NewLogoutCmd(out, errOut))
+		cmd.AddCommand(NewUseCmd(out, errOut))
+		cmd.AddCommand(newValidateCommand(p))
+		cmd.AddCommand(newDbCmd(out, errOut))
+		cmd.AddCommand(NewPolicyAdvisorCmd(out, errOut))
+		cmd.AddCommand(newVerifyCmd(out, errOut))
+		cmd.AddCommand(NewTraceRouteCmd(out, errOut))
+		cmd.AddCommand(newReEnrollCmd(out, errOut))
+		cmd.AddCommand(enroll.NewEnrollIdentityCommand(p))
+		cmd.AddCommand(NewTraceCmd(out, errOut))
+		cmd.AddCommand(NewVersionCmd(out, errOut))
+		cmd.AddCommand(NewShowCmd(out, errOut))
+	}
 
 	for _, cmdF := range ExtraEdgeCommands {
 		cmd.AddCommand(cmdF(p))

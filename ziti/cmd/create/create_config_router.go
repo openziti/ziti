@@ -55,7 +55,7 @@ func NewCmdCreateConfigRouter(routerOptions *CreateConfigRouterOptions) *NewCrea
 	cmd := &NewCreateConfigRouterCmd{
 		Command: &cobra.Command{
 			Use:     "router",
-			Short:   "Creates a config file for specified router name",
+			Short:   "creates a config file for specified router name",
 			Aliases: []string{"rtr"},
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
 				// Setup logging

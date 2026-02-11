@@ -25,7 +25,7 @@ import (
 )
 
 func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
-	cmd := util.NewEmptyParentCmd("db", "Interact with Ziti database files")
+	cmd := util.NewEmptyParentCmd("db", "Management operations for OpenZiti databases and database files")
 
 	exploreCmd := &cobra.Command{
 		Use:   "explore <ctrl.db>|help|version",

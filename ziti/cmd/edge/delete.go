@@ -43,6 +43,23 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long:  "deletes various entities managed by the Ziti Edge Controller",
 	}
 
+	AddDeleteCommands(cmd, out, errOut)
+
+	return cmd
+}
+
+// AddDeleteCommands adds all edge delete subcommands to the given parent command
+func AddDeleteCommands(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addDeleteCommandsInternal(cmd, out, errOut, true)
+}
+
+// AddDeleteCommandsConsolidated adds edge delete subcommands for consolidated top-level use
+// Excludes terminator (fabric terminator is preferred)
+func AddDeleteCommandsConsolidated(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addDeleteCommandsInternal(cmd, out, errOut, false)
+}
+
+func addDeleteCommandsInternal(cmd *cobra.Command, out io.Writer, errOut io.Writer, includeTerminator bool) {
 	newOptions := func() *deleteOptions {
 		return &deleteOptions{
 			Options: &api.Options{
@@ -68,12 +85,12 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newDeleteCmdForEntityType("service-edge-router-policy", newOptions(), "serp", "serps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", newOptions(), "sp", "sps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("session", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions()))
+	if includeTerminator {
+		cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions()))
+	}
 	cmd.AddCommand(newDeleteCmdForEntityType("transit-router", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("auth-policy", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("external-jwt-signer", newOptions(), "ext-jwt-signer", "ext-jwt-signers", "external-jwt-signers"))
-
-	return cmd
 }
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type

@@ -34,6 +34,23 @@ func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long:  "updates various entities managed by the Ziti Edge Controller",
 	}
 
+	AddUpdateCommands(cmd, out, errOut)
+
+	return cmd
+}
+
+// AddUpdateCommands adds all edge update subcommands to the given parent command
+func AddUpdateCommands(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addUpdateCommandsInternal(cmd, out, errOut, true)
+}
+
+// AddUpdateCommandsConsolidated adds edge update subcommands for consolidated top-level use
+// Excludes terminator (fabric terminator is preferred)
+func AddUpdateCommandsConsolidated(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addUpdateCommandsInternal(cmd, out, errOut, false)
+}
+
+func addUpdateCommandsInternal(cmd *cobra.Command, out io.Writer, errOut io.Writer, includeTerminator bool) {
 	cmd.AddCommand(newUpdateAuthenticatorCmd(out, errOut))
 	cmd.AddCommand(newUpdateConfigCmd(out, errOut))
 	cmd.AddCommand(newUpdateConfigTypeCmd(out, errOut))
@@ -45,12 +62,12 @@ func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newUpdateServiceCmd(out, errOut))
 	cmd.AddCommand(newUpdateServicePolicyCmd(out, errOut))
 	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(out, errOut))
-	cmd.AddCommand(newUpdateTerminatorCmd(out, errOut))
+	if includeTerminator {
+		cmd.AddCommand(newUpdateTerminatorCmd(out, errOut))
+	}
 	cmd.AddCommand(newUpdatePostureCheckCmd(out, errOut))
 	cmd.AddCommand(newUpdateExtJwtSignerCmd(out, errOut))
 	cmd.AddCommand(newUpdateAuthPolicySignerCmd(out, errOut))
-
-	return cmd
 }
 
 func putEntityOfType(entityType string, body string, options *api.Options) (*gabs.Container, error) {

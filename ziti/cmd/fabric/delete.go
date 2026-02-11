@@ -55,6 +55,13 @@ func newDeleteCmd(p common.OptionsProvider) *cobra.Command {
 		Short: "deletes various entities managed by the Ziti Controller",
 	}
 
+	AddDeleteCommands(cmd, p)
+
+	return cmd
+}
+
+// AddDeleteCommands adds all fabric delete subcommands to the given parent command
+func AddDeleteCommands(cmd *cobra.Command, p common.OptionsProvider) {
 	newOptions := func(isCircuit bool) *deleteOptions {
 		return &deleteOptions{
 			Options:   api.Options{CommonOptions: p()},
@@ -67,8 +74,33 @@ func newDeleteCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(newDeleteCmdForEntityType("router", newOptions(false)))
 	cmd.AddCommand(newDeleteCmdForEntityType("service", newOptions(false)))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions(false)))
+}
 
-	return cmd
+// AddDeleteCommandsConsolidated adds fabric delete subcommands for consolidated top-level use
+func AddDeleteCommandsConsolidated(cmd *cobra.Command, p common.OptionsProvider) {
+	newOptions := func(isCircuit bool) *deleteOptions {
+		return &deleteOptions{
+			Options:   api.Options{CommonOptions: p()},
+			isCircuit: true,
+		}
+	}
+
+	// circuit and link are fabric-only, no prefix needed
+	cmd.AddCommand(newDeleteCmdForEntityType("circuit", newOptions(true)))
+	cmd.AddCommand(newDeleteCmdForEntityType("link", newOptions(false)))
+
+	routerCmd := newDeleteCmdForEntityType("router", newOptions(false))
+	routerCmd.Use = "fabric-" + routerCmd.Use
+	routerCmd.Hidden = true
+	cmd.AddCommand(routerCmd)
+
+	serviceCmd := newDeleteCmdForEntityType("service", newOptions(false))
+	serviceCmd.Use = "fabric-" + serviceCmd.Use
+	serviceCmd.Hidden = true
+	cmd.AddCommand(serviceCmd)
+
+	// Terminator is the default - no prefix
+	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions(false)))
 }
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type

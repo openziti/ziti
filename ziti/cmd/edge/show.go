@@ -27,8 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCreateCmd creates a command object for the "list" command
-func newShowCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewShowCmd creates a command object for the "show" command
+func NewShowCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	showCmd := &cobra.Command{
 		Use:   "show",
 		Short: "displays various entities managed by the Ziti Edge Controller",
