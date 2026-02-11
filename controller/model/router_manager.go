@@ -383,6 +383,7 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 			v.Cost = router.Cost
 			v.NoTraversal = router.NoTraversal
 			v.Disabled = router.Disabled
+			v.CtrlChanListeners = router.CtrlChanListeners
 
 			if v.Disabled {
 				if ctrl := v.Control; ctrl != nil {
@@ -415,13 +416,14 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 	}
 
 	msg := &cmd_pb.Router{
-		Id:          entity.Id,
-		Name:        entity.Name,
-		Fingerprint: fingerprint,
-		Cost:        uint32(entity.Cost),
-		NoTraversal: entity.NoTraversal,
-		Disabled:    entity.Disabled,
-		Tags:        tags,
+		Id:                entity.Id,
+		Name:              entity.Name,
+		Fingerprint:       fingerprint,
+		Cost:              uint32(entity.Cost),
+		NoTraversal:       entity.NoTraversal,
+		Disabled:          entity.Disabled,
+		Tags:              tags,
+		CtrlChanListeners: entity.CtrlChanListeners,
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -455,11 +457,12 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 			Id:   msg.Id,
 			Tags: cmd_pb.DecodeTags(msg.Tags),
 		},
-		Name:        msg.Name,
-		Fingerprint: fingerprint,
-		Cost:        uint16(msg.Cost),
-		NoTraversal: msg.NoTraversal,
-		Disabled:    msg.Disabled,
+		Name:              msg.Name,
+		Fingerprint:       fingerprint,
+		Cost:              uint16(msg.Cost),
+		NoTraversal:       msg.NoTraversal,
+		Disabled:          msg.Disabled,
+		CtrlChanListeners: msg.CtrlChanListeners,
 	}
 
 	for _, intf := range msg.Interfaces {

@@ -40,6 +40,7 @@ type EdgeRouter struct {
 	Cost                  uint16
 	NoTraversal           bool
 	Disabled              bool
+	CtrlChanListeners     []string
 	Interfaces            []*Interface
 }
 
@@ -50,12 +51,13 @@ func (self *EdgeRouter) GetName() string {
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter, error) {
 	boltEntity := &db.EdgeRouter{
 		Router: db.Router{
-			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-			Name:          entity.Name,
-			Cost:          entity.Cost,
-			NoTraversal:   entity.NoTraversal,
-			Disabled:      entity.Disabled,
-			Interfaces:    InterfacesToBolt(entity.Interfaces),
+			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:              entity.Name,
+			Cost:              entity.Cost,
+			NoTraversal:       entity.NoTraversal,
+			Disabled:          entity.Disabled,
+			CtrlChanListeners: entity.CtrlChanListeners,
+			Interfaces:        InterfacesToBolt(entity.Interfaces),
 		},
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
@@ -69,13 +71,14 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter,
 func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.EdgeRouter, error) {
 	return &db.EdgeRouter{
 		Router: db.Router{
-			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-			Name:          entity.Name,
-			Fingerprint:   entity.Fingerprint,
-			Cost:          entity.Cost,
-			NoTraversal:   entity.NoTraversal,
-			Disabled:      entity.Disabled,
-			Interfaces:    InterfacesToBolt(entity.Interfaces),
+			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:              entity.Name,
+			Fingerprint:       entity.Fingerprint,
+			Cost:              entity.Cost,
+			NoTraversal:       entity.NoTraversal,
+			Disabled:          entity.Disabled,
+			CtrlChanListeners: entity.CtrlChanListeners,
+			Interfaces:        InterfacesToBolt(entity.Interfaces),
 		},
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
@@ -101,6 +104,7 @@ func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRo
 	entity.Cost = boltEdgeRouter.Cost
 	entity.NoTraversal = boltEdgeRouter.NoTraversal
 	entity.Disabled = boltEdgeRouter.Disabled
+	entity.CtrlChanListeners = boltEdgeRouter.CtrlChanListeners
 	entity.Interfaces = InterfacesFromBolt(boltEdgeRouter.Interfaces)
 	return nil
 }

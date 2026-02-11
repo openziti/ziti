@@ -29,11 +29,12 @@ import (
 
 type createRouterOptions struct {
 	api.Options
-	name        string
-	cost        uint16
-	tags        map[string]string
-	noTraversal bool
-	disabled    bool
+	name              string
+	cost              uint16
+	tags              map[string]string
+	noTraversal       bool
+	disabled          bool
+	ctrlChanListeners []string
 }
 
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
@@ -60,6 +61,7 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
+	cmd.Flags().StringSliceVar(&options.ctrlChanListeners, "ctrl-chan-listener", nil, "Control channel listener address(es) for the router")
 
 	options.AddCommonFlags(cmd)
 
@@ -87,6 +89,9 @@ func (o *createRouterOptions) createRouter(_ *cobra.Command, args []string) erro
 	api.SetJSONValue(entityData, o.cost, "cost")
 	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 	api.SetJSONValue(entityData, o.disabled, "disabled")
+	if len(o.ctrlChanListeners) > 0 {
+		api.SetJSONValue(entityData, o.ctrlChanListeners, "ctrlChanListeners")
+	}
 	result, err := createEntityOfType("routers", entityData.String(), &o.Options)
 	if err != nil {
 		return err

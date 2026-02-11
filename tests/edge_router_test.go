@@ -91,6 +91,42 @@ func Test_EdgeRouter(t *testing.T) {
 		ctx.Req.False(stringz.Contains(list, role5))
 	})
 
+	t.Run("ctrlChanListeners can be created with an empty list", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		edgeRouter := newTestEdgeRouter()
+		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithQuery(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
+	})
+
+	t.Run("ctrlChanListeners can be set on create and retrieved", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		edgeRouter := newTestEdgeRouter()
+		edgeRouter.ctrlChanListeners = []string{"tls:1.2.3.4:6262", "tls:5.6.7.8:6262"}
+		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithQuery(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
+	})
+
+	t.Run("ctrlChanListeners can be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		edgeRouter := newTestEdgeRouter()
+		edgeRouter.ctrlChanListeners = []string{"tls:1.2.3.4:6262"}
+		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
+
+		edgeRouter.ctrlChanListeners = []string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"}
+		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
+
+		edgeRouter.ctrlChanListeners = []string{"tls:10.0.0.1:6262"}
+		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
+
+		edgeRouter.ctrlChanListeners = nil
+		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
+	})
+
 	t.Run("newly created edge routers that is deleted", func(t *testing.T) {
 		ctx.testContextChanged(t)
 

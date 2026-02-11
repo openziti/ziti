@@ -49,6 +49,9 @@ type RouterPatch struct {
 	// Minimum: 0
 	Cost *int64 `json:"cost,omitempty"`
 
+	// ctrl chan listeners
+	CtrlChanListeners []string `json:"ctrlChanListeners"`
+
 	// disabled
 	Disabled *bool `json:"disabled,omitempty"`
 

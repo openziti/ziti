@@ -39,19 +39,20 @@ type Listener interface {
 
 type Router struct {
 	models.BaseEntity
-	Name        string
-	Fingerprint *string
-	Listeners   []*ctrl_pb.Listener
-	Control     ctrlchan.CtrlChannel
-	Connected   atomic.Bool
-	ConnectTime time.Time
-	VersionInfo *versions.VersionInfo
-	routerLinks RouterLinks
-	Cost        uint16
-	NoTraversal bool
-	Disabled    bool
-	Capabilities *big.Int
-	Interfaces   []*Interface
+	Name              string
+	Fingerprint       *string
+	Listeners         []*ctrl_pb.Listener
+	Control           ctrlchan.CtrlChannel
+	Connected         atomic.Bool
+	ConnectTime       time.Time
+	VersionInfo       *versions.VersionInfo
+	routerLinks       RouterLinks
+	Cost              uint16
+	NoTraversal       bool
+	Disabled          bool
+	Capabilities      *big.Int
+	Interfaces        []*Interface
+	CtrlChanListeners []string
 }
 
 func (entity *Router) GetLinks() []*Link {
@@ -64,13 +65,14 @@ func (entity *Router) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.Field
 
 func (entity *Router) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Router, error) {
 	return &db.Router{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:          entity.Name,
-		Fingerprint:   entity.Fingerprint,
-		Cost:          entity.Cost,
-		NoTraversal:   entity.NoTraversal,
-		Disabled:      entity.Disabled,
-		Interfaces:    InterfacesToBolt(entity.Interfaces),
+		BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:              entity.Name,
+		Fingerprint:       entity.Fingerprint,
+		Cost:              entity.Cost,
+		NoTraversal:       entity.NoTraversal,
+		Disabled:          entity.Disabled,
+		CtrlChanListeners: entity.CtrlChanListeners,
+		Interfaces:        InterfacesToBolt(entity.Interfaces),
 	}, nil
 }
 
@@ -80,6 +82,7 @@ func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error 
 	entity.Cost = boltRouter.Cost
 	entity.NoTraversal = boltRouter.NoTraversal
 	entity.Disabled = boltRouter.Disabled
+	entity.CtrlChanListeners = boltRouter.CtrlChanListeners
 	entity.Interfaces = InterfacesFromBolt(boltRouter.Interfaces)
 	entity.FillCommon(boltRouter)
 	return nil

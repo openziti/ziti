@@ -113,6 +113,7 @@ message Router {
   bool disabled = 6;
   map<string, TagValue> tags = 7;
   repeated Interface interfaces = 8;
+  repeated string ctrlChanListeners = 9;
 }
 
 message Terminator {

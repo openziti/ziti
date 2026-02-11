@@ -54,11 +54,12 @@ func MapCreateFabricRouterToModel(router *rest_model.RouterCreate) *model.Router
 			Id:   stringz.OrEmpty(router.ID),
 			Tags: FabricTagsOrDefault(router.Tags),
 		},
-		Name:        stringz.OrEmpty(router.Name),
-		Fingerprint: router.Fingerprint,
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
-		Disabled:    BoolOrDefault(router.Disabled),
+		Name:              stringz.OrEmpty(router.Name),
+		Fingerprint:       router.Fingerprint,
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -70,11 +71,12 @@ func MapUpdateFabricRouterToModel(id string, router *rest_model.RouterUpdate) *m
 			Tags: FabricTagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:        stringz.OrEmpty(router.Name),
-		Fingerprint: router.Fingerprint,
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
-		Disabled:    BoolOrDefault(router.Disabled),
+		Name:              stringz.OrEmpty(router.Name),
+		Fingerprint:       router.Fingerprint,
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -86,11 +88,12 @@ func MapPatchFabricRouterToModel(id string, router *rest_model.RouterPatch) *mod
 			Tags: FabricTagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:        router.Name,
-		Fingerprint: router.Fingerprint,
-		Cost:        uint16(Int64OrDefault(router.Cost)),
-		NoTraversal: BoolOrDefault(router.NoTraversal),
-		Disabled:    BoolOrDefault(router.Disabled),
+		Name:              router.Name,
+		Fingerprint:       router.Fingerprint,
+		Cost:              uint16(Int64OrDefault(router.Cost)),
+		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -115,14 +118,15 @@ func (FabricRouterModelMapper) ToApi(ae *env.AppEnv, _ *response.RequestContext,
 	isConnected := connected != nil
 	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
-		BaseEntity:  FabricEntityToRestModel(router, FabricRouterLinkFactory),
-		Fingerprint: router.Fingerprint,
-		Name:        &router.Name,
-		Connected:   &isConnected,
-		VersionInfo: restVersionInfo,
-		Cost:        &cost,
-		NoTraversal: &router.NoTraversal,
-		Disabled:    &router.Disabled,
+		BaseEntity:        FabricEntityToRestModel(router, FabricRouterLinkFactory),
+		Fingerprint:       router.Fingerprint,
+		Name:              &router.Name,
+		Connected:         &isConnected,
+		VersionInfo:       restVersionInfo,
+		Cost:              &cost,
+		NoTraversal:       &router.NoTraversal,
+		Disabled:          &router.Disabled,
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	if connected != nil {

@@ -25,21 +25,23 @@ import (
 )
 
 const (
-	EntityTypeRouters      = "routers"
-	FieldRouterFingerprint = "fingerprint"
-	FieldRouterCost        = "cost"
-	FieldRouterNoTraversal = "noTraversal"
-	FieldRouterDisabled    = "disabled"
+	EntityTypeRouters            = "routers"
+	FieldRouterFingerprint       = "fingerprint"
+	FieldRouterCost              = "cost"
+	FieldRouterNoTraversal       = "noTraversal"
+	FieldRouterDisabled          = "disabled"
+	FieldRouterCtrlChanListeners = "ctrlChanListeners"
 )
 
 type Router struct {
 	boltz.BaseExtEntity
-	Name        string       `json:"name"`
-	Fingerprint *string      `json:"fingerprint"`
-	Cost        uint16       `json:"cost"`
-	NoTraversal bool         `json:"noTraversal"`
-	Disabled    bool         `json:"disabled"`
-	Interfaces  []*Interface `json:"interfaces"`
+	Name              string       `json:"name"`
+	Fingerprint       *string      `json:"fingerprint"`
+	Cost              uint16       `json:"cost"`
+	NoTraversal       bool         `json:"noTraversal"`
+	Disabled          bool         `json:"disabled"`
+	CtrlChanListeners []string     `json:"ctrlChanListeners"`
+	Interfaces        []*Interface `json:"interfaces"`
 }
 
 func (entity *Router) GetEntityType() string {
@@ -80,6 +82,7 @@ func (store *routerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldRouterCost, ast.NodeTypeInt64)
 	store.AddSymbol(FieldRouterNoTraversal, ast.NodeTypeBool)
 	store.AddSymbol(FieldRouterDisabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldRouterCtrlChanListeners, ast.NodeTypeString)
 }
 
 func (store *routerStoreImpl) initializeLinked() {
@@ -96,6 +99,7 @@ func (self *routerStoreImpl) FillEntity(entity *Router, bucket *boltz.TypedBucke
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
 	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
 	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
+	entity.CtrlChanListeners = bucket.GetStringList(FieldRouterCtrlChanListeners)
 	entity.Interfaces = loadInterfaces(bucket)
 }
 
@@ -106,6 +110,7 @@ func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistCon
 	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
 	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
 	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
+	ctx.SetStringList(FieldRouterCtrlChanListeners, entity.CtrlChanListeners)
 	storeInterfaces(entity.Interfaces, ctx)
 }
 

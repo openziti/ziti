@@ -34,6 +34,7 @@ type TransitRouter struct {
 	Cost                  uint16
 	NoTraversal           bool
 	Disabled              bool
+	CtrlChanListeners     []string
 }
 
 func (self *TransitRouter) GetName() string {
@@ -43,12 +44,13 @@ func (self *TransitRouter) GetName() string {
 func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.TransitRouter, error) {
 	boltEntity := &db.TransitRouter{
 		Router: db.Router{
-			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-			Name:          entity.Name,
-			Fingerprint:   entity.Fingerprint,
-			Cost:          entity.Cost,
-			NoTraversal:   entity.NoTraversal,
-			Disabled:      entity.Disabled,
+			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:              entity.Name,
+			Fingerprint:       entity.Fingerprint,
+			Cost:              entity.Cost,
+			NoTraversal:       entity.NoTraversal,
+			Disabled:          entity.Disabled,
+			CtrlChanListeners: entity.CtrlChanListeners,
 		},
 		IsVerified: false,
 	}
@@ -59,12 +61,13 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.TransitR
 func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.TransitRouter, error) {
 	ret := &db.TransitRouter{
 		Router: db.Router{
-			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-			Name:          entity.Name,
-			Fingerprint:   entity.Fingerprint,
-			Cost:          entity.Cost,
-			NoTraversal:   entity.NoTraversal,
-			Disabled:      entity.Disabled,
+			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:              entity.Name,
+			Fingerprint:       entity.Fingerprint,
+			Cost:              entity.Cost,
+			NoTraversal:       entity.NoTraversal,
+			Disabled:          entity.Disabled,
+			CtrlChanListeners: entity.CtrlChanListeners,
 		},
 		IsVerified:            entity.IsVerified,
 		UnverifiedFingerprint: entity.UnverifiedFingerprint,
@@ -85,6 +88,7 @@ func (entity *TransitRouter) fillFrom(_ Env, _ *bbolt.Tx, boltTransitRouter *db.
 	entity.Cost = boltTransitRouter.Cost
 	entity.NoTraversal = boltTransitRouter.NoTraversal
 	entity.Disabled = boltTransitRouter.Disabled
+	entity.CtrlChanListeners = boltTransitRouter.CtrlChanListeners
 
 	return nil
 }

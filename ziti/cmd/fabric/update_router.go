@@ -30,12 +30,13 @@ import (
 
 type updateRouterOptions struct {
 	api.Options
-	name        string
-	fingerprint string
-	cost        uint16
-	noTraversal bool
-	disabled    bool
-	tags        map[string]string
+	name              string
+	fingerprint       string
+	cost              uint16
+	noTraversal       bool
+	disabled          bool
+	ctrlChanListeners []string
+	tags              map[string]string
 }
 
 func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
@@ -62,6 +63,7 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
+	cmd.Flags().StringSliceVar(&options.ctrlChanListeners, "ctrl-chan-listener", nil, "Control channel listener address(es) for the router")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
@@ -100,6 +102,11 @@ func runUpdateRouter(o *updateRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("disabled") {
 		api.SetJSONValue(entityData, o.disabled, "disabled")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("ctrl-chan-listener") {
+		api.SetJSONValue(entityData, o.ctrlChanListeners, "ctrlChanListeners")
 		change = true
 	}
 

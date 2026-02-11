@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -99,6 +100,48 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := ctx.createAndEnrollTransitRouter()
 		ctx.AdminManagementSession.requireDeleteEntity(router)
+	})
+
+	t.Run("ctrlChanListeners can be created with an empty list", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		router := &transitRouter{
+			name: eid.New(),
+		}
+		router.id = ctx.AdminManagementSession.requireCreateEntity(router)
+		ctx.AdminManagementSession.validateEntityWithQuery(router)
+		ctx.AdminManagementSession.validateEntityWithLookup(router)
+	})
+
+	t.Run("ctrlChanListeners can be set on create and retrieved", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		router := &transitRouter{
+			name:              eid.New(),
+			ctrlChanListeners: []string{"tls:1.2.3.4:6262", "tls:5.6.7.8:6262"},
+		}
+		router.id = ctx.AdminManagementSession.requireCreateEntity(router)
+		ctx.AdminManagementSession.validateEntityWithQuery(router)
+		ctx.AdminManagementSession.validateEntityWithLookup(router)
+	})
+
+	t.Run("ctrlChanListeners can be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		router := &transitRouter{
+			name:              eid.New(),
+			ctrlChanListeners: []string{"tls:1.2.3.4:6262"},
+		}
+		router.id = ctx.AdminManagementSession.requireCreateEntity(router)
+
+		router.ctrlChanListeners = []string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"}
+		ctx.AdminManagementSession.requireUpdateEntity(router)
+		ctx.AdminManagementSession.validateEntityWithLookup(router)
+
+		router.ctrlChanListeners = []string{"tls:10.0.0.1:6262"}
+		ctx.AdminManagementSession.requireUpdateEntity(router)
+		ctx.AdminManagementSession.validateEntityWithLookup(router)
+
+		router.ctrlChanListeners = nil
+		ctx.AdminManagementSession.requireUpdateEntity(router)
+		ctx.AdminManagementSession.validateEntityWithLookup(router)
 	})
 
 	t.Run("can list transit routers created in fabric", func(t *testing.T) {
