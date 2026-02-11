@@ -17,19 +17,20 @@
 package handler_ctrl
 
 import (
+	"fmt"
 	"runtime/debug"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/xgress_router"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,7 +69,7 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder) 
 
 	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating xgress route handler pool")
+		return nil, fmt.Errorf("error creating xgress route handler pool (%w)", err)
 	}
 
 	terminatorValidatorPoolConfig := goroutines.PoolConfig{
@@ -87,7 +88,7 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder) 
 
 	terminatorValidationPool, err := goroutines.NewPool(terminatorValidatorPoolConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating terminator validation pool")
+		return nil, fmt.Errorf("error creating terminator validation pool (%w)", err)
 	}
 
 	return &bindHandler{
@@ -105,6 +106,12 @@ func terminatorValidatorWorker(_ uint32, f func()) {
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	if !capabilities.IsCapable(binding.GetChannel().Underlay(), capabilities.ControllerSupportsJWTLegacySessions) {
+		pfxlog.Logger().WithField("ctrlId", binding.GetChannel().Id()).
+			Error("controller does not support JWT format legacy sessions, use with controller versions 2.0+")
+		return fmt.Errorf("controller %s does not support JWT format legacy sessions", binding.GetChannel().Id())
+	}
+
 	ctrlCh := binding.GetChannel().(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
 	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
@@ -116,12 +123,13 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
+	binding.AddTypedReceiveHandler(self.clusterLeaderChangeHandler)
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(binding.GetChannel().Id())
 	if ctrl == nil {
-		return errors.Errorf("controller [%v] not registered, cannot configure", binding.GetChannel().Id())
+		return fmt.Errorf("controller [%v] not registered, cannot configure", binding.GetChannel().Id())
 	}
 
 	channel.ConfigureHeartbeat(binding, self.env.GetHeartbeatOptions().SendInterval, self.env.GetHeartbeatOptions().CheckInterval, ctrl.HeartbeatCallback())

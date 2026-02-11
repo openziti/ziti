@@ -413,6 +413,7 @@ func (c *Controller) Run() error {
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.RouterDataModel, 1)
 	capabilityMask.SetBit(capabilityMask, capabilities.ControllerGroupedCtrlChan, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSupportsJWTLegacySessions, 1)
 
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
@@ -487,10 +488,10 @@ func (c *Controller) getEventHandlerConfigs() []*events.EventHandlerConfig {
 	if e, ok := c.config.Src["events"]; ok {
 		if em, ok := e.(map[interface{}]interface{}); ok {
 			for id, v := range em {
-				if config, ok := v.(map[interface{}]interface{}); ok {
+				if eventHandlerConfig, ok := v.(map[interface{}]interface{}); ok {
 					result = append(result, &events.EventHandlerConfig{
 						Id:     id,
-						Config: config,
+						Config: eventHandlerConfig,
 					})
 				}
 			}
@@ -736,6 +737,9 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	buf := &bytes.Buffer{}
 	gzWriter := gzip.NewWriter(buf)
 	if err = sourceDb.StreamToWriter(gzWriter); err != nil {
+		if closeErr := gzWriter.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("error closing db snapshot buffer")
+		}
 		return err
 	}
 
@@ -792,6 +796,9 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 	buf := &bytes.Buffer{}
 	gzWriter := gzip.NewWriter(buf)
 	if err = sourceDb.StreamToWriter(gzWriter); err != nil {
+		if closeErr := gzWriter.Close(); closeErr != nil {
+			log.WithError(closeErr).Error("error closing db snapshot buffer")
+		}
 		return err
 	}
 
