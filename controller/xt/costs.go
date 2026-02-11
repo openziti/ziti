@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	unknownMinCost = math.MaxUint16 * 12
-	failedMinCost  = math.MaxUint16 * 8
-	defaultMinCost = math.MaxUint16 * 4
+	unknownMinCost = (math.MaxUint32 / 4) * 3
+	failedMinCost  = (math.MaxUint32 / 4) * 2
+	defaultMinCost = math.MaxUint32 / 4
 	requireMinCost = 0
 )
 
@@ -75,11 +75,10 @@ func (p *precedence) GetBaseCost() uint32 {
 }
 
 func (p *precedence) GetBiasedCost(cost uint32) uint32 {
-	result := p.minCost + cost
-	if result > p.maxCost {
+	if cost > p.maxCost-p.minCost {
 		return p.maxCost
 	}
-	return result
+	return p.minCost + cost
 }
 
 // Precedences define the precedence levels
@@ -118,7 +117,7 @@ var Precedences = struct {
 	unknown: &precedence{
 		name:    "unknown",
 		minCost: unknownMinCost,
-		maxCost: unknownMinCost + (math.MaxUint16 * 4) - 1,
+		maxCost: math.MaxUint32,
 	},
 }
 

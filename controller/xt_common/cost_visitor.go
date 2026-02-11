@@ -166,6 +166,8 @@ func (self *CostVisitor) CreditAll(credit uint8) {
 
 			if cost.FailureCost > uint32(credit) {
 				cost.FailureCost -= uint32(credit)
+			} else {
+				cost.FailureCost = 0
 			}
 			cost.cache(self.CircuitCost)
 			return cost
