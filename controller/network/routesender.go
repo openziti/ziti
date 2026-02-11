@@ -141,7 +141,6 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 			self.attendance[status.Router.Id] = true
 			if status.Router.Id == terminator.GetRouterId() {
 				peerData = status.PeerData
-				strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 				self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
 			}
 		} else {

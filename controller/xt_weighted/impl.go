@@ -69,10 +69,17 @@ func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTe
 		totalCost += unbiasedCost
 	}
 
-	total := float32(0)
+	totalWeight := float32(0)
 	for idx, cost := range costIdx {
-		total += 1 - (cost / totalCost)
-		costIdx[idx] = total
+		weight := 1 - (cost / totalCost)
+		costIdx[idx] = weight
+		totalWeight += weight
+	}
+
+	cumulative := float32(0)
+	for idx, weight := range costIdx {
+		cumulative += weight / totalWeight
+		costIdx[idx] = cumulative
 	}
 
 	selected := rand.Float32()

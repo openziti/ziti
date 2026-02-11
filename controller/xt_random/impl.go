@@ -55,6 +55,9 @@ func (self *strategy) Select(_ xt.CreateCircuitParams, terminators []xt.CostedTe
 
 func (self *strategy) NotifyEvent(xt.TerminatorEvent) {}
 
-func (self *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+func (self *strategy) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
+	for _, t := range event.GetRemoved() {
+		xt.GlobalCosts().ClearCost(t.GetId())
+	}
 	return nil
 }

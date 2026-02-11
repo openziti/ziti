@@ -20,8 +20,8 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.2.52
 	github.com/openziti/edge-api v0.26.52
-	github.com/openziti/fablab v0.6.1
-	github.com/openziti/foundation/v2 v2.0.85
+	github.com/openziti/fablab v0.6.6
+	github.com/openziti/foundation/v2 v2.0.86
 	github.com/openziti/identity v1.0.123
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/sdk-golang v1.4.1-0.20260206141645-831161f1bd9e
@@ -213,8 +213,8 @@ require (
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/term v0.39.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect

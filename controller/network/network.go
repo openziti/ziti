@@ -711,6 +711,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		network.Circuit.Add(circuit)
 		creationTimespan := time.Since(startTime)
 		network.CircuitEvent(event.CircuitCreated, circuit, &creationTimespan)
+		strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 
 		logger.WithField("path", circuit.Path).
 			WithField("terminator_local_address", circuit.Path.TerminatorLocalAddr).

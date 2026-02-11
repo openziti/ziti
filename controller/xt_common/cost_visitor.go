@@ -166,6 +166,8 @@ func (self *CostVisitor) CreditAll(credit uint8) {
 
 			if cost.FailureCost > uint32(credit) {
 				cost.FailureCost -= uint32(credit)
+			} else {
+				cost.FailureCost = 0
 			}
 			cost.cache(self.CircuitCost)
 			return cost
@@ -226,6 +228,7 @@ func (self *CostVisitor) NotifyEvent(event xt.TerminatorEvent) {
 func (self *CostVisitor) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
 	for _, t := range event.GetRemoved() {
 		self.Costs.Remove(t.GetId())
+		xt.GlobalCosts().ClearCost(t.GetId())
 	}
 	return nil
 }
