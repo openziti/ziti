@@ -283,8 +283,8 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	router2cc := testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req.Assertions)
 
 	router2Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
-		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
+	if val, found := router2cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
+		ctx.Req.NoError(proto.Unmarshal(val, router2Listeners))
 	}
 
 	peerUpdates1 := &ctrl_pb.PeerStateChanges{
