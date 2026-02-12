@@ -5,6 +5,8 @@ go 1.25.3
 // pinned
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
+replace github.com/openziti/foundation/v2 => github.com/openziti/foundation/v2 v2.0.86
+
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
@@ -59,18 +61,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.2
+	github.com/openziti/channel/v4 v4.3.4
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.26.52
-	github.com/openziti/foundation/v2 v2.0.86
-	github.com/openziti/identity v1.0.124
+	github.com/openziti/foundation/v2 v2.0.87
+	github.com/openziti/identity v1.0.125
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.88
 	github.com/openziti/sdk-golang v1.4.1
 	github.com/openziti/secretstream v0.1.47
 	github.com/openziti/storage v0.4.37
-	github.com/openziti/transport/v2 v2.0.208
+	github.com/openziti/transport/v2 v2.0.209
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.3
 	github.com/openziti/ziti-db-explorer v1.1.3

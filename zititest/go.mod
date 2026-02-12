@@ -10,6 +10,8 @@ replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
 
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
+replace github.com/openziti/foundation/v2 => github.com/openziti/foundation/v2 v2.0.86
+
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
@@ -18,15 +20,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.2
+	github.com/openziti/channel/v4 v4.3.4
 	github.com/openziti/edge-api v0.26.52
 	github.com/openziti/fablab v0.6.1
-	github.com/openziti/foundation/v2 v2.0.86
-	github.com/openziti/identity v1.0.124
+	github.com/openziti/foundation/v2 v2.0.87
+	github.com/openziti/identity v1.0.125
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/sdk-golang v1.4.1
 	github.com/openziti/storage v0.4.37
-	github.com/openziti/transport/v2 v2.0.208
+	github.com/openziti/transport/v2 v2.0.209
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
