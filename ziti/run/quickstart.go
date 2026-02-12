@@ -592,6 +592,12 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		if erEnrollErr != nil {
 			return erEnrollErr
 		}
+
+		// Remove the JWT file now that enrollment succeeded, so subsequent
+		// restarts don't attempt to re-enroll.
+		if removeErr := os.Remove(erJwt); removeErr != nil {
+			logrus.Warnf("failed to remove router JWT after enrollment: %v", removeErr)
+		}
 	}
 
 	return nil
