@@ -969,7 +969,10 @@ func (s *HybridStorage) createRefreshClaims(accessClaims *common.AccessClaims) (
 	claims.Expiration = oidc.Time(time.Now().Add(s.config.RefreshTokenDuration).Unix())
 	claims.Type = common.TokenTypeRefresh
 
-	token, _ := s.env.GetRootTlsJwtSigner().Generate(claims)
+	token, err := s.env.GetRootTlsJwtSigner().Generate(claims)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
 	return token, claims, nil
 }
@@ -999,9 +1002,12 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 	newRefreshClaims.NotBefore = oidc.Time(now.Unix())
 	newRefreshClaims.Expiration = oidc.Time(now.Add(s.config.RefreshTokenDuration).Unix())
 
-	token, _ := s.env.GetRootTlsJwtSigner().Generate(newRefreshClaims)
+	token, err := s.env.GetRootTlsJwtSigner().Generate(newRefreshClaims)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
-	return token, newRefreshClaims, err
+	return token, newRefreshClaims, nil
 }
 
 func (s *HybridStorage) setInfo(userInfo *oidc.UserInfo, identityId string, scopes []string) (err error) {
