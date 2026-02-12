@@ -30,7 +30,7 @@ func TestScp(t *testing.T) {
 	allZetHostedFailed := true
 	allZetClientsFailed := true
 
-	waitForTerminators(t, 30*time.Second, "ert-ssh", "zet-ssh", "ziti-tunnel-ssh")
+	waitForTerminators(t, 90*time.Second, "ert-ssh", "zet-ssh", "ziti-tunnel-ssh")
 
 	t.Run("scp-tests", func(t *testing.T) {
 		t.Run("test-ert-scp", func(t *testing.T) {

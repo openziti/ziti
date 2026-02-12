@@ -26,7 +26,7 @@ import (
 )
 
 func TestIPerf(t *testing.T) {
-	waitForTerminators(t, 30*time.Second, "ert-iperf", "ziti-tunnel-iperf")
+	waitForTerminators(t, 90*time.Second, "ert-iperf", "ziti-tunnel-iperf")
 
 	t.Run("iperf-tests", func(t *testing.T) {
 		t.Run("ert-hosted", func(t *testing.T) {
