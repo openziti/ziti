@@ -164,18 +164,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 		case ctrl_msg.ErrorTypeInvalidTerminator:
 			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
 				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
-				changeCtx := change.New().
-					SetChangeAuthorId(status.Router.Id).
-					SetChangeAuthorName(status.Router.Name).
-					SetChangeAuthorType(change.AuthorTypeRouter).
-					SetSourceType(change.SourceTypeControlChannel).
-					SetSourceMethod("route.response")
-				if ch := status.Router.Control; ch != nil {
-					changeCtx.
-						SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
-						SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
-				}
-
+				changeCtx := change.NewCtrlChannelChange(status.Router.Id, status.Router.Name, "route.response", status.Router.Control)
 				if err := self.terminators.Delete(terminator.GetId(), changeCtx); err != nil {
 					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
 				}
@@ -214,7 +203,7 @@ func (self *routeSender) sendRoute(r *model.Router, routeMsg *ctrl_pb.Route, ctx
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).WithField("routerId", r.Id)
 
 	envelope := protobufs.MarshalTyped(routeMsg).WithTimeout(3 * time.Second)
-	if err := envelope.SendAndWaitForWire(r.Control); err != nil {
+	if err := envelope.SendAndWaitForWire(r.Control.GetHighPrioritySender()); err != nil {
 		logger.WithError(err).Error("failure sending route message")
 	} else {
 		logger.Debug("sent route message")

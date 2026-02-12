@@ -115,7 +115,7 @@ func (self *fabricImpl) TunnelWithOptions(serviceName string, options *ziti.Dial
 	peerData[uint32(ctrl_msg.InitiatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
 	peerData[uint32(ctrl_msg.InitiatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
-	ctrlCh := self.env.GetNetworkControllers().AnyCtrlChannel()
+	ctrlCh := self.env.GetNetworkControllers().AnyChannel()
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create circuit"
 		log.Error(errStr)

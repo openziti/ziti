@@ -254,7 +254,7 @@ func (self *RouterMessaging) syncStates() {
 			}
 
 			success := true
-			if err := protobufs.MarshalTyped(changes).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
+			if err := protobufs.MarshalTyped(changes).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
 				pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send peer state changes to router")
 				success = false
 			}
@@ -353,7 +353,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 			pfxlog.Logger().WithField("terminatorId", terminator.GetId()).Debug("queuing validate of terminator")
 		}
 
-		if err = protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch); err != nil {
+		if err = protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
 			pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
 		} else if !supportsVerifyV2 {
 			// V1 doesn't send responses, it will just send deletes if the terminator is invalid.

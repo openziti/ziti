@@ -385,7 +385,7 @@ func (self *TerminatorManager) validateTerminatorBatch(fixInvalid bool, routerId
 	}
 	envelope.ctx, envelope.cancelF = context.WithTimeout(context.Background(), time.Minute)
 
-	if err = router.Control.Send(envelope); err != nil {
+	if err = router.Control.GetDefaultSender().Send(envelope); err != nil {
 		self.reportError(router, batch, cb, fmt.Sprintf("failed to send %s: %s", reflect.TypeOf(request), err.Error()))
 		return
 	}

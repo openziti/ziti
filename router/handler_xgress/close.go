@@ -63,7 +63,7 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 		fault.Subject = ctrl_pb.FaultSubject_EgressFault
 	}
 
-	ch := txc.ctrls.GetCtrlChannel(x.CtrlId())
+	ch := txc.ctrls.GetChannel(x.CtrlId())
 	if ch == nil {
 		log.WithField("ctrlId", x.CtrlId()).Error("control channel not available")
 	} else {

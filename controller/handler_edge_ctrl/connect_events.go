@@ -22,6 +22,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/event"
@@ -31,12 +32,14 @@ import (
 type connectEventsHandler struct {
 	appEnv *env.AppEnv
 	eventC chan func()
+	ch     ctrlchan.CtrlChannel
 }
 
-func NewConnectEventsHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
+func NewConnectEventsHandler(appEnv *env.AppEnv, ch ctrlchan.CtrlChannel) channel.TypedReceiveHandler {
 	result := &connectEventsHandler{
 		appEnv: appEnv,
 		eventC: make(chan func(), 1000),
+		ch:     ch,
 	}
 
 	go result.processEvents()
@@ -79,7 +82,7 @@ func (self *connectEventsHandler) HandleConnectEvents(req *edge_ctrl_pb.ConnectE
 	identityManager := self.appEnv.Managers.Identity
 
 	if req.FullState {
-		identityManager.GetConnectionTracker().SyncAllFromRouter(req, ch)
+		identityManager.GetConnectionTracker().SyncAllFromRouter(req, self.ch)
 	}
 
 	var events []*event.ConnectEvent
@@ -99,9 +102,9 @@ func (self *connectEventsHandler) HandleConnectEvents(req *edge_ctrl_pb.ConnectE
 
 		if !req.FullState {
 			if identityEvent.IsConnected {
-				identityManager.GetConnectionTracker().MarkConnected(identityEvent.IdentityId, ch)
+				identityManager.GetConnectionTracker().MarkConnected(identityEvent.IdentityId, self.ch)
 			} else {
-				identityManager.GetConnectionTracker().MarkDisconnected(identityEvent.IdentityId, ch)
+				identityManager.GetConnectionTracker().MarkDisconnected(identityEvent.IdentityId, self.ch)
 			}
 		}
 	}

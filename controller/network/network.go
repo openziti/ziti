@@ -1034,7 +1034,7 @@ func (network *Network) RemoveLink(linkId string) {
 		}
 
 		if ctrl := router.Control; ctrl != nil {
-			if err := protobufs.MarshalTyped(fault).WithTimeout(15 * time.Second).Send(ctrl); err != nil {
+			if err := protobufs.MarshalTyped(fault).WithTimeout(15 * time.Second).Send(ctrl.GetDefaultSender()); err != nil {
 				log.WithField("faultDestRouterId", router.Id).WithError(err).
 					Error("failed to send link fault to router on link removal")
 			} else {
@@ -1192,7 +1192,7 @@ func sendRoute(r *model.Router, createMsg *ctrl_pb.Route, timeout time.Duration)
 
 	log.Debug("sending create route message")
 
-	msg, err := protobufs.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control)
+	msg, err := protobufs.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control.GetHighPrioritySender())
 	if err != nil {
 		log.WithError(err).WithField("timeout", timeout).Error("error sending route message")
 		return nil, err
@@ -1225,7 +1225,7 @@ func sendUnroute(r *model.Router, circuitId string, now bool) error {
 		CircuitId: circuitId,
 		Now:       now,
 	}
-	return protobufs.MarshalTyped(unroute).Send(r.Control)
+	return protobufs.MarshalTyped(unroute).Send(r.Control.GetHighPrioritySender())
 }
 
 func (network *Network) showOptions() {
@@ -1349,7 +1349,7 @@ func (network *Network) AddInspectTarget(target InspectTarget) {
 func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidationCallback) {
 	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"links"}}
 	resp := &ctrl_pb.InspectResponse{}
-	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control)
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(time.Minute).SendForReply(router.Control.GetDefaultSender())
 	if err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err); err != nil {
 		network.reportRouterLinksError(router, err, cb)
 		return

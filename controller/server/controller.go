@@ -25,6 +25,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/v2/common/runner"
 	edgeconfig "github.com/openziti/ziti/v2/controller/config"
@@ -102,6 +103,8 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
+	ctrlCh := ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+
 	result := []channel.TypedReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
@@ -123,7 +126,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
-		handler_edge_ctrl.NewConnectEventsHandler(c.AppEnv),
+		handler_edge_ctrl.NewConnectEventsHandler(c.AppEnv, ctrlCh),
 	}
 
 	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)

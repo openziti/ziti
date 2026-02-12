@@ -540,7 +540,7 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 	currentSubscription := self.GetCurrentDataModelSubscription()
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(currentSubscription.CtrlId)
 	if currentSubscription.CtrlId == "" || ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
-		if bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel(); bestCtrl != nil {
+		if bestCtrl := self.env.GetNetworkControllers().AnyChannel(); bestCtrl != nil {
 			logger := pfxlog.Logger().
 				WithField("ctrlId", bestCtrl.Id()).
 				WithField("subscriptionId", currentSubscription.SubscriptionId).
@@ -553,7 +553,7 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 			self.subscribeToDataModelUpdates(bestCtrl)
 		}
 	} else if !ctrl.IsConnected() || ctrl.TimeSinceLastContact() > 30*time.Second {
-		bestCtrl := self.env.GetNetworkControllers().AnyCtrlChannel()
+		bestCtrl := self.env.GetNetworkControllers().AnyChannel()
 		if bestCtrl != nil && bestCtrl.Id() != ctrl.Channel().Id() {
 			pfxlog.Logger().
 				WithField("ctrlId", bestCtrl.Id()).

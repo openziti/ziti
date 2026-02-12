@@ -21,12 +21,14 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 
 	"github.com/openziti/channel/v4"
 )
 
 type NetworkController interface {
 	Channel() channel.Channel
+	CtrlChannel() ctrlchan.CtrlChannel
 	Address() string
 	Latency() time.Duration
 	HeartbeatCallback() channel.HeartbeatCallback
@@ -39,7 +41,7 @@ type NetworkController interface {
 	updateDataModelIndex(index uint64)
 }
 
-func newNetworkCtrl(ch channel.Channel, address string, heartbeatOptions *HeartbeatOptions) *networkCtrl {
+func newNetworkCtrl(ch ctrlchan.CtrlChannel, address string, heartbeatOptions *HeartbeatOptions) *networkCtrl {
 	result := &networkCtrl{
 		ch:               ch,
 		address:          address,
@@ -50,7 +52,7 @@ func newNetworkCtrl(ch channel.Channel, address string, heartbeatOptions *Heartb
 }
 
 type networkCtrl struct {
-	ch               channel.Channel
+	ch               ctrlchan.CtrlChannel
 	address          string
 	heartbeatOptions *HeartbeatOptions
 	lastTx           int64
@@ -71,6 +73,10 @@ func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
 }
 
 func (self *networkCtrl) Channel() channel.Channel {
+	return self.ch.GetChannel()
+}
+
+func (self *networkCtrl) CtrlChannel() ctrlchan.CtrlChannel {
 	return self.ch
 }
 
@@ -146,8 +152,7 @@ func (self *networkCtrl) CheckHeartBeat() {
 }
 
 func (self *networkCtrl) IsConnected() bool {
-	connectable, ok := self.ch.Underlay().(interface{ IsConnected() bool })
-	return ok && connectable.IsConnected()
+	return self.ch.IsConnected()
 }
 
 func NewDefaultHeartbeatOptions() *HeartbeatOptions {

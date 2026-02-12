@@ -37,6 +37,7 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -494,7 +495,7 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	}
 
 	controllers := self.listener.factory.env.GetNetworkControllers()
-	ch := controllers.GetCtrlChannel(edgeForwarder.ctrlId)
+	ch := controllers.GetChannel(edgeForwarder.ctrlId)
 	if ch == nil {
 		log.WithField("ctrlId", edgeForwarder.ctrlId).Error("control channel not available")
 	} else {
@@ -586,7 +587,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		Log:     log,
 		Req:     req,
 		ConnId:  connId,
-		CtrlCh:  ctrlCh,
+		CtrlId:  ctrlCh.PeerId(),
 	}
 
 	serviceSessionToken, err := self.listener.factory.stateManager.GetServiceSessionToken(serviceSessionTokenStr, self.apiSessionToken)
@@ -620,7 +621,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		handler = &xgEdgeForwarder{
 			edgeClientConn: self,
 			serviceId:      serviceSessionToken.ServiceId,
-			ctrlId:         ctrlCh.Id(),
+			ctrlId:         ctrlCh.PeerId(),
 			originator:     xgress.Initiator,
 			metrics:        self.listener.factory.env.GetXgressMetrics(),
 		}
@@ -673,9 +674,9 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	}
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh channel.Channel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitResponse, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
-	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh)
+	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh.GetHighPrioritySender())
 	if err != nil {
 		return nil, err
 	}
@@ -1046,7 +1047,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 		log.Debug("updating terminator")
 
 		timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
+		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh.GetDefaultSender())
 		if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
 			log.WithError(err).Error("terminator update failed")
 		} else {
@@ -1074,7 +1075,7 @@ func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.
 
 	log = serviceSessionToken.AddLoggingFields(log)
 
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	ctrlCh := self.listener.factory.ctrls.AnyChannel()
 	if ctrlCh == nil {
 		log.Error("no controller available, cannot forward health event")
 		return
@@ -1340,7 +1341,7 @@ type connectContext struct {
 	Log                 *logrus.Entry
 	Req                 *channel.Message
 	ConnId              uint32
-	CtrlCh              channel.Channel
+	CtrlId              string
 	PolicyType          edge_ctrl_pb.PolicyType
 	ServiceSessionToken *state.ServiceSessionToken
 }
@@ -1390,7 +1391,7 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 	ctx.SdkConn.mapResponsePeerData(response.PeerData)
 
 	xgOptions := &ctx.SdkConn.listener.options.Options
-	x := xgress.NewXgress(response.CircuitId, ctx.CtrlCh.Id(), xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
+	x := xgress.NewXgress(response.CircuitId, ctx.CtrlId, xgress.Address(response.Address), self.conn, xgress.Initiator, xgOptions, response.Tags)
 	ctx.SdkConn.listener.bindHandler.HandleXgressBind(x)
 	self.conn.x.Store(x)
 
@@ -1549,7 +1550,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 
 	msg.PutStringHeader(sdkedge.CircuitIdHeader, self.circuitId)
 	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
-	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.CtrlCh.Id())
+	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.CtrlId)
 	msg.PutStringHeader(sdkedge.XgressAddressHeader, response.Address)
 
 	self.mapResponsePeerData(response.PeerData)

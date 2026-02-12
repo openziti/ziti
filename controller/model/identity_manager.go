@@ -24,11 +24,11 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
@@ -620,10 +620,10 @@ func (self *IdentityManager) Enable(identityId string, ctx *change.Context) erro
 	}, fieldMap, ctx)
 }
 
-func (self *IdentityManager) GetIdentityStatusMapCopy() map[string]map[string]channel.Channel {
-	result := map[string]map[string]channel.Channel{}
+func (self *IdentityManager) GetIdentityStatusMapCopy() map[string]map[string]ctrlchan.CtrlChannel {
+	result := map[string]map[string]ctrlchan.CtrlChannel{}
 	for entry := range self.connections.connections.IterBuffered() {
-		routerMap := map[string]channel.Channel{}
+		routerMap := map[string]ctrlchan.CtrlChannel{}
 		entry.Val.Lock()
 		for routerId, ch := range entry.Val.routers {
 			routerMap[routerId] = ch
@@ -1083,7 +1083,7 @@ const (
 
 type identityConnections struct {
 	sync.RWMutex
-	routers           map[string]channel.Channel
+	routers           map[string]ctrlchan.CtrlChannel
 	lastReportedState IdentityOnlineState
 }
 
@@ -1144,10 +1144,10 @@ func (self *ConnectionTracker) runScanLoop() {
 
 func (self *ConnectionTracker) ScanForDisconnectedRouters() {
 	for entry := range self.connections.IterBuffered() {
-		var toRemove []channel.Channel
+		var toRemove []ctrlchan.CtrlChannel
 		entry.Val.RLock()
 		for _, routerCh := range entry.Val.routers {
-			if routerCh.IsClosed() && routerCh.GetTimeSinceLastRead() > self.unknownTimeout {
+			if routerCh.IsClosed() && routerCh.GetChannel().GetTimeSinceLastRead() > self.unknownTimeout {
 				toRemove = append(toRemove, routerCh)
 			}
 		}
@@ -1186,13 +1186,13 @@ func (self *ConnectionTracker) ScanForDisconnectedRouters() {
 	}
 }
 
-func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Channel) {
-	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity connected to router")
+func (self *ConnectionTracker) MarkConnected(identityId string, ch ctrlchan.CtrlChannel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.PeerId()).Trace("marking identity connected to router")
 	var postUpsertCallback func()
 	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
 		if valueInMap == nil {
 			valueInMap = &identityConnections{
-				routers: map[string]channel.Channel{},
+				routers: map[string]ctrlchan.CtrlChannel{},
 			}
 		}
 
@@ -1202,7 +1202,7 @@ func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Chann
 
 		valueInMap.Lock()
 		oldState := valueInMap.calculateState()
-		valueInMap.routers[ch.Id()] = ch
+		valueInMap.routers[ch.PeerId()] = ch
 		newState := valueInMap.calculateState()
 		lastReportedState := valueInMap.lastReportedState
 		valueInMap.lastReportedState = newState
@@ -1221,22 +1221,22 @@ func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Chann
 	}
 }
 
-func (self *ConnectionTracker) MarkDisconnected(identityId string, ch channel.Channel) {
-	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.Id()).Trace("marking identity disconnected from router")
+func (self *ConnectionTracker) MarkDisconnected(identityId string, ch ctrlchan.CtrlChannel) {
+	pfxlog.Logger().WithField("identityId", identityId).WithField("routerId", ch.PeerId()).Trace("marking identity disconnected from router")
 	var postUpsertCallback func()
 	self.connections.Upsert(identityId, nil, func(exist bool, valueInMap *identityConnections, newValue *identityConnections) *identityConnections {
 		if valueInMap == nil {
 			return &identityConnections{
-				routers: map[string]channel.Channel{},
+				routers: map[string]ctrlchan.CtrlChannel{},
 			}
 		}
 
 		valueInMap.Lock()
 		oldState := valueInMap.calculateState()
 
-		current := valueInMap.routers[ch.Id()]
+		current := valueInMap.routers[ch.PeerId()]
 		if current == nil || current == ch || current.IsClosed() {
-			delete(valueInMap.routers, ch.Id())
+			delete(valueInMap.routers, ch.PeerId())
 		}
 
 		newState := valueInMap.calculateState()
@@ -1285,7 +1285,7 @@ func (self *ConnectionTracker) GetIdentityOnlineState(identityId string) Identit
 	return val.calculateState()
 }
 
-func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEvents, ch channel.Channel) {
+func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEvents, ch ctrlchan.CtrlChannel) {
 	m := map[string]bool{}
 	for _, identityState := range state.Events {
 		m[identityState.IdentityId] = identityState.IsConnected
@@ -1296,7 +1296,7 @@ func (self *ConnectionTracker) SyncAllFromRouter(state *edge_ctrl_pb.ConnectEven
 
 	for _, identityId := range self.connections.Keys() {
 		// note: don't mark router itself as disconnected
-		if connected := m[identityId]; !connected && identityId != ch.Id() {
+		if connected := m[identityId]; !connected && identityId != ch.PeerId() {
 			self.MarkDisconnected(identityId, ch)
 		}
 	}
@@ -1317,9 +1317,9 @@ func (self *ConnectionTracker) Inspect() *inspect.CtrlIdentityConnections {
 		result.Connections[entry.Key] = val
 		for routerId, ch := range entry.Val.routers {
 			val.ConnectedRouters[routerId] = &inspect.CtrlRouterConnection{
-				RouterId:           ch.Id(),
+				RouterId:           ch.PeerId(),
 				Closed:             ch.IsClosed(),
-				TimeSinceLastWrite: ch.GetTimeSinceLastRead().String(),
+				TimeSinceLastWrite: ch.GetChannel().GetTimeSinceLastRead().String(),
 			}
 		}
 		entry.Val.Unlock()

@@ -163,10 +163,11 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 		var result []map[string]any
 		for _, r := range ctx.network.Router.AllConnected() {
 			status := map[string]any{}
-			status["Id"] = r.Id
-			status["Name"] = r.Name
-			status["Version"] = r.VersionInfo.Version
-			status["ConnectTime"] = r.ConnectTime.Format(time.RFC3339)
+			status["id"] = r.Id
+			status["name"] = r.Name
+			status["version"] = r.VersionInfo.Version
+			status["connectTime"] = r.ConnectTime.Format(time.RFC3339)
+			status["underlays"] = r.Control.GetChannel().GetUnderlayCountsByType()
 			result = append(result, status)
 		}
 		ctx.handleLocalJsonResponse(name, result)
@@ -233,7 +234,7 @@ func (ctx *inspectRequestContext) inspectRouter(router *model.Router) {
 		notifier := make(chan struct{})
 		ctx.waitGroup.AddNotifier(notifier)
 
-		go ctx.handleCtrlChanMessaging(router.Id, router.Control, notifier)
+		go ctx.handleCtrlChanMessaging(router.Id, router.Control.GetLowPrioritySender(), notifier)
 	} else {
 		log.Debug("inspect not matched")
 	}
@@ -257,7 +258,7 @@ func (ctx *inspectRequestContext) inspectPeer(id string, ch channel.Channel) {
 	}
 }
 
-func (ctx *inspectRequestContext) handleCtrlChanMessaging(id string, ch channel.Channel, notifier chan struct{}) {
+func (ctx *inspectRequestContext) handleCtrlChanMessaging(id string, ch channel.Sender, notifier chan struct{}) {
 	defer close(notifier)
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}

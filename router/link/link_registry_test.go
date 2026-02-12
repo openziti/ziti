@@ -17,7 +17,6 @@
 package link
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -26,7 +25,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
@@ -39,12 +38,30 @@ type testEnv struct {
 	metricsRegistry metrics.UsageRegistry
 	closeNotify     chan struct{}
 	ctrls           env.NetworkControllers
+	config          *env.Config
 }
 
 func (self *testEnv) GetRouterId() *identity.TokenId {
 	return &identity.TokenId{
 		Token: "test",
 	}
+}
+
+func (self *testEnv) GetDialHeaders() (channel.Headers, error) {
+	return channel.Headers{}, nil
+}
+
+func (self *testEnv) GetConfig() *env.Config {
+	return self.config
+}
+
+func (self *testEnv) GetCtrlChannelBindHandler() channel.BindHandler {
+	return channel.BindHandlerF(func(binding channel.Binding) error {
+		return nil
+	})
+}
+
+func (self *testEnv) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
 }
 
 func (self *testEnv) GetNetworkControllers() env.NetworkControllers {
@@ -182,15 +199,15 @@ func newTestEnv() *testEnv {
 	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
 	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
 
-	ctrls := env.NewNetworkControllers(time.Second, func(address transport.Address, bindHandler channel.BindHandler) error {
-		return errors.New("implement me")
-	}, env.NewDefaultHeartbeatOptions())
-	return &testEnv{
+	testEnv := &testEnv{
 		metricsRegistry: metricsRegistry,
 		closeNotify:     closeNotify,
-		ctrls:           ctrls,
+		config:          &env.Config{},
 	}
 
+	testEnv.config.Ctrl.DefaultRequestTimeout = time.Second
+	testEnv.ctrls = env.NewNetworkControllers(testEnv, env.NewDefaultHeartbeatOptions())
+	return testEnv
 }
 
 func Test_gcLinkMetrics(t *testing.T) {

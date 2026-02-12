@@ -20,15 +20,15 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/openziti/ziti/v2/router/xgress_router"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -105,8 +105,9 @@ func terminatorValidatorWorker(_ uint32, f func()) {
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	ctrlCh := binding.GetChannel().(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
-	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
+	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
@@ -114,7 +115,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))

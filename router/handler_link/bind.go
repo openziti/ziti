@@ -120,7 +120,7 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 		Fingerprints: fingerprints,
 	}
 
-	ctrlCh := self.ctrl.AnyCtrlChannel()
+	ctrlCh := self.ctrl.AnyChannel()
 	if ctrlCh == nil {
 		return errors.Errorf("unable to verify link %v, no controller available", l.Id())
 	}

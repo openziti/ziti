@@ -153,7 +153,7 @@ func (self *CertExpirationChecker) AnyCtrlChannelWithTimeout(timeout time.Durati
 	startTime := time.Now()
 	interval := 500 * time.Millisecond
 	for {
-		ctrlCh := self.ctrls.AnyCtrlChannel()
+		ctrlCh := self.ctrls.AnyChannel()
 
 		if ctrlCh != nil && !ctrlCh.IsClosed() {
 			return ctrlCh, false

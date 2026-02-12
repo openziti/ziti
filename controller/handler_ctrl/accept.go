@@ -21,6 +21,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/xctrl"
@@ -50,8 +51,51 @@ func NewCtrlAccepter(network *network.Network,
 	}
 }
 
+// NewMultiListener returns an acceptor that handles both grouped (multi-underlay) and
+// ungrouped (single underlay) connections from routers.
+func (self *CtrlAccepter) NewMultiListener() channel.UnderlayAcceptor {
+	multiListener := channel.NewMultiListener(self.HandleGroupedUnderlay, self.AcceptUnderlay)
+	return &multiListenerAcceptor{multiListener: multiListener}
+}
+
+// multiListenerAcceptor wraps MultiListener to implement UnderlayAcceptor
+type multiListenerAcceptor struct {
+	multiListener *channel.MultiListener
+}
+
+func (self *multiListenerAcceptor) AcceptUnderlay(underlay channel.Underlay) error {
+	self.multiListener.AcceptUnderlay(underlay)
+	return nil
+}
+
+// HandleGroupedUnderlay handles incoming grouped connections from routers that support
+// multi-underlay control channels. It creates a MultiChannel with ListenerCtrlChannel.
+func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
+	multiConfig := channel.MultiChannelConfig{
+		LogicalName:     "ctrl/" + underlay.Id(),
+		Options:         self.options,
+		UnderlayHandler: listenerCtrlChan,
+		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+				closeCallback()
+			}))
+			return self.Bind(binding)
+		}),
+		Underlay: underlay,
+	}
+	mc, err := channel.NewMultiChannel(&multiConfig)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failure accepting ctrl channel %v with multi-underlay", underlay.Label())
+		return nil, err
+	}
+	return mc, nil
+}
+
+// AcceptUnderlay handles incoming ungrouped connections from routers that don't support
+// multi-underlay control channels (backward compatibility).
 func (self *CtrlAccepter) AcceptUnderlay(underlay channel.Underlay) error {
-	_, err := channel.NewChannelWithUnderlay("ctrl", underlay, channel.BindHandlerF(self.Bind), self.options)
+	_, err := self.HandleGroupedUnderlay(underlay, func() {})
 	return err
 }
 
@@ -116,7 +160,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch
+	r.Control = ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	r.ConnectTime = time.Now()
 	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
 		return errors.Wrap(err, "error binding router")

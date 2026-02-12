@@ -295,7 +295,6 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 
 	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
 		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
-			linkChan.InitChannel(mc)
 			xli.ch = linkChan
 		}
 	}

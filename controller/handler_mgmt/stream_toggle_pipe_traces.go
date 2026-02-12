@@ -147,7 +147,7 @@ func handleResponse(router *model.Router, mgmtReq *channel.Message, msgsCh chan<
 	defer waitGroup.Done()
 
 	msg := channel.NewMessage(int32(ctrl_pb.ContentType_TogglePipeTracesRequestType), mgmtReq.Body)
-	response, err := msg.WithTimeout(5 * time.Second).SendForReply(router.Control)
+	response, err := msg.WithTimeout(5 * time.Second).SendForReply(router.Control.GetLowPrioritySender())
 
 	if err != nil {
 		msgsCh <- &remoteToggleResult{false, err.Error()}

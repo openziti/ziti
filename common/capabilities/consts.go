@@ -18,13 +18,25 @@ package capabilities
 
 const (
 	// ControllerCreateTerminatorV2 deprecated, assumed to be supported
+	// indicates support for create terminator v2
+	// still advertised for pre-2.0 routers
 	ControllerCreateTerminatorV2 int = 1
 
 	// ControllerSingleRouterLinkSource deprecated, assumed to be supported
+	// indicates that it supports routers reporting only dialed links
+	// still advertised for pre-2.0 routers
 	ControllerSingleRouterLinkSource int = 2
 
-	// ControllerCreateCircuitV2 indicates support for the CreateCircuitV2 method
+	// ControllerCreateCircuitV2 deprecated, assumed to be supported
+	// indicates support for the CreateCircuitV2 method
+	// still advertised for pre-2.0 routers
 	ControllerCreateCircuitV2 int = 3
 
+	// RouterDataModel deprecated, assumed to be supported
+	// indicates support for the CreateCircuitV2 method
+	// still advertised for pre-2.0 routers
 	RouterDataModel int = 4
+
+	// ControllerGroupedCtrlChan indicates support for grouped-underlay control channels
+	ControllerGroupedCtrlChan int = 5
 )

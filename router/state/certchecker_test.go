@@ -17,7 +17,6 @@ import (
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/pkg/errors"
@@ -546,18 +545,9 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		Token:    eid.New(),
 		Data:     nil,
 	}
-	ctrlDialer := env.CtrlDialer(func(address transport.Address, bindHandler channel.BindHandler) error {
-		return testChannel.Bind(bindHandler)
-	})
-	ctrls := env.NewNetworkControllers(time.Second, ctrlDialer, env.NewDefaultHeartbeatOptions())
-	ctrls.UpdateControllerEndpoints([]string{"tls:localhost:6262"})
-	start := time.Now()
-	for ctrls.AnyCtrlChannel() == nil {
-		if time.Since(start) > time.Second {
-			panic("control channel not setup")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+
+	ctrls := &env.MockNetworkControllers{Channel: testChannel}
+
 	testEnv := &testCertEnv{
 		id:          id,
 		ctrls:       ctrls,

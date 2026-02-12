@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/pkg/errors"
 )
@@ -139,9 +140,8 @@ type CircuitInfo struct {
 var circuitError = errors.New("error connecting circuit")
 
 type networkControllers interface {
-	AnyCtrlChannel() channel.Channel
+	AnyCtrlChannel() ctrlchan.CtrlChannel
 	AnyValidCtrlChannel() channel.Channel
-	GetCtrlChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
 }
@@ -158,7 +158,7 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 		Service:   service,
 		PeerData:  peerData,
 	}
-	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ch)
+	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ch.GetHighPrioritySender())
 	if err != nil {
 		log.Errorf("failed to send CircuitRequest message (%v)", err)
 		return nil, circuitError
@@ -180,7 +180,7 @@ func GetCircuit(ctrl networkControllers, ingressId string, service string, timeo
 
 		log.WithField("circuitId", circuitId.Token).Debug("created new circuit")
 		return &CircuitInfo{
-			CtrlId:      ch.Id(),
+			CtrlId:      ch.PeerId(),
 			CircuitId:   circuitId,
 			Address:     xgress.Address(address),
 			ResponseMsg: reply,
@@ -213,31 +213,6 @@ func CreateCircuit(ctrl networkControllers, peer xgress.Connection, request *Req
 	return &Response{Success: true, CircuitId: circuitInfo.CircuitId.Token}
 }
 
-func RemoveTerminator(ctrls networkControllers, terminatorId string) error {
-	log := pfxlog.Logger()
-	request := &ctrl_pb.RemoveTerminatorRequest{
-		TerminatorId: terminatorId,
-	}
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctrls.DefaultRequestTimeout()).SendForReply(ctrls.AnyCtrlChannel())
-	if err != nil {
-		log.WithError(err).Errorf("failed to send RemoveTerminatorRequest message")
-		return err
-	}
-
-	if responseMsg != nil && responseMsg.ContentType == channel.ContentTypeResultType {
-		result := channel.UnmarshalResult(responseMsg)
-		if result.Success {
-			log.Debugf("successfully removed service terminator [s/%s]", terminatorId)
-			return nil
-		}
-		log.Errorf("failure removing service terminator (%v)", result.Message)
-		return errors.New(result.Message)
-	} else {
-		log.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
-		return errors.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
-	}
-}
-
 func RemoveTerminators(ctrls networkControllers, terminatorIds []string) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.RemoveTerminatorsRequest{
@@ -250,7 +225,7 @@ func RemoveTerminators(ctrls networkControllers, terminatorIds []string) {
 		return
 	}
 
-	if responseMsg != nil && responseMsg.ContentType == channel.ContentTypeResultType {
+	if responseMsg.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(responseMsg)
 		if result.Success {
 			log.Debug("successfully removed terminators")

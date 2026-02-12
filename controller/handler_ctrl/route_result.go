@@ -103,7 +103,7 @@ func (self *routeResultHandler) notRoutingCircuit(circuitId string) {
 	}
 	if body, err := proto.Marshal(unroute); err == nil {
 		unrouteMsg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-		if err := self.r.Control.Send(unrouteMsg); err != nil {
+		if err := self.r.Control.GetHighPrioritySender().Send(unrouteMsg); err != nil {
 			log.WithError(err).Error("error sending unroute message to router")
 		}
 	} else {
