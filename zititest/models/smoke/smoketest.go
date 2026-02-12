@@ -59,6 +59,7 @@ var Model = &model.Model{
 	Id: "smoketest",
 	Scope: model.Scope{
 		Defaults: model.Variables{
+			"oidc":        true,
 			"environment": "smoketest" + getUniqueId(),
 			"credentials": model.Variables{
 				"aws": model.Variables{
@@ -83,6 +84,19 @@ var Model = &model.Model{
 				}
 			}
 			return nil
+		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			return m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
+				router, ok := c.Type.(*zitilab.RouterType)
+				if !ok {
+					return nil
+				}
+				varName := strings.ReplaceAll(c.Id, "-", "_") + "_version"
+				if version, found := m.GetStringVariable(varName); found {
+					router.Version = version
+				}
+				return nil
+			})
 		}),
 	},
 
@@ -164,7 +178,7 @@ var Model = &model.Model{
 						"router-east-1": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
 							Type: &zitilab.RouterType{
-								Debug:   false,
+								Debug:   true,
 								Version: ZitiRouterVersion,
 							},
 						},
@@ -181,7 +195,7 @@ var Model = &model.Model{
 						"router-east-2": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
 							Type: &zitilab.RouterType{
-								Debug:   false,
+								Debug:   true,
 								Version: ZitiRouterVersion,
 							},
 						},
@@ -230,7 +244,7 @@ var Model = &model.Model{
 						"router-west": {
 							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
 							Type: &zitilab.RouterType{
-								Debug:   false,
+								Debug:   true,
 								Version: ZitiRouterVersion,
 							},
 						},

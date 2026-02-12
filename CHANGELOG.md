@@ -823,7 +823,8 @@ to the API for hosting applications.
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.84 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.0](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.0)
+* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.1](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.1)
+    * [Issue #877](https://github.com/openziti/sdk-golang/issues/877) - Handle differences in xgress eof/end-of-circuit handling by adding a capabilities exchange
     * [Issue #832](https://github.com/openziti/sdk-golang/issues/832) - Fuzz session refresh timers
     * [Issue #879](https://github.com/openziti/sdk-golang/issues/879) - Return the connId in inspect response
     * [Issue #878](https://github.com/openziti/sdk-golang/issues/878) - Fix responses from rx goroutines
@@ -849,6 +850,7 @@ to the API for hosting applications.
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3571](https://github.com/openziti/ziti/issues/3571) - Ensure 2.0 backwards compatibility with 1.6 and 1.5 using the smoketest
     * [Issue #3636](https://github.com/openziti/ziti/issues/3636) - Adaptive rate limiter should use success rate rather than queue position
     * [Issue #3600](https://github.com/openziti/ziti/issues/3600) - Add a preferredLeader flag, allow selected nodes to be preferred for raft leader, if they're available
     * [Issue #3642](https://github.com/openziti/ziti/issues/3642) - Use xgress_common.Connection type for xgress_transport and xgress_proxy
@@ -921,4 +923,5 @@ to the API for hosting applications.
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
     * [Issue #3264](https://github.com/openziti/ziti/issues/3264) - Allow routers to generate alert events in cases of service misconfiguration
+
 
