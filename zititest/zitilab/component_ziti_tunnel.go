@@ -60,6 +60,7 @@ type ZitiTunnelType struct {
 	DefaultRouterConnections uint8
 	ControlRouterConnections uint8
 	EnableSdkFlowControl     bool
+	Verbose                  bool
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -198,8 +199,14 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		}
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), connectCfg, c.Id, configPath, logsPath)
+	verbose := ""
+
+	if self.Verbose {
+		verbose = "-v"
+	}
+
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), connectCfg, verbose, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,
