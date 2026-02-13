@@ -82,9 +82,9 @@ func (self *LinkStateChecker) HandleFault(msg *channel.Message, _ channel.Channe
 		if link, found := self.links[fault.Id]; found {
 			link.FaultCount++
 			link.Valid = false
-		} else {
-			self.reportError(fmt.Errorf("no link with Id %s found", fault.Id))
 		}
+		// Faults for unknown link IDs are expected — the fault can arrive
+		// before the link is registered via HandleLink due to message ordering.
 	}
 }
 

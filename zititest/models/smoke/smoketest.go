@@ -234,6 +234,7 @@ var Model = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
 							Type: &zitilab.EchoServerType{
 								BindService: "echo",
+								Verbose:     true,
 							},
 						},
 						"iperf-server-ert": {
@@ -274,7 +275,8 @@ var Model = &model.Model{
 						"ziti-tunnel-host": {
 							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
 							Type: &zitilab.ZitiTunnelType{
-								Mode: zitilab.ZitiTunnelModeHost,
+								Mode:    zitilab.ZitiTunnelModeHost,
+								Verbose: true,
 							},
 						},
 						"iperf-server-zt": {
