@@ -42,6 +42,8 @@ func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(NewAddDebugAdminAction())
 	cmd.AddCommand(NewAnonymizeAction())
 	cmd.AddCommand(NewDeleteSessionsFromDbCmd())
+	cmd.AddCommand(NewGetDbVersionAction())
+	cmd.AddCommand(NewSetDbVersionAction())
 
 	return cmd
 }
