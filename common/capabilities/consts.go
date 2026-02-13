@@ -39,4 +39,8 @@ const (
 
 	// ControllerGroupedCtrlChan indicates support for grouped-underlay control channels
 	ControllerGroupedCtrlChan int = 5
+
+	// ControllerSupportsJWTLegacySessions indicates that the controller generates legacy
+	// session tokens as JWTs, carrying identity and service information
+	ControllerSupportsJWTLegacySessions int = 6
 )
