@@ -175,9 +175,9 @@ func (ae *AppEnv) JwtSignerKeyFunc(token *jwt.Token) (interface{}, error) {
 	kidToPubKey := ae.Broker.GetPublicKeys()
 
 	val := token.Header["kid"]
-	targetKid := val.(string)
+	targetKid, ok := val.(string)
 
-	if targetKid == "" {
+	if !ok || targetKid == "" {
 		return nil, errors.New("missing kid in token")
 	}
 
@@ -313,7 +313,7 @@ func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	}
 
 	rootSigner := &jwtsigner.TlsJwtSigner{}
-	err := rootSigner.Set(rootCerts[0])
+	err := rootSigner.Set(rootCert)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
