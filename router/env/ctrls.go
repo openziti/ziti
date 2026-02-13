@@ -393,7 +393,7 @@ func (self *networkControllers) NotifyOfReconnect(ctrlId string) {
 
 func (self *networkControllers) notifyOfChange(controller NetworkController, eventType CtrlEventType) {
 	for _, l := range self.ctrlChangeListeners.Value() {
-		l.NotifyOfCtrlEvent(CtrlEvent{
+		go l.NotifyOfCtrlEvent(CtrlEvent{
 			Type:       eventType,
 			Controller: controller,
 		})

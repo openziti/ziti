@@ -27,7 +27,7 @@ import (
 )
 
 func TestSdkEcho(t *testing.T) {
-	waitForTerminators(t, 90*time.Second, "echo")
+	waitForTerminators(t, 30*time.Second, "echo")
 
 	components := run.GetModel().SelectComponents("#zcat")
 
