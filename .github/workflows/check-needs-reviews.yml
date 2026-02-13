@@ -12,8 +12,9 @@ jobs:
     steps:
       - name: Check author and add to project
         if: >-
+          github.actor != 'dependabot[bot]' &&
           !contains(fromJson('["andrewpmartinez", "dovholuknf","ekoby","michaelquigley", "mikegorman-nf", "plorenz", "qrkourier","scarey","smilindave26"]'), github.actor)
         uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/orgs/openziti/projects/38
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_CI_KEY }}
