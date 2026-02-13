@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math/big"
 	"net"
@@ -95,6 +96,7 @@ type Router struct {
 	xrctrls             []env.Xrctrl
 	xlinkFactories      map[string]xlink.Factory
 	xlinkListeners      []xlink.Listener
+	ctrlListeners       []io.Closer
 	xlinkDialers        []xlink.Dialer
 	xlinkRegistry       xlink.Registry
 	xgressListeners     []xgress_router.Listener
@@ -227,7 +229,7 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
-func (self *Router) GetDialHeaders() (channel.Headers, error) {
+func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
 
 	if err != nil {
@@ -475,6 +477,12 @@ func (self *Router) Shutdown() error {
 		}
 
 		close(self.shutdownC)
+
+		for _, ctrlListener := range self.ctrlListeners {
+			if err := ctrlListener.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
@@ -829,6 +837,10 @@ func (self *Router) startControlPlane() error {
 	log := pfxlog.Logger()
 	log.Infof("router configured with %v controller endpoints", len(endpoints))
 
+	if err := self.startCtrlListeners(); err != nil {
+		return err
+	}
+
 	self.ctrls.UpdateControllerEndpoints(endpoints)
 
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
@@ -858,6 +870,50 @@ func (self *Router) startControlPlane() error {
 	interfaces.StartInterfaceReporter(self.ctrls, self.GetCloseNotify(), self.config.IfaceDiscovery)
 
 	return nil
+}
+
+func (self *Router) startCtrlListeners() error {
+	if len(self.config.Ctrl.Listeners) == 0 {
+		return nil
+	}
+
+	log := pfxlog.Logger()
+
+	for _, listenerCfg := range self.config.Ctrl.Listeners {
+		log.Infof("starting ctrl channel listener on %s", listenerCfg.Bind.String())
+
+		ctrlAcceptor := &ctrlChannelAcceptor{
+			router:  self,
+			options: listenerCfg.Options,
+		}
+
+		listenerConfig := channel.ListenerConfig{
+			ConnectOptions:   listenerCfg.Options.ConnectOptions,
+			TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
+			PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.ctrl"),
+			HeadersF:         self.ctrlHelloHeaders,
+		}
+
+		multiListener := channel.NewMultiListener(ctrlAcceptor.HandleGroupedUnderlay, ctrlAcceptor.AcceptUnderlay)
+
+		listener, err := channel.NewClassicListenerF(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener.AcceptUnderlay)
+		if err != nil {
+			return fmt.Errorf("error starting ctrl channel listener on %s (%w)", listenerCfg.Bind.String(), err)
+		}
+
+		self.ctrlListeners = append(self.ctrlListeners, listener)
+	}
+
+	return nil
+}
+
+func (self *Router) ctrlHelloHeaders() map[int32][]byte {
+	headers, err := self.GetChannelHeaders()
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error generating ctrl listener hello headers")
+		return map[int32][]byte{}
+	}
+	return headers
 }
 
 func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {

@@ -63,7 +63,7 @@ type CtrlEvent struct {
 }
 
 type DialEnv interface {
-	GetDialHeaders() (channel.Headers, error)
+	GetChannelHeaders() (channel.Headers, error)
 	GetConfig() *Config
 	GetCtrlChannelBindHandler() channel.BindHandler
 	NotifyOfReconnect(ch ctrlchan.CtrlChannel)
@@ -93,6 +93,7 @@ type NetworkControllers interface {
 	IsLeaderConnected() bool
 	ControllersHaveMinVersion(version string) bool
 	GetLeader() NetworkController
+	AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -230,7 +231,7 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 }
 
 func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
-	headers, err := self.dialEnv.GetDialHeaders()
+	headers, err := self.dialEnv.GetChannelHeaders()
 	if err != nil {
 		return err
 	}
@@ -297,13 +298,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		id := binding.GetChannel().Id()
-		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), func(m *channel.Message, ch channel.Channel) {
-			if idx, ok := m.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
-				if ctrl := self.GetNetworkController(id); ctrl != nil {
-					ctrl.updateDataModelIndex(idx)
-				}
-			}
-		})
+		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
 
 		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
 			return err
@@ -353,6 +348,14 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 	return nil
 }
 
+func (self *networkControllers) handleRouterDataModelIndexUpdate(m *channel.Message, ch channel.Channel) {
+	if idx, ok := m.GetUint64Header(int32(edge_ctrl_pb.Header_RouterDataModelIndex)); ok {
+		if ctrl := self.GetNetworkController(ch.Id()); ctrl != nil {
+			ctrl.updateDataModelIndex(idx)
+		}
+	}
+}
+
 func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) error {
 	ctrl := newNetworkCtrl(ctrlCh, address, self.heartbeatOptions)
 
@@ -375,6 +378,25 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 	self.ctrls.Put(ch.Id(), ctrl)
 
 	self.notifyOfChange(ctrl, ControllerAdded)
+
+	return nil
+}
+
+func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
+	id := binding.GetChannel().Id()
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+
+	if err := self.Add(address, ctrlCh, binding.GetChannel(), underlay); err != nil {
+		return err
+	}
+
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		ctrl := self.GetNetworkController(id)
+		self.ctrls.Delete(id)
+		if ctrl != nil {
+			self.notifyOfChange(ctrl, ControllerDisconnected)
+		}
+	}))
 
 	return nil
 }

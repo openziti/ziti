@@ -116,3 +116,7 @@ func (m *MockNetworkControllers) ControllersHaveMinVersion(version string) bool 
 func (m *MockNetworkControllers) GetLeader() NetworkController {
 	return nil
 }
+
+func (m *MockNetworkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
+	return nil
+}
