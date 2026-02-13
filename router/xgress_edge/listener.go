@@ -681,11 +681,15 @@ func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuit
 		return nil, err
 	}
 	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
-		msg := string(msg.Body)
-		if msg == "" {
-			msg = "error state returned from controller with no message"
+		errMsg := string(msg.Body)
+		if errMsg == "" {
+			errMsg = "error state returned from controller with no message"
 		}
-		return nil, errors.New(msg)
+		var resp *ctrl_msg.CreateCircuitResponse
+		if circuitId, found := msg.GetStringHeader(sdkedge.CircuitIdHeader); found {
+			resp = &ctrl_msg.CreateCircuitResponse{CircuitId: circuitId}
+		}
+		return resp, errors.New(errMsg)
 	}
 
 	if msg.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV2ResponseType) {
@@ -1158,13 +1162,19 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 	}
 }
 
-func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message) {
+func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message, headers ...channel.Headers) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 	msg := sdkedge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
 
 	if errorCode, found := req.GetUint32Header(sdkedge.ErrorCodeHeader); found {
 		msg.PutUint32Header(sdkedge.ErrorCodeHeader, errorCode)
+	}
+
+	for _, h := range headers {
+		for k, v := range h {
+			msg.Headers[k] = v
+		}
 	}
 
 	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
@@ -1383,7 +1393,12 @@ func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
 	if err != nil {
 		ctx.Log.WithError(err).Warn("failed to dial fabric")
-		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req)
+		var headers channel.Headers
+		if response != nil && response.CircuitId != "" {
+			headers = channel.Headers{}
+			headers.PutStringHeader(sdkedge.CircuitIdHeader, response.CircuitId)
+		}
+		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req, headers)
 		self.conn.close(false, "failed to dial fabric")
 		return
 	}
@@ -1530,7 +1545,12 @@ func (self *xgEdgeForwarder) UnregisterRouting() {
 func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
 	if err != nil {
 		ctx.Log.WithError(err).Warn("failed to dial fabric")
-		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req)
+		var headers channel.Headers
+		if response != nil && response.CircuitId != "" {
+			headers = channel.Headers{}
+			headers.PutStringHeader(sdkedge.CircuitIdHeader, response.CircuitId)
+		}
+		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req, headers)
 		return
 	}
 
