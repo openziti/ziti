@@ -19,6 +19,7 @@ package response
 import (
 	"strconv"
 
+
 	"github.com/openziti/ziti/v2/common/build"
 )
 
@@ -34,10 +35,10 @@ func AddHeaders(rc *RequestContext) {
 		rc.ResponseWriter.Header().Set(ServerHeader, "ziti-controller/"+buildInfo.Version())
 	}
 
-	AddSessionHeaders(rc)
+	AddApiSessionHeaders(rc)
 }
 
-func AddSessionHeaders(rc *RequestContext) {
+func AddApiSessionHeaders(rc *RequestContext) {
 	if rc.ApiSession != nil {
 		rc.ResponseWriter.Header().Set(ApiSessionExpirationSecondsHeader, strconv.FormatInt(int64(rc.ApiSession.ExpirationDuration.Seconds()), 10))
 		rc.ResponseWriter.Header().Set(ApiSessionExpiresAtHeader, rc.ApiSession.ExpiresAt.String())

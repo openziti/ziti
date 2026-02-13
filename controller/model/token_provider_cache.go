@@ -353,6 +353,15 @@ func (a *TokenIssuerCache) VerifyTokenByInspection(candidateToken string) (*Toke
 	}, nil
 }
 
+func (a *TokenIssuerCache) IterateIssuers(f func(issuer TokenIssuer) bool) {
+	keepGoing := true
+	a.issuers.IterCb(func(key string, v TokenIssuer) {
+		if keepGoing {
+			keepGoing = f(v)
+		}
+	})
+}
+
 // TokenVerificationResult contains the result of JWT token verification.
 // Includes the parsed token, extracted claims, and the issuer that verified it.
 type TokenVerificationResult struct {

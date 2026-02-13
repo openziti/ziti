@@ -96,6 +96,10 @@ type Storage interface {
 	// UpdateSdkEnvInfo will attempt to take the identity in scope of an AuthRequest and update its durable SDK/ENV
 	// info.
 	UpdateSdkEnvInfo(request *AuthRequest) error
+
+	ProcessSecondaryJwts(r *http.Request, authRequest *AuthRequest, securityTokenCtx *common.SecurityTokenCtx) (model.AuthResult, error)
+
+	GetPrimaryJwtSignerKeyFunc() jwt.Keyfunc
 }
 
 func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
@@ -106,6 +110,8 @@ func NewRevocation(tokenId string, expiresAt time.Time) *model.Revocation {
 		ExpiresAt: expiresAt,
 	}
 }
+
+var _ Storage = (*HybridStorage)(nil)
 
 // HybridStorage implements the Storage interface
 // Authentication requests are not synchronized with other controllers. Authentication must happen entirely
@@ -128,6 +134,40 @@ type HybridStorage struct {
 	config    *Config
 
 	keys cmap.ConcurrentMap[string, *pubKey]
+}
+
+func (s *HybridStorage) GetPrimaryJwtSignerKeyFunc() jwt.Keyfunc {
+	return s.env.JwtSignerKeyFunc
+}
+
+func (s *HybridStorage) ProcessSecondaryJwts(r *http.Request, authRequest *AuthRequest, securityTokenCtx *common.SecurityTokenCtx) (model.AuthResult, error) {
+	if authRequest == nil {
+		return nil, errors.New("auth request is nil")
+	}
+
+	if securityTokenCtx == nil {
+		return nil, errors.New("security token ctx is nil")
+	}
+
+	extJwtModule := s.env.GetAuthRegistry().GetByMethod(AuthMethodExtJwt)
+
+	if extJwtModule == nil {
+		return nil, errors.New("no external jwt module found")
+	}
+
+	identity, err := s.env.GetManagers().Identity.Read(authRequest.IdentityId)
+
+	if err != nil {
+		return nil, errors.New("could not read identity")
+	}
+
+	changeCtx := NewChangeCtx()
+	authCtx := model.NewAuthContextHttp(r, AuthMethodExtJwt, nil, changeCtx)
+
+	authCtx.SetPrimaryIdentity(identity)
+	authCtx.SetSecurityTokenCtx(securityTokenCtx)
+
+	return extJwtModule.Process(authCtx)
 }
 
 func (s *HybridStorage) UpdateSdkEnvInfo(request *AuthRequest) error {

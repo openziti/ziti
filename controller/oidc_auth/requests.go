@@ -105,6 +105,11 @@ func (a *AuthRequest) HasAmrExtJwtId(id string) bool {
 	return a.HasAmr(AuthMethodSecondaryExtJwt + ":" + id)
 }
 
+func (a *AuthRequest) AddAmrExtJwtId(id string) {
+	amr := AuthMethodSecondaryExtJwt + ":" + id
+	a.AddAmr(amr)
+}
+
 // AddAmr adds the supplied amr
 func (a *AuthRequest) AddAmr(amr string) {
 	if a.Amr == nil {

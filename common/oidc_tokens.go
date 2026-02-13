@@ -18,11 +18,16 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
@@ -62,6 +67,167 @@ const (
 	ServiceSessionTypeBind = "Bind"
 	ServiceSessionTypeDial = "Dial"
 )
+
+type SecurityTokenCtx struct {
+	Jwt       *jwt.Token
+	Claims    *AccessClaims
+	Error     error
+	ZtSession string
+
+	RawAuthorizationHeaders        []string
+	UnverifiedZitiBearerToken      *BearerTokenHeader
+	UnverifiedExternalBearerTokens []*BearerTokenHeader
+
+	PrimaryVerificationKeyFunc jwt.Keyfunc
+
+	fillOnce   sync.Once
+	verifyOnce sync.Once
+
+	hasFilled bool
+}
+
+type BearerTokenHeader struct {
+	Raw         string
+	Token       *jwt.Token
+	Claims      *AccessClaims
+	Error       error
+	HeaderIndex int
+}
+
+func NewSecurityTokenCtx(r *http.Request, primaryJwtKeyFunc jwt.Keyfunc) (*SecurityTokenCtx, error) {
+	result := &SecurityTokenCtx{
+		PrimaryVerificationKeyFunc: primaryJwtKeyFunc,
+	}
+
+	err := result.fillFromRequest(r)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result.verifyPrimaryJwt()
+
+	if result.Error == nil && result.ZtSession == "" && result.Jwt == nil {
+		if len(result.UnverifiedExternalBearerTokens) > 0 {
+			//given some tokens but none were the correct type
+			result.Error = errorz.NewUnauthorizedOidcInvalid()
+		} else {
+			result.Error = errorz.NewUnauthorizedTokensMissing()
+		}
+	}
+
+	return result, nil
+}
+
+func (s *SecurityTokenCtx) IsJwt() bool {
+	s.verifyPrimaryJwt()
+	return s.Jwt != nil && s.ZtSession == ""
+}
+
+func (s *SecurityTokenCtx) IsZtSession() bool {
+	s.verifyPrimaryJwt()
+	return s.ZtSession != ""
+}
+
+func (s *SecurityTokenCtx) SecondaryTokens() []*jwt.Token {
+	result := make([]*jwt.Token, 0, len(s.UnverifiedExternalBearerTokens))
+	for _, authHeader := range s.UnverifiedExternalBearerTokens {
+		if authHeader.Token != nil {
+			result = append(result, authHeader.Token)
+		}
+	}
+	return result
+}
+
+func (s *SecurityTokenCtx) fillFromRequest(r *http.Request) error {
+	if r == nil {
+		return errors.New("request is nil")
+	}
+
+	s.fillOnce.Do(func() {
+		s.hasFilled = true
+
+		s.ZtSession = strings.TrimSpace(r.Header.Get("zt-Session"))
+
+		s.RawAuthorizationHeaders = r.Header.Values("Authorization")
+
+		jwtParser := jwt.NewParser()
+		for i, authorizationHeader := range s.RawAuthorizationHeaders {
+			authorizationHeader = strings.TrimSpace(authorizationHeader)
+
+			if strings.HasPrefix(authorizationHeader, "Bearer ") {
+				rawToken := authorizationHeader[7:]
+				claims := &AccessClaims{}
+				token, _, err := jwtParser.ParseUnverified(rawToken, claims)
+
+				bearerToken := &BearerTokenHeader{
+					Raw:         rawToken,
+					Token:       token,
+					Claims:      claims,
+					Error:       err,
+					HeaderIndex: i,
+				}
+
+				if s.ZtSession != "" {
+					// if we have a legacy header, everything is a secondary
+					s.UnverifiedExternalBearerTokens = append(s.UnverifiedExternalBearerTokens, bearerToken)
+				} else if s.UnverifiedZitiBearerToken == nil && claims.ApiSessionId != "" && claims.Type == TokenTypeAccess {
+					//if not take the first openziti token and use a primary
+					s.UnverifiedZitiBearerToken = bearerToken
+				} else {
+					//all other tokens are secondary or invalid
+					s.UnverifiedExternalBearerTokens = append(s.UnverifiedExternalBearerTokens, bearerToken)
+				}
+			}
+		}
+	})
+
+	return nil
+}
+
+func (s *SecurityTokenCtx) verifyPrimaryJwt() {
+	if !s.hasFilled {
+		return
+	}
+
+	if s.ZtSession != "" {
+		return
+	}
+
+	s.verifyOnce.Do(func() {
+		if s.UnverifiedZitiBearerToken == nil {
+			return
+		}
+
+		claims := &AccessClaims{}
+		result, err := jwt.ParseWithClaims(s.UnverifiedZitiBearerToken.Token.Raw, claims, s.PrimaryVerificationKeyFunc)
+
+		if err != nil {
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				s.Error = errorz.NewUnauthorizedOidcExpired()
+				return
+			}
+			s.Error = errorz.NewUnauthorizedOidcInvalid()
+			return
+		}
+
+		if result == nil || !result.Valid {
+			s.Error = errorz.NewUnauthorizedOidcInvalid()
+			return
+		}
+
+		if claims == nil || claims.Type != TokenTypeAccess {
+			s.Error = errorz.NewUnauthorizedOidcInvalid()
+			return
+		}
+
+		if result != nil && result.Valid {
+			s.Jwt = result
+			s.Claims = claims
+			s.Error = nil
+		}
+	})
+}
 
 type CustomClaims struct {
 	ApiSessionId            string              `json:"z_asid,omitempty"`
@@ -205,6 +371,16 @@ func (r *AccessClaims) ConfigTypesAsMap() map[string]struct{} {
 	}
 
 	return result
+}
+
+func (r *AccessClaims) MarshalJSON() ([]byte, error) {
+	baseData, _ := json.Marshal(r.AccessTokenClaims)
+	customData, _ := json.Marshal(r.CustomClaims)
+
+	mapData := map[string]any{}
+	_ = json.Unmarshal(customData, &mapData)
+	_ = json.Unmarshal(baseData, &mapData)
+	return json.Marshal(mapData)
 }
 
 func (r *AccessClaims) UnmarshalJSON(raw []byte) error {

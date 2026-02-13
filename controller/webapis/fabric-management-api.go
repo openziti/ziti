@@ -188,11 +188,7 @@ func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) ht
 
 		api.AddRequestContextToHttpContext(r, rc)
 
-		err := self.ae.FillRequestContext(rc)
-		if err != nil {
-			rc.RespondWithError(err)
-			return
-		}
+		self.ae.FillRequestContext(rc)
 
 		//after request context is filled so that api session is present for session expiration headers
 		response.AddHeaders(rc)
@@ -207,11 +203,7 @@ func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http
 	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rc := self.ae.CreateRequestContext(rw, r)
 
-		err := self.ae.FillRequestContext(rc)
-		if err != nil {
-			rc.RespondWithError(err)
-			return
-		}
+		self.ae.FillRequestContext(rc)
 
 		check := permissions.HasOneOf(permissions.IsAdmin(), permissions.HasEntityAccess())
 

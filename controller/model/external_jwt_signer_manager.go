@@ -171,3 +171,25 @@ func (self *ExternalJwtSignerManager) PublicQuery(query ast.Query) (*ListExtJwtS
 
 	return result, nil
 }
+
+func (self *ExternalJwtSignerManager) Query(queryStr string) (*ListExtJwtSignerResult, error) {
+	query, err := ast.Parse(self.Store, queryStr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	entityResult, err := self.BasePreparedList(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ListExtJwtSignerResult{
+		manager:       self,
+		QueryMetaData: entityResult.QueryMetaData,
+		ExtJwtSigners: entityResult.Entities,
+	}
+
+	return result, nil
+}

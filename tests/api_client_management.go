@@ -16,6 +16,7 @@ import (
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
+	managementInformational "github.com/openziti/edge-api/rest_management_api_client/informational"
 	managementPostureChecks "github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -27,6 +28,28 @@ import (
 type ManagementHelperClient struct {
 	*edgeApis.ManagementApiClient
 	testCtx *TestContext
+}
+
+func (helper *ManagementHelperClient) GetVersion() (*rest_model.Version, error) {
+	resp, err := helper.GetVersionResponse()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) GetVersionResponse() (*managementInformational.ListVersionOK, error) {
+	getVersionParams := managementInformational.NewListVersionParams()
+
+	resp, err := helper.API.Informational.ListVersion(getVersionParams)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve version information: %w", rest_util.WrapErr(err))
+	}
+
+	return resp, nil
 }
 
 func (helper *ManagementHelperClient) CreateAndEnrollOttIdentity(isAdmin bool, roleAttributes ...string) (*rest_model.IdentityDetail, *edgeApis.CertCredentials, error) {
@@ -557,4 +580,40 @@ func (helper *ManagementHelperClient) PatchExtJwtSigner(id string, patch *rest_m
 	}
 
 	return helper.GetAuthPolicy(id)
+}
+
+func (helper *ManagementHelperClient) PatchIdentity(id string, patch *rest_model.IdentityPatch) (*rest_model.IdentityDetail, error) {
+	params := managementIdentity.NewPatchIdentityParams()
+	params.ID = id
+	params.Identity = patch
+
+	_, err := helper.API.Identity.PatchIdentity(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return helper.GetIdentity(id)
+}
+
+func (helper *ManagementHelperClient) GetCurrentApiSessionDetail() (*rest_model.CurrentAPISessionDetail, error) {
+	resp, err := helper.GetCurrentApiSessionDetailResponse()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) GetCurrentApiSessionDetailResponse() (*managementCurrentApiSession.GetCurrentAPISessionOK, error) {
+	params := &managementCurrentApiSession.GetCurrentAPISessionParams{}
+
+	resp, err := helper.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not get current api session detail: %w", rest_util.WrapErr(err))
+	}
+
+	return resp, nil
 }

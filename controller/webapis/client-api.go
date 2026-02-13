@@ -195,11 +195,7 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 
 		api.AddRequestContextToHttpContext(r, rc)
 
-		err := ae.FillRequestContext(rc)
-		if err != nil {
-			rc.RespondWithError(err)
-			return
-		}
+		ae.FillRequestContext(rc)
 
 		//after request context is filled so that api session is present for session expiration headers
 		response.AddHeaders(rc)
