@@ -55,6 +55,29 @@ done
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 : "${ZITI_NAMESPACE:="zititest"}"
 
+declare -a MINIKUBE_START_ARGS=()
+declare -a MINIZITI_START_ARGS=()
+while (( "$#" )); do
+    case "$1" in
+        --charts)
+            [[ "$#" -ge 2 ]] || {
+                echo "ERROR: --charts requires a value" >&2
+                exit 1
+            }
+            MINIZITI_START_ARGS+=("--charts" "$2")
+            shift 2
+        ;;
+        --charts=*)
+            MINIZITI_START_ARGS+=("--charts" "${1#*=}")
+            shift
+        ;;
+        *)
+            MINIKUBE_START_ARGS+=("$1")
+            shift
+        ;;
+    esac
+done
+
 cleanup
 
 arch="$(go env GOARCH)" 
@@ -101,7 +124,7 @@ do
 done
 
 # load container images in minikube
-minikube --profile "${ZITI_NAMESPACE}" start "${@}"
+minikube --profile "${ZITI_NAMESPACE}" start "${MINIKUBE_START_ARGS[@]}"
 for IMG in "${ZITI_CONTROLLER_IMAGE}" "${ZITI_ROUTER_IMAGE}"
 do
     minikube --profile "${ZITI_NAMESPACE}" image load "${IMG}"
@@ -124,11 +147,31 @@ ROUTER
 
 bash -x ./quickstart/kubernetes/miniziti.bash start \
 --profile "${ZITI_NAMESPACE}" \
---no-hosts \
---values-dir "${EXTRA_VALUES_DIR}"
+--no-hosts --devel \
+--values-dir "${EXTRA_VALUES_DIR}" \
+"${MINIZITI_START_ARGS[@]}"
 
-MINIKUBE_IP="$(minikube --profile "${ZITI_NAMESPACE}" ip)"
-ZITI_CTRL_ADVERTISED_ADDRESS="miniziti-controller.${MINIKUBE_IP}.sslip.io"
+ZITI_INGRESS_ZONE=$(
+    minikube kubectl --profile "${ZITI_NAMESPACE}" -- \
+        --context "${ZITI_NAMESPACE}" \
+        get configmap "miniziti-config" \
+        --namespace "${ZITI_NAMESPACE}" \
+        -o jsonpath='{.data.ingress-zone}' 2>/dev/null || true
+)
+if [[ -z "${ZITI_INGRESS_ZONE}" ]]; then
+    TRAEFIK_LB_IP=$(
+        minikube kubectl --profile "${ZITI_NAMESPACE}" -- \
+            --context "${ZITI_NAMESPACE}" \
+            get service traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true
+    )
+    if [[ -n "${TRAEFIK_LB_IP}" ]]; then
+        ZITI_INGRESS_ZONE="${TRAEFIK_LB_IP}.sslip.io"
+    else
+        echo "ERROR: failed to determine ingress zone from configmap or Traefik LoadBalancer IP" >&2
+        exit 1
+    fi
+fi
+ZITI_CTRL_ADVERTISED_ADDRESS="miniziti-controller.${ZITI_INGRESS_ZONE}"
 
 # verify console is available
 curl -skSfw '%{http_code}\t%{url}\n' -o/dev/null "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}/zac/"

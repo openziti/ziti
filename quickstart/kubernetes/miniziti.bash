@@ -64,11 +64,12 @@ _usage(){
             "   --verbose\t\tshow DEBUG messages\n"\
             "   --profile\t\tMINIKUBE_PROFILE (miniziti)\n"\
             "   --namespace\t\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
-            "   --no-hosts\t\tdon't use local hosts DB or ingress-dns nameserver\n"\
+            "   --no-hosts\t\tdon't use local hosts DB; use wildcard DNS zone based on minikube node IP\n"\
             "   --modify-hosts\tadd entries to local hosts database. Requires sudo if not running as root. Linux only.\n"\
             "\n Debug:\n"\
             "   --charts\t\tZITI_CHARTS_REF (openziti) alternative charts repo\n"\
             "   --values-dir\tEXTRA_VALUES_DIR with Helm values files named ziti-controller.yaml or ziti-router.yaml\n"\
+            "   --devel\t\tinclude Helm chart prereleases (passes --devel to OpenZiti chart installs/upgrades)\n"\
             "   --now\t\teliminate safety waits, e.g., before deleting miniziti\n"\
             "   --\t\t\tMINIKUBE_START_ARGS args after -- passed to minikube start\n"
 }
@@ -264,13 +265,26 @@ getConfigMapKey() {
 }
 
 getIngressZone() {
+    local ingress_zone
+    local traefik_lb_ip
+
     ingress_zone="$(getConfigMapKey "$MINIZITI_CONFIGMAP" 'ingress-zone')"
     if [[ -z "$ingress_zone" ]]; then
         logError "Failed to retrieve ingress zone. Did you start profile '$MINIKUBE_PROFILE' successfully?"
         exit 1
+    elif [[ "$ingress_zone" =~ \.sslip\.io$ ]]; then
+        # For no-hosts mode, prefer the currently assigned Traefik LB IP in case
+        # a stale configmap still points at the minikube node IP.
+        traefik_lb_ip=$(kubectlWrapper get service traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2> /dev/null || true)
+        if [[ -n "$traefik_lb_ip" ]]; then
+            ingress_zone="${traefik_lb_ip}.sslip.io"
+        fi
     else
         echo "$ingress_zone"
+        return
     fi
+
+    echo "$ingress_zone"
 }
 
 minizitiLogin() {
@@ -454,6 +468,7 @@ main(){
     declare DELETE_MINIZITI=0 \
             DETECTED_OS \
             DO_ZITI_LOGIN=0 \
+            HELM_INCLUDE_DEVEL=0 \
             MINIKUBE_NODE_EXTERNAL \
             MINIKUBE_PROFILE \
             MINIZITI_HOSTS=1 \
@@ -578,6 +593,9 @@ main(){
             ;;
             --values-dir)   EXTRA_VALUES_DIR="${2%"/"}"
                             shift 2
+            ;;
+            --devel)        HELM_INCLUDE_DEVEL=1
+                            shift
             ;;
             -q|--quiet)     exec > /dev/null
                             shift
@@ -738,49 +756,12 @@ main(){
     kubectlWrapper cluster-info >&3
     logDebug "kubectl successfully obtained cluster-info from apiserver"
 
-    # enable ssl-passthrough for OpenZiti ingresses
-    if kubectlWrapper get deployment "ingress-nginx-controller" \
-        --namespace ingress-nginx \
-        --output 'go-template={{ (index .spec.template.spec.containers 0).args }}' 2>/dev/null \
-        | grep -q enable-ssl-passthrough; then
-        logDebug "ingress-nginx has ssl-passthrough enabled"
-    else
-        logDebug "installing ingress-nginx"
-        # enable minikube addons for ingress-nginx
-        minikube addons enable ingress \
-            --profile "${MINIKUBE_PROFILE}" >&3
-        # enable minikube addon ingress-dns unless --no-hosts
-        (( MINIZITI_HOSTS )) && {
-            minikube addons enable ingress-dns \
-                --profile "${MINIKUBE_PROFILE}" >&3
-        }
-        logDebug "patching ingress-nginx deployment to enable ssl-passthrough"
-        kubectlWrapper patch deployment "ingress-nginx-controller" \
-            --namespace ingress-nginx \
-            --type json \
-            --patch '[{"op": "add",
-                "path": "/spec/template/spec/containers/0/args/-",
-                "value":"--enable-ssl-passthrough"
-            }]' >&3
-    fi
-
-    logInfo "waiting for ingress-nginx to be ready"
-    # wait for ingress-nginx
-    kubectlWrapper wait jobs "ingress-nginx-admission-patch" \
-        --namespace ingress-nginx \
-        --for condition=complete \
-        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
-
-    kubectlWrapper wait pods \
-        --namespace ingress-nginx \
-        --for condition=ready \
-        --selector app.kubernetes.io/component=controller \
-        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
+    # ingress controller setup happens after Helm repositories are configured.
 
     declare -A HELM_REPOS
     HELM_REPOS[openziti]="openziti.io/helm-charts"
     HELM_REPOS[jetstack]="charts.jetstack.io"
-    HELM_REPOS[ingress-nginx]="kubernetes.github.io/ingress-nginx"
+    HELM_REPOS[traefik]="traefik.github.io/charts"
     for REPO in "${!HELM_REPOS[@]}"; do
         if helmWrapper repo list | cut -f1 | grep -qE "^${REPO}(\s+)?$"; then
             logDebug "refreshing ${REPO} Helm Charts"
@@ -790,6 +771,133 @@ main(){
             helmWrapper repo add "${REPO}" "https://${HELM_REPOS[${REPO}]}" >&3
         fi
     done
+
+    # Enable minikube MetalLB so LoadBalancer services (e.g. Traefik) get an
+    # external IP without requiring a separate `minikube tunnel` step.
+    logInfo "ensuring minikube metallb addon is enabled"
+    minikubeWrapper addons enable metallb >&3
+
+    kubectlWrapper wait deployments \
+        --namespace metallb-system \
+        --for condition=Available=True \
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" \
+        --all >&3
+
+    local metallb_pool_name
+    local metallb_pool_start
+    local metallb_pool_end
+    local existing_metallb_pool
+    local existing_metallb_legacy_pool
+    local existing_metallb_legacy_config
+    local existing_metallb_legacy_address
+    local traefik_lb_ip
+    metallb_pool_name=""
+    metallb_pool_start="${MINIKUBE_NODE_EXTERNAL%.*}.240"
+    metallb_pool_end="${MINIKUBE_NODE_EXTERNAL%.*}.250"
+
+    if kubectlWrapper get crd ipaddresspools.metallb.io >/dev/null 2>&1; then
+        existing_metallb_pool=$(kubectlWrapper get ipaddresspool -n metallb-system -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        if [[ -n "${existing_metallb_pool}" ]]; then
+            metallb_pool_name="${existing_metallb_pool}"
+            logInfo "using existing metallb IPAddressPool '${metallb_pool_name}'"
+        else
+            metallb_pool_name="miniziti-pool"
+            logInfo "configuring fallback metallb address pool ${metallb_pool_start}-${metallb_pool_end}"
+            cat <<EOF | kubectlWrapper apply -f - >&3
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: ${metallb_pool_name}
+  namespace: metallb-system
+spec:
+  addresses:
+    - ${metallb_pool_start}-${metallb_pool_end}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: ${metallb_pool_name}
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - ${metallb_pool_name}
+EOF
+        fi
+    else
+        existing_metallb_legacy_config=$(kubectlWrapper get configmap -n metallb-system config -o jsonpath='{.data.config}' 2>/dev/null || true)
+        existing_metallb_legacy_pool=$(sed -n 's/^[[:space:]]*-[[:space:]]*name:[[:space:]]*\([^[:space:]]\+\).*$/\1/p' <<< "${existing_metallb_legacy_config}" | head -n1 || true)
+        existing_metallb_legacy_address=$(sed -n 's/^[[:space:]]*-[[:space:]]*\([^[:space:]]\+\).*$/\1/p' <<< "${existing_metallb_legacy_config}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)
+        if [[ -n "${existing_metallb_legacy_pool}" && -n "${existing_metallb_legacy_address}" ]]; then
+            metallb_pool_name="${existing_metallb_legacy_pool}"
+            logInfo "using existing metallb legacy pool '${metallb_pool_name}'"
+        else
+            metallb_pool_name="miniziti-pool"
+            logInfo "configuring fallback metallb address pool ${metallb_pool_start}-${metallb_pool_end}"
+            # legacy addon path: use non-interactive configmap instead of
+            # `minikube addons configure metallb`, which prompts for stdin.
+            cat <<EOF | kubectlWrapper apply -f - >&3
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: ${metallb_pool_name}
+      protocol: layer2
+      addresses:
+      - ${metallb_pool_start}-${metallb_pool_end}
+EOF
+        fi
+    fi
+
+    if kubectlWrapper get deployment "traefik" --namespace traefik >/dev/null 2>&1; then
+        logDebug "traefik is already installed"
+    else
+        logInfo "installing traefik"
+        local -a _traefik_cmd=(upgrade --install traefik traefik/traefik
+            --namespace traefik --create-namespace
+            --set providers.kubernetesCRD.enabled=true
+            --set service.type=LoadBalancer
+        )
+        helmWrapper "${_traefik_cmd[@]}" >&3
+    fi
+
+    logInfo "waiting for traefik to be ready"
+    kubectlWrapper wait deployments traefik \
+        --namespace traefik \
+        --for condition=Available=True \
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
+
+    kubectlWrapper wait pods \
+        --namespace traefik \
+        --for condition=ready \
+        --selector app.kubernetes.io/name=traefik \
+        --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
+
+    logInfo "waiting for traefik LoadBalancer external IP"
+    for ((i=0; i<MINIZITI_TIMEOUT_SECS; i++)); do
+        traefik_lb_ip=$(kubectlWrapper get service traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+        [[ -n "${traefik_lb_ip}" ]] && break
+        sleep 1
+    done
+    if [[ -z "${traefik_lb_ip}" ]]; then
+        logError "traefik service external IP is still pending after ${MINIZITI_TIMEOUT_SECS}s"
+        logError "metallb pools:"; kubectlWrapper get ipaddresspool -n metallb-system >&2 || true
+        logError "metallb advertisements:"; kubectlWrapper get l2advertisement -n metallb-system >&2 || true
+        logError "traefik service:"; kubectlWrapper get service traefik -n traefik -o wide >&2 || true
+        exit 1
+    fi
+    logDebug "traefik LoadBalancer external IP is ${traefik_lb_ip}"
+
+    # In --no-hosts mode, route advertised hosts through the LoadBalancer IP
+    # instead of minikube node IP so routers use the same reachable north-south
+    # entrypoint as external clients.
+    if (( ! MINIZITI_HOSTS )); then
+        MINIZITI_INGRESS_ZONE="${traefik_lb_ip}.sslip.io"
+        logDebug "DNS wildcard zone for ingresses is ${MINIZITI_INGRESS_ZONE}"
+    fi
 
     helmWrapper upgrade --install cert-manager jetstack/cert-manager \
         --namespace cert-manager --create-namespace \
@@ -844,10 +952,11 @@ main(){
     local -a _controller_cmd=(upgrade --install "ziti-controller" "${ZITI_CHARTS_REF}/ziti-controller"
         --namespace "${ZITI_NAMESPACE}" --create-namespace
         --set clientApi.advertisedHost="${ZITI_NETWORK_NAME}.${MINIZITI_INGRESS_ZONE}"
-        --values "${ZITI_CHARTS_URL}/ziti-controller/values-ingress-nginx.yaml"
-        --set ctrlPlane.service.enabled=false
-        --set ctrlPlane.ingress.enabled=false
+        --values "${ZITI_CHARTS_URL}/ziti-controller/values-traefik-ingressroutetcp.yaml"
     )
+    if (( HELM_INCLUDE_DEVEL )) && (( ! ZITI_CHARTS_ALT )); then
+        _controller_cmd+=(--devel)
+    fi
     if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-controller.yaml" ]]; then
         _controller_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-controller.yaml")
     fi
@@ -925,7 +1034,7 @@ main(){
         fi
 
         (( MINIZITI_HOSTS )) && {
-            logDebug "patching coredns configmap with *.${MINIZITI_INGRESS_ZONE} forwarder to minikube ingress-dns nameserver"
+            logDebug "patching coredns configmap with *.${MINIZITI_INGRESS_ZONE} forwarder to minikube node external IP"
             kubectlWrapper patch configmap "coredns" \
                 --namespace kube-system \
                 --patch "
@@ -976,15 +1085,12 @@ main(){
                 --timeout "${MINIZITI_TIMEOUT_SECS}s" >&3
         }
 
-        # perform a DNS query in a pod so we know ingress-dns is working inside the cluster
+        # perform a DNS query in a pod so we know wildcard zone forwarding is working inside the cluster
         testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
     fi
 
-    if kubectlWrapper get configmap "$MINIZITI_CONFIGMAP" &> /dev/null; then
-        logDebug "$MINIZITI_CONFIGMAP configmap has been applied"
-    else
-        logInfo "Applying $MINIZITI_CONFIGMAP configmap"
-        cat <<EOF | kubectlWrapper apply -f - >&3
+    logInfo "Applying $MINIZITI_CONFIGMAP configmap"
+    cat <<EOF | kubectlWrapper apply -f - >&3
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -993,12 +1099,6 @@ metadata:
 data:
   ingress-zone: "$MINIZITI_INGRESS_ZONE"
 EOF
-    fi
-
-    #
-    ## Ensure OpenZiti Router is Enrolled and Ready
-    #
-    #
 
     logInfo "Setting default ziti identity to: $MINIKUBE_PROFILE"
     zitiWrapper edge use "$MINIKUBE_PROFILE" >&3
@@ -1031,10 +1131,12 @@ EOF
         --set edge.advertisedHost="miniziti-router.${MINIZITI_INGRESS_ZONE}"
         --set ctrl.endpoint="${ZITI_NETWORK_NAME}.${MINIZITI_INGRESS_ZONE}:443"
         --set "tunnel.mode=host"
-        --values "${ZITI_CHARTS_URL}/ziti-router/values-ingress-nginx.yaml"
+        --values "${ZITI_CHARTS_URL}/ziti-router/values-traefik-ingressroutetcp.yaml"
         --set linkListeners.transport.service.enabled=false
-        --set linkListeners.transport.ingress.enabled=false
     )
+    if (( HELM_INCLUDE_DEVEL )) && (( ! ZITI_CHARTS_ALT )); then
+        _router_cmd+=(--devel)
+    fi
     if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/ziti-router.yaml" ]]; then
         _router_cmd+=(--values "${EXTRA_VALUES_DIR}/ziti-router.yaml")
     fi
@@ -1165,6 +1267,9 @@ EOF
             --set-file zitiEnrollment="$HTTPBIN_OTT"
             --set zitiServiceName=httpbin-service
         )
+        if (( HELM_INCLUDE_DEVEL )) && (( ! ZITI_CHARTS_ALT )); then
+            _httpbin_cmd+=(--devel)
+        fi
         if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/httpbin.yaml" ]]; then
             _httpbin_cmd+=(--values "${EXTRA_VALUES_DIR}/httpbin.yaml")
         fi
@@ -1177,6 +1282,9 @@ EOF
             upgrade "miniziti-httpbin" "${ZITI_CHARTS_REF}/httpbin"
             --set zitiServiceName=httpbin-service
         )
+        if (( HELM_INCLUDE_DEVEL )) && (( ! ZITI_CHARTS_ALT )); then
+            _httpbin_cmd+=(--devel)
+        fi
         if [[ -n "${EXTRA_VALUES_DIR:-}" && -s "${EXTRA_VALUES_DIR}/httpbin.yaml" ]]; then
             _httpbin_cmd+=(--values "${EXTRA_VALUES_DIR}/httpbin.yaml")
         fi
