@@ -195,7 +195,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 
 	// add and remove a policy to ensure no extraneous events are created
 	policy2 := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1), s())
-	ctx.AdminManagementSession.requireDeleteEntity(policy2)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(policy2)
 
 	// add a policy for later
 	_ = ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole2), s("#"+identityRole1), s())
@@ -209,7 +209,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx.Equal(true, svcEvent.service.BindAllowed)
 
 	// remove the initial policy, dial should now be disabled
-	ctx.AdminManagementSession.requireDeleteEntity(policy1)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(policy1)
 
 	svcEvent = sub.getNextServiceEvent(common.ServiceUpdatedEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
@@ -223,7 +223,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx.Equal(true, svcEvent.service.BindAllowed)
 
 	// testing losing access via loss of policy
-	ctx.AdminManagementSession.requireDeleteEntity(policy2)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(policy2)
 
 	svcEvent = sub.getNextServiceEventOfType(common.ServiceAccessLostEvent)
 	ctx.Equal(service1.Id, svcEvent.service.Service.Id)
@@ -461,8 +461,9 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	fmt.Println("remove one of the posture checks")
 
 	// remove one of the posture checks from the policy
-	sp.postureCheckRoles = s("#" + postureCheckRole2)
-	ctx.AdminManagementSession.requireUpdateEntity(sp)
+	ctx.AdminManagementSession.requirePatchServicePolicy(sp, &rest_model.ServicePolicyPatch{
+		PostureCheckRoles: s("#" + postureCheckRole2),
+	})
 
 	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(1, len(idEvent.state.PostureChecks))
@@ -476,8 +477,9 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	fmt.Println("adding second posture check back")
 
 	// add it back
-	sp.postureCheckRoles = s("#"+postureCheckRole1, "#"+postureCheckRole2)
-	ctx.AdminManagementSession.requireUpdateEntity(sp)
+	ctx.AdminManagementSession.requirePatchServicePolicy(sp, &rest_model.ServicePolicyPatch{
+		PostureCheckRoles: s("#" + postureCheckRole1, "#" + postureCheckRole2),
+	})
 
 	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(2, len(idEvent.state.PostureChecks))
@@ -506,7 +508,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.NotNil(idEvent.state.PostureChecks[postureCheck2Id])
 
 	// delete the service policy
-	ctx.AdminManagementSession.requireDeleteEntity(sp)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(sp)
 	idEvent = sub.getNextIdentityEvent(common.IdentityPostureChecksUpdatedEvent)
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 }
@@ -545,7 +547,7 @@ func Test_RouterDataModel_DataModelReplacement(t *testing.T) {
 
 	// add and remove a policy to ensure no extraneous events are created
 	policy2 := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1), s())
-	ctx.AdminManagementSession.requireDeleteEntity(policy2)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(policy2)
 
 	// add a policy for later
 	_ = ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole2), s("#"+identityRole1), s())
