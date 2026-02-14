@@ -734,6 +734,45 @@ func parseInstanceIdAndService(service string) (string, string) {
 	return identityId, serviceId
 }
 
+// matchesTerminatorInstanceId checks if a requested instanceId matches a terminator's
+// instanceId pattern. Supports exact matching and wildcard subdomain matching (prefix "*:").
+// Non-wildcard terminators (including empty InstanceId) use exact case-insensitive matching,
+// preserving backward compatibility where empty only matches empty.
+func matchesTerminatorInstanceId(terminatorInstanceId, requestedInstanceId string) bool {
+	if !strings.HasPrefix(terminatorInstanceId, "*:") {
+		return strings.EqualFold(terminatorInstanceId, requestedInstanceId)
+	}
+
+	if requestedInstanceId == "" {
+		return false
+	}
+
+	basePattern := strings.ToLower(terminatorInstanceId[2:])
+	requested := strings.ToLower(requestedInstanceId)
+
+	if requested == basePattern {
+		return true
+	}
+
+	return strings.HasSuffix(requested, "."+basePattern)
+}
+
+// wildcardBaseLen returns the length of the base pattern in a terminator's InstanceId
+// for specificity ranking. Longer base = more specific match.
+//   - "" → 0 (catch-all, least specific)
+//   - "node1.ziti.internal" (exact) → math.MaxInt (most specific)
+//   - "*:node1.ziti.internal" → 19
+//   - "*:ziti.internal" → 13
+func wildcardBaseLen(terminatorInstanceId string) int {
+	if terminatorInstanceId == "" {
+		return 0
+	}
+	if !strings.HasPrefix(terminatorInstanceId, "*:") {
+		return math.MaxInt
+	}
+	return len(terminatorInstanceId) - 2
+}
+
 func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.Service, instanceId string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*model.Router, xt.PeerData, CircuitError) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
@@ -743,9 +782,17 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 
 	hasOfflineRouters := false
 	pathError := false
+	bestSpecificity := -1
 
 	for _, terminator := range svc.Terminators {
-		if terminator.InstanceId != instanceId {
+		if !matchesTerminatorInstanceId(terminator.InstanceId, instanceId) {
+			continue
+		}
+
+		specificity := wildcardBaseLen(terminator.InstanceId)
+
+		// Skip if less specific than what we already have
+		if specificity < bestSpecificity {
 			continue
 		}
 
@@ -774,6 +821,12 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 			paths[terminator.GetRouterId()] = pathAndCost
 		}
 
+		// If more specific than previous candidates, discard them
+		if specificity > bestSpecificity {
+			weightedTerminators = weightedTerminators[:0]
+			bestSpecificity = specificity
+		}
+
 		dynamicCost := xt.GlobalCosts().GetDynamicCost(terminator.Id)
 		unbiasedCost := uint32(terminator.Cost) + uint32(dynamicCost) + pathAndCost.cost
 		biasedCost := terminator.Precedence.GetBiasedCost(unbiasedCost)
@@ -782,6 +835,11 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 			RouteCost:  biasedCost,
 		}
 		weightedTerminators = append(weightedTerminators, costedTerminator)
+	}
+
+	if bestSpecificity >= 0 && bestSpecificity < math.MaxInt {
+		log.Debugf("using wildcard terminator match (specificity=%d) for service %v, instanceId %v",
+			bestSpecificity, svc.Id, instanceId)
 	}
 
 	if len(svc.Terminators) == 0 {

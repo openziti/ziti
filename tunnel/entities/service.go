@@ -76,13 +76,14 @@ func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
 }
 
 type HostV1ListenOptions struct {
-	BindUsingEdgeIdentity bool
-	ConnectTimeoutSeconds *int
-	ConnectTimeout        *time.Duration
-	Cost                  *uint16
-	Identity              string
-	MaxConnections        int
-	Precedence            *string
+	BindUsingEdgeIdentity         bool
+	BindUsingEdgeIdentityWildcard bool
+	ConnectTimeoutSeconds         *int
+	ConnectTimeout                *time.Duration
+	Cost                          *uint16
+	Identity                      string
+	MaxConnections                int
+	Precedence                    *string
 }
 
 type AddressTranslation struct {
@@ -155,14 +156,15 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 }
 
 type HostV2ListenOptions struct {
-	BindUsingEdgeIdentity bool
-	ConnectTimeoutSeconds *int
-	ConnectTimeout        *time.Duration
-	Cost                  *uint16
-	Identity              string
-	MaxConnections        int
-	Precedence            *string
-	Proxy                 *transport.ProxyConfiguration
+	BindUsingEdgeIdentity         bool
+	BindUsingEdgeIdentityWildcard bool
+	ConnectTimeoutSeconds         *int
+	ConnectTimeout                *time.Duration
+	Cost                          *uint16
+	Identity                      string
+	MaxConnections                int
+	Precedence                    *string
+	Proxy                         *transport.ProxyConfiguration
 }
 
 type allowedAddress interface {
