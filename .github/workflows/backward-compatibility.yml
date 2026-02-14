@@ -26,10 +26,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: east-old
+          - name: east-1.6
             labels: "router_east_1_version=v1.6.12,router_east_2_version=v1.6.12"
-          - name: west-old
+          - name: west-1.6
             labels: "router_west_version=v1.6.12"
+          - name: east-1.5
+            labels: "router_east_1_version=v1.5.11,router_east_2_version=v1.5.11"
+          - name: west-1.5
+            labels: "router_west_version=v1.5.11"
+ 
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
