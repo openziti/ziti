@@ -35,6 +35,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
@@ -604,16 +605,70 @@ func (request *authenticatedRequests) requireNewTransitRouter() *transitRouter {
 	return transitRouter
 }
 
-func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
-	policy := newServicePolicy(policyType, "AllOf", serviceRoles, identityRoles, postureCheckRoles)
-	request.requireCreateEntity(policy)
-	return policy
+func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles, postureCheckRoles []string) *testServicePolicy {
+	return request.requireNewServicePolicyWithSemantic(policyType, "AllOf", serviceRoles, identityRoles, postureCheckRoles)
 }
 
-func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
-	policy := newServicePolicy(policyType, semantic, serviceRoles, identityRoles, postureCheckRoles)
-	request.requireCreateEntity(policy)
-	return policy
+func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *testServicePolicy {
+	result := &testServicePolicy{
+		ServicePolicyCreate: rest_model.ServicePolicyCreate{
+			Name:              ToPtr(eid.New()),
+			Type:              ToPtr(rest_model.DialBind(policyType)),
+			Semantic:          ToPtr(rest_model.Semantic(semantic)),
+			ServiceRoles:      serviceRoles,
+			IdentityRoles:     identityRoles,
+			PostureCheckRoles: postureCheckRoles,
+		},
+	}
+	resp, err := request.testContext.RestClients.Edge.ServicePolicy.CreateServicePolicy(&service_policy.CreateServicePolicyParams{
+		Policy: &result.ServicePolicyCreate,
+	}, nil)
+	request.testContext.Req.NoError(err)
+	result.id = resp.Payload.Data.ID
+	return result
+}
+
+func (request *authenticatedRequests) requirePatchServicePolicy(policy *testServicePolicy, patch *rest_model.ServicePolicyPatch) {
+	_, err := request.testContext.RestClients.Edge.ServicePolicy.PatchServicePolicy(&service_policy.PatchServicePolicyParams{
+		ID:     policy.id,
+		Policy: patch,
+	}, nil)
+	request.testContext.Req.NoError(err)
+}
+
+func (request *authenticatedRequests) requireDeleteServicePolicy(policy *testServicePolicy) {
+	_, err := request.testContext.RestClients.Edge.ServicePolicy.DeleteServicePolicy(&service_policy.DeleteServicePolicyParams{
+		ID: policy.id,
+	}, nil)
+	request.testContext.Req.NoError(err)
+}
+
+func (request *authenticatedRequests) requireGetServicePolicy(id string) *rest_model.ServicePolicyDetail {
+	resp, err := request.testContext.RestClients.Edge.ServicePolicy.DetailServicePolicy(&service_policy.DetailServicePolicyParams{
+		ID: id,
+	}, nil)
+	request.testContext.Req.NoError(err)
+	return resp.Payload.Data
+}
+
+func (request *authenticatedRequests) requireListServicePolicies(filter string) []*rest_model.ServicePolicyDetail {
+	resp, err := request.testContext.RestClients.Edge.ServicePolicy.ListServicePolicies(&service_policy.ListServicePoliciesParams{
+		Filter: &filter,
+	}, nil)
+	request.testContext.Req.NoError(err)
+	return resp.Payload.Data
+}
+
+func (request *authenticatedRequests) validateServicePolicy(policy *testServicePolicy) {
+	detail := request.requireGetServicePolicy(policy.id)
+	policy.validateDetail(request.testContext, detail)
+}
+
+func (request *authenticatedRequests) validateServicePolicyWithQuery(policy *testServicePolicy) {
+	filter := fmt.Sprintf(`id = "%v"`, policy.id)
+	results := request.requireListServicePolicies(filter)
+	request.testContext.Req.Len(results, 1, "expected exactly one service policy with id %v", policy.id)
+	policy.validateDetail(request.testContext, results[0])
 }
 
 func (request *authenticatedRequests) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
@@ -712,6 +767,7 @@ func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
 	resp := request.updateEntity(entity)
 	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 }
+
 
 func (request *authenticatedRequests) requireList(url string) []string {
 	httpStatus, body := request.query(url)

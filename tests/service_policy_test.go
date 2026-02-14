@@ -19,9 +19,9 @@
 package tests
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
@@ -51,73 +51,50 @@ func Test_ServicePolicy(t *testing.T) {
 	policy5 := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2), s())
 	policy6 := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2), s())
 
-	ctx.AdminManagementSession.validateEntityWithQuery(policy1)
-	ctx.AdminManagementSession.validateEntityWithLookup(policy2)
-	ctx.AdminManagementSession.validateEntityWithLookup(policy3)
-	ctx.AdminManagementSession.validateEntityWithLookup(policy4)
-	ctx.AdminManagementSession.validateEntityWithLookup(policy5)
-	ctx.AdminManagementSession.validateEntityWithLookup(policy6)
+	ctx.AdminManagementSession.validateServicePolicyWithQuery(policy1)
+	ctx.AdminManagementSession.validateServicePolicy(policy2)
+	ctx.AdminManagementSession.validateServicePolicy(policy3)
+	ctx.AdminManagementSession.validateServicePolicy(policy4)
+	ctx.AdminManagementSession.validateServicePolicy(policy5)
+	ctx.AdminManagementSession.validateServicePolicy(policy6)
 
 	ctx.AdminManagementSession.validateAssociations(policy1, "services", service1, service2)
 	ctx.AdminManagementSession.validateAssociations(policy2, "services", service1, service2, service3)
 
 	t.Run("policy 2 has display information", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		url := fmt.Sprintf("%v/%v", policy2.getEntityType(), policy2.getId())
-		result := ctx.AdminManagementSession.requireQuery(url)
+		detail := ctx.AdminManagementSession.requireGetServicePolicy(policy2.id)
 
 		t.Run("for service 3 and service role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.serviceRolesDisplay")
-			displayValuesChildren, err := displayValuesContainer.Children()
-			ctx.Req.NoError(err)
-
 			hasRole1DisplayInfo := false
 			hasService3DisplayInfo := false
 
-			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
-				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
-
-				role := roleVal.Data().(string)
-				name := nameVal.Data().(string)
-
-				if role == "#"+serviceRole1 && name == "#"+serviceRole1 {
+			for _, nr := range detail.ServiceRolesDisplay {
+				if nr.Role == "#"+serviceRole1 && nr.Name == "#"+serviceRole1 {
 					hasRole1DisplayInfo = true
 				}
-
-				if role == "@"+service3.Id && name == "@"+service3.Name {
+				if nr.Role == "@"+service3.Id && nr.Name == "@"+service3.Name {
 					hasService3DisplayInfo = true
 				}
 			}
 
-			ctx.Req.True(hasRole1DisplayInfo, "expected to find role display info for role [%s]", serviceRole1, serviceRole1)
+			ctx.Req.True(hasRole1DisplayInfo, "expected to find role display info for role [%s]", serviceRole1)
 			ctx.Req.True(hasService3DisplayInfo, "expected to find service display info for id/role [@%s] and name [%s]", service3.Id, service3.Name)
 		})
 
 		t.Run("for identity 3 and identity role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.identityRolesDisplay")
-			displayValuesChildren, err := displayValuesContainer.Children()
-			ctx.Req.NoError(err)
-
 			hasRole1DisplayInfo := false
 			hasIdentity3DisplayInfo := false
 
-			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
-				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
-
-				role := roleVal.Data().(string)
-				name := nameVal.Data().(string)
-
-				if role == "#"+identityRole1 && name == "#"+identityRole1 {
+			for _, nr := range detail.IdentityRolesDisplay {
+				if nr.Role == "#"+identityRole1 && nr.Name == "#"+identityRole1 {
 					hasRole1DisplayInfo = true
 				}
-
-				if role == "@"+identity3.Id && name == "@"+identity3.name {
+				if nr.Role == "@"+identity3.Id && nr.Name == "@"+identity3.name {
 					hasIdentity3DisplayInfo = true
 				}
 			}
@@ -147,9 +124,10 @@ func Test_ServicePolicy(t *testing.T) {
 	ctx.AdminManagementSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
 	ctx.AdminManagementSession.validateAssociations(identity3, "service-policies", policy2, policy3, policy4, policy6)
 
-	policy1.serviceRoles = append(policy1.serviceRoles, "#"+serviceRole2)
-	policy1.identityRoles = s("#" + identityRole2)
-	ctx.AdminManagementSession.requireUpdateEntity(policy1)
+	ctx.AdminManagementSession.requirePatchServicePolicy(policy1, &rest_model.ServicePolicyPatch{
+		ServiceRoles:  s("#" + serviceRole1, "#" + serviceRole2),
+		IdentityRoles: s("#" + identityRole2),
+	})
 
 	ctx.AdminManagementSession.validateAssociations(policy1, "services", service2)
 	ctx.AdminManagementSession.validateAssociations(policy1, "identities", identity2, identity3)
@@ -162,7 +140,7 @@ func Test_ServicePolicy(t *testing.T) {
 	ctx.AdminManagementSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
 	ctx.AdminManagementSession.validateAssociations(identity3, "service-policies", policy1, policy2, policy3, policy4, policy6)
 
-	ctx.AdminManagementSession.requireDeleteEntity(policy2)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(policy2)
 
 	ctx.AdminManagementSession.validateAssociations(service1, "service-policies", policy4, policy6)
 	ctx.AdminManagementSession.validateAssociations(service2, "service-policies", policy1, policy3, policy4, policy5, policy6)

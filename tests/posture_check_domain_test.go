@@ -113,7 +113,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
 		dialPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		bindPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
 		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
@@ -147,8 +147,8 @@ func Test_PostureChecks_Domain(t *testing.T) {
 				bindSet = querySet[0]
 			}
 
-			ctx.Req.Equal(dialPolicy.policyType, dialSet.Path("policyType").Data().(string))
-			ctx.Req.Equal(bindPolicy.policyType, bindSet.Path("policyType").Data().(string))
+			ctx.Req.Equal("Dial", dialSet.Path("policyType").Data().(string))
+			ctx.Req.Equal("Bind", bindSet.Path("policyType").Data().(string))
 
 			postureQueries, err := dialSet.Path("postureQueries").Children()
 			ctx.Req.NoError(err)
