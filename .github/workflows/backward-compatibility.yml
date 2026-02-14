@@ -1,0 +1,114 @@
+name: Backward Compatibility Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# cancel older, redundant runs of same workflow on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: "-trimpath"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
+jobs:
+  fablab-compat-smoketest:
+    name: Fablab Compat Smoketest - ${{ matrix.name }}
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: east-1.6
+            labels: "router_east_1_version=v1.6.12,router_east_2_version=v1.6.12"
+          - name: west-1.6
+            labels: "router_west_version=v1.6.12"
+          - name: east-1.5
+            labels: "router_east_1_version=v1.5.11,router_east_2_version=v1.5.11"
+          - name: west-1.5
+            labels: "router_west_version=v1.5.11"
+ 
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.name }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.name }}-${GITHUB_RUN_NUMBER} -l ${{ matrix.labels }},environment=gh-fablab-compat-smoketest
+          $(go env GOPATH)/bin/smoketest up
+
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: logs-compat-${{ matrix.name }}-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Test Report Generation
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: ${{ !cancelled() }}
+        with:
+          paths: |
+            test-report.xml
+          show: "fail, skip"
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest dispose
