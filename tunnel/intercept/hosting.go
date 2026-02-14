@@ -443,7 +443,9 @@ func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityD
 	}
 
 	if config.ListenOptions != nil {
-		if config.ListenOptions.BindUsingEdgeIdentity {
+		if config.ListenOptions.BindUsingEdgeIdentityWildcard {
+			options.Identity = "*:" + *identity.Name
+		} else if config.ListenOptions.BindUsingEdgeIdentity {
 			options.Identity = *identity.Name
 		} else if config.ListenOptions.Identity != "" {
 			result, err := replaceTemplatized(config.ListenOptions.Identity, identity)

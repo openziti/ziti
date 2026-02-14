@@ -1,6 +1,7 @@
 package network
 
 import (
+	"math"
 	"runtime"
 	"testing"
 	"time"
@@ -113,6 +114,67 @@ func TestNetwork_parseServiceAndIdentity(t *testing.T) {
 	instanceId, serviceId = parseInstanceIdAndService("a@foo@hello")
 	req.Equal("a", instanceId)
 	req.Equal("foo@hello", serviceId)
+}
+
+func TestMatchesTerminatorInstanceId(t *testing.T) {
+	tests := []struct {
+		name       string
+		terminator string
+		requested  string
+		expected   bool
+	}{
+		// Exact matches
+		{"exact match", "node1.ziti.internal", "node1.ziti.internal", true},
+		{"case insensitive exact", "Node1.Ziti.Internal", "node1.ziti.internal", true},
+		{"no match", "node1.ziti.internal", "node2.ziti.internal", false},
+
+		// Empty cases (empty only matches empty, preserving backward compatibility)
+		{"empty terminator vs non-empty request", "", "anything", false},
+		{"empty request vs non-empty terminator", "node1", "", false},
+		{"both empty", "", "", true},
+
+		// Wildcard exact base match
+		{"wildcard exact base", "*:node1.ziti.internal", "node1.ziti.internal", true},
+		{"wildcard exact base case insensitive", "*:Node1.Ziti.Internal", "node1.ziti.internal", true},
+
+		// Wildcard subdomain matches
+		{"wildcard single subdomain", "*:node1.ziti.internal", "acme.node1.ziti.internal", true},
+		{"wildcard multi-level subdomain", "*:node1.ziti.internal", "foo.bar.node1.ziti.internal", true},
+		{"wildcard case insensitive subdomain", "*:Node1.Ziti.Internal", "ACME.node1.ziti.internal", true},
+
+		// Wildcard non-matches
+		{"wildcard wrong domain", "*:node1.ziti.internal", "node1.example.com", false},
+		{"wildcard partial name (not proper subdomain)", "*:node1.ziti.internal", "mynode1.ziti.internal", false},
+		{"wildcard empty request", "*:node1.ziti.internal", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := matchesTerminatorInstanceId(tt.terminator, tt.requested)
+			assert.Equal(t, tt.expected, result, "matchesTerminatorInstanceId(%q, %q)", tt.terminator, tt.requested)
+		})
+	}
+}
+
+func TestWildcardBaseLen(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected int
+	}{
+		{"empty string", "", 0},
+		{"exact id", "node1.ziti.internal", math.MaxInt},
+		{"wildcard short", "*:ziti.internal", 13},
+		{"wildcard long", "*:node1.region1.ziti.internal", 27},
+		{"wildcard single char", "*:a", 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := wildcardBaseLen(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestCreateCircuit(t *testing.T) {

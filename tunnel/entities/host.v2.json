@@ -416,6 +416,10 @@
                             "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
                             "type": "boolean"
                         },
+                        "bindUsingEdgeIdentityWildcard": {
+                            "description": "Associate the hosting terminator with the name of the hosting tunneler's identity using wildcard subdomain matching. The terminator will match requests for the identity name and any subdomain of it.",
+                            "type": "boolean"
+                        },
                         "connectTimeout": {
                             "$ref": "#/definitions/duration",
                             "description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used."

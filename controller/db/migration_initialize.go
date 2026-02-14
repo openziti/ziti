@@ -414,6 +414,10 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 						"type":        "boolean",
 						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
 					},
+					"bindUsingEdgeIdentityWildcard": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity using wildcard subdomain matching. The terminator will match requests for the identity name and any subdomain of it.",
+					},
 					"cost": map[string]interface{}{
 						"type":        "integer",
 						"minimum":     0,
