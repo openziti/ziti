@@ -219,7 +219,7 @@ func Test_CLI_Test_Suite(t *testing.T) {
 	targetOverZitiDone := make(chan error)
 	go s.controllerUnderTest.StartExternal(zitiPath, targetOverZitiDone)
 	cutStartOverZitiErr := s.controllerUnderTest.WaitForControllerReady(20 * time.Second)
-	if cutStartErr != nil {
+	if cutStartOverZitiErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartOverZitiErr)
 	}
 	testState.cliTestsOverZiti(t, zitiPath)

@@ -269,6 +269,7 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx.Teardown()
 
 	ctrlListener := ctx.NewControlChannelListener()
+	defer func() { _ = ctrlListener.Close() }()
 	router1 := ctx.startFabricRouter(1)
 
 	linkChecker := testutil.NewLinkChecker(ctx.Req.Assertions)
@@ -283,8 +284,8 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	router2cc := testutil.StartLinkTest(linkChecker, "router-2", ctrlListener, ctx.Req.Assertions)
 
 	router2Listeners := &ctrl_pb.Listeners{}
-	if val, found := router1cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
-		ctx.Req.NoError(proto.Unmarshal(val, router1Listeners))
+	if val, found := router2cc.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_ListenersHeader)]; found {
+		ctx.Req.NoError(proto.Unmarshal(val, router2Listeners))
 	}
 
 	peerUpdates1 := &ctrl_pb.PeerStateChanges{
@@ -368,5 +369,4 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx.Teardown()
 	_ = router1cc.Close()
 	_ = router2cc.Close()
-	_ = ctrlListener.Close()
 }

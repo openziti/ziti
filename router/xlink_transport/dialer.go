@@ -247,9 +247,6 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		LinkDialedRouterId:      []byte(dial.GetRouterId()),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
-	headers.PutBoolHeader(channel.IsGroupedHeader, true)
-	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
 
 	linkDialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:        linkId,
@@ -274,7 +271,12 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		},
 	}
 
-	underlay, err := linkDialer.CreateWithHeaders(self.config.options.ConnectTimeout, headers)
+	firstDialHeaders := channel.Headers{}
+	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+	firstDialHeaders.PutBoolHeader(channel.IsGroupedHeader, true)
+	firstDialHeaders.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+
+	underlay, err := linkDialer.CreateWithHeaders(self.config.options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing link [l/%s] (%w)", linkId.Token, err)
 	}

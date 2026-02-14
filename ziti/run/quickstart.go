@@ -504,6 +504,8 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		return nil
 	}
 
+	erJwt := path.Join(o.Home, routerName+".jwt")
+
 	if !o.AlreadyInitialized {
 		loginCmd := edge.NewLoginCmd(o.out, o.errOut)
 		loginCmd.SetArgs([]string{
@@ -524,11 +526,8 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 
 		time.Sleep(1 * time.Second)
 
-		var erJwt string
-
 		// ziti edge create edge-router ${ZITI_HOSTNAME}-edge-router -o ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt -t -a public
 		createErCmd := edge.NewCreateEdgeRouterCmd(o.out, o.errOut)
-		erJwt = path.Join(o.Home, routerName+".jwt")
 		createErCmd.SetArgs([]string{
 			routerName,
 			fmt.Sprintf("--jwt-output-file=%s", erJwt),
@@ -542,7 +541,10 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		if createErErr != nil {
 			logrus.Fatal(createErErr)
 		}
+	}
 
+	// Create router config YAML if it doesn't exist yet (may have been skipped on a prior crashed run)
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		// ziti create config router edge --routerName ${ZITI_HOSTNAME}-edge-router >${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml
 		opts := &create.CreateConfigRouterOptions{}
 
@@ -560,6 +562,23 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		if erCfgErr != nil {
 			logrus.Fatal(erCfgErr)
 		}
+	}
+
+	// Enroll router if JWT file still exists (consumed on successful enrollment)
+	if _, err := os.Stat(erJwt); err == nil {
+		if o.AlreadyInitialized {
+			loginCmd := edge.NewLoginCmd(o.out, o.errOut)
+			loginCmd.SetArgs([]string{
+				o.ControllerHostPort(),
+				fmt.Sprintf("--username=%s", o.Username),
+				fmt.Sprintf("--password=%s", o.Password),
+				"-y",
+			})
+			loginErr := loginCmd.Execute()
+			if loginErr != nil {
+				logrus.Fatal(loginErr)
+			}
+		}
 
 		// ziti router enroll ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.yaml --jwt ${ZITI_HOME}/${ZITI_HOSTNAME}-edge-router.jwt
 		erEnroll := enroll.NewEnrollEdgeRouterCmd()
@@ -573,7 +592,14 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		if erEnrollErr != nil {
 			return erEnrollErr
 		}
+
+		// Remove the JWT file now that enrollment succeeded, so subsequent
+		// restarts don't attempt to re-enroll.
+		if removeErr := os.Remove(erJwt); removeErr != nil {
+			logrus.Warnf("failed to remove router JWT after enrollment: %v", removeErr)
+		}
 	}
+
 	return nil
 }
 

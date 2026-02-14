@@ -65,6 +65,9 @@ type HostedServiceRegistry struct {
 
 	connectedToLeader atomic.Bool
 	started           atomic.Bool
+
+	reestablishRequired atomic.Bool
+	reestablishRunning  atomic.Bool
 }
 
 type terminatorEvent interface {
@@ -564,22 +567,48 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	self.markEstablished(terminator, "create notification received")
 }
 
+func (self *HostedServiceRegistry) TryReestablish() {
+	self.reestablishRequired.Store(true)
+
+	if self.reestablishRunning.CompareAndSwap(false, true) {
+		go self.HandleReestablish()
+	}
+}
+
 func (self *HostedServiceRegistry) HandleReestablish() {
-	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
+	defer func() {
+		// Release the marker
+		self.reestablishRunning.Store(false)
+	}()
 
-	var reestablishList []*tunnelTerminator
-	self.terminators.IterCb(func(_ string, terminator *tunnelTerminator) {
-		if terminator.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "reconnecting") {
-			reestablishList = append(reestablishList, terminator)
+	for {
+		if !self.reestablishRequired.Load() {
+			return
 		}
-	})
 
-	// wait for verify terminator events to come in
-	time.Sleep(10 * time.Second)
+		pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
 
-	for _, terminator := range reestablishList {
-		if terminator.state.Load() == xgress_common.TerminatorStateEstablishing {
-			self.queueEstablishTerminatorAsync(terminator)
+		time.Sleep(1 * time.Second) // If there are multiple notifications, let them settle
+		self.reestablishRequired.Store(false)
+
+		var reestablishList []*tunnelTerminator
+		self.terminators.IterCb(func(_ string, terminator *tunnelTerminator) {
+			if terminator.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "reconnecting") {
+				reestablishList = append(reestablishList, terminator)
+			}
+		})
+
+		if len(reestablishList) == 0 {
+			return
+		}
+
+		// wait for verify terminator events to come in
+		time.Sleep(10 * time.Second)
+
+		for _, terminator := range reestablishList {
+			if terminator.state.Load() == xgress_common.TerminatorStateEstablishing {
+				self.queueEstablishTerminatorAsync(terminator)
+			}
 		}
 	}
 }
@@ -590,12 +619,12 @@ func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 		self.connectedToLeader.Store(false)
 	} else if self.env.GetNetworkControllers().IsLeaderConnected() {
 		if !self.connectedToLeader.Load() {
-			self.HandleReestablish()
+			self.TryReestablish()
 			self.connectedToLeader.Store(true)
 		}
 	} else if event.Type == routerEnv.ControllerReconnected {
 		if !self.connectedToLeader.Load() {
-			self.HandleReestablish()
+			self.TryReestablish()
 		}
 	}
 }

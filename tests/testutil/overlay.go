@@ -188,16 +188,18 @@ func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 	_ = os.Mkdir(o.Home, 0755)
 	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
-	stdoutFile, createErr1 := os.Create(outf)
+	stdoutFile, createErr1 := os.OpenFile(outf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if createErr1 != nil {
 		done <- createErr1
 	}
+	_, _ = fmt.Fprintf(stdoutFile, "\n\n========== new run started at %s ==========\n\n", time.Now().Format(time.RFC3339))
 	errf := filepath.Join(o.Home, fmt.Sprintf("stderr-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stderr at: %s\n", o.Name, errf)
-	stderrFile, createErr2 := os.Create(errf)
+	stderrFile, createErr2 := os.OpenFile(errf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if createErr2 != nil {
 		done <- createErr2
 	}
+	_, _ = fmt.Fprintf(stderrFile, "\n\n========== new run started at %s ==========\n\n", time.Now().Format(time.RFC3339))
 	o.extCmd.Stdout = stdoutFile
 	o.extCmd.Stderr = stderrFile
 

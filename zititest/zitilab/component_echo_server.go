@@ -34,6 +34,7 @@ type EchoServerType struct {
 	LocalPath   string
 	Port        uint16
 	BindService string
+	Verbose     bool
 }
 
 func (self *EchoServerType) Label() string {
@@ -93,8 +94,13 @@ func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
 		portFlag = fmt.Sprintf("-p %d", self.Port)
 	}
 
-	serviceCmd := fmt.Sprintf("nohup %s demo echo-server --cli-agent-alias %s %s %s > %s 2>&1 &",
-		binaryPath, c.Id, serviceHostingFlags, portFlag, logsPath)
+	verbose := ""
+	if self.Verbose {
+		verbose = "-v"
+	}
+
+	serviceCmd := fmt.Sprintf("nohup %s demo echo-server %s --cli-agent-alias %s %s %s > %s 2>&1 &",
+		binaryPath, verbose, c.Id, serviceHostingFlags, portFlag, logsPath)
 
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {
