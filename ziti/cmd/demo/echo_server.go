@@ -63,6 +63,7 @@ type echoServer struct {
 	cliAgentAddr    string
 	cliAgentAlias   string
 	sdkFlowControl  bool
+	closeAfterWrite bool
 }
 
 func newEchoServerCmd() *cobra.Command {
@@ -89,6 +90,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().StringVar(&server.cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	cmd.Flags().Uint8("max-terminators", 3, "max terminators to create")
 	cmd.Flags().BoolVar(&server.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
+	cmd.Flags().BoolVar(&server.closeAfterWrite, "close-after-write", false, "Close the connection after writing the echo response")
 	return cmd
 }
 
@@ -285,6 +287,10 @@ func (self *echoServer) echo(connType string, conn io.ReadWriteCloser) {
 			break
 		}
 		log.Infof("%v: wrote %v bytes", connType, n)
+		if self.closeAfterWrite {
+			log.Infof("%v: closing connection after write", connType)
+			break
+		}
 	}
 }
 

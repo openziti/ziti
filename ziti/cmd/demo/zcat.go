@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -36,10 +37,15 @@ type zcatAction struct {
 	logFormatter   string
 	configFile     string
 	sdkFlowControl bool
+	redialOnClose  bool
+
+	currentConn *connProxy
 }
 
 func newZcatCmd() *cobra.Command {
-	action := &zcatAction{}
+	action := &zcatAction{
+		currentConn: &connProxy{},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "zcat <destination>",
@@ -55,6 +61,7 @@ func newZcatCmd() *cobra.Command {
 	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().BoolVar(&action.sdkFlowControl, "sdk-flow-control", false, "Enable SDK flow control")
+	cmd.Flags().BoolVar(&action.redialOnClose, "redial-on-close", false, "Redial the connection each time it closes")
 	cmd.Flags().SetInterspersed(true)
 
 	return cmd
@@ -93,17 +100,10 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 	network := parts[0]
 	addr := strings.Join(parts[1:], ":")
 
-	var conn net.Conn
-	var err error
-	var circuitId string
+	dialIdentifier := ""
+	var zitiContext ziti.Context
 
-	log.Debugf("dialing %v:%v", network, addr)
-	if network == "tcp" || network == "udp" {
-		conn, err = net.Dial(network, addr)
-		if err != nil {
-			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
-		}
-	} else if network == "ziti" {
+	if network == "ziti" {
 		zitiConfig, cfgErr := ziti.NewConfigFromFile(self.configFile)
 		if cfgErr != nil {
 			log.WithError(cfgErr).Fatalf("unable to load ziti identity from [%v]", self.configFile)
@@ -114,18 +114,54 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			zitiConfig.MaxDefaultConnections = 2
 		}
 
-		dialIdentifier := ""
 		if atIdx := strings.IndexByte(addr, '@'); atIdx > 0 {
 			dialIdentifier = addr[:atIdx]
 			addr = addr[atIdx+1:]
 		}
 
-		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
+		var ctxErr error
+		zitiContext, ctxErr = ziti.NewContext(zitiConfig)
 		if ctxErr != nil {
-			pfxlog.Logger().WithError(err).Fatal("could not create sdk context from config")
-			panic(ctxErr)
+			pfxlog.Logger().WithError(ctxErr).Fatal("could not create sdk context from config")
+		}
+	} else if network != "tcp" && network != "udp" {
+		log.Fatalf("invalid network '%v'. valid values are ['ziti', 'tcp', 'udp']", network)
+	}
+
+	outputCopyStarted := false
+
+	for {
+		conn := self.dial(network, addr, dialIdentifier, zitiContext)
+		self.currentConn.conn.Store(conn)
+
+		if !outputCopyStarted {
+			go self.copy(self.currentConn, os.Stdin, "stdin -> network")
+			outputCopyStarted = true
 		}
 
+		self.copy(os.Stdout, conn, "network -> stdout")
+
+		if !self.redialOnClose {
+			return
+		}
+		log.Info("connection closed, redialing")
+	}
+}
+
+func (self *zcatAction) dial(network, addr, dialIdentifier string, zitiContext ziti.Context) net.Conn {
+	log := pfxlog.Logger()
+	log.Debugf("dialing %v:%v", network, addr)
+
+	var conn net.Conn
+	var err error
+	var circuitId string
+
+	if network == "tcp" || network == "udp" {
+		conn, err = net.Dial(network, addr)
+		if err != nil {
+			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
+		}
+	} else if network == "ziti" {
 		dialOptions := &ziti.DialOptions{
 			ConnectTimeout: 5 * time.Second,
 			Identity:       dialIdentifier,
@@ -140,26 +176,60 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			log.WithError(err).Fatalf("unable to dial %v:%v", network, addr)
 		}
 		circuitId = conn.(edge.Conn).GetCircuitId()
-	} else {
-		log.Fatalf("invalid network '%v'. valid values are ['ziti', 'tcp', 'udp']", network)
 	}
 
 	log.WithField("circuitId", circuitId).Debugf("connected to %v:%v", network, addr)
-
-	go self.copy(conn, os.Stdin)
-	self.copy(os.Stdout, conn)
+	return conn
 }
 
-func (self *zcatAction) copy(writer io.Writer, reader io.Reader) {
+func (self *zcatAction) copy(writer io.Writer, reader io.Reader, desc string) {
 	buf := make([]byte, info.MaxUdpPacketSize)
 	bytesCopied, err := io.CopyBuffer(writer, reader, buf)
-	pfxlog.Logger().Debugf("Copied %v bytes", bytesCopied)
+	pfxlog.Logger().Debugf("copied %v bytes", bytesCopied)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("error while copying bytes")
+		pfxlog.Logger().WithField("desc", desc).WithError(err).Error("error while copying bytes")
+	} else {
+		pfxlog.Logger().WithField("desc", desc).Info("connection closed")
 	}
 	if zconn, ok := writer.(edge.Conn); ok {
 		if err = zconn.CloseWrite(); err != nil {
 			pfxlog.Logger().WithError(err).Error("error closing write side of ziti connection")
 		}
 	}
+}
+
+type connProxy struct {
+	conn concurrenz.AtomicValue[net.Conn]
+}
+
+func (c *connProxy) Read(b []byte) (n int, err error) {
+	return c.conn.Load().Read(b)
+}
+
+func (c *connProxy) Write(b []byte) (n int, err error) {
+	return c.conn.Load().Write(b)
+}
+
+func (c *connProxy) Close() error {
+	return c.conn.Load().Close()
+}
+
+func (c *connProxy) LocalAddr() net.Addr {
+	return c.conn.Load().LocalAddr()
+}
+
+func (c *connProxy) RemoteAddr() net.Addr {
+	return c.conn.Load().RemoteAddr()
+}
+
+func (c *connProxy) SetDeadline(t time.Time) error {
+	return c.conn.Load().SetDeadline(t)
+}
+
+func (c *connProxy) SetReadDeadline(t time.Time) error {
+	return c.conn.Load().SetReadDeadline(t)
+}
+
+func (c *connProxy) SetWriteDeadline(t time.Time) error {
+	return c.conn.Load().SetWriteDeadline(t)
 }
