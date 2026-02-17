@@ -120,3 +120,25 @@ func DecodeTags(tags map[string]*TagValue) map[string]interface{} {
 
 	return result
 }
+
+func EncodeCtrlChanListeners(listeners map[string][]string) map[string]*CtrlChanListenerDetail {
+	if len(listeners) == 0 {
+		return nil
+	}
+	result := make(map[string]*CtrlChanListenerDetail, len(listeners))
+	for addr, groups := range listeners {
+		result[addr] = &CtrlChanListenerDetail{Groups: groups}
+	}
+	return result
+}
+
+func DecodeCtrlChanListeners(listeners map[string]*CtrlChanListenerDetail) map[string][]string {
+	if len(listeners) == 0 {
+		return nil
+	}
+	result := make(map[string][]string, len(listeners))
+	for addr, detail := range listeners {
+		result[addr] = detail.GetGroups()
+	}
+	return result
+}

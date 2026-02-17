@@ -163,6 +163,20 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		} else {
 			log.Debug("no advertised listeners")
 		}
+
+		r.CtrlChanListeners = nil
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)]; found {
+			ctrlListeners := &ctrl_pb.CtrlChanListeners{}
+			if err = proto.Unmarshal(val, ctrlListeners); err != nil {
+				log.WithError(err).Error("unable to unmarshal ctrl chan listeners value")
+			} else {
+				result := make(map[string][]string, len(ctrlListeners.Listeners))
+				for _, listener := range ctrlListeners.Listeners {
+					result[listener.Address] = listener.Groups
+				}
+				r.CtrlChanListeners = result
+			}
+		}
 	} else {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}

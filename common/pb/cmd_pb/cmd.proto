@@ -104,6 +104,10 @@ message Service {
   int64 maxIdleTime = 5;
 }
 
+message CtrlChanListenerDetail {
+  repeated string groups = 1;
+}
+
 message Router {
   string id = 1;
   string name = 2;
@@ -113,7 +117,7 @@ message Router {
   bool disabled = 6;
   map<string, TagValue> tags = 7;
   repeated Interface interfaces = 8;
-  repeated string ctrlChanListeners = 9;
+  map<string, CtrlChanListenerDetail> ctrlChanListeners = 9;
 }
 
 message Terminator {

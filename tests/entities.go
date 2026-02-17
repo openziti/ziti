@@ -371,7 +371,7 @@ type edgeRouter struct {
 	name              string
 	isTunnelerEnabled bool
 	roleAttributes    []string
-	ctrlChanListeners []string
+	ctrlChanListeners map[string][]string
 	tags              map[string]interface{}
 }
 
@@ -394,7 +394,7 @@ func (entity *edgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.isTunnelerEnabled, "isTunnelerEnabled")
 	listeners := entity.ctrlChanListeners
 	if listeners == nil {
-		listeners = []string{}
+		listeners = map[string][]string{}
 	}
 	ctx.setJsonValue(entityData, listeners, "ctrlChanListeners")
 	ctx.setJsonValue(entityData, entity.tags, "tags")
@@ -410,7 +410,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.isTunnelerEnabled, path("isTunnelerEnabled"))
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
-	ctx.pathEqualsStringSlice(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
+	ctx.pathEqualsCtrlChanListeners(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
@@ -703,7 +703,7 @@ func newTestTransitRouter() *transitRouter {
 type transitRouter struct {
 	id                string
 	name              string
-	ctrlChanListeners []string
+	ctrlChanListeners map[string][]string
 	tags              map[string]interface{}
 }
 
@@ -724,7 +724,7 @@ func (entity *transitRouter) toJson(_ bool, ctx *TestContext, _ ...string) strin
 	ctx.setJsonValue(entityData, entity.name, "name")
 	listeners := entity.ctrlChanListeners
 	if listeners == nil {
-		listeners = []string{}
+		listeners = map[string][]string{}
 	}
 	ctx.setJsonValue(entityData, listeners, "ctrlChanListeners")
 	ctx.setJsonValue(entityData, entity.tags, "tags")
@@ -737,7 +737,7 @@ func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEqualsStringSlice(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
+	ctx.pathEqualsCtrlChanListeners(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 

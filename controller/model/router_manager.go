@@ -423,7 +423,7 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 		NoTraversal:       entity.NoTraversal,
 		Disabled:          entity.Disabled,
 		Tags:              tags,
-		CtrlChanListeners: entity.CtrlChanListeners,
+		CtrlChanListeners: cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -462,7 +462,7 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		Cost:              uint16(msg.Cost),
 		NoTraversal:       msg.NoTraversal,
 		Disabled:          msg.Disabled,
-		CtrlChanListeners: msg.CtrlChanListeners,
+		CtrlChanListeners: cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 	}
 
 	for _, intf := range msg.Interfaces {

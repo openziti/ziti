@@ -40,7 +40,7 @@ type Router struct {
 	Cost              uint16       `json:"cost"`
 	NoTraversal       bool         `json:"noTraversal"`
 	Disabled          bool         `json:"disabled"`
-	CtrlChanListeners []string     `json:"ctrlChanListeners"`
+	CtrlChanListeners map[string][]string `json:"ctrlChanListeners"`
 	Interfaces        []*Interface `json:"interfaces"`
 }
 
@@ -82,7 +82,7 @@ func (store *routerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldRouterCost, ast.NodeTypeInt64)
 	store.AddSymbol(FieldRouterNoTraversal, ast.NodeTypeBool)
 	store.AddSymbol(FieldRouterDisabled, ast.NodeTypeBool)
-	store.AddSymbol(FieldRouterCtrlChanListeners, ast.NodeTypeString)
+	store.AddSymbol(FieldRouterCtrlChanListeners, ast.NodeTypeOther)
 }
 
 func (store *routerStoreImpl) initializeLinked() {
@@ -99,7 +99,7 @@ func (self *routerStoreImpl) FillEntity(entity *Router, bucket *boltz.TypedBucke
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
 	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
 	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
-	entity.CtrlChanListeners = bucket.GetStringList(FieldRouterCtrlChanListeners)
+	entity.CtrlChanListeners = decodeCtrlChanListeners(bucket.GetMap(FieldRouterCtrlChanListeners))
 	entity.Interfaces = loadInterfaces(bucket)
 }
 
@@ -110,7 +110,7 @@ func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistCon
 	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
 	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
 	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
-	ctx.SetStringList(FieldRouterCtrlChanListeners, entity.CtrlChanListeners)
+	ctx.Bucket.PutMap(FieldRouterCtrlChanListeners, encodeCtrlChanListeners(entity.CtrlChanListeners), ctx.FieldChecker, true)
 	storeInterfaces(entity.Interfaces, ctx)
 }
 
@@ -131,6 +131,42 @@ func (store *routerStoreImpl) FindByName(tx *bbolt.Tx, name string) (*Router, er
 		return entity, err
 	}
 	return nil, nil
+}
+
+func encodeCtrlChanListeners(listeners map[string][]string) map[string]interface{} {
+	if len(listeners) == 0 {
+		return nil
+	}
+	result := make(map[string]interface{}, len(listeners))
+	for addr, groups := range listeners {
+		iGroups := make([]interface{}, len(groups))
+		for i, g := range groups {
+			iGroups[i] = g
+		}
+		result[addr] = iGroups
+	}
+	return result
+}
+
+func decodeCtrlChanListeners(m map[string]interface{}) map[string][]string {
+	if len(m) == 0 {
+		return nil
+	}
+	result := make(map[string][]string, len(m))
+	for addr, v := range m {
+		if groups, ok := v.([]interface{}); ok {
+			strs := make([]string, 0, len(groups))
+			for _, g := range groups {
+				if s, ok := g.(string); ok {
+					strs = append(strs, s)
+				}
+			}
+			result[addr] = strs
+		} else {
+			result[addr] = nil
+		}
+	}
+	return result
 }
 
 func (store *routerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

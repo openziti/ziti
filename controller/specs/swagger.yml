@@ -1635,9 +1635,11 @@ definitions:
             items:
               $ref: '#/definitions/interface'
           ctrlChanListeners:
-            type: array
-            items:
-              type: string
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
   routerListener:
     type: object
     required:
@@ -1673,9 +1675,11 @@ definitions:
         type: boolean
         x-nullable: true
       ctrlChanListeners:
-        type: array
-        items:
-          type: string
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
@@ -1700,9 +1704,11 @@ definitions:
         type: boolean
         x-nullable: true
       ctrlChanListeners:
-        type: array
-        items:
-          type: string
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
       tags:
         $ref: '#/definitions/tags'
   routerPatch:
@@ -1725,9 +1731,11 @@ definitions:
         type: boolean
         x-nullable: true
       ctrlChanListeners:
-        type: array
-        items:
-          type: string
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
       tags:
         $ref: '#/definitions/tags'
 

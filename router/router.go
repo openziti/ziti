@@ -263,6 +263,26 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 	capabilityMask.SetBit(capabilityMask, capabilities.RouterMultiChannel, 1)
 	headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = capabilityMask.Bytes()
 
+	ctrlListeners := &ctrl_pb.CtrlChanListeners{}
+	for _, listener := range self.config.Ctrl.Listeners {
+		addr := listener.Advertise
+		if addr == nil {
+			addr = listener.Bind
+		}
+		ctrlListeners.Listeners = append(ctrlListeners.Listeners, &ctrl_pb.CtrlChanListener{
+			Address: addr.String(),
+			Groups:  listener.Groups,
+		})
+	}
+
+	if len(ctrlListeners.Listeners) > 0 {
+		buf, err := proto.Marshal(ctrlListeners)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal CtrlChanListeners (%w)", err)
+		}
+		headers[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)] = buf
+	}
+
 	return headers, nil
 }
 

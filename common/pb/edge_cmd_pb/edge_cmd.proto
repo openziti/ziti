@@ -204,6 +204,10 @@ message Interface {
   repeated string addresses = 6;
 }
 
+message CtrlChanListenerDetail {
+  repeated string groups = 1;
+}
+
 // Edge Routers
 message EdgeRouter {
   string id = 1;
@@ -222,7 +226,7 @@ message EdgeRouter {
   bool noTraversal = 14;
   bool disabled = 15;
   repeated Interface interfaces = 16;
-  repeated string ctrlChanListeners = 17;
+  map<string, CtrlChanListenerDetail> ctrlChanListeners = 17;
 }
 
 message ReEnrollEdgeRouterCmd {
@@ -481,7 +485,7 @@ message TransitRouter {
   uint32 cost = 8;
   bool noTraversal = 9;
   bool disabled = 10;
-  repeated string ctrlChanListeners = 11;
+  map<string, CtrlChanListenerDetail> ctrlChanListeners = 11;
 }
 
 message CreateTransitRouterCmd {

@@ -34,7 +34,7 @@ type TransitRouter struct {
 	Cost                  uint16
 	NoTraversal           bool
 	Disabled              bool
-	CtrlChanListeners     []string
+	CtrlChanListeners     map[string][]string
 }
 
 func (self *TransitRouter) GetName() string {

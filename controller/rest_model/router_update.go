@@ -51,7 +51,7 @@ type RouterUpdate struct {
 	Cost *int64 `json:"cost"`
 
 	// ctrl chan listeners
-	CtrlChanListeners []string `json:"ctrlChanListeners"`
+	CtrlChanListeners map[string][]string `json:"ctrlChanListeners"`
 
 	// disabled
 	Disabled *bool `json:"disabled,omitempty"`

@@ -52,7 +52,7 @@ type Router struct {
 	Disabled          bool
 	Capabilities      *big.Int
 	Interfaces        []*Interface
-	CtrlChanListeners []string
+	CtrlChanListeners map[string][]string
 }
 
 func (entity *Router) GetLinks() []*Link {

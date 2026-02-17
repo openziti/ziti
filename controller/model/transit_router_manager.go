@@ -309,7 +309,7 @@ func (self *TransitRouterManager) TransitRouterToProtobuf(entity *TransitRouter)
 		Cost:                  uint32(entity.Cost),
 		NoTraversal:           entity.NoTraversal,
 		Disabled:              entity.Disabled,
-		CtrlChanListeners:     entity.CtrlChanListeners,
+		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 	}
 
 	return msg, nil
@@ -337,7 +337,7 @@ func (self *TransitRouterManager) ProtobufToTransitRouter(msg *edge_cmd_pb.Trans
 		Cost:                  uint16(msg.Cost),
 		NoTraversal:           msg.NoTraversal,
 		Disabled:              msg.Disabled,
-		CtrlChanListeners:     msg.CtrlChanListeners,
+		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 	}, nil
 }
 

@@ -75,7 +75,10 @@ func Test_FabricRouters(t *testing.T) {
 
 		id := eid.New()
 		name := eid.New()
-		listeners := []string{"tls:1.2.3.4:6262", "tls:5.6.7.8:6262"}
+		listeners := map[string][]string{
+			"tls:1.2.3.4:6262": {"group1"},
+			"tls:5.6.7.8:6262": nil,
+		}
 
 		createParams := &restClientRouter.CreateRouterParams{
 			Router: &fabricRestModel.RouterCreate{
@@ -116,7 +119,7 @@ func Test_FabricRouters(t *testing.T) {
 				ID:                &id,
 				Name:              &name,
 				NoTraversal:       util.Ptr(false),
-				CtrlChanListeners: []string{"tls:1.2.3.4:6262"},
+				CtrlChanListeners: map[string][]string{"tls:1.2.3.4:6262": nil},
 			},
 			Context: timeoutContext,
 		}
@@ -132,7 +135,11 @@ func Test_FabricRouters(t *testing.T) {
 		patchParams := &restClientRouter.PatchRouterParams{
 			ID: id,
 			Router: &fabricRestModel.RouterPatch{
-				CtrlChanListeners: []string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"},
+				CtrlChanListeners: map[string][]string{
+					"tls:10.0.0.1:6262": {"group1"},
+					"tls:10.0.0.2:6262": nil,
+					"tls:10.0.0.3:6262": {"group2", "group3"},
+				},
 			},
 			Context: timeoutContext,
 		}
@@ -141,13 +148,17 @@ func Test_FabricRouters(t *testing.T) {
 
 		detailResp, err := ctx.RestClients.Fabric.Router.DetailRouter(detailParams)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal([]string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"}, detailResp.Payload.Data.CtrlChanListeners)
+		ctx.Req.Equal(map[string][]string{
+			"tls:10.0.0.1:6262": {"group1"},
+			"tls:10.0.0.2:6262": nil,
+			"tls:10.0.0.3:6262": {"group2", "group3"},
+		}, detailResp.Payload.Data.CtrlChanListeners)
 
 		// update to fewer addresses
 		patchParams = &restClientRouter.PatchRouterParams{
 			ID: id,
 			Router: &fabricRestModel.RouterPatch{
-				CtrlChanListeners: []string{"tls:10.0.0.1:6262"},
+				CtrlChanListeners: map[string][]string{"tls:10.0.0.1:6262": nil},
 			},
 			Context: timeoutContext,
 		}
@@ -156,13 +167,13 @@ func Test_FabricRouters(t *testing.T) {
 
 		detailResp, err = ctx.RestClients.Fabric.Router.DetailRouter(detailParams)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal([]string{"tls:10.0.0.1:6262"}, detailResp.Payload.Data.CtrlChanListeners)
+		ctx.Req.Equal(map[string][]string{"tls:10.0.0.1:6262": nil}, detailResp.Payload.Data.CtrlChanListeners)
 
 		// update to zero addresses
 		patchParams = &restClientRouter.PatchRouterParams{
 			ID: id,
 			Router: &fabricRestModel.RouterPatch{
-				CtrlChanListeners: []string{},
+				CtrlChanListeners: map[string][]string{},
 			},
 			Context: timeoutContext,
 		}

@@ -2127,9 +2127,12 @@ func init() {
           "maximum": 65535
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {
@@ -2179,9 +2182,12 @@ func init() {
               "maximum": 65535
             },
             "ctrlChanListeners": {
-              "type": "array",
-              "items": {
-                "type": "string"
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "disabled": {
@@ -2245,9 +2251,12 @@ func init() {
           "x-nullable": true
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {
@@ -2284,9 +2293,12 @@ func init() {
           "maximum": 65535
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {
@@ -7961,9 +7973,12 @@ func init() {
           "minimum": 0
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {
@@ -8014,9 +8029,12 @@ func init() {
               "minimum": 0
             },
             "ctrlChanListeners": {
-              "type": "array",
-              "items": {
-                "type": "string"
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "disabled": {
@@ -8081,9 +8099,12 @@ func init() {
           "x-nullable": true
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {
@@ -8121,9 +8142,12 @@ func init() {
           "minimum": 0
         },
         "ctrlChanListeners": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "disabled": {

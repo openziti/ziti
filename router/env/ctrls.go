@@ -396,6 +396,10 @@ func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlcha
 		if ctrl != nil {
 			self.notifyOfChange(ctrl, ControllerDisconnected)
 		}
+		// Try to re-establish via configured endpoints
+		for _, endpoint := range self.ctrlEndpoints.Keys() {
+			self.connectToControllerWithBackoff(endpoint)
+		}
 	}))
 
 	return nil

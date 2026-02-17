@@ -116,7 +116,7 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := &transitRouter{
 			name:              eid.New(),
-			ctrlChanListeners: []string{"tls:1.2.3.4:6262", "tls:5.6.7.8:6262"},
+			ctrlChanListeners: map[string][]string{"tls:1.2.3.4:6262": {"group1"}, "tls:5.6.7.8:6262": nil},
 		}
 		router.id = ctx.AdminManagementSession.requireCreateEntity(router)
 		ctx.AdminManagementSession.validateEntityWithQuery(router)
@@ -127,15 +127,15 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := &transitRouter{
 			name:              eid.New(),
-			ctrlChanListeners: []string{"tls:1.2.3.4:6262"},
+			ctrlChanListeners: map[string][]string{"tls:1.2.3.4:6262": nil},
 		}
 		router.id = ctx.AdminManagementSession.requireCreateEntity(router)
 
-		router.ctrlChanListeners = []string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"}
+		router.ctrlChanListeners = map[string][]string{"tls:10.0.0.1:6262": nil, "tls:10.0.0.2:6262": nil, "tls:10.0.0.3:6262": nil}
 		ctx.AdminManagementSession.requireUpdateEntity(router)
 		ctx.AdminManagementSession.validateEntityWithLookup(router)
 
-		router.ctrlChanListeners = []string{"tls:10.0.0.1:6262"}
+		router.ctrlChanListeners = map[string][]string{"tls:10.0.0.1:6262": nil}
 		ctx.AdminManagementSession.requireUpdateEntity(router)
 		ctx.AdminManagementSession.validateEntityWithLookup(router)
 

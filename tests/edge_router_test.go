@@ -102,7 +102,7 @@ func Test_EdgeRouter(t *testing.T) {
 	t.Run("ctrlChanListeners can be set on create and retrieved", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		edgeRouter := newTestEdgeRouter()
-		edgeRouter.ctrlChanListeners = []string{"tls:1.2.3.4:6262", "tls:5.6.7.8:6262"}
+		edgeRouter.ctrlChanListeners = map[string][]string{"tls:1.2.3.4:6262": {"group1"}, "tls:5.6.7.8:6262": nil}
 		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
 		ctx.AdminManagementSession.validateEntityWithQuery(edgeRouter)
 		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
@@ -111,14 +111,14 @@ func Test_EdgeRouter(t *testing.T) {
 	t.Run("ctrlChanListeners can be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		edgeRouter := newTestEdgeRouter()
-		edgeRouter.ctrlChanListeners = []string{"tls:1.2.3.4:6262"}
+		edgeRouter.ctrlChanListeners = map[string][]string{"tls:1.2.3.4:6262": nil}
 		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
 
-		edgeRouter.ctrlChanListeners = []string{"tls:10.0.0.1:6262", "tls:10.0.0.2:6262", "tls:10.0.0.3:6262"}
+		edgeRouter.ctrlChanListeners = map[string][]string{"tls:10.0.0.1:6262": nil, "tls:10.0.0.2:6262": nil, "tls:10.0.0.3:6262": nil}
 		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
 		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
 
-		edgeRouter.ctrlChanListeners = []string{"tls:10.0.0.1:6262"}
+		edgeRouter.ctrlChanListeners = map[string][]string{"tls:10.0.0.1:6262": nil}
 		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
 		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
 

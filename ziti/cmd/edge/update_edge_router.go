@@ -71,7 +71,7 @@ func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
-	cmd.Flags().StringSliceVar(&options.ctrlChanListeners, "ctrl-chan-listener", nil, "Control channel listener address(es) for the router")
+	cmd.Flags().StringSliceVar(&options.ctrlChanListeners, "ctrl-chan-listener", nil, "Control channel listener address and optional groups (e.g. 'tls:1.2.3.4:6262=group1,group2')")
 
 	options.AddCommonFlags(cmd)
 
@@ -128,7 +128,7 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("ctrl-chan-listener") {
-		api.SetJSONValue(entityData, o.ctrlChanListeners, "ctrlChanListeners")
+		api.SetJSONValue(entityData, api.ParseCtrlChanListeners(o.ctrlChanListeners), "ctrlChanListeners")
 		change = true
 	}
 

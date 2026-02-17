@@ -40,7 +40,7 @@ type EdgeRouter struct {
 	Cost                  uint16
 	NoTraversal           bool
 	Disabled              bool
-	CtrlChanListeners     []string
+	CtrlChanListeners     map[string][]string
 	Interfaces            []*Interface
 }
 

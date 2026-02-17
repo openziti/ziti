@@ -458,7 +458,7 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		Cost:                  uint32(entity.Cost),
 		NoTraversal:           entity.NoTraversal,
 		Disabled:              entity.Disabled,
-		CtrlChanListeners:     entity.CtrlChanListeners,
+		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -507,7 +507,7 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		Cost:                  uint16(msg.Cost),
 		NoTraversal:           msg.NoTraversal,
 		Disabled:              msg.Disabled,
-		CtrlChanListeners:     msg.CtrlChanListeners,
+		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 	}
 
 	for _, intf := range msg.Interfaces {
