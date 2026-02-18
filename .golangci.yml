@@ -14,6 +14,7 @@ linters:
         - "-QF1001" # could apply De Morgan's law
         - "-ST1016" # methods on the same type should have the same receiver name
         - "-QF1002" # could use tagged switch on err
+        - "-QF1012" # Use fmt.Fprintf(...) instead of WriteString(fmt.Sprintf(...)) (staticcheck)
         - "-SA1019" # x509.IsEncryptedPEMBlock has been deprecated since Go 1.16
 run:
   build-tags:

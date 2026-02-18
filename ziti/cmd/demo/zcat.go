@@ -191,8 +191,8 @@ func (self *zcatAction) copy(writer io.Writer, reader io.Reader, desc string) {
 	} else {
 		pfxlog.Logger().WithField("desc", desc).Info("connection closed")
 	}
-	if zconn, ok := writer.(edge.Conn); ok {
-		if err = zconn.CloseWrite(); err != nil {
+	if cw, ok := writer.(edge.CloseWriter); ok {
+		if err = cw.CloseWrite(); err != nil {
 			pfxlog.Logger().WithError(err).Error("error closing write side of ziti connection")
 		}
 	}
@@ -232,4 +232,11 @@ func (c *connProxy) SetReadDeadline(t time.Time) error {
 
 func (c *connProxy) SetWriteDeadline(t time.Time) error {
 	return c.conn.Load().SetWriteDeadline(t)
+}
+
+func (c *connProxy) CloseWrite() error {
+	if cw, ok := c.conn.Load().(edge.Conn); ok {
+		return cw.CloseWrite()
+	}
+	return nil
 }
