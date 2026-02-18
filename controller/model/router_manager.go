@@ -333,6 +333,45 @@ func (self *RouterManager) UpdateRouterInterfaces(routerId string, interfaces []
 	return self.Update(r, updatedFields, ctx)
 }
 
+func (self *RouterManager) UpdateCtrlChanListeners(routerId string, listeners map[string][]string, ctx *change.Context) error {
+	r, err := self.Read(routerId)
+	if err != nil {
+		return err
+	}
+
+	if !didCtrlChanListenersChange(r.CtrlChanListeners, listeners) {
+		pfxlog.Logger().WithField("routerId", routerId).Debug("ctrl chan listeners submitted, but no change detected")
+		return nil
+	}
+
+	r.CtrlChanListeners = listeners
+	updatedFields := fields.UpdatedFieldsMap{
+		db.FieldRouterCtrlChanListeners: struct{}{},
+	}
+	return self.Update(r, updatedFields, ctx)
+}
+
+func didCtrlChanListenersChange(old, new map[string][]string) bool {
+	if len(old) != len(new) {
+		return true
+	}
+	for addr, oldGroups := range old {
+		newGroups, ok := new[addr]
+		if !ok {
+			return true
+		}
+		if len(oldGroups) != len(newGroups) {
+			return true
+		}
+		for i, g := range oldGroups {
+			if g != newGroups[i] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateContext, f func(terminator *db.Terminator) error) error {
 	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		terminatorIds := self.Store.GetRelatedEntitiesIdList(ctx.Tx(), router.Id, db.EntityTypeTerminators)

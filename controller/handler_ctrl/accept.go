@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/pkg/errors"
@@ -194,6 +195,11 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	log.Info("accepted new router connection")
 
 	self.network.ConnectRouter(r)
+
+	changeCtx := change.NewControlChannelChange(r.Id, r.Name, "router.connect", ch)
+	if err := self.network.Router.UpdateCtrlChanListeners(r.Id, r.CtrlChanListeners, changeCtx); err != nil {
+		log.WithError(err).Error("failed to update ctrl chan listeners")
+	}
 
 	return nil
 }
