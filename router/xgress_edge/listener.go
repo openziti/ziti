@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -148,6 +149,13 @@ func (listener *listener) Inspect(key string, _ time.Duration) any {
 		}
 
 		return result
+
+	default:
+		lc := strings.ToLower(key)
+		if strings.HasPrefix(lc, "sdk-context:") {
+			identityId := key[len("sdk-context:"):]
+			return listener.getSdkContext(identityId)
+		}
 	}
 
 	return nil
@@ -213,6 +221,114 @@ func (listener *listener) submitResponse(resultCh chan *sdkCircuitResult, result
 	case resultCh <- result:
 	case <-time.After(time.Second):
 	}
+}
+
+type sdkContextResult struct {
+	identityId string
+	connId     string
+	err        error
+	context    any
+}
+
+func (listener *listener) getSdkContext(identityId string) any {
+	channels := listener.factory.connectionTracker.GetChannelsByIdentityId(identityId)
+	if len(channels) == 0 {
+		return map[string]any{
+			"error": fmt.Sprintf("no connections found for identity %s", identityId),
+		}
+	}
+
+	resultCh := make(chan *sdkContextResult, len(channels))
+	expected := 0
+	for _, ch := range channels {
+		if conn, ok := ch.GetUserData().(*edgeClientConn); ok {
+			expected++
+			go func(conn *edgeClientConn) {
+				msg := sdkedge.NewInspectRequest(nil, "context")
+				reply, err := msg.WithTimeout(4800 * time.Millisecond).SendForReply(conn.ch.GetControlSender())
+				if err != nil {
+					select {
+					case resultCh <- &sdkContextResult{
+						identityId: identityId,
+						connId:     conn.ch.GetChannel().ConnectionId(),
+						err:        err,
+					}:
+					case <-time.After(time.Second):
+					}
+					return
+				}
+
+				resp := sdkinspect.SdkInspectResponse{}
+				if err = json.Unmarshal(reply.Body, &resp); err != nil {
+					select {
+					case resultCh <- &sdkContextResult{
+						identityId: identityId,
+						connId:     conn.ch.GetChannel().ConnectionId(),
+						err:        fmt.Errorf("failed to unmarshal response: %w", err),
+					}:
+					case <-time.After(time.Second):
+					}
+					return
+				}
+
+				if v, ok := resp.Values["context"]; ok {
+					select {
+					case resultCh <- &sdkContextResult{
+						identityId: identityId,
+						connId:     conn.ch.GetChannel().ConnectionId(),
+						context:    v,
+					}:
+					case <-time.After(time.Second):
+					}
+				} else {
+					select {
+					case resultCh <- &sdkContextResult{
+						identityId: identityId,
+						connId:     conn.ch.GetChannel().ConnectionId(),
+						err:        fmt.Errorf("context not returned in inspect response"),
+					}:
+					case <-time.After(time.Second):
+					}
+				}
+			}(conn)
+		}
+	}
+
+	if expected == 0 {
+		return map[string]any{
+			"error": fmt.Sprintf("no edge connections found for identity %s", identityId),
+		}
+	}
+
+	var results []any
+	var errs []string
+	deadline := time.After(5 * time.Second)
+	for expected > 0 {
+		select {
+		case next := <-resultCh:
+			if next.err != nil {
+				errs = append(errs, fmt.Sprintf("conn %s: %v", next.connId, next.err))
+			}
+			if next.context != nil {
+				results = append(results, map[string]any{
+					"connId":  next.connId,
+					"context": next.context,
+				})
+			}
+			expected--
+		case <-deadline:
+			expected = 0
+		}
+	}
+
+	response := map[string]any{
+		"identityId": identityId,
+		"results":    results,
+	}
+	if len(errs) > 0 {
+		response["errors"] = errs
+	}
+	return response
 }
 
 // newListener creates a new xgress edge listener
@@ -335,12 +451,14 @@ func (self *edgeClientConn) handleBindAccessLost(service *common.IdentityService
 	for _, terminator := range terminators {
 		log.WithField("terminatorId", terminator.terminatorId).
 			Info("bind access to service, closing terminator")
-		err := &EdgeError{
+		edgeErr := &EdgeError{
 			Message:   "bind access lost",
 			Code:      sdkedge.ErrorCodeAccessDenied,
-			RetryHint: sdkedge.RetryNotRetriable,
+			RetryHint: sdkedge.RetryStartOver, // switch back to start over once timing issues are resolved
 		}
-		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost", err)
+		reason := "bind access lost"
+		self.GetHostedServicesRegistry().ensureSdkCloseSent(terminator, reason, edgeErr)
+		terminator.close(self.GetHostedServicesRegistry(), true, reason)
 	}
 }
 
@@ -417,6 +535,20 @@ func (self *edgeClientConn) GetConnIdToSinks() map[uint32]sdkedge.MsgSink[*state
 
 func (self *edgeClientConn) GetApiSessionToken() *state.ApiSessionToken {
 	return self.apiSessionToken
+}
+
+func (self *edgeClientConn) handleConnInspectResponse(msg *channel.Message) {
+	result, err := sdkedge.UnmarshalInspectResult(msg)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to unmarshal conn inspect response from sdk client")
+		return
+	}
+
+	self.GetHostedServicesRegistry().queue(&inspectResponseEvent{
+		conn:     self,
+		replyFor: msg.ReplyFor(),
+		result:   result,
+	})
 }
 
 func (self *edgeClientConn) HandleClose(ch channel.Channel) {
@@ -821,8 +953,8 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 		instanceSecret:      terminatorInstanceSecret,
 		hostData:            hostData,
 		assignIds:           assignIds,
+		notifyEstablished:   notifyEstablished,
 		useSdkXgress:        useSdkXgress,
-		v2:                  true,
 		supportsInspect:     supportsInspect,
 		createTime:          time.Now(),
 	}
@@ -848,21 +980,10 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 				Code:      sdkedge.ErrorCodeInvalidSession,
 				RetryHint: sdkedge.RetryStartOver,
 			}
-			terminator.close(self.listener.factory.hostedServices, true, true, "session ended", edgeErr)
+			reason := "session ended"
+			self.listener.factory.hostedServices.ensureSdkCloseSent(terminator, reason, edgeErr)
+			terminator.close(self.listener.factory.hostedServices, true, reason)
 		})
-	}
-
-	terminator.establishCallback = func(result edge_ctrl_pb.CreateTerminatorResult) {
-		if result == edge_ctrl_pb.CreateTerminatorResult_Success && notifyEstablished {
-			notifyMsg := channel.NewMessage(sdkedge.ContentTypeBindSuccess, nil)
-			notifyMsg.PutUint32Header(sdkedge.ConnIdHeader, terminator.MsgChannel.Id())
-
-			if err := notifyMsg.WithTimeout(time.Second * 30).Send(terminator.MsgChannel.GetControlSender()); err != nil {
-				log.WithError(err).Error("failed to send bind success")
-			} else {
-				log.Info("sdk notified of terminator creation")
-			}
-		}
 	}
 
 	msg := sdkedge.NewStateConnectedMsg(connId)
@@ -880,17 +1001,23 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 
 	if checkResult.replaceExisting {
 		log.Info("sending replacement terminator success to sdk")
-		terminator.establishCallback(edge_ctrl_pb.CreateTerminatorResult_Success)
+		terminator.NotifyEstablished(edge_ctrl_pb.CreateTerminatorResult_Success)
 		if terminator.supportsInspect {
-			go func() {
-				if _, err := terminator.inspect(self.listener.factory.hostedServices, true, true); err != nil {
-					log.WithError(err).Info("failed to check sdk side of terminator after replace")
-				}
-			}()
+			// Use fire-and-forget inspect instead of blocking SendForReply.
+			// The registry run loop will send the inspect request via TrySend,
+			// retry on interval, and close the terminator if no valid response
+			// is received within the timeout.
+			// Queue in a goroutine to avoid blocking the bind response, which
+			// could cause the SDK to time out waiting — the very problem we're
+			// trying to avoid.
+			go self.listener.factory.hostedServices.queuePostCreateInspect(terminator)
 		}
 	} else {
 		log.Info("establishing terminator")
 		self.listener.factory.hostedServices.EstablishTerminator(terminator)
+		if terminator.supportsInspect {
+			go self.listener.factory.hostedServices.queuePostCreateInspect(terminator)
+		}
 		if listenerId == "" {
 			// only removed dupes with a scan if we don't have an sdk provided key
 			self.listener.factory.hostedServices.cleanupDuplicates(terminator)
@@ -902,17 +1029,19 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 		edgeErr := &EdgeError{
 			Message:   "bind access lost",
 			Code:      sdkedge.ErrorCodeAccessDenied,
-			RetryHint: sdkedge.RetryNotRetriable,
+			RetryHint: sdkedge.RetryStartOver, // switch back to NotRetriable once timing issues are sorted out
 			Cause:     err,
 		}
-		terminator.close(self.GetHostedServicesRegistry(), true, true, "bind access lost", edgeErr)
+		reason := "bind access lost"
+		self.GetHostedServicesRegistry().ensureSdkCloseSent(terminator, reason, edgeErr)
+		terminator.close(self.GetHostedServicesRegistry(), true, reason)
 	}
 }
 
 func (self *edgeClientConn) checkAccess(serviceId string, policyType edge_ctrl_pb.PolicyType) error {
 	if self.apiSessionToken.IsOidc() {
 		stateManager := self.listener.factory.stateManager
-		//if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
+		// if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
 		grantingPolicy, err := stateManager.HasAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceId, policyType)
 
 		if err != nil {
@@ -927,6 +1056,7 @@ func (self *edgeClientConn) checkAccess(serviceId string, policyType edge_ctrl_p
 			return errors.Errorf("no access to service, failed %s access check", policyTypeDescriptor)
 		}
 	}
+
 	return nil
 }
 
@@ -964,18 +1094,6 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 			WithField("connId", connId).
 			Info("no terminator found to unbind for token")
 	}
-}
-
-func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, token, terminatorId string) error {
-	request := &edge_ctrl_pb.RemoveTerminatorRequest{
-		SessionToken: token,
-		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminatorId,
-	}
-
-	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
-	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
 func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
@@ -1123,17 +1241,23 @@ func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.C
 	if hops > 0 {
 		self.msgMux.HandleReceive(msg, ch)
 	} else {
-		ts, _ := msg.GetUint64Header(sdkedge.TimestampHeader)
-		connId, _ := msg.GetUint32Header(sdkedge.ConnIdHeader)
-		resp := sdkedge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress/edge", "")
-		resp.ReplyTo(msg)
-		if msgUUID := msg.Headers[sdkedge.UUIDHeader]; msgUUID != nil {
-			resp.Headers[sdkedge.UUIDHeader] = msgUUID
-		}
+		go self.sendTraceRouteResponse(msg, ch)
+	}
+}
 
-		if err := ch.Send(resp); err != nil {
-			log.WithError(err).Error("failed to send hop response")
-		}
+func (self *edgeClientConn) sendTraceRouteResponse(msg *channel.Message, ch channel.Channel) {
+	ts, _ := msg.GetUint64Header(sdkedge.TimestampHeader)
+	connId, _ := msg.GetUint32Header(sdkedge.ConnIdHeader)
+	hops, _ := msg.GetUint32Header(sdkedge.TraceHopCountHeader)
+	resp := sdkedge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress/edge", "")
+	resp.ReplyTo(msg)
+	if msgUUID := msg.Headers[sdkedge.UUIDHeader]; msgUUID != nil {
+		resp.Headers[sdkedge.UUIDHeader] = msgUUID
+	}
+
+	if err := ch.Send(resp); err != nil {
+		pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(msg)).
+			WithError(err).Error("failed to send hop response")
 	}
 }
 
@@ -1280,7 +1404,7 @@ func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channe
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if edgeForwarder, ok := self.xgCircuits.Get(circuitId); ok {
 		log.Debug("received close request from sdk, closing sdk-xg circuit")
-		self.cleanupXgressCircuit(edgeForwarder)
+		go self.cleanupXgressCircuit(edgeForwarder)
 	} else {
 		log.Debug("received close request from sdk, but no edge forwarder found")
 	}
@@ -1527,7 +1651,6 @@ func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 
 func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 	self.connId = ctx.ConnId
-	// TODO: figure out how to handle session removed
 	return true
 }
 

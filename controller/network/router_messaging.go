@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/storage/boltz"
+
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -289,12 +290,6 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		}
 	}
 
-	supportsVerifyV2, err := notifyRouter.VersionInfo.HasMinimumVersion("0.31.1")
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error(`version check of "0.31.1" failed`)
-		supportsVerifyV2 = true
-	}
-
 	var terminators []*ctrl_pb.Terminator
 
 	localCtrlId := self.env.GetId()
@@ -322,18 +317,10 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 		return
 	}
 
-	var req interface {
-		protobufs.TypedMessage
-		GetTerminators() []*ctrl_pb.Terminator
-	}
-
-	if !supportsVerifyV2 {
-		req = &ctrl_pb.ValidateTerminatorsRequest{Terminators: terminators}
-	} else {
-		req = &ctrl_pb.ValidateTerminatorsV2Request{
-			Terminators: terminators,
-			FixInvalid:  true,
-		}
+	req := &ctrl_pb.ValidateTerminatorsV2Request{
+		Terminators: terminators,
+		FixInvalid:  true,
+		PostCreate:  true,
 	}
 
 	queueErr := self.routerCommPool.QueueOrError(func() {
@@ -347,13 +334,8 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 			pfxlog.Logger().WithField("terminatorId", terminator.GetId()).Debug("queuing validate of terminator")
 		}
 
-		if err = protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
+		if err := protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
 			pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
-		} else if !supportsVerifyV2 {
-			// V1 doesn't send responses, it will just send deletes if the terminator is invalid.
-			// we're going to mark these ok. If they're not, we should get a delete message. Older
-			// routers can still fail to delete, if the delete gets lost for some reason.
-			self.generateMockTerminatorValidationResponse(notifyRouter, updates, false)
 		}
 	})
 
@@ -362,28 +344,6 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 	} else {
 		updates.lastSend = time.Now()
 	}
-}
-
-func (self *RouterMessaging) generateMockTerminatorValidationResponse(r *model.Router, validations *terminatorValidations, onlyNonLocal bool) {
-	handler := &terminatorValidationRespReceived{
-		router: r,
-		resp: &ctrl_pb.ValidateTerminatorsV2Response{
-			States: map[string]*ctrl_pb.RouterTerminatorState{},
-		},
-	}
-
-	localCtrlId := self.env.GetId()
-
-	for id, t := range validations.terminators {
-		if !onlyNonLocal || t.GetSourceCtrl() != localCtrlId {
-			handler.resp.States[id] = &ctrl_pb.RouterTerminatorState{
-				Valid:  true,
-				Marker: t.marker,
-			}
-		}
-	}
-
-	self.queueEvent(handler)
 }
 
 func (self *RouterMessaging) processQueuedDeletes() {

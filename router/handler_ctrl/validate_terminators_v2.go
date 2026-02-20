@@ -93,9 +93,15 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 		} else {
 			err := handler.pool.Queue(func() {
 				log.WithField("terminatorId", terminator.Id).Info("validating terminator")
-				result := handler.validateTerminator(dialer, terminator, req.FixInvalid)
-				results <- func(response *ctrl_pb.ValidateTerminatorsV2Response) {
-					response.States[terminator.Id] = result
+				result := handler.validateTerminator(dialer, terminator, req.FixInvalid, req.PostCreate)
+				if result == nil {
+					results <- func(response *ctrl_pb.ValidateTerminatorsV2Response) {
+						// don't return any result, this should result in the terminator being retried
+					}
+				} else {
+					results <- func(response *ctrl_pb.ValidateTerminatorsV2Response) {
+						response.States[terminator.Id] = result
+					}
 				}
 			})
 
@@ -129,9 +135,13 @@ func (handler *validateTerminatorsV2Handler) validateTerminators(msg *channel.Me
 	}
 }
 
-func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress_router.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool) *ctrl_pb.RouterTerminatorState {
+func (handler *validateTerminatorsV2Handler) validateTerminator(dialer xgress_router.Dialer, terminator *ctrl_pb.Terminator, fixInvalid bool, postCreate bool) *ctrl_pb.RouterTerminatorState {
 	if inspectable, ok := dialer.(xgress_router.InspectableDialer); ok {
-		valid, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, fixInvalid)
+		valid, retry, state := inspectable.InspectTerminator(terminator.Id, terminator.Address, fixInvalid, postCreate)
+		if retry {
+			return nil
+		}
+
 		if valid {
 			return &ctrl_pb.RouterTerminatorState{
 				Valid:  true,

@@ -18,6 +18,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
@@ -347,6 +348,26 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	for svcId, service := range oldServices {
 		newService, ok := newServices[svcId]
 		if !ok {
+			newIdentity.WithLock(func() {
+				serviceAccessKeys := make([]string, 0, len(newIdentity.ServiceAccess))
+				for k, v := range newIdentity.ServiceAccess {
+					serviceAccessKeys = append(serviceAccessKeys, fmt.Sprintf("%s(d=%d,b=%d)", k, v.DialPoliciesCount, v.BindPoliciesCount))
+				}
+				servicePolicyKeys := make([]string, 0, len(newIdentity.ServicePolicies))
+				for k := range newIdentity.ServicePolicies {
+					servicePolicyKeys = append(servicePolicyKeys, k)
+				}
+				log.WithField("lostServiceId", svcId).
+					WithField("lostServiceName", service.GetName()).
+					WithField("trackingEnabled", newIdentity.serviceAccessTrackingEnabled.Load()).
+					WithField("serviceAccessCount", len(newIdentity.ServiceAccess)).
+					WithField("servicePolicyCount", len(newIdentity.ServicePolicies)).
+					WithField("serviceAccess", serviceAccessKeys).
+					WithField("servicePolicies", servicePolicyKeys).
+					WithField("oldServiceCount", len(oldServices)).
+					WithField("newServiceCount", len(newServices)).
+					Warn("service access lost detected during checkForChanges")
+			})
 			self.notifyServiceChange(state, service, service, ServiceAccessLostEvent)
 		} else if !service.Equals(newService) {
 			self.notifyServiceChange(state, service, newService, ServiceUpdatedEvent)
@@ -511,9 +532,13 @@ func (self checkForIdentityChangesEvent) process(rdm *RouterDataModel) {
 }
 
 // syncAllSubscribersEvent is queued to trigger a full sync of all active subscriptions.
-type syncAllSubscribersEvent struct{}
+type syncAllSubscribersEvent struct {
+	completeNotify chan struct{}
+}
 
 func (self syncAllSubscribersEvent) process(rdm *RouterDataModel) {
+	defer close(self.completeNotify)
+
 	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
 		WithField("updatedIdentities", rdm.updatedIdentities.Count()).
 		Debug("sync all subscribers: start")

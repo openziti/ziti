@@ -14,6 +14,11 @@ jobs:
     uses: ./.github/workflows/validation-ert-terminators.yml
     secrets: inherit
 
+  sdk-terminator-validation:
+    name: SDK Terminator Validation
+    uses: ./.github/workflows/validation-sdk-terminators.yml
+    secrets: inherit
+
   link-validation:
     name: Link Validation
     uses: ./.github/workflows/validation-links.yml

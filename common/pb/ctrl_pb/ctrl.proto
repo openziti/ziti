@@ -130,6 +130,7 @@ message ValidateTerminatorsRequest {
 message ValidateTerminatorsV2Request {
   repeated Terminator terminators = 1;
   bool fixInvalid = 2;
+  bool postCreate = 3;
 }
 
 enum TerminatorInvalidReason {

@@ -59,33 +59,17 @@ func (self *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch cha
 func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	var terminatorIds []string
-	if self.network.Dispatcher.IsLeader() {
-		for _, id := range request.TerminatorIds {
-			isPresent, err := self.network.Terminator.IsEntityPresent(id)
-			if isPresent || err != nil {
-				terminatorIds = append(terminatorIds, id)
-			} else {
-				log.
-					WithField("routerId", ch.Id()).
-					WithField("terminatorId", id).
-					Info("delete requested of terminator that doesn't exist")
-			}
-		}
-	} else {
-		terminatorIds = request.TerminatorIds
-	}
-
-	if len(terminatorIds) == 0 {
-		log.
-			WithField("routerId", ch.Id()).
-			WithField("terminatorIds", request.TerminatorIds).
-			Info("responding to batch terminator delete for non-present terminators")
+	// Don't pre-filter by IsEntityPresent here. The create for a terminator may be
+	// in-flight in raft but not yet applied to the DB. If we skip it here, the create
+	// will apply after we return success, leaving an orphan. By sending all IDs through
+	// raft, the delete will be ordered after the create and ApplyDeleteBatch will handle
+	// non-existent IDs gracefully.
+	if len(request.TerminatorIds) == 0 {
 		handler_common.SendSuccess(msg, ch, "")
 		return
 	}
 
-	if err := self.network.Terminator.DeleteBatch(terminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
+	if err := self.network.Terminator.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("terminatorIds", request.TerminatorIds).

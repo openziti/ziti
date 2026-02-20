@@ -533,6 +533,20 @@ func (rdm *RouterDataModelSender) getDataStateAlreadyLocked(index uint64) *edge_
 		events = append(events, newEvent)
 	})
 
+	identityToPolicyCount := 0
+	for _, change := range servicePolicyIdentities {
+		identityToPolicyCount += len(change.RelatedEntityIds)
+	}
+
+	pfxlog.Logger().
+		WithField("index", index).
+		WithField("events", len(events)).
+		WithField("identities", rdm.Identities.Count()).
+		WithField("services", rdm.Services.Count()).
+		WithField("servicePolicies", rdm.ServicePolicies.Count()).
+		WithField("identityToPolicyAssociations", identityToPolicyCount).
+		Info("building full data state snapshot")
+
 	return &edge_ctrl_pb.DataState{
 		Events:     events,
 		EndIndex:   index,

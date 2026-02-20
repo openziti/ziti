@@ -65,7 +65,7 @@ func NewValidateTerminatorsCmd(p common.OptionsProvider) *cobra.Command {
 	validateTerminatorsCmd.Flags().StringVar(&action.identityFilter, "identity-filter", "", "Specify which identities to validate")
 	validateTerminatorsCmd.Flags().Uint32Var(&action.expectedPerHostAndSvc, "expected-per-host-and-svc", 0,
 		"If set, check that selected hosts have this number of terminators per service")
-	validateTerminatorsCmd.Flags().Uint32Var(&action.expectedPerHostAndSvc, "expected-per-host", 0,
+	validateTerminatorsCmd.Flags().Uint32Var(&action.expectedPerHost, "expected-per-host", 0,
 		"If set, check that selected hosts have this number of terminators total")
 	return validateTerminatorsCmd
 }
