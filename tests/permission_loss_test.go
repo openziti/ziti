@@ -115,21 +115,23 @@ func Test_TerminatorCloseOnBindPermissionLoss(t *testing.T) {
 	// Remove bind permission for service1 by deleting its bind policy
 	ctx.AdminManagementSession.requireDeleteEntity(bindPolicy1)
 
-	// Wait for the terminator to be removed and listener to be closed
+	// Wait for service1 terminators to be removed
 	timeout := time.After(10 * time.Second)
 	for {
-		if listener1.IsClosed() {
+		terminators := ctx.AdminManagementSession.listTerminators(fmt.Sprintf(`service="%s"`, service1.Id))
+		if len(terminators) == 0 {
 			break
 		}
 		select {
 		case <-timeout:
-			ctx.Req.Fail("timed out waiting for listener1 to close after bind permission loss")
+			ctx.Req.Fail("timed out waiting for service1 terminators to be removed after bind permission loss")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
 
-	// Verify listener2 is still open
-	ctx.Req.False(listener2.IsClosed(), "listener2 should still be open")
+	// Verify service2 still has terminators
+	service2Terminators := ctx.AdminManagementSession.listTerminators(fmt.Sprintf(`service="%s"`, service2.Id))
+	ctx.Req.True(len(service2Terminators) > 0, "service2 should still have terminators")
 
 	// Verify service2 still works
 	conn2 = ctx.WrapConn(clientContext.Dial(service2.Name))

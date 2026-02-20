@@ -39,24 +39,50 @@ type dialer struct {
 }
 
 func (dialer *dialer) IsTerminatorValid(id string, destination string) bool {
-	valid, _ := dialer.InspectTerminator(id, destination, true)
+	valid, _, _ := dialer.InspectTerminator(id, destination, true, false)
 	return valid
 }
 
-func (dialer *dialer) InspectTerminator(id string, destination string, fixInvalid bool) (bool, string) {
+func (dialer *dialer) InspectTerminator(id string, destination string, fixInvalid bool, postCreate bool) (bool, bool, string) {
 	terminatorAddress := strings.TrimPrefix(destination, "hosted:")
 	pfxlog.Logger().Debug("looking up hosted service conn")
 	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
 	if found && terminator.terminatorId == id {
 		dialer.factory.hostedServices.markEstablished(terminator, "validation message received")
-		result, err := terminator.inspect(dialer.factory.hostedServices, fixInvalid, false)
-		if err != nil {
-			return true, err.Error()
+
+		// For post-create validation, we only need to confirm the router still has
+		// the terminator. The router's own post-create inspect handles SDK-level validation.
+		if postCreate {
+			return true, false, "terminator present"
 		}
-		return result.Type == edgeSdk.ConnTypeBind, result.Detail
+
+		if terminator.supportsInspect {
+			result, err := terminator.inspect()
+
+			if err != nil {
+				return true, true, err.Error()
+			}
+
+			if fixInvalid && result.Type != edgeSdk.ConnTypeBind {
+				notifyCtrl, fixErr := terminator.fixInvalid(dialer.factory.hostedServices)
+
+				// if we had a timeout, try again later
+				if fixErr != nil {
+					return true, true, fixErr.Error()
+				}
+
+				// If the terminator was replaced, try again later
+				if !notifyCtrl {
+					return true, true, ""
+				}
+			}
+
+			return result.Type == edgeSdk.ConnTypeBind, false, result.Detail
+		}
+		return true, false, ""
 	}
 
-	return false, "terminator not found"
+	return false, false, "terminator not found"
 }
 
 func newDialer(factory *Factory, options *Options) xgress_router.Dialer {

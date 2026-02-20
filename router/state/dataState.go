@@ -51,7 +51,32 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 			return
 		}
 
-		logger.WithField("index", newState.EndIndex).Info("received full router data model state")
+		identityCount := 0
+		policyCount := 0
+		identityToPolicyCount := 0
+		serviceCount := 0
+		for _, evt := range newState.Events {
+			switch evt.Model.(type) {
+			case *edge_ctrl_pb.DataState_Event_Identity:
+				identityCount++
+			case *edge_ctrl_pb.DataState_Event_ServicePolicy:
+				policyCount++
+			case *edge_ctrl_pb.DataState_Event_Service:
+				serviceCount++
+			case *edge_ctrl_pb.DataState_Event_ServicePolicyChange:
+				change := evt.GetServicePolicyChange()
+				if change.RelatedEntityType == edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity && change.Add {
+					identityToPolicyCount += len(change.RelatedEntityIds)
+				}
+			}
+		}
+		logger.WithField("index", newState.EndIndex).
+			WithField("events", len(newState.Events)).
+			WithField("identities", identityCount).
+			WithField("services", serviceCount).
+			WithField("servicePolicies", policyCount).
+			WithField("identityToPolicyAssociations", identityToPolicyCount).
+			Info("received full router data model state")
 
 		model := common.NewReceiverRouterDataModelFromDataState(newState, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, false)

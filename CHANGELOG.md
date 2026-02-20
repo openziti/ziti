@@ -507,6 +507,24 @@ Note: this work was done in advance of enabling the TLS handshake rate limiter b
 handshake rate limiter is not yet enabled by default, but can be enabled via the `tls.rateLimiter`
 configuration section.
 
+New configuration options (available under each `rateLimiter` section):
+
+  - successThreshold (float)
+    - Default: 0.9
+    - Description: Success rate threshold above which the window size will be increased and below which it will be decreased
+  - increaseFactor (float)
+    - Default: 1.02
+    - Description: Multiplier applied to the current window size when growing. Must be greater than 1
+  - decreaseFactor (float)
+    - Default: 0.9
+    - Description: Multiplier applied to the current window size when shrinking. Must be between 0 and 1
+  - increaseCheckInterval (integer)
+    - Default: 10
+    - Description: Number of successes between window size increase checks
+  - decreaseCheckInterval (integer)
+    - Default: 10
+    - Description: Number of backoffs between window size decrease checks
+
 ## Background Processing for Identity Updates
 
 Identity environment and authenticator updates that occur during authentication are now processed asynchronously in the background. 
@@ -887,6 +905,39 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
 - `ctrl_channel.dialer.busy_workers` - Number of workers currently executing a dial
 - `ctrl_channel.dialer.work_timer` - Timer tracking the duration of each dial attempt
 
+## SDK Inspection Support
+
+New CLI commands have been added for inspecting SDK state, useful for diagnosing terminator and
+connectivity issues.
+
+**Note:** SDK inspection requires SDK support. Currently only the Go SDK supports inspection,
+as of version 1.5.0. Other SDKs will need to add support before these commands can be used
+with them.
+
+### `ziti fabric inspect sdk`
+
+Retrieves SDK context inspection data from identities connected to routers.
+
+```
+ziti fabric inspect sdk <target-selector> <identity-id>
+```
+
+The `<target-selector>` is a regex matching router IDs (use `.*` for all routers). The
+`<identity-id>` is the identity whose SDK context you want to inspect. The command returns
+detailed state from the connected SDK instance, including active services, terminators, and
+connection status.
+
+### `ziti agent tunnel dump-sdk`
+
+Dumps SDK context information from a running `ziti tunnel` process via the IPC agent.
+
+```
+ziti agent tunnel dump-sdk
+```
+
+Returns JSON-formatted inspection data for all SDK contexts registered in the tunnel process,
+including service listeners, connections, and terminator state.
+
 ## Current Beta Features
 
 * Basic Permission System
@@ -923,7 +974,7 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.2](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.2)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.3](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.3)
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
     * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
     * [Issue #885](https://github.com/openziti/sdk-golang/issues/885) - Only compare relevant service fields when looking for changes
@@ -965,6 +1016,7 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
     * [Issue #3648](https://github.com/openziti/ziti/issues/3648) - tunnel: myCopy logs router ID as circuitId, causing misleading debug output
     * [Issue #3658](https://github.com/openziti/ziti/issues/3658) - Raft cluster join fails with "hello message too big" when using long hostnames
+    * [Issue #3626](https://github.com/openziti/ziti/issues/3626) - controller: overlay bind point produces malformed URL in /versions apiBaseUrls
     * [Issue #3635](https://github.com/openziti/ziti/issues/3635) - Allow controllers to dial routers to support more topologies
     * [Issue #3607](https://github.com/openziti/ziti/issues/3607) - linux installer not upgradable from v1
     * [Issue #3650](https://github.com/openziti/ziti/issues/3650) - Reroute doesn't proactively clean up orphaned route entries

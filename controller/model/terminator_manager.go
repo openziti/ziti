@@ -319,9 +319,9 @@ func (self *TerminatorManager) ValidateTerminators(req *mgmt_pb.ValidateTerminat
 
 		if req.ExpectedPerHost > 0 {
 			if req.IdentitiesFilter == "" {
-				req.TerminatorsFilter = "not isAdmin limit none"
+				req.IdentitiesFilter = "not isAdmin limit none"
 			}
-			identitiesList, err := self.BaseList(req.TerminatorsFilter)
+			identitiesList, err := self.env.GetManagers().Identity.BaseList(req.IdentitiesFilter)
 			if err != nil {
 				hostErrorHandler(&mgmt_pb.InvalidTerminatorHostState{
 					IdentityId: "invalid identities query",

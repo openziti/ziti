@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/idgen"
 	routerEnv "github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_common"
@@ -42,26 +43,30 @@ import (
 
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
-		terminators:  cmap.New[*edgeTerminator](),
-		events:       make(chan terminatorEvent),
-		env:          env,
-		stateManager: stateManager,
-		triggerEvalC: make(chan struct{}, 1),
-		establishSet: map[string]*edgeTerminator{},
-		deleteSet:    map[string]*edgeTerminator{},
+		terminators:          cmap.New[*edgeTerminator](),
+		events:               make(chan terminatorEvent),
+		env:                  env,
+		stateManager:         stateManager,
+		triggerEvalC:         make(chan struct{}, 1),
+		establishSet:         map[string]*edgeTerminator{},
+		deleteSet:            map[string]*edgeTerminator{},
+		notifyCloseSet:       map[string]*pendingSdkCloseNotification{},
+		postCreateInspectSet: map[string]*pendingPostCreateInspect{},
 	}
 	go result.run()
 	return result
 }
 
 type hostedServiceRegistry struct {
-	terminators  cmap.ConcurrentMap[string, *edgeTerminator]
-	events       chan terminatorEvent
-	env          routerEnv.RouterEnv
-	stateManager state.Manager
-	establishSet map[string]*edgeTerminator
-	deleteSet    map[string]*edgeTerminator
-	triggerEvalC chan struct{}
+	terminators          cmap.ConcurrentMap[string, *edgeTerminator]
+	events               chan terminatorEvent
+	env                  routerEnv.RouterEnv
+	stateManager         state.Manager
+	establishSet         map[string]*edgeTerminator
+	deleteSet            map[string]*edgeTerminator
+	notifyCloseSet       map[string]*pendingSdkCloseNotification
+	postCreateInspectSet map[string]*pendingPostCreateInspect
+	triggerEvalC         chan struct{}
 }
 
 type terminatorEvent interface {
@@ -110,6 +115,9 @@ func (self *hostedServiceRegistry) run() {
 		if !self.env.GetCtrlRateLimiter().IsRateLimited() {
 			self.evaluateDeleteQueue()
 		}
+
+		self.evaluateNotifyCloseQueue()
+		self.evaluatePostCreateInspects()
 	}
 }
 
@@ -132,7 +140,7 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId())
 
 		if terminator.edgeClientConn.ch.GetChannel().IsClosed() {
-			self.Remove(terminator, "sdk connection is closed")
+			self.queueRemoveTerminatorUnchecked(terminator, "sdk connection is closed")
 			log.Infof("terminator sdk channel closed, not trying to establish")
 			dequeue()
 			continue
@@ -265,8 +273,14 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 					Info("remove terminator succeeded")
 				terminator.operationActive.Store(false)
 				if !self.Remove(terminator, "controller delete success") {
-					pfxlog.Logger().WithField("terminatorId", terminator.terminatorId).
-						Error("terminator was replaced after being put into deleting state?!")
+					// A new terminator with this ID was created while the old delete was in flight.
+					// The controller just deleted the ID, so we need to re-establish the replacement.
+					if current, exists := self.terminators.Get(terminator.terminatorId); exists {
+						pfxlog.Logger().WithField("terminatorId", terminator.terminatorId).
+							Info("terminator was replaced during delete, re-establishing replacement")
+						current.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "re-establishing after delete/create race")
+						self.queueEstablishTerminatorAsync(current)
+					}
 				}
 			}
 		}
@@ -421,6 +435,217 @@ func (self *hostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *ed
 	self.deleteSet[terminator.terminatorId] = terminator
 }
 
+type pendingSdkCloseNotification struct {
+	terminator *edgeTerminator
+	reason     string
+	edgeErr    *EdgeError
+}
+
+type pendingPostCreateInspect struct {
+	terminator  *edgeTerminator
+	requestSeqs map[int32]struct{}
+	lastSent    time.Time
+	firstSent   time.Time
+	sendCount   int
+}
+
+type addSdkCloseNotificationEvent struct {
+	notification *pendingSdkCloseNotification
+}
+
+func (self *addSdkCloseNotificationEvent) handle(registry *hostedServiceRegistry) {
+	if !self.notification.terminator.GetChannel().IsClosed() {
+		registry.notifyCloseSet[idgen.MustNewUUIDString()] = self.notification
+	}
+}
+
+func (self *hostedServiceRegistry) addPendingSdkCloseNotification(terminator *edgeTerminator, reason string, edgeErr *EdgeError) {
+	self.notifyCloseSet[idgen.MustNewUUIDString()] = &pendingSdkCloseNotification{
+		terminator: terminator,
+		reason:     reason,
+		edgeErr:    edgeErr,
+	}
+}
+
+func (self *hostedServiceRegistry) ensureSdkCloseSent(terminator *edgeTerminator, reason string, edgeErr *EdgeError) {
+	self.ensureSdkCloseSentInner(terminator, reason, edgeErr, false)
+}
+
+func (self *hostedServiceRegistry) ensureSdkCloseSentInner(terminator *edgeTerminator, reason string, edgeErr *EdgeError, queueDirect bool) {
+	if terminator.GetChannel().IsClosed() {
+		return
+	}
+	closeMsg := edge.NewStateClosedMsg(terminator.Id(), reason)
+	if edgeErr != nil {
+		edgeErr.ApplyToMsg(closeMsg)
+	}
+	queued, _ := terminator.GetDefaultSender().TrySend(closeMsg)
+	if !queued {
+		if queueDirect {
+			self.addPendingSdkCloseNotification(terminator, reason, edgeErr)
+		} else {
+			self.queueSdkCloseNotification(terminator, reason, edgeErr)
+		}
+	}
+}
+
+func (self *hostedServiceRegistry) queueSdkCloseNotification(terminator *edgeTerminator, reason string, edgeErr *EdgeError) {
+	self.queue(&addSdkCloseNotificationEvent{
+		notification: &pendingSdkCloseNotification{
+			terminator: terminator,
+			reason:     reason,
+			edgeErr:    edgeErr,
+		},
+	})
+}
+
+func (self *hostedServiceRegistry) evaluateNotifyCloseQueue() {
+	for id, notification := range self.notifyCloseSet {
+		if notification.terminator.GetChannel().IsClosed() {
+			delete(self.notifyCloseSet, id)
+			continue
+		}
+
+		closeMsg := edge.NewStateClosedMsg(notification.terminator.Id(), notification.reason)
+		if notification.edgeErr != nil {
+			notification.edgeErr.ApplyToMsg(closeMsg)
+		}
+		queued, _ := notification.terminator.GetDefaultSender().TrySend(closeMsg)
+		if queued {
+			delete(self.notifyCloseSet, id)
+		}
+		// if !queued: channel busy, leave in set for next iteration
+	}
+}
+
+// queuePostCreateInspect queues an event to add a terminator to the post-create inspect set.
+// This is safe to call from any goroutine (e.g., from the edge channel handler goroutine).
+func (self *hostedServiceRegistry) queuePostCreateInspect(terminator *edgeTerminator) {
+	self.queue(&addPostCreateInspectEvent{terminator: terminator})
+}
+
+type addPostCreateInspectEvent struct {
+	terminator *edgeTerminator
+}
+
+func (self *addPostCreateInspectEvent) handle(registry *hostedServiceRegistry) {
+	// Only add if this terminator is still the current one in the registry.
+	// Multiple takeovers of the same terminatorId can result in multiple
+	// addPostCreateInspectEvents for different terminator objects but the
+	// same terminatorId. Without this check, a stale event could overwrite
+	// the current one's entry, causing the current inspect to be lost when
+	// evaluatePostCreateInspects sees the stale entry as "no longer current".
+	current, exists := registry.terminators.Get(self.terminator.terminatorId)
+	if !exists || current != self.terminator {
+		return
+	}
+	registry.postCreateInspectSet[self.terminator.terminatorId] = &pendingPostCreateInspect{
+		terminator:  self.terminator,
+		requestSeqs: map[int32]struct{}{},
+	}
+}
+
+// inspectResponseEvent is queued by the edge channel handler when an inspect response is received
+// from the SDK. We correlate with pending inspects using the request sequence number because
+// go-sdk versions older than 1.5 don't return the connId in inspect responses.
+type inspectResponseEvent struct {
+	conn     *edgeClientConn
+	replyFor int32
+	result   *edge.InspectResult
+}
+
+func (self *inspectResponseEvent) handle(registry *hostedServiceRegistry) {
+	for id, pending := range registry.postCreateInspectSet {
+		if pending.terminator.edgeClientConn != self.conn {
+			continue
+		}
+		if _, found := pending.requestSeqs[self.replyFor]; !found {
+			continue
+		}
+
+		log := pfxlog.Logger().
+			WithField("terminatorId", pending.terminator.terminatorId).
+			WithField("connId", pending.terminator.MsgChannel.Id()).
+			WithField("connType", self.result.Type)
+
+		delete(registry.postCreateInspectSet, id)
+
+		if self.result.Type != edge.ConnTypeBind {
+			log.Info("post-create inspect: sdk reported terminator invalid, closing")
+			// don't need to notify the sdk because the sdk just told us it doesn't know about the terminator.
+			// can't call close() here because we're on the event loop and close would deadlock
+			// trying to queue back to the event channel
+			registry.queueRemoveTerminatorSync(pending.terminator, "post-create inspect: terminator sdk state invalid")
+			if pending.terminator.onClose != nil {
+				pending.terminator.onClose()
+			}
+		} else {
+			log.Info("post-create inspect: sdk confirmed terminator valid")
+		}
+		return
+	}
+}
+
+func (self *hostedServiceRegistry) evaluatePostCreateInspects() {
+	for id, pending := range self.postCreateInspectSet {
+		log := pfxlog.Logger().
+			WithField("terminatorId", pending.terminator.terminatorId).
+			WithField("connId", pending.terminator.MsgChannel.Id())
+
+		// Check if the terminator is still current in the registry
+		current, exists := self.terminators.Get(pending.terminator.terminatorId)
+		if !exists || current != pending.terminator {
+			log.Info("post-create inspect: terminator no longer current, removing from inspect set")
+			delete(self.postCreateInspectSet, id)
+			continue
+		}
+
+		if pending.terminator.edgeClientConn.ch.GetChannel().IsClosed() {
+			log.Info("post-create inspect: channel closed, closing terminator")
+			delete(self.postCreateInspectSet, id)
+			self.queueRemoveTerminatorSync(pending.terminator, "post-create inspect: channel closed")
+			if pending.terminator.onClose != nil {
+				pending.terminator.onClose()
+			}
+			continue
+		}
+
+		// If we've been trying long enough with enough sends, consider it dead.
+		// Can't call close() here because we're on the event loop and close would deadlock
+		// trying to queue back to the event channel.
+		if !pending.firstSent.IsZero() && pending.sendCount >= 3 && time.Since(pending.firstSent) > 10*time.Minute {
+			log.Warn("post-create inspect: timed out waiting for response, closing terminator")
+			delete(self.postCreateInspectSet, id)
+			self.queueRemoveTerminatorSync(pending.terminator, "post-create inspect timed out")
+			if pending.terminator.onClose != nil {
+				pending.terminator.onClose()
+			}
+			continue
+		}
+
+		// Send/resend inspect request if interval has elapsed
+		if pending.lastSent.IsZero() || time.Since(pending.lastSent) > 10*time.Second {
+			msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
+			msg.PutUint32Header(edge.ConnIdHeader, pending.terminator.Id())
+			queued, err := pending.terminator.GetControlSender().TrySend(msg)
+			if err != nil {
+				log.WithError(err).Warn("post-create inspect: error sending inspect request, removing")
+				delete(self.postCreateInspectSet, id)
+				continue
+			}
+			if queued {
+				pending.requestSeqs[msg.Sequence()] = struct{}{}
+				pending.lastSent = time.Now()
+				pending.sendCount++
+				if pending.firstSent.IsZero() {
+					pending.firstSent = time.Now()
+				}
+				log.WithField("sendCount", pending.sendCount).Info("post-create inspect: sent inspect request")
+			}
+		}
+	}
+}
+
 func (self *hostedServiceRegistry) markEstablished(terminator *edgeTerminator, reason string) {
 	self.queue(&markEstablishedEvent{
 		terminator: terminator,
@@ -491,7 +716,7 @@ func (self *hostedServiceRegistry) cleanupDuplicates(newest *edgeTerminator) {
 	})
 
 	for _, terminator := range toClose {
-		terminator.close(self, false, true, "duplicate terminator", nil) // don't notify, channel is already closed, we can't send messages
+		terminator.close(self, true, "duplicate terminator") // don't notify sdk, channel is already closed, we can't send messages
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 			WithField("serviceSessionTokenId", terminator.serviceSessionToken.TokenId()).
 			WithField("instance", terminator.instance).
@@ -511,7 +736,7 @@ func (self *hostedServiceRegistry) unbindSession(connId uint32, serviceSessionTo
 
 	atLeastOneRemoved := false
 	for _, terminator := range toClose {
-		terminator.close(self, false, true, "unbind successful", nil) // don't notify, sdk asked us to unbind
+		terminator.close(self, true, "unbind successful") // don't notify sdk, sdk asked us to unbind
 		pfxlog.Logger().WithField("routerId", terminator.edgeClientConn.listener.id.Token).
 			WithField("serviceSessionTokenId", serviceSessionToken.TokenId()).
 			WithField("connId", connId).
@@ -621,9 +846,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		}
 
 		terminator.operationActive.Store(false)
-		if terminator.establishCallback != nil {
-			terminator.establishCallback(response.Result)
-		}
+		terminator.NotifyEstablished(response.Result)
 
 		// If the retry hint is start over or permanent
 		if edge.RetryHint(response.GetRetryHint()) == edge.RetryDefault {
@@ -633,15 +856,20 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 					Code:      response.ErrorCode,
 					RetryHint: edge.RetryHint(response.RetryHint),
 				}
-				terminator.close(self, true, false,
-					fmt.Sprintf("received error from controller: %s", response.Msg), edgeErr)
+				reason := fmt.Sprintf("received error from controller: %s", response.Msg)
+				self.ensureSdkCloseSent(terminator, reason, edgeErr)
+				terminator.close(self, false, reason)
 			}
 		} else {
-			terminator.close(self, true, false, response.Msg, &EdgeError{
+			retryHint := edge.RetryHint(response.GetRetryHint())
+			edgeErr := &EdgeError{
 				Message:   response.Msg,
 				Code:      response.ErrorCode,
-				RetryHint: edge.RetryHint(response.RetryHint),
-			})
+				RetryHint: retryHint,
+			}
+			reason := response.Msg
+			self.ensureSdkCloseSent(terminator, reason, edgeErr)
+			terminator.close(self, false, reason)
 		}
 
 		return
@@ -651,10 +879,9 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	self.markEstablished(terminator, "create notification received")
 
 	// notify the sdk that the terminator was established
-	terminator.establishCallback(response.Result)
+	terminator.NotifyEstablished(response.Result)
 
-	// we don't need to call inspect here, as the controller will be doing a post-create check
-	// to verify that everything is still in place
+	// post-create inspect is queued by markEstablished -> markEstablishedEvent.handle
 }
 
 func (self *hostedServiceRegistry) HandleReconnect() {
@@ -740,18 +967,17 @@ func (self *hostedServiceRegistry) checkForExistingListenerId(terminator *edgeTe
 	}
 }
 
-func (self *hostedServiceRegistry) handleSdkReturnedInvalid(terminator *edgeTerminator, notifyCtrl bool) invalidTerminatorRemoveResult {
+func (self *hostedServiceRegistry) handleSdkReturnedInvalid(terminator *edgeTerminator) invalidTerminatorRemoveResult {
 	event := &sdkTerminatorInvalidEvent{
 		terminator: terminator,
 		resultC:    make(chan invalidTerminatorRemoveResult, 1),
-		notifyCtrl: notifyCtrl,
 	}
 	self.queue(event)
 
 	select {
 	case result := <-event.resultC:
 		return result
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond):
 		if !self.terminators.Has(terminator.terminatorId) {
 			return invalidTerminatorRemoveResult{
 				existed: false,
@@ -794,7 +1020,7 @@ func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 			Precedence:      terminator.precedence.String(),
 			AssignIds:       terminator.assignIds,
 			UseSdkXgress:    terminator.useSdkXgress,
-			V2:              terminator.v2,
+			V2:              true,
 			SupportsInspect: terminator.supportsInspect,
 			OperationActive: terminator.operationActive.Load(),
 			CreateTime:      terminator.createTime.Format("2006-01-02 15:04:05"),
@@ -823,13 +1049,8 @@ type channelClosedEvent struct {
 func (self *channelClosedEvent) handle(registry *hostedServiceRegistry) {
 	registry.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
 		if terminator.MsgChannel.GetChannel() == self.ch {
-			if terminator.v2 {
-				// we're iterating the map right now, so the terminator can't have changed
-				registry.queueRemoveTerminatorUnchecked(terminator, "channel closed")
-			} else {
-				// don't notify, channel is already closed, we can't send messages
-				go terminator.close(registry, false, true, "channel closed", nil)
-			}
+			// we're iterating the map right now, so the terminator can't have changed
+			registry.queueRemoveTerminatorUnchecked(terminator, "channel closed")
 		}
 	})
 }
@@ -857,7 +1078,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 
 	var existingList []*edgeTerminator
 	registry.terminators.IterCb(func(_ string, terminator *edgeTerminator) {
-		if terminator.v2 && terminator.listenerId == self.terminator.listenerId &&
+		if terminator.listenerId == self.terminator.listenerId &&
 			terminator.getIdentityId() == self.terminator.getIdentityId() {
 			existingList = append(existingList, terminator)
 		}
@@ -899,16 +1120,35 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 
 	for _, existing := range existingList {
 		if !existing.IsDeleting() {
+			// If this bind is on the same connection as the existing one but has a lower connId,
+			// it's a stale bind that was reordered. The existing bind is actually newer.
+			// Discard the stale bind to avoid replacing the valid existing terminator.
+			if self.terminator.edgeClientConn == existing.edgeClientConn &&
+				self.terminator.MsgChannel.Id() < existing.MsgChannel.Id() {
+				log = log.WithField("existingTerminatorId", existing.terminatorId).
+					WithField("existingConnId", existing.MsgChannel.Id())
+				log.Info("discarding stale bind, existing bind has newer connId")
+				self.terminator.setState(xgress_common.TerminatorStateDeleting, "stale bind, existing bind is newer")
+				self.resultC <- listenerIdCheckResult{
+					terminator:      self.terminator,
+					replaceExisting: false,
+				}
+				return
+			}
+
 			self.terminator.replace(existing)
 			registry.Put(self.terminator)
 
 			// sometimes things happen close together. we need to try to notify replaced terminators
 			// that they're being closed in case they're the newer, still open connection
-			existing.close(registry, true, false, "found a newer terminator for listener id", &EdgeError{
+			reason := "found a newer terminator for listener id"
+			edgeErr := &EdgeError{
 				Message:   "newer terminator found for listener id",
 				Code:      edge.ErrorCodeInternal,
 				RetryHint: edge.RetryDefault,
-			})
+			}
+			registry.ensureSdkCloseSentInner(existing, reason, edgeErr, true)
+			existing.close(registry, false, reason)
 			existing.setState(xgress_common.TerminatorStateDeleting, "newer terminator found for listener id")
 
 			log = log.WithField("existingTerminatorId", existing.terminatorId)
@@ -942,7 +1182,6 @@ type invalidTerminatorRemoveResult struct {
 type sdkTerminatorInvalidEvent struct {
 	terminator *edgeTerminator
 	resultC    chan invalidTerminatorRemoveResult
-	notifyCtrl bool
 }
 
 func (self *sdkTerminatorInvalidEvent) handle(registry *hostedServiceRegistry) {
@@ -964,15 +1203,6 @@ func (self *sdkTerminatorInvalidEvent) removeTerminator(registry *hostedServiceR
 			existed: true,
 			removed: false,
 		}
-	}
-
-	if self.notifyCtrl {
-		registry.queueRemoveTerminatorSync(self.terminator, "query to sdk indicated terminator is invalid")
-		return invalidTerminatorRemoveResult{
-			existed: true,
-			removed: true,
-		}
-
 	}
 
 	existed := false
@@ -1012,6 +1242,16 @@ func (self *markEstablishedEvent) handle(registry *hostedServiceRegistry) {
 		log.Info("received additional terminator created notification")
 	} else {
 		log.Info("terminator established")
+		// If establishment took a long time, the SDK may have timed out waiting for BindSuccess
+		// and closed the listener. The initial post-create inspect (sent right after bind) would
+		// have confirmed validity before the timeout. Re-inspect to catch this case.
+		if self.terminator.supportsInspect && time.Since(self.terminator.createTime) > 30*time.Second {
+			log.Info("establishment took >30s, queuing post-establish inspect")
+			registry.postCreateInspectSet[self.terminator.terminatorId] = &pendingPostCreateInspect{
+				terminator:  self.terminator,
+				requestSeqs: map[int32]struct{}{},
+			}
+		}
 	}
 
 	self.terminator.operationActive.Store(false)

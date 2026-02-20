@@ -49,7 +49,23 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
 	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())
 
+	cmd.AddCommand(newInspectSdkContextCmd(p))
+
 	return cmd
+}
+
+func newInspectSdkContextCmd(p common.OptionsProvider) *cobra.Command {
+	action := newInspectAction(p)
+
+	cmd := &cobra.Command{
+		Use:   "sdk <target-selector> <identity-id>",
+		Short: "Gets SDK context inspect data from the specified identity connected to the target router(s)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return action.inspect(args[0], inspectCommon.SdkContextKeyPrefix+args[1])
+		},
+	}
+	return action.addFlags(cmd)
 }
 
 func newInspectAction(p common.OptionsProvider) *InspectAction {
