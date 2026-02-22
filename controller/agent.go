@@ -97,12 +97,13 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 	result := &mgmt_pb.RaftMemberListResponse{}
 	for _, member := range members {
 		result.Members = append(result.Members, &mgmt_pb.RaftMember{
-			Id:          member.Id,
-			Addr:        member.Addr,
-			IsVoter:     member.Voter,
-			IsLeader:    member.Leader,
-			Version:     member.Version,
-			IsConnected: member.Connected,
+			Id:                member.Id,
+			Addr:              member.Addr,
+			IsVoter:           member.Voter,
+			IsLeader:          member.Leader,
+			Version:           member.Version,
+			IsConnected:       member.Connected,
+			IsPreferredLeader: member.PreferredLeader,
 		})
 	}
 

@@ -41,11 +41,20 @@ import (
 )
 
 const (
-	PeerAddrHeader     = 11
-	SigningCertHeader  = 12
-	ApiAddressesHeader = 13
-	RaftConnIdHeader   = 14
-	ClusterIdHeader    = 15
+	// New header IDs, starting at 2000 to avoid conflicts with channel base headers (0-12+)
+	PeerAddrHeader        = 2000
+	SigningCertHeader     = 2001
+	ApiAddressesHeader    = 2002
+	RaftConnIdHeader      = 2003
+	ClusterIdHeader       = 2004
+	PreferredLeaderHeader = 2005
+
+	// Legacy header IDs, used as fallback when reading from older peers
+	LegacyPeerAddrHeader     = 11
+	LegacySigningCertHeader  = 12
+	LegacyApiAddressesHeader = 13
+	LegacyRaftConnIdHeader   = 14
+	LegacyClusterIdHeader    = 15
 
 	RaftConnectType    = 2048
 	RaftDataType       = 2049
@@ -55,15 +64,16 @@ const (
 )
 
 type Peer struct {
-	mesh          *impl
-	Id            raft.ServerID
-	Address       string
-	Channel       channel.Channel
-	RaftConns     concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
-	Version       *versions.VersionInfo
-	SigningCerts  []*x509.Certificate
-	ApiAddresses  map[string][]event.ApiAddress
-	raftPeerIdGen uint32
+	mesh            *impl
+	Id              raft.ServerID
+	Address         string
+	Channel         channel.Channel
+	RaftConns       concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
+	Version         *versions.VersionInfo
+	SigningCerts    []*x509.Certificate
+	ApiAddresses    map[string][]event.ApiAddress
+	PreferredLeader bool
+	raftPeerIdGen   uint32
 }
 
 func (self *Peer) nextRaftPeerId() uint32 {
@@ -99,7 +109,7 @@ func (self *Peer) handleReceiveConnect(m *channel.Message, ch channel.Channel) {
 		log := pfxlog.Logger().WithField("peerId", ch.Id())
 		log.Info("received connect request from raft peer")
 
-		id, ok := m.GetUint32Header(RaftConnIdHeader)
+		id, ok := getUint32HeaderWithFallback(m, RaftConnIdHeader, LegacyRaftConnIdHeader)
 		if !ok {
 			response := channel.NewResult(false, "no conn id in connect request")
 			response.ReplyTo(m)
@@ -141,7 +151,7 @@ func (self *Peer) handleReceiveDisconnect(m *channel.Message, ch channel.Channel
 	go func() {
 		log := pfxlog.ContextLogger(ch.Label())
 
-		id, ok := m.GetUint32Header(RaftConnIdHeader)
+		id, ok := getUint32HeaderWithFallback(m, RaftConnIdHeader, LegacyRaftConnIdHeader)
 		if !ok {
 			response := channel.NewResult(false, "no conn id in disconnect request")
 			response.ReplyTo(m)
@@ -171,7 +181,7 @@ func (self *Peer) handleReceiveDisconnect(m *channel.Message, ch channel.Channel
 }
 
 func (self *Peer) handleReceiveData(m *channel.Message, ch channel.Channel) {
-	id, ok := m.GetUint32Header(RaftConnIdHeader)
+	id, ok := getUint32HeaderWithFallback(m, RaftConnIdHeader, LegacyRaftConnIdHeader)
 	if !ok {
 		pfxlog.Logger().WithField("peerId", ch.Id()).Error("no conn id in data request")
 		return
@@ -194,6 +204,7 @@ func (self *Peer) Connect(timeout time.Duration) (net.Conn, error) {
 	id := self.nextRaftPeerId()
 	msg := channel.NewMessage(RaftConnectType, nil)
 	msg.Headers.PutUint32Header(RaftConnIdHeader, id)
+	msg.Headers.PutUint32Header(LegacyRaftConnIdHeader, id)
 
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
@@ -234,6 +245,7 @@ func (self *Peer) closeRaftConn(peerConn *raftPeerConn, timeout time.Duration) e
 
 	msg := channel.NewMessage(RaftDisconnectType, nil)
 	msg.Headers.PutUint32Header(RaftConnIdHeader, peerConn.id)
+	msg.Headers.PutUint32Header(LegacyRaftConnIdHeader, peerConn.id)
 
 	response, err := msg.WithTimeout(timeout).SendForReply(self.Channel)
 	if err != nil {
@@ -438,8 +450,11 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		channel.HelloVersionHeader: self.versionEncoded,
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
+		LegacyPeerAddrHeader:       []byte(self.raftAddr),
 		SigningCertHeader:          serverCert,
+		LegacySigningCertHeader:    serverCert,
 		ClusterIdHeader:            []byte(self.env.GetClusterId()),
+		LegacyClusterIdHeader:      []byte(self.env.GetClusterId()),
 	}
 
 	for _, headerProvider := range self.helloHeaderProviders {
@@ -494,11 +509,15 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 			return errors.Wrap(err, "can't decode version from returned from peer")
 		}
 
-		if apiAddressBytes, found := peer.Channel.Underlay().Headers()[ApiAddressesHeader]; found {
+		if apiAddressBytes, found := headerWithFallback(peer.Channel.Underlay().Headers(), ApiAddressesHeader, LegacyApiAddressesHeader); found {
 			err := json.Unmarshal(apiAddressBytes, &peer.ApiAddresses)
 			if err != nil {
 				pfxlog.Logger().WithError(err).Error("could not unmarshal api address header")
 			}
+		}
+
+		if _, found := peer.Channel.Underlay().Headers()[PreferredLeaderHeader]; found {
+			peer.PreferredLeader = true
 		}
 
 		peer.Version = versionInfo
@@ -532,7 +551,8 @@ func (self *impl) validateConnection(ch channel.Channel) error {
 }
 
 func (self *impl) checkClusterIds(ch channel.Channel) error {
-	clusterId := string(ch.Underlay().Headers()[ClusterIdHeader])
+	clusterIdBytes, _ := headerWithFallback(ch.Underlay().Headers(), ClusterIdHeader, LegacyClusterIdHeader)
+	clusterId := string(clusterIdBytes)
 	if clusterId != "" && self.env.GetClusterId() != "" && clusterId != self.env.GetClusterId() {
 		return fmt.Errorf("local cluster id %s doesn't match peer cluster id %s", self.env.GetClusterId(), clusterId)
 	}
@@ -566,7 +586,9 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		channel.HelloVersionHeader: self.versionEncoded,
 		channel.TypeHeader:         []byte(ChannelTypeMesh),
 		PeerAddrHeader:             []byte(self.raftAddr),
+		LegacyPeerAddrHeader:       []byte(self.raftAddr),
 		ClusterIdHeader:            []byte(self.env.GetClusterId()),
+		LegacyClusterIdHeader:      []byte(self.env.GetClusterId()),
 	}
 
 	for _, headerProvider := range self.helloHeaderProviders {
@@ -601,7 +623,8 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		}
 
 		peerId = raft.ServerID(id)
-		peerAddr = raft.ServerAddress(underlay.Headers()[PeerAddrHeader])
+		peerAddrBytes, _ := headerWithFallback(underlay.Headers(), PeerAddrHeader, LegacyPeerAddrHeader)
+		peerAddr = raft.ServerAddress(peerAddrBytes)
 
 		return markerErr
 	})
@@ -651,6 +674,7 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 
 	pfxlog.Logger().WithField("peerId", peer.Id).
 		WithField("peerAddr", peer.Address).
+		WithField("preferredLeader", peer.PreferredLeader).
 		Info("peer connected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
@@ -689,11 +713,12 @@ func (self *impl) GetEventPeerList(peers ...*Peer) []*event.ClusterPeer {
 	var result []*event.ClusterPeer
 	for _, peer := range peers {
 		result = append(result, &event.ClusterPeer{
-			Id:           string(peer.Id),
-			Addr:         peer.Address,
-			Version:      peer.Version.Version,
-			ServerCert:   peer.SigningCerts,
-			ApiAddresses: peer.ApiAddresses,
+			Id:                string(peer.Id),
+			Addr:              peer.Address,
+			Version:           peer.Version.Version,
+			ServerCert:        peer.SigningCerts,
+			ApiAddresses:      peer.ApiAddresses,
+			IsPreferredLeader: peer.PreferredLeader,
 		})
 	}
 	return result
@@ -766,7 +791,8 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		ch := binding.GetChannel()
-		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
+		addrBytes, _ := headerWithFallback(ch.Underlay().Headers(), PeerAddrHeader, LegacyPeerAddrHeader)
+		addr := string(addrBytes)
 
 		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
 		if err != nil {
@@ -801,18 +827,22 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			return errors.Wrap(err, "can't decode version from returned from dialing peer")
 		}
 
-		certHeader, found := ch.Underlay().Headers()[SigningCertHeader]
+		certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader)
 		if found {
 			if cert, err := x509.ParseCertificate(certHeader); err == nil {
 				peer.SigningCerts = append(peer.SigningCerts, cert)
 			}
 		}
 
-		apiAddressesHeader, found := ch.Underlay().Headers()[ApiAddressesHeader]
+		apiAddressesHeader, found := headerWithFallback(ch.Underlay().Headers(), ApiAddressesHeader, LegacyApiAddressesHeader)
 		if found {
 			if err := json.Unmarshal(apiAddressesHeader, &peer.ApiAddresses); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not parse peer api addresses header")
 			}
+		}
+
+		if _, found := ch.Underlay().Headers()[PreferredLeaderHeader]; found {
+			peer.PreferredLeader = true
 		}
 
 		if err = self.validateConnection(peer.Channel); err != nil {
@@ -884,4 +914,21 @@ type HeaderProviderFunc func(map[int32][]byte)
 
 func (self HeaderProviderFunc) Apply(headers map[int32][]byte) {
 	self(headers)
+}
+
+func headerWithFallback(headers map[int32][]byte, key int32, legacyKey int32) ([]byte, bool) {
+	if val, found := headers[key]; found {
+		return val, true
+	}
+	if val, found := headers[legacyKey]; found {
+		return val, true
+	}
+	return nil, false
+}
+
+func getUint32HeaderWithFallback(m *channel.Message, key int32, legacyKey int32) (uint32, bool) {
+	if val, ok := m.GetUint32Header(key); ok {
+		return val, true
+	}
+	return m.GetUint32Header(legacyKey)
 }

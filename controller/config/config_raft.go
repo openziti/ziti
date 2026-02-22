@@ -32,6 +32,7 @@ type RaftConfig struct {
 
 	WarnWhenLeaderlessFor time.Duration
 
-	ApplyTimeout time.Duration
-	RateLimiter  command.AdaptiveRateLimiterConfig
+	ApplyTimeout    time.Duration
+	PreferredLeader bool
+	RateLimiter     command.AdaptiveRateLimiterConfig
 }

@@ -187,6 +187,7 @@ message RaftMember  {
   bool IsLeader = 4;
   string Version = 5;
   bool IsConnected = 6;
+  bool IsPreferredLeader = 7;
 }
 
 message RaftMemberListResponse {

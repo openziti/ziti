@@ -32,12 +32,13 @@ import (
 )
 
 type Member struct {
-	Id        string `json:"id"`
-	Addr      string `json:"addr"`
-	Voter     bool   `json:"isVoter"`
-	Leader    bool   `json:"isLeader"`
-	Version   string `json:"version"`
-	Connected bool   `json:"isConnected"`
+	Id              string `json:"id"`
+	Addr            string `json:"addr"`
+	Voter           bool   `json:"isVoter"`
+	Leader          bool   `json:"isLeader"`
+	Version         string `json:"version"`
+	Connected       bool   `json:"isConnected"`
+	PreferredLeader bool   `json:"isPreferredLeader"`
 }
 
 func (self *Controller) ListMembers() ([]*Member, error) {
@@ -59,21 +60,25 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 
 		version := "<not connected>"
 		connected := false
+		preferredLeader := false
 		if string(srv.ID) == self.env.GetId().Token {
 			version = self.env.GetVersionProvider().Version()
 			connected = true
+			preferredLeader = self.Config.PreferredLeader
 		} else if peer, exists := peers[string(srv.Address)]; exists {
 			version = peer.Version.Version
 			connected = true
+			preferredLeader = peer.PreferredLeader
 		}
 
 		result = append(result, &Member{
-			Id:        string(srv.ID),
-			Addr:      string(srv.Address),
-			Voter:     srv.Suffrage == raft.Voter,
-			Leader:    srv.Address == leaderAddr,
-			Version:   version,
-			Connected: connected,
+			Id:              string(srv.ID),
+			Addr:            string(srv.Address),
+			Voter:           srv.Suffrage == raft.Voter,
+			Leader:          srv.Address == leaderAddr,
+			Version:         version,
+			Connected:       connected,
+			PreferredLeader: preferredLeader,
 		})
 	}
 
@@ -82,12 +87,13 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			continue
 		}
 		result = append(result, &Member{
-			Id:        string(peer.Id),
-			Addr:      peer.Address,
-			Voter:     false,
-			Leader:    peer.Address == string(leaderAddr),
-			Version:   peer.Version.Version,
-			Connected: true,
+			Id:              string(peer.Id),
+			Addr:            peer.Address,
+			Voter:           false,
+			Leader:          peer.Address == string(leaderAddr),
+			Version:         peer.Version.Version,
+			Connected:       true,
+			PreferredLeader: peer.PreferredLeader,
 		})
 	}
 

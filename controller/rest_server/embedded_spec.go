@@ -1479,6 +1479,9 @@ func init() {
         "leader": {
           "type": "boolean"
         },
+        "preferredLeader": {
+          "type": "boolean"
+        },
         "readOnly": {
           "type": "boolean"
         },
@@ -7284,6 +7287,9 @@ func init() {
           "type": "string"
         },
         "leader": {
+          "type": "boolean"
+        },
+        "preferredLeader": {
           "type": "boolean"
         },
         "readOnly": {

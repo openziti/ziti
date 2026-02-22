@@ -54,6 +54,9 @@ type ClusterPeer struct {
 
 	// The set of api addresses presented by the controller.
 	ApiAddresses map[string][]ApiAddress `json:"apiAddresses"`
+
+	// Indicates if the peer is a preferred leader
+	IsPreferredLeader bool `json:"isPreferredLeader"`
 }
 
 // An ApiAddress represents an endpoint on a controller. This may include things

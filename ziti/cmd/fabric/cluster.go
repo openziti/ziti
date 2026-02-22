@@ -64,9 +64,9 @@ func (self *clusterListMembersAction) run(cmd *cobra.Command, _ []string) error 
 func (self *clusterListMembersAction) outputClusterMembers(o *api.Options, members *cluster.ClusterListMembersOK) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected", "ReadOnly"})
+	t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected", "ReadOnly", "Preferred"})
 	for _, m := range members.Payload.Data {
-		t.AppendRow(table.Row{*m.ID, *m.Address, *m.Voter, *m.Leader, *m.Version, *m.Connected, m.ReadOnly != nil && *m.ReadOnly})
+		t.AppendRow(table.Row{*m.ID, *m.Address, *m.Voter, *m.Leader, *m.Version, *m.Connected, m.ReadOnly != nil && *m.ReadOnly, m.PreferredLeader})
 	}
 	api.RenderTable(&api.Options{
 		CommonOptions: self.CommonOptions,

@@ -913,11 +913,17 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 }
 
 func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
-	providerFunc := func(headers map[int32][]byte) {
+	apiAddrProvider := mesh.HeaderProviderFunc(func(headers map[int32][]byte) {
 		_, apiDataBytes := c.GetApiAddresses()
 		headers[mesh.ApiAddressesHeader] = apiDataBytes
-	}
+		headers[mesh.LegacyApiAddressesHeader] = apiDataBytes
+	})
 
-	provider := mesh.HeaderProviderFunc(providerFunc)
-	return []mesh.HeaderProvider{provider}
+	preferredLeaderProvider := mesh.HeaderProviderFunc(func(headers map[int32][]byte) {
+		if c.config.Raft != nil && c.config.Raft.PreferredLeader {
+			headers[mesh.PreferredLeaderHeader] = []byte{1}
+		}
+	})
+
+	return []mesh.HeaderProvider{apiAddrProvider, preferredLeaderProvider}
 }
