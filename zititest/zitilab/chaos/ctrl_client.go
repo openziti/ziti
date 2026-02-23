@@ -119,7 +119,7 @@ func (self *CtrlClients) Inspect(ctrlId, appRegex, targetDir, format string, req
 			RequestedValues: requestValues,
 		},
 		Context: context.Background(),
-	})
+	}, nil)
 
 	if err != nil {
 		return err
