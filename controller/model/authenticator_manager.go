@@ -329,7 +329,7 @@ func (self *AuthenticatorManager) PatchSelf(authenticatorSelf *AuthenticatorSelf
 
 	curHashResult := self.ReHashPassword(authenticatorSelf.CurrentPassword, updbAuth.DecodedSalt())
 
-	if curHashResult.Password != updbAuth.Password {
+	if subtle.ConstantTimeCompare([]byte(curHashResult.Password), []byte(updbAuth.Password)) != 1 {
 		apiErr := errorz.NewUnauthorized()
 		apiErr.Cause = errorz.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
 		return apiErr
