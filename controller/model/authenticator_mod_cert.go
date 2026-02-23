@@ -459,7 +459,7 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	var proxiedRaw []byte
+	proxiedRaw := make([]byte, base64.StdEncoding.DecodedLen(len(proxyRaw64)))
 	_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxyRaw64))
 
 	if err != nil {

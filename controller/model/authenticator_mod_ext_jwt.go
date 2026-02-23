@@ -344,6 +344,17 @@ func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, er
 		return nil, errorz.NewUnauthorizedSecondaryExtTokenInvalid(ids, issuers)
 	}
 
+	verifyResult := a.verifyTokenClaims(candidateToken)
+
+	if verifyResult.Error != nil {
+		failEvent := a.NewAuthEventFailure(context, bundle, candidateToken.TokenVerificationResult.Error.Error())
+
+		logger.Error(candidateToken.TokenVerificationResult.Error.Error())
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenInvalid(ids, issuers)
+	}
+
 	//success
 	bundle.TokenIssuer = candidateToken.TokenIssuer
 

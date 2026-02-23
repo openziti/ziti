@@ -249,7 +249,7 @@ func (b *BearerTokenHeader) Kid() string {
 	kidVal, kidOk := b.UnverifiedToken.Header["kid"]
 
 	if kidOk {
-		kid = kidVal.(string)
+		kid, _ = kidVal.(string)
 	}
 
 	return kid
