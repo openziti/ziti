@@ -617,8 +617,8 @@ github.com/openziti/edge-api v0.26.53 h1:5KpaKIjF9mnOW8cWCHO6ljQ/te3ANVp20KoudRJ
 github.com/openziti/edge-api v0.26.53/go.mod h1:Sj8HEql6ol2Oqp0yd3ZbGayCg8t/XTlH7q608UDHrwE=
 github.com/openziti/fablab v0.6.1 h1:TUFJzN+u1vvn5rkTNReLzS6sUfb+WmGDx7uWdKABnn0=
 github.com/openziti/fablab v0.6.1/go.mod h1:V5eDGSytgdIQ+gT7OyqAg4jqAzT26f8UlqdMCpTuUZA=
-github.com/openziti/foundation/v2 v2.0.86 h1:r4F1jsi8UFmeHmI4v6JC/hncPPjGxGEumOZRrE4Oey0=
-github.com/openziti/foundation/v2 v2.0.86/go.mod h1:LrE/z8YXQUbwfyGwg3HgFs9ElGOq/T61EXbkagkDozQ=
+github.com/openziti/foundation/v2 v2.0.87 h1:tD1Lba3C/MfBmDnLSmlyKB8hxjry4HAaNrdJqN+fqxQ=
+github.com/openziti/foundation/v2 v2.0.87/go.mod h1:LrE/z8YXQUbwfyGwg3HgFs9ElGOq/T61EXbkagkDozQ=
 github.com/openziti/go-term-markdown v1.0.1 h1:9uzMpK4tav6OtvRxRt99WwPTzAzCh+Pj9zWU2FBp3Qg=
 github.com/openziti/go-term-markdown v1.0.1/go.mod h1:aIhR12zlROVqr7x51DtBALaQZQ3FofBuKDWqCfaz3oo=
 github.com/openziti/identity v1.0.125 h1:vrtasPXwQHpHYDhdtzCEMcMMIIx794LiC3P+Bh2Lm3Y=

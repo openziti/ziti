@@ -10,8 +10,6 @@ replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
 
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
-replace github.com/openziti/foundation/v2 => github.com/openziti/foundation/v2 v2.0.86
-
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
