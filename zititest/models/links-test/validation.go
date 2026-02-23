@@ -127,7 +127,7 @@ func getLinkCount(clients *zitirest.Clients) (int64, error) {
 	result, err := clients.Fabric.Link.ListLinks(&link.ListLinksParams{
 		Filter:  &filter,
 		Context: ctx,
-	})
+	}, nil)
 
 	if err != nil {
 		return 0, err

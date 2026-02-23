@@ -170,7 +170,7 @@ func getTerminatorCount(clients *zitirest.Clients) (int64, error) {
 	result, err := clients.Fabric.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 		Filter:  &filter,
 		Context: ctx,
-	})
+	}, nil)
 
 	if err != nil {
 		return 0, err
