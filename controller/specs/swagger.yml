@@ -873,6 +873,52 @@ paths:
         '503':
           $ref: '#/responses/serverUnavailableResponse'
 
+  '/ascode/export':
+    post:
+      tags: [ascode]
+      summary: Export the entire network (or a subset) as a YAML/JSON bundle
+      operationId: exportAscode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                types:
+                  type: string
+                  description: List of resource types to export or "all"
+                format:
+                  type: string
+                  enum: [yaml, json]
+                  default: yaml
+      responses:
+        '200':
+          description: the exported bundle
+          content:
+            application/yaml: {}
+            application/json: {}
+
+  '/ascode/import':
+    post:
+      tags: [ascode]
+      summary: Import a YAML/JSON bundle produced by the exporter
+      operationId: importAscode
+      parameters:
+        - name: dryRun
+          in: query
+          schema: { type: boolean, default: false }
+          description: Validate only—do not mutate the network
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '204': { description: imported OK }
+        '422': { description: validation errors }
+
+
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
