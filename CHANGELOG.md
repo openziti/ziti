@@ -88,6 +88,8 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Bundled ZAC upgraded to 4.0
 * Build updated to Go 1.25
 * CLI cleaned up to remove calls to `os.Exit`, making it more friendly for embedding
+* Controller Edge APIs now return `WWW-Authenticate` response headers on `401 Unauthorized` responses, giving clients actionable information about which auth methods are accepted and what went wrong
+
 
 ## Basic Permission System (BETA)
 
@@ -637,6 +639,64 @@ To enable the Azure Service Bus event logger, add configuration to the controlle
 
 - Optional configuration:
     - bufferSize: Internal message buffer size (default: 50)
+
+
+## WWW-Authenticate Headers
+
+The controller's Edge APIs now include `WWW-Authenticate` headers on `401 Unauthorized` responses,
+per issuer: https://github.com/openziti/ziti/issues/3356. These headers provide insight into why
+a token was rejected. The main benefit of these headers is to convey information for JWT backed
+API Sessions and API Session authentication where a token may not have been provided (missing),
+is used beyond its expiration date (expired), or the token has become invalid for any other
+reason (invalid).
+
+`www-authenticate` headers are provided as a single header instnace with multiple challenge values
+separate by commas.
+
+### No Credentials Provided
+
+When a request hits a protected endpoint without any credentials, a single `WWW-Authenticate` header
+is returned listing both accepted auth schemes as comma-separated challenges:
+
+```
+WWW-Authenticate: zt-session realm="zt-session" error="missing" error_description="no matching token was provided",Bearer realm="openziti-oidc" error="missing" error_description="no matching token was provided"
+```
+
+### Token Errors
+
+When a token is present but cannot be accepted, the header identifies the scheme and what went wrong:
+
+```
+WWW-Authenticate: Bearer realm="openziti-oidc" error="expired" error_description="token expired"
+WWW-Authenticate: Bearer realm="openziti-oidc" error="invalid" error_description="token is invalid"
+WWW-Authenticate: zt-session realm="zt-session" error="invalid" error_description="token is invalid"
+```
+
+### OIDC External JWT — Primary Authentication
+
+When an auth policy requires an external JWT signer for primary authentication (e.g., a PKCE flow
+backed by an ext-jwt signer), the header identifies which signers are accepted and what went wrong.
+Multiple accepted signers are pipe-delimited in the `id` and `issuer` parameters:
+
+```
+WWW-Authenticate: Bearer realm="openziti-primary-ext-jwt" error="missing" error_description="no matching token was provided" id="signer-id-1|signer-id-2" issuer="https://issuer1.example.com|https://issuer2.example.com"
+```
+
+The `error` value follows the same `missing`/`expired`/`invalid` pattern as standard bearer token errors.
+
+### OIDC External JWT — Secondary / MFA Authentication
+
+When an auth policy requires an external JWT signer as a secondary factor (step-up after primary
+auth succeeds), the header identifies the single required signer. The `error` value follows the
+same `missing`/`expired`/`invalid` pattern:
+
+```
+WWW-Authenticate: Bearer realm="openziti-secondary-ext-jwt" error="missing" error_description="no matching token was provided" id="<signer-id>" issuer="<issuer>"
+```
+
+### Anonymous Endpoints
+
+Unauthenticated endpoints such as version information do not return `WWW-Authenticate` headers.
 
 ## Component Updates and Bug Fixes
 
