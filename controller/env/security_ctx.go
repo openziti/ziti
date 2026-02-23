@@ -433,6 +433,7 @@ func (ctx *SecurityCtx) resolvePermissions() {
 // "authenticated", "partiallyAuthenticated", and "admin". The map is populated during
 // resolution and is safe to read after any of the Get* methods have been called.
 func (ctx *SecurityCtx) GetPermissions() map[string]struct{} {
+	ctx.resolve()
 	return ctx.resolvedPermissions
 }
 

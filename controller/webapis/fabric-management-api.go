@@ -212,6 +212,8 @@ func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http
 			return
 		}
 
+		api.AddRequestContextToHttpContext(r, rc)
+
 		check := permissions.HasOneOf(permissions.IsAdmin(), permissions.HasEntityAccess())
 
 		// require admin or full ops access to access websocket APIs

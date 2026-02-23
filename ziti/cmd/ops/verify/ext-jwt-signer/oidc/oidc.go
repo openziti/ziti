@@ -148,7 +148,7 @@ type OIDCResponse struct {
 	AccessToken  string `json:"access_token"`
 }
 
-// GetToken starts a local HTTP server, opens the web browser to initiate the OIDC Discovery and
+// GetTokens starts a local HTTP server, opens the web browser to initiate the OIDC Discovery and
 // Token Exchange flow, blocks until the user completes authentication and is redirected back, and returns
 // the OIDC tokens.
 func GetTokens(ctx context.Context, config OIDCConfig, relyingParty rp.RelyingParty) (*OIDCResponse, error) {
