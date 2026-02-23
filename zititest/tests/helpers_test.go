@@ -58,7 +58,7 @@ func waitForTerminators(t *testing.T, timeout time.Duration, services ...string)
 			result, err := clients.Fabric.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 				Filter:  &filter,
 				Context: ctx,
-			})
+			}, nil)
 			cancelF()
 
 			if err == nil && result.Payload.Meta.Pagination.TotalCount != nil && *result.Payload.Meta.Pagination.TotalCount > 0 {
