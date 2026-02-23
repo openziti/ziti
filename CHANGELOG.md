@@ -650,7 +650,7 @@ API Sessions and API Session authentication where a token may not have been prov
 is used beyond its expiration date (expired), or the token has become invalid for any other
 reason (invalid).
 
-`www-authenticate` headers are provided as a single header instnace with multiple challenge values
+`www-authenticate` headers are provided as a single header instance with multiple challenge values
 separate by commas.
 
 ### No Credentials Provided
