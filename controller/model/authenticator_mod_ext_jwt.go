@@ -215,6 +215,16 @@ func (a *AuthModuleExtJwt) ProcessPrimary(context AuthContext) (AuthResult, erro
 			continue
 		}
 
+		if !verifyResult.AuthPolicy.Primary.ExtJwt.Allowed {
+			continue
+		}
+
+		if len(verifyResult.AuthPolicy.Primary.ExtJwt.AllowedExtJwtSigners) > 0 {
+			if !stringz.Contains(verifyResult.AuthPolicy.Primary.ExtJwt.AllowedExtJwtSigners, candidate.TokenIssuer.Id()) {
+				continue
+			}
+		}
+
 		primaryResult = verifyResult
 		break
 	}
@@ -334,7 +344,7 @@ func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, er
 	if !candidateToken.TokenVerificationResult.IsValid() {
 		failEvent := a.NewAuthEventFailure(context, bundle, candidateToken.TokenVerificationResult.Error.Error())
 
-		logger.Error(candidateToken.TokenVerificationResult.Error.Error())
+		logger.WithError(candidateToken.TokenVerificationResult.Error).Error("token verification failed")
 		a.DispatchEvent(failEvent)
 
 		if candidateToken.TokenVerificationResult.TokenIsExpired() {
@@ -347,9 +357,17 @@ func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, er
 	verifyResult := a.verifyTokenClaims(candidateToken)
 
 	if verifyResult.Error != nil {
-		failEvent := a.NewAuthEventFailure(context, bundle, candidateToken.TokenVerificationResult.Error.Error())
+		failEvent := a.NewAuthEventFailure(context, bundle, verifyResult.Error.Error())
 
-		logger.Error(candidateToken.TokenVerificationResult.Error.Error())
+		logger.WithError(verifyResult.Error).Error("token claim verification failed")
+		a.DispatchEvent(failEvent)
+
+		return nil, errorz.NewUnauthorizedSecondaryExtTokenInvalid(ids, issuers)
+	}
+
+	if verifyResult.Identity.Id != bundle.Identity.Id {
+		failEvent := a.NewAuthEventFailure(context, bundle, "identity mismatch, the primary identity did not match the secondary")
+		logger.Error("identity mismatch, the primary identity did not match the secondary")
 		a.DispatchEvent(failEvent)
 
 		return nil, errorz.NewUnauthorizedSecondaryExtTokenInvalid(ids, issuers)

@@ -951,13 +951,19 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("could not retrieve request context")
-			rc.RespondWithError(err)
+
+			if rc != nil {
+				rc.RespondWithError(err)
+			} else {
+				WriteHttpError(writer, err)
+			}
+
 			return
 		}
 
 		if rc == nil {
 			pfxlog.Logger().Error("request context was nil")
-			rc.RespondWithError(errors.New("request context was nil"))
+			WriteHttpApiError(writer, errorz.NewUnhandled(errors.New("request context was nil")))
 			return
 		}
 
@@ -1066,9 +1072,28 @@ func (ae *AppEnv) TimelineId() string {
 	return ae.timelineId.Load()
 }
 
+// WriteHttpApiError is meant to be used in situations where no request context is available to provide responses.
 func WriteHttpApiError(w http.ResponseWriter, apiError *errorz.ApiError) {
 	producer := runtime.JSONProducer()
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(apiError.Status)
 	_ = producer.Produce(w, apiError)
+}
+
+// WriteHttpError is meant to be used in situations where no request context is available to provide responses.
+func WriteHttpError(w http.ResponseWriter, err error) {
+	if err == nil {
+		err = errors.New("unknown error")
+	}
+
+	var apiErr *errorz.ApiError
+	ok := errors.As(err, &apiErr)
+
+	if ok && apiErr != nil {
+		WriteHttpApiError(w, apiErr)
+		return
+	}
+
+	apiErr = errorz.NewUnhandled(err)
+	WriteHttpApiError(w, apiErr)
 }

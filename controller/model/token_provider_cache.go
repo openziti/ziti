@@ -232,6 +232,7 @@ func (a *TokenIssuerCache) loadExisting() {
 			signer, err := a.env.GetStores().ExternalJwtSigner.LoadById(tx, id)
 			if err != nil {
 				pfxlog.Logger().WithError(err).WithField("extJwtId", id).Error("error loading external jwt as token issuer")
+				continue
 			}
 
 			a.onExtJwtCreate(signer)
@@ -342,6 +343,10 @@ func (a *TokenIssuerCache) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 			return nil, apierror.NewInvalidAuth()
 		}
 
+		if !tokenIssuer.IsControllerTokenIssuer() {
+			logger.Error("kid matched an external jwt signer but issuer string did not match, rejecting to prevent cross-issuer token acceptance")
+			return nil, apierror.NewInvalidAuth()
+		}
 	}
 
 	logger = logger.WithField("issuerType", tokenIssuer.TypeName()).WithField("tokenIssuerName", tokenIssuer.Name())
@@ -470,7 +475,7 @@ func (a *TokenIssuerCache) IterateExternalIssuers(f func(issuer common.TokenIssu
 }
 
 // IterateControllerIssuers calls f for each registered controller JWT issuer in an unspecified order.
-// Iteration stops early when f returns false. Controller issuers are not included.
+// Iteration stops early when f returns false. ExtJwt issuers are not included.
 func (a *TokenIssuerCache) IterateControllerIssuers(f func(issuer common.TokenIssuer) bool) {
 	keepGoing := true
 	a.controllerIssuers.IterCb(func(key string, v common.TokenIssuer) {
@@ -500,7 +505,7 @@ func (a *TokenIssuerCache) GetIssuerByKid(kid string) common.TokenIssuer {
 
 // GetKids returns a deduplicated list of all key IDs known across both external JWT signers
 // and controller issuers. Used for diagnostic logging when a token cannot be matched.
-func (a *TokenIssuerCache) GetKids() interface{} {
+func (a *TokenIssuerCache) GetKids() []string {
 	kidMap := map[string]struct{}{}
 
 	for _, issuer := range a.externalIssuers.Items() {
@@ -592,7 +597,9 @@ func (r *TokenIssuerExtJwt) EnrollmentAuthPolicyId() string {
 func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationResult {
 	err := r.Resolve(false)
 
-	pfxlog.Logger().WithError(err).Warn("error during routine resolve of external jwt signer cert/jwks, attempting to verify the token with any cached keys")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("error during routine resolve of external jwt signer cert/jwks, attempting to verify the token with any cached keys")
+	}
 
 	claims := jwt.MapClaims{}
 	resultToken, err := jwt.ParseWithClaims(token, claims, r.keyFunc)
@@ -615,7 +622,7 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 	result.IdClaimValue, result.Error = resolveStringClaimSelector(claims, r.IdentityIdClaimsSelector())
 
 	if result.Error != nil {
-		result.Error = fmt.Errorf("could not resolve identity claim property %s: %w", r.IdentityIdClaimsSelector(), err)
+		result.Error = fmt.Errorf("could not resolve identity claim property %s: %w", r.IdentityIdClaimsSelector(), result.Error)
 	}
 
 	return result
@@ -979,7 +986,7 @@ func (o *ControllerTokenIssuer) VerifyToken(token string) *common.TokenVerificat
 		kid := ""
 
 		if token.Header != nil {
-			kid = token.Header["kid"].(string)
+			kid, _ = token.Header["kid"].(string)
 		}
 
 		if kid == "" {
@@ -1010,7 +1017,8 @@ func (o *ControllerTokenIssuer) VerifyToken(token string) *common.TokenVerificat
 		return result
 	}
 
-	result.IdClaimValue = strings.TrimSpace(claims["sub"].(string))
+	result.IdClaimValue, _ = claims["sub"].(string)
+	result.IdClaimValue = strings.TrimSpace(result.IdClaimValue)
 
 	if result.IdClaimValue == "" {
 		result.Error = errors.New("no sub claim found in token")

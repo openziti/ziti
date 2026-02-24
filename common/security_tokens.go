@@ -85,7 +85,7 @@ type TokenVerificationResult struct {
 
 // IsValid returns true if the JWT token signature is valid and no other errors have occurred
 func (r *TokenVerificationResult) IsValid() bool {
-	return r.Token.Valid && r.Error == nil
+	return r.Error == nil && r.Token != nil && r.Token.Valid
 }
 
 // TokenIsExpired returns true if the verification error wraps jwt.ErrTokenExpired, or if
@@ -151,7 +151,7 @@ type SecurityToken struct {
 	IsLegacy  bool               // true if zt-session, false if JWT
 	ZtSession string             // non-empty for legacy tokens
 	OidcToken *BearerTokenHeader // non-nil for JWT tokens
-	Request   *http.Request
+	Request   *http.Request      //todo: can remove?
 }
 
 // SecurityTokenCtx holds all security-token state for a single HTTP request. It parses
@@ -317,7 +317,7 @@ func (b *BearerTokenHeader) IsApiSessionAccessToken() bool {
 // IsValid returns true if the token has been verified and the verification result indicates
 // a valid signature with no errors. A nil verification result is treated as not valid.
 func (b *BearerTokenHeader) IsValid() bool {
-	if b.TokenVerificationResult == nil {
+	if b == nil || b.TokenVerificationResult == nil {
 		return false
 	}
 
@@ -334,7 +334,7 @@ func GetSecurityTokenCtx(r *http.Request) *SecurityTokenCtx {
 	}
 
 	return val.(*SecurityTokenCtx)
-}
+} //todo: make sure no one is using this
 
 // ContextKeySecurityCtx is a typed key for storing a SecurityCtx in a request context,
 // preventing accidental collisions with plain string keys.
@@ -471,8 +471,6 @@ func (s *SecurityTokenCtx) processHeaders() error {
 	}
 
 	s.fillOnce.Do(func() {
-		s.hasProcessedHeaders = true
-
 		s.ztSession = strings.TrimSpace(s.httpRequest.Header.Get("zt-Session"))
 
 		s.rawAuthorizationHeaders = s.httpRequest.Header.Values("Authorization")
@@ -533,6 +531,8 @@ func (s *SecurityTokenCtx) processHeaders() error {
 				}
 			}
 		}
+
+		s.hasProcessedHeaders = true
 	})
 
 	return nil

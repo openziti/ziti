@@ -379,7 +379,7 @@ func Test_OidcAuthHeaders(t *testing.T) {
 				ctx.Req.True(unauthorizedErrorOk)
 				ctx.Req.Len(unauthorizedError.WWWAuthenticate, 1)
 
-				t.Run("that is has a valid format", func(t *testing.T) {
+				t.Run("that has a valid format", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					bearerWa, err := ParseWWWAuthenticate(unauthorizedError.WWWAuthenticate[0])
@@ -505,7 +505,7 @@ func Test_OidcAuthHeaders(t *testing.T) {
 				ctx.Req.True(unauthorizedErrorOk)
 				ctx.Req.Len(unauthorizedError.WWWAuthenticate, 1)
 
-				t.Run("that is has a valid format", func(t *testing.T) {
+				t.Run("that has a valid format", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					oidcWa, err := ParseWWWAuthenticate(unauthorizedError.WWWAuthenticate[0])
@@ -631,7 +631,7 @@ func Test_OidcAuthHeaders(t *testing.T) {
 				ctx.Req.True(unauthorizedErrorOk)
 				ctx.Req.Len(unauthorizedError.WWWAuthenticate, 1)
 
-				t.Run("that is has a valid format", func(t *testing.T) {
+				t.Run("that has a valid format", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					oidcWa, err := ParseWWWAuthenticate(unauthorizedError.WWWAuthenticate[0])
@@ -689,14 +689,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid values", func(t *testing.T) {
+						t.Run("and has valid values", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-secondary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -758,14 +758,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-secondary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -806,14 +806,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-secondary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -927,14 +927,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid values", func(t *testing.T) {
+						t.Run("and has valid values", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1003,14 +1003,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1057,14 +1057,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1185,14 +1185,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid values", func(t *testing.T) {
+						t.Run("and has valid values", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1261,14 +1261,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1315,14 +1315,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-primary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1391,14 +1391,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-secondary-ext-jwt", wwwAuthWa.Params["realm"])
@@ -1485,14 +1485,14 @@ func Test_OidcAuthHeaders(t *testing.T) {
 					wwwAuthHeader := oidcResponses.PrimaryCredentialResponse.Header().Values("WWW-Authenticate")
 					ctx.Req.Len(wwwAuthHeader, 1)
 
-					t.Run("that is has a valid format", func(t *testing.T) {
+					t.Run("that has a valid format", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
 						wwwAuthWa, err := ParseWWWAuthenticate(wwwAuthHeader[0])
 						ctx.Req.NoError(err)
 						ctx.Req.NotNil(wwwAuthWa)
 
-						t.Run("and and valid value", func(t *testing.T) {
+						t.Run("and has valid value", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.Equal("Bearer", wwwAuthWa.Scheme)
 							ctx.Req.Equal("openziti-secondary-ext-jwt", wwwAuthWa.Params["realm"])

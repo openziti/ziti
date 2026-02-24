@@ -205,7 +205,7 @@ func Test_Legacy_AuthHeaders(t *testing.T) {
 				ctx.Req.True(unauthorizedErrorOk)
 				ctx.Req.Len(unauthorizedError.WWWAuthenticate, 1)
 
-				t.Run("that is has a valid format", func(t *testing.T) {
+				t.Run("that has a valid format", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					ztSessionWa, err := ParseWWWAuthenticate(unauthorizedError.WWWAuthenticate[0])
@@ -295,7 +295,7 @@ func Test_Legacy_AuthHeaders(t *testing.T) {
 				ctx.Req.True(unauthorizedErrorOk)
 				ctx.Req.Len(unauthorizedError.WWWAuthenticate, 1)
 
-				t.Run("that is has a valid format", func(t *testing.T) {
+				t.Run("that has a valid format", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					ztSessionWa, err := ParseWWWAuthenticate(unauthorizedError.WWWAuthenticate[0])

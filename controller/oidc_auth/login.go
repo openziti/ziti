@@ -421,7 +421,6 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authQueries []*rest_model.AuthQueryDetail
-	var authHeaders http.Header
 
 	if !authRequest.HasSecondaryAuth() {
 		authQueries = authRequest.GetAuthQueries()
@@ -429,12 +428,6 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 
 	if authRequest.NeedsTotp() {
 		w.Header().Set(TotpRequiredHeader, "true")
-	}
-
-	for k, vs := range authHeaders {
-		for _, v := range vs {
-			w.Header().Add(k, v)
-		}
 	}
 
 	respBody := JsonMap(map[string]interface{}{

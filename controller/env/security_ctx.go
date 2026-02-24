@@ -158,6 +158,10 @@ func (ctx *SecurityCtx) MasqueradeAsIdentity(identity *model.Identity) error {
 		return errors.New("only administrators can masquerade as other identities")
 	}
 
+	if !ctx.isFullyAuthed() {
+		return errors.New("cannot masquerade as identity until fully authenticated")
+	}
+
 	ctx.masqueradeIdentity = identity
 	return nil
 }
@@ -346,6 +350,7 @@ func (ctx *SecurityCtx) resolveZtSession(securityToken *common.SecurityToken) {
 
 func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) {
 	if securityToken == nil || securityToken.OidcToken == nil || securityToken.OidcToken.AccessClaims == nil {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
 
@@ -417,10 +422,10 @@ func (ctx *SecurityCtx) resolvePermissions() {
 			ctx.resolvedPermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
 		} else if ctx.isFullyAuthed() {
 			ctx.resolvedPermissions[permissions.AuthenticatedPermission] = struct{}{}
-		}
 
-		if ctx.resolvedIdentity.IsAdmin || ctx.resolvedIdentity.IsDefaultAdmin {
-			ctx.resolvedPermissions[permissions.AdminPermission] = struct{}{}
+			if ctx.resolvedIdentity.IsAdmin || ctx.resolvedIdentity.IsDefaultAdmin {
+				ctx.resolvedPermissions[permissions.AdminPermission] = struct{}{}
+			}
 		}
 
 		for _, permission := range ctx.resolvedIdentity.Permissions {

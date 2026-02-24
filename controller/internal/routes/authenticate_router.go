@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -242,8 +243,13 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {
 	identity, err := rc.SecurityCtx.GetIdentity()
 
-	if identity == nil {
+	if err != nil {
 		rc.RespondWithError(err)
+		return
+	}
+
+	if identity == nil {
+		rc.RespondWithError(errors.New("identity is nil, expected value"))
 		return
 	}
 

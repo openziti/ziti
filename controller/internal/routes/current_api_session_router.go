@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -108,10 +109,16 @@ func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestC
 func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	apiSession, err := rc.SecurityCtx.GetApiSession()
 
-	if apiSession == nil {
+	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
+
+	if apiSession == nil {
+		rc.RespondWithError(errors.New("api session is nil, expected a value"))
+		return
+	}
+
 	err = ae.GetManagers().ApiSession.Delete(apiSession.Id, rc.NewChangeContext())
 
 	if err != nil {

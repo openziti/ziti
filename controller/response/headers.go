@@ -19,6 +19,7 @@ package response
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/build"
@@ -69,8 +70,15 @@ func addApiErrorHeaders(rc *RequestContext, err error) {
 	if errors.As(err, &apiErr) {
 		for key, values := range apiErr.Headers {
 			for _, value := range values {
-				rc.ResponseWriter.Header().Add(key, value)
+				rc.ResponseWriter.Header().Add(key, sanitizeHeaderValue(value))
 			}
 		}
 	}
+}
+
+// sanitizeHeaderValue escapes double-quotes to prevent breaking quoted-string
+// fields in structured headers such as WWW-Authenticate, where issuer strings
+// from the database are embedded as parameter values.
+func sanitizeHeaderValue(value string) string {
+	return strings.ReplaceAll(value, `"`, `\"`)
 }
