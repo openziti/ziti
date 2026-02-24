@@ -471,6 +471,8 @@ func (s *SecurityTokenCtx) processHeaders() error {
 	}
 
 	s.fillOnce.Do(func() {
+		defer func() { s.hasProcessedHeaders = true }()
+
 		s.ztSession = strings.TrimSpace(s.httpRequest.Header.Get("zt-Session"))
 
 		s.rawAuthorizationHeaders = s.httpRequest.Header.Values("Authorization")
@@ -532,7 +534,6 @@ func (s *SecurityTokenCtx) processHeaders() error {
 			}
 		}
 
-		s.hasProcessedHeaders = true
 	})
 
 	return nil
