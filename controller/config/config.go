@@ -97,6 +97,10 @@ const (
 	DefaultBackgroundQueueSize         = 1000
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
+
+	DefaultCtrlDialerEnabled      = true
+	DefaultCtrlDialerScanInterval = 30 * time.Second
+	DefaultCtrlDialerDialDelay    = 30 * time.Second
 )
 
 type Config struct {
@@ -123,6 +127,7 @@ type Config struct {
 	Ctrl struct {
 		Listener transport.Address
 		Options  *CtrlOptions
+		Dialer   CtrlDialerConfig
 	}
 	HealthChecks struct {
 		BoltCheck struct {
@@ -168,6 +173,13 @@ type CtrlOptions struct {
 	AdvertiseAddress       *transport.Address
 	RouterHeartbeatOptions *channel.HeartbeatOptions
 	PeerHeartbeatOptions   *channel.HeartbeatOptions
+}
+
+type CtrlDialerConfig struct {
+	Enabled      bool
+	Groups       []string
+	ScanInterval time.Duration
+	DialDelay    time.Duration
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -641,6 +653,49 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
 				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
+			}
+
+			controllerConfig.Ctrl.Dialer = CtrlDialerConfig{
+				Enabled:      DefaultCtrlDialerEnabled,
+				Groups:       []string{"default"},
+				ScanInterval: DefaultCtrlDialerScanInterval,
+				DialDelay:    DefaultCtrlDialerDialDelay,
+			}
+
+			if value, found := submap["dialer"]; found {
+				if dialerMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := dialerMap["enabled"]; found {
+						controllerConfig.Ctrl.Dialer.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", v))
+					}
+					if v, found := dialerMap["groups"]; found {
+						if groups, ok := v.([]interface{}); ok {
+							controllerConfig.Ctrl.Dialer.Groups = nil
+							for _, g := range groups {
+								if s, ok := g.(string); ok {
+									controllerConfig.Ctrl.Dialer.Groups = append(controllerConfig.Ctrl.Dialer.Groups, s)
+								}
+							}
+						}
+					}
+					if v, found := dialerMap["scanInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.ScanInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.scanInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["dialDelay"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.DialDelay = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.dialDelay: %w", err)
+							}
+						}
+					}
+				}
 			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")

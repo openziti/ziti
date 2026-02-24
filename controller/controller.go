@@ -482,6 +482,18 @@ func (c *Controller) Run() error {
 		c.raftController.StartEventGeneration()
 	}
 
+	if c.config.Ctrl.Dialer.Enabled {
+		ctrlDialer := handler_ctrl.NewCtrlDialer(
+			&c.config.Ctrl.Dialer,
+			c.network,
+			ctrlAccepter,
+			c.config.Id,
+			headers,
+			c.shutdownC,
+		)
+		go ctrlDialer.Run()
+	}
+
 	c.network.Run()
 
 	return nil
