@@ -36,6 +36,54 @@ func Test_AuthPolicies(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
+	// Create a dedicated safe auth policy for the default admin so that modifying the
+	// default auth policy (e.g. adding secondary ext-JWT/TOTP requirements) during these
+	// tests does not lock the admin session out of subsequent management API calls.
+	safeAdminAuthPolicy := &rest_model.AuthPolicyCreate{
+		Name: ToPtr("Admin Safe Auth Policy"),
+		Primary: &rest_model.AuthPolicyPrimary{
+			Cert: &rest_model.AuthPolicyPrimaryCert{
+				AllowExpiredCerts: ToPtr(false),
+				Allowed:           ToPtr(true),
+			},
+			ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+				Allowed:        ToPtr(false),
+				AllowedSigners: []string{},
+			},
+			Updb: &rest_model.AuthPolicyPrimaryUpdb{
+				Allowed:                ToPtr(true),
+				MaxAttempts:            ToPtr[int64](0),
+				MinPasswordLength:      ToPtr[int64](5),
+				LockoutDurationMinutes: ToPtr[int64](0),
+				RequireMixedCase:       ToPtr(false),
+				RequireNumberChar:      ToPtr(false),
+				RequireSpecialChar:     ToPtr(false),
+			},
+		},
+		Secondary: &rest_model.AuthPolicySecondary{
+			RequireTotp: ToPtr(false),
+		},
+	}
+
+	safeAdminAuthPolicyCreated := &rest_model.CreateEnvelope{}
+	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
+		SetBody(safeAdminAuthPolicy).
+		SetResult(safeAdminAuthPolicyCreated).
+		Post("/auth-policies")
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 creating safe admin auth policy: %s", resp.Body())
+	ctx.Req.NotEmpty(safeAdminAuthPolicyCreated.Data.ID)
+
+	adminIdentityId := *ctx.AdminManagementSession.AuthResponse.IdentityID
+	adminIdentityPatch := &rest_model.IdentityPatch{
+		AuthPolicyID: &safeAdminAuthPolicyCreated.Data.ID,
+	}
+	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().
+		SetBody(adminIdentityPatch).
+		Patch("/identities/" + adminIdentityId)
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 patching admin identity to safe auth policy: %s", resp.Body())
+
 	t.Run("create with valid values returns 200 Ok", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")

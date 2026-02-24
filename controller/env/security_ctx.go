@@ -418,14 +418,14 @@ func (ctx *SecurityCtx) resolvePermissions() {
 	}
 
 	ctx.resolvePermissionsOnce.Do(func() {
-		if ctx.isPartiallyAuthed() {
-			ctx.resolvedPermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
-		} else if ctx.isFullyAuthed() {
+		if ctx.isFullyAuthed() {
 			ctx.resolvedPermissions[permissions.AuthenticatedPermission] = struct{}{}
 
 			if ctx.resolvedIdentity.IsAdmin || ctx.resolvedIdentity.IsDefaultAdmin {
 				ctx.resolvedPermissions[permissions.AdminPermission] = struct{}{}
 			}
+		} else if ctx.isPartiallyAuthed() {
+			ctx.resolvedPermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
 		}
 
 		for _, permission := range ctx.resolvedIdentity.Permissions {
