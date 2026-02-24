@@ -201,6 +201,9 @@ type SecurityCtx interface {
 	// GetApiSession resolves and returns the API session for the request.
 	GetApiSession() (*model.ApiSession, error)
 
+	// GetTotp resolves and returns the TOTP MFA configuration for the session's identity.
+	GetTotp() (*model.Mfa, error)
+
 	// GetApiSessionWithoutResolve returns the API session only if already resolved.
 	GetApiSessionWithoutResolve() (*model.ApiSession, error)
 	// GetMfaAuthQueriesWithoutResolve returns MFA challenges only if already resolved.

@@ -56,6 +56,8 @@ type SecurityCtx struct {
 	resolvedAuthPolicy             *model.AuthPolicy
 
 	masqueradeIdentity *model.Identity
+	resolvedTotp       *model.Mfa
+	resolvedTotpError  error
 }
 
 // NewSecurityCtx creates a SecurityCtx that will resolve authentication details from
@@ -99,6 +101,12 @@ func (ctx *SecurityCtx) GetAuthPolicy() (*model.AuthPolicy, error) {
 func (ctx *SecurityCtx) GetApiSession() (*model.ApiSession, error) {
 	ctx.resolve()
 	return ctx.resolvedApiSession, ctx.resolvedApiSessionError
+}
+
+// GetTotp triggers resolution and returns the TOTP MFA configuration for the session's identity.
+func (ctx *SecurityCtx) GetTotp() (*model.Mfa, error) {
+	ctx.resolve()
+	return ctx.resolvedTotp, ctx.resolvedTotpError
 }
 
 // GetApiSessionWithoutResolve returns the API session if it has already been resolved,
@@ -224,7 +232,17 @@ func (ctx *SecurityCtx) resolveMfa() {
 
 		if totpRequired {
 			if !ctx.resolvedApiSession.TotpComplete {
-				ctx.resolvedMfaAuthQueries = append(ctx.resolvedMfaAuthQueries, NewAuthQueryZitiMfa())
+				totpAuthQuery := NewAuthQueryZitiTotp()
+
+				if ctx.resolvedIdentity != nil {
+					ctx.resolvedTotp, ctx.resolvedTotpError = ctx.env.GetManagers().Mfa.ReadOneByIdentityId(ctx.resolvedIdentity.Id)
+
+					if ctx.resolvedTotp != nil && ctx.resolvedTotp.IsVerified {
+						totpAuthQuery.IsTotpEnrolled = true
+					}
+				}
+
+				ctx.resolvedMfaAuthQueries = append(ctx.resolvedMfaAuthQueries, totpAuthQuery)
 			}
 		}
 

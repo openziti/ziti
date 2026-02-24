@@ -644,7 +644,7 @@ func (a authorizer) Authorize(request *http.Request, _ interface{}) error {
 	return nil
 }
 
-func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
+func NewAuthQueryZitiTotp() *rest_model.AuthQueryDetail {
 	provider := rest_model.MfaProvidersZiti
 	return &rest_model.AuthQueryDetail{
 		TypeID:     rest_model.AuthQueryTypeMFA,

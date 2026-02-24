@@ -255,8 +255,13 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCo
 
 	apiSession, err := rc.SecurityCtx.GetApiSession()
 
-	if apiSession == nil {
+	if err != nil {
 		rc.RespondWithError(err)
+		return
+	}
+
+	if apiSession == nil {
+		rc.RespondWithError(errors.New("api session is nil, expected a value"))
 		return
 	}
 
