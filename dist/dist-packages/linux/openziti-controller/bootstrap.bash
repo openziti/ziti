@@ -69,11 +69,13 @@ issueLeafCerts() {
     return 1
   fi
 
-  if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
-    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set" >&2
+  # node name is required for clustered mode SPIFFE IDs; fall back to ZITI_NETWORK_NAME for standalone
+  if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" && "${ZITI_BOOTSTRAP_CLUSTER:-}" == true ]]; then
+    echo "ERROR: ZITI_CLUSTER_NODE_NAME must be set for clustered mode" >&2
     hintLinuxBootstrap "${PWD}"
     return 1
   fi
+  local _cert_name="${ZITI_CLUSTER_NODE_NAME:-${ZITI_NETWORK_NAME}}"
 
   ZITI_PKI_CTRL_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_SERVER_FILE}.key"
   if ! [[ -s "$ZITI_PKI_CTRL_KEY" ]]; then
@@ -98,17 +100,20 @@ issueLeafCerts() {
     else
       _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
     fi
-    # server cert
-    ziti pki create server \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-      --key-file "${ZITI_SERVER_FILE}" \
-      --server-file "${ZITI_SERVER_FILE}" \
-      --server-name "${ZITI_CLUSTER_NODE_NAME}" \
-      --dns "${_dns_sans}" \
-      --ip "${_ip_sans}" \
-      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
-      --allow-overwrite >&3  # write to debug fd because this runs every startup
+    # server cert; include SPIFFE URI SAN only if clustered
+    local -a _server_cmd=(ziti pki create server
+      --pki-root "${ZITI_PKI_ROOT}"
+      --ca-name "${ZITI_INTERMEDIATE_FILE}"
+      --key-file "${ZITI_SERVER_FILE}"
+      --server-file "${ZITI_SERVER_FILE}"
+      --server-name "${_cert_name}"
+      --dns "${_dns_sans}"
+      --ip "${_ip_sans}"
+      --allow-overwrite)
+    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+      _server_cmd+=(--spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}")
+    fi
+    "${_server_cmd[@]}" >&3  # write to debug fd because this runs every startup
   fi
 
   # client cert
@@ -116,14 +121,17 @@ issueLeafCerts() {
   #   each
   ZITI_PKI_CTRL_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_CLIENT_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_CERT" ]]; then
-    ziti pki create client \
-      --pki-root "${ZITI_PKI_ROOT}" \
-      --ca-name "${ZITI_INTERMEDIATE_FILE}" \
-      --key-file "${ZITI_SERVER_FILE}" \
-      --client-file "${ZITI_CLIENT_FILE}" \
-      --client-name "${ZITI_CLUSTER_NODE_NAME}" \
-      --spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}" \
-      --allow-overwrite >&3  # write to debug fd because this runs every startup
+    local -a _client_cmd=(ziti pki create client
+      --pki-root "${ZITI_PKI_ROOT}"
+      --ca-name "${ZITI_INTERMEDIATE_FILE}"
+      --key-file "${ZITI_SERVER_FILE}"
+      --client-file "${ZITI_CLIENT_FILE}"
+      --client-name "${_cert_name}"
+      --allow-overwrite)
+    if [[ -n "${ZITI_CLUSTER_NODE_NAME:-}" ]]; then
+      _client_cmd+=(--spiffe-id "controller/${ZITI_CLUSTER_NODE_NAME}")
+    fi
+    "${_client_cmd[@]}" >&3  # write to debug fd because this runs every startup
   fi
 
 }
@@ -506,7 +514,9 @@ bootstrap() {
   fi
 
   _ctrl_data_dir="$(dataDir "${_ctrl_config_file}")"
-  if [[ -d "${_ctrl_data_dir}" ]]; then
+  if [[ -z "${_ctrl_data_dir}" ]]; then
+    echo "DEBUG: dataDir not defined in ${_ctrl_config_file}, skipping database directory creation" >&3
+  elif [[ -d "${_ctrl_data_dir}" ]]; then
     echo "DEBUG: database directory exists in $(realpath "${_ctrl_data_dir}")" >&3
   else
     echo "DEBUG: creating database directory $(realpath "${_ctrl_data_dir}")" >&3
@@ -667,7 +677,7 @@ dataDir() {
     return 1
   fi
   local _config_file="${1}"
-  awk -F: '/^[[:space:]]+dataDir:/ {print $2}' "${_config_file}"|xargs realpath
+  awk -F: '/^[[:space:]]+dataDir:/ {print $2}' "${_config_file}" | xargs -r realpath
 }
 
 exitHandler() {
