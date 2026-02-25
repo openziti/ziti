@@ -19,6 +19,7 @@ package smoke
 import (
 	"embed"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -128,6 +129,7 @@ var Model = &model.Model{
 
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
+		resources.Binaries:  os.DirFS(path.Join(os.Getenv("GOPATH"), "bin")),
 		resources.Terraform: test_resources.TerraformResources(),
 	},
 
@@ -166,9 +168,11 @@ var Model = &model.Model{
 								Version: ZitiRouterVersion,
 							},
 						},
-						"zcat": {
+						"loop4-client": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
-							Type:  &zitilab.ZCatType{},
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4Dialer,
+							},
 						},
 					},
 				},
@@ -230,11 +234,10 @@ var Model = &model.Model{
 								Version: ZitiRouterVersion,
 							},
 						},
-						"echo-server": {
+						"loop4-host": {
 							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							Type: &zitilab.EchoServerType{
-								BindService: "echo",
-								Verbose:     true,
+							Type: &zitilab.Loop4SimType{
+								Mode: zitilab.Loop4Listener,
 							},
 						},
 						"iperf-server-ert": {

@@ -1,0 +1,10 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      max_control_underlays: 1
+
+workloads:
+  - name: sim
+    connector: default
+    service_name: sim

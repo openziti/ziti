@@ -1,0 +1,19 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      max_control_underlays: 1
+
+workloads:
+  - name: sim
+    service_name: sim
+    connector: default
+    concurrency: 2
+    iterations: 3
+    dialer:
+      txRequests: 5000
+      rxTimeout: 10s
+      payloadMinBytes: 5000
+      payloadMaxBytes: 5000
+    listener:
+      rxTimeout: 10s

@@ -43,7 +43,7 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.StartInParallel(".iperf", 5))
 
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
-	workflow.AddAction(component.StartInParallel(".sdk-app", 5))
+	workflow.AddAction(component.StartInParallel(".sdk-app.service,.sdk-app.zet,.sdk-app.ziti-tunnel", 5))
 
 	workflow.AddAction(semaphore.Sleep(5 * time.Second))
 	workflow.AddAction(edge.Login("#ctrl1"))

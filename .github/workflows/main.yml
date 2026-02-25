@@ -219,7 +219,7 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          pushd zititest && go mod tidy && go install ./... && popd
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
@@ -344,7 +344,7 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION}
-          pushd zititest && go mod tidy && go install ./... && popd
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
           go install -tags=all,tests ./...
 
       - name: Create Test Environment
