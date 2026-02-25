@@ -513,7 +513,16 @@ func (helper *ClientHelperClient) QueryCurrentApiSession() (*rest_model.CurrentA
 	return resp.Payload.Data, nil
 }
 
+// RawOidcAuthRequest performs a raw OIDC PKCE authentication flow with no TOTP providers,
+// returning the resulting tokens, all intermediate HTTP responses, and any error.
 func (helper *ClientHelperClient) RawOidcAuthRequest(credentials edgeApis.Credentials) (*oidc.Tokens[*oidc.IDTokenClaims], *edgeApis.OidcAuthResponses, error) {
+	return helper.RawOidcAuthRequestWithProviders(credentials, nil, nil)
+}
+
+// RawOidcAuthRequestWithProviders performs a raw OIDC PKCE authentication flow with optional TOTP
+// enrollment and code providers, returning the resulting tokens, all intermediate HTTP responses,
+// and any error. Nil providers are ignored; supply only those needed for the scenario under test.
+func (helper *ClientHelperClient) RawOidcAuthRequestWithProviders(credentials edgeApis.Credentials, enrollProvider edgeApis.TotpEnrollmentProvider, codeProvider edgeApis.TotpCodeProvider) (*oidc.Tokens[*oidc.IDTokenClaims], *edgeApis.OidcAuthResponses, error) {
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs:      credentials.GetCaPool(),
@@ -528,9 +537,8 @@ func (helper *ClientHelperClient) RawOidcAuthRequest(credentials edgeApis.Creden
 	}
 
 	httpClient := &http.Client{
-		Transport:     httpTransport,
-		CheckRedirect: nil,
-		Timeout:       time.Second * 10,
+		Transport: httpTransport,
+		Timeout:   time.Second * 10,
 	}
 
 	clientRuntime := edgeApis.NewRuntime(helper.testCtx.ClientApiUrl(), rest_client_api_client.DefaultSchemes, httpClient)
@@ -541,18 +549,56 @@ func (helper *ClientHelperClient) RawOidcAuthRequest(credentials edgeApis.Creden
 	}
 
 	config := &edgeApis.EdgeOidcAuthConfig{
-		ClientTransportPool: &SingularClientTransportPool{
-			ApiClientTransport: apiClientTransport,
-		},
-		Credentials: credentials,
-		HttpClient:  httpClient,
-		RedirectUri: edgeApis.DefaultOidcRedirectUri,
-		ApiHost:     helper.testCtx.ApiHost,
+		ClientTransportPool:    &SingularClientTransportPool{ApiClientTransport: apiClientTransport},
+		Credentials:            credentials,
+		HttpClient:             httpClient,
+		TotpEnrollmentProvider: enrollProvider,
+		TotpCodeProvider:       codeProvider,
+		RedirectUri:            edgeApis.DefaultOidcRedirectUri,
+		ApiHost:                helper.testCtx.ApiHost,
 	}
 
-	oidcAuthenticator := edgeApis.NewEdgeOidcAuthenticator(config)
+	return edgeApis.NewEdgeOidcAuthenticator(config).AuthenticateWithResponses()
+}
 
-	return oidcAuthenticator.AuthenticateWithResponses()
+// OidcAuthorize starts an OIDC PKCE authorization flow and returns an OidcAuthorizeResult
+// for use when tests need to make raw HTTP calls to the OP login endpoints. The Exchange
+// function in the result completes the flow by trading an authorization code for OIDC tokens.
+func (helper *ClientHelperClient) OidcAuthorize(credentials edgeApis.Credentials) (*edgeApis.OidcAuthorizeResult, error) {
+	httpTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:      credentials.GetCaPool(),
+			Certificates: credentials.TlsCerts(),
+		},
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	httpClient := &http.Client{
+		Transport: httpTransport,
+		Timeout:   time.Second * 10,
+	}
+
+	clientRuntime := edgeApis.NewRuntime(helper.testCtx.ClientApiUrl(), rest_client_api_client.DefaultSchemes, httpClient)
+
+	apiClientTransport := &edgeApis.ApiClientTransport{
+		ClientTransport: clientRuntime,
+		ApiUrl:          helper.testCtx.ClientApiUrl(),
+	}
+
+	config := &edgeApis.EdgeOidcAuthConfig{
+		ClientTransportPool: &SingularClientTransportPool{ApiClientTransport: apiClientTransport},
+		Credentials:         credentials,
+		HttpClient:          httpClient,
+		RedirectUri:         edgeApis.DefaultOidcRedirectUri,
+		ApiHost:             helper.testCtx.ApiHost,
+	}
+
+	return edgeApis.NewEdgeOidcAuthenticator(config).Authorize()
 }
 
 func (helper *ClientHelperClient) RawLegacyAuthRequest(credentials edgeApis.Credentials) (*clientAuthentication.AuthenticateOK, error) {

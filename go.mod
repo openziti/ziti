@@ -24,14 +24,14 @@ require (
 	github.com/gaissmai/extnetip v1.3.1
 	github.com/go-acme/lego/v4 v4.32.0
 	github.com/go-jose/go-jose/v4 v4.1.3
-	github.com/go-openapi/errors v0.22.6
-	github.com/go-openapi/jsonpointer v0.22.4
+	github.com/go-openapi/errors v0.22.7
+	github.com/go-openapi/jsonpointer v0.22.5
 	github.com/go-openapi/loads v0.23.2
 	github.com/go-openapi/runtime v0.29.2
-	github.com/go-openapi/spec v0.22.3
+	github.com/go-openapi/spec v0.22.4
 	github.com/go-openapi/strfmt v0.25.0
-	github.com/go-openapi/swag v0.25.4
-	github.com/go-openapi/swag/jsonutils v0.25.4
+	github.com/go-openapi/swag v0.25.5
+	github.com/go-openapi/swag/jsonutils v0.25.5
 	github.com/go-openapi/validate v0.25.1
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -61,16 +61,16 @@ require (
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.3.6
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.27.0
+	github.com/openziti/edge-api v0.27.4
 	github.com/openziti/foundation/v2 v2.0.88
 	github.com/openziti/identity v1.0.126
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.90
-	github.com/openziti/sdk-golang v1.5.0
-	github.com/openziti/secretstream v0.1.47
+	github.com/openziti/sdk-golang v1.5.2-0.20260306210403-dd32dbe0d87a
+	github.com/openziti/secretstream v0.1.48
 	github.com/openziti/storage v0.4.39
-	github.com/openziti/transport/v2 v2.0.211
+	github.com/openziti/transport/v2 v2.0.213
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -88,13 +88,13 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.45.4
+	github.com/zitadel/oidc/v3 v3.45.5
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
@@ -137,17 +137,17 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.24.2 // indirect
-	github.com/go-openapi/jsonreference v0.21.4 // indirect
-	github.com/go-openapi/swag/cmdutils v0.25.4 // indirect
-	github.com/go-openapi/swag/conv v0.25.4 // indirect
-	github.com/go-openapi/swag/fileutils v0.25.4 // indirect
-	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
-	github.com/go-openapi/swag/loading v0.25.4 // indirect
-	github.com/go-openapi/swag/mangling v0.25.4 // indirect
-	github.com/go-openapi/swag/netutils v0.25.4 // indirect
-	github.com/go-openapi/swag/stringutils v0.25.4 // indirect
-	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
-	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
+	github.com/go-openapi/jsonreference v0.21.5 // indirect
+	github.com/go-openapi/swag/cmdutils v0.25.5 // indirect
+	github.com/go-openapi/swag/conv v0.25.5 // indirect
+	github.com/go-openapi/swag/fileutils v0.25.5 // indirect
+	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
+	github.com/go-openapi/swag/loading v0.25.5 // indirect
+	github.com/go-openapi/swag/mangling v0.25.5 // indirect
+	github.com/go-openapi/swag/netutils v0.25.5 // indirect
+	github.com/go-openapi/swag/stringutils v0.25.5 // indirect
+	github.com/go-openapi/swag/typeutils v0.25.5 // indirect
+	github.com/go-openapi/swag/yamlutils v0.25.5 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20260217112301-37c66b85d6ab // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -173,7 +173,7 @@ require (
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pion/dtls/v3 v3.0.10 // indirect
+	github.com/pion/dtls/v3 v3.1.2 // indirect
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
@@ -200,9 +200,9 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9 // indirect
 	go.mozilla.org/pkcs7 v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
-	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/trace v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
