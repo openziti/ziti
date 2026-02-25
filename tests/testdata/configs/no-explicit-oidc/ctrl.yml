@@ -1,0 +1,48 @@
+v: 3
+
+db: ${ZITI_TEST_DB}
+
+identity:
+  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
+  key: testdata/ca/intermediate/private/ctrl.key.pem
+  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+
+trustDomain: at-test
+
+ctrl:
+  listener: tls:127.0.0.1:6262
+
+mgmt:
+  listener: tls:127.0.0.1:10000
+
+terminator:
+  validators:
+    edge: edge
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: 127.0.0.1:1281
+  enrollment:
+    signingCert:
+      cert: testdata/ca/intermediate/certs/intermediate.cert.pem
+      key: testdata/ca/intermediate/private/intermediate.key.decrypted.pem
+      ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+    edgeIdentity:
+      duration: 20m
+    edgeRouter:
+      duration: 60m
+
+
+web:
+  - name: client-management-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1281
+        address: 127.0.0.1:1281
+    options: {}
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client

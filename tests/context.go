@@ -78,13 +78,6 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-const (
-	ControllerConfFile         = "ats-ctrl.yml"
-	EdgeRouterConfFile         = "ats-edge.router.yml"
-	TunnelerEdgeRouterConfFile = "ats-edge-tunneler.router.yml"
-	TransitRouterConfFile      = "ats-transit.router.yml"
-	FabricRouterConfFile       = "./testdata/config/router-%v.yml"
-)
 
 func init() {
 	logOptions := pfxlog.DefaultOptions().
@@ -132,6 +125,7 @@ type TestContext struct {
 	testing             *testing.T
 	LogLevel            string
 	ControllerConfig    *config.Config
+	configSet           ConfigSet
 }
 
 var defaultTestContext = newDefaultTestContext()
@@ -154,12 +148,25 @@ func NewTestContext(t *testing.T) *TestContext {
 			Username: eid.New(),
 			Password: eid.New(),
 		},
-		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
+		LogLevel:  os.Getenv("ZITI_TEST_LOG_LEVEL"),
+		configSet: DefaultATS,
 	}
 	ret.Managers = &ManagerHelpers{ctx: ret}
 	ret.testContextChanged(t)
 
 	return ret
+}
+
+// NewTestContextWithConfigSet creates a TestContext that uses the supplied ConfigSet
+// instead of DefaultATS. All other behaviour, including DB path and API host, is unchanged.
+func NewTestContextWithConfigSet(t *testing.T, cs ConfigSet) *TestContext {
+	ret := NewTestContext(t)
+	ret.configSet = cs
+	return ret
+}
+
+func (ctx *TestContext) controllerConfFile() string {
+	return ctx.configSet.CtrlConfig
 }
 
 func GetTestContext() *TestContext {
@@ -422,7 +429,7 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	ctrlConfig, err := config.LoadConfig(ControllerConfFile)
+	ctrlConfig, err := config.LoadConfig(ctx.controllerConfFile())
 	ctx.Req.NoError(err)
 
 	ctx.ControllerConfig = ctrlConfig
@@ -481,9 +488,9 @@ func (ctx *TestContext) requireCreateEdgeRouter(tunneler bool, roleAttributes ..
 func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) {
 	jwt := ctx.AdminManagementSession.getEdgeRouterJwt(routerId)
 
-	configFile := EdgeRouterConfFile
+	configFile := ctx.configSet.EdgeRouter
 	if tunneler {
-		configFile = TunnelerEdgeRouterConfFile
+		configFile = ctx.configSet.TunnelerRouter
 	}
 	routerConfig, err := routerEnv.LoadConfigWithOptions(configFile, false)
 	ctx.Req.NoError(err)
@@ -506,7 +513,7 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	ctx.transitRouterEntity = ctx.AdminManagementSession.requireNewTransitRouter()
 	jwt := ctx.AdminManagementSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
-	routerConfig, err := routerEnv.LoadConfigWithOptions(TransitRouterConfFile, false)
+	routerConfig, err := routerEnv.LoadConfigWithOptions(ctx.configSet.TransitRouter, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -523,7 +530,7 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 }
 
 func (ctx *TestContext) startTransitRouter() {
-	routerConfig, err := routerEnv.LoadConfig(TransitRouterConfFile)
+	routerConfig, err := routerEnv.LoadConfig(ctx.configSet.TransitRouter)
 	ctx.Req.NoError(err)
 	newRouter := router.Create(routerConfig, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
@@ -556,9 +563,9 @@ func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...strin
 }
 
 func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *router.Router {
-	configFile := EdgeRouterConfFile
+	configFile := ctx.configSet.EdgeRouter
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
-		configFile = TunnelerEdgeRouterConfFile
+		configFile = ctx.configSet.TunnelerRouter
 	}
 	routerCfg, err := routerEnv.LoadConfig(configFile)
 	ctx.Req.NoError(err)
@@ -980,7 +987,7 @@ func (self *TestContext) EnrollFabricRouter(id string, name string, certFile str
 }
 
 func (ctx *TestContext) startFabricRouter(index uint8) *router.Router {
-	routerCfg, err := routerEnv.LoadConfig(fmt.Sprintf(FabricRouterConfFile, index))
+	routerCfg, err := routerEnv.LoadConfig(ctx.configSet.FabricRouters[index-1])
 	ctx.Req.NoError(err)
 	r := router.Create(routerCfg, versions.NewDefaultVersionProvider())
 	ctx.Req.NoError(r.Start())
