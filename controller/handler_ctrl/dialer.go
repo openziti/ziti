@@ -17,6 +17,8 @@
 package handler_ctrl
 
 import (
+	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -91,14 +93,16 @@ func (self *CtrlDialer) scan() {
 	}
 
 	for _, router := range routers.Entities {
-		if router.Connected.Load() {
-			continue
-		}
-		if router.Disabled {
-			continue
-		}
+		self.checkDialersFor(router.Id, router)
+	}
+}
 
-		self.checkIfDialNeeded(router)
+func (self *CtrlDialer) checkDialersFor(routerId string, router *model.Router) {
+	for _, address := range self.getRouterIdEndpointsNeedingDial(routerId, router) {
+		if _, alreadyDialing := self.dialing.LoadOrStore(routerId, struct{}{}); !alreadyDialing {
+			go self.dialWithBackoff(routerId, address)
+			break // one dial per router per scan
+		}
 	}
 }
 
@@ -113,14 +117,33 @@ func (self *CtrlDialer) checkIfDialNeeded(router *model.Router) {
 	}
 }
 
-func (self *CtrlDialer) checkIfDialNeededForRouterId(routerId string) {
+func (self *CtrlDialer) getRouterIdEndpointsNeedingDial(routerId string, router *model.Router) []string {
 	log := pfxlog.Logger().WithField("routerId", routerId)
-	router, err := self.network.Router.BaseLoad(routerId)
-	if err != nil {
-		log.WithError(err).Error("error loading router")
-		return
+	if self.network.GetConnectedRouter(routerId) != nil {
+		return nil
 	}
-	self.checkIfDialNeeded(router)
+
+	if router == nil {
+		var err error
+		router, err = self.network.Router.BaseLoad(routerId)
+		if err != nil {
+			log.WithError(err).Error("error loading router")
+			return nil
+		}
+	}
+
+	if router.Disabled {
+		return nil
+	}
+
+	var results []string
+	for address, groups := range router.CtrlChanListeners {
+		if self.groupsMatch(groups) {
+			results = append(results, address)
+		}
+	}
+
+	return results
 }
 
 func (self *CtrlDialer) groupsMatch(routerGroups []string) bool {
@@ -158,14 +181,15 @@ func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 	log.Info("starting dial attempts to router ctrl channel listener")
 
 	operation := func() error {
-		if self.network.GetConnectedRouter(routerId) != nil {
-			log.Info("router connected, stopping dial attempts")
+		// check if the endpoint still needs to be dialed
+		endpoints := self.getRouterIdEndpointsNeedingDial(routerId, nil)
+		if !slices.Contains(endpoints, address) {
 			return nil
 		}
 
 		select {
 		case <-self.closeNotify:
-			return backoff.Permanent(nil)
+			return backoff.Permanent(errors.New("controller shutdown"))
 		default:
 		}
 
@@ -185,24 +209,21 @@ func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 }
 
 func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logrus.Entry) error {
-	headers := make(channel.Headers, len(self.headers)+3)
-	for k, v := range self.headers {
-		headers[k] = v
-	}
-	headers.PutBoolHeader(channel.IsGroupedHeader, true)
-	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
-
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity: self.ctrlId,
 		Endpoint: addr,
-		Headers:  headers,
+		Headers:  self.headers,
 		TransportConfig: transport.Configuration{
 			"protocol": "ziti-ctrl",
 		},
 	})
 
-	underlay, err := dialer.CreateWithHeaders(self.ctrlAccepter.options.ConnectTimeout, headers)
+	firstDialHeaders := make(channel.Headers, 3)
+	firstDialHeaders.PutBoolHeader(channel.IsGroupedHeader, true)
+	firstDialHeaders.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
+	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
+	underlay, err := dialer.CreateWithHeaders(self.ctrlAccepter.options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return err
 	}
@@ -216,7 +237,7 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				time.AfterFunc(time.Second, func() {
-					self.checkIfDialNeededForRouterId(routerId)
+					self.checkDialersFor(routerId, nil)
 				})
 			}))
 			return self.ctrlAccepter.Bind(binding)

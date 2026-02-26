@@ -52,7 +52,11 @@ func (self *raftJoin) Execute(run model.Run) error {
 
 		for {
 			tmpl := "%s agent cluster add %v"
-			cmd := fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(primary), "tls:"+c.Host.PublicIp+":6262")
+			ipAddr := c.Host.PublicIp
+			if c.HasTag("private") {
+				ipAddr = c.Host.PrivateIp
+			}
+			cmd := fmt.Sprintf(tmpl, ctrlType.GetBinaryPath(primary), "tls:"+ipAddr+":6262")
 			log.Info(cmd)
 			if err = primary.GetHost().ExecLogOnlyOnError(cmd); err != nil {
 				if time.Since(start) > self.timeout {

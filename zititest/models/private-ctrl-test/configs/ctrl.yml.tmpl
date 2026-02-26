@@ -29,6 +29,17 @@ ctrl:
   {{ else }}
     advertiseAddress: tls:{{ .Host.PublicIp }}:6262
   {{ end }}
+  dialer:
+    enabled: true
+  {{if .Component.HasTag "west"}}
+    groups:
+      - west
+  {{ else }}
+    groups:
+      - default
+  {{ end }}
+    scanInterval: 15s
+    dialDelay: 5s
 
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)

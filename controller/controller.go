@@ -23,7 +23,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -411,13 +410,7 @@ func (c *Controller) Run() error {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
 
-	capabilityMask := &big.Int{}
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateCircuitV2, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerRouterDataModel, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerGroupedCtrlChan, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSupportsJWTLegacySessions, 1)
+	capabilityMask := capabilities.GetControllerCapabilitiesMask()
 
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,

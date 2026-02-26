@@ -1,3 +1,4 @@
+
 {{$ssh_username := .Model.MustVariable "credentials.ssh.username"}}
 {{$identity := .Component.Id}}
 {{$router_ip := .Host.PublicIp}}
@@ -23,6 +24,13 @@ tls:
 ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
+{{if .Component.HasTag "ctrl-listener"}}
+  listeners:
+    - bind: tls:0.0.0.0:6263
+      advertise: tls:{{ .Host.PublicIp }}:6263
+      groups:
+        - west
+{{end}}
   startupTimeout: 5m
 
 healthChecks:

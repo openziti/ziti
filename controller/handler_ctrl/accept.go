@@ -165,7 +165,6 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			log.Debug("no advertised listeners")
 		}
 
-		r.CtrlChanListeners = nil
 		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)]; found {
 			ctrlListeners := &ctrl_pb.CtrlChanListeners{}
 			if err = proto.Unmarshal(val, ctrlListeners); err != nil {
@@ -177,6 +176,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				}
 				r.CtrlChanListeners = result
 			}
+		} else {
+			r.CtrlChanListeners = nil
 		}
 	} else {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")

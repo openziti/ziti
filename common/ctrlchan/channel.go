@@ -95,7 +95,6 @@ type BaseCtrlChannel struct {
 	lowPriorityMsgChan  chan channel.Sendable
 
 	hasHighPriorityChan atomic.Bool
-	underlayCount       atomic.Uint32
 }
 
 func (self *BaseCtrlChannel) ChannelCreated(ch channel.MultiChannel) {
@@ -116,10 +115,6 @@ func (self *BaseCtrlChannel) GetChannel() channel.Channel {
 
 func (self *BaseCtrlChannel) PeerId() string {
 	return self.GetChannel().Id()
-}
-
-func (self *BaseCtrlChannel) IsConnected() bool {
-	return self.underlayCount.Load() != 0
 }
 
 func (self *BaseCtrlChannel) GetDefaultSender() channel.Sender {
@@ -272,10 +267,11 @@ type DialCtrlChannel struct {
 	changeCallback func(ch *DialCtrlChannel, oldCount, newCount uint32)
 	startupDelay   time.Duration
 
-	lock      sync.Mutex
-	iteration atomic.Uint32
-	lastDial  time.Time
-	lastClose concurrenz.AtomicValue[time.Time]
+	lock          sync.Mutex
+	iteration     atomic.Uint32
+	lastDial      time.Time
+	lastClose     concurrenz.AtomicValue[time.Time]
+	underlayCount atomic.Uint32
 }
 
 func (self *DialCtrlChannel) Start(channel channel.MultiChannel) {
@@ -286,6 +282,10 @@ func (self *DialCtrlChannel) Start(channel channel.MultiChannel) {
 			self.constraints.Apply(channel, self)
 		})
 	}
+}
+
+func (self *DialCtrlChannel) IsConnected() bool {
+	return self.underlayCount.Load() != 0
 }
 
 func (self *DialCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
@@ -407,9 +407,11 @@ func (self *ListenerCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, un
 		WithField("underlays", ch.GetUnderlayCountsByType()).
 		WithField("underlayType", channel.GetUnderlayType(underlay)).
 		Info("underlay closed")
+
 	if ch.GetUnderlayCountsByType()[ChannelTypeHighPriority] == 0 {
 		self.hasHighPriorityChan.Store(false)
 	}
+
 	self.constraints.CheckStateValid(ch, true)
 }
 
@@ -417,4 +419,9 @@ func (self *ListenerCtrlChannel) HandleUnderlayAccepted(_ channel.MultiChannel, 
 	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
 		self.hasHighPriorityChan.Store(true)
 	}
+}
+
+func (self *ListenerCtrlChannel) IsConnected() bool {
+	// when the listener underlay becomes disconnected, it closed
+	return true
 }

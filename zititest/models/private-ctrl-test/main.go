@@ -7,6 +7,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -14,8 +15,8 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -26,7 +27,9 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 )
 
 const (
@@ -35,6 +38,36 @@ const (
 
 //go:embed configs
 var configResource embed.FS
+
+var throughputWorkload = "" +
+	`concurrency:  1
+    iterations:   2
+    dialer:
+      txRequests:       5000
+      txPacing:         1ms
+      rxTimeout:        10s
+      payloadMinBytes:  1000
+      payloadMaxBytes:  1000
+    listener:
+      rxTimeout:        10s
+`
+
+var latencyWorkload = "" +
+	`concurrency:  2
+    iterations:  100
+    dialer:
+      txRequests:       1
+      rxTimeout:        10s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+      latencyFrequency: 1
+    listener:
+      txRequests:       1
+      txAfterRx:        true
+      rxTimeout:        10s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+`
 
 var m = &model.Model{
 	Id: "private-ctrl-test",
@@ -54,14 +87,35 @@ var m = &model.Model{
 					"password": "admin",
 				},
 			},
+			"throughputWorkload": throughputWorkload,
+			"latencyWorkload":    latencyWorkload,
 		},
 	},
 	StructureFactories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("*", 1, func(host *model.Host) error {
-				host.InstanceType = "t3.medium" // need larger cpu for all the tls handshaking with 200 hosts
+				host.InstanceType = "t3.medium"
 				return nil
 			})
+		}),
+	},
+	Factories: []model.Factory{
+		model.FactoryFunc(func(m *model.Model) error {
+			simServices := zitilibOps.NewSimServices(func(s string) string {
+				return "component#" + s
+			})
+
+			m.AddActivationStageF(simServices.SetupSimControllerIdentity)
+			m.AddOperatingStage(simServices.CollectSimMetricStage("metrics"))
+			m.AddActionF("runSimScenario", func(run model.Run) error {
+				return RunSimScenarios(run, simServices)
+			})
+
+			m.AddActionF("startSimMetrics", func(run model.Run) error {
+				return simServices.CollectSimMetrics(run, "metrics")
+			})
+
+			return nil
 		}),
 	},
 	Resources: model.Resources{
@@ -71,18 +125,43 @@ var m = &model.Model{
 	},
 	AWS: aws.Model{
 		SecurityGroups: aws.SecurityGroups{
+			"public": {
+				Rules: []*aws.NetworkRule{
+					{
+						Direction: aws.Ingress,
+						Port:      1280,
+						Protocol:  "tcp",
+					},
+					{
+						Direction: aws.Ingress,
+						Port:      6262,
+						Protocol:  "tcp",
+					},
+					{
+						Direction: aws.Ingress,
+						Port:      6263,
+						Protocol:  "tcp",
+					},
+				},
+			},
 			"private": {
 				Rules: []*aws.NetworkRule{
 					{
 						Direction: aws.Ingress,
-						Port:      1280, // web api
+						Port:      1280,
 						Protocol:  "tcp",
 					},
 					{
 						Direction:  aws.Ingress,
-						Port:       6262, // router/peer connections
+						Port:       6262,
 						Protocol:   "tcp",
-						CidrBlocks: []string{"var.vpc_cidr", "66.66.118.13/32"},
+						CidrBlocks: []string{"var.vpc_cidr"},
+					},
+					{
+						Direction:  aws.Ingress,
+						Port:       6263,
+						Protocol:   "tcp",
+						CidrBlocks: []string{"var.vpc_cidr"},
 					},
 				},
 			},
@@ -93,52 +172,12 @@ var m = &model.Model{
 			Region: "us-east-1",
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
-				"ctrl1": {
+				"ctrl-east": {
 					Components: model.Components{
-						"ctrl1": {
+						"ctrl-east": {
 							AWS: aws.Component{
-								SecurityGroup: "private",
+								SecurityGroup: "public",
 							},
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "private"}},
-							Type: &zitilab.ControllerType{
-								Version: targetZitiVersion,
-							},
-						},
-					},
-				},
-				"ctrl2": {
-					Components: model.Components{
-						"ctrl2": {
-							AWS: aws.Component{
-								SecurityGroup: "private",
-							},
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "private"}},
-							Type: &zitilab.ControllerType{
-								Version: targetZitiVersion,
-							},
-						},
-					},
-				},
-				"router-east-1": {
-					Scope: model.Scope{Tags: model.Tags{"router"}},
-					Components: model.Components{
-						"router-east-1": {
-							Scope: model.Scope{Tags: model.Tags{"router"}},
-							Type: &zitilab.RouterType{
-								Version: targetZitiVersion,
-							},
-						},
-					},
-				},
-			},
-		},
-		"us-west-2": {
-			Region: "eu-west-2",
-			Site:   "eu-west-2a",
-			Hosts: model.Hosts{
-				"ctrl3": {
-					Components: model.Components{
-						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
@@ -146,13 +185,109 @@ var m = &model.Model{
 						},
 					},
 				},
-				"router-west-1": {
+				"router-east": {
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
-						"router-west-1": {
-							Scope: model.Scope{Tags: model.Tags{"router"}},
+						"router-east": {
+							AWS: aws.Component{
+								SecurityGroup: "public",
+							},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "test", "ctrl-listener"}},
 							Type: &zitilab.RouterType{
 								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"router-metrics": {
+					InstanceType: "t3.micro",
+					Components: model.Components{
+						"router-metrics": {
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal", "sim-services"}},
+							Type: &zitilab.RouterType{
+								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"sim-east": {
+					Components: model.Components{
+						"loop-host-east": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								Mode:         zitilab.Loop4Listener,
+								ConfigSource: "loop-host.yml.tmpl",
+							},
+						},
+						"loop-client-east": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode:         zitilab.Loop4RemoteControlled,
+								ConfigSource: "loop-client.yml.tmpl",
+							},
+						},
+					},
+				},
+			},
+		},
+		"us-west-2": {
+			Region: "us-west-2",
+			Site:   "us-west-2b",
+			Hosts: model.Hosts{
+				"ctrl-west-1": {
+					Components: model.Components{
+						"ctrl-west-1": {
+							AWS: aws.Component{
+								SecurityGroup: "private",
+							},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "private", "west", "bootstrap"}},
+							Type: &zitilab.ControllerType{
+								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"ctrl-west-2": {
+					Components: model.Components{
+						"ctrl-west-2": {
+							AWS: aws.Component{
+								SecurityGroup: "private",
+							},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "private", "west"}},
+							Type: &zitilab.ControllerType{
+								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"router-west": {
+					Scope: model.Scope{Tags: model.Tags{"router"}},
+					Components: model.Components{
+						"router-west": {
+							AWS: aws.Component{
+								SecurityGroup: "public",
+							},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "test", "ctrl-listener"}},
+							Type: &zitilab.RouterType{
+								Version: targetZitiVersion,
+							},
+						},
+					},
+				},
+				"sim-west": {
+					Components: model.Components{
+						"loop-host-west": {
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Type: &zitilab.Loop4SimType{
+								Mode:         zitilab.Loop4Listener,
+								ConfigSource: "loop-host.yml.tmpl",
+							},
+						},
+						"loop-client-west": {
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Type: &zitilab.Loop4SimType{
+								Mode:         zitilab.Loop4RemoteControlled,
+								ConfigSource: "loop-client.yml.tmpl",
 							},
 						},
 					},
@@ -162,52 +297,52 @@ var m = &model.Model{
 	},
 
 	Actions: model.ActionBinders{
-		"initHA": model.ActionBinder(func(m *model.Model) model.Action {
-			workflow := actions.Workflow()
-			workflow.AddAction(component.StartInParallel(".ctrl", 10))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
-			workflow.AddAction(semaphore.Sleep(5 * time.Second))
-			return workflow
-		}),
-		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
-			workflow := actions.Workflow()
-
-			workflow.AddAction(component.StopInParallel("*", 10000))
-			workflow.AddAction(host.GroupExec("component.ctrl", 100, "rm -f logs/* ctrl.db"))
-			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
-
-			workflow.AddAction(component.Start("#ctrl1"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.InitRaftController("#ctrl1"))
-
-			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
-
-			workflow.AddAction(edge.Login("#ctrl1"))
-
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
-			workflow.AddAction(model.RunAction("initHA"))
-
-			workflow.AddAction(component.StartInParallel(".router", 10))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-
-			return workflow
-		}),
-		"stop": model.Bind(component.StopInParallelHostExclusive("*", 10000)),
+		"bootstrap": NewBootstrapAction(),
+		"stop":      model.Bind(component.StopInParallelHostExclusive("*", 10000)),
 		"clean": model.Bind(actions.Workflow(
 			component.StopInParallelHostExclusive("*", 10000),
 			host.GroupExec("*", 100, "rm -f logs/*"),
 		)),
-		"login":  model.Bind(edge.Login("#ctrl1")),
-		"login2": model.Bind(edge.Login("#ctrl2")),
-		"login3": model.Bind(edge.Login("#ctrl3")),
+		"login":    model.Bind(edge.Login("#ctrl-east")),
+		"login2":   model.Bind(edge.Login("#ctrl-west-1")),
+		"login3":   model.Bind(edge.Login("#ctrl-west-2")),
+		"sowChaos": model.BindF(sowChaos),
+		"validateUp": model.BindF(func(run model.Run) error {
+			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
+				return err
+			}
+			err := run.GetModel().ForEachComponent(".ctrl", 3, func(c *model.Component) error {
+				return edge.ControllerAvailable(c.Id, time.Minute).Execute(run)
+			})
+			if err != nil {
+				return err
+			}
+			if err := chaos.ValidateUp(run, ".edge-router", 100, time.Minute); err != nil {
+				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
+				return component.StartInParallel(".edge-router", 100).Execute(run)
+			}
+			return nil
+		}),
+		"validateClusterConnectivity": model.BindF(validateClusterConnectivity),
+		"validateTerminators":         model.BindF(validateTerminators),
+		"validateCircuits":            model.BindF(validateCircuits),
+		"testIteration": model.BindF(func(run model.Run) error {
+			return run.GetModel().Exec(run,
+				"sowChaos",
+				"validateUp",
+				"validateClusterConnectivity",
+				"validateTerminators",
+				"runSimScenario",
+				"validateCircuits",
+			)
+		}),
 		"restart": model.ActionBinder(func(run *model.Model) model.Action {
 			workflow := actions.Workflow()
 			workflow.AddAction(component.StopInParallel("*", 10000))
 			workflow.AddAction(host.GroupExec("*", 100, "rm -f logs/*"))
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(".router", 10))
+			workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			return workflow
 		}),

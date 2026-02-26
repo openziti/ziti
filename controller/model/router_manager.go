@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -357,12 +358,18 @@ func didCtrlChanListenersChange(old, new map[string][]string) bool {
 	}
 	for addr, oldGroups := range old {
 		newGroups, ok := new[addr]
+
 		if !ok {
 			return true
 		}
+
 		if len(oldGroups) != len(newGroups) {
 			return true
 		}
+
+		slices.Sort(oldGroups)
+		slices.Sort(newGroups)
+
 		for i, g := range oldGroups {
 			if g != newGroups[i] {
 				return true

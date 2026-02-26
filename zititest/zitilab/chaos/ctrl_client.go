@@ -103,14 +103,14 @@ func (self *CtrlClients) EnsureCtrlAuthed(id string, maxTimeSinceLastAuth time.D
 	return ctrl.clients.AuthenticateIfNeeded(username, password, maxTimeSinceLastAuth)
 }
 
-func (self *CtrlClients) Inspect(ctrlId, appRegex, targetDir, format string, requestValues ...string) error {
+func (self *CtrlClients) Inspect(ctrlId, appRegex string, requestValues ...string) (*rest_model.InspectResponse, error) {
 	if err := self.EnsureCtrlAuthed(ctrlId, 5*time.Minute); err != nil {
-		return err
+		return nil, err
 	}
 
 	ctrl := self.getCtrl(ctrlId)
 	if ctrl == nil {
-		return fmt.Errorf("controller with id '%s' not found", ctrlId)
+		return nil, fmt.Errorf("controller with id '%s' not found", ctrlId)
 	}
 
 	inspectOk, err := ctrl.Fabric.Inspect.Inspect(&inspect.InspectParams{
@@ -122,6 +122,15 @@ func (self *CtrlClients) Inspect(ctrlId, appRegex, targetDir, format string, req
 	}, nil)
 
 	if err != nil {
+		return nil, err
+	}
+
+	return inspectOk.Payload, nil
+}
+
+func (self *CtrlClients) InspectAndWriteToFile(ctrlId, appRegex, targetDir, format string, requestValues ...string) error {
+	result, err := self.Inspect(ctrlId, appRegex, requestValues...)
+	if err != nil {
 		return err
 	}
 
@@ -129,7 +138,6 @@ func (self *CtrlClients) Inspect(ctrlId, appRegex, targetDir, format string, req
 		return err
 	}
 
-	result := inspectOk.Payload
 	if *result.Success {
 		fmt.Printf("Results: (%d)\n", len(result.Values))
 		for _, value := range result.Values {
