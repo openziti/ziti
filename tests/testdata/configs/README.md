@@ -34,9 +34,14 @@ testdata/configs/
   tests (router 1 on `tls:127.0.0.1:6004`, router 2 on `tls:127.0.0.1:6005`).
 
 - **`no-explicit-oidc`** (`NoExplicitOIDC`) — Controller config identical to
-  `default-ats/ats-ctrl.yml` except the `edge-oidc` binding is omitted from the web listener.
+  `default-ats/ctrl.yml` except the `edge-oidc` binding is omitted from the web listener.
   Used to verify that the controller's `ensureOidcOnClientApiServer` validator automatically
-  adds the OIDC API when it is not explicitly configured (issue #3597).
+  adds the OIDC API when it is not explicitly configured.
+
+- **`disabled-oidc-auto-binding`** (`DisabledOidcAutoBinding`) — Controller config with the
+  `edge-oidc` binding omitted from the web listener AND `disableOidcAutoBinding: true` set in
+  the `edge:` section. Used to verify that the auto-binding behaviour is suppressed when the
+  operator opts out, leaving OIDC absent from the running controller.
 
 ## Adding a New Config Set
 

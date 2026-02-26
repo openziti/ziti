@@ -78,7 +78,6 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-
 func init() {
 	logOptions := pfxlog.DefaultOptions().
 		SetTrimPrefix("github.com/openziti/").

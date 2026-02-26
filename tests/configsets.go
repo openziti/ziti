@@ -29,8 +29,17 @@ var DefaultATS = ConfigSet{
 // NoExplicitOIDC is a controller-only config set with the edge-oidc binding omitted
 // from the web listener. Used to verify that the controller's
 // ensureOidcOnClientApiServer validator automatically adds the OIDC API when it is
-// not explicitly present in the configuration (issue #3597).
+// not explicitly present in the configuration.
 var NoExplicitOIDC = ConfigSet{
 	Name:       "no-explicit-oidc",
 	CtrlConfig: "testdata/configs/no-explicit-oidc/ctrl.yml",
+}
+
+// DisabledOidcAutoBinding is a controller-only config set with the edge-oidc binding
+// omitted from the web listener AND disableOidcAutoBinding set to true. Used to verify
+// that the auto-binding behaviour is suppressed when the operator opts out, leaving OIDC
+// absent from the running controller.
+var DisabledOidcAutoBinding = ConfigSet{
+	Name:       "disabled-oidc-auto-binding",
+	CtrlConfig: "testdata/configs/disabled-oidc-auto-binding/ctrl.yml",
 }

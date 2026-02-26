@@ -409,6 +409,10 @@ func (c *Controller) ensureOidcOnClientApiServer(instanceConfig *xweb.InstanceCo
 		return nil
 	}
 
+	if c.config.Edge.Api.DisableOidcAutoBinding {
+		return nil
+	}
+
 	for _, serverConfig := range instanceConfig.ServerConfigs {
 		for _, api := range serverConfig.APIs {
 			if api.Binding() == webapis.OidcApiBinding {

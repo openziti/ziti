@@ -41,6 +41,14 @@ type ClientHelperClient struct {
 	testCtx *TestContext
 }
 
+func (helper *ClientHelperClient) GetVersion() (*rest_model.Version, error) {
+	resp, err := helper.API.Informational.ListVersion(nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+	return resp.Payload.Data, nil
+}
+
 func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToCertAuth(enrollmentJwt string) (*edgeApis.CertCredentials, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
