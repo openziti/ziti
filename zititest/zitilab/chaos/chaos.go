@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/zitirest"
 )
@@ -97,6 +98,7 @@ func StopSelected(run model.Run, list []*model.Component, concurrency int) error
 		return nil
 	}
 	return run.GetModel().ForEachComponentIn(list, concurrency, func(c *model.Component) error {
+		deadline := time.Now().Add(time.Minute)
 		if _, ok := c.Type.(model.ServerComponent); ok {
 			if err := c.Type.Stop(run, c); err != nil {
 				return err
@@ -112,6 +114,10 @@ func StopSelected(run model.Run, list []*model.Component, concurrency int) error
 				} else {
 					time.Sleep(250 * time.Millisecond)
 				}
+
+				if time.Now().After(deadline) {
+					return fmt.Errorf("timed out waiting for component %s to stop", c.Id)
+				}
 			}
 			time.Sleep(time.Second)
 			return nil
@@ -125,6 +131,7 @@ func RestartSelected(run model.Run, concurrency int, list ...*model.Component) e
 		return nil
 	}
 	return run.GetModel().ForEachComponentIn(list, concurrency, func(c *model.Component) error {
+		deadline := time.Now().Add(time.Minute)
 		if sc, ok := c.Type.(model.ServerComponent); ok {
 			if err := c.Type.Stop(run, c); err != nil {
 				return err
@@ -140,12 +147,45 @@ func RestartSelected(run model.Run, concurrency int, list ...*model.Component) e
 				} else {
 					time.Sleep(250 * time.Millisecond)
 				}
+
+				if time.Now().After(deadline) {
+					return fmt.Errorf("timed out waiting for component %s to stop", c.Id)
+				}
 			}
 			time.Sleep(time.Second)
 			return sc.Start(run, c)
 		}
 		return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
 	})
+}
+
+func RestartTasks(run model.Run, list ...*model.Component) []parallel.Task {
+	var tasks []parallel.Task
+	for _, c := range list {
+		tasks = append(tasks, func() error {
+			if sc, ok := c.Type.(model.ServerComponent); ok {
+				if err := c.Type.Stop(run, c); err != nil {
+					return err
+				}
+
+				for {
+					isRunning, err := c.IsRunning(run)
+					if err != nil {
+						return err
+					}
+					if !isRunning {
+						break
+					} else {
+						time.Sleep(250 * time.Millisecond)
+					}
+				}
+				time.Sleep(time.Second)
+				return sc.Start(run, c)
+			}
+			return fmt.Errorf("component %v isn't of ServerComponent type, is of type %T", c, c.Type)
+		})
+	}
+	return tasks
 }
 
 func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Duration) error {

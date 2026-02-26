@@ -277,6 +277,9 @@ var m = &model.Model{
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 		"validateUp": model.BindF(func(run model.Run) error {
+			if err := unblockAllHosts(run); err != nil {
+				pfxlog.Logger().WithError(err).Warn("error unblocking all hosts")
+			}
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}

@@ -20,12 +20,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"math/rand"
+	"slices"
 	"sort"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/fablab/kernel/lib/parallel"
+	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/rest_client/link"
@@ -36,19 +41,178 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type disruptionKey struct {
+	sourceHostId string
+	destIP       string
+	destPort     uint16
+}
+
+func makeOutgoingDisruptionTask(host *model.Host, dest *model.Host, port uint16) parallel.Task {
+	return func() error {
+		logger := tui.ActionsLogger()
+		logger.Infof("blocking %s -> %s on port %d", host.Id, dest.Id, port)
+		if err := host.DisruptOutgoing(dest.PublicIp, port); err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(10+rand.Intn(21)) * time.Second)
+		logger.Infof("unblocking %s -> %s on port %d", host.Id, dest.Id, port)
+		return host.UnblockOutgoing(dest.PublicIp, port)
+	}
+}
+
+func makeIncomingDisruptionTask(host *model.Host, port uint16) parallel.Task {
+	return func() error {
+		logger := tui.ActionsLogger()
+		logger.Infof("blocking %s incoming on port %d", host.Id, port)
+		if err := host.DisruptIncoming(port); err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(10+rand.Intn(21)) * time.Second)
+		logger.Infof("unblocking %s incoming on port %d", host.Id, port)
+		return host.UnblockIncoming(port)
+	}
+}
+
+func randomPairs(fromLen, toLen, maxCount int, excludeSelf bool) [][2]int {
+	if maxCount <= 0 {
+		return nil
+	}
+	maxPossible := fromLen * toLen
+	if excludeSelf {
+		maxPossible -= min(fromLen, toLen)
+	}
+	if maxCount > maxPossible {
+		maxCount = maxPossible
+	}
+	pairs := map[[2]int]struct{}{}
+	for range maxCount {
+		i := rand.Intn(fromLen)
+		j := rand.Intn(toLen)
+		if excludeSelf && i == j {
+			continue
+		}
+		pair := [2]int{i, j}
+		pairs[pair] = struct{}{}
+	}
+	return slices.Collect(maps.Keys(pairs))
+}
+
+type chaosMode int
+
+const (
+	chaosModeRestarts    chaosMode = iota // restarts only
+	chaosModeDisruptions                  // connection disruptions only
+	chaosModeBoth                         // restarts + disruptions
+	chaosModeCOUNT                        // sentinel for cycling
+)
+
+func (m chaosMode) String() string {
+	switch m {
+	case chaosModeRestarts:
+		return "restarts-only"
+	case chaosModeDisruptions:
+		return "disruptions-only"
+	case chaosModeBoth:
+		return "restarts+disruptions"
+	default:
+		return "unknown"
+	}
+}
+
+var currentChaosMode chaosMode
+
 func sowChaos(run model.Run) error {
-	controllers, err := chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
-	if err != nil {
-		return err
+	mode := currentChaosMode
+	currentChaosMode = (currentChaosMode + 1) % chaosModeCOUNT
+
+	var tasks []parallel.Task
+	var controllerCount, routerCount int
+
+	// Generate restart tasks for restart and both modes
+	if mode == chaosModeRestarts || mode == chaosModeBoth {
+		controllers, err := chaos.SelectRandom(run, ".ctrl", chaos.RandomOfTotal())
+		if err != nil {
+			return err
+		}
+		routers, err := chaos.SelectRandom(run, ".router", chaos.PercentageRange(0, 50))
+		if err != nil {
+			return err
+		}
+		controllerCount = len(controllers)
+		routerCount = len(routers)
+		restartList := append(routers, controllers...)
+		tasks = append(tasks, chaos.RestartTasks(run, restartList...)...)
 	}
-	time.Sleep(5 * time.Second)
-	routers, err := chaos.SelectRandom(run, ".router", chaos.PercentageRange(10, 75))
-	if err != nil {
-		return err
+
+	// Generate disruption tasks for disruption and both modes
+	var disruptionCount int
+	if mode == chaosModeDisruptions || mode == chaosModeBoth {
+		disruptionTasks := generateDisruptionTasks(run)
+		disruptionCount = len(disruptionTasks)
+		tasks = append(tasks, disruptionTasks...)
 	}
-	toRestart := append(routers, controllers...)
-	fmt.Printf("restarting %v controllers and %v routers\n", len(controllers), len(routers))
-	return chaos.RestartSelected(run, 100, toRestart...)
+
+	tui.ValidationLogger().Infof("chaos mode: %v — restarting %v controllers and %v routers, with %v disruption tasks",
+		mode, controllerCount, routerCount, disruptionCount)
+
+	return parallel.Execute(tasks, 250)
+}
+
+func generateDisruptionTasks(run model.Run) []parallel.Task {
+	var tasks []parallel.Task
+
+	allCtrls := run.GetModel().SelectComponents(".ctrl")
+	allRouters := run.GetModel().SelectComponents(".router")
+
+	outgoingDisruptions := map[disruptionKey]bool{}
+
+	// 0-1 ctrl incoming disruption: block ALL inbound to a random ctrl on port 6262
+	if rand.Intn(2) > 0 {
+		ctrl := allCtrls[rand.Intn(len(allCtrls))]
+		tasks = append(tasks, makeIncomingDisruptionTask(ctrl.Host, 6262))
+	}
+
+	// 0-3 ctrl mesh disruptions: ctrl_A → ctrl_B on port 6262
+	for _, pair := range randomPairs(len(allCtrls), len(allCtrls), rand.Intn(4), true) {
+		srcCtrl := allCtrls[pair[0]]
+		dstCtrl := allCtrls[pair[1]]
+		key := disruptionKey{sourceHostId: srcCtrl.Host.Id, destIP: dstCtrl.Host.PublicIp, destPort: 6262}
+		if !outgoingDisruptions[key] {
+			outgoingDisruptions[key] = true
+			tasks = append(tasks, makeOutgoingDisruptionTask(srcCtrl.Host, dstCtrl.Host, 6262))
+		}
+	}
+
+	// 0-100 router→ctrl disruptions
+	for _, pair := range randomPairs(len(allRouters), len(allCtrls), rand.Intn(101), false) {
+		router := allRouters[pair[0]]
+		ctrl := allCtrls[pair[1]]
+		key := disruptionKey{sourceHostId: router.Host.Id, destIP: ctrl.Host.PublicIp, destPort: 6262}
+		if !outgoingDisruptions[key] {
+			outgoingDisruptions[key] = true
+			tasks = append(tasks, makeOutgoingDisruptionTask(router.Host, ctrl.Host, 6262))
+		}
+	}
+
+	// 0-800 link disruptions: routerA → routerB link port
+	for _, pair := range randomPairs(len(allRouters), len(allRouters), rand.Intn(801), true) {
+		srcRouter := allRouters[pair[0]]
+		dstRouter := allRouters[pair[1]]
+		port := uint16(6000 + dstRouter.ScaleIndex)
+		key := disruptionKey{sourceHostId: srcRouter.Host.Id, destIP: dstRouter.Host.PublicIp, destPort: port}
+		if !outgoingDisruptions[key] {
+			outgoingDisruptions[key] = true
+			tasks = append(tasks, makeOutgoingDisruptionTask(srcRouter.Host, dstRouter.Host, port))
+		}
+	}
+
+	return tasks
+}
+
+func unblockAllHosts(run model.Run) error {
+	return run.GetModel().ForEachHost("*", 500, func(h *model.Host) error {
+		return h.UnblockAll()
+	})
 }
 
 func validateLinks(run model.Run) error {
@@ -83,12 +247,14 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	allLinksPresent := false
 	start := time.Now()
 
-	logger := pfxlog.Logger().WithField("ctrl", c.Id)
+	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
 	var lastLog time.Time
 	for time.Now().Before(deadline) && !allLinksPresent {
 		linkCount, err := getLinkCount(clients)
 		if err != nil {
-			return nil
+			logger.WithError(err).Warn("error getting link count, retrying")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 		if linkCount == 79800 {
 			allLinksPresent = true
@@ -142,7 +308,7 @@ func getLinkCount(clients *zitirest.Clients) (int64, error) {
 }
 
 func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
-	logger := pfxlog.Logger().WithField("ctrl", id)
+	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
 	eventNotify := make(chan *mgmt_pb.RouterLinkDetails, 1)
