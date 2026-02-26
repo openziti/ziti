@@ -174,6 +174,7 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 		if loginErr != nil {
 			return http.Client{}, loginErr
 		}
+		o.MergeUnsetFrom(cached)
 	}
 	t, cte := o.createHttpTransport()
 	if cte != nil {
