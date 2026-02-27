@@ -1027,19 +1027,43 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 	return nil
 }
 
-func (c *Config) SaveControllerEndpoints(endpoints []string) error {
+func (c *Config) SaveControllerDetails(controllers []*ctrl_pb.CtrlDetail) error {
 	endpointsFile := c.Ctrl.EndpointsFile
 
-	configData := map[string]interface{}{
-		"endpoints": endpoints,
+	// Extract flat endpoints
+	var endpoints []string
+	for _, ctrl := range controllers {
+		for _, ep := range ctrl.Endpoints {
+			endpoints = append(endpoints, ep.Address)
+		}
 	}
 
-	if data, err := yaml.Marshal(configData); err != nil {
-		return fmt.Errorf("unable to marshal updated controller endpoints to yaml (%w)", err)
-	} else if err = os.WriteFile(endpointsFile, data, 0600); err != nil {
-		return fmt.Errorf("unable to write updated controller endpoints to file '%s' (%w)", c.Ctrl.EndpointsFile, err)
+	// Build controllers structure for YAML
+	var ctrlList []map[string]interface{}
+	for _, ctrl := range controllers {
+		var eps []map[string]interface{}
+		for _, ep := range ctrl.Endpoints {
+			eps = append(eps, map[string]interface{}{
+				"address": ep.Address,
+				"groups":  ep.Groups,
+			})
+		}
+		ctrlList = append(ctrlList, map[string]interface{}{
+			"id":        ctrl.Id,
+			"endpoints": eps,
+		})
 	}
-	return nil
+
+	configData := map[string]interface{}{
+		"endpoints":   endpoints,
+		"controllers": ctrlList,
+	}
+
+	data, err := yaml.Marshal(configData)
+	if err != nil {
+		return fmt.Errorf("unable to marshal updated controller details to yaml (%w)", err)
+	}
+	return os.WriteFile(endpointsFile, data, 0600)
 }
 
 func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Config, error) {

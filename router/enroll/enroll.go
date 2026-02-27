@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 
 	"github.com/go-resty/resty/v2"
@@ -215,7 +216,13 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		controllers = ec.Controllers
 	}
 
-	if err = re.fullConfig.SaveControllerEndpoints(controllers); err != nil {
+	var ctrlDetails []*ctrl_pb.CtrlDetail
+	for _, addr := range controllers {
+		ctrlDetails = append(ctrlDetails, &ctrl_pb.CtrlDetail{
+			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: addr}},
+		})
+	}
+	if err = re.fullConfig.SaveControllerDetails(ctrlDetails); err != nil {
 		return err
 	}
 

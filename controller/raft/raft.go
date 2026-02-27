@@ -43,6 +43,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -900,13 +901,19 @@ func (self *Controller) RemoveServer(id string) error {
 	return self.HandleRemovePeer(req)
 }
 
-func (self *Controller) CtrlAddresses() (uint64, []string) {
-	ret := make([]string, 0)
+func (self *Controller) CtrlAddresses() (uint64, []string, []*ctrl_pb.CtrlDetail) {
 	srvs := self.Fsm.GetCurrentState(self.Raft)
+	var addresses []string
+	var controllers []*ctrl_pb.CtrlDetail
 	for _, srvr := range srvs.Servers {
-		ret = append(ret, string(srvr.Address))
+		addr := string(srvr.Address)
+		addresses = append(addresses, addr)
+		controllers = append(controllers, &ctrl_pb.CtrlDetail{
+			Id:        string(srvr.ID),
+			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: addr}},
+		})
 	}
-	return srvs.Index, ret
+	return srvs.Index, addresses, controllers
 }
 
 func (self *Controller) RenderJsonConfig() (string, error) {

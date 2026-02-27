@@ -32,6 +32,7 @@ import (
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
@@ -70,7 +71,8 @@ type DialEnv interface {
 }
 
 type NetworkControllers interface {
-	UpdateControllerEndpoints(endpoints []string) bool
+	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
+	ConnectToInitialEndpoints(endpoints []string)
 	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
@@ -103,7 +105,7 @@ func NewNetworkControllers(dialEnv DialEnv, heartbeatOptions *HeartbeatOptions) 
 		dialEnv:               dialEnv,
 		heartbeatOptions:      heartbeatOptions,
 		defaultRequestTimeout: dialEnv.GetConfig().Ctrl.DefaultRequestTimeout,
-		ctrlEndpoints:         cmap.New[struct{}](),
+		idsBeingDialed:        cmap.New[struct{}](),
 	}
 }
 
@@ -112,11 +114,12 @@ type networkControllers struct {
 	dialEnv               DialEnv
 	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
-	ctrlEndpoints         cmap.ConcurrentMap[string, struct{}]
+	idsBeingDialed        cmap.ConcurrentMap[string, struct{}]
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 	expectedCtrlCount     atomic.Uint32
+	controllerDetails     concurrenz.AtomicValue[[]*ctrl_pb.CtrlDetail]
 }
 
 func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
@@ -141,38 +144,58 @@ func (self *networkControllers) GetExpectedCtrlCount() uint32 {
 	return self.expectedCtrlCount.Load()
 }
 
-func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bool {
+func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.expectedCtrlCount.Store(uint32(len(addresses)))
-	changed := false
+	self.controllerDetails.Store(controllers)
 
-	log := pfxlog.Logger()
-	endpoints := map[string]struct{}{}
-	for _, endpoint := range addresses {
-		endpoints[endpoint] = struct{}{}
+	newIdSet := map[string]*ctrl_pb.CtrlDetail{}
+	for _, ctrl := range controllers {
+		newIdSet[ctrl.Id] = ctrl
 	}
 
-	for _, endpoint := range self.ctrlEndpoints.Keys() {
-		if _, ok := endpoints[endpoint]; ok {
-			// already known endpoint, don't need to try and connect in next step
-			delete(endpoints, endpoint)
-		} else {
-			// existing endpoint is no longer valid, close and remove it
-			log.WithField("endpoint", endpoint).Info("removing old ctrl endpoint")
+	self.expectedCtrlCount.Store(uint32(len(controllers)))
+	changed := false
+	log := pfxlog.Logger()
+
+	// Remove controllers being dialed that are no longer in the new list
+	for _, ctrlId := range self.idsBeingDialed.Keys() {
+		if _, ok := newIdSet[ctrlId]; !ok {
+			log.WithField("ctrlId", ctrlId).Info("removing old ctrl (was being dialed)")
 			changed = true
-			self.CloseAndRemoveByAddress(endpoint)
+			self.closeAndRemoveById(ctrlId)
 		}
 	}
 
-	for endpoint := range endpoints {
-		log.WithField("endpoint", endpoint).Info("adding new ctrl endpoint")
-		changed = true
-		self.connectToControllerWithBackoff(endpoint)
+	// Remove connected controllers that are no longer in the new list
+	for ctrlId := range self.ctrls.AsMap() {
+		if _, ok := newIdSet[ctrlId]; !ok {
+			log.WithField("ctrlId", ctrlId).Info("removing old ctrl (was connected)")
+			changed = true
+			self.closeAndRemoveById(ctrlId)
+		}
+	}
+
+	// Start dialing new controllers that aren't already dialing or connected
+	for ctrlId, detail := range newIdSet {
+		if !self.idsBeingDialed.Has(ctrlId) && self.ctrls.Get(ctrlId) == nil {
+			log.WithField("ctrlId", ctrlId).Info("adding new ctrl")
+			changed = true
+			self.connectToControllerWithBackoff(detail)
+		}
 	}
 
 	return changed
+}
+
+func (self *networkControllers) ConnectToInitialEndpoints(endpoints []string) {
+	for _, endpoint := range endpoints {
+		self.connectToControllerWithBackoff(&ctrl_pb.CtrlDetail{
+			Id:        "",
+			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: endpoint}},
+		})
+	}
 }
 
 func (self *networkControllers) UpdateLeader(leaderId string) {
@@ -183,38 +206,78 @@ func (self *networkControllers) UpdateLeader(leaderId string) {
 	}
 }
 
-func (self *networkControllers) connectToControllerWithBackoff(endpoint string) {
-	log := pfxlog.Logger().WithField("endpoint", endpoint)
+func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_pb.CtrlDetail {
+	for _, d := range self.controllerDetails.Load() {
+		if d.Id == controllerId {
+			return d
+		}
+	}
+	return nil
+}
 
-	addr, err := transport.ParseAddress(endpoint)
-	if err != nil {
-		log.WithField("endpoint", endpoint).WithError(err).Error("unable to parse endpoint address, ignoring")
+func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.CtrlDetail) {
+	log := pfxlog.Logger().WithField("ctrlId", detail.Id)
+
+	if detail.Id != "" && !self.idsBeingDialed.SetIfAbsent(detail.Id, struct{}{}) {
+		log.Info("already dialing controller, skipping")
 		return
 	}
-
-	self.ctrlEndpoints.Set(endpoint, struct{}{})
 
 	expBackoff := backoff.NewExponentialBackOff()
 	expBackoff.InitialInterval = 50 * time.Millisecond
 	expBackoff.MaxInterval = 5 * time.Minute
 	expBackoff.MaxElapsedTime = 100 * 365 * 24 * time.Hour
 
+	idx := 0
 	operation := func() error {
-		if !self.ctrlEndpoints.Has(endpoint) {
+		if detail.Id != "" && !self.idsBeingDialed.Has(detail.Id) {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
 
-		err = self.connectToController(endpoint, addr)
+		// Already connected by ID
+		if self.ctrls.Get(detail.Id) != nil {
+			log.Info("already connected to controller, exiting retry")
+			return nil
+		}
 
-		if err != nil {
-			log.WithError(err).Error("unable to connect controller")
-
+		// Already connected by address
+		for _, ep := range detail.Endpoints {
 			for _, v := range self.ctrls.AsMap() {
-				if v.Address() == endpoint {
-					log.Info("already connect to controller, exiting retry")
+				if v.Address() == ep.Address {
+					log.WithField("endpoint", ep.Address).Info("already connected to controller by address, exiting retry")
 					return nil
 				}
 			}
+
+			if detail.Id == "" {
+				for _, dialingCtrlId := range self.idsBeingDialed.Keys() {
+					dialingCtrl := self.getControllerDetail(dialingCtrlId)
+					if dialingCtrl == nil {
+						continue
+					}
+
+					for _, knownCrlEp := range dialingCtrl.Endpoints {
+						if knownCrlEp.Address == ep.Address {
+							log.WithField("endpoint", ep.Address).Info("endpoint dial taken over, exiting retry")
+							return nil
+						}
+					}
+				}
+			}
+		}
+
+		ep := detail.Endpoints[idx%len(detail.Endpoints)]
+		idx++
+
+		addr, err := transport.ParseAddress(ep.Address)
+		if err != nil {
+			log.WithField("endpoint", ep.Address).WithError(err).Error("unable to parse endpoint address, trying next")
+			return err
+		}
+
+		err = self.connectToController(ep.Address, addr)
+		if err != nil {
+			log.WithField("endpoint", ep.Address).WithError(err).Error("unable to connect controller")
 		}
 		return err
 	}
@@ -222,6 +285,10 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 	log.Info("starting connection attempts")
 
 	go func() {
+		defer func() {
+			self.idsBeingDialed.Remove(detail.Id)
+		}()
+
 		if err := backoff.Retry(operation, expBackoff); err != nil {
 			log.WithError(err).Error("unable to connect controller, stopping retries.")
 		} else {
@@ -310,8 +377,8 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 			if ctrl != nil {
 				self.notifyOfChange(ctrl, ControllerDisconnected)
 			}
-			if self.ctrlEndpoints.Has(endpoint) {
-				self.connectToControllerWithBackoff(endpoint)
+			if detail := self.getControllerDetail(id); detail != nil {
+				self.connectToControllerWithBackoff(detail)
 			}
 		}))
 
@@ -396,9 +463,8 @@ func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlcha
 		if ctrl != nil {
 			self.notifyOfChange(ctrl, ControllerDisconnected)
 		}
-		// Try to re-establish via configured endpoints
-		for _, endpoint := range self.ctrlEndpoints.Keys() {
-			self.connectToControllerWithBackoff(endpoint)
+		if detail := self.getControllerDetail(id); detail != nil {
+			self.connectToControllerWithBackoff(detail)
 		}
 	}))
 
@@ -535,7 +601,7 @@ func (self *networkControllers) ForEach(f func(controllerId string, ch channel.C
 }
 
 func (self *networkControllers) Close() error {
-	self.ctrlEndpoints.Clear()
+	self.idsBeingDialed.Clear()
 	var errList []error
 	self.ForEach(func(_ string, ch channel.Channel) {
 		if err := ch.Close(); err != nil {
@@ -545,17 +611,15 @@ func (self *networkControllers) Close() error {
 	return errors.Join(errList...)
 }
 
-func (self *networkControllers) CloseAndRemoveByAddress(address string) {
-	self.ctrlEndpoints.Remove(address)
+func (self *networkControllers) closeAndRemoveById(ctrlId string) {
+	self.idsBeingDialed.Remove(ctrlId)
 
-	for id, ctrl := range self.ctrls.AsMap() {
-		if ctrl.Address() == address {
-			self.ctrls.Delete(id)
-			if err := ctrl.Channel().Close(); err != nil {
-				pfxlog.Logger().WithField("ctrlId", id).WithField("endpoint", address).WithError(err).Error("error closing channel to controller")
-			}
-			self.notifyOfChange(ctrl, ControllerRemoved)
+	if ctrl := self.ctrls.Get(ctrlId); ctrl != nil {
+		self.ctrls.Delete(ctrlId)
+		if err := ctrl.Channel().Close(); err != nil {
+			pfxlog.Logger().WithField("ctrlId", ctrlId).WithError(err).Error("error closing channel to controller")
 		}
+		self.notifyOfChange(ctrl, ControllerRemoved)
 	}
 }
 

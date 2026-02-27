@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 )
 
 // MockNetworkControllers implements env.NetworkControllers for testing
@@ -41,8 +42,11 @@ func (m *MockNetworkControllers) GetCtrlChannel(ctrlId string) ctrlchan.CtrlChan
 	return nil
 }
 
-func (m *MockNetworkControllers) UpdateControllerEndpoints(endpoints []string) bool {
+func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	return false
+}
+
+func (m *MockNetworkControllers) ConnectToInitialEndpoints(endpoints []string) {
 }
 
 func (m *MockNetworkControllers) UpdateLeader(leaderId string) {

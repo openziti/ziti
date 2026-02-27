@@ -68,7 +68,7 @@ func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *model.Router
 }
 
 func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
-	index, data := o.raft.CtrlAddresses()
+	index, data, controllers := o.raft.CtrlAddresses()
 	log := pfxlog.Logger().WithFields(map[string]interface{}{
 		"routerId":  r.Id,
 		"channel":   r.Control.GetChannel().LogicalName(),
@@ -84,9 +84,10 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 	log.Info("router connected, syncing ctrl addresses")
 
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{
-		IsLeader:  o.raft.IsLeader(),
-		Addresses: data,
-		Index:     index,
+		IsLeader:    o.raft.IsLeader(),
+		Addresses:   data,
+		Index:       index,
+		Controllers: controllers,
 	}
 
 	if err := protobufs.MarshalTyped(updMsg).Send(r.Control.GetDefaultSender()); err != nil {

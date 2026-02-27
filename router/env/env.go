@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
 
@@ -60,7 +61,7 @@ type RouterEnv interface {
 	GetAlerter() Alerter
 	GetXgressRegistry() *Registry
 
-	UpdateCtrlEndpoints(endpoints []string)
+	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
 	UpdateLeader(leaderId string)
 }
 

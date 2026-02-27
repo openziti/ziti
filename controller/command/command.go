@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/sirupsen/logrus"
 )
@@ -57,7 +58,7 @@ type Dispatcher interface {
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
 	Bootstrap() error
-	CtrlAddresses() (uint64, []string)
+	CtrlAddresses() (uint64, []string, []*ctrl_pb.CtrlDetail)
 }
 
 // LocalDispatcher should be used when running a non-clustered system
@@ -90,8 +91,8 @@ func (self *LocalDispatcher) GetRateLimiter() rate.RateLimiter {
 	return self.Limiter
 }
 
-func (self *LocalDispatcher) CtrlAddresses() (uint64, []string) {
-	return 0, nil
+func (self *LocalDispatcher) CtrlAddresses() (uint64, []string, []*ctrl_pb.CtrlDetail) {
+	return 0, nil, nil
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {

@@ -653,14 +653,20 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 
 	if evt.EventType == event.ClusterMembersChanged {
 		var endpoints []string
+		var controllers []*ctrl_pb.CtrlDetail
 		for _, peer := range evt.Peers {
 			endpoints = append(endpoints, peer.Addr)
+			controllers = append(controllers, &ctrl_pb.CtrlDetail{
+				Id:        peer.Id,
+				Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: peer.Addr}},
+			})
 		}
 
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
-			Addresses: endpoints,
-			IsLeader:  c.raftController.IsLeader(),
-			Index:     evt.Index,
+			Addresses:   endpoints,
+			IsLeader:    c.raftController.IsLeader(),
+			Index:       evt.Index,
+			Controllers: controllers,
 		}
 
 		log := pfxlog.Logger().WithFields(map[string]interface{}{
