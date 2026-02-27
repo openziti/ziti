@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/capabilities"
@@ -72,6 +73,10 @@ func (self *multiListenerAcceptor) AcceptUnderlay(underlay channel.Underlay) err
 // HandleGroupedUnderlay handles incoming grouped connections from routers that support
 // multi-underlay control channels. It creates a MultiChannel with ListenerCtrlChannel.
 func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+	if _, hasSecret := underlay.Headers()[channel.GroupSecretHeader]; !hasSecret {
+		underlay.Headers()[channel.GroupSecretHeader] = []byte(uuid.NewString())
+	}
+
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 	multiConfig := channel.MultiChannelConfig{
 		LogicalName:     "ctrl/" + underlay.Id(),
