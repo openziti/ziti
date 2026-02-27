@@ -1,3 +1,16 @@
+# Release 1.6.13
+
+## What's New
+
+* Bug fixes and dependency updates
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
+    * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
+
+* github.com/openziti/ziti: [v1.6.12 -> v1.6.13](https://github.com/openziti/ziti/compare/v1.6.12...v1.6.13)
+
 # Release 1.6.12
 
 # What's New
