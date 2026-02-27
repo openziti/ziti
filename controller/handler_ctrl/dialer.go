@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"sync"
@@ -41,6 +42,8 @@ type CtrlDialer struct {
 	ctrlId       *identity.TokenId
 	headers      map[int32][]byte
 	closeNotify  <-chan struct{}
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
 	dialing      sync.Map // routerId -> struct{}, tracks in-progress dial attempts
 }
 
@@ -63,6 +66,9 @@ func NewCtrlDialer(
 }
 
 func (self *CtrlDialer) Run() {
+	self.ctx, self.ctxCancel = context.WithCancel(context.Background())
+	defer self.ctxCancel()
+
 	log := pfxlog.Logger().WithField("component", "ctrlDialer")
 	log.WithField("scanInterval", self.config.ScanInterval).
 		WithField("dialDelay", self.config.DialDelay).
@@ -101,17 +107,6 @@ func (self *CtrlDialer) checkDialersFor(routerId string, router *model.Router) {
 	for _, address := range self.getRouterIdEndpointsNeedingDial(routerId, router) {
 		if _, alreadyDialing := self.dialing.LoadOrStore(routerId, struct{}{}); !alreadyDialing {
 			go self.dialWithBackoff(routerId, address)
-			break // one dial per router per scan
-		}
-	}
-}
-
-func (self *CtrlDialer) checkIfDialNeeded(router *model.Router) {
-	for address, groups := range router.CtrlChanListeners {
-		if self.groupsMatch(groups) {
-			if _, alreadyDialing := self.dialing.LoadOrStore(router.Id, struct{}{}); !alreadyDialing {
-				go self.dialWithBackoff(router.Id, address)
-			}
 			break // one dial per router per scan
 		}
 	}
@@ -184,13 +179,7 @@ func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 		// check if the endpoint still needs to be dialed
 		endpoints := self.getRouterIdEndpointsNeedingDial(routerId, nil)
 		if !slices.Contains(endpoints, address) {
-			return nil
-		}
-
-		select {
-		case <-self.closeNotify:
-			return backoff.Permanent(errors.New("controller shutdown"))
-		default:
+			return backoff.Permanent(errors.New("endpoint no longer needs dial"))
 		}
 
 		log.Info("dialing router")
@@ -201,8 +190,8 @@ func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 		return nil
 	}
 
-	if err := backoff.Retry(operation, expBackoff); err != nil {
-		log.WithError(err).Error("unable to dial router, stopping retries")
+	if err := backoff.Retry(operation, backoff.WithContext(expBackoff, self.ctx)); err != nil {
+		log.WithError(err).Warn("stopped dial attempts to router ctrl channel listener")
 	} else {
 		log.Info("successfully connected to router ctrl channel")
 	}

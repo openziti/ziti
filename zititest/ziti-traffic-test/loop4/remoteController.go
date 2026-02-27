@@ -110,7 +110,9 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 
 func (self *RemoteController) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RunScenarioResultType), self.handleScenarioResult)
-	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RequestDiagnostic), self.cb.DiagnosticRequested)
+	if self.cb != nil {
+		binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RequestDiagnostic), self.cb.DiagnosticRequested)
+	}
 	return nil
 }
 

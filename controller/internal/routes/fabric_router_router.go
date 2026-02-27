@@ -18,6 +18,7 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
@@ -102,7 +103,7 @@ func (r *FabricRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext,
 
 func (r *FabricRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params router.PatchRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.Router.Update(MapPatchFabricRouterToModel(params.ID, params.Router), fields.FilterMaps("tags"), rc.NewChangeContext())
+		return ae.Managers.Router.Update(MapPatchFabricRouterToModel(params.ID, params.Router), fields.FilterMaps("tags", db.FieldRouterCtrlChanListeners), rc.NewChangeContext())
 	})
 }
 

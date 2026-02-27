@@ -19,6 +19,7 @@ package env
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -71,6 +72,7 @@ type DialEnv interface {
 }
 
 type NetworkControllers interface {
+	GetControllerDetails() map[string]*ctrl_pb.CtrlDetail
 	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
 	ConnectToInitialEndpoints(endpoints []string)
 	UpdateLeader(leaderId string)
@@ -91,7 +93,6 @@ type NetworkControllers interface {
 	AddChangeListener(listener CtrlEventListener)
 	NotifyOfDisconnect(ctrlId string)
 	NotifyOfReconnect(ctrlId string)
-	GetExpectedCtrlCount() uint32
 	IsLeaderConnected() bool
 	ControllersHaveMinVersion(version string) bool
 	GetLeader() NetworkController
@@ -118,8 +119,7 @@ type networkControllers struct {
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
-	expectedCtrlCount     atomic.Uint32
-	controllerDetails     concurrenz.AtomicValue[[]*ctrl_pb.CtrlDetail]
+	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
 }
 
 func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
@@ -140,22 +140,21 @@ func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
 	self.ctrlChangeListeners.Append(listener)
 }
 
-func (self *networkControllers) GetExpectedCtrlCount() uint32 {
-	return self.expectedCtrlCount.Load()
+func (self *networkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDetail {
+	return maps.Clone(self.controllerDetails.Load())
 }
 
 func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.controllerDetails.Store(controllers)
-
 	newIdSet := map[string]*ctrl_pb.CtrlDetail{}
 	for _, ctrl := range controllers {
 		newIdSet[ctrl.Id] = ctrl
 	}
 
-	self.expectedCtrlCount.Store(uint32(len(controllers)))
+	self.controllerDetails.Store(newIdSet)
+
 	changed := false
 	log := pfxlog.Logger()
 
@@ -180,7 +179,7 @@ func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.C
 	// Start dialing new controllers that aren't already dialing or connected
 	for ctrlId, detail := range newIdSet {
 		if !self.idsBeingDialed.Has(ctrlId) && self.ctrls.Get(ctrlId) == nil {
-			log.WithField("ctrlId", ctrlId).Info("adding new ctrl")
+			log.WithField("ctrlId", ctrlId).WithField("endpoints", detail.Endpoints).Info("adding new ctrl")
 			changed = true
 			self.connectToControllerWithBackoff(detail)
 		}
@@ -201,22 +200,25 @@ func (self *networkControllers) ConnectToInitialEndpoints(endpoints []string) {
 func (self *networkControllers) UpdateLeader(leaderId string) {
 	oldLeaderId := self.leaderId.Swap(leaderId)
 	if oldLeaderId != leaderId {
-		leader := self.ctrls.Get(oldLeaderId)
-		self.notifyOfChange(leader, ControllerLeaderChange)
+		if leader := self.ctrls.Get(leaderId); leader != nil {
+			self.notifyOfChange(leader, ControllerLeaderChange)
+		} else {
+			self.notifyOfChange(nil, ControllerLeaderChange)
+		}
 	}
 }
 
 func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_pb.CtrlDetail {
-	for _, d := range self.controllerDetails.Load() {
-		if d.Id == controllerId {
-			return d
-		}
-	}
-	return nil
+	return self.controllerDetails.Load()[controllerId]
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.CtrlDetail) {
-	log := pfxlog.Logger().WithField("ctrlId", detail.Id)
+	log := pfxlog.Logger().WithField("ctrlId", detail.Id).WithField("detail", detail)
+
+	if len(detail.Endpoints) == 0 {
+		log.Error("controller has no endpoints, unable to connect")
+		return
+	}
 
 	if detail.Id != "" && !self.idsBeingDialed.SetIfAbsent(detail.Id, struct{}{}) {
 		log.Info("already dialing controller, skipping")

@@ -42,6 +42,10 @@ func (m *MockNetworkControllers) GetCtrlChannel(ctrlId string) ctrlchan.CtrlChan
 	return nil
 }
 
+func (m *MockNetworkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDetail {
+	return nil
+}
+
 func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	return false
 }
@@ -103,10 +107,6 @@ func (m *MockNetworkControllers) NotifyOfDisconnect(ctrlId string) {
 }
 
 func (m *MockNetworkControllers) NotifyOfReconnect(ctrlId string) {
-}
-
-func (m *MockNetworkControllers) GetExpectedCtrlCount() uint32 {
-	return 1
 }
 
 func (m *MockNetworkControllers) IsLeaderConnected() bool {

@@ -8,8 +8,8 @@ connectors:
 workloads:
   - name: throughput
     connector: default
-    service_name: throughput
+    service_name: throughput-{{ if .Component.HasTag "east" }}east{{ else }}west{{ end }}
 
   - name: latency
     connector: default
-    service_name: latency
+    service_name: latency-{{ if .Component.HasTag "east" }}east{{ else }}west{{ end }}

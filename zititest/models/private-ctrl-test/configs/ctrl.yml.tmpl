@@ -24,20 +24,20 @@ command:
 ctrl:
   listener: tls:0.0.0.0:6262
   options:
-  {{if .Component.HasTag "private"}}
+  {{- if .Component.HasTag "private"}}
     advertiseAddress: tls:{{ .Host.PrivateIp }}:6262
-  {{ else }}
+  {{- else }}
     advertiseAddress: tls:{{ .Host.PublicIp }}:6262
-  {{ end }}
+  {{- end }}
   dialer:
     enabled: true
-  {{if .Component.HasTag "west"}}
+  {{- if .Component.HasTag "west"}}
     groups:
       - west
-  {{ else }}
+  {{- else }}
     groups:
       - default
-  {{ end }}
+  {{- end }}
     scanInterval: 15s
     dialDelay: 5s
 
@@ -72,7 +72,7 @@ events:
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*egress.*m1_rate*
-#      - type: fabric.circuits
+      - type: fabric.circuits
 #        include:
 #          - created
 #        include:

@@ -22,15 +22,13 @@ tls:
   handshakeTimeout: 30s
 
 ctrl:
-  endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
-    - tls:{{ $host.PublicIp }}:6262{{end}}
-{{if .Component.HasTag "ctrl-listener"}}
+{{- if .Component.HasTag "ctrl-listener"}}
   listeners:
     - bind: tls:0.0.0.0:6263
       advertise: tls:{{ .Host.PublicIp }}:6263
       groups:
         - west
-{{end}}
+{{- end}}
   startupTimeout: 5m
 
 healthChecks:
@@ -57,11 +55,11 @@ link:
         connectTimeout: 30s
 
 listeners:
-{{if .Component.HasTag "tunneler"}}
+{{- if .Component.HasTag "tunneler"}}
   - binding: tunnel
     options:
       mode: host
-{{end}}
+{{- end}}
   - binding: edge
     address: tls:0.0.0.0:6262
     options:

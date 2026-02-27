@@ -20,6 +20,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/router"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
@@ -132,6 +133,6 @@ func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterPatch) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.FilterMaps("tags"), rc.NewChangeContext())
+		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.FilterMaps("tags", db.FieldRouterCtrlChanListeners), rc.NewChangeContext())
 	})
 }

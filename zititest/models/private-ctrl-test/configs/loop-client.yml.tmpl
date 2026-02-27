@@ -5,7 +5,7 @@ connectors:
       report_sdk_metrics: true
       ha: {{ .Component.GetFlag "ha"}}
       max_control_underlays: 1
-      test_service: latency
+      test_service: latency-{{ if .Component.HasTag "east" }}west{{ else }}east{{ end }}
 
 remoteControlled:
   connector: default
@@ -19,11 +19,11 @@ metrics:
 
 workloads:
   - name:         throughput
-    service_name: throughput
+    service_name: throughput-{{ if .Component.HasTag "east" }}west{{ else }}east{{ end }}
     connector:    default
     {{ $.Model.MustVariable "throughputWorkload" }}
 
   - name:         latency
-    service_name: latency
+    service_name: latency-{{ if .Component.HasTag "east" }}west{{ else }}east{{ end }}
     connector:    default
     {{ $.Model.MustVariable "latencyWorkload" }}

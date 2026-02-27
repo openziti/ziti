@@ -181,6 +181,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
+								Debug:   true,
 							},
 						},
 					},
@@ -192,9 +193,10 @@ var m = &model.Model{
 							AWS: aws.Component{
 								SecurityGroup: "public",
 							},
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "test", "ctrl-listener"}},
+							Scope: model.Scope{Tags: model.Tags{"router", "test", "ctrl-listener", "east"}},
 							Type: &zitilab.RouterType{
 								Version: targetZitiVersion,
+								Debug:   true,
 							},
 						},
 					},
@@ -203,7 +205,7 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-metrics": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal", "sim-services"}},
+							Scope: model.Scope{Tags: model.Tags{"router", "no-traversal", "sim-services", "ctrl-listener"}},
 							Type: &zitilab.RouterType{
 								Version: targetZitiVersion,
 							},
@@ -213,14 +215,14 @@ var m = &model.Model{
 				"sim-east": {
 					Components: model.Components{
 						"loop-host-east": {
-							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "loop-host-east", "sdk-app", "host", "sim-services-host", "east"}},
 							Type: &zitilab.Loop4SimType{
 								Mode:         zitilab.Loop4Listener,
 								ConfigSource: "loop-host.yml.tmpl",
 							},
 						},
 						"loop-client-east": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-east", "sdk-app", "client", "sim-services-client", "east"}},
 							Type: &zitilab.Loop4SimType{
 								Mode:         zitilab.Loop4RemoteControlled,
 								ConfigSource: "loop-client.yml.tmpl",
@@ -267,7 +269,7 @@ var m = &model.Model{
 							AWS: aws.Component{
 								SecurityGroup: "public",
 							},
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "test", "ctrl-listener"}},
+							Scope: model.Scope{Tags: model.Tags{"router", "tunneler", "test", "ctrl-listener", "west"}},
 							Type: &zitilab.RouterType{
 								Version: targetZitiVersion,
 							},
@@ -277,14 +279,14 @@ var m = &model.Model{
 				"sim-west": {
 					Components: model.Components{
 						"loop-host-west": {
-							Scope: model.Scope{Tags: model.Tags{"loop-host", "sdk-app", "host", "sim-services-host"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-host", "loop-host-west", "sdk-app", "host", "sim-services-host", "west"}},
 							Type: &zitilab.Loop4SimType{
 								Mode:         zitilab.Loop4Listener,
 								ConfigSource: "loop-host.yml.tmpl",
 							},
 						},
 						"loop-client-west": {
-							Scope: model.Scope{Tags: model.Tags{"loop-client", "sdk-app", "client", "sim-services-client"}},
+							Scope: model.Scope{Tags: model.Tags{"loop-client", "loop-client-west", "sdk-app", "client", "sim-services-client", "west"}},
 							Type: &zitilab.Loop4SimType{
 								Mode:         zitilab.Loop4RemoteControlled,
 								ConfigSource: "loop-client.yml.tmpl",
@@ -317,9 +319,9 @@ var m = &model.Model{
 			if err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".edge-router", 100, time.Minute); err != nil {
+			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
 				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".edge-router", 100).Execute(run)
+				return component.StartInParallel(".router", 100).Execute(run)
 			}
 			return nil
 		}),
@@ -342,7 +344,7 @@ var m = &model.Model{
 			workflow.AddAction(host.GroupExec("*", 100, "rm -f logs/*"))
 			workflow.AddAction(component.Start(".ctrl"))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 10))
+			workflow.AddAction(component.StartInParallel(models.RouterTag, 10))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 			return workflow
 		}),

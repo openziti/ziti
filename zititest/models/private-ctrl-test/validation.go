@@ -11,6 +11,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/rest_client/terminator"
@@ -44,7 +45,7 @@ func sowChaos(run model.Run) error {
 	// bit 1: restart random routers
 	var routers []*model.Component
 	if scenario&0b010 > 0 {
-		routers, err = chaos.SelectRandom(run, ".edge-router", chaos.PercentageRange(10, 100))
+		routers, err = chaos.SelectRandom(run, ".router.test", chaos.PercentageRange(10, 100))
 		if err != nil {
 			return err
 		}
@@ -59,12 +60,12 @@ func sowChaos(run model.Run) error {
 
 	toRestart = append(toRestart, controllers...)
 	toRestart = append(toRestart, routers...)
-	fmt.Printf("restarting %d controllers and %d routers\n", len(controllers), len(routers))
+	tui.ValidationLogger().Infof("restarting %d controllers and %d routers\n", len(controllers), len(routers))
 	return chaos.RestartSelected(run, 100, toRestart...)
 }
 
 func disruptNonRestarted(run model.Run, restartedCtrls, restartedRouters []*model.Component) error {
-	logger := pfxlog.Logger()
+	logger := tui.ActionsLogger()
 
 	restartedSet := map[string]bool{}
 	for _, c := range restartedCtrls {
@@ -79,13 +80,8 @@ func disruptNonRestarted(run model.Run, restartedCtrls, restartedRouters []*mode
 		routerWestHost, err := run.GetModel().SelectHost("router-west")
 		if err == nil {
 			logger.Info("disrupting incoming connections on router-west port 6263")
-			if err := routerWestHost.DisruptIncoming(6263); err != nil {
+			if err := routerWestHost.KillIncoming(6263); err != nil {
 				logger.WithError(err).Warn("failed to disrupt incoming on router-west")
-			} else {
-				// let the disruption take effect, then unblock
-				time.Sleep(10 * time.Second)
-				logger.Info("unblocking incoming connections on router-west port 6263")
-				_ = routerWestHost.UnblockIncoming(6263)
 			}
 		}
 	}
@@ -114,13 +110,15 @@ func disruptNonRestarted(run model.Run, restartedCtrls, restartedRouters []*mode
 
 func validateClusterConnectivity(run model.Run) error {
 	expectedCtrlCount := len(run.GetModel().SelectComponents(".ctrl"))
-	expectedRouterIds := map[string]bool{}
-	for _, c := range run.GetModel().SelectComponents(".edge-router") {
-		expectedRouterIds[c.Id] = true
+	expectedRouterNames := map[string]bool{}
+	for _, c := range run.GetModel().SelectComponents(".router") {
+		expectedRouterNames[c.Id] = true
 	}
 
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	deadline := time.Now().Add(2 * time.Minute)
+
+	logger := tui.ValidationLogger()
 
 	for time.Now().Before(deadline) {
 		ctrlClients, err := chaos.NewCtrlClients(run, ".ctrl")
@@ -133,20 +131,20 @@ func validateClusterConnectivity(run model.Run) error {
 		success := true
 		for _, ctrl := range ctrls {
 			if err := checkConnectedPeers(ctrl.Id, ctrlClients, expectedCtrlCount); err != nil {
-				pfxlog.Logger().WithField("ctrl", ctrl.Id).WithError(err).Info("connected-peers check failed, will retry")
+				logger.WithField("ctrl", ctrl.Id).WithError(err).Info("connected-peers check failed, will retry")
 				success = false
 				continue
 			}
 
-			if err := checkConnectedRouters(ctrl.Id, ctrlClients, expectedRouterIds); err != nil {
-				pfxlog.Logger().WithField("ctrl", ctrl.Id).WithError(err).Info("connected-routers check failed, will retry")
+			if err := checkConnectedRouters(ctrl.Id, ctrlClients, expectedRouterNames); err != nil {
+				logger.WithField("ctrl", ctrl.Id).WithError(err).Info("connected-routers check failed, will retry")
 				success = false
 				continue
 			}
 		}
 
 		if success {
-			pfxlog.Logger().Info("cluster connectivity validation successful")
+			logger.Info("cluster connectivity validation successful")
 			return nil
 		}
 		time.Sleep(5 * time.Second)
@@ -162,13 +160,14 @@ type peerInfo struct {
 }
 
 type routerInfo struct {
-	Id string `json:"id"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func checkConnectedPeers(ctrlId string, ctrlClients *chaos.CtrlClients, expectedCount int) error {
-	logger := pfxlog.Logger().WithField("ctrl", ctrlId)
+	logger := tui.ValidationLogger().WithField("ctrl", ctrlId)
 
-	resp, err := ctrlClients.Inspect(ctrlId, ".*", "connected-peers")
+	resp, err := ctrlClients.Inspect(ctrlId, ctrlId, "connected-peers")
 	if err != nil {
 		return fmt.Errorf("failed to inspect connected-peers: %w", err)
 	}
@@ -177,49 +176,71 @@ func checkConnectedPeers(ctrlId string, ctrlClients *chaos.CtrlClients, expected
 		return fmt.Errorf("connected-peers inspection failed: %v", resp.Errors)
 	}
 
-	for _, value := range resp.Values {
-		if *value.Name != "connected-peers" {
-			continue
-		}
-
-		jsonBytes, err := json.Marshal(value.Value)
-		if err != nil {
-			return fmt.Errorf("failed to marshal connected-peers value: %w", err)
-		}
-
-		var peers []peerInfo
-		if err := json.Unmarshal(jsonBytes, &peers); err != nil {
-			return fmt.Errorf("failed to unmarshal connected-peers: %w", err)
-		}
-
-		if len(peers) != expectedCount {
-			return fmt.Errorf("expected %d peers, got %d", expectedCount, len(peers))
-		}
-
-		hasLeader := false
-		for _, peer := range peers {
-			if peer.IsLeader {
-				hasLeader = true
-			}
-			if !peer.IsConnected {
-				return fmt.Errorf("peer %s is not connected", peer.Id)
-			}
-		}
-		if !hasLeader {
-			return fmt.Errorf("no leader found among peers")
-		}
-
-		logger.Infof("connected-peers check passed: %d peers, leader present, all connected", len(peers))
-		return nil
+	value, ok := ctrlClients.GetInspectValue(resp, ctrlId, "connected-peers")
+	if !ok {
+		return fmt.Errorf("connected-peers inspection did not return any values")
 	}
 
-	return fmt.Errorf("no connected-peers result found in inspection response")
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("failed to marshal connected-peers value: %w", err)
+	}
+
+	var peers []peerInfo
+	if err := json.Unmarshal(jsonBytes, &peers); err != nil {
+		return fmt.Errorf("failed to unmarshal connected-peers: %w", err)
+	}
+
+	if len(peers) != expectedCount {
+		return fmt.Errorf("expected %d peers, got %d", expectedCount, len(peers))
+	}
+
+	hasSelf := false
+	isLeader := false
+	hasLeader := false
+
+	connectedCount := 0
+	for _, peer := range peers {
+		if peer.Id == ctrlId {
+			if !peer.IsConnected {
+				return fmt.Errorf("controller %s is reporting as not connected", peer.Id)
+			}
+			hasSelf = true
+			if peer.IsLeader {
+				isLeader = true
+			}
+		}
+		if peer.IsLeader {
+			hasLeader = true
+			if !peer.IsConnected {
+				return fmt.Errorf("controller %s is reporting as not connected to leader %s", ctrlId, peer.Id)
+			}
+		}
+		if peer.IsConnected {
+			connectedCount++
+		}
+	}
+
+	if !hasLeader {
+		return fmt.Errorf("no leader found among peers")
+	}
+
+	if !hasSelf {
+		return fmt.Errorf("controller %s doesn't have self as peer", ctrlId)
+	}
+
+	if isLeader && connectedCount != expectedCount {
+		return fmt.Errorf("leader connected count of %d is not equal to expected count of %d ", connectedCount, expectedCount)
+	}
+
+	logger.Infof("connected-peers check passed: %d peers, leader present, all connected", len(peers))
+	return nil
 }
 
-func checkConnectedRouters(ctrlId string, ctrlClients *chaos.CtrlClients, expectedRouterIds map[string]bool) error {
-	logger := pfxlog.Logger().WithField("ctrl", ctrlId)
+func checkConnectedRouters(ctrlId string, ctrlClients *chaos.CtrlClients, expectedRouterNames map[string]bool) error {
+	logger := tui.ValidationLogger().WithField("ctrl", ctrlId)
 
-	resp, err := ctrlClients.Inspect(ctrlId, ".*", "connected-routers")
+	resp, err := ctrlClients.Inspect(ctrlId, ctrlId, "connected-routers")
 	if err != nil {
 		return fmt.Errorf("failed to inspect connected-routers: %w", err)
 	}
@@ -228,37 +249,34 @@ func checkConnectedRouters(ctrlId string, ctrlClients *chaos.CtrlClients, expect
 		return fmt.Errorf("connected-routers inspection failed: %v", resp.Errors)
 	}
 
-	for _, value := range resp.Values {
-		if *value.Name != "connected-routers" {
-			continue
-		}
-
-		jsonBytes, err := json.Marshal(value.Value)
-		if err != nil {
-			return fmt.Errorf("failed to marshal connected-routers value: %w", err)
-		}
-
-		var routers []routerInfo
-		if err := json.Unmarshal(jsonBytes, &routers); err != nil {
-			return fmt.Errorf("failed to unmarshal connected-routers: %w", err)
-		}
-
-		connectedIds := map[string]bool{}
-		for _, r := range routers {
-			connectedIds[r.Id] = true
-		}
-
-		for id := range expectedRouterIds {
-			if !connectedIds[id] {
-				return fmt.Errorf("router %s not connected to controller %s", id, ctrlId)
-			}
-		}
-
-		logger.Infof("connected-routers check passed: %d/%d routers connected", len(routers), len(expectedRouterIds))
-		return nil
+	value, ok := ctrlClients.GetInspectValue(resp, ctrlId, "connected-routers")
+	if !ok {
+		return fmt.Errorf("connected-routers inspection did not return any values")
 	}
 
-	return fmt.Errorf("no connected-routers result found in inspection response")
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("failed to marshal connected-routers value: %w", err)
+	}
+
+	var routers []routerInfo
+	if err := json.Unmarshal(jsonBytes, &routers); err != nil {
+		return fmt.Errorf("failed to unmarshal connected-routers: %w", err)
+	}
+
+	connectedRouters := map[string]bool{}
+	for _, r := range routers {
+		connectedRouters[r.Name] = true
+	}
+
+	for name := range expectedRouterNames {
+		if !connectedRouters[name] {
+			return fmt.Errorf("router %s not connected to controller %s", name, ctrlId)
+		}
+	}
+
+	logger.Infof("connected-routers check passed: %d/%d routers connected", len(routers), len(expectedRouterNames))
+	return nil
 }
 
 func RunSimScenarios(run model.Run, services *zitiLibOps.SimServices) error {
@@ -317,7 +335,7 @@ func validateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 	}
 
 	start := time.Now()
-	logger := pfxlog.Logger().WithField("ctrl", c.Id)
+	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
 	var lastLog time.Time
 
 	// Wait for terminators to be present
@@ -382,7 +400,7 @@ func getTerminatorCount(clients *zitirest.Clients) (int64, error) {
 }
 
 func validateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, error) {
-	logger := pfxlog.Logger().WithField("ctrl", id)
+	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
 	eventNotify := make(chan *mgmt_pb.RouterSdkTerminatorsDetails, 1)
@@ -486,7 +504,7 @@ func validateCircuitsForCtrl(run model.Run, c *model.Component, deadline time.Ti
 
 	start := time.Now()
 
-	logger := pfxlog.Logger().WithField("ctrl", c.Id)
+	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
 
 	first := true
 	for {
@@ -511,7 +529,7 @@ func validateCircuitsForCtrl(run model.Run, c *model.Component, deadline time.Ti
 }
 
 func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients, first bool) (int, error) {
-	logger := pfxlog.Logger().WithField("ctrl", id)
+	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
 	eventNotify := make(chan *mgmt_pb.RouterCircuitDetails, 1)
@@ -519,7 +537,7 @@ func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients, first boo
 	handleResults := func(msg *channel.Message, _ channel.Channel) {
 		detail := &mgmt_pb.RouterCircuitDetails{}
 		if err := proto.Unmarshal(msg.Body, detail); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to unmarshal circuit validation details")
+			logger.WithError(err).Error("unable to unmarshal circuit validation details")
 			return
 		}
 		eventNotify <- detail
@@ -543,7 +561,7 @@ func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients, first boo
 	}()
 
 	request := &mgmt_pb.ValidateCircuitsRequest{
-		RouterFilter: "limit none",
+		RouterFilter: `name !="router-metrics" limit none`,
 	}
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(10 * time.Second).SendForReply(ch)
 
@@ -564,17 +582,17 @@ func validateCircuitsForCtrlOnce(id string, clients *zitirest.Clients, first boo
 	for expected > 0 {
 		select {
 		case <-closeNotify:
-			fmt.Printf("channel closed, exiting")
+			logger.Info("channel closed, exiting")
 			return 0, errors.New("unexpected close of mgmt channel")
 		case detail := <-eventNotify:
 			if !detail.ValidateSuccess {
 				invalid++
-				fmt.Printf("error validating router %s using ctrl %s: %s", detail.RouterId, id, detail.Message)
+				logger.Infof("error validating router %s using ctrl %s: %s", detail.RouterId, id, detail.Message)
 			}
 			for _, details := range detail.Details {
 				if details.IsInErrorState() {
 					if !first {
-						fmt.Printf("\tcircuit: %s ctrl: %v, fwd: %v, edge: %v, sdk: %v, dest: %+v\n",
+						logger.Infof("\tcircuit: %s ctrl: %v, fwd: %v, edge: %v, sdk: %v, dest: %+v",
 							details.CircuitId, details.MissingInCtrl, details.MissingInForwarder,
 							details.MissingInEdge, details.MissingInSdk, details.Destinations)
 					}

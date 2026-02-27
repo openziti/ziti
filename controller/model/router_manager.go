@@ -335,13 +335,15 @@ func (self *RouterManager) UpdateRouterInterfaces(routerId string, interfaces []
 }
 
 func (self *RouterManager) UpdateCtrlChanListeners(routerId string, listeners map[string][]string, ctx *change.Context) error {
+	logger := pfxlog.Logger().WithField("routerId", routerId).WithField("listeners", listeners)
+	logger.Debug("checking for router ctrl listeners change")
 	r, err := self.Read(routerId)
 	if err != nil {
 		return err
 	}
 
 	if !didCtrlChanListenersChange(r.CtrlChanListeners, listeners) {
-		pfxlog.Logger().WithField("routerId", routerId).Debug("ctrl chan listeners submitted, but no change detected")
+		logger.Debug("router ctrl chan listeners submitted, but no change detected")
 		return nil
 	}
 
@@ -349,6 +351,8 @@ func (self *RouterManager) UpdateCtrlChanListeners(routerId string, listeners ma
 	updatedFields := fields.UpdatedFieldsMap{
 		db.FieldRouterCtrlChanListeners: struct{}{},
 	}
+
+	logger.Debug("updating router ctrl listeners")
 	return self.Update(r, updatedFields, ctx)
 }
 
@@ -367,11 +371,13 @@ func didCtrlChanListenersChange(old, new map[string][]string) bool {
 			return true
 		}
 
-		slices.Sort(oldGroups)
-		slices.Sort(newGroups)
+		oldSorted := slices.Clone(oldGroups)
+		newSorted := slices.Clone(newGroups)
+		slices.Sort(oldSorted)
+		slices.Sort(newSorted)
 
-		for i, g := range oldGroups {
-			if g != newGroups[i] {
+		for i, g := range oldSorted {
+			if g != newSorted[i] {
 				return true
 			}
 		}

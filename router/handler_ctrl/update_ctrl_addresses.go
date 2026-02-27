@@ -36,6 +36,7 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 
 	log = log.WithFields(logrus.Fields{
 		"endpoints":     upd.Addresses,
+		"ctrlDetails":   upd.Controllers,
 		"localVersion":  handler.currentVersion.Load(),
 		"remoteVersion": upd.Index,
 		"isLeader":      upd.IsLeader,

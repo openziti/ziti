@@ -855,7 +855,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	log := pfxlog.Logger()
-	log.Infof("router configured with %v controller endpoints", len(endpoints))
+	log.Infof("router configured with %v controller endpoints, %d controller details", len(endpoints), len(controllers))
 
 	if err := self.startCtrlListeners(); err != nil {
 		return err
@@ -1058,7 +1058,9 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, []*ctrl_pb.CtrlDetail, 
 										}
 									}
 								}
-								controllers = append(controllers, detail)
+								if detail.Id != "" {
+									controllers = append(controllers, detail)
+								}
 							}
 						}
 					}

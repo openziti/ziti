@@ -174,6 +174,15 @@ func (self *CtrlClients) InspectAndWriteToFile(ctrlId, appRegex, targetDir, form
 	return nil
 }
 
+func (self *CtrlClients) GetInspectValue(resp *rest_model.InspectResponse, appId string, name string) (any, bool) {
+	for _, value := range resp.Values {
+		if *value.AppID == appId && *value.Name == name {
+			return value.Value, true
+		}
+	}
+	return nil, false
+}
+
 func (self *CtrlClients) prettyPrint(o io.Writer, format string, val interface{}, indent uint) error {
 	if strVal, ok := val.(string); ok {
 		if strings.IndexByte(strVal, '\n') > 0 {

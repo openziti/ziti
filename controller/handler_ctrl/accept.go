@@ -117,6 +117,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.Errorf("no router with id [%v] found, closing connection", ch.Id())
 	}
 
+	var ctrlChanListeners map[string][]string
+
 	if ch.Underlay().Headers() != nil {
 		if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 			if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
@@ -170,14 +172,11 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			if err = proto.Unmarshal(val, ctrlListeners); err != nil {
 				log.WithError(err).Error("unable to unmarshal ctrl chan listeners value")
 			} else {
-				result := make(map[string][]string, len(ctrlListeners.Listeners))
+				ctrlChanListeners = make(map[string][]string, len(ctrlListeners.Listeners))
 				for _, listener := range ctrlListeners.Listeners {
-					result[listener.Address] = listener.Groups
+					ctrlChanListeners[listener.Address] = listener.Groups
 				}
-				r.CtrlChanListeners = result
 			}
-		} else {
-			r.CtrlChanListeners = nil
 		}
 	} else {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
@@ -198,8 +197,11 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	self.network.ConnectRouter(r)
 
 	changeCtx := change.NewControlChannelChange(r.Id, r.Name, "router.connect", ch)
-	if err := self.network.Router.UpdateCtrlChanListeners(r.Id, r.CtrlChanListeners, changeCtx); err != nil {
-		log.WithError(err).Error("failed to update ctrl chan listeners")
+
+	if ctrlChanListeners != nil {
+		if err = self.network.Router.UpdateCtrlChanListeners(r.Id, ctrlChanListeners, changeCtx); err != nil {
+			log.WithError(err).Error("failed to update ctrl chan listeners")
+		}
 	}
 
 	return nil
