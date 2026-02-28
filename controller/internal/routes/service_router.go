@@ -194,7 +194,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 		var qmd *models.QueryMetaData
 
 		if len(roleFilters) > 0 {
-			cursorProvider, err := ae.GetStores().EdgeService.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
+			cursorProvider, err := ae.GetStores().Service.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
 			if err != nil {
 				return nil, err
 			}

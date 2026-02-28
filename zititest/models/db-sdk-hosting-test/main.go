@@ -98,7 +98,7 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *z
 		identityServiceCount := 0
 		for cursor.IsValid() {
 			serviceId := string(cursor.Current())
-			if stores.EdgeService.IsBindableByIdentity(tx, serviceId, identityId) {
+			if stores.Service.IsBindableByIdentity(tx, serviceId, identityId) {
 				identityServiceCount++
 			}
 			cursor.Next()

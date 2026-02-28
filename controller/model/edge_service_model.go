@@ -37,18 +37,16 @@ type EdgeService struct {
 	EncryptionRequired bool          `json:"encryptionRequired"`
 }
 
-func (entity *EdgeService) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
+func (entity *EdgeService) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Service, error) {
 	if err := entity.validateConfigs(tx, env); err != nil {
 		return nil, err
 	}
 
-	edgeService := &db.EdgeService{
-		Service: db.Service{
-			BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
-			Name:               entity.Name,
-			MaxIdleTime:        entity.MaxIdleTime,
-			TerminatorStrategy: entity.TerminatorStrategy,
-		},
+	edgeService := &db.Service{
+		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:               entity.Name,
+		MaxIdleTime:        entity.MaxIdleTime,
+		TerminatorStrategy: entity.TerminatorStrategy,
 		RoleAttributes:     entity.RoleAttributes,
 		Configs:            entity.Configs,
 		EncryptionRequired: entity.EncryptionRequired,
@@ -56,7 +54,7 @@ func (entity *EdgeService) toBoltEntity(tx *bbolt.Tx, env Env) (*db.EdgeService,
 	return edgeService, nil
 }
 
-func (entity *EdgeService) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.EdgeService, error) {
+func (entity *EdgeService) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Service, error) {
 	return entity.toBoltEntity(tx, env)
 }
 
@@ -95,11 +93,28 @@ func (entity *EdgeService) validateConfigs(tx *bbolt.Tx, env Env) error {
 	return nil
 }
 
-func (entity *EdgeService) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.EdgeService, error) {
-	return entity.toBoltEntity(tx, env)
+func (entity *EdgeService) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Service, error) {
+	// Reject edge updates to fabric-only services: they are not visible through the edge service
+	// API (see EdgeServiceManager.ReadForIdentityInTx), so allowing an update would convert a
+	// fabric service into an edge service. Also preserve the stored IsFabricOnly value so an edge
+	// update can never flip the discriminator.
+	existing, err := env.GetStores().Service.LoadById(tx, entity.Id)
+	if err != nil {
+		return nil, err
+	}
+	if existing.IsFabricOnly {
+		return nil, boltz.NewNotFoundError(env.GetStores().Service.GetSingularEntityType(), "id", entity.Id)
+	}
+
+	boltEntity, err := entity.toBoltEntity(tx, env)
+	if err != nil {
+		return nil, err
+	}
+	boltEntity.IsFabricOnly = existing.IsFabricOnly
+	return boltEntity, nil
 }
 
-func (entity *EdgeService) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
+func (entity *EdgeService) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.Service) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
@@ -121,15 +136,15 @@ type ServiceDetail struct {
 	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
-func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeService, error) {
+func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Service, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.EdgeService, error) {
+func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.Service, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.EdgeService) error {
+func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *db.Service) error {
 	entity.FillCommon(boltService)
 	entity.MaxIdleTime = boltService.MaxIdleTime
 	entity.Name = boltService.Name
