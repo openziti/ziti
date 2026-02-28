@@ -67,7 +67,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireCreate(ctx, policy)
-	ctx.validateServiceEdgeRouterPolicyServices([]*EdgeService{service}, []*ServiceEdgeRouterPolicy{policy})
+	ctx.validateServiceEdgeRouterPolicyServices([]*Service{service}, []*ServiceEdgeRouterPolicy{policy})
 
 	policy.ServiceRoles = append(policy.ServiceRoles, entityRef(invalidId))
 	err = boltztest.Update(ctx, policy)
@@ -111,7 +111,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireCreate(ctx, policy)
-	ctx.validateServiceEdgeRouterPolicyServices([]*EdgeService{service}, []*ServiceEdgeRouterPolicy{policy})
+	ctx.validateServiceEdgeRouterPolicyServices([]*Service{service}, []*ServiceEdgeRouterPolicy{policy})
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
 	ctx.Equal(0, len(policy.ServiceRoles), "service id should have been removed from service roles")
@@ -121,13 +121,13 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireUpdate(ctx, policy)
-	ctx.validateServiceEdgeRouterPolicyServices([]*EdgeService{service}, []*ServiceEdgeRouterPolicy{policy})
+	ctx.validateServiceEdgeRouterPolicyServices([]*Service{service}, []*ServiceEdgeRouterPolicy{policy})
 
 	service.Name = eid.New()
 	boltztest.RequireUpdate(ctx, service)
 	boltztest.RequireReload(ctx, policy)
 	ctx.True(stringz.Contains(policy.ServiceRoles, entityRef(service.Id)))
-	ctx.validateServiceEdgeRouterPolicyServices([]*EdgeService{service}, []*ServiceEdgeRouterPolicy{policy})
+	ctx.validateServiceEdgeRouterPolicyServices([]*Service{service}, []*ServiceEdgeRouterPolicy{policy})
 
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
@@ -174,7 +174,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	// modify polices, add roles, check
 	// modify policies, remove roles, check
 
-	var services []*EdgeService
+	var services []*Service
 	for i := 0; i < 5; i++ {
 		service := newEdgeService(eid.New())
 		boltztest.RequireCreate(ctx, service)
@@ -324,7 +324,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 }
 
-func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles []string, services []*EdgeService, edgeRouters []*EdgeRouter, oncreate bool) []*ServiceEdgeRouterPolicy {
+func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles []string, services []*Service, edgeRouters []*EdgeRouter, oncreate bool) []*ServiceEdgeRouterPolicy {
 	var policies []*ServiceEdgeRouterPolicy
 	for i := 0; i < 9; i++ {
 		policy := newServiceEdgeRouterPolicy(eid.New())
@@ -378,13 +378,13 @@ func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouter
 	return policies
 }
 
-func (ctx *TestContext) validateServiceEdgeRouterPolicies(services []*EdgeService, edgeRouters []*EdgeRouter, policies []*ServiceEdgeRouterPolicy) {
+func (ctx *TestContext) validateServiceEdgeRouterPolicies(services []*Service, edgeRouters []*EdgeRouter, policies []*ServiceEdgeRouterPolicy) {
 	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
 	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
 	ctx.validateServiceEdgeRouterPolicyDenormalization()
 }
 
-func (ctx *TestContext) validateServiceEdgeRouterPolicyServices(services []*EdgeService, policies []*ServiceEdgeRouterPolicy) {
+func (ctx *TestContext) validateServiceEdgeRouterPolicyServices(services []*Service, policies []*ServiceEdgeRouterPolicy) {
 	for _, policy := range policies {
 		count := 0
 		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)

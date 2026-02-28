@@ -208,7 +208,7 @@ func (self *anonymizeDbAction) initValidation() {
 
 		self.Infof("scanned stats for %d identities", entityCounter)
 
-		ids, _, err = self.stores.EdgeService.QueryIds(tx, "true limit none")
+		ids, _, err = self.stores.Service.QueryIds(tx, "true limit none")
 		if err != nil {
 			return err
 		}
@@ -217,9 +217,9 @@ func (self *anonymizeDbAction) initValidation() {
 
 		for _, id := range ids {
 			entityCounter++
-			self.serviceDialIdsCounts[id] = getRelatedEntityCount(tx, self.stores.EdgeService, id, db.FieldEdgeServiceDialIdentities)
-			self.serviceBindIdsCounts[id] = getRelatedEntityCount(tx, self.stores.EdgeService, id, db.FieldEdgeServiceBindIdentities)
-			self.serviceErCounts[id] = getRelatedEntityCount(tx, self.stores.EdgeService, id, db.FieldEdgeRouters)
+			self.serviceDialIdsCounts[id] = getRelatedEntityCount(tx, self.stores.Service, id, db.FieldEdgeServiceDialIdentities)
+			self.serviceBindIdsCounts[id] = getRelatedEntityCount(tx, self.stores.Service, id, db.FieldEdgeServiceBindIdentities)
+			self.serviceErCounts[id] = getRelatedEntityCount(tx, self.stores.Service, id, db.FieldEdgeRouters)
 		}
 
 		self.Infof("scanned stats for %d services", entityCounter)
@@ -302,7 +302,7 @@ func (self *anonymizeDbAction) anonymizeIdentities() {
 func (self *anonymizeDbAction) anonymizeServices() {
 	// Update Services
 	err := self.zitiDb.Update(nil, func(ctx boltz.MutateContext) error {
-		ids, _, err := self.stores.EdgeService.QueryIds(ctx.Tx(), "true limit none")
+		ids, _, err := self.stores.Service.QueryIds(ctx.Tx(), "true limit none")
 		if err != nil {
 			return err
 		}
@@ -310,7 +310,7 @@ func (self *anonymizeDbAction) anonymizeServices() {
 		entityCounter := 0
 
 		for _, id := range ids {
-			entity, err := self.stores.EdgeService.LoadById(ctx.Tx(), id)
+			entity, err := self.stores.Service.LoadById(ctx.Tx(), id)
 			if err != nil {
 				return err
 			}
@@ -321,7 +321,7 @@ func (self *anonymizeDbAction) anonymizeServices() {
 			if !self.preserveTags {
 				entity.Tags = map[string]interface{}{}
 			}
-			if err = self.stores.EdgeService.Update(ctx, entity, nil); err != nil {
+			if err = self.stores.Service.Update(ctx, entity, nil); err != nil {
 				return err
 			}
 			if entityCounter%100 == 0 {
@@ -550,7 +550,7 @@ func (self *anonymizeDbAction) validateEntityCounts() {
 
 	// Validate service references
 	err = self.zitiDb.View(func(tx *bbolt.Tx) error {
-		ids, _, err := self.stores.EdgeService.QueryIds(tx, "true limit none")
+		ids, _, err := self.stores.Service.QueryIds(tx, "true limit none")
 		if err != nil {
 			return err
 		}
@@ -558,9 +558,9 @@ func (self *anonymizeDbAction) validateEntityCounts() {
 		entityCounter := 0
 		for _, id := range ids {
 			entityCounter++
-			self.validateRefCount(tx, self.stores.EdgeService, id, db.FieldEdgeServiceDialIdentities, self.serviceDialIdsCounts)
-			self.validateRefCount(tx, self.stores.EdgeService, id, db.FieldEdgeServiceBindIdentities, self.serviceBindIdsCounts)
-			self.validateRefCount(tx, self.stores.EdgeService, id, db.FieldEdgeRouters, self.serviceErCounts)
+			self.validateRefCount(tx, self.stores.Service, id, db.FieldEdgeServiceDialIdentities, self.serviceDialIdsCounts)
+			self.validateRefCount(tx, self.stores.Service, id, db.FieldEdgeServiceBindIdentities, self.serviceBindIdsCounts)
+			self.validateRefCount(tx, self.stores.Service, id, db.FieldEdgeRouters, self.serviceErCounts)
 		}
 		self.Infof("validated %04d services", entityCounter)
 		return nil

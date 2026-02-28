@@ -322,7 +322,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 
 					for serviceCursor.IsValid() {
 						if _, ok := services[string(serviceCursor.Current())]; !ok {
-							service, err := self.env.GetStores().EdgeService.LoadById(tx, string(serviceCursor.Current()))
+							service, err := self.env.GetStores().Service.LoadById(tx, string(serviceCursor.Current()))
 							if err == nil {
 								modelService := &EdgeService{}
 								if err := modelService.fillFrom(self.env, tx, service); err == nil {

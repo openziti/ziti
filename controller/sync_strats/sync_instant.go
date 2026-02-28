@@ -206,13 +206,13 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 	strategy.ae.GetStores().Config.AddEntityConstraint(configHandler)
 
 	//service create/delete/update
-	serviceHandler := &constraintToIndexedEvents[*db.EdgeService]{
+	serviceHandler := &constraintToIndexedEvents[*db.Service]{
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.ServiceCreate,
 		updateHandler: strategy.ServiceUpdate,
 		deleteHandler: strategy.ServiceDelete,
 	}
-	strategy.ae.GetStores().EdgeService.AddEntityConstraint(serviceHandler)
+	strategy.ae.GetStores().Service.AddEntityConstraint(serviceHandler)
 
 	//ca create/delete/update
 	caHandler := &constraintToIndexedEvents[*db.Ca]{
@@ -1092,13 +1092,15 @@ func (strategy *InstantStrategy) ValidateIdentities(tx *bbolt.Tx, rdm *common.Ro
 }
 
 func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
-	return ValidateType(tx, strategy.ae.GetStores().EdgeService, rdm.Services, func(t *db.EdgeService, v *edge_ctrl_pb.DataState_Service) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Service, rdm.Services, func(t *db.Service, v *edge_ctrl_pb.DataState_Service) []error {
 		var result []error
 		result = diffVals("service", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("service", t.Id, "encryption required", t.EncryptionRequired, v.EncryptionRequired, result)
 		result = diffJson("service", t.Id, "configs", t.Configs, v.Configs, result)
 		return result
-	})
+		// TEMPORARY(fabric-edge-collapse): the skip predicate keeps fabric-only services out of RDM
+		// validation; remove with the fabric/edge split.
+	}, func(t *db.Service) bool { return t.IsFabricOnly })
 }
 
 func (strategy *InstantStrategy) ValidatePostureChecks(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
@@ -1260,7 +1262,10 @@ func diffSets(entityType, id, field string, a, b map[string]struct{}, result []e
 	return result
 }
 
-func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m cmap.ConcurrentMap[string, V], checkF func(T, V) []error) []error {
+// ValidateType compares each entity in the store against the router data model map m. Entities for
+// which any skip predicate returns true are ignored entirely: they are not validated and not
+// reported as missing, which is how fabric-only services (never sent to routers) are excluded.
+func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m cmap.ConcurrentMap[string, V], checkF func(T, V) []error, skip ...func(T) bool) []error {
 	var result []error
 	entities := common.CloneMap(m)
 	for cursor := store.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
@@ -1269,6 +1274,18 @@ func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m c
 			result = append(result, err)
 			continue
 		}
+
+		skipEntity := false
+		for _, skipF := range skip {
+			if skipF(entity) {
+				skipEntity = true
+				break
+			}
+		}
+		if skipEntity {
+			continue
+		}
+
 		rdmEntity, found := entities.Get(entity.GetId())
 		if !found {
 			result = append(result, fmt.Errorf("no %s found with id: %s",
@@ -1332,16 +1349,21 @@ func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm
 }
 
 func (strategy *InstantStrategy) BuildServices(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
-	for cursor := strategy.ae.GetStores().EdgeService.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
-		currentBytes := cursor.Current()
-		currentId := string(currentBytes)
+	for cursor := strategy.ae.GetStores().Service.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentId := string(cursor.Current())
 
-		service, err := newServiceById(tx, strategy.ae, currentId)
-
+		storeModel, err := strategy.ae.GetStores().Service.LoadById(tx, currentId)
 		if err != nil {
 			return err
 		}
 
+		// Fabric-only services are not part of the edge data model sent to routers.
+		// TEMPORARY(fabric-edge-collapse): remove with the fabric/edge split.
+		if storeModel.IsFabricOnly {
+			continue
+		}
+
+		service := newService(storeModel)
 		newModel := &edge_ctrl_pb.DataState_Event_Service{Service: service}
 		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action: edge_ctrl_pb.DataState_Create,
@@ -1534,17 +1556,7 @@ func newConfig(entity *db.Config) (*edge_ctrl_pb.DataState_Config, error) {
 	}, nil
 }
 
-func newServiceById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Service, error) {
-	storeModel, err := ae.GetStores().EdgeService.LoadById(tx, id)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return newService(storeModel), nil
-}
-
-func newService(storeModel *db.EdgeService) *edge_ctrl_pb.DataState_Service {
+func newService(storeModel *db.Service) *edge_ctrl_pb.DataState_Service {
 	return &edge_ctrl_pb.DataState_Service{
 		Id:                 storeModel.Id,
 		Name:               storeModel.Name,
@@ -1720,15 +1732,15 @@ func (strategy *InstantStrategy) ConfigDelete(index uint64, entity *db.Config) {
 	strategy.handleConfig(index, edge_ctrl_pb.DataState_Delete, entity)
 }
 
-func (strategy *InstantStrategy) ServiceCreate(index uint64, service *db.EdgeService) {
+func (strategy *InstantStrategy) ServiceCreate(index uint64, service *db.Service) {
 	strategy.handleService(index, edge_ctrl_pb.DataState_Create, service)
 }
 
-func (strategy *InstantStrategy) ServiceUpdate(index uint64, service *db.EdgeService) {
+func (strategy *InstantStrategy) ServiceUpdate(index uint64, service *db.Service) {
 	strategy.handleService(index, edge_ctrl_pb.DataState_Update, service)
 }
 
-func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.EdgeService) {
+func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.Service) {
 	strategy.handleService(index, edge_ctrl_pb.DataState_Delete, service)
 }
 
@@ -1759,7 +1771,13 @@ func (strategy *InstantStrategy) handleConfig(index uint64, action edge_ctrl_pb.
 	})
 }
 
-func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb.DataState_Action, service *db.EdgeService) {
+func (strategy *InstantStrategy) handleService(index uint64, action edge_ctrl_pb.DataState_Action, service *db.Service) {
+	// Fabric-only services are not part of the edge data model; never emit data-state events for
+	// them. IsFabricOnly is immutable after create, so this holds for create, update, and delete.
+	if service.IsFabricOnly {
+		return
+	}
+
 	svc := newService(service)
 
 	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{

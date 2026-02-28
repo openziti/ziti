@@ -163,8 +163,8 @@ type sessionTestEntities struct {
 	identity1   *Identity
 	apiSession1 *ApiSession
 	apiSession2 *ApiSession
-	service1    *EdgeService
-	service2    *EdgeService
+	service1    *Service
+	service2    *Service
 	session1    *Session
 	session2    *Session
 	session3    *Session

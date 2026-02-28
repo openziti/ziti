@@ -168,8 +168,8 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 	store.symbolRoleAttributes = store.AddPublicSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
-	store.symbolBindServices = store.AddFkSetSymbol(FieldPostureCheckBindServices, store.stores.edgeService)
-	store.symbolDialServices = store.AddFkSetSymbol(FieldPostureCheckDialServices, store.stores.edgeService)
+	store.symbolBindServices = store.AddFkSetSymbol(FieldPostureCheckBindServices, store.stores.service)
+	store.symbolDialServices = store.AddFkSetSymbol(FieldPostureCheckDialServices, store.stores.service)
 
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 
@@ -179,8 +179,8 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 func (store *postureCheckStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolPostureChecks)
 
-	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
-	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindIdentities)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialIdentities)
 }
 
 func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {

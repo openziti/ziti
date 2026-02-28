@@ -192,8 +192,8 @@ func (store *identityStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeRouters, store.stores.edgeRouter)
-	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.edgeService)
-	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.edgeService)
+	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.service)
+	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.service)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
@@ -217,8 +217,8 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
 
 	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolIdentities)
-	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
-	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindIdentities)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialIdentities)
 }
 
 func (store *identityStoreImpl) NewEntity() *Identity {
@@ -424,6 +424,21 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 		return
 	}
 
+	// Service-config overrides apply only to edge services. After the edge/fabric store collapse,
+	// identityServicesLinks resolves against the unified service store, so a fabric-only (or missing)
+	// service would otherwise silently gain edge-only override state (and a ServiceUpdated event),
+	// while cleanupEdgeService skips fabric-only rows on delete -> stale data. Reject up front; this
+	// validates the kept set, so removing a stale override still works.
+	// Set the error on ctx.Bucket (the entity bucket PersistEntity checks); a child bucket's
+	// ErrorHolder is not shared with it, so setting it there would be silently dropped.
+	// TEMPORARY(fabric-edge-collapse): the isNotFabricOnly check goes away with the fabric/edge split.
+	for serviceId := range entity.ServiceConfigs {
+		if !store.stores.service.IsEntityPresent(ctx.Tx(), serviceId) || !store.stores.service.isNotFabricOnly(ctx.Tx(), []byte(serviceId)) {
+			ctx.Bucket.SetError(errorz.NewFieldError("no edge service found with the given id", FieldIdentityServiceConfigs, serviceId))
+			return
+		}
+	}
+
 	var serviceEvents []*ServiceEvent
 
 	foundServices := map[string]struct{}{}
@@ -479,7 +494,7 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 			// no overrides for service, delete existing
 			configsBucket.DeleteEntity(serviceId)
 
-			if err := store.stores.edgeService.identityServicesLinks.RemoveLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
+			if err := store.stores.service.identityServicesLinks.RemoveLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
 				serviceBucket.SetError(err)
 				return
 			}
@@ -512,7 +527,7 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 			}
 		}
 
-		if err := store.stores.edgeService.identityServicesLinks.AddLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
+		if err := store.stores.service.identityServicesLinks.AddLink(ctx.Tx(), []byte(serviceId), []byte(entity.Id)); err != nil {
 			serviceBucket.SetError(err)
 			return
 		}
@@ -655,7 +670,7 @@ func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId st
 		configsBucket.DeleteEntity(serviceId)
 
 		if removeServiceRefs {
-			if err := store.stores.edgeService.identityServicesLinks.RemoveLink(tx, []byte(serviceId), []byte(identityId)); err != nil {
+			if err := store.stores.service.identityServicesLinks.RemoveLink(tx, []byte(serviceId), []byte(identityId)); err != nil {
 				return err
 			}
 		}
