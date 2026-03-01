@@ -94,6 +94,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Dial failures now return the circuit ID and error information for easier debugging
 * Router-to-controller control channels now support multiple underlays with priority-based message routing
 * The dialing identity's ID and name are now forwarded to the hosting SDK
+* Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
 
 ## Basic Permission System (BETA)
 
@@ -744,6 +745,66 @@ The identity ID and name of the dialing client are now forwarded to the hosting 
 established. This allows hosting applications to identify which identity initiated the connection,
 enabling identity-aware request handling on the server side. This will require SDK updates to add this
 to the API for hosting applications.
+
+## Controller-Initiated Control Channel Dials (BETA)
+
+Controllers can now dial routers to establish control channels. Previously, routers were solely
+responsible for dialing controllers. This is useful in deployments where controllers are behind
+firewalls and cannot be reached by all routers, but the controllers can reach the routers.
+
+### Router Configuration
+
+Routers can configure one or more control channel listeners. Each listener specifies a bind address,
+an advertise address (reported to the controller), and optional groups for matching.
+
+```yaml
+ctrl:
+  listeners:
+    - bind: tls://0.0.0.0:6262
+      advertise: tls://router.example.com:6262
+      groups:
+        - default
+```
+
+The advertise address is stored in the router's `ctrlChanListeners` model field and reported to
+the controller. Groups default to `["default"]` if not specified.
+
+Routers will also report their configured `ctrlChanListeners` to the controller when they connect,
+and the controller data model will be updated automatically.
+
+The `ctrlChanListeners` field can also be set via the CLI:
+
+```bash
+ziti edge update edge-router myRouter --ctrl-chan-listener 'tls://router.example.com:6262=group1,group2'
+```
+
+### Controller Configuration
+
+The controller dialer is disabled by default and must be explicitly enabled. When enabled, the
+controller will dial routers that have control channel listeners configured and are not already
+connected.
+
+```yaml
+ctrl:
+  dialer:
+    enabled: true
+    groups:
+      - default
+    dialDelay: 30s
+```
+
+- `enabled` - Enables the controller dialer (default: `false`)
+- `groups` - List of groups to match against router listener groups (default: `["default"]`)
+- `dialDelay` - Delay before the controller attempts to dial a disconnected router (default: `30s`)
+
+The controller will only dial routers whose listener groups overlap with the controller's configured
+groups.
+
+## Current Beta Features
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
 
 ## Component Updates and Bug Fixes
 

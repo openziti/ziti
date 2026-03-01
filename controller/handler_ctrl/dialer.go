@@ -165,6 +165,10 @@ func (self *CtrlDialer) groupsMatch(routerGroups []string) bool {
 func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 	defer self.dialing.Delete(routerId)
 
+	if self.config.DialDelay > 0 {
+		time.Sleep(self.config.DialDelay)
+	}
+
 	log := pfxlog.Logger().WithField("component", "ctrlDialer").
 		WithField("routerId", routerId).
 		WithField("address", address)
