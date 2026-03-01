@@ -484,6 +484,8 @@ func (c *Controller) Run() error {
 			headers,
 			c.shutdownC,
 		)
+		c.network.AddRouterPresenceHandler(ctrlDialer)
+		c.network.Router.Store.AddEntityIdListener(ctrlDialer.RouterUpdated, boltz.EntityUpdated)
 		go ctrlDialer.Run()
 	}
 

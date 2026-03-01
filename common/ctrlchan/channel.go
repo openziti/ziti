@@ -423,5 +423,5 @@ func (self *ListenerCtrlChannel) HandleUnderlayAccepted(_ channel.MultiChannel, 
 
 func (self *ListenerCtrlChannel) IsConnected() bool {
 	// when the listener underlay becomes disconnected, it closed
-	return true
+	return !self.IsClosed()
 }

@@ -70,23 +70,30 @@ func (self *CtrlDialer) Run() {
 	defer self.ctxCancel()
 
 	log := pfxlog.Logger().WithField("component", "ctrlDialer")
-	log.WithField("scanInterval", self.config.ScanInterval).
-		WithField("dialDelay", self.config.DialDelay).
+	log.WithField("dialDelay", self.config.DialDelay).
 		WithField("groups", self.config.Groups).
 		Info("starting ctrl channel dialer")
 
-	ticker := time.NewTicker(self.config.ScanInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			self.scan()
-		case <-self.closeNotify:
-			log.Info("stopping ctrl channel dialer")
-			return
-		}
+	if self.config.DialDelay > 0 {
+		time.Sleep(self.config.DialDelay)
 	}
+
+	self.scan()
+
+	<-self.closeNotify
+	log.Info("stopping ctrl channel dialer")
+}
+
+func (self *CtrlDialer) RouterConnected(_ *model.Router) {
+	// no-op: router connected via another path, nothing to do
+}
+
+func (self *CtrlDialer) RouterDisconnected(r *model.Router) {
+	self.checkDialersFor(r.Id, r)
+}
+
+func (self *CtrlDialer) RouterUpdated(id string) {
+	self.checkDialersFor(id, nil)
 }
 
 func (self *CtrlDialer) scan() {

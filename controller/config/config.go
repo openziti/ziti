@@ -98,9 +98,8 @@ const (
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
 
-	DefaultCtrlDialerEnabled      = false
-	DefaultCtrlDialerScanInterval = 30 * time.Second
-	DefaultCtrlDialerDialDelay    = 30 * time.Second
+	DefaultCtrlDialerEnabled   = false
+	DefaultCtrlDialerDialDelay = 30 * time.Second
 )
 
 type Config struct {
@@ -176,10 +175,9 @@ type CtrlOptions struct {
 }
 
 type CtrlDialerConfig struct {
-	Enabled      bool
-	Groups       []string
-	ScanInterval time.Duration
-	DialDelay    time.Duration
+	Enabled   bool
+	Groups    []string
+	DialDelay time.Duration
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -656,10 +654,9 @@ func LoadConfig(path string) (*Config, error) {
 			}
 
 			controllerConfig.Ctrl.Dialer = CtrlDialerConfig{
-				Enabled:      DefaultCtrlDialerEnabled,
-				Groups:       []string{"default"},
-				ScanInterval: DefaultCtrlDialerScanInterval,
-				DialDelay:    DefaultCtrlDialerDialDelay,
+				Enabled:   DefaultCtrlDialerEnabled,
+				Groups:    []string{"default"},
+				DialDelay: DefaultCtrlDialerDialDelay,
 			}
 
 			if value, found := submap["dialer"]; found {
@@ -674,15 +671,6 @@ func LoadConfig(path string) (*Config, error) {
 								if s, ok := g.(string); ok {
 									controllerConfig.Ctrl.Dialer.Groups = append(controllerConfig.Ctrl.Dialer.Groups, s)
 								}
-							}
-						}
-					}
-					if v, found := dialerMap["scanInterval"]; found {
-						if s, ok := v.(string); ok {
-							if d, err := time.ParseDuration(s); err == nil {
-								controllerConfig.Ctrl.Dialer.ScanInterval = d
-							} else {
-								return nil, fmt.Errorf("invalid ctrl.dialer.scanInterval: %w", err)
 							}
 						}
 					}
