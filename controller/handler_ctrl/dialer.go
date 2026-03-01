@@ -192,7 +192,7 @@ func (self *CtrlDialer) dialWithBackoff(routerId, address string) {
 
 	if err := backoff.Retry(operation, backoff.WithContext(expBackoff, self.ctx)); err != nil {
 		log.WithError(err).Warn("stopped dial attempts to router ctrl channel listener")
-	} else {
+	} else if self.ctx.Err() == nil {
 		log.Info("successfully connected to router ctrl channel")
 	}
 }

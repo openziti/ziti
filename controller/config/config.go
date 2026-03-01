@@ -98,7 +98,7 @@ const (
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
 
-	DefaultCtrlDialerEnabled      = true
+	DefaultCtrlDialerEnabled      = false
 	DefaultCtrlDialerScanInterval = 30 * time.Second
 	DefaultCtrlDialerDialDelay    = 30 * time.Second
 )
