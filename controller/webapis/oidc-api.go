@@ -24,13 +24,16 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/openziti/identity"
 
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
+	"github.com/openziti/ziti/v2/controller/response"
 )
 
 var _ xweb.ApiHandlerFactory = &OidcApiFactory{}
@@ -181,7 +184,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	if err != nil {
 		return nil, err
 	}
-	oidcApi.handler = api.WrapCorsHandler(oidcApi.handler)
+	oidcApi.handler = api.TimeoutHandler(api.WrapCorsHandler(oidcApi.handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
 
 	return oidcApi, nil
 }
