@@ -209,9 +209,15 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	nc, newClientErr := o.newHttpClient(false)
-	if newClientErr != nil {
-		return nil, newClientErr
+	var nc http.Client
+	if o.client.Transport != nil {
+		nc = o.client
+	} else {
+		var newClientErr error
+		nc, newClientErr = o.newHttpClient(true)
+		if newClientErr != nil {
+			return nil, newClientErr
+		}
 	}
 
 	return rest_util.NewEdgeClientClientWithToken(&nc, o.ControllerUrl, o.Token)
