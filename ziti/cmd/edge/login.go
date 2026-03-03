@@ -176,19 +176,6 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 			return http.Client{}, loginErr
 		}
 		o.MergeUnsetFrom(cached)
-	} else {
-		if o.ControllerUrl == "" {
-			if cached.ControllerUrl == "" {
-				if host, err := term.Prompt("Enter controller host[:port] (default localhost:1280): "); err != nil {
-					return http.Client{}, err
-				} else {
-					if host == "" {
-						host = "localhost:1280"
-					}
-				}
-			}
-		}
-
 	}
 
 	t, cte := o.createHttpTransport()
