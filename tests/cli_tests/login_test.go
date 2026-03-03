@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
@@ -45,6 +46,7 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("switch controller different cert", s.testSwitchController)
 	t.Run("same controller uses cached cert", s.testSameControllerUsesCache)
 	t.Run("switch controller file auth", s.testSwitchControllerFileAuth)
+	t.Run("file auth ignores cached server cert", s.testFileAuthIgnoresCachedServerCert)
 
 	// Edge Cases
 	t.Run("empty username", s.testEmptyUsername)
@@ -521,4 +523,69 @@ func (s *cliTestState) testZitiThenNot(t *testing.T) {
 
 	err = opts.Run()
 	require.NoError(t, err, "underlay controller should login successfully")
+}
+
+func (s *cliTestState) testFileAuthIgnoresCachedServerCert(t *testing.T) {
+	s.removeZitiDir(t)
+
+	opts1 := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.externalZiti.Username,
+		Password:      s.externalZiti.Password,
+		ControllerUrl: s.externalZiti.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+	}
+	require.NoError(t, opts1.Run(), "initial login to external controller should succeed")
+	require.NotEmpty(t, opts1.ApiSession)
+
+	// Find and corrupt the cached cert file for externalZiti
+	certsDir := filepath.Join(s.homeDir, ".config", "underlay", "certs")
+	require.DirExists(t, certsDir, "certs directory must exist after login")
+
+	// List all cert files and find the one that was just created (most recent)
+	entries, err := os.ReadDir(certsDir)
+	require.NoError(t, err, "should be able to read certs directory")
+	require.Greater(t, len(entries), 0, "at least one cert file should exist after login")
+
+	// Find the most recently created cert file (should be from externalZiti login)
+	var mostRecentCert string
+	var mostRecentTime time.Time
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, _ := entry.Info()
+		if info.ModTime().After(mostRecentTime) {
+			mostRecentTime = info.ModTime()
+			mostRecentCert = entry.Name()
+		}
+	}
+	require.NotEmpty(t, mostRecentCert, "should find a recently created cert file")
+
+	cachedCertPath := filepath.Join(certsDir, mostRecentCert)
+	require.NoError(t, os.WriteFile(cachedCertPath, []byte("INVALID JUNK CERT DATA"), 0644), "corrupt cached cert file")
+
+	_, err = os.Stat(s.controllerUnderTest.AdminIdFile)
+	require.NoError(t, err, "identity file must exist")
+
+	opts2 := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NotEmpty(t, opts2.File, "File must be set")
+
+	te := opts2.Run()
+	require.NoError(t, te, "file-based login to different controller should succeed even with corrupted cached cert")
+	require.NotEmpty(t, opts2.ApiSession)
+	require.NotNil(t, opts2.FileCertCreds)
+
+	// Verify that the cached cert remained corrupted (file-based auth didn't use or repair it)
+	cachedCertData, err := os.ReadFile(cachedCertPath)
+	require.NoError(t, err, "cached cert file should still exist")
+	require.Equal(t, "INVALID JUNK CERT DATA", string(cachedCertData), "cached cert should remain corrupted after file-based auth succeeds")
 }

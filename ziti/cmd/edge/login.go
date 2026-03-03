@@ -161,7 +161,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
-	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
+	if o.ControllerUrl != "" && (o.Args == nil || len(o.Args) < 1) {
 		o.Args = []string{o.ControllerUrl}
 	}
 
@@ -301,16 +301,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if ctrlUrl.Path == "" {
-		fullCaPool, caPoolErr := o.GetCaPool()
-		if caPoolErr != nil {
-			return caPoolErr
-		}
-
-		if (o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil) || fullCaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, fullCaPool, &httpClient)
-		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
-		}
+		host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
 		hostUrl, _ := url.Parse(host)
 		o.ControllerUrl = o.ControllerUrl + hostUrl.Path
 	}
@@ -638,7 +629,7 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
 			rootPemData, err := os.ReadFile(o.CaCert)
 			if err != nil {
-				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+				pfxlog.Logger().Warnf("error reading CA cert [%s]", o.CaCert)
 			}
 			caPool.AppendCertsFromPEM(rootPemData)
 		} else {

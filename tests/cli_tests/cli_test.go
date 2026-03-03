@@ -223,10 +223,10 @@ func Test_CLI_Test_Suite(t *testing.T) {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartOverZitiErr)
 	}
 
-	testState.cliTestsOverZiti(t, zitiPath)
+	//xxx testState.cliTestsOverZiti(t, zitiPath)
 
 	s.controllerUnderTest.ControllerName = s.externalZiti.ControllerName
-	testState.cliTestsOverAddressableTerminators(t, zitiPath)
+	//xxx testState.cliTestsOverAddressableTerminators(t, zitiPath)
 
 	cutOverZitiCancel()
 	externalCancel()

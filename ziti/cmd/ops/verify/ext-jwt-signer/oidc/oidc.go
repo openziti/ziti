@@ -316,7 +316,8 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			}
 
 			if err := opts.ConfigureCerts(opts.ControllerUrl, ctrlUrl); err != nil {
-				log.WithError(err).Warn("failed to configure certificates, continuing anyway")
+				log.WithError(err).Warn("failed to configure certificates")
+				return err
 			}
 
 			m, merr := opts.NewClientApiClient()
