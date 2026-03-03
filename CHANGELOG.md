@@ -754,7 +754,9 @@ to the API for hosting applications.
     * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
     * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
 
-* github.com/openziti/edge-api: [v0.26.50 -> v0.26.53](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.53)
+* github.com/openziti/edge-api: [v0.26.50 -> v0.26.56](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.56)
+    * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
+    * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
 * github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.87](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.87)
@@ -782,7 +784,15 @@ to the API for hosting applications.
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3624](https://github.com/openziti/ziti/issues/3624) - Multi-underlay control channel doesn't correctly handle lack of group secret on non-grouped underlays
+    * [Issue #3613](https://github.com/openziti/ziti/issues/3613) - Initializing cluster from existing db using `db:` config settings results in panic
+    * [Issue #3620](https://github.com/openziti/ziti/issues/3620) - Controller control channel heartbeats config parsing was erroneously nested under options parsing
+    * [Issue #3619](https://github.com/openziti/ziti/issues/3619) - Router connect events full sync interval was using min/max values meant for the batch interval
+    * [Issue #3618](https://github.com/openziti/ziti/issues/3618) - Router interfaceDiscovery.minReportInterval value was being set to checkInterval
+    * [Issue #3617](https://github.com/openziti/ziti/issues/3617) - Transit router disabled flag not passed through raft command structure
+    * [Issue #3333](https://github.com/openziti/ziti/issues/3333) - Updb user-lockout triggered by successful login attempts
     * [Issue #3599](https://github.com/openziti/ziti/issues/3599) - Add gap detection and handling to router data model
+    * [Issue #3356](https://github.com/openziti/ziti/issues/3356) - Add WWW-Authenticate Headers
     * [Issue #3074](https://github.com/openziti/ziti/issues/3074) - Dynamic cost range is too limited
     * [Issue #3558](https://github.com/openziti/ziti/issues/3558) - terminator cost increased on egress dial success, not on circuit completion
     * [Issue #3556](https://github.com/openziti/ziti/issues/3556) - global circuit costs not cleared when terminator is deleted
@@ -831,11 +841,15 @@ to the API for hosting applications.
     * [Issue #3318](https://github.com/openziti/ziti/issues/3318) - Terminator creation seems to slow exponentially as the number of terminators rises from 10k to 20k to 40k
     * [Issue #3407](https://github.com/openziti/ziti/issues/3407) - The CLI doesn't properly pass JWT authentication information to websocket endpoints
     * [Issue #3359](https://github.com/openziti/ziti/issues/3359) - Ensure router data model subscriptions have reasonable performance and will scale
+    * [Issue #3354](https://github.com/openziti/ziti/issues/3354) - SDK/ENV Info from SDKs is not distributed in HA
     * [Issue #3381](https://github.com/openziti/ziti/issues/3381) - the fabric service REST apis are missing the maxIdleTime property
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
     * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
     * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
+    * [Issue #3349](https://github.com/openziti/ziti/issues/3349) - UPDB OIDC login returns wrong content type
+    * [Issue #2324](https://github.com/openziti/ziti/issues/2324) - Add Ext-JWT/OIDC enrollment
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
     * [Issue #3264](https://github.com/openziti/ziti/issues/3264) - Allow routers to generate alert events in cases of service misconfiguration
+
