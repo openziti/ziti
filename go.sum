@@ -820,8 +820,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zitadel/logging v0.7.0 h1:eugftwMM95Wgqwftsvj81isL0JK/hoScVqp/7iA2adQ=
 github.com/zitadel/logging v0.7.0/go.mod h1:9A6h9feBF/3u0IhA4uffdzSDY7mBaf7RE78H5sFMINQ=
-github.com/zitadel/oidc/v3 v3.45.4 h1:GKyWaPRVQ8sCu9XgJ3NgNGtG52FzwVJpzXjIUG2+YrI=
-github.com/zitadel/oidc/v3 v3.45.4/go.mod h1:XALmFXS9/kSom9B6uWin1yJ2WTI/E4Ti5aXJdewAVEs=
+github.com/zitadel/oidc/v3 v3.45.5 h1:CubfcXQiqtysk+FZyIcvj1+1ayvdSV89v5xWu5asrDQ=
+github.com/zitadel/oidc/v3 v3.45.5/go.mod h1:MKHUazeiNX/jxRc6HD/Dv9qhL/wNuzrJAadBEGXiBeE=
 github.com/zitadel/schema v1.3.2 h1:gfJvt7dOMfTmxzhscZ9KkapKo3Nei3B6cAxjav+lyjI=
 github.com/zitadel/schema v1.3.2/go.mod h1:IZmdfF9Wu62Zu6tJJTH3UsArevs3Y4smfJIj3L8fzxw=
 go.etcd.io/bbolt v1.4.3 h1:dEadXpI6G79deX5prL3QRNP6JB8UxVkqo4UPnHaNXJo=
