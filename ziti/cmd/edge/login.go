@@ -161,7 +161,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
-	if o.ControllerUrl != "" && (o.Args == nil || len(o.Args) < 1) {
+	if o.ControllerUrl != "" && len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
 
