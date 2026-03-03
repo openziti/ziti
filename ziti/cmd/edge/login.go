@@ -140,7 +140,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			if len(args) > 0 {
-				options.ControllerUrl = args[0]
+				options.ControllerUrl = addHttpsIfNeeded(args[0])
 			}
 
 			if options.extJwtFile != "" {
@@ -165,17 +165,32 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 		o.Args = []string{o.ControllerUrl}
 	}
 
+	cached := *o
+	cached.PopulateFromCache()
+
 	if tryCachedCreds {
 		// any error indicates there are probably no saved credentials. look for login information and use those
-		cached := *o
-		cached.PopulateFromCache()
-		cached.IgnoreConfig = true // don't overwrite when trying to login
+		cached.IgnoreConfig = true // don't overwrite when trying to log in
 		loginErr := cached.Run()
 		if loginErr != nil {
 			return http.Client{}, loginErr
 		}
 		o.MergeUnsetFrom(cached)
+	} else {
+		if o.ControllerUrl == "" {
+			if cached.ControllerUrl == "" {
+				if host, err := term.Prompt("Enter controller host[:port] (default localhost:1280): "); err != nil {
+					return http.Client{}, err
+				} else {
+					if host == "" {
+						host = "localhost:1280"
+					}
+				}
+			}
+		}
+
 	}
+
 	t, cte := o.createHttpTransport()
 	if cte != nil {
 		return http.Client{}, cte
@@ -183,12 +198,18 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 	c := http.Client{
 		Transport: t,
 	}
+	o.client = c
+
+	if o.CaCert == "" && cached.CaCert != "" {
+		o.CaCert = cached.CaCert
+	}
+
 	return c, nil
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	nc, newClientErr := o.newHttpClient(true)
+	nc, newClientErr := o.newHttpClient(false)
 	if newClientErr != nil {
 		return nil, newClientErr
 	}
@@ -229,10 +250,10 @@ func (o *LoginOptions) Run() error {
 		if o.ControllerUrl == "" {
 			if parsedZtAPI.User != nil {
 				host = parsedZtAPI.User.Username() + "@" + parsedZtAPI.Host
-				o.ControllerUrl = host
 			} else {
 				host = parsedZtAPI.Host
 			}
+			o.ControllerUrl = host
 		} else {
 			host = o.ControllerUrl
 		}
@@ -287,8 +308,13 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if ctrlUrl.Path == "" {
-		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, &httpClient)
+		fullCaPool, caPoolErr := o.GetCaPool()
+		if caPoolErr != nil {
+			return caPoolErr
+		}
+
+		if (o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil) || fullCaPool != nil {
+			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, fullCaPool, &httpClient)
 		} else {
 			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
 		}
@@ -343,14 +369,10 @@ func (o *LoginOptions) Run() error {
 	t, e := o.createHttpTransport()
 	if e != nil {
 		return e
-	} else {
-		o.transport = t
-		nc, ncErr := o.newHttpClient(false)
-		if ncErr != nil {
-			return ncErr
-		}
-		o.client = nc
 	}
+	o.transport = t
+	httpClient.Transport = t
+	o.client = httpClient
 
 	o.ControllerUrl = host
 
@@ -581,7 +603,11 @@ func (o *LoginOptions) PopulateFromCache() {
 		o.NetworkId = cachedCliConfig.NetworkIdFile
 	}
 	if o.CaCert == "" {
-		o.CaCert = cachedCliConfig.CaCert
+		cachedUrl := addHttpsIfNeeded(cachedCliConfig.Url)
+		currentUrl := addHttpsIfNeeded(o.ControllerUrl)
+		if currentUrl == "" || currentUrl == cachedUrl {
+			o.CaCert = cachedCliConfig.CaCert
+		}
 	}
 	if o.ApiSession == nil {
 		if cachedCliConfig.ApiSession != nil {

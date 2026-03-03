@@ -222,6 +222,7 @@ func Test_CLI_Test_Suite(t *testing.T) {
 	if cutStartOverZitiErr != nil {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartOverZitiErr)
 	}
+
 	testState.cliTestsOverZiti(t, zitiPath)
 
 	s.controllerUnderTest.ControllerName = s.externalZiti.ControllerName

@@ -41,6 +41,11 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
 	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
+	// Certificate caching and controller switching when logging in
+	t.Run("switch controller different cert", s.testSwitchController)
+	t.Run("same controller uses cached cert", s.testSameControllerUsesCache)
+	t.Run("switch controller file auth", s.testSwitchControllerFileAuth)
+
 	// Edge Cases
 	t.Run("empty username", s.testEmptyUsername)
 	t.Run("empty password", s.testEmptyPassword)
@@ -406,9 +411,91 @@ func (s *cliTestState) updateAdminIdFileForZiti(t *testing.T, newAddr string) {
 	_ = os.WriteFile(s.controllerUnderTest.AdminIdFile, []byte(out), 0644)
 }
 
+func (s *cliTestState) testSwitchController(t *testing.T) {
+	// Test switching between two different controllers with different certs.
+	// Ensures PopulateFromCache doesn't incorrectly inherit certs from previous controller.
+	s.removeZitiDir(t)
+
+	opts := s.controllerUnderTest.NewTestLoginOpts()
+	opts.IgnoreConfig = false
+	opts.Yes = true
+	require.NoError(t, opts.Run(), "login to first controller should succeed")
+	require.NotEmpty(t, opts.ApiSession)
+
+	opts2 := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.externalZiti.Username,
+		Password:      s.externalZiti.Password,
+		ControllerUrl: s.externalZiti.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+	}
+	require.NoError(t, opts2.Run(), "login to second controller should succeed")
+	require.NotEmpty(t, opts2.ApiSession)
+
+	opts3 := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.externalZiti.Username,
+		Password:      s.externalZiti.Password,
+		ControllerUrl: s.externalZiti.ControllerHostPort(),
+		Yes:           false,
+		IgnoreConfig:  false,
+	}
+	require.NoError(t, opts3.Run(), "re-login to second controller should use cached cert (-y now false)")
+	require.NotEmpty(t, opts3.ApiSession)
+}
+
+func (s *cliTestState) testSameControllerUsesCache(t *testing.T) {
+	// Regression test: re-logins to same controller should use cached cert without prompting.
+	s.removeZitiDir(t)
+
+	opts := s.controllerUnderTest.NewTestLoginOpts()
+	opts.Yes = true
+	require.NoError(t, opts.Run(), "first login should succeed")
+	require.NotEmpty(t, opts.ApiSession)
+
+	opts2 := s.controllerUnderTest.NewTestLoginOpts()
+	opts2.Yes = false // errors if cert prompt fires
+	require.NoError(t, opts2.Run(), "second login to same controller should use cached cert")
+	require.NotEmpty(t, opts2.ApiSession)
+}
+
+func (s *cliTestState) testSwitchControllerFileAuth(t *testing.T) {
+	// Test file-based auth to a different controller with cached certs from previous login.
+	s.removeZitiDir(t)
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		Username:      s.externalZiti.Username,
+		Password:      s.externalZiti.Password,
+		ControllerUrl: s.externalZiti.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+	}
+	require.NoError(t, opts.Run(), "initial login should succeed")
+	require.NotEmpty(t, opts.ApiSession)
+
+	_, err := os.Stat(s.controllerUnderTest.AdminIdFile)
+	require.NoError(t, err, "identity file must exist")
+
+	opts2 := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NotEmpty(t, opts2.File, "File must be set")
+
+	te := opts2.Run()
+	require.NoError(t, te, "file-based login to second controller should succeed")
+	require.NotEmpty(t, opts2.ApiSession)
+	require.NotNil(t, opts2.FileCertCreds)
+}
+
 func (s *cliTestState) testZitiThenNot(t *testing.T) {
-	// this test should make sure that after logging in with a zitified login, a subsequent login to a non-zitified
-	// controller works as expected
+	// Test switching from zitified login to non-zitified controller.
 	opts := &edge.LoginOptions{
 		Options:       s.commonOpts,
 		Username:      s.controllerUnderTest.Username,
