@@ -41,8 +41,31 @@ const (
 	outOfBandTxFlag = 3
 	halfCloseFlag   = 4
 	writeClosedFlag = 5
-	xgressTypeFlag  = 6
 )
+
+type ConnType byte
+
+const (
+	ConnTypeTunnel        ConnType = 0
+	ConnTypeTransport     ConnType = 1
+	ConnTypeEdgeTransport ConnType = 2
+	ConnTypeProxy         ConnType = 3
+)
+
+func (t ConnType) String() string {
+	switch t {
+	case ConnTypeTunnel:
+		return "xgress/tunnel"
+	case ConnTypeTransport:
+		return "xgress/transport"
+	case ConnTypeEdgeTransport:
+		return "xgress/edge_transport"
+	case ConnTypeProxy:
+		return "xgress/proxy"
+	default:
+		return "xgress/unknown"
+	}
+}
 
 const (
 	DefaultBufferSize = 10 * 1024
@@ -63,10 +86,11 @@ type XgressConn struct {
 
 	writeDone  chan struct{}
 	flags      concurrenz.AtomicBitSet
+	connType   ConnType
 	bufferSize int
 }
 
-func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn {
+func NewXgressConn(conn net.Conn, halfClose bool, connType ConnType) *XgressConn {
 	result := &XgressConn{
 		Conn:        conn,
 		outOfBandTx: make(chan *outOfBand, 1),
@@ -79,7 +103,7 @@ func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn 
 	}
 
 	result.flags.Set(halfCloseFlag, halfClose)
-	result.flags.Set(xgressTypeFlag, isTransport)
+	result.connType = connType
 	return result
 }
 
@@ -302,12 +326,8 @@ func (self *XgressConn) Close() error {
 
 func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
-		hopType := "xgress/edge_transport"
-		if !self.flags.IsSet(xgressTypeFlag) {
-			hopType = "xgress/tunnel"
-		}
 		// TODO: find a way to get terminator id for hopId
-		xgress.RespondToTraceRequest(headers, hopType, "", responder)
+		xgress.RespondToTraceRequest(headers, self.connType.String(), "", responder)
 		return nil
 	}
 	return fmt.Errorf("unhandled control type: %v", controlType)

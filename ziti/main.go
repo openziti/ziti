@@ -22,8 +22,6 @@ import (
 	"github.com/openziti/transport/v2/dtls"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/transport/v2/transwarp"
-	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/udp"
 	"github.com/openziti/transport/v2/ws"
 	"github.com/openziti/transport/v2/wss"
@@ -40,8 +38,6 @@ func init() {
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(dtls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
-	transport.AddAddressParser(transwarp.AddressParser{})
-	transport.AddAddressParser(transwarptls.AddressParser{})
 	transport.AddAddressParser(ws.AddressParser{})
 	transport.AddAddressParser(wss.AddressParser{})
 	transport.AddAddressParser(udp.AddressParser{})

@@ -17,17 +17,21 @@
 package xgress_transport
 
 import (
+	"time"
+
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/router/xgress_router"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/dtls"
+	"github.com/openziti/transport/v2/udp"
 	"github.com/openziti/ziti/common/logcontext"
 	"github.com/openziti/ziti/controller/xt"
-	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 )
 
@@ -79,7 +83,8 @@ func (txd *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 
 	log.Infof("successful connection to %v from %v", destination, peer.LocalAddr())
 
-	conn := &transportXgressConn{Conn: peer}
+	useHalfClose := txDestination.Type() != dtls.Type && txDestination.Type() != udp.Type
+	conn := xgress_common.NewXgressConn(peer, useHalfClose, xgress_common.ConnTypeTransport)
 	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, txd.options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()

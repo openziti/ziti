@@ -29,8 +29,6 @@ link:
     - binding:          transport
       bind:             tls:127.0.0.1:6002
       advertise:        tls:127.0.0.1:6002
-      #bind:             transwarptls:127.0.0.1:6002
-      #advertise:        transwarptls:127.0.0.1:6002
       options:
         outQueueSize:   16
   dialers:
