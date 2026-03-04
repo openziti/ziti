@@ -531,10 +531,15 @@ func EdgeControllerGetManagementApiBasePathWithPool(host string, caPool *x509.Ce
 	client.SetHostURL(host)
 
 	if caPool != nil {
-		if client.GetClient().Transport.(*http.Transport).TLSClientConfig == nil {
-			client.GetClient().Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+		transport := client.GetClient().Transport.(*http.Transport)
+		if transport.TLSClientConfig == nil {
+			// make a TLSClientConfig and set the caPool
+			transport.TLSClientConfig = &tls.Config{
 				RootCAs: caPool,
 			}
+		} else {
+			// if caPool is provided, and the TLSClientConfig was not nil use the caPool provided regardless
+			transport.TLSClientConfig.RootCAs = caPool
 		}
 	}
 

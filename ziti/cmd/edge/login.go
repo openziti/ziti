@@ -140,7 +140,7 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Cmd = cmd
 			if len(args) > 0 {
-				options.ControllerUrl = args[0]
+				options.ControllerUrl = addHttpsIfNeeded(args[0])
 			}
 
 			if options.extJwtFile != "" {
@@ -161,21 +161,23 @@ func NewLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
-	if o.ControllerUrl != "" && o.Args == nil || len(o.Args) < 1 {
+	if o.ControllerUrl != "" && len(o.Args) < 1 {
 		o.Args = []string{o.ControllerUrl}
 	}
 
+	cached := *o
+	cached.PopulateFromCache()
+
 	if tryCachedCreds {
 		// any error indicates there are probably no saved credentials. look for login information and use those
-		cached := *o
-		cached.PopulateFromCache()
-		cached.IgnoreConfig = true // don't overwrite when trying to login
+		cached.IgnoreConfig = true // don't overwrite when trying to log in
 		loginErr := cached.Run()
 		if loginErr != nil {
 			return http.Client{}, loginErr
 		}
 		o.MergeUnsetFrom(cached)
 	}
+
 	t, cte := o.createHttpTransport()
 	if cte != nil {
 		return http.Client{}, cte
@@ -183,14 +185,26 @@ func (o *LoginOptions) newHttpClient(tryCachedCreds bool) (http.Client, error) {
 	c := http.Client{
 		Transport: t,
 	}
+	o.client = c
+
+	if o.CaCert == "" && cached.CaCert != "" {
+		o.CaCert = cached.CaCert
+	}
+
 	return c, nil
 }
 
 // NewClientApiClient returns a new management client for use with the controller using the set of login material provided
 func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeClient, error) {
-	nc, newClientErr := o.newHttpClient(true)
-	if newClientErr != nil {
-		return nil, newClientErr
+	var nc http.Client
+	if o.client.Transport != nil {
+		nc = o.client
+	} else {
+		var newClientErr error
+		nc, newClientErr = o.newHttpClient(true)
+		if newClientErr != nil {
+			return nil, newClientErr
+		}
 	}
 
 	return rest_util.NewEdgeClientClientWithToken(&nc, o.ControllerUrl, o.Token)
@@ -229,10 +243,10 @@ func (o *LoginOptions) Run() error {
 		if o.ControllerUrl == "" {
 			if parsedZtAPI.User != nil {
 				host = parsedZtAPI.User.Username() + "@" + parsedZtAPI.Host
-				o.ControllerUrl = host
 			} else {
 				host = parsedZtAPI.Host
 			}
+			o.ControllerUrl = host
 		} else {
 			host = o.ControllerUrl
 		}
@@ -287,11 +301,7 @@ func (o *LoginOptions) Run() error {
 	}
 
 	if ctrlUrl.Path == "" {
-		if o.FileCertCreds != nil && o.FileCertCreds.CaPool != nil {
-			host = util.EdgeControllerGetManagementApiBasePathWithPool(host, o.FileCertCreds.CaPool, &httpClient)
-		} else {
-			host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
-		}
+		host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert, &httpClient)
 		hostUrl, _ := url.Parse(host)
 		o.ControllerUrl = o.ControllerUrl + hostUrl.Path
 	}
@@ -343,14 +353,10 @@ func (o *LoginOptions) Run() error {
 	t, e := o.createHttpTransport()
 	if e != nil {
 		return e
-	} else {
-		o.transport = t
-		nc, ncErr := o.newHttpClient(false)
-		if ncErr != nil {
-			return ncErr
-		}
-		o.client = nc
 	}
+	o.transport = t
+	httpClient.Transport = t
+	o.client = httpClient
 
 	o.ControllerUrl = host
 
@@ -581,7 +587,11 @@ func (o *LoginOptions) PopulateFromCache() {
 		o.NetworkId = cachedCliConfig.NetworkIdFile
 	}
 	if o.CaCert == "" {
-		o.CaCert = cachedCliConfig.CaCert
+		cachedUrl := addHttpsIfNeeded(cachedCliConfig.Url)
+		currentUrl := addHttpsIfNeeded(o.ControllerUrl)
+		if currentUrl == "" || currentUrl == cachedUrl {
+			o.CaCert = cachedCliConfig.CaCert
+		}
 	}
 	if o.ApiSession == nil {
 		if cachedCliConfig.ApiSession != nil {
@@ -619,7 +629,7 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
 			rootPemData, err := os.ReadFile(o.CaCert)
 			if err != nil {
-				pfxlog.Logger().Fatalf("error reading CA cert [%s]", o.CaCert)
+				pfxlog.Logger().Warnf("error reading CA cert [%s]", o.CaCert)
 			}
 			caPool.AppendCertsFromPEM(rootPemData)
 		} else {

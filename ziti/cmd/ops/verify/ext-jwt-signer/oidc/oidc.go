@@ -307,6 +307,19 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 				}
 			}
 
+			if opts.ControllerUrl != "" && !strings.HasPrefix(opts.ControllerUrl, "http") {
+				opts.ControllerUrl = "https://" + opts.ControllerUrl
+			}
+			ctrlUrl, urlParseErr := url.Parse(opts.ControllerUrl)
+			if urlParseErr != nil {
+				return fmt.Errorf("invalid controller URL: %w", urlParseErr)
+			}
+
+			if err := opts.ConfigureCerts(opts.ControllerUrl, ctrlUrl); err != nil {
+				log.WithError(err).Warn("failed to configure certificates")
+				return err
+			}
+
 			m, merr := opts.NewClientApiClient()
 			if merr != nil {
 				log.WithError(merr).Fatal("error creating mgmt")
