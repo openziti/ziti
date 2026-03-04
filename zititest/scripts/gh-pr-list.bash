@@ -79,10 +79,11 @@ process_dir() {
     repo=$(get_repo_org_name "$dir")
     # Check if repo is set and the org/username contains 'ziti' or 'netfoundry'
     if [ -n "$repo" ] && [[ ${repo%%/*} =~ openziti|netfoundry ]]; then
-      # Add to our list of processed repos if we're in specific repos mode
-      if [ $SPECIFIC_REPOS_MODE -eq 1 ]; then
-        REPOS+=("$repo")
+      # Skip repos we've already processed
+      if [[ " ${REPOS[*]} " == *" $repo "* ]]; then
+        return
       fi
+      REPOS+=("$repo")
       # Get PRs and store in a variable to check if there are any results
       local pr_output
       pr_output=$(gh pr list --repo "$repo" --author "$GITHUB_AUTHOR" --search "review:none draft:false sort:updated-asc" --json 'id,title,url,createdAt,additions,deletions' --template '{{ range . }}* [ ] {{ .url }} - {{ .title}} ({{timeago .createdAt}}) (+{{.additions}} -{{.deletions}} lines){{ "\n" }}{{ end }}' 2>/dev/null)
