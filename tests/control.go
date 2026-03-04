@@ -12,7 +12,7 @@ import (
 )
 
 func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
-	config, err := config.LoadConfig(ControllerConfFile)
+	config, err := config.LoadConfig(ctx.configSet.CtrlConfig)
 	ctx.Req.NoError(err)
 	ctx.Req.NoError(config.Db.Close())
 

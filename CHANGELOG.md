@@ -29,7 +29,9 @@ to upgrade your network, controllers should be upgraded first. Routers can then 
 
 We try very hard to avoid breaking changes like this, but sometimes the engineering trade-offs lead there. This change
 was first made in the 1.7 release. That release has not been marked stable, and we have no plans to do so, because
-of the backwards incompatibility.
+of the backwards incompatibility. 
+
+If you need to support in the 1.6.12+ range, see the section "OIDC enabled by default".
 
 ### New Permissions Model (BETA)
 
@@ -88,6 +90,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Bundled ZAC upgraded to 4.0
 * Build updated to Go 1.25
 * CLI cleaned up to remove calls to `os.Exit`, making it more friendly for embedding
+* OIDC is now enabled by default
 * Controller Edge APIs now return `WWW-Authenticate` response headers on `401 Unauthorized` responses, giving clients actionable information about which auth methods are accepted and what went wrong
 * HA Controllers can be marked as 'preferredLeader' via config
 * Dynamic cost range for smart routing expanded beyond the previous 64K limit
@@ -643,6 +646,42 @@ To enable the Azure Service Bus event logger, add configuration to the controlle
 
 - Optional configuration:
     - bufferSize: Internal message buffer size (default: 50)
+
+## OIDC is now enabled by default
+
+The controller now automatically adds the `edge-oidc` API binding to any web listener that hosts
+the `edge-client` API, even when `edge-oidc` is not explicitly listed in the `web` section of the
+configuration. This means OIDC-based authentication is available out of the box without requiring
+changes to existing controller configurations.
+
+### Where OIDC binds
+
+The `edge-oidc` binding is added to the same web listener(s) as `edge-client`. If `edge-client` is
+hosted on `127.0.0.1:1280`, the OIDC endpoints will be available on that same address under the
+`/oidc` path (e.g. `https://127.0.0.1:1280/oidc/.well-known/openid-configuration`).
+
+The controller capabilities returned by `GET /version` will include `OIDC_AUTH` and the
+`edge-oidc` entry will be present in `apiVersions` when OIDC is active.
+
+### Opting out
+
+If OIDC should not be enabled automatically, set `disableOidcAutoBinding: true` under `edge.api`:
+
+```yaml
+edge:
+  api:
+    address: 127.0.0.1:1280
+    sessionTimeout: 30m
+    disableOidcAutoBinding: true
+```
+
+When `disableOidcAutoBinding` is `true`, OIDC will only be active if `edge-oidc` is explicitly
+listed as a binding in the `web` section. 
+
+When OIDC is not enabled, all (SDK) clients will revert to using legacy authentication.
+Legacy authentication does not support multiple controllers or HA in general. Clients will treat
+their controller as if it is a single controller instance and will function as if no other controllers
+exist.
 
 
 ## WWW-Authenticate Headers

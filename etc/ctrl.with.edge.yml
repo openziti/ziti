@@ -229,6 +229,11 @@ edge:
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
     address: 127.0.0.1:1280
+    # disableOidcAutoBinding - optional, default false
+    # By default the controller automatically adds the edge-oidc API binding to any web listener hosting
+    # edge-client, even when edge-oidc is not explicitly configured. Set to true to suppress this behaviour
+    # and require edge-oidc to be explicitly listed in the web section.
+    # disableOidcAutoBinding: false
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:

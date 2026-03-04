@@ -94,10 +94,11 @@ type Api struct {
 	ActivityUpdateBatchSize int
 	ActivityUpdateInterval  time.Duration
 
-	Listener      string
-	Address       string
-	IdentityCaPem []byte
-	HttpTimeouts  HttpTimeouts
+	Listener               string
+	Address                string
+	IdentityCaPem          []byte
+	HttpTimeouts           HttpTimeouts
+	DisableOidcAutoBinding bool
 }
 
 type Oidc struct {
@@ -371,6 +372,16 @@ func (c *EdgeConfig) loadApiSection(edgeConfigMap map[interface{}]interface{}) e
 
 		if c.Api.ActivityUpdateInterval < MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > MaxEdgeAPIActivityUpdateInterval {
 			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), MinEdgeAPIActivityUpdateInterval.Milliseconds(), MaxEdgeAPIActivityUpdateInterval.Minutes())
+		}
+
+		if v, ok := apiSubMap["disableOidcAutoBinding"]; ok {
+			if boolVal, ok := v.(bool); ok {
+				c.Api.DisableOidcAutoBinding = boolVal
+			} else if strVal, ok := v.(string); ok {
+				c.Api.DisableOidcAutoBinding = strings.EqualFold("true", strVal)
+			} else {
+				return errors.Errorf("invalid type for 'disableOidcAutoBinding' config %T, expected bool or string (\"true\"/\"false\")", v)
+			}
 		}
 
 		return nil
