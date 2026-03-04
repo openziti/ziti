@@ -28,6 +28,10 @@ type ApiRouterMiddleware interface {
 	AddMiddleware(ae *AppEnv)
 }
 
+type ApiRouterShutdown interface {
+	Shutdown(ae *AppEnv)
+}
+
 func AddRouter(rf ApiRouter) {
 	routers = append(routers, rf)
 }

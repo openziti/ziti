@@ -25,7 +25,6 @@ import (
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common/build"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -39,9 +38,12 @@ func init() {
 }
 
 type VersionRouter struct {
-	BasePath           string
-	cachedVersions     *rest_model.Version
-	cachedVersionsOnce sync.Once
+	BasePath string
+
+	//in deployed systems this will be a map of 1 but for API tests
+	//they run in a single process space. This is used to avoid API
+	//version test collision.
+	versionCache sync.Map // AppEnv.InstanceId -> *rest_model.Version
 }
 
 func NewVersionRouter() *VersionRouter {
@@ -77,95 +79,84 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.cachedVersionsOnce.Do(func() {
+	if v, ok := ir.versionCache.Load(ae.InstanceId); ok {
+		rc.RespondWithOk(v.(*rest_model.Version), &rest_model.Meta{})
+		return
+	}
+	v, _ := ir.versionCache.LoadOrStore(ae.InstanceId, ir.buildVersions(ae))
+	rc.RespondWithOk(v.(*rest_model.Version), &rest_model.Meta{})
+}
 
-		buildInfo := build.GetBuildInfo()
-		ir.cachedVersions = &rest_model.Version{
-			BuildDate:      buildInfo.BuildDate(),
-			Revision:       buildInfo.Revision(),
-			RuntimeVersion: runtime.Version(),
-			Version:        buildInfo.Version(),
-			APIVersions: map[string]map[string]rest_model.APIVersion{
-				webapis.ClientApiBinding:                {webapis.VersionV1: mapApiVersionToRestModel(webapis.ClientRestApiBaseUrlV1)},
-				webapis.ManagementApiBinding:            {webapis.VersionV1: mapApiVersionToRestModel(webapis.ManagementRestApiBaseUrlV1)},
-				webapis.OidcApiBinding:                  {webapis.VersionV1: mapApiVersionToRestModel(webapis.OidcRestApiBaseUrl)},
-				webapis.ControllerHealthCheckApiBinding: {webapis.VersionV1: mapApiVersionToRestModel(webapis.ControllerHealthCheckApiBaseUrlV1)},
-			},
-			Capabilities: []string{},
+func (ir *VersionRouter) buildVersions(ae *env.AppEnv) *rest_model.Version {
+	buildInfo := build.GetBuildInfo()
+	v := &rest_model.Version{
+		BuildDate:      buildInfo.BuildDate(),
+		Revision:       buildInfo.Revision(),
+		RuntimeVersion: runtime.Version(),
+		Version:        buildInfo.Version(),
+		APIVersions:    map[string]map[string]rest_model.APIVersion{},
+		Capabilities:   []string{},
+	}
+
+	for apiBinding, apiVersionToPathMap := range webapis.AllApiBindingVersions {
+		v.APIVersions[apiBinding] = map[string]rest_model.APIVersion{}
+		for apiVersion, apiPath := range apiVersionToPathMap {
+			v.APIVersions[apiBinding][apiVersion] = mapApiVersionToRestModel(apiPath)
 		}
+	}
 
-		for apiBinding, apiVersionToPathMap := range webapis.AllApiBindingVersions {
-			ir.cachedVersions.APIVersions[apiBinding] = map[string]rest_model.APIVersion{}
+	apiToBaseUrls := map[string]map[string]struct{}{} // api -> set of "host:port/path" strings
+	activeBindings := map[string]struct{}{}
+	oidcEnabled := false
 
-			for apiVersion, apiPath := range apiVersionToPathMap {
-				ir.cachedVersions.APIVersions[apiBinding][apiVersion] = mapApiVersionToRestModel(apiPath)
+	for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
+		for _, api := range serverConfig.APIs {
+			if _, ok := apiToBaseUrls[api.Binding()]; !ok {
+				apiToBaseUrls[api.Binding()] = map[string]struct{}{}
+				activeBindings[api.Binding()] = struct{}{}
+			}
+			for _, bindPoint := range serverConfig.BindPoints {
+				apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
+				apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
+			}
+			if api.Binding() == webapis.OidcApiBinding {
+				oidcEnabled = true
 			}
 		}
+	}
 
-		xwebContext := xweb.ServerContextFromRequestContext(rc.Request.Context())
-
-		apiToBaseUrls := map[string]map[string]struct{}{} //api -> webListener addresses + path
-
-		activeBindings := map[string]struct{}{}
-		for _, webListener := range xwebContext.Config.ServerConfigs {
-			for _, api := range webListener.APIs {
-				if _, ok := apiToBaseUrls[api.Binding()]; !ok {
-					apiToBaseUrls[api.Binding()] = map[string]struct{}{}
-					activeBindings[api.Binding()] = struct{}{}
-				}
-
-				for _, bindPoint := range webListener.BindPoints {
-					apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
-					apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
-				}
+	var apiToRemove []string
+	for apiBinding, apiVersionMap := range v.APIVersions {
+		if _, ok := activeBindings[apiBinding]; ok {
+			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
+				apiVersion := apiVersionMap[webapis.VersionV1]
+				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
+				apiVersionMap[webapis.VersionV1] = apiVersion
 			}
+		} else {
+			apiToRemove = append(apiToRemove, apiBinding)
 		}
+	}
 
-		oidcEnabled := false
+	for _, toRemove := range apiToRemove {
+		delete(v.APIVersions, toRemove)
+	}
 
-		for _, serverConfig := range ae.HostController.GetXWebInstance().GetConfig().ServerConfigs {
-			for _, api := range serverConfig.APIs {
-				if api.Binding() == webapis.OidcApiBinding {
-					oidcEnabled = true
-					break
-				}
-			}
+	v.APIVersions[webapis.LegacyClientApiBinding] = v.APIVersions[webapis.ClientApiBinding]
 
-			if oidcEnabled {
-				break
-			}
-		}
+	if oidcEnabled {
+		v.Capabilities = append(v.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
+	}
 
-		var apiToRemove []string
-		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
-			if _, ok := activeBindings[apiBinding]; ok {
-				for apiBaseUrl := range apiToBaseUrls[apiBinding] {
-					apiVersion := apiVersionMap["v1"]
-					apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
-					apiVersionMap["v1"] = apiVersion
-				}
-			} else {
-				apiToRemove = append(apiToRemove, apiBinding)
-			}
-		}
+	if ae.HostController.IsRaftEnabled() {
+		v.Capabilities = append(v.Capabilities, string(rest_model.CapabilitiesHACONTROLLER))
+	}
 
-		for _, toRemove := range apiToRemove {
-			delete(ir.cachedVersions.APIVersions, toRemove)
-		}
+	return v
+}
 
-		ir.cachedVersions.APIVersions[webapis.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[webapis.ClientApiBinding]
-
-		if oidcEnabled {
-			ir.cachedVersions.Capabilities = append(ir.cachedVersions.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
-		}
-
-		if ae.HostController.IsRaftEnabled() {
-			ir.cachedVersions.Capabilities = append(ir.cachedVersions.Capabilities, string(rest_model.CapabilitiesHACONTROLLER))
-		}
-
-	})
-
-	rc.RespondWithOk(ir.cachedVersions, &rest_model.Meta{})
+func (ir *VersionRouter) Shutdown(ae *env.AppEnv) {
+	ir.versionCache.Delete(ae.InstanceId)
 }
 
 func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestContext) {
@@ -179,7 +170,7 @@ func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestCon
 
 func apiBindingToPath(binding string) string {
 	switch binding {
-	case "edge":
+	case webapis.LegacyClientApiBinding:
 		return webapis.ClientRestApiBaseUrlV1
 	case webapis.ClientApiBinding:
 		return webapis.ClientRestApiBaseUrlV1

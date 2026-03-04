@@ -62,6 +62,9 @@ var AllApiBindingVersions = map[string]map[string]string{
 	ManagementApiBinding: {
 		VersionV1: ManagementRestApiBaseUrlV1,
 	},
+	OidcApiBinding: {
+		VersionV1: OidcRestApiBaseUrl,
+	},
 	ControllerHealthCheckApiBinding: {
 		VersionV1: ControllerHealthCheckApiBaseUrlV1,
 	},

@@ -267,6 +267,12 @@ func (c *Controller) Shutdown() {
 
 		pfxlog.Logger().Info("edge controller: shutting down...")
 
+		for _, router := range env.GetRouters() {
+			if rs, ok := router.(env.ApiRouterShutdown); ok {
+				rs.Shutdown(c.AppEnv)
+			}
+		}
+
 		c.AppEnv.Broker.Stop()
 
 		pfxlog.Logger().Info("edge controller: stopped")
