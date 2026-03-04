@@ -30,8 +30,8 @@ type useOptions struct {
 	api.Options
 }
 
-// newUseCmd creates the command
-func newUseCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewUseCmd creates the command
+func NewUseCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &useOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},

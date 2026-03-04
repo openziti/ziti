@@ -27,8 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newPolicyAdvisor creates a command object for the "controller policy-advisor" command
-func newPolicyAdivsorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewPolicyAdvisorCmd creates a command object for the "controller policy-advisor" command
+func NewPolicyAdvisorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy-advisor",
 		Short: "runs sanity checks on various policy related entities managed by the Ziti Edge Controller",
