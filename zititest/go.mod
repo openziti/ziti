@@ -18,15 +18,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.5
-	github.com/openziti/edge-api v0.26.56
+	github.com/openziti/channel/v4 v4.3.6
+	github.com/openziti/edge-api v0.27.0
 	github.com/openziti/fablab v0.6.12
-	github.com/openziti/foundation/v2 v2.0.87
-	github.com/openziti/identity v1.0.125
+	github.com/openziti/foundation/v2 v2.0.88
+	github.com/openziti/identity v1.0.126
 	github.com/openziti/metrics v1.4.3
-	github.com/openziti/sdk-golang v1.4.2
-	github.com/openziti/storage v0.4.38
-	github.com/openziti/transport/v2 v2.0.209
+	github.com/openziti/sdk-golang v1.5.0
+	github.com/openziti/storage v0.4.39
+	github.com/openziti/transport/v2 v2.0.211
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -145,7 +145,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/raft v1.7.3 // indirect
 	github.com/hashicorp/raft-boltdb/v2 v2.3.1 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
@@ -184,18 +183,19 @@ require (
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oliveagle/jsonpath v0.1.4 // indirect
-	github.com/openziti-incubator/cf v0.0.3 // indirect
 	github.com/openziti/cobra-to-md v1.0.1 // indirect
-	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/openziti/jwks v1.0.6 // indirect
-	github.com/openziti/runzmd v1.0.89 // indirect
+	github.com/openziti/runzmd v1.0.90 // indirect
 	github.com/openziti/secretstream v0.1.47 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v3 v3.0.3 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/pion/dtls/v3 v3.0.10 // indirect
+	github.com/pion/logging v0.2.4 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/sftp v1.13.10 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

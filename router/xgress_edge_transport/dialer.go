@@ -72,7 +72,7 @@ func (txd *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 
 	log.Debugf("successful connection to %v from %v (s/%v)", destination, conn.LocalAddr(), circuitId.Token)
 
-	xgConn := xgress_common.NewXgressConn(conn, true, true)
+	xgConn := xgress_common.NewXgressConn(conn, true, xgress_common.ConnTypeEdgeTransport)
 	peerData := make(xt.PeerData, 3)
 	if peerKey, ok := circuitId.Data[uint32(edge.PublicKeyHeader)]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {

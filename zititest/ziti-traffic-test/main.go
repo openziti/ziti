@@ -30,8 +30,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/transport/v2/transwarp"
-	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
 	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/client"
 	_ "github.com/openziti/ziti/zititest/ziti-traffic-test/loop2"
@@ -45,8 +43,6 @@ func init() {
 	pfxlog.GlobalInit(logrus.InfoLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").NoColor())
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
-	transport.AddAddressParser(transwarp.AddressParser{})
-	transport.AddAddressParser(transwarptls.AddressParser{})
 	transport.AddAddressParser(wss.AddressParser{})
 
 	logrus.SetFormatter(&JSONFormatter{})

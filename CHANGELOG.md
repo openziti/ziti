@@ -786,43 +786,55 @@ to the API for hosting applications.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.41 -> v4.3.5](https://github.com/openziti/channel/compare/v4.2.41...v4.3.5)
+* github.com/openziti/channel/v4: [v4.2.41 -> v4.3.6](https://github.com/openziti/channel/compare/v4.2.41...v4.3.6)
     * [Issue #228](https://github.com/openziti/channel/issues/228) - Ensure that Underlay never return nil on MultiChannel
     * [Issue #226](https://github.com/openziti/channel/issues/226) - Allow specifying a minimum number of underlays for a channel, regardless of underlay type
     * [Issue #225](https://github.com/openziti/channel/issues/225) - Add ChannelCreated to the UnderlayHandler API to allow handlers to be initialized with the channel before binding
     * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
     * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
 
-* github.com/openziti/edge-api: [v0.26.50 -> v0.26.56](https://github.com/openziti/edge-api/compare/v0.26.50...v0.26.56)
+* github.com/openziti/edge-api: [v0.26.50 -> v0.27.0](https://github.com/openziti/edge-api/compare/v0.26.50...v0.27.0)
     * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
-* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.87](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.87)
+* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.88](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.88)
+    * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add support for multi-bit set/get to AtomicBitSet
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
 
-* github.com/openziti/identity: [v1.0.118 -> v1.0.125](https://github.com/openziti/identity/compare/v1.0.118...v1.0.125)
+* github.com/openziti/identity: [v1.0.118 -> v1.0.126](https://github.com/openziti/identity/compare/v1.0.118...v1.0.126)
 * github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
-* github.com/openziti/runzmd: [v1.0.84 -> v1.0.89](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.89)
-* github.com/openziti/sdk-golang: [v1.2.10 -> v1.4.2](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.4.2)
+* github.com/openziti/runzmd: [v1.0.84 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.90)
+* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.0](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.0)
+    * [Issue #832](https://github.com/openziti/sdk-golang/issues/832) - Fuzz session refresh timers
+    * [Issue #879](https://github.com/openziti/sdk-golang/issues/879) - Return the connId in inspect response
+    * [Issue #878](https://github.com/openziti/sdk-golang/issues/878) - Fix responses from rx goroutines
+    * [Issue #874](https://github.com/openziti/sdk-golang/issues/874) - Add inspect support at the context level
+    * [Issue #871](https://github.com/openziti/sdk-golang/issues/871) - Make SDK better at sticking to MaxTerminator terminators
+    * [Issue #708](https://github.com/openziti/sdk-golang/issues/708) - Support for Go's built-in context in Dial methods
     * [Issue #860](https://github.com/openziti/sdk-golang/issues/860) - Make the dialing identity's id and name available on dialed connections
     * [Issue #857](https://github.com/openziti/sdk-golang/issues/857) - Use new error code and retry hints to correctly react to terminator errors
     * [Issue #847](https://github.com/openziti/sdk-golang/issues/847) - Ensure the initial version check succeeds, to ensure we don't legacy sessions on ha or oidc-enabled controllers
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
 
 * github.com/openziti/secretstream: [v0.1.41 -> v0.1.47](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.47)
-* github.com/openziti/storage: [v0.4.31 -> v0.4.38](https://github.com/openziti/storage/compare/v0.4.31...v0.4.38)
+* github.com/openziti/storage: [v0.4.31 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.31...v0.4.39)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.209](https://github.com/openziti/transport/compare/v2.0.198...v2.0.209)
+* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.211](https://github.com/openziti/transport/compare/v2.0.198...v2.0.211)
+    * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
+    * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
+
 * github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.3](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.3)
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3642](https://github.com/openziti/ziti/issues/3642) - Use xgress_common.Connection type for xgress_transport and xgress_proxy
+    * [Issue #3597](https://github.com/openziti/ziti/issues/3597) - Enable OIDC API by default
     * [Issue #3624](https://github.com/openziti/ziti/issues/3624) - Multi-underlay control channel doesn't correctly handle lack of group secret on non-grouped underlays
     * [Issue #3613](https://github.com/openziti/ziti/issues/3613) - Initializing cluster from existing db using `db:` config settings results in panic
     * [Issue #3620](https://github.com/openziti/ziti/issues/3620) - Controller control channel heartbeats config parsing was erroneously nested under options parsing

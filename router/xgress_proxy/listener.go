@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 )
 
@@ -62,7 +63,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 }
 
 func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.BindHandler) {
-	conn := &proxyXgressConnection{peer}
+	conn := xgress_common.NewXgressConn(peer, true, xgress_common.ConnTypeProxy)
 	log := pfxlog.ContextLogger(conn.LogContext())
 	request := &xgress_router.Request{ServiceId: listener.service}
 	response := xgress_router.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)

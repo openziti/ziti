@@ -59,7 +59,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	}
 
 	conn := &edgeClientConn{
-		msgMux:       sdkEdge.NewChannelConnMapMux[*state.ConnState](),
+		msgMux:       sdkEdge.NewChannelConnMapMux[*state.ConnState](nil),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,
