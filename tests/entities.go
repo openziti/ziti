@@ -50,6 +50,38 @@ type loadableEntity interface {
 	fromJson(ctx *TestContext, c *gabs.Container)
 }
 
+type testServicePolicy struct {
+	rest_model.ServicePolicyCreate
+	id string
+}
+
+func (self *testServicePolicy) getId() string        { return self.id }
+func (self *testServicePolicy) setId(id string)      { self.id = id }
+func (self *testServicePolicy) getEntityType() string { return "service-policies" }
+
+func (self *testServicePolicy) toJson(_ bool, _ *TestContext, _ ...string) string {
+	panic("toJson not supported on testServicePolicy")
+}
+
+func (self *testServicePolicy) validate(_ *TestContext, _ *gabs.Container) {
+	panic("validate not supported on testServicePolicy, use validateServicePolicyDetail instead")
+}
+
+func (self *testServicePolicy) validateDetail(ctx *TestContext, detail *rest_model.ServicePolicyDetail) {
+	ctx.Req.Equal(*self.Name, *detail.Name)
+	ctx.Req.Equal(string(*self.Type), string(*detail.Type))
+	ctx.Req.Equal(string(*self.Semantic), string(*detail.Semantic))
+	sort.Strings(self.ServiceRoles)
+	sort.Strings([]string(detail.ServiceRoles))
+	ctx.Req.Equal(rest_model.Roles(self.ServiceRoles), detail.ServiceRoles)
+	sort.Strings(self.IdentityRoles)
+	sort.Strings([]string(detail.IdentityRoles))
+	ctx.Req.Equal(rest_model.Roles(self.IdentityRoles), detail.IdentityRoles)
+	sort.Strings(self.PostureCheckRoles)
+	sort.Strings([]string(detail.PostureCheckRoles))
+	ctx.Req.Equal(rest_model.Roles(self.PostureCheckRoles), detail.PostureCheckRoles)
+}
+
 type postureCheck struct {
 	id             string
 	name           string
@@ -525,70 +557,6 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newServicePolicy(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
-	return &servicePolicy{
-		name:              eid.New(),
-		policyType:        policyType,
-		semantic:          semantic,
-		serviceRoles:      serviceRoles,
-		identityRoles:     identityRoles,
-		postureCheckRoles: postureCheckRoles,
-	}
-}
-
-type servicePolicy struct {
-	id                string
-	name              string
-	policyType        string
-	semantic          string
-	identityRoles     []string
-	serviceRoles      []string
-	tags              map[string]interface{}
-	postureCheckRoles []string
-}
-
-func (entity *servicePolicy) getId() string {
-	return entity.id
-}
-
-func (entity *servicePolicy) setId(id string) {
-	entity.id = id
-}
-
-func (entity *servicePolicy) getEntityType() string {
-	return "service-policies"
-}
-
-func (entity *servicePolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
-	entityData := gabs.New()
-	ctx.setJsonValue(entityData, entity.name, "name")
-	ctx.setJsonValue(entityData, entity.policyType, "type")
-	ctx.setJsonValue(entityData, entity.semantic, "semantic")
-	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
-	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
-	ctx.setJsonValue(entityData, entity.postureCheckRoles, "postureCheckRoles")
-
-	if len(entity.tags) > 0 {
-		ctx.setJsonValue(entityData, entity.tags, "tags")
-	}
-	return entityData.String()
-}
-
-func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
-	if entity.tags == nil {
-		entity.tags = map[string]interface{}{}
-	}
-	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.policyType, path("type"))
-	ctx.pathEquals(c, entity.semantic, path("semantic"))
-	sort.Strings(entity.identityRoles)
-	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
-	sort.Strings(entity.serviceRoles)
-	ctx.pathEqualsStringSlice(c, entity.serviceRoles, path("serviceRoles"))
-	sort.Strings(entity.postureCheckRoles)
-	ctx.pathEqualsStringSlice(c, entity.postureCheckRoles, path("postureCheckRoles"))
-	ctx.pathEquals(c, entity.tags, path("tags"))
-}
 
 type Config struct {
 	Id           string
