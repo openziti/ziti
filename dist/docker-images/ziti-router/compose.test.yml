@@ -1,6 +1,104 @@
+volumes:
+  ziti-router2:
+  ziti-router3:
+
 services:
-  ziti-router:
+  ziti-router1:
     networks:
       - ziti
     volumes:
       - ziti-test:/home/ziggy/.config/ziti
+
+  chown-router2:
+    profiles:
+      - test
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-router
+    volumes:
+      - ziti-router2:/ziti-router
+
+  ziti-router2:
+    profiles:
+      - test
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      chown-router2:
+        condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti-router2:/ziti-router
+      - ziti-test:/home/ziggy/.config/ziti
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_RTR2_ADVERTISED_ADDRESS:-ziti-router2}
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-}
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-}
+      ZITI_ENROLL_TOKEN: ${ZITI_RTR2_ENROLL_TOKEN:-}
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_RTR2_ADVERTISED_ADDRESS:-ziti-router2}
+      ZITI_ROUTER_PORT: ${ZITI_RTR2_PORT:-3023}
+      ZITI_ROUTER_LISTENER_BIND_PORT: ${ZITI_RTR2_PORT:-3023}
+      ZITI_BOOTSTRAP: true
+      ZITI_BOOTSTRAP_CONFIG: true
+      ZITI_BOOTSTRAP_ENROLLMENT: true
+      ZITI_AUTO_RENEW_CERTS: true
+      ZITI_ROUTER_TYPE: ${ZITI_ROUTER_TYPE:-edge}
+    command: run config.yml
+    ports:
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_RTR2_PORT:-3023}:${ZITI_RTR2_PORT:-3023}
+    expose:
+      - ${ZITI_RTR2_PORT:-3023}
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  chown-router3:
+    profiles:
+      - test
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-router
+    volumes:
+      - ziti-router3:/ziti-router
+
+  ziti-router3:
+    profiles:
+      - test
+    image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
+    depends_on:
+      chown-router3:
+        condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti-router3:/ziti-router
+      - ziti-test:/home/ziggy/.config/ziti
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_RTR3_ADVERTISED_ADDRESS:-ziti-router3}
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-}
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-}
+      ZITI_ENROLL_TOKEN: ${ZITI_RTR3_ENROLL_TOKEN:-}
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_RTR3_ADVERTISED_ADDRESS:-ziti-router3}
+      ZITI_ROUTER_PORT: ${ZITI_RTR3_PORT:-3024}
+      ZITI_ROUTER_LISTENER_BIND_PORT: ${ZITI_RTR3_PORT:-3024}
+      ZITI_BOOTSTRAP: true
+      ZITI_BOOTSTRAP_CONFIG: true
+      ZITI_BOOTSTRAP_ENROLLMENT: true
+      ZITI_AUTO_RENEW_CERTS: true
+      ZITI_ROUTER_TYPE: ${ZITI_ROUTER_TYPE:-edge}
+    command: run config.yml
+    ports:
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_RTR3_PORT:-3024}:${ZITI_RTR3_PORT:-3024}
+    expose:
+      - ${ZITI_RTR3_PORT:-3024}
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s

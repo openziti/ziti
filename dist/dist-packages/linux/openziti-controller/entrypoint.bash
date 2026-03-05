@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 #
-# This wrapper is used by the systemd service and Docker container to call the bootstrap() function before invoking
-# ziti. The bootstrap() function will exit 0 immediately if ZITI_BOOTSTRAP is not set to true. Otherwise,  it will
-# generate any necessary things that don't already exist.
+# Entrypoint for the OpenZiti Controller Docker container.
+#
+# In Docker with ZITI_BOOTSTRAP=true, runs bootstrap() first to generate
+# PKI/config/database, then starts the controller.  Without ZITI_BOOTSTRAP,
+# starts the controller directly.
+#
+# Leaf cert renewal is handled by the ziti-controller-cert-renewal.timer
+# (Linux) or by the bootstrap() Docker path (ZITI_AUTO_RENEW_CERTS).
 #
 # usage:
 #   entrypoint.bash run config.yml
@@ -25,52 +30,43 @@ if ! (( $# )) || [[ "${1}" == run && -z "${2:-}" ]]; then
   set -- run config.yml
 fi
 
-# shellcheck disable=SC1090 # path is set by the systemd service and Dockerfile
+# Source bootstrap.bash for function definitions and PKI defaults.
+# The source guard in bootstrap.bash (BASH_SOURCE != $0) ensures only functions
+# and defaults are loaded — no traps, no debug fd, no bootstrap execution.
+# shellcheck disable=SC1090
 source "${ZITI_CTRL_BOOTSTRAP_BASH:-/opt/openziti/etc/controller/bootstrap.bash}"
 
-# * Linux service ExecStartPre uses 'check' to pre-flight the config and renew certs
-# * Container uses 'run' to call bootstrap() and ziti
+##############################################################################
+# Main dispatch
+##############################################################################
+
 if [[ "${ZITI_BOOTSTRAP:-}" == true && "${1}" =~ run ]]; then
+  # --- Docker/container bootstrap path ---
+  # bootstrap() uses env vars for first-run setup (PKI, config, database).
+  # On subsequent container restarts, config.yml already exists and bootstrap()
+  # detects that — it only renews certs if ZITI_AUTO_RENEW_CERTS=true.
   bootstrap "${2}"
-elif [[ "${1}" =~ check ]]; then
-  if [[ ! -s "${2}" ]]; then
-    echo "ERROR: ${2} does not exist" >&2
-    hintLinuxBootstrap "${PWD}"
-    exit 1
-  fi
-  # check writability of database directory if the config defines one
-  _data_dir="$(dataDir "${2}")"
-  if [[ -n "${_data_dir}" && ! -w "${_data_dir}" ]]; then
-    echo "ERROR: database directory '${_data_dir}' is not writable" >&2
-    hintLinuxBootstrap "${PWD}"
-    exit 1
-  fi
-  if [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
-    loadEnvFiles /opt/openziti/etc/controller/bootstrap.env
-    issueLeafCerts
-    exit
-  fi
-  # config exists; the controller binary validates its own config
-  exit 0
-fi
 
-# If cluster initialization is needed, start controller in background, init, then wait
-if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true || "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]] \
-   && [[ -n "${ZITI_PWD:-}" ]]; then
-  echo "INFO: starting controller in background for cluster initialization"
-  # shellcheck disable=SC2068
-  ziti controller ${@} &
-  _ctrl_pid=$!
+  # If cluster initialization is needed, start controller in background, init, then wait
+  if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == true || "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]] \
+     && [[ -n "${ZITI_PWD:-}" ]]; then
+    echo "INFO: starting controller in background for cluster initialization"
+    # shellcheck disable=SC2068
+    ziti controller ${@} &
+    _ctrl_pid=$!
 
-  # Wait for agent and initialize cluster (no PID arg = direct agent call for Docker)
-  if waitForAgent "" 30 1; then
-    clusterInit ""
+    if waitForAgent "" 30 1; then
+      clusterInit ""
+    fi
+
+    wait "${_ctrl_pid}"
+  else
+    # shellcheck disable=SC2068
+    exec ziti controller ${@}
   fi
 
-  # Wait for the controller process
-  wait "${_ctrl_pid}"
 else
-  # No cluster init needed, just exec the controller
+  # --- Normal run (no bootstrap) ---
   # shellcheck disable=SC2068
   exec ziti controller ${@}
 fi

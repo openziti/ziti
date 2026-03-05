@@ -16,11 +16,11 @@ homepage: ${ZITI_HOMEPAGE}
 license: Apache-2.0
 contents:
   - src: ./release/ziti
-    dst: /opt/openziti/bin/ziti
+    dst: /usr/bin/ziti
     file_info:
       mode: 0755
-  - src: /opt/openziti/bin/ziti
-    dst: /usr/bin/ziti
+  - src: /usr/bin/ziti
+    dst: /opt/openziti/bin/ziti
     type: symlink
 replaces:
   - ziti-cli

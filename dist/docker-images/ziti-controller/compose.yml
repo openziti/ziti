@@ -1,6 +1,6 @@
 
 volumes:
-  ziti-controller:
+  ziti-controller1:
     driver: local
 
 networks:
@@ -8,34 +8,34 @@ networks:
     driver: bridge
 
 services:
-  chown-controller:
+  chown-controller1:
     image: busybox
     command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
     volumes:
-      - ziti-controller:/ziti-controller
+      - ziti-controller1:/ziti-controller
 
-  ziti-controller:
+  ziti-controller1:
     image: ${ZITI_CONTROLLER_IMAGE:-openziti/ziti-controller}
     depends_on:
-      chown-controller:
+      chown-controller1:
         condition: service_completed_successfully
     user: ${ZIGGY_UID:-2171}
     volumes:
-      - ziti-controller:/ziti-controller
+      - ziti-controller1:/ziti-controller
     networks:
       ziti:
         aliases:
-          - ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}
+          - ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller1}
     # assign override vars in an .env file or export from parent env to ensure consistency throughout the compose
     # project
     environment:
       # *** these are the important vars to set to bootstrap the configuration during first run***
-      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller}  # FQDN of the controller
-      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                   # TCP port of the controller
-      ZITI_PWD: ${ZITI_PWD:-}                                                         # password for the default admin user
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-ziti-controller1}  # FQDN of the controller
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-1280}                    # TCP port of the controller
+      ZITI_PWD: ${ZITI_PWD:-}                                                          # password for the default admin user
       ZITI_BOOTSTRAP_CLUSTER: ${ZITI_BOOTSTRAP_CLUSTER:-true}                          # bootstrap a new cluster if true
-      ZITI_CLUSTER_NODE_NAME: ${ZITI_CLUSTER_NODE_NAME:-ziti-controller}               # name for the initial cluster node
-      ZITI_CLUSTER_TRUST_DOMAIN: ${ZITI_CLUSTER_TRUST_DOMAIN:-ziti}                     # trust domain for cluster PKI
+      ZITI_CLUSTER_NODE_NAME: ${ZITI_CLUSTER_NODE_NAME:-ziti-controller1}              # name for the initial cluster node
+      ZITI_CLUSTER_TRUST_DOMAIN: ${ZITI_CLUSTER_TRUST_DOMAIN:-ziti}                    # trust domain for cluster PKI
 
       # *** less relevant vars below ***
       ZITI_BOOTSTRAP: true             # bootstrap the controller if "true"

@@ -1,23 +1,23 @@
 
 volumes:
-  ziti-router:
+  ziti-router1:
     driver: local
 
 services:
-  chown-router:
+  chown-router1:
     image: busybox
     command: chown -R ${ZIGGY_UID:-2171} /ziti-router
     volumes:
-      - ziti-router:/ziti-router
+      - ziti-router1:/ziti-router
 
-  ziti-router:
+  ziti-router1:
     image: ${ZITI_ROUTER_IMAGE:-openziti/ziti-router}
     depends_on:
-      chown-router:
+      chown-router1:
         condition: service_completed_successfully
     user: ${ZIGGY_UID:-2171}
     volumes:
-      - ziti-router:/ziti-router
+      - ziti-router1:/ziti-router
     # these declared vars pass through to container and should be assigned in an .env file or exported from parent env
     # to ensure consistency throughout the compose project
     environment:
@@ -25,7 +25,7 @@ services:
       ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL_ADVERTISED_ADDRESS:-}                 # controller address (default: learned from enrollment token)
       ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL_ADVERTISED_PORT:-}                       # controller port (default: learned from enrollment token)
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}                                       # enrollment token for this router (required)
-      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router}  # this router's address (default: the container ID [hostname -f])
+      ZITI_ROUTER_ADVERTISED_ADDRESS: ${ZITI_ROUTER_ADVERTISED_ADDRESS:-ziti-router1}  # this router's address (default: the container ID [hostname -f])
       ZITI_ROUTER_PORT: ${ZITI_ROUTER_PORT:-3022}                                     # exposed port for this router
       ZITI_ROUTER_MODE: ${ZITI_ROUTER_MODE:-host}                                     # none, host, tproxy, tproxy (default: host, tproxy requires additional config below)
 
