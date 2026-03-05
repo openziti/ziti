@@ -38,14 +38,15 @@ func MapControllerToClientRestEntity(_ *env.AppEnv, _ *response.RequestContext, 
 
 func MapControllerToManagementRestModel(controller *model.Controller) (*rest_model.ControllerDetail, error) {
 	ret := &rest_model.ControllerDetail{
-		BaseEntity:   BaseEntityToRestModel(controller, ControllerLinkFactory),
-		Name:         &controller.Name,
-		CtrlAddress:  &controller.CtrlAddress,
-		APIAddresses: rest_model.APIAddressList{},
-		CertPem:      &controller.CertPem,
-		Fingerprint:  &controller.Fingerprint,
-		IsOnline:     &controller.IsOnline,
-		LastJoinedAt: toStrFmtDateTimeP(controller.LastJoinedAt),
+		BaseEntity:        BaseEntityToRestModel(controller, ControllerLinkFactory),
+		Name:              &controller.Name,
+		CtrlAddress:       &controller.CtrlAddress,
+		APIAddresses:      rest_model.APIAddressList{},
+		CertPem:           &controller.CertPem,
+		Fingerprint:       &controller.Fingerprint,
+		IsOnline:          &controller.IsOnline,
+		LastJoinedAt:      toStrFmtDateTimeP(controller.LastJoinedAt),
+		IsPreferredLeader: controller.IsPreferredLeader,
 	}
 
 	for apiKey, instances := range controller.ApiAddresses {

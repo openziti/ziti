@@ -23,6 +23,10 @@ cluster:
   advertiseAddress: tcp:localhost:1380
   bindAddress: tcp:0.0.0.0:1380
   dataDir: /home/plorenz/work/var/data/
+  # preferredLeader - optional, default false
+  # If set to true, this controller will be preferred as the raft cluster leader. If the current leader is not a
+  # preferred leader, it will transfer leadership to a preferred leader if one is available.
+  #preferredLeader: true
 
 # Network Configuration
 #

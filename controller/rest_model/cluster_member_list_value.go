@@ -59,6 +59,9 @@ type ClusterMemberListValue struct {
 	// Required: true
 	Leader *bool `json:"leader"`
 
+	// preferred leader
+	PreferredLeader bool `json:"preferredLeader,omitempty"`
+
 	// read only
 	// Required: true
 	ReadOnly *bool `json:"readOnly"`

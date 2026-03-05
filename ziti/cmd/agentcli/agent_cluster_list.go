@@ -76,9 +76,9 @@ func (self *AgentClusterListAction) makeRequest(ch channel.Channel) error {
 		}
 		t := table.NewWriter()
 		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected"})
+		t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected", "Preferred"})
 		for _, m := range resp.Members {
-			t.AppendRow(table.Row{m.Id, m.Addr, m.IsVoter, m.IsLeader, m.Version, m.IsConnected})
+			t.AppendRow(table.Row{m.Id, m.Addr, m.IsVoter, m.IsLeader, m.Version, m.IsConnected, m.IsPreferredLeader})
 		}
 		api.RenderTable(&api.Options{
 			CommonOptions: self.CommonOptions,

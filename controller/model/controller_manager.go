@@ -137,14 +137,15 @@ func (self *ControllerManager) ReadByName(name string) (*Controller, error) {
 
 func (self *ControllerManager) Marshall(entity *Controller) ([]byte, error) {
 	msg := &edge_cmd_pb.Controller{
-		Id:           entity.Id,
-		Name:         entity.Name,
-		Address:      entity.CtrlAddress,
-		CertPem:      entity.CertPem,
-		Fingerprint:  entity.Fingerprint,
-		IsOnline:     entity.IsOnline,
-		LastJoinedAt: timePtrToPb(&entity.LastJoinedAt),
-		ApiAddresses: map[string]*edge_cmd_pb.ApiAddressList{},
+		Id:                entity.Id,
+		Name:              entity.Name,
+		Address:           entity.CtrlAddress,
+		CertPem:           entity.CertPem,
+		Fingerprint:       entity.Fingerprint,
+		IsOnline:          entity.IsOnline,
+		LastJoinedAt:      timePtrToPb(&entity.LastJoinedAt),
+		IsPreferredLeader: entity.IsPreferredLeader,
+		ApiAddresses:      map[string]*edge_cmd_pb.ApiAddressList{},
 	}
 
 	for apiKey, instances := range entity.ApiAddresses {
@@ -177,13 +178,14 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
-		Name:         msg.Name,
-		CtrlAddress:  msg.Address,
-		CertPem:      msg.CertPem,
-		Fingerprint:  msg.Fingerprint,
-		IsOnline:     msg.IsOnline,
-		LastJoinedAt: lastJoinedAt,
-		ApiAddresses: map[string][]ApiAddress{},
+		Name:              msg.Name,
+		CtrlAddress:       msg.Address,
+		CertPem:           msg.CertPem,
+		Fingerprint:       msg.Fingerprint,
+		IsOnline:          msg.IsOnline,
+		LastJoinedAt:      lastJoinedAt,
+		IsPreferredLeader: msg.IsPreferredLeader,
+		ApiAddresses:      map[string][]ApiAddress{},
 	}
 
 	for apiKey, instanceList := range msg.ApiAddresses {
@@ -214,12 +216,18 @@ func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
 
 	apiAddresses, _ := self.env.GetApiAddresses()
 
+	isPreferredLeader := false
+	if raftConfig := self.env.GetConfig().Raft; raftConfig != nil {
+		isPreferredLeader = raftConfig.PreferredLeader
+	}
+
 	return &event.ClusterPeer{
-		Id:           id,
-		Addr:         addr,
-		Version:      version,
-		ServerCert:   leaderCerts,
-		ApiAddresses: apiAddresses,
+		Id:                id,
+		Addr:              addr,
+		Version:           version,
+		ServerCert:        leaderCerts,
+		ApiAddresses:      apiAddresses,
+		IsPreferredLeader: isPreferredLeader,
 	}
 }
 
@@ -282,13 +290,14 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 			BaseEntity: models.BaseEntity{
 				Id: peer.Id,
 			},
-			Name:         peer.ServerCert[0].Subject.CommonName,
-			CertPem:      nfpem.EncodeToString(peer.ServerCert[0]),
-			Fingerprint:  nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
-			CtrlAddress:  peer.Addr,
-			IsOnline:     true,
-			LastJoinedAt: time.Now(),
-			ApiAddresses: apiAddressesFromPeer(peer),
+			Name:              peer.ServerCert[0].Subject.CommonName,
+			CertPem:           nfpem.EncodeToString(peer.ServerCert[0]),
+			Fingerprint:       nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
+			CtrlAddress:       peer.Addr,
+			IsOnline:          true,
+			LastJoinedAt:      time.Now(),
+			IsPreferredLeader: peer.IsPreferredLeader,
+			ApiAddresses:      apiAddressesFromPeer(peer),
 		}
 
 		existing := controllers[peer.Id]
@@ -393,22 +402,24 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 		BaseEntity: models.BaseEntity{
 			Id: peer.Id,
 		},
-		Name:         peer.ServerCert[0].Subject.CommonName,
-		CertPem:      nfpem.EncodeToString(peer.ServerCert[0]),
-		Fingerprint:  nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
-		CtrlAddress:  peer.Addr,
-		IsOnline:     true,
-		ApiAddresses: apiAddressesFromPeer(peer),
+		Name:              peer.ServerCert[0].Subject.CommonName,
+		CertPem:           nfpem.EncodeToString(peer.ServerCert[0]),
+		Fingerprint:       nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
+		CtrlAddress:       peer.Addr,
+		IsOnline:          true,
+		IsPreferredLeader: peer.IsPreferredLeader,
+		ApiAddresses:      apiAddressesFromPeer(peer),
 	}
 	disconnectFields := fields.UpdatedFieldsMap{
-		db.FieldControllerIsOnline:          struct{}{},
-		db.FieldControllerCertPem:           struct{}{},
-		db.FieldControllerFingerprint:       struct{}{},
-		db.FieldControllerCtrlAddress:       struct{}{},
-		db.FieldControllerApiAddresses:      struct{}{},
-		db.FieldControllerApiAddressUrl:     struct{}{},
-		db.FieldControllerApiAddressVersion: struct{}{},
-		db.FieldName:                        struct{}{},
+		db.FieldControllerIsOnline:           struct{}{},
+		db.FieldControllerCertPem:            struct{}{},
+		db.FieldControllerFingerprint:        struct{}{},
+		db.FieldControllerCtrlAddress:        struct{}{},
+		db.FieldControllerApiAddresses:       struct{}{},
+		db.FieldControllerApiAddressUrl:      struct{}{},
+		db.FieldControllerApiAddressVersion:  struct{}{},
+		db.FieldControllerIsPreferredLeader:  struct{}{},
+		db.FieldName:                         struct{}{},
 	}
 
 	changeCtx := change.New()

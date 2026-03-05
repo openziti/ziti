@@ -33,6 +33,7 @@ const (
 	FieldControllerApiAddresses      = "apiAddresses"
 	FieldControllerApiAddressVersion = "apiAddresses.version"
 	FieldControllerApiAddressUrl     = "apiAddresses.url"
+	FieldControllerIsPreferredLeader = "isPreferredLeader"
 )
 
 type Controller struct {
@@ -41,9 +42,10 @@ type Controller struct {
 	CtrlAddress  string    `json:"address"`
 	CertPem      string    `json:"certPem"`
 	Fingerprint  string    `json:"fingerprint"`
-	IsOnline     bool      `json:"isOnline"`
-	LastJoinedAt time.Time `json:"lastJoinedAt"`
-	ApiAddresses map[string][]ApiAddress
+	IsOnline          bool      `json:"isOnline"`
+	LastJoinedAt      time.Time `json:"lastJoinedAt"`
+	IsPreferredLeader bool      `json:"isPreferredLeader"`
+	ApiAddresses      map[string][]ApiAddress
 }
 
 type ApiAddress struct {
@@ -91,6 +93,7 @@ func (store *controllerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldControllerFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldControllerIsOnline, ast.NodeTypeBool)
 	store.AddSymbol(FieldControllerLastJoinedAt, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldControllerIsPreferredLeader, ast.NodeTypeBool)
 }
 
 func (store *controllerStoreImpl) initializeLinked() {}
@@ -107,6 +110,7 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 	entity.Fingerprint = bucket.GetStringOrError(FieldControllerFingerprint)
 	entity.IsOnline = bucket.GetBoolWithDefault(FieldControllerIsOnline, false)
 	entity.LastJoinedAt = bucket.GetTimeOrDefault(FieldControllerLastJoinedAt, time.Time{})
+	entity.IsPreferredLeader = bucket.GetBoolWithDefault(FieldControllerIsPreferredLeader, false)
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)
@@ -133,6 +137,7 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetString(FieldControllerFingerprint, entity.Fingerprint)
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
+	ctx.SetBool(FieldControllerIsPreferredLeader, entity.IsPreferredLeader)
 
 	if ctx.ProceedWithSet(FieldControllerApiAddresses) && (ctx.ProceedWithSet(FieldControllerApiAddressUrl) || ctx.ProceedWithSet(FieldControllerApiAddressVersion)) {
 		apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)

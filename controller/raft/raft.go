@@ -148,7 +148,6 @@ type Controller struct {
 	raftStore                  *raftboltdb.BoltStore
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
-	closeNotify                <-chan struct{}
 	indexTracker               IndexTracker
 	migrationMgr               MigrationManager
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
@@ -185,10 +184,16 @@ func (self *Controller) IsPeerMember(id string) bool {
 }
 
 func (self *Controller) GetListenerHeaders() map[int32][]byte {
-	return map[int32][]byte{
-		mesh.ClusterIdHeader: []byte(self.clusterId.Load()),
-		mesh.PeerAddrHeader:  []byte(self.Config.AdvertiseAddress.String()),
+	headers := map[int32][]byte{
+		mesh.ClusterIdHeader:       []byte(self.clusterId.Load()),
+		mesh.LegacyClusterIdHeader: []byte(self.clusterId.Load()),
+		mesh.PeerAddrHeader:        []byte(self.Config.AdvertiseAddress.String()),
+		mesh.LegacyPeerAddrHeader:  []byte(self.Config.AdvertiseAddress.String()),
 	}
+	if self.Config.PreferredLeader {
+		headers[mesh.PreferredLeaderHeader] = []byte{1}
+	}
+	return headers
 }
 
 func (self *Controller) initErrorMappers() {
@@ -278,7 +283,7 @@ func (self *Controller) GetPeers() map[string]channel.Channel {
 }
 
 func (self *Controller) GetCloseNotify() <-chan struct{} {
-	return self.closeNotify
+	return self.env.GetCloseNotify()
 }
 
 func (self *Controller) GetMetricsRegistry() metrics.Registry {
@@ -670,6 +675,77 @@ func (self *Controller) Init() error {
 func (self *Controller) StartEventGeneration() {
 	self.addEventsHandlers()
 	self.ObserveLeaderChanges()
+	self.setupPreferredLeaderTransfer()
+}
+
+func (self *Controller) setupPreferredLeaderTransfer() {
+	log := pfxlog.Logger()
+
+	if self.Config.PreferredLeader {
+		log.Info("this controller is configured as a preferred leader")
+		return // Preferred leaders keep leadership, nothing to do
+	}
+
+	log.Info("this controller is NOT a preferred leader, setting up leadership transfer handlers")
+
+	// Transfer when we gain leadership
+	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState, leaderId string) {
+		if evt == ClusterEventLeadershipGained {
+			log.Info("non-preferred controller gained leadership, scheduling transfer in 10s")
+			time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+		}
+	})
+
+	// Transfer when a preferred peer connects while we're leader
+	self.env.GetEventDispatcher().AddClusterEventHandler(event.ClusterEventHandlerF(func(evt *event.ClusterEvent) {
+		if evt.EventType == event.ClusterPeerConnected && self.IsLeader() {
+			for _, peer := range evt.Peers {
+				if peer.IsPreferredLeader {
+					log.WithField("preferredPeer", peer.Id).
+						Info("preferred leader peer connected while we're leader, scheduling transfer in 10s")
+					time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+					return
+				}
+			}
+		}
+	}))
+
+	// Safety net: if we're already leader, schedule a transfer. This handles the case where
+	// the leadership event was processed before our handler was registered.
+	if self.IsLeader() {
+		log.Info("non-preferred controller is already leader at setup time, scheduling transfer in 10s (safety net)")
+		time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+	}
+}
+
+func (self *Controller) transferToPreferredLeader() {
+	log := pfxlog.Logger()
+
+	if !self.IsLeader() {
+		log.Info("transfer check: no longer leader, skipping")
+		return
+	}
+
+	peers := self.Mesh.GetPeers()
+	log.Infof("transfer check: evaluating %d connected peers for preferred leader", len(peers))
+	for _, peer := range peers {
+		log.Infof("transfer check: peer %s preferred=%v", peer.Id, peer.PreferredLeader)
+		if peer.PreferredLeader {
+			log.WithField("targetPeer", peer.Id).Info("transferring leadership to preferred leader")
+			req := &cmd_pb.TransferLeadershipRequest{
+				Id: string(peer.Id),
+			}
+			if err := self.HandleTransferLeadershipAsLeader(req); err != nil {
+				log.WithField("targetPeer", peer.Id).WithError(err).
+					Warn("leadership transfer to preferred leader failed, will try next")
+				continue
+			}
+			log.WithField("targetPeer", peer.Id).Info("leadership transfer to preferred leader succeeded")
+			return
+		}
+	}
+
+	log.Warn("no preferred leader peers are connected, retaining leadership")
 }
 
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
@@ -937,6 +1013,7 @@ func (self *Controller) getClusterPeersForEvent() []*event.ClusterPeer {
 				peer.Version = meshPeer.Version.Version
 			}
 			peer.ApiAddresses = meshPeer.ApiAddresses
+			peer.IsPreferredLeader = meshPeer.PreferredLeader
 		}
 
 		peers = append(peers, peer)

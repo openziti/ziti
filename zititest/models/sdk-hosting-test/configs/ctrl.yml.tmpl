@@ -4,6 +4,9 @@ v: 3
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
   restartSelfOnSnapshot: true
+{{- if .Component.HasTag "preferredLeader"}}
+  preferredLeader: true
+{{- end}}
 {{else}}
 db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
 {{end}}

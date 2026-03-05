@@ -122,16 +122,40 @@ func ListIdentities(clients *zitirest.Clients, filter string, timeout time.Durat
 	return result.Payload.Data, nil
 }
 
-func CreateIdentity(clients *zitirest.Clients, entity *rest_model.IdentityCreate, timeout time.Duration) error {
+func CreateIdentity(clients *zitirest.Clients, entity *rest_model.IdentityCreate, timeout time.Duration) (string, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
 	defer cancelF()
 
-	_, err := clients.Edge.Identity.CreateIdentity(&identity.CreateIdentityParams{
+	resp, err := clients.Edge.Identity.CreateIdentity(&identity.CreateIdentityParams{
 		Context:  ctx,
 		Identity: entity,
 	}, nil)
 
-	return util.WrapIfApiError(err)
+	if err != nil {
+		return "", util.WrapIfApiError(err)
+	}
+
+	if resp.Payload == nil || resp.Payload.Data == nil {
+		return "", fmt.Errorf("create identity response missing payload")
+	}
+
+	return resp.Payload.Data.ID, nil
+}
+
+func DetailIdentity(clients *zitirest.Clients, id string, timeout time.Duration) (*rest_model.IdentityDetail, error) {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+
+	resp, err := clients.Edge.Identity.DetailIdentity(&identity.DetailIdentityParams{
+		Context: ctx,
+		ID:      id,
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Payload.Data, nil
 }
 
 func DeleteIdentity(clients *zitirest.Clients, id string, timeout time.Duration) error {

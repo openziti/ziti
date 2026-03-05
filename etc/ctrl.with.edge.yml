@@ -343,6 +343,15 @@ web:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"
 
+#cluster:
+#  advertiseAddress: tls:localhost:1380
+#  bindAddress: tls:0.0.0.0:1380
+#  dataDir: /tmp/ziti-cluster-data
+#  # preferredLeader - optional, default false
+#  # If set to true, this controller will be preferred as the raft cluster leader. If the current leader is not a
+#  # preferred leader, it will transfer leadership to a preferred leader if one is available.
+#  #preferredLeader: true
+
 commandRateLimiter:
     enabled: true
     maxQueued: 100

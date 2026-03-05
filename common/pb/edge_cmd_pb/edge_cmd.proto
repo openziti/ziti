@@ -184,6 +184,7 @@ message Controller {
   google.protobuf.Timestamp lastJoinedAt = 7;
   map<string, TagValue> tags = 8;
   map<string, ApiAddressList> apiAddresses = 9;
+  bool isPreferredLeader = 10;
 }
 
 message ApiAddressList {

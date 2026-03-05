@@ -767,7 +767,8 @@ func createNewIdentity(ctrl *zitirest.Clients) parallel.LabeledTask {
 			Tags:                      nil,
 			Type:                      &identityType,
 		}
-		return models.CreateIdentity(ctrl, svc, 15*time.Second)
+		_, err := models.CreateIdentity(ctrl, svc, 15*time.Second)
+		return err
 	})
 }
 

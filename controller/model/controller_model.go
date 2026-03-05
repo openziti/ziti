@@ -28,13 +28,14 @@ import (
 
 type Controller struct {
 	models.BaseEntity
-	Name         string
-	CtrlAddress  string
-	CertPem      string
-	Fingerprint  string
-	IsOnline     bool
-	LastJoinedAt time.Time
-	ApiAddresses map[string][]ApiAddress
+	Name              string
+	CtrlAddress       string
+	CertPem           string
+	Fingerprint       string
+	IsOnline          bool
+	LastJoinedAt      time.Time
+	IsPreferredLeader bool
+	ApiAddresses      map[string][]ApiAddress
 }
 
 func (entity *Controller) sortApiAddresses() {
@@ -56,7 +57,8 @@ func (entity *Controller) IsChanged(other *Controller) bool {
 		entity.CtrlAddress != other.CtrlAddress ||
 		entity.CertPem != other.CertPem ||
 		entity.Fingerprint != other.Fingerprint ||
-		entity.IsOnline != other.IsOnline {
+		entity.IsOnline != other.IsOnline ||
+		entity.IsPreferredLeader != other.IsPreferredLeader {
 		return true
 	}
 
@@ -93,14 +95,15 @@ type ApiAddress struct {
 
 func (entity *Controller) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Controller, error) {
 	boltEntity := &db.Controller{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:          entity.Name,
-		CtrlAddress:   entity.CtrlAddress,
-		CertPem:       entity.CertPem,
-		Fingerprint:   entity.Fingerprint,
-		IsOnline:      entity.IsOnline,
-		LastJoinedAt:  entity.LastJoinedAt,
-		ApiAddresses:  map[string][]db.ApiAddress{},
+		BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:              entity.Name,
+		CtrlAddress:       entity.CtrlAddress,
+		CertPem:           entity.CertPem,
+		Fingerprint:       entity.Fingerprint,
+		IsOnline:          entity.IsOnline,
+		LastJoinedAt:      entity.LastJoinedAt,
+		IsPreferredLeader: entity.IsPreferredLeader,
+		ApiAddresses:      map[string][]db.ApiAddress{},
 	}
 
 	for apiKey, instances := range entity.ApiAddresses {
@@ -132,6 +135,7 @@ func (entity *Controller) fillFrom(env Env, tx *bbolt.Tx, boltController *db.Con
 	entity.Fingerprint = boltController.Fingerprint
 	entity.IsOnline = boltController.IsOnline
 	entity.LastJoinedAt = boltController.LastJoinedAt
+	entity.IsPreferredLeader = boltController.IsPreferredLeader
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	for apiKey, instances := range boltController.ApiAddresses {

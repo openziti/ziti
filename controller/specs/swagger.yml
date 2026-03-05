@@ -2099,6 +2099,8 @@ definitions:
         type: boolean
       readOnly:
         type: boolean
+      preferredLeader:
+        type: boolean
   clusterMemberListResponse:
     type: object
     properties:

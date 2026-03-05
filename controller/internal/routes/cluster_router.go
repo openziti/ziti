@@ -93,13 +93,14 @@ func (r *ClusterRouter) listMembers(ae *env.AppEnv, rc *response.RequestContext)
 		readOnly := ClusterController.Mesh.IsReadOnly()
 		for _, member := range members {
 			vals = append(vals, &rest_model.ClusterMemberListValue{
-				Address:   &member.Addr,
-				Connected: &member.Connected,
-				ID:        &member.Id,
-				Leader:    &member.Leader,
-				Version:   &member.Version,
-				Voter:     &member.Voter,
-				ReadOnly:  &readOnly,
+				Address:         &member.Addr,
+				Connected:       &member.Connected,
+				ID:              &member.Id,
+				Leader:          &member.Leader,
+				Version:         &member.Version,
+				Voter:           &member.Voter,
+				ReadOnly:        &readOnly,
+				PreferredLeader: member.PreferredLeader,
 			})
 		}
 

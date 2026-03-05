@@ -267,6 +267,10 @@ func LoadConfig(path string) (*Config, error) {
 				controllerConfig.Raft.RestartSelf = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
 
+			if value, found := submap["preferredLeader"]; found {
+				controllerConfig.Raft.PreferredLeader = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+
 			if value, found := submap["snapshotInterval"]; found {
 				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
 					controllerConfig.Raft.SnapshotInterval = val

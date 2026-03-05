@@ -27,14 +27,12 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/util"
-	errUtil "github.com/openziti/ziti/v2/ziti/util"
 	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
-	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
@@ -52,6 +50,15 @@ const (
 
 //go:embed configs
 var configResource embed.FS
+
+var ctrlClients models.CtrlClients
+
+func initCtrl1(run model.Run) (*zitirest.Clients, error) {
+	if err := ctrlClients.Init(run, "#ctrl1"); err != nil {
+		return nil, err
+	}
+	return ctrlClients.GetCtrl("ctrl1"), nil
+}
 
 type scaleStrategy struct{}
 
@@ -167,7 +174,7 @@ var m = &model.Model{
 				"ctrl1": {
 					Components: model.Components{
 						"ctrl1": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "preferredLeader"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
 							},
@@ -205,7 +212,7 @@ var m = &model.Model{
 				"ctrl2": {
 					Components: model.Components{
 						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha", "preferredLeader"}},
 							Type: &zitilab.ControllerType{
 								Version: targetZitiVersion,
 							},
@@ -294,52 +301,65 @@ var m = &model.Model{
 			workflow.AddAction(zitilibActions.Edge("create", "config", "host-config", "host.v1", hostConfig))
 
 			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				var tasks []parallel.Task
+				ctrl1, err := initCtrl1(run)
+				if err != nil {
+					return err
+				}
+
+				configId, err := models.GetConfigId(ctrl1, "host-config", 5*time.Second)
+				if err != nil {
+					return fmt.Errorf("failed to look up host-config: %w", err)
+				}
+
+				var tasks []parallel.LabeledTask
 				for i := 0; i < 2000; i++ {
 					name := fmt.Sprintf("service-%04d", i)
 					task := func() error {
-						_, err := cli.Exec(run.GetModel(), "edge", "create", "service", name, "-c", "host-config", "--timeout", "15")
+						_, err := models.CreateService(ctrl1, &rest_model.ServiceCreate{
+							Configs:            []string{configId},
+							EncryptionRequired: util.Ptr(true),
+							Name:               util.Ptr(name),
+						}, 15*time.Second)
 						return err
 					}
-					tasks = append(tasks, task)
+					tasks = append(tasks, parallel.TaskWithLabel("create.service", fmt.Sprintf("create service %s", name), task))
 				}
-				return parallel.Execute(tasks, 25)
+				return parallel.ExecuteLabeled(tasks, 50, models.RetryPolicy)
 			}))
 
 			return workflow
 		}),
 		"createServicePolicies": model.ActionBinder(func(m *model.Model) model.Action {
-			ctrls := models.CtrlClients{}
-			var ctrl1 *zitirest.Clients
-
-			workflow := actions.Workflow()
-
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
-				if err := ctrls.Init(run, "#ctrl1"); err != nil {
-					return err
-				}
-				ctrl1 = ctrls.GetCtrl("ctrl1")
-				return nil
-			}))
-
 			svcIdCache := cmap.New[string]()
 
-			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+			return model.ActionFunc(func(run model.Run) error {
+				ctrl1, err := initCtrl1(run)
+				if err != nil {
+					return err
+				}
+
 				identities := getHostNames()
 				serviceIdx := 0
-				var tasks []parallel.Task
+				var tasks []parallel.LabeledTask
 				for i, identity := range identities {
-					tasks = append(tasks, func() error {
-						policyName := fmt.Sprintf("service-policy-%03d", i)
-						identityId, err := models.GetIdentityId(ctrl1, identity, 5*time.Second)
+					policyName := fmt.Sprintf("service-policy-%03d", i)
+					identityName := identity
+					var serviceNames []string
+					for j := 0; j < servicesPerTunneler; j++ {
+						idx := serviceIdx % 2000
+						serviceNames = append(serviceNames, fmt.Sprintf("service-%04d", idx))
+						serviceIdx++
+					}
+
+					task := func() error {
+						identityId, err := models.GetIdentityId(ctrl1, identityName, 5*time.Second)
 						if err != nil {
 							return err
 						}
 						identityRole := fmt.Sprintf("@%s", identityId)
+
 						var serviceRoles []string
-						for j := 0; j < servicesPerTunneler; j++ {
-							idx := serviceIdx % 2000
-							svcName := fmt.Sprintf("service-%04d", idx)
+						for _, svcName := range serviceNames {
 							svcId, ok := svcIdCache.Get(svcName)
 							if !ok {
 								svcId, err = models.GetServiceId(ctrl1, svcName, 5*time.Second)
@@ -349,45 +369,20 @@ var m = &model.Model{
 								svcIdCache.Set(svcName, svcId)
 							}
 							serviceRoles = append(serviceRoles, fmt.Sprintf("@%s", svcId))
-							serviceIdx++
 						}
 
-						attempts := 0
-						for {
-							err := models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
-								IdentityRoles: []string{identityRole},
-								Name:          util.Ptr(policyName),
-								Semantic:      util.Ptr(rest_model.SemanticAnyOf),
-								ServiceRoles:  serviceRoles,
-								Type:          util.Ptr(rest_model.DialBindBind),
-							}, 15*time.Second)
-
-							if err == nil {
-								fmt.Printf("creating service policy %s: OK\n", policyName)
-								return nil
-							}
-							err = errUtil.WrapIfApiError(err)
-
-							l, _ := models.ListServicePolicies(ctrl1, fmt.Sprintf(`name="%s"`, policyName), 5*time.Second)
-							if len(l) > 0 {
-								fmt.Printf("creating service policy %s: ALREADY PRESENT\n", policyName)
-								return nil
-							}
-
-							fmt.Printf("creating service policy %s: FAILED (%+v)\n", policyName, err)
-
-							if attempts > 3 {
-								return err
-							}
-							attempts++
-							time.Sleep(time.Duration(attempts) * time.Second)
-						}
-					})
+						return models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
+							IdentityRoles: []string{identityRole},
+							Name:          util.Ptr(policyName),
+							Semantic:      util.Ptr(rest_model.SemanticAnyOf),
+							ServiceRoles:  serviceRoles,
+							Type:          util.Ptr(rest_model.DialBindBind),
+						}, 15*time.Second)
+					}
+					tasks = append(tasks, parallel.TaskWithLabel("create.service-policy", fmt.Sprintf("create service policy %s", policyName), task))
 				}
-				return parallel.Execute(tasks, 25)
-			}))
-
-			return workflow
+				return parallel.ExecuteLabeled(tasks, 50, models.RetryPolicy)
+			})
 		}),
 		"initHA": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
@@ -424,8 +419,8 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			workflow.AddAction(edge.InitEdgeRouters(models.RouterTag, 25))
-			workflow.AddAction(edge.InitIdentities(".host", 10))
+			workflow.AddAction(edge.InitEdgeRoutersWithClients(models.RouterTag, 25, initCtrl1))
+			workflow.AddAction(edge.InitIdentitiesWithClients(".host", 50, initCtrl1))
 			workflow.AddAction(model.RunAction("createBaseModel"))
 			workflow.AddAction(model.RunAction("createServicePolicies"))
 			workflow.AddAction(model.RunAction("initHA"))
