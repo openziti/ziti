@@ -51,9 +51,40 @@ makePki() {
   elif [[ -z "${ZITI_CLUSTER_NODE_PKI:-}" && "${ZITI_BOOTSTRAP_CLUSTER}" == false ]]; then
     echo "DEBUG: not generating new cluster PKI because ZITI_BOOTSTRAP_CLUSTER=false and not installing new node PKI because ZITI_CLUSTER_NODE_PKI is not set" >&3
   else
-    # install the provided intermediate signing cert in this node's PKI root
-    echo "DEBUG: installing new node PKI from ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" >&3
-    cp -RT "${ZITI_CLUSTER_NODE_PKI}" "${ZITI_PKI_ROOT}"
+    # install the root CA from the provided PKI directory and create a new intermediate for this node
+    echo "DEBUG: installing root CA from ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" >&3
+    local _src_ca_cert="${ZITI_CLUSTER_NODE_PKI}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
+    local _src_ca_key="${ZITI_CLUSTER_NODE_PKI}/${ZITI_CA_FILE}/keys/${ZITI_CA_FILE}.key"
+    if [[ ! -s "${_src_ca_cert}" ]]; then
+      echo "ERROR: root CA cert not found: ${_src_ca_cert}" >&2
+      return 1
+    fi
+    if [[ ! -s "${_src_ca_key}" ]]; then
+      echo "ERROR: root CA key not found: ${_src_ca_key}" >&2
+      return 1
+    fi
+    local _ca_dir="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}"
+    mkdir -p "${_ca_dir}/certs" "${_ca_dir}/keys" "${_ca_dir}/crls"
+    cp "${_src_ca_cert}" "${_ca_dir}/certs/${ZITI_CA_FILE}.cert"
+    cp "${_src_ca_key}" "${_ca_dir}/keys/${ZITI_CA_FILE}.key"
+    # initialize CA index files required by ziti pki create intermediate
+    [[ -f "${_ca_dir}/index.txt" ]]      || touch "${_ca_dir}/index.txt"
+    [[ -f "${_ca_dir}/index.txt.attr" ]]  || touch "${_ca_dir}/index.txt.attr"
+    [[ -f "${_ca_dir}/serial" ]]          || echo "01" > "${_ca_dir}/serial"
+    [[ -f "${_ca_dir}/crlnumber" ]]       || echo "01" > "${_ca_dir}/crlnumber"
+    if [[ ! -s "${ZITI_PKI_SIGNER_CERT}" && ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      ziti pki create intermediate \
+        --pki-root "${ZITI_PKI_ROOT}" \
+        --ca-name "${ZITI_CA_FILE}" \
+        --intermediate-file "${ZITI_INTERMEDIATE_FILE}"
+    elif [[ ! -s "${ZITI_PKI_SIGNER_CERT}" || ! -s "${ZITI_PKI_SIGNER_KEY}" ]]; then
+      echo "ERROR: ${ZITI_PKI_SIGNER_CERT} and ${ZITI_PKI_SIGNER_KEY} must both exist or neither exist as non-empty files" >&2
+      return 1
+    else
+      echo "INFO: intermediate CA exists in $(realpath "${ZITI_PKI_SIGNER_CERT}")"
+    fi
+    # NOTE: the root CA key is kept on disk for edge enrollment signer issuance and renewal.
+    # It is not used during daily operations and can be secured offline separately.
   fi
 
   issueLeafCerts
@@ -300,12 +331,11 @@ promptCtrlAddress() {
 
 promptClusterNodePki(){
   if [[ "${ZITI_BOOTSTRAP_CLUSTER:-}" == false && -z "${ZITI_CLUSTER_NODE_PKI:-}" ]]; then
-    echo -e "\nThe PKI directory must contain:"\
-            "\n\t${ZITI_CA_CERT}"\
-            "\n\t${ZITI_PKI_SIGNER_CERT}"\
-            "\n\t${ZITI_PKI_SIGNER_KEY}"\
+    echo -e "\nThe PKI directory must contain the root CA cert and key:"\
+            "\n\t${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"\
+            "\n\t${ZITI_CA_FILE}/keys/${ZITI_CA_FILE}.key"\
             "\n"
-    if ZITI_CLUSTER_NODE_PKI="$(prompt  "Enter the path to the new cluster node's PKI directory: " )"; then
+    if ZITI_CLUSTER_NODE_PKI="$(prompt "Enter the path to the existing cluster's PKI directory: " )"; then
       setAnswer "ZITI_CLUSTER_NODE_PKI=${ZITI_CLUSTER_NODE_PKI}" "${BOOT_ENV_FILE}"
     else
       echo "ERROR: missing ZITI_CLUSTER_NODE_PKI in ${BOOT_ENV_FILE}; required for joining an existing cluster" >&2
@@ -530,11 +560,11 @@ bootstrap() {
 # initialized, the command returns "already initialized" which we treat as success.
 #
 # This function is portable:
-# - Linux server: called after starting systemd service, uses nsenter to reach controller namespace
+# - Linux server: called after starting systemd service, targets the controller by PID
 # - Docker: called after controller is running in background, uses ziti agent directly
 #
 # Arguments:
-#   $1 - (optional) controller PID for nsenter (Linux path) or empty for direct agent call (Docker)
+#   $1 - (optional) controller PID (Linux path) or empty for direct agent call (Docker)
 #
 # Environment:
 #   ZITI_BOOTSTRAP_CLUSTER - must be "true" to attempt initialization
@@ -565,23 +595,14 @@ clusterInit() {
 
   echo "INFO: initializing cluster with default admin '${ZITI_USER}'"
 
-  # Build the command based on whether we have a PID (Linux/nsenter) or not (Docker/direct)
+  set +o errexit
   if [[ -n "${_pid}" ]]; then
-    # Linux path: use nsenter to enter the controller's mount namespace
-    echo "DEBUG: using nsenter to reach controller PID ${_pid}" >&3
-    set +o errexit
-    _output="$(nsenter --target "${_pid}" --mount -- \
-      ziti agent cluster init --pid "${_pid}" "${ZITI_USER}" "${ZITI_PWD}" "${ZITI_USER_NAME}" 2>&1)"
-    _rc=$?
-    set -o errexit
+    _output="$(ziti agent cluster init --pid "${_pid}" "${ZITI_USER}" "${ZITI_PWD}" "${ZITI_USER_NAME}" 2>&1)"
   else
-    # Docker path: call ziti agent directly (same namespace)
-    echo "DEBUG: using direct ziti agent call" >&3
-    set +o errexit
     _output="$(ziti agent cluster init "${ZITI_USER}" "${ZITI_PWD}" "${ZITI_USER_NAME}" 2>&1)"
-    _rc=$?
-    set -o errexit
   fi
+  _rc=$?
+  set -o errexit
 
   # Check result - treat "already initialized" as success for idempotency
   if (( _rc == 0 )); then
@@ -598,7 +619,7 @@ clusterInit() {
 
 # Wait for the controller agent to become available
 # Arguments:
-#   $1 - (optional) controller PID for nsenter, or empty for direct call
+#   $1 - (optional) controller PID, or empty for direct call
 #   $2 - (optional) max attempts (default: 30)
 #   $3 - (optional) delay between attempts in seconds (default: 1)
 waitForAgent() {
@@ -612,12 +633,11 @@ waitForAgent() {
     local _rc
     set +o errexit
     if [[ -n "${_pid}" ]]; then
-      nsenter --target "${_pid}" --mount -- ziti agent stats --pid "${_pid}" &>/dev/null
-      _rc=$?
+      ziti agent stats --pid "${_pid}" &>/dev/null
     else
       ziti agent stats &>/dev/null
-      _rc=$?
     fi
+    _rc=$?
     set -o errexit
 
     if (( _rc == 0 )); then
@@ -655,8 +675,7 @@ finalizeWorkingDir() {
     return 1
   fi
 
-  # disown root to allow systemd to manage the working directory as dynamic user
-  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_config_dir}/"
+  chown -R "${ZITI_SVC_USER:-ziti-controller}:${ZITI_SVC_GROUP:-ziti-controller}" "${_config_dir}/"
   chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
 
@@ -683,8 +702,8 @@ dataDir() {
 exitHandler() {
   echo "WARN: set VERBOSE=1 or DEBUG=1 for more output" >&2
   if [[ -s "${INFO_LOG_FILE:-}" || -s "${DEBUG_LOG_FILE:-}" ]]; then
-    cat "${INFO_LOG_FILE:-/dev/null}" "${DEBUG_LOG_FILE:-/dev/null}" >> "${ZITI_BOOTSTRAP_LOG_FILE}"
-    echo "WARN: see output in '${ZITI_BOOTSTRAP_LOG_FILE}'" >&2
+    cat "${INFO_LOG_FILE:-/dev/null}" "${DEBUG_LOG_FILE:-/dev/null}" >> "${BOOTSTRAP_LOG_FILE}"
+    echo "WARN: see output in '${BOOTSTRAP_LOG_FILE}'" >&2
   fi
 }
 
@@ -711,7 +730,7 @@ trap exitHandler EXIT SIGINT SIGTERM
 : "${ZITI_CLIENT_FILE:=client}"  # relative to intermediate CA "keys" and "certs" dirs
 : "${ZITI_NETWORK_NAME:=ctrl}"  # basename of identity files
 : "${ZITI_CTRL_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
-: "${ZITI_BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
+: "${BOOTSTRAP_LOG_FILE:=$(mktemp)}"  # where the exit handler should concatenate verbose and debug messages
 ZITI_CA_CERT="${ZITI_PKI_ROOT}/${ZITI_CA_FILE}/certs/${ZITI_CA_FILE}.cert"
 ZITI_PKI_SIGNER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_INTERMEDIATE_FILE}.cert"
 ZITI_PKI_SIGNER_KEY="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/keys/${ZITI_INTERMEDIATE_FILE}.key"
@@ -737,7 +756,7 @@ else
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/private/ziti-controller
+  export ZITI_HOME=/var/lib/ziti-controller
   SVC_ENV_FILE=/opt/openziti/etc/controller/service.env
   BOOT_ENV_FILE=/opt/openziti/etc/controller/bootstrap.env
   SVC_FILE=/etc/systemd/system/ziti-controller.service.d/override.conf

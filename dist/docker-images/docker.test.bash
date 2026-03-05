@@ -69,10 +69,16 @@ fi
 
 ZITI_USER="admin"
 ZITI_PWD="ziggypw"
-ZITI_CTRL_ADVERTISED_ADDRESS="ctrl1.127.0.0.1.sslip.io"
-ZITI_CTRL_ADVERTISED_PORT="12800"
-ZITI_CLUSTER_NODE_NAME="${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}"
+ZITI_CTRL_ADVERTISED_ADDRESS="ziti-controller1.127.0.0.1.sslip.io"
+ZITI_CTRL_ADVERTISED_PORT="1281"
+ZITI_CLUSTER_NODE_NAME="ziti-controller1"
 ZITI_CLUSTER_TRUST_DOMAIN="${ZITI_CTRL_ADVERTISED_ADDRESS#*.}"
+ZITI_CTRL2_ADVERTISED_ADDRESS="ziti-controller2.127.0.0.1.sslip.io"
+ZITI_CTRL2_ADVERTISED_PORT="1282"
+ZITI_CTRL2_NODE_NAME="ziti-controller2"
+ZITI_CTRL3_ADVERTISED_ADDRESS="ziti-controller3.127.0.0.1.sslip.io"
+ZITI_CTRL3_ADVERTISED_PORT="1283"
+ZITI_CTRL3_NODE_NAME="ziti-controller3"
 ZITI_ROUTER_PORT="30222"
 ZITI_CONTROLLER_IMAGE="ziti-controller:local"
 ZITI_ROUTER_IMAGE="ziti-router:local"
@@ -87,6 +93,12 @@ ZITI_CTRL_ADVERTISED_ADDRESS \
 ZITI_CTRL_ADVERTISED_PORT \
 ZITI_CLUSTER_NODE_NAME \
 ZITI_CLUSTER_TRUST_DOMAIN \
+ZITI_CTRL2_ADVERTISED_ADDRESS \
+ZITI_CTRL2_ADVERTISED_PORT \
+ZITI_CTRL2_NODE_NAME \
+ZITI_CTRL3_ADVERTISED_ADDRESS \
+ZITI_CTRL3_ADVERTISED_PORT \
+ZITI_CTRL3_NODE_NAME \
 ZITI_ROUTER_PORT \
 ZITI_CONTROLLER_IMAGE \
 ZITI_ROUTER_IMAGE \
@@ -98,7 +110,7 @@ ZITI_ROUTER_LISTENER_BIND_PORT="${ZITI_ROUTER_PORT}"
 
 cleanup
 
-for PORT in "${ZITI_CTRL_ADVERTISED_PORT}" "${ZITI_ROUTER_PORT}"
+for PORT in "${ZITI_CTRL_ADVERTISED_PORT}" "${ZITI_CTRL2_ADVERTISED_PORT}" "${ZITI_CTRL3_ADVERTISED_PORT}" "${ZITI_ROUTER_PORT}"
 do
 	portcheck "${PORT}"
 done
@@ -137,6 +149,32 @@ docker build \
 # entrypoint.bash now handles cluster initialization automatically when
 # ZITI_BOOTSTRAP_CLUSTER=true and ZITI_PWD is set
 docker compose up wait-for-controller
+
+# join controllers 2 and 3 to the cluster (retry for CI runners where raft may be slow to initialise)
+for svc in ziti-controller2 ziti-controller3; do
+    ATTEMPTS=20
+    DELAY=3
+    until docker compose exec -T "${svc}" ziti agent cluster add \
+            "tls:${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}"; do
+        if (( ATTEMPTS-- == 0 )); then
+            echo "ERROR: ${svc} failed to join the cluster" >&2
+            exit 1
+        fi
+        echo "INFO: retrying cluster add for ${svc} (${ATTEMPTS} attempts left)"
+        sleep ${DELAY}
+    done
+    echo "INFO: ${svc} joined the cluster"
+done
+
+# verify the cluster has 3 members
+CLUSTER_OUTPUT="$(docker compose exec -T ziti-controller ziti agent cluster list 2>/dev/null)"
+CLUSTER_SIZE="$(echo "${CLUSTER_OUTPUT}" | grep -c 'tls:')" || true
+if (( CLUSTER_SIZE < 3 )); then
+    echo "ERROR: expected 3 cluster members, found ${CLUSTER_SIZE}" >&2
+    echo "${CLUSTER_OUTPUT}" >&2
+    exit 1
+fi
+echo "INFO: cluster has ${CLUSTER_SIZE} members"
 
 docker compose exec -T --env ZITI_ROUTER_NAME ziti-controller /bin/bash -euxc '
 

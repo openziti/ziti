@@ -384,8 +384,7 @@ finalizeWorkingDir() {
     return 1
   fi
 
-  # disown root to allow systemd to manage the working directory as dynamic user
-  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_config_dir}/"
+  chown -R "${ZITI_SVC_USER:-ziti-router}:${ZITI_SVC_GROUP:-ziti-router}" "${_config_dir}/"
   chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
 
@@ -462,7 +461,7 @@ else
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/private/ziti-router
+  export ZITI_HOME=/var/lib/ziti-router
   BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env
   SVC_ENV_FILE=/opt/openziti/etc/router/service.env
   SVC_FILE=/etc/systemd/system/ziti-router.service.d/override.conf
