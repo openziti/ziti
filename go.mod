@@ -59,18 +59,18 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.5
+	github.com/openziti/channel/v4 v4.3.6
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.26.56
-	github.com/openziti/foundation/v2 v2.0.87
-	github.com/openziti/identity v1.0.125
+	github.com/openziti/edge-api v0.27.0
+	github.com/openziti/foundation/v2 v2.0.88
+	github.com/openziti/identity v1.0.126
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
-	github.com/openziti/runzmd v1.0.89
-	github.com/openziti/sdk-golang v1.4.2
+	github.com/openziti/runzmd v1.0.90
+	github.com/openziti/sdk-golang v1.5.0
 	github.com/openziti/secretstream v0.1.47
-	github.com/openziti/storage v0.4.38
-	github.com/openziti/transport/v2 v2.0.209
+	github.com/openziti/storage v0.4.39
+	github.com/openziti/transport/v2 v2.0.211
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -154,7 +154,6 @@ require (
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
@@ -171,8 +170,6 @@ require (
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/openziti-incubator/cf v0.0.3 // indirect
-	github.com/openziti/dilithium v0.3.5 // indirect
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

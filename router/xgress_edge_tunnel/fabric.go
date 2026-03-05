@@ -132,7 +132,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		return errors.New("service requires encryption, but public key header not returned")
 	}
 
-	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
+	xgConn := xgress_common.NewXgressConn(conn, halfClose, xgress_common.ConnTypeTunnel)
 
 	if peerKeyFound {
 		if err = xgConn.SetupClientCrypto(keyPair, peerKey); err != nil {
