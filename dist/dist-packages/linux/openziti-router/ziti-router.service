@@ -16,7 +16,7 @@ StateDirectory=ziti-router
 WorkingDirectory=/var/lib/ziti-router
 
 ExecStartPre=/opt/openziti/etc/router/entrypoint.bash check config.yml
-ExecStart=/opt/openziti/bin/ziti router run config.yml ${ZITI_ARGS}
+ExecStart=/opt/openziti/bin/ziti router run config.yml $ZITI_ARGS
 
 Restart=always
 RestartSec=3

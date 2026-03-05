@@ -119,6 +119,7 @@ do
     ZITI_VENDOR="netfoundry" \
     ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
     MINIMUM_SYSTEMD_VERSION="232" \
+    NFPM_ARCH="all" \
     nfpm pkg \
     --packager deb \
     --target  "$TMPDIR" \
