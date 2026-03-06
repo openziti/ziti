@@ -70,7 +70,7 @@ require (
 	github.com/openziti/sdk-golang v1.5.1
 	github.com/openziti/secretstream v0.1.47
 	github.com/openziti/storage v0.4.39
-	github.com/openziti/transport/v2 v2.0.211
+	github.com/openziti/transport/v2 v2.0.213
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.3
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -94,7 +94,7 @@ require (
 	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
@@ -173,7 +173,7 @@ require (
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pion/dtls/v3 v3.0.10 // indirect
+	github.com/pion/dtls/v3 v3.1.2 // indirect
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
