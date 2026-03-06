@@ -10,9 +10,9 @@ install() {
 }
 
 upgrade() {
-  # Step 2(upgrade), do what you need
   commonActions
-
+  # systemd needs to re-read the unit file after package upgrade
+  systemctl daemon-reload
 }
 
 commonActions() {

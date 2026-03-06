@@ -37,18 +37,21 @@ elif [[ "${1}" =~ check ]]; then
     echo "ERROR: ${2} does not exist" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ ! -w "$(dataDir "${2}")" ]]; then
-    echo "ERROR: database file '$(dataDir "${2}")' is not writable" >&2
+  fi
+  # check writability of database directory if the config defines one
+  _data_dir="$(dataDir "${2}")"
+  if [[ -n "${_data_dir}" && ! -w "${_data_dir}" ]]; then
+    echo "ERROR: database directory '${_data_dir}' is not writable" >&2
     hintLinuxBootstrap "${PWD}"
     exit 1
-  elif [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
+  fi
+  if [[ "${ZITI_BOOTSTRAP:-}" == true && "${ZITI_BOOTSTRAP_PKI:-}" == true ]]; then
     loadEnvFiles /opt/openziti/etc/controller/bootstrap.env
     issueLeafCerts
     exit
-  else
-    # if check mode and no bootstrap then noop
-    exit 0
   fi
+  # config exists; the controller binary validates its own config
+  exit 0
 fi
 
 # If cluster initialization is needed, start controller in background, init, then wait
