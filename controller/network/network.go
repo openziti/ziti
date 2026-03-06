@@ -1096,6 +1096,7 @@ func (network *Network) rerouteCircuit(circuit *model.Circuit, deadline time.Tim
 
 		log.Warn("rerouting circuit")
 
+		oldPath := circuit.Path
 		if cq, err := network.UpdatePath(circuit.Path); err == nil {
 			circuit.Path = cq
 			circuit.UpdatedAt = time.Now()
@@ -1105,8 +1106,11 @@ func (network *Network) rerouteCircuit(circuit *model.Circuit, deadline time.Tim
 			for i := 0; i < len(cq.Nodes); i++ {
 				if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {
 					log.WithError(err).Errorf("error sending route to [r/%s]", cq.Nodes[i].Id)
+					return err
 				}
 			}
+
+			network.unrouteRemovedPathNodes(log, circuit.Id, oldPath, cq)
 
 			log.Info("rerouted circuit")
 
@@ -1127,6 +1131,7 @@ func (network *Network) smartReroute(circuit *model.Circuit, cq *model.Path, dea
 	if circuit.Rerouting.CompareAndSwap(false, true) {
 		defer circuit.Rerouting.Store(false)
 
+		oldPath := circuit.Path
 		circuit.Path = cq
 		circuit.UpdatedAt = time.Now()
 
@@ -1141,6 +1146,7 @@ func (network *Network) smartReroute(circuit *model.Circuit, cq *model.Path, dea
 		}
 
 		if !retry {
+			network.unrouteRemovedPathNodes(log, circuit.Id, oldPath, cq)
 			logrus.Debug("rerouted circuit")
 			network.CircuitEvent(event.CircuitUpdated, circuit, nil)
 		}
@@ -1227,6 +1233,25 @@ func sendUnroute(r *model.Router, circuitId string, now bool) error {
 		Now:       now,
 	}
 	return protobufs.MarshalTyped(unroute).Send(r.Control.GetHighPrioritySender())
+}
+
+// unrouteRemovedPathNodes sends Unroute to any nodes that were in the old path but are not in the new path.
+// This handles the case where a circuit reroute changes intermediate transit nodes.
+func (network *Network) unrouteRemovedPathNodes(log *logrus.Entry, circuitId string, oldPath, newPath *model.Path) {
+	newNodeIds := make(map[string]struct{}, len(newPath.Nodes))
+	for _, r := range newPath.Nodes {
+		newNodeIds[r.Id] = struct{}{}
+	}
+
+	for _, r := range oldPath.Nodes {
+		if _, ok := newNodeIds[r.Id]; !ok {
+			if cr := network.GetConnectedRouter(r.Id); cr != nil {
+				if err := sendUnroute(cr, circuitId, true); err != nil {
+					log.WithError(err).Errorf("error sending unroute to removed path node [r/%s]", r.Id)
+				}
+			}
+		}
+	}
 }
 
 func (network *Network) showOptions() {
