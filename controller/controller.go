@@ -211,7 +211,7 @@ func (c *Controller) GetRaftConfig() *config.RaftConfig {
 	return c.config.Raft
 }
 
-func (c *Controller) GetRaftRateLimiterConfig() command.AdaptiveRateLimiterConfig {
+func (c *Controller) GetRaftRateLimiterConfig() command.AdaptiveRateLimitTrackerConfig {
 	return c.config.Raft.RateLimiter
 }
 

@@ -183,6 +183,29 @@ events:
 #  enabled:              false
 #  delay:                5
 
+# tls configures TLS handshake settings for incoming connections
+#tls:
+#  handshakeTimeout: 10s
+#  rateLimiter:
+#    # if disabled, no tls handshake rate limiting will be enforced
+#    enabled: true
+#    # the smallest window size for concurrent tls handshakes
+#    minSize: 5
+#    # the largest allowed window size for concurrent tls handshakes
+#    maxSize: 250
+#    # how long before incomplete handshake work is assumed to have failed
+#    timeout: 30s
+#    # success rate threshold above which window will grow, below which it will shrink
+#    successThreshold: 0.9
+#    # multiplier applied to window size when growing
+#    increaseFactor: 1.02
+#    # multiplier applied to window size when shrinking
+#    decreaseFactor: 0.9
+#    # number of successes between window increase checks
+#    increaseCheckInterval: 10
+#    # number of backoffs between window decrease checks
+#    decreaseCheckInterval: 10
+
 healthChecks:
   boltCheck:
     # How often to try entering a bolt read tx. Defaults to 30 seconds
@@ -355,3 +378,17 @@ web:
 commandRateLimiter:
     enabled: true
     maxQueued: 100
+
+# cluster configures HA cluster settings (HA deployments only)
+#cluster:
+#  dataDir: /path/to/raft/data
+#  rateLimiter:
+#    enabled: true
+#    minSize: 5
+#    maxSize: 250
+#    timeout: 30s
+#    successThreshold: 0.9
+#    increaseFactor: 1.02
+#    decreaseFactor: 0.9
+#    increaseCheckInterval: 10
+#    decreaseCheckInterval: 10

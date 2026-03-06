@@ -28,6 +28,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -98,7 +99,7 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 					}
 				} else {
 					apiError := &errorz.ApiError{}
-					if errors.As(err, &apiError) && apiError.Code == apierror.ServerTooManyRequestsCode {
+					if errors.As(err, &apiError) && apiError.AppCode == apierror.ServerTooManyRequestsCode {
 						queueFull.Add(1)
 					} else {
 						panic(err)
@@ -114,14 +115,19 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 }
 
 func Test_AdaptiveRateLimiterTracker(t *testing.T) {
-	cfg := AdaptiveRateLimiterConfig{
-		Enabled:          true,
-		MaxSize:          250,
-		MinSize:          5,
-		WorkTimerMetric:  "workTime",
-		QueueSizeMetric:  "queueSize",
-		WindowSizeMetric: "windowSize",
-		Timeout:          time.Second,
+	cfg := AdaptiveRateLimitTrackerConfig{
+		AdaptiveRateLimiterConfig: AdaptiveRateLimiterConfig{
+			Enabled:          true,
+			MaxSize:          250,
+			MinSize:          5,
+			WorkTimerMetric:  "workTime",
+			QueueSizeMetric:  "queueSize",
+			WindowSizeMetric: "windowSize",
+			Timeout:          time.Second,
+		},
+		SuccessThreshold: 0.9,
+		IncreaseFactor:   1.02,
+		DecreaseFactor:   0.9,
 	}
 
 	registry := metrics.NewRegistry("test", nil)
@@ -140,6 +146,7 @@ func Test_AdaptiveRateLimiterTracker(t *testing.T) {
 		fmt.Printf("completed: %v\n", completed.Load())
 		fmt.Printf("queueSize: %v\n", limiter.currentSize.Load())
 		fmt.Printf("windowSize: %v\n", limiter.currentWindow.Load())
+		fmt.Printf("successRate: %v\n", limiter.successRate.Mean())
 	}
 
 	go func() {
@@ -163,7 +170,7 @@ func Test_AdaptiveRateLimiterTracker(t *testing.T) {
 			count := 0
 			for count < 1000 {
 				// start := time.Now()
-				err := limiter.RunRateLimitedF("", func(control RateLimitControl) error {
+				err := limiter.RunRateLimitedF("", func(control rate.RateLimitControl) error {
 					if sem.TryAcquire() {
 						time.Sleep(25 * time.Millisecond)
 						control.Success()
@@ -179,7 +186,7 @@ func Test_AdaptiveRateLimiterTracker(t *testing.T) {
 
 				if err != nil {
 					apiError := &errorz.ApiError{}
-					if errors.As(err, &apiError) && apiError.Code == apierror.ServerTooManyRequestsCode {
+					if errors.As(err, &apiError) && apiError.AppCode == apierror.ServerTooManyRequestsCode {
 						queueFull.Add(1)
 						time.Sleep(time.Millisecond)
 					} else {

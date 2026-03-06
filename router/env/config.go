@@ -25,17 +25,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/v2/controller/command"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	yaml3 "gopkg.in/yaml.v3"
@@ -150,7 +149,7 @@ type Config struct {
 		EndpointsFile         string
 		Heartbeats            HeartbeatOptions
 		StartupTimeout        time.Duration
-		RateLimit             command.AdaptiveRateLimiterConfig
+		RateLimit             command.AdaptiveRateLimitTrackerConfig
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -981,7 +980,7 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 
 	if value, found := cfgmap["rateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+			if err := rateLimitConfig.Load(submap); err != nil {
 				return err
 			}
 			if rateLimitConfig.MaxSize < CtrlRateLimiterMinSizeValue {

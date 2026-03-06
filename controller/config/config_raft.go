@@ -34,5 +34,5 @@ type RaftConfig struct {
 
 	ApplyTimeout    time.Duration
 	PreferredLeader bool
-	RateLimiter     command.AdaptiveRateLimiterConfig
+	RateLimiter     command.AdaptiveRateLimitTrackerConfig
 }
