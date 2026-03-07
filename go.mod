@@ -53,7 +53,7 @@ require (
 	github.com/judedaryl/go-arrayutils v0.0.1
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
-	github.com/mdlayher/netlink v1.8.0
+	github.com/mdlayher/netlink v1.9.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/miekg/dns v1.1.72
 	github.com/mitchellh/mapstructure v1.5.0
