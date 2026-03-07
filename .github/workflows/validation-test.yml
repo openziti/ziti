@@ -45,7 +45,7 @@ jobs:
         uses: openziti/ziti-ci@v1
 
       - name: Install Terraform CLI
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ~1.5
 
@@ -82,7 +82,7 @@ jobs:
           $(go env GOPATH)/bin/${TEST_TYPE} get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ env.TEST_TYPE }}-logs-${{ github.run_id }}

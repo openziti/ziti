@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
@@ -72,7 +72,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CLI_IMAGE }}
           subject-digest: ${{ steps.push_cli.outputs.digest }}
@@ -105,7 +105,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_CONTROLLER_IMAGE }}
           subject-digest: ${{ steps.push_ctrl.outputs.digest }}
@@ -138,7 +138,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_ROUTER_IMAGE }}
           subject-digest: ${{ steps.push_router.outputs.digest }}
@@ -170,7 +170,7 @@ jobs:
           push: true
 
       - name: Publish Attestations to GitHub
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.ZITI_TUNNEL_IMAGE }}
           subject-digest: ${{ steps.push_tunnel.outputs.digest }}
