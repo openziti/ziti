@@ -66,6 +66,7 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -84,6 +85,7 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -102,6 +104,7 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
+		CtrlChanListeners: router.CtrlChanListeners,
 	}
 
 	return ret
@@ -163,6 +166,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		CertPem:               router.CertPem,
 		UnverifiedFingerprint: router.UnverifiedFingerprint,
 		UnverifiedCertPem:     router.UnverifiedCertPem,
+		CtrlChanListeners:     router.CtrlChanListeners,
 	}
 
 	for _, intf := range router.Interfaces {

@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/pkg/errors"
@@ -121,6 +122,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.Errorf("no router with id [%v] found, closing connection", ch.Id())
 	}
 
+	var ctrlChanListeners map[string][]string
+
 	if ch.Underlay().Headers() != nil {
 		if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 			if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
@@ -168,6 +171,21 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		} else {
 			log.Debug("no advertised listeners")
 		}
+
+		if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)]; found {
+			ctrlListeners := &ctrl_pb.CtrlChanListeners{}
+			if err = proto.Unmarshal(val, ctrlListeners); err != nil {
+				log.WithError(err).Error("unable to unmarshal ctrl chan listeners value")
+			} else {
+				ctrlChanListeners = make(map[string][]string, len(ctrlListeners.Listeners))
+				for _, listener := range ctrlListeners.Listeners {
+					ctrlChanListeners[listener.Address] = listener.Groups
+				}
+			}
+		}
+
+		changeCtx := change.NewControlChannelChange(r.Id, r.Name, "router.connect", ch)
+		self.network.Router.UpdateCtrlChanListeners(r, ctrlChanListeners, changeCtx)
 	} else {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}

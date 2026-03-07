@@ -97,6 +97,16 @@ const (
 	DefaultBackgroundQueueSize         = 1000
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
+
+	// DefaultCtrlDialer* constants define the default values for the ctrl channel dialer configuration.
+	DefaultCtrlDialerEnabled            = false
+	DefaultCtrlDialerDialDelay          = 30 * time.Second
+	DefaultCtrlDialerMinRetryInterval   = time.Second
+	DefaultCtrlDialerMaxRetryInterval   = 5 * time.Minute
+	DefaultCtrlDialerRetryBackoffFactor = 1.5
+	DefaultCtrlDialerFastFailureWindow  = 5 * time.Second
+	DefaultCtrlDialerQueueSize          = uint32(32)
+	DefaultCtrlDialerMaxWorkers         = uint32(10)
 )
 
 type Config struct {
@@ -123,6 +133,7 @@ type Config struct {
 	Ctrl struct {
 		Listener transport.Address
 		Options  *CtrlOptions
+		Dialer   CtrlDialerConfig
 	}
 	HealthChecks struct {
 		BoltCheck struct {
@@ -168,6 +179,19 @@ type CtrlOptions struct {
 	AdvertiseAddress       *transport.Address
 	RouterHeartbeatOptions *channel.HeartbeatOptions
 	PeerHeartbeatOptions   *channel.HeartbeatOptions
+}
+
+// CtrlDialerConfig controls how the controller dials ctrl channel listeners advertised by routers.
+type CtrlDialerConfig struct {
+	Enabled            bool
+	Groups             []string
+	DialDelay          time.Duration
+	MinRetryInterval   time.Duration
+	MaxRetryInterval   time.Duration
+	RetryBackoffFactor float64
+	FastFailureWindow  time.Duration
+	QueueSize          uint32
+	MaxWorkers         uint32
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -645,6 +669,103 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
 				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
+			}
+
+			controllerConfig.Ctrl.Dialer = CtrlDialerConfig{
+				Enabled:            DefaultCtrlDialerEnabled,
+				Groups:             []string{"default"},
+				DialDelay:          DefaultCtrlDialerDialDelay,
+				MinRetryInterval:   DefaultCtrlDialerMinRetryInterval,
+				MaxRetryInterval:   DefaultCtrlDialerMaxRetryInterval,
+				RetryBackoffFactor: DefaultCtrlDialerRetryBackoffFactor,
+				FastFailureWindow:  DefaultCtrlDialerFastFailureWindow,
+				QueueSize:          DefaultCtrlDialerQueueSize,
+				MaxWorkers:         DefaultCtrlDialerMaxWorkers,
+			}
+
+			if value, found := submap["dialer"]; found {
+				if dialerMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := dialerMap["enabled"]; found {
+						controllerConfig.Ctrl.Dialer.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", v))
+					}
+					if v, found := dialerMap["groups"]; found {
+						if groups, ok := v.([]interface{}); ok {
+							controllerConfig.Ctrl.Dialer.Groups = nil
+							for _, g := range groups {
+								if s, ok := g.(string); ok {
+									controllerConfig.Ctrl.Dialer.Groups = append(controllerConfig.Ctrl.Dialer.Groups, s)
+								}
+							}
+						}
+					}
+					if v, found := dialerMap["dialDelay"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.DialDelay = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.dialDelay: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["minRetryInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.MinRetryInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.minRetryInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["maxRetryInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.MaxRetryInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.maxRetryInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["retryBackoffFactor"]; found {
+						if f, ok := v.(float64); ok {
+							controllerConfig.Ctrl.Dialer.RetryBackoffFactor = f
+						}
+					}
+					if v, found := dialerMap["fastFailureWindow"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Ctrl.Dialer.FastFailureWindow = d
+							} else {
+								return nil, fmt.Errorf("invalid ctrl.dialer.fastFailureWindow: %w", err)
+							}
+						}
+					}
+					if value, found := dialerMap["queueSize"]; found {
+						if v, ok := value.(int); ok {
+							if v < 1 {
+								return nil, fmt.Errorf("invalid value %v for ctrl.dialer.queueSize, must be at least 1", value)
+							}
+							if int64(v) > math.MaxUint32 {
+								return nil, fmt.Errorf("invalid value %v for ctrl.dialer.queueSize, must be at most %v", value, uint32(math.MaxUint32))
+							}
+							controllerConfig.Ctrl.Dialer.QueueSize = uint32(v)
+						} else {
+							return nil, fmt.Errorf("invalid value type %T for ctrl.dialer.queueSize, must be integer value", value)
+						}
+					}
+					if value, found := dialerMap["maxWorkers"]; found {
+						if v, ok := value.(int); ok {
+							if v < 1 {
+								return nil, fmt.Errorf("invalid value %v for ctrl.dialer.maxWorkers, must be at least 1", value)
+							}
+							if int64(v) > math.MaxUint32 {
+								return nil, fmt.Errorf("invalid value %v for ctrl.dialer.maxWorkers, must be at most %v", value, uint32(math.MaxUint32))
+							}
+							controllerConfig.Ctrl.Dialer.MaxWorkers = uint32(v)
+						} else {
+							return nil, fmt.Errorf("invalid value type %T for ctrl.dialer.maxWorkers, must be integer value", value)
+						}
+					}
+				}
 			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")

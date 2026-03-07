@@ -1,8 +1,6 @@
 package handler_ctrl
 
 import (
-	"maps"
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -38,6 +36,7 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 
 	log = log.WithFields(logrus.Fields{
 		"endpoints":     upd.Addresses,
+		"ctrlDetails":   upd.Controllers,
 		"localVersion":  handler.currentVersion.Load(),
 		"remoteVersion": upd.Index,
 		"isLeader":      upd.IsLeader,
@@ -51,15 +50,18 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 	}
 
 	if handler.currentVersion.Load() == 0 || handler.currentVersion.Load() < upd.Index {
-		if len(upd.Addresses) == 0 {
+		// Build address set from controllers
+		s := map[string]struct{}{}
+		for _, ctrl := range upd.Controllers {
+			for _, ep := range ctrl.Endpoints {
+				s[ep.Address] = struct{}{}
+			}
+		}
+
+		if len(s) == 0 {
 			log.Info("ctrl list is empty, ignoring and requesting latest set from leader")
 			go handler.requestCtrlListFromLeader()
 			return
-		}
-
-		s := map[string]struct{}{}
-		for _, addr := range upd.Addresses {
-			s[addr] = struct{}{}
 		}
 
 		ctrls := handler.env.GetNetworkControllers()
@@ -80,12 +82,23 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 			for _, ctrl := range endpoints {
 				s[ctrl.Address()] = struct{}{}
 			}
-			upd.Addresses = slices.Collect(maps.Keys(s))
+
+			// filter controllers list to only include those whose addresses are in the final set
+			var filtered []*ctrl_pb.CtrlDetail
+			for _, ctrl := range upd.Controllers {
+				for _, ep := range ctrl.Endpoints {
+					if _, ok := s[ep.Address]; ok {
+						filtered = append(filtered, ctrl)
+						break
+					}
+				}
+			}
+			upd.Controllers = filtered
 		}
 
-		if len(upd.Addresses) > 0 {
+		if len(upd.Controllers) > 0 {
 			log.Info("updating to newer controller endpoints")
-			handler.env.UpdateCtrlEndpoints(upd.Addresses)
+			handler.env.UpdateCtrlEndpointDetails(upd.Controllers)
 			handler.currentVersion.Store(upd.Index)
 		} else {
 			log.Info("ignoring empty controller endpoint list")

@@ -10,6 +10,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/stretchr/testify/assert"
@@ -30,13 +31,15 @@ func newMockNetworkControllers() *mockNetworkControllers {
 	}
 }
 
-func (m *mockNetworkControllers) UpdateControllerEndpoints(endpoints []string) bool {
+func (m *mockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	changed := false
 	newEndpoints := make(map[string]struct{})
-	for _, ep := range endpoints {
-		newEndpoints[ep] = struct{}{}
-		if _, exists := m.endpoints[ep]; !exists {
-			changed = true
+	for _, ctrl := range controllers {
+		for _, ep := range ctrl.Endpoints {
+			newEndpoints[ep.Address] = struct{}{}
+			if _, exists := m.endpoints[ep.Address]; !exists {
+				changed = true
+			}
 		}
 	}
 	for ep := range m.endpoints {
@@ -46,6 +49,12 @@ func (m *mockNetworkControllers) UpdateControllerEndpoints(endpoints []string) b
 	}
 	m.endpoints = newEndpoints
 	return changed
+}
+
+func (m *mockNetworkControllers) ConnectToInitialEndpoints(endpoints []string) {
+	for _, ep := range endpoints {
+		m.endpoints[ep] = struct{}{}
+	}
 }
 
 func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
@@ -59,7 +68,7 @@ func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
 	r := Router{
 		config: &env.Config{},
 	}
-	_, err = r.getInitialCtrlEndpoints()
+	_, _, err = r.getInitialCtrlEndpoints()
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "ctrl endpointsFile not configured")
 }
@@ -88,6 +97,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
 				RateLimit             command.AdaptiveRateLimitTrackerConfig
+				Listeners             []*env.CtrlListenerConfig
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr)},
@@ -95,7 +105,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 		},
 	}
 	expected := []string{addr.String()}
-	endpoints, err := r.getInitialCtrlEndpoints()
+	endpoints, _, err := r.getInitialCtrlEndpoints()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, endpoints)
 	assert.NoFileExists(t, path.Join(tmpDir, "endpoints"))
@@ -127,6 +137,7 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 			Heartbeats            env.HeartbeatOptions
 			StartupTimeout        time.Duration
 			RateLimit             command.AdaptiveRateLimitTrackerConfig
+			Listeners             []*env.CtrlListenerConfig
 		}{
 			EndpointsFile:         filepath.Join(tmpDir, "endpoints"),
 			InitialEndpoints:      []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},
@@ -140,11 +151,21 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 		ctrls:  newMockNetworkControllers(),
 	}
 
-	endpoints, err := r.getInitialCtrlEndpoints()
+	endpoints, _, err := r.getInitialCtrlEndpoints()
 	req.NoError(err)
-	r.UpdateCtrlEndpoints(endpoints)
 
-	r.UpdateCtrlEndpoints([]string{"tls:localhost:6565"})
+	// Use UpdateCtrlEndpointDetails with constructed CtrlDetail instances
+	var details []*ctrl_pb.CtrlDetail
+	for _, ep := range endpoints {
+		details = append(details, &ctrl_pb.CtrlDetail{
+			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: ep}},
+		})
+	}
+	r.UpdateCtrlEndpointDetails(details)
+
+	r.UpdateCtrlEndpointDetails([]*ctrl_pb.CtrlDetail{{
+		Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:localhost:6565"}},
+	}})
 	req.FileExists(path.Join(tmpDir, "endpoints"))
 
 	b, err := os.ReadFile(path.Join(tmpDir, "endpoints"))

@@ -545,6 +545,27 @@ func CreateEdgeRouter(clients *zitirest.Clients, entity *rest_model.EdgeRouterCr
 	return resp.Payload.Data.ID, nil
 }
 
+func GetEdgeRouterId(clients *zitirest.Clients, name string, timeout time.Duration) (string, error) {
+	l, err := ListEdgeRouters(clients, fmt.Sprintf(`name="%s"`, name), timeout)
+	if err != nil {
+		return "", err
+	}
+	if len(l) == 0 {
+		return "", fmt.Errorf("edge router '%s' not found", name)
+	}
+	return *l[0].ID, nil
+}
+
+func DeleteEdgeRouter(clients *zitirest.Clients, id string, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+	_, err := clients.Edge.EdgeRouter.DeleteEdgeRouter(&edge_router.DeleteEdgeRouterParams{
+		Context: ctx,
+		ID:      id,
+	}, nil)
+	return err
+}
+
 func ListEdgeRouters(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.EdgeRouterDetail, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
 	defer cancelF()

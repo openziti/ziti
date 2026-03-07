@@ -39,8 +39,9 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 	manager := &TransitRouterManager{
 		baseEntityManager: newBaseEntityManager[*TransitRouter, *db.TransitRouter](env, env.GetStores().TransitRouter),
 		allowedFields: boltz.MapFieldChecker{
-			db.FieldName:    struct{}{},
-			boltz.FieldTags: struct{}{},
+			db.FieldName:                    struct{}{},
+			boltz.FieldTags:                 struct{}{},
+			db.FieldRouterCtrlChanListeners: struct{}{},
 		},
 	}
 	manager.impl = manager
@@ -308,6 +309,7 @@ func (self *TransitRouterManager) TransitRouterToProtobuf(entity *TransitRouter)
 		Cost:                  uint32(entity.Cost),
 		NoTraversal:           entity.NoTraversal,
 		Disabled:              entity.Disabled,
+		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 	}
 
 	return msg, nil
@@ -335,6 +337,7 @@ func (self *TransitRouterManager) ProtobufToTransitRouter(msg *edge_cmd_pb.Trans
 		Cost:                  uint16(msg.Cost),
 		NoTraversal:           msg.NoTraversal,
 		Disabled:              msg.Disabled,
+		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 	}, nil
 }
 

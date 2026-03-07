@@ -50,6 +50,9 @@ type RouterCreate struct {
 	// Minimum: 0
 	Cost *int64 `json:"cost"`
 
+	// ctrl chan listeners
+	CtrlChanListeners map[string][]string `json:"ctrlChanListeners"`
+
 	// disabled
 	Disabled *bool `json:"disabled,omitempty"`
 

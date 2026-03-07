@@ -152,6 +152,41 @@ func (ctx *TestContext) pathEqualsStringSlice(container *gabs.Container, val int
 	}
 }
 
+func (ctx *TestContext) pathEqualsCtrlChanListeners(container *gabs.Container, expected map[string][]string, path []string) {
+	pathValue := container.Search(path...)
+	if expected == nil {
+		if pathValue != nil {
+			ctx.Req.Nil(pathValue.Data())
+		}
+	} else {
+		ctx.Req.NotNil(pathValue, "expected non-nil value at path %v", path)
+		data := pathValue.Data()
+		if len(expected) == 0 {
+			if data == nil {
+				return
+			}
+			if m, ok := data.(map[string]interface{}); ok {
+				ctx.Req.Empty(m)
+			}
+			return
+		}
+		m, ok := data.(map[string]interface{})
+		ctx.Req.True(ok, "expected map at path %v, got %T", path, data)
+		ctx.Req.Equal(len(expected), len(m), "map length mismatch at path %v", path)
+		for addr, groups := range expected {
+			v, found := m[addr]
+			ctx.Req.True(found, "expected key %v in map at path %v", addr, path)
+			vc, err := gabs.Consume(v)
+			ctx.Req.NoError(err)
+			actualSlice := ctx.toStringSlice(vc)
+			if len(groups) == 0 && len(actualSlice) == 0 {
+				continue
+			}
+			ctx.Req.Equal(groups, actualSlice, "groups mismatch for key %v at path %v", addr, path)
+		}
+	}
+}
+
 func (ctx *TestContext) RequireGetNonNilPathValue(container *gabs.Container, searchPath ...string) *gabs.Container {
 	if len(searchPath) == 1 {
 		searchPath = path(searchPath[0])

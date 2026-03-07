@@ -1,0 +1,66 @@
+
+{{$ssh_username := .Model.MustVariable "credentials.ssh.username"}}
+{{$identity := .Component.Id}}
+{{$router_ip := .Host.PublicIp}}
+{{$edgeListenerPort := .Component.GetStringVariableOr "edgeListenerPort" "6262"}}
+{{$linkListenerPort := .Component.GetStringVariableOr "linkListenerPort" "6000"}}
+
+v: 3
+
+enableDebugOps: true
+
+{{if .Component.GetFlag "ha"}}
+ha:
+  enabled: true
+{{end}}
+
+identity:
+  cert:                 /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-client.cert
+  server_cert:          /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.cert
+  key:                  /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.key
+  ca:                   /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.chain.pem
+
+tls:
+  handshakeTimeout: 30s
+
+ctrl:
+  endpointsFile: /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-endpoints.yml
+  startupTimeout: 5m
+
+healthChecks:
+  ctrlPingCheck:
+    interval: 30s
+    timeout: 15s
+    initialDelay: 15s
+
+metrics:
+  reportInterval: 15s
+  messageQueueSize: 10
+
+link:
+  listeners:
+    - binding:          transport
+      bind:             tls:0.0.0.0:{{$linkListenerPort}}
+      advertise:        tls:{{$router_ip}}:{{$linkListenerPort}}
+  dialers:
+    - binding:          transport
+      options:
+        connectTimeout: 30s
+
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:{{$edgeListenerPort}}
+    options:
+      advertise: {{ .Host.PublicIp }}:{{$edgeListenerPort}}
+
+edge:
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+
+    sans:
+      ip:
+        - {{ .Host.PublicIp }}

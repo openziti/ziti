@@ -79,6 +79,9 @@ type Config interface {
 
 type InspectTarget func(string) (bool, *string, error)
 
+// CtrlDialerValidator is a function that validates ctrl dialer states and returns per-router details.
+type CtrlDialerValidator func() ([]*mgmt_pb.ControllerDialerDetails, error)
+
 type Network struct {
 	*model.Managers
 	env                    model.Env
@@ -110,9 +113,10 @@ type Network struct {
 
 	config Config
 
-	Inspections       *InspectionsManager
-	RouterMessaging   *RouterMessaging
-	inspectionTargets concurrenz.CopyOnWriteSlice[InspectTarget]
+	Inspections         *InspectionsManager
+	RouterMessaging     *RouterMessaging
+	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
+	ctrlDialerValidator CtrlDialerValidator
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
@@ -1370,6 +1374,16 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 
 func (network *Network) AddInspectTarget(target InspectTarget) {
 	network.inspectionTargets.Append(target)
+}
+
+// SetCtrlDialerValidator registers the ctrl dialer's validation function with the network.
+func (network *Network) SetCtrlDialerValidator(validator CtrlDialerValidator) {
+	network.ctrlDialerValidator = validator
+}
+
+// GetCtrlDialerValidator returns the registered ctrl dialer validation function, or nil.
+func (network *Network) GetCtrlDialerValidator() CtrlDialerValidator {
+	return network.ctrlDialerValidator
 }
 
 func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidationCallback) {

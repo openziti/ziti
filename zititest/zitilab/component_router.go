@@ -18,7 +18,6 @@ package zitilab
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -45,12 +44,10 @@ const (
 )
 
 type RouterType struct {
-	ConfigSourceFS fs.FS
-	ConfigSource   string
-	ConfigName     string
-	Version        string
-	LocalPath      string
-	Debug          bool
+	Configs   map[string]Config
+	Version   string
+	LocalPath string
+	Debug     bool
 }
 
 func (self *RouterType) Label() string {
@@ -67,6 +64,13 @@ func (self *RouterType) SetVersion(version string) {
 
 func (self *RouterType) InitType(*model.Component) {
 	canonicalizeGoAppVersion(&self.Version)
+	if self.Configs == nil {
+		self.Configs = map[string]Config{
+			DefaultConfigId: &DefaultConfig{
+				source: "router.yml.tmpl",
+			},
+		}
+	}
 }
 
 func (self *RouterType) GetActions() map[string]model.ComponentAction {
@@ -78,11 +82,9 @@ func (self *RouterType) GetActions() map[string]model.ComponentAction {
 
 func (self *RouterType) Dump() any {
 	return map[string]string{
-		"type_id":       "router",
-		"config_source": self.ConfigSource,
-		"config_name":   self.ConfigName,
-		"version":       self.Version,
-		"local_path":    self.LocalPath,
+		"type_id":    "router",
+		"version":    self.Version,
+		"local_path": self.LocalPath,
 	}
 }
 
@@ -94,15 +96,12 @@ func (self *RouterType) InitializeHost(run model.Run, c *model.Component) error 
 }
 
 func (self *RouterType) StageFiles(r model.Run, c *model.Component) error {
-	configSource := self.ConfigSource
-	if configSource == "" {
-		configSource = "router.yml.tmpl"
-	}
-
-	configName := self.GetConfigName(c)
-
-	if err := lib.GenerateConfigForComponent(c, self.ConfigSourceFS, configSource, configName, r); err != nil {
-		return err
+	for _, config := range self.Configs {
+		configSourceFS, configSource := config.GetSource(c)
+		configName := config.GetName(c)
+		if err := lib.GenerateConfigForComponent(c, configSourceFS, configSource, configName, r); err != nil {
+			return err
+		}
 	}
 
 	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
@@ -113,11 +112,12 @@ func (self *RouterType) isTunneler(c *model.Component) bool {
 }
 
 func (self *RouterType) GetConfigName(c *model.Component) string {
-	configName := self.ConfigName
-	if configName == "" {
-		configName = c.Id + ".yml"
+	configId := c.Scope.GetStringVariableOr(ConfigIdKey, DefaultConfigId)
+	if config, ok := self.Configs[configId]; ok {
+		return config.GetName(c)
 	}
-	return configName
+
+	panic(fmt.Errorf("router config '%s' not found for router '%s'", configId, c.Id))
 }
 
 func (self *RouterType) getProcessFilter(c *model.Component) func(string) bool {

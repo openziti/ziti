@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 )
 
 // MockNetworkControllers implements env.NetworkControllers for testing
@@ -41,8 +42,15 @@ func (m *MockNetworkControllers) GetCtrlChannel(ctrlId string) ctrlchan.CtrlChan
 	return nil
 }
 
-func (m *MockNetworkControllers) UpdateControllerEndpoints(endpoints []string) bool {
+func (m *MockNetworkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDetail {
+	return nil
+}
+
+func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
 	return false
+}
+
+func (m *MockNetworkControllers) ConnectToInitialEndpoints(endpoints []string) {
 }
 
 func (m *MockNetworkControllers) UpdateLeader(leaderId string) {
@@ -101,10 +109,6 @@ func (m *MockNetworkControllers) NotifyOfDisconnect(ctrlId string) {
 func (m *MockNetworkControllers) NotifyOfReconnect(ctrlId string) {
 }
 
-func (m *MockNetworkControllers) GetExpectedCtrlCount() uint32 {
-	return 1
-}
-
 func (m *MockNetworkControllers) IsLeaderConnected() bool {
 	return true
 }
@@ -114,5 +118,9 @@ func (m *MockNetworkControllers) ControllersHaveMinVersion(version string) bool 
 }
 
 func (m *MockNetworkControllers) GetLeader() NetworkController {
+	return nil
+}
+
+func (m *MockNetworkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	return nil
 }

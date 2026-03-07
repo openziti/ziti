@@ -58,6 +58,7 @@ enum ControlHeaders {
   ListenersHeader = 1000;
   RouterMetadataHeader = 1001;
   CapabilitiesHeader = 1002;
+  CtrlChanListenersHeader = 1003;
 }
 
 enum RouterCapability {
@@ -266,10 +267,21 @@ message Listeners {
   repeated Listener listeners = 1;
 }
 
+message CtrlEndpoint {
+  string address = 1;
+  repeated string groups = 2;
+}
+
+message CtrlDetail {
+  string id = 1;
+  repeated CtrlEndpoint endpoints = 2;
+}
+
 message UpdateCtrlAddresses {
   repeated string addresses = 1;
   uint64 index = 2;
   bool isLeader = 3;
+  repeated CtrlDetail controllers = 4;
 }
 
 message UpdateClusterLeader {
@@ -328,4 +340,13 @@ message Alert {
 
 message Alerts {
   repeated Alert alerts = 1;
+}
+
+message CtrlChanListener {
+    string address = 1;
+    repeated string groups = 2;
+}
+
+message CtrlChanListeners {
+    repeated CtrlChanListener listeners = 1;
 }

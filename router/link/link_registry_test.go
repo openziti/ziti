@@ -47,7 +47,7 @@ func (self *testEnv) GetRouterId() *identity.TokenId {
 	}
 }
 
-func (self *testEnv) GetDialHeaders() (channel.Headers, error) {
+func (self *testEnv) GetChannelHeaders() (channel.Headers, error) {
 	return channel.Headers{}, nil
 }
 

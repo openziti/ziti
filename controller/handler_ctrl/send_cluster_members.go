@@ -44,7 +44,7 @@ func (self *sendClusterMembersHandler) ContentType() int32 {
 
 func (self *sendClusterMembersHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
-		index, data := self.network.Dispatcher.CtrlAddresses()
+		index, data, controllers := self.network.Dispatcher.CtrlAddresses()
 		log := pfxlog.Logger().WithFields(map[string]interface{}{
 			"routerId":  self.router.Id,
 			"channel":   self.router.Control.GetChannel().LogicalName(),
@@ -60,9 +60,10 @@ func (self *sendClusterMembersHandler) HandleReceive(msg *channel.Message, ch ch
 		}
 
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
-			IsLeader:  self.network.Dispatcher.IsLeader(),
-			Addresses: data,
-			Index:     index,
+			IsLeader:    self.network.Dispatcher.IsLeader(),
+			Addresses:   data,
+			Index:       index,
+			Controllers: controllers,
 		}
 
 		if err := protobufs.MarshalTyped(updMsg).Send(ch); err != nil {

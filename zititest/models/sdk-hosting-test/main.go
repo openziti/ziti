@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"github.com/openziti/ziti/zititest/zitilab/validations"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
@@ -468,7 +469,10 @@ var m = &model.Model{
 
 			return nil
 		}),
-		"validate": model.BindF(validateTerminators),
+		"validate": model.BindF(func(run model.Run) error {
+			expected := int64(3 * hostsPerRegion * tunnelersPerHost * servicesPerTunneler * terminatorsPerService)
+			return validations.ValidateTerminators(run, 15*time.Minute, validations.ExactCount(expected), validations.ValidateSdkTerminators)
+		}),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"sowChaos",

@@ -51,6 +51,7 @@ type RemoteController struct {
 	clients  cmap.ConcurrentMap[string, channel.Channel]
 	listener net.Listener
 	cb       ControllerCallback
+	closed   atomic.Bool
 
 	resultsTracker cmap.ConcurrentMap[string, *ScenarioResults]
 }
@@ -73,17 +74,26 @@ func (self *RemoteController) AcceptConnections(service string) error {
 		for {
 			conn, err := self.listener.Accept()
 			if err != nil {
-				log.WithError(err).Error("error accepting connection, exiting")
-				return
+				if self.closed.Load() {
+					log.Info("listener closed, exiting accept loop")
+					return
+				}
+				log.WithError(err).Error("error accepting connection, continuing")
+				continue
 			}
 
 			if err = self.handleConnection(conn); err != nil {
-				log.WithError(err).Error("error channelizing connection, exiting")
+				log.WithError(err).Error("error channelizing connection")
 			}
 		}
 	}()
 
 	return nil
+}
+
+func (self *RemoteController) Close() error {
+	self.closed.Store(true)
+	return self.listener.Close()
 }
 
 func (self *RemoteController) handleConnection(conn net.Conn) error {
@@ -110,7 +120,14 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 
 func (self *RemoteController) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RunScenarioResultType), self.handleScenarioResult)
-	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RequestDiagnostic), self.cb.DiagnosticRequested)
+	if self.cb != nil {
+		binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RequestDiagnostic), self.cb.DiagnosticRequested)
+	}
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		clientId := string(ch.Headers()[HeaderClientId])
+		pfxlog.Logger().WithField("id", clientId).Info("sim client channel closed, removing from clients map")
+		self.clients.Remove(clientId)
+	}))
 	return nil
 }
 
@@ -127,13 +144,14 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 
 		clientId := string(ch.Headers()[HeaderClientId])
 
+		success, _ := msg.GetBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess))
+
 		pfxlog.Logger().
 			WithField("scenarioId", id).
 			WithField("clientId", clientId).
 			WithField("success", success).
 			Info("scenario result message received")
 
-		success, _ := msg.GetBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess))
 		result := &ScenarioResult{
 			success: success,
 			message: string(msg.Body),
@@ -167,7 +185,8 @@ func (self *RemoteController) WaitForAllConnected(timeout time.Duration, compone
 func (self *RemoteController) MissingComponents(components []*model.Component) []string {
 	var result []string
 	for _, c := range components {
-		if _, ok := self.clients.Get(c.Id); !ok {
+		ch, ok := self.clients.Get(c.Id)
+		if !ok || ch.IsClosed() {
 			result = append(result, c.Id)
 		}
 	}
