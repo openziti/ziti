@@ -63,6 +63,7 @@ jobs:
           ZITI_HOMEPAGE: "https://openziti.io"
           ZITI_VENDOR: "NetFoundry Inc."
           TARGETARCH: ${{ matrix.arch.goreleaser }}
+          NFPM_ARCH: ${{ matrix.packager == 'deb' && 'all' || 'noarch' }}
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary
@@ -237,6 +238,22 @@ jobs:
         run: dist/docker-images/docker.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+
+      - name: Debug Info
+        if: always()
+        shell: bash
+        run: |
+
+          set -o xtrace
+          set +o errexit
+
+          eval "$(dist/docker-images/docker.test.bash --eval)"
+          docker compose ps --all
+          for svc in ziti-controller ziti-controller2 ziti-controller3 ziti-router; do
+            echo "=== ${svc} ==="
+            docker compose logs "${svc}" 2>/dev/null | tail -80
+          done
+          exit 0
 
   kubernetes-deployments:
     name: Test Kubernetes Deployments

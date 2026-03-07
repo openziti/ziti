@@ -53,8 +53,8 @@ portcheck(){
 
 checkCommand() {
     if ! command -v "$1" &>/dev/null; then
-        logError "this script requires command '$1'. Please install on the search PATH and try again."
-        $1
+        echo "ERROR: this script requires command '$1'. Please install on the search PATH and try again." >&2
+        return 1
     fi
 }
 
@@ -71,8 +71,8 @@ done
 : "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
 : "${ZITI_PWD:=ziggypw}"
 : "${TMPDIR:=$(mktemp -d)}"
-: "${ZITI_CTRL_ADVERTISED_ADDRESS:="ctrl1.127.0.0.1.sslip.io"}"
-: "${ZITI_CTRL_ADVERTISED_PORT:="12801"}"
+: "${ZITI_CTRL_ADVERTISED_ADDRESS:="ziti-controller1.127.0.0.1.sslip.io"}"
+: "${ZITI_CTRL_ADVERTISED_PORT:="1281"}"
 : "${ZITI_BOOTSTRAP:=true}"
 : "${ZITI_BOOTSTRAP_CLUSTER:=true}"
 : "${ZITI_BOOTSTRAP_CONSOLE:=true}"
@@ -119,6 +119,7 @@ do
     ZITI_VENDOR="netfoundry" \
     ZITI_MAINTAINER="Maintainers <developers@openziti.org>" \
     MINIMUM_SYSTEMD_VERSION="232" \
+    NFPM_ARCH="all" \
     nfpm pkg \
     --packager deb \
     --target  "$TMPDIR" \
@@ -141,11 +142,19 @@ sudo chmod -R +rX "${ZITI_CONSOLE_LOCATION}"
 DEBUG=1 sudo -E /opt/openziti/etc/controller/bootstrap.bash </dev/null  # closing stdin suppresses prompts
 
 # Verify controller service is running (bootstrap.bash should have started it)
-sudo systemd-run \
---wait --quiet \
---service-type=oneshot \
---property=TimeoutStartSec=30s \
-systemctl is-active ziti-controller.service
+if ! sudo systemd-run \
+    --wait --quiet \
+    --service-type=oneshot \
+    --property=TimeoutStartSec=30s \
+    systemctl is-active ziti-controller.service
+then
+    echo "ERROR: ziti-controller.service is not active; dumping journal:" >&2
+    journalctl -xeu ziti-controller.service --no-pager -n 40 >&2
+    exit 1
+fi
+
+# Verify the service user can reach the controller agent
+sudo -u ziti-controller ziti agent stats
 
 # Wait for controller port to be reachable
 ATTEMPTS=10
@@ -180,6 +189,7 @@ if (( ! ATTEMPTS )); then
     echo "ERROR: controller login did not succeed" >&2
     exit 1
 fi
+
 ziti edge create edge-router "${ZITI_ROUTER_NAME}" -to "${ZITI_ENROLL_TOKEN}"
 
 if [[ -z "${ZITI_ENROLL_TOKEN:-}" || ! -s "${ZITI_ENROLL_TOKEN}" ]]; then

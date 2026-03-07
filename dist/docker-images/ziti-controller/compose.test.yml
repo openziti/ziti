@@ -1,16 +1,118 @@
 volumes:
   ziti-test:
+  ziti-controller2:
+  ziti-controller3:
 
 services:
   ziti-controller:
     volumes:
       - ziti-test:/home/ziggy/.config/ziti
 
+  chown-controller2:
+    profiles:
+      - test
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
+    volumes:
+      - ziti-controller2:/ziti-controller
+
+  ziti-controller2:
+    profiles:
+      - test
+    image: ${ZITI_CONTROLLER_IMAGE:-openziti/ziti-controller}
+    depends_on:
+      chown-controller2:
+        condition: service_completed_successfully
+      ziti-controller:
+        condition: service_healthy
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti-controller2:/ziti-controller
+      - ziti-controller:/ctrl1-state:ro
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_CTRL2_ADVERTISED_ADDRESS:-ziti-controller2}
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL2_ADVERTISED_ADDRESS:-ziti-controller2}
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL2_ADVERTISED_PORT:-1282}
+      ZITI_BOOTSTRAP: true
+      ZITI_BOOTSTRAP_PKI: true
+      ZITI_BOOTSTRAP_CONFIG: true
+      ZITI_BOOTSTRAP_DATABASE: true
+      ZITI_BOOTSTRAP_CLUSTER: false
+      ZITI_CLUSTER_NODE_NAME: ${ZITI_CTRL2_NODE_NAME:-ziti-controller2}
+      ZITI_CLUSTER_NODE_PKI: /ctrl1-state/pki
+      ZITI_AUTO_RENEW_CERTS: true
+    command: run config.yml
+    ports:
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL2_ADVERTISED_PORT:-1282}:${ZITI_CTRL2_ADVERTISED_PORT:-1282}
+    expose:
+      - ${ZITI_CTRL2_ADVERTISED_PORT:-1282}
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  chown-controller3:
+    profiles:
+      - test
+    image: busybox
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
+    volumes:
+      - ziti-controller3:/ziti-controller
+
+  ziti-controller3:
+    profiles:
+      - test
+    image: ${ZITI_CONTROLLER_IMAGE:-openziti/ziti-controller}
+    depends_on:
+      chown-controller3:
+        condition: service_completed_successfully
+      ziti-controller:
+        condition: service_healthy
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti-controller3:/ziti-controller
+      - ziti-controller:/ctrl1-state:ro
+    networks:
+      ziti:
+        aliases:
+          - ${ZITI_CTRL3_ADVERTISED_ADDRESS:-ziti-controller3}
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ${ZITI_CTRL3_ADVERTISED_ADDRESS:-ziti-controller3}
+      ZITI_CTRL_ADVERTISED_PORT: ${ZITI_CTRL3_ADVERTISED_PORT:-1283}
+      ZITI_BOOTSTRAP: true
+      ZITI_BOOTSTRAP_PKI: true
+      ZITI_BOOTSTRAP_CONFIG: true
+      ZITI_BOOTSTRAP_DATABASE: true
+      ZITI_BOOTSTRAP_CLUSTER: false
+      ZITI_CLUSTER_NODE_NAME: ${ZITI_CTRL3_NODE_NAME:-ziti-controller3}
+      ZITI_CLUSTER_NODE_PKI: /ctrl1-state/pki
+      ZITI_AUTO_RENEW_CERTS: true
+    command: run config.yml
+    ports:
+      - ${ZITI_INTERFACE:-0.0.0.0}:${ZITI_CTRL3_ADVERTISED_PORT:-1283}:${ZITI_CTRL3_ADVERTISED_PORT:-1283}
+    expose:
+      - ${ZITI_CTRL3_ADVERTISED_PORT:-1283}
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
   wait-for-controller:
     profiles:
       - test
     depends_on:
       ziti-controller:
+        condition: service_healthy
+      ziti-controller2:
+        condition: service_healthy
+      ziti-controller3:
         condition: service_healthy
     image: busybox
     networks:

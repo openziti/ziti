@@ -3,7 +3,7 @@
 # check https://nfpm.goreleaser.com/configuration for detailed usage
 #
 name: openziti-controller
-arch: ${TARGETARCH}
+arch: ${NFPM_ARCH}
 platform: linux
 version: ${ZITI_VERSION}
 prerelease: ${ZITI_REV}
@@ -18,10 +18,7 @@ contents:
   - dst: /lib/systemd/system/
     src: ./dist/dist-packages/linux/openziti-controller/ziti-controller.service
 
-  - dst: /etc/systemd/system/ziti-controller.service.d/override.conf
-    src: ./dist/dist-packages/linux/openziti-controller/ziti-controller.service.override.conf
-
-  - dst: /opt/openziti/etc/controller
+  - dst: /opt/openziti/etc/controller/
     type: dir
     file_info:
       mode: 0755
@@ -39,6 +36,9 @@ contents:
 
   - dst: /opt/openziti/etc/controller/
     src: ./dist/dist-packages/linux/openziti-controller/entrypoint.bash
+
+  - dst: /opt/openziti/etc/controller/
+    src: ./dist/dist-packages/linux/openziti-controller/override.conf.example
 depends:
   - openziti  # ziti CLI
   - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
