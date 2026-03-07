@@ -503,6 +503,24 @@ This specific rate limiter implementation is used in three places:
 * **Raft command submission** - controls the rate of commands submitted to the Raft distributed log
 * **Router control channel rate limiting** - controls the rate of requests from the router to the controller
 
+New configuration options (available under each `rateLimiter` section):
+
+  - successThreshold (float)
+    - Default: 0.9
+    - Description: Success rate threshold above which the window size will be increased and below which it will be decreased
+  - increaseFactor (float)
+    - Default: 1.02
+    - Description: Multiplier applied to the current window size when growing. Must be greater than 1
+  - decreaseFactor (float)
+    - Default: 0.9
+    - Description: Multiplier applied to the current window size when shrinking. Must be between 0 and 1
+  - increaseCheckInterval (integer)
+    - Default: 10
+    - Description: Number of successes between window size increase checks
+  - decreaseCheckInterval (integer)
+    - Default: 10
+    - Description: Number of backoffs between window size decrease checks
+
 ## Background Processing for Identity Updates
 
 Identity environment and authenticator updates that occur during authentication are now processed asynchronously in the background. 
@@ -883,6 +901,39 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
 - `ctrl_channel.dialer.busy_workers` - Number of workers currently executing a dial
 - `ctrl_channel.dialer.work_timer` - Timer tracking the duration of each dial attempt
 
+## SDK Inspection Support
+
+New CLI commands have been added for inspecting SDK state, useful for diagnosing terminator and
+connectivity issues.
+
+**Note:** SDK inspection requires SDK support. Currently only the Go SDK supports inspection,
+as of version 1.5.0. Other SDKs will need to add support before these commands can be used
+with them.
+
+### `ziti fabric inspect sdk`
+
+Retrieves SDK context inspection data from identities connected to routers.
+
+```
+ziti fabric inspect sdk <target-selector> <identity-id>
+```
+
+The `<target-selector>` is a regex matching router IDs (use `.*` for all routers). The
+`<identity-id>` is the identity whose SDK context you want to inspect. The command returns
+detailed state from the connected SDK instance, including active services, terminators, and
+connection status.
+
+### `ziti agent tunnel dump-sdk`
+
+Dumps SDK context information from a running `ziti tunnel` process via the IPC agent.
+
+```
+ziti agent tunnel dump-sdk
+```
+
+Returns JSON-formatted inspection data for all SDK contexts registered in the tunnel process,
+including service listeners, connections, and terminator state.
+
 ## Current Beta Features
 
 * Basic Permission System
@@ -945,6 +996,7 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
 * github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+    * [Issue #3609](https://github.com/openziti/ziti/issues/3609) - Stabilize terminator creation test for 2.0
     * [Issue #3635](https://github.com/openziti/ziti/issues/3635) - Allow controllers to dial routers to support more topologies
     * [Issue #3607](https://github.com/openziti/ziti/issues/3607) - linux installer not upgradable from v1
     * [Issue #3650](https://github.com/openziti/ziti/issues/3650) - Reroute doesn't proactively clean up orphaned route entries

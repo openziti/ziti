@@ -58,17 +58,16 @@ type edgeTerminator struct {
 	hostData            map[uint32][]byte
 	assignIds           bool
 	useSdkXgress        bool
+	notifyEstablished   bool
 	onClose             func()
-	v2                  bool
 	state               concurrenz.AtomicValue[xgress_common.TerminatorState]
 	supportsInspect     bool
 	operationActive     atomic.Bool
 	createTime          time.Time
 	lastAttempt         time.Time
-	establishCallback   func(result edge_ctrl_pb.CreateTerminatorResult)
 	lock                sync.Mutex
 	rateLimitCallback   rate.RateLimitControl
-	failureCount        atomic.Uint32
+	failureCount atomic.Uint32
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -129,54 +128,71 @@ func (self *edgeTerminator) updateState(oldState, newState xgress_common.Termina
 	return success
 }
 
-func (self *edgeTerminator) inspect(registry *hostedServiceRegistry, fixInvalidTerminators bool, notifyCtrl bool) (*edge.InspectResult, error) {
-	result := &edge.InspectResult{
-		ConnId: self.MsgChannel.Id(),
-		Type:   edge.ConnTypeUnknown,
-		Detail: "channel closed",
+func (self *edgeTerminator) NotifyEstablished(result edge_ctrl_pb.CreateTerminatorResult) {
+	log := pfxlog.Logger().WithField("terminatorId", self.terminatorId)
+	if result == edge_ctrl_pb.CreateTerminatorResult_Success && self.notifyEstablished {
+		notifyMsg := channel.NewMessage(edge.ContentTypeBindSuccess, nil)
+		notifyMsg.PutUint32Header(edge.ConnIdHeader, self.MsgChannel.Id())
+
+		if err := notifyMsg.WithTimeout(time.Second * 30).Send(self.MsgChannel.GetControlSender()); err != nil {
+			log.WithError(err).Error("failed to send bind success")
+		} else {
+			log.Info("sdk notified of terminator creation")
+		}
+	}
+}
+
+func (self *edgeTerminator) inspect() (*edge.InspectResult, error) {
+	if self.GetChannel().IsClosed() {
+		return &edge.InspectResult{
+			ConnId: self.MsgChannel.Id(),
+			Type:   edge.ConnTypeUnknown,
+			Detail: "channel closed",
+		}, nil
 	}
 
-	var err error
-	isInvalid := false
-	if !self.GetChannel().IsClosed() {
-		msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
-		msg.PutUint32Header(edge.ConnIdHeader, self.Id())
-		resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.GetControlSender())
-		if err != nil {
-			return nil, fmt.Errorf("unable to check status with sdk client: (%w)", err)
+	msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
+	msg.PutUint32Header(edge.ConnIdHeader, self.Id())
+	resp, err := msg.WithTimeout(10 * time.Second).SendForReply(self.GetControlSender())
+	if err != nil {
+		result := &edge.InspectResult{
+			ConnId: self.MsgChannel.Id(),
+			Type:   edge.ConnTypeUnknown,
+			Detail: fmt.Sprintf("unable to inspect sdk (%s)", err.Error()),
 		}
-
-		result, err = edge.UnmarshalInspectResult(resp)
-		if err != nil {
-			return nil, fmt.Errorf("unable to unmarshal inspect response from sdk client: (%w)", err)
-		}
-
-		isInvalid = result != nil && result.Type != edge.ConnTypeBind
-	} else {
-		isInvalid = true
-		err = errors.New("channel closed")
+		pfxlog.Logger().WithError(err).Error("unable to check terminator status with sdk client")
+		return result, fmt.Errorf("unable to check status with sdk client: (%w)", err)
 	}
 
-	if isInvalid && fixInvalidTerminators {
-		removeResult := registry.handleSdkReturnedInvalid(self, notifyCtrl)
-		if removeResult.err != nil {
-			return nil, err
-		}
-		if removeResult.removed || !removeResult.existed {
-			return result, err
-		}
-		current, _ := registry.Get(self.terminatorId)
-		if current == nil {
-			return result, err
-		}
-
-		if current == self { // this shouldn't happen
-			return result, errors.New("wasn't able to remove, but is still current")
-		}
-		return current.inspect(registry, fixInvalidTerminators, notifyCtrl)
+	result, err := edge.UnmarshalInspectResult(resp)
+	if err != nil {
+		// this is likely a programming error. We need to log this but assume that the terminator is ok
+		// retries likely won't help
+		pfxlog.Logger().WithError(err).Error("unable to unmarshal inspect response from sdk client")
+		return &edge.InspectResult{
+			ConnId: self.MsgChannel.Id(),
+			Type:   edge.ConnTypeBind,
+			Detail: "inspect unmarshall error",
+		}, nil
 	}
 
-	return result, err
+	return result, nil
+}
+
+func (self *edgeTerminator) fixInvalid(registry *hostedServiceRegistry) (bool, error) {
+	removeResult := registry.handleSdkReturnedInvalid(self)
+	if removeResult.err != nil {
+		return false, removeResult.err
+	}
+
+	notifyControllerInvalid := removeResult.removed || !removeResult.existed
+	if notifyControllerInvalid {
+		return notifyControllerInvalid, nil
+	}
+
+	// if the terminator was not removed and still exists, something else is going,
+	// let the controller try again later
+	return false, nil
 }
 
 func (self *edgeTerminator) nextDialConnId() uint32 {
@@ -188,49 +204,11 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 	return nextId
 }
 
-func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifySdk bool, notifyCtrl bool, reason string, edgeErr *EdgeError) {
-	logger := pfxlog.Logger().
-		WithField("terminatorId", self.terminatorId).
-		WithField("tokenId", self.serviceSessionToken.TokenId()).
-		WithField("reason", reason)
-
-	if notifySdk && !self.GetChannel().IsClosed() {
-		// Notify edge client of close
-		logger.Debug("sending closed to SDK client")
-		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
-		edgeErr.ApplyToMsg(closeMsg)
-		if err := self.SendState(closeMsg); err != nil {
-			logger.WithError(err).Warn("unable to send close msg to edge client for hosted service")
-		}
-	}
-
-	if self.v2 {
-		if notifyCtrl {
-			registry.queueRemoveTerminatorAsync(self, reason)
-		} else {
-			self.edgeClientConn.listener.factory.hostedServices.Remove(self, reason)
-		}
+func (self *edgeTerminator) close(registry *hostedServiceRegistry, notifyCtrl bool, reason string) {
+	if notifyCtrl {
+		registry.queueRemoveTerminatorAsync(self, reason)
 	} else {
-		if notifyCtrl {
-			if self.terminatorId != "" {
-				logger.Info("removing terminator on controller")
-
-				ctrlCh := self.edgeClientConn.apiSessionToken.SelectCtrlCh(self.edgeClientConn.listener.factory.ctrls)
-
-				if ctrlCh == nil {
-					logger.Error("no controller available, unable to remove terminator")
-				} else if err := self.edgeClientConn.removeTerminator(ctrlCh.GetChannel(), self.serviceSessionToken.TokenId(), self.terminatorId); err != nil {
-					logger.WithError(err).Error("failed to remove terminator")
-				} else {
-					logger.Info("successfully removed terminator")
-				}
-			} else {
-				logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
-			}
-		}
-
-		logger.Info("terminator removed from router set")
-		self.edgeClientConn.listener.factory.hostedServices.Delete(self.serviceSessionToken.TokenId())
+		self.edgeClientConn.listener.factory.hostedServices.Remove(self, reason)
 	}
 
 	if self.onClose != nil {

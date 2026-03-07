@@ -92,6 +92,7 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 	members, err := self.raftController.ListMembers()
 	if err != nil {
 		handler_common.SendOpResult(m, ch, "cluster.list", err.Error(), false)
+		return
 	}
 
 	result := &mgmt_pb.RaftMemberListResponse{}

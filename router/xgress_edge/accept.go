@@ -120,6 +120,13 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		},
 	})
 
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeConnInspectResponse,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.handleConnInspectResponse(m)
+		},
+	})
+
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeStateClosed, conn.msgMux.HandleReceive)
 
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRoute, conn.processTraceRoute)

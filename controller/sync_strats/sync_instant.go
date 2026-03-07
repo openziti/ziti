@@ -1189,8 +1189,19 @@ func (strategy *InstantStrategy) ValidateServicePolicies(tx *bbolt.Tx, rdm *comm
 
 		policyList = strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypePostureChecks)
 		policySet = genext.SliceToSet(policyList)
-
 		result = diffSets("service policy", t.Id, "posture check", policySet, common.CMapToMap(v.PostureChecks), result)
+
+		// validate policy->identity associations from the policy side
+		identityList := strategy.ae.GetStores().ServicePolicy.GetRelatedEntitiesIdList(tx, t.Id, db.EntityTypeIdentities)
+		identitySet := genext.SliceToSet(identityList)
+		// build the set of identities that reference this policy in the sender model
+		rdmIdentitySet := map[string]struct{}{}
+		rdm.Identities.IterCb(func(identityId string, identity *common.SenderIdentity) {
+			if identity.ServicePolicies.Has(t.Id) {
+				rdmIdentitySet[identityId] = struct{}{}
+			}
+		})
+		result = diffSets("service policy", t.Id, "identity", identitySet, rdmIdentitySet, result)
 
 		return result
 	})

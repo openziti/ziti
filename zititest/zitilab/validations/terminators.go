@@ -37,14 +37,14 @@ func ExactCount(n int64) func(int64) bool {
 	}
 }
 
-func ValidateTerminators(run model.Run, deadline time.Duration, countOk func(int64) bool, validationType TerminatorValidationType) error {
+func ValidateTerminators(run model.Run, timeout time.Duration, countOk func(int64) bool, validationType TerminatorValidationType) error {
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	errC := make(chan error, len(ctrls))
-	dl := time.Now().Add(deadline)
+	deadline := time.Now().Add(timeout)
 	for _, ctrl := range ctrls {
 		ctrlComponent := ctrl
 		go func() {
-			errC <- ValidateTerminatorsForCtrl(run, ctrlComponent, dl, countOk, validationType)
+			errC <- ValidateTerminatorsForCtrl(run, ctrlComponent, deadline, countOk, validationType)
 		}()
 	}
 
@@ -59,25 +59,28 @@ func ValidateTerminators(run model.Run, deadline time.Duration, countOk func(int
 }
 
 func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time, countOk func(int64) bool, validationType TerminatorValidationType) error {
-	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
-	if err != nil {
-		return err
-	}
-
-	start := time.Now()
 	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
+
+	var clients *zitirest.Clients
+	start := time.Now()
 	var lastLog time.Time
 
 	// Wait for terminator count to satisfy the caller's check
 	for time.Now().Before(deadline) {
-		terminatorCount, err := GetTerminatorCount(clients)
-		if err != nil {
-			logger.WithError(err).Warn("error getting terminator count")
-			time.Sleep(5 * time.Second)
+		if clients == nil {
+			var err error
 			clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
 			if err != nil {
-				return err
+				logger.WithError(err).Info("error logging into ctrl, will retry")
+				time.Sleep(5 * time.Second)
+				continue
 			}
+		}
+		terminatorCount, err := GetTerminatorCount(clients)
+		if err != nil {
+			logger.WithError(err).Warn("error getting terminator count, will retry")
+			clients = nil
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		if countOk(terminatorCount) {
@@ -106,10 +109,25 @@ func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 
 	for _, v := range validators {
 		for {
+			if clients == nil {
+				var err error
+				clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+				if err != nil {
+					logger.WithError(err).Info("error logging into ctrl, will retry")
+					if time.Now().After(deadline) {
+						return err
+					}
+					time.Sleep(15 * time.Second)
+					continue
+				}
+			}
+
 			count, err := v.validate(c.Id, clients)
 			if err == nil {
 				break
 			}
+
+			clients = nil
 
 			if time.Now().After(deadline) {
 				return err
@@ -117,11 +135,6 @@ func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 
 			logger.Infof("current count of invalid %s terminators: %v, elapsed: %v", v.name, count, time.Since(start))
 			time.Sleep(15 * time.Second)
-
-			clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
-			if err != nil {
-				return err
-			}
 		}
 	}
 

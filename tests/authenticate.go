@@ -971,7 +971,7 @@ func (request *authenticatedRequests) validateEntityWithQuery(entity entity) *ga
 func (request *authenticatedRequests) listTerminators(filter string) []*terminator {
 	query := "terminators"
 	if filter != "" {
-		query += "?" + filter
+		query += "?filter=" + url.QueryEscape(filter)
 	}
 
 	var result []*terminator

@@ -17,10 +17,10 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
+	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 )
@@ -62,6 +62,7 @@ func sowChaos(run model.Run) error {
 	toRestart := append(([]*model.Component)(nil), controllers...)
 	toRestart = append(toRestart, routers...)
 	toRestart = append(toRestart, hosts...)
-	fmt.Printf("restarting %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
-	return chaos.RestartSelected(run, 100, toRestart...)
+
+	tui.ValidationLogger().Infof("restarting %d controllers,  %d routers and %d hosts\n", len(controllers), len(routers), len(hosts))
+	return chaos.RestartSelected(run, 500, toRestart...)
 }

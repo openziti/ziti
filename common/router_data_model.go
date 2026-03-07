@@ -913,7 +913,12 @@ func (rdm *RouterDataModel) queueEvent(event subscriberEvent) {
 }
 
 func (rdm *RouterDataModel) SyncAllSubscribers() {
-	rdm.queueEvent(syncAllSubscribersEvent{})
+	evt := syncAllSubscribersEvent{completeNotify: make(chan struct{})}
+	rdm.queueEvent(evt)
+	select {
+	case <-evt.completeNotify:
+	case <-rdm.closeNotify:
+	}
 }
 
 func (rdm *RouterDataModel) markIdentityForCheck(identityId string, checkType byte) {
@@ -1806,7 +1811,7 @@ func (rdm *RouterDataModel) GetServiceAccessPolicies(identityId string, serviceI
 	identity.IterateServicePolicies(func(servicePolicyId string) {
 		servicePolicy, ok := rdm.ServicePolicies.Get(servicePolicyId)
 
-		if ok && servicePolicy.PolicyType == policyType {
+		if ok && servicePolicy.PolicyType == policyType && servicePolicy.Services.Has(serviceId) {
 			policies = append(policies, servicePolicy)
 
 			servicePolicy.PostureChecks.IterCb(func(postureCheckId string, _ struct{}) {
@@ -1944,19 +1949,39 @@ func (rdm *RouterDataModel) UnsubscribeFromIdentityChanges(identityId string, su
 }
 
 func (rdm *RouterDataModel) InheritLocalData(other *RouterDataModel) {
+	logger := pfxlog.Logger()
+
+	trackedCount := 0
 	other.Identities.IterCb(func(identityId string, v *Identity) {
 		if v.serviceAccessTrackingEnabled.Load() {
+			trackedCount++
 			rdm.EnableServiceAccessTracking(identityId)
 		}
 	})
 
+	subCount := 0
 	other.subscriptions.IterCb(func(identityId string, v *IdentitySubscription) {
+		subCount++
 		rdm.subscriptions.Set(identityId, v)
+		// Ensure tracking is enabled for all subscribed identities. The identity iteration
+		// above can race with concurrent SubscribeToIdentityChanges calls on the old model,
+		// missing identities whose tracking was enabled after their shard was already visited.
+		rdm.EnableServiceAccessTracking(identityId)
 	})
 
+	termCacheCount := 0
 	other.terminatorIdCache.IterCb(func(key string, v string) {
+		termCacheCount++
 		rdm.terminatorIdCache.Set(key, v)
 	})
+
+	logger.WithField("trackedIdentities", trackedCount).
+		WithField("subscriptions", subCount).
+		WithField("terminatorCacheEntries", termCacheCount).
+		WithField("newModelIdentities", rdm.Identities.Count()).
+		WithField("newModelServices", rdm.Services.Count()).
+		WithField("newModelPolicies", rdm.ServicePolicies.Count()).
+		Info("inherited local data into new router data model")
 }
 
 func (rdm *RouterDataModel) buildServiceListUsingDenormalizedData(sub *IdentitySubscription) (map[string]*IdentityService, map[string]*PostureCheck) {
@@ -2333,6 +2358,11 @@ func (rdm *RouterDataModel) EnableServiceAccessTracking(identityId string) {
 	rdm.withLockedIdentity(identityId, func(identity *Identity) {
 		if identity.serviceAccessTrackingEnabled.CompareAndSwap(false, true) {
 			identity.ServiceAccess = rdm.buildServiceAccessList(identity)
+			pfxlog.Logger().
+				WithField("identityId", identityId).
+				WithField("servicePolicyCount", len(identity.ServicePolicies)).
+				WithField("serviceAccessCount", len(identity.ServiceAccess)).
+				Info("enabled service access tracking")
 		}
 	})
 }

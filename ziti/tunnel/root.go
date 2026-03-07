@@ -17,6 +17,7 @@
 package tunnel
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,10 +40,10 @@ import (
 )
 
 const (
-	svcPollRateFlag   = "svcPollRate"
-	resolverCfgFlag   = "resolver"
-	dnsSvcIpRangeFlag = "dnsSvcIpRange"
-	dnsUpstreamFlag   = "dnsUpstream"
+	svcPollRateFlag     = "svcPollRate"
+	resolverCfgFlag     = "resolver"
+	dnsSvcIpRangeFlag   = "dnsSvcIpRange"
+	dnsUpstreamFlag     = "dnsUpstream"
 	dnsUnanswerableFlag = "dnsUnanswerable"
 )
 
@@ -130,6 +131,10 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 			Addr:            cliAgentAddr,
 			ShutdownCleanup: &cleanup,
 			AppAlias:        cliAgentAlias,
+			AppType:         "tunnel",
+			CustomOps: map[byte]func(c net.Conn) error{
+				AgentDump: handleAgentDump,
+			},
 		})
 
 		if err != nil {
@@ -219,6 +224,8 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 	if err != nil {
 		pfxlog.Logger().WithError(err).Fatal("could not create ziti sdk context")
 	}
+
+	RegisterContext(identityJson, rootPrivateContext)
 
 	for {
 		if err = rootPrivateContext.Authenticate(); err != nil {
