@@ -104,3 +104,7 @@ forwarder:
   xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
   linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
   linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}
+
+metrics:
+  reportInterval: 1m
+  messageQueueSize: 10
