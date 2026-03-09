@@ -72,7 +72,7 @@ require (
 	github.com/openziti/storage v0.4.39
 	github.com/openziti/transport/v2 v2.0.214
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v3 v3.0.4-0.20260309203444-51176684b72f
+	github.com/openziti/xweb/v3 v3.0.4
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1

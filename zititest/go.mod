@@ -189,7 +189,7 @@ require (
 	github.com/openziti/runzmd v1.0.90 // indirect
 	github.com/openziti/secretstream v0.1.48 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v3 v3.0.4-0.20260309203444-51176684b72f // indirect
+	github.com/openziti/xweb/v3 v3.0.4 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

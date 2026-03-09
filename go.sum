@@ -561,8 +561,8 @@ github.com/openziti/transport/v2 v2.0.214 h1:Fh1Yw/hbKJHSRzVh6eAqY0CRp45Tfzjiqie
 github.com/openziti/transport/v2 v2.0.214/go.mod h1:l95TegVGagPwTYqRjBilK3NHRW57Xj/yQgPMr4T/kHo=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
-github.com/openziti/xweb/v3 v3.0.4-0.20260309203444-51176684b72f h1:pwnEaQbK0vqwwwku+MvhkuYq3WLUZ1sxgCu7pPstw68=
-github.com/openziti/xweb/v3 v3.0.4-0.20260309203444-51176684b72f/go.mod h1:/wAhy5gg9HR+Gy/RApHg3Vf2EPN438XxcxH0I2zhGNk=
+github.com/openziti/xweb/v3 v3.0.4 h1:sKQJOJDQiWcTkuc37L7oc0Z0jQ5Poh2zaa5raiP0GLc=
+github.com/openziti/xweb/v3 v3.0.4/go.mod h1:xb9m4ySnKilHM4wbUC2MnGfilDu/kKw97DWL13ZTvqk=
 github.com/openziti/ziti-db-explorer v1.1.3 h1:9JER16MJzagtYPdGEhgDcw2p/BXNCVbf9IgA/sMB52w=
 github.com/openziti/ziti-db-explorer v1.1.3/go.mod h1:pMIMNJoTRSTbkO2e7cZWiBokA3jMdeiGAILP3QhU+v8=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
