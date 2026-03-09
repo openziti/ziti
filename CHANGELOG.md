@@ -891,29 +891,35 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.2.41 -> v4.3.7](https://github.com/openziti/channel/compare/v4.2.41...v4.3.7)
+* github.com/openziti/agent: [v1.0.31 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.31...v1.0.33)
+* github.com/openziti/channel/v4: [v4.2.28 -> v4.3.9](https://github.com/openziti/channel/compare/v4.2.28...v4.3.9)
+    * [Issue #235](https://github.com/openziti/channel/issues/235) - Bump allowed hello message headers size to 16k from 4k
     * [Issue #228](https://github.com/openziti/channel/issues/228) - Ensure that Underlay never return nil on MultiChannel
     * [Issue #226](https://github.com/openziti/channel/issues/226) - Allow specifying a minimum number of underlays for a channel, regardless of underlay type
     * [Issue #225](https://github.com/openziti/channel/issues/225) - Add ChannelCreated to the UnderlayHandler API to allow handlers to be initialized with the channel before binding
     * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
     * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
 
-* github.com/openziti/edge-api: [v0.26.50 -> v0.27.4](https://github.com/openziti/edge-api/compare/v0.26.50...v0.27.4)
+* github.com/openziti/edge-api: [v0.26.47 -> v0.27.5](https://github.com/openziti/edge-api/compare/v0.26.47...v0.27.5)
     * [Issue #175](https://github.com/openziti/edge-api/issues/175) - ctrlChanListeners should have x-omit-empty: false attribute
     * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
-* github.com/openziti/foundation/v2: [v2.0.79 -> v2.0.88](https://github.com/openziti/foundation/compare/v2.0.79...v2.0.88)
+* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.89](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.89)
     * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add support for multi-bit set/get to AtomicBitSet
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
+    * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
+    * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
 
-* github.com/openziti/identity: [v1.0.118 -> v1.0.126](https://github.com/openziti/identity/compare/v1.0.118...v1.0.126)
+* github.com/openziti/identity: [v1.0.111 -> v1.0.127](https://github.com/openziti/identity/compare/v1.0.111...v1.0.127)
+    * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
+
 * github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
-* github.com/openziti/runzmd: [v1.0.84 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.84...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.10 -> v1.5.2](https://github.com/openziti/sdk-golang/compare/v1.2.10...v1.5.2)
+* github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.2](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.2)
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
     * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
     * [Issue #885](https://github.com/openziti/sdk-golang/issues/885) - Only compare relevant service fields when looking for changes
@@ -930,21 +936,31 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
     * [Issue #857](https://github.com/openziti/sdk-golang/issues/857) - Use new error code and retry hints to correctly react to terminator errors
     * [Issue #847](https://github.com/openziti/sdk-golang/issues/847) - Ensure the initial version check succeeds, to ensure we don't legacy sessions on ha or oidc-enabled controllers
     * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
+    * [Issue #818](https://github.com/openziti/sdk-golang/issues/818) - Full re-auth should not clear services list, as that breaks the on-change logic
+    * [Issue #817](https://github.com/openziti/sdk-golang/issues/817) - goroutines can get stuck when iterating over randomized HA controller list
+    * [Issue #736](https://github.com/openziti/sdk-golang/issues/736) - Migrate from github.com/mailru/easyjson
+    * [Issue #813](https://github.com/openziti/sdk-golang/issues/813) - SDK doesn't stop close listener when it detects that a service being hosted gets deleted
+    * [Issue #811](https://github.com/openziti/sdk-golang/issues/811) - Credentials are lost when explicitly set
+    * [Issue #807](https://github.com/openziti/sdk-golang/issues/807) - Don't send close from rxer to avoid blocking
+    * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
 
-* github.com/openziti/secretstream: [v0.1.41 -> v0.1.48](https://github.com/openziti/secretstream/compare/v0.1.41...v0.1.48)
-* github.com/openziti/storage: [v0.4.31 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.31...v0.4.39)
+* github.com/openziti/secretstream: [v0.1.39 -> v0.1.48](https://github.com/openziti/secretstream/compare/v0.1.39...v0.1.48)
+* github.com/openziti/storage: [v0.4.26 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.26...v0.4.39)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.198 -> v2.0.214](https://github.com/openziti/transport/compare/v2.0.198...v2.0.214)
+* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.214](https://github.com/openziti/transport/compare/v2.0.188...v2.0.214)
     * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
     * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
 
-* github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.3](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.3)
+* github.com/openziti/xweb/v3: [v2.3.4 -> v3.0.4](https://github.com/openziti/xweb/compare/v2.3.4...v3.0.4)
     * [Issue #32](https://github.com/openziti/xweb/issues/32) - watched identities sometimes don't reload when changed
 
-* github.com/openziti/ziti/v2: [v1.7.0 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.7.0...v2.0.0)
+* github.com/openziti/go-term-markdown: v1.0.1 (new)
+* github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3648](https://github.com/openziti/ziti/issues/3648) - tunnel: myCopy logs router ID as circuitId, causing misleading debug output
+    * [Issue #3658](https://github.com/openziti/ziti/issues/3658) - Raft cluster join fails with "hello message too big" when using long hostnames
     * [Issue #3635](https://github.com/openziti/ziti/issues/3635) - Allow controllers to dial routers to support more topologies
     * [Issue #3607](https://github.com/openziti/ziti/issues/3607) - linux installer not upgradable from v1
     * [Issue #3650](https://github.com/openziti/ziti/issues/3650) - Reroute doesn't proactively clean up orphaned route entries
@@ -1021,5 +1037,19 @@ The controller dialer worker pool exposes the following metrics under the `ctrl_
     * [Issue #3337](https://github.com/openziti/ziti/issues/3337) - Router reports "no xgress edge forwarder for circuit"
     * [Issue #3345](https://github.com/openziti/ziti/issues/3345) - Clean up connect events tests and remove global XG registry
     * [Issue #3264](https://github.com/openziti/ziti/issues/3264) - Allow routers to generate alert events in cases of service misconfiguration
+    * [Issue #3321](https://github.com/openziti/ziti/issues/3321) - Health Check API missing base path on discovery endpoint
+    * [Issue #3323](https://github.com/openziti/ziti/issues/3323) - router/tunnel static services fail to bind unless new param protocol is defined
+    * [Issue #3309](https://github.com/openziti/ziti/issues/3309) - Detect link connections meant for another router
+    * [Issue #3286](https://github.com/openziti/ziti/issues/3286) - edge-api binding doesn't have the correct path on discovery endpoints
+    * [Issue #3297](https://github.com/openziti/ziti/issues/3297) - stop promoting hotfixes downstream
+    * [Issue #3295](https://github.com/openziti/ziti/issues/3295) - make ziti tunnel service:port pairs optional
+    * [Issue #3291](https://github.com/openziti/ziti/issues/3291) - replace decommissioned bitnami/kubectl
+    * [Issue #3277](https://github.com/openziti/ziti/issues/3277) - Router can deadlock on closing a connection if the incoming data channel is full
+    * [Issue #3269](https://github.com/openziti/ziti/issues/3269) - Add host-interfaces config type
+    * [Issue #3258](https://github.com/openziti/ziti/issues/3258) - Add config type proxy.v1 so proxies can be defined dynamically for the ER/T
+    * [Issue #3259](https://github.com/openziti/ziti/issues/3259) - Interfaces config type not added due to wrong name
+    * [Issue #3265](https://github.com/openziti/ziti/issues/3265) - Forwarding errors should log at debug, since they are usual part of circuit teardown
+    * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
+    * [Issue #3207](https://github.com/openziti/ziti/issues/3207) - Allow router embedders to customize config before start
 
 
