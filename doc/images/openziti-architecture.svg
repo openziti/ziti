@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 540" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 7" refX="9" refY="3.5"
+            markerWidth="8" markerHeight="6" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="860" height="540" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- ========== CONTROLLER CLUSTER (Control Plane — HA stack of 3) ========== -->
+  <!-- Back controller (3rd) -->
+  <rect x="323" y="22" width="230" height="60" rx="6" fill="#0066FF" opacity="0.35" stroke="#0052cc" stroke-width="1"/>
+  <!-- Middle controller (2nd) -->
+  <rect x="319" y="26" width="230" height="60" rx="6" fill="#0066FF" opacity="0.6" stroke="#0052cc" stroke-width="1"/>
+  <!-- Front controller (1st — primary) -->
+  <rect x="315" y="30" width="230" height="60" rx="6" fill="#0066FF" stroke="#0052cc" stroke-width="1"/>
+  <text x="430" y="55" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">Controller</text>
+  <text x="430" y="75" text-anchor="middle" font-size="11" fill="#ffffff" opacity="0.85">Identity · Policy · Network State</text>
+
+  <!-- ========== FABRIC (Data Plane) ========== -->
+  <rect x="65" y="130" width="730" height="140" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="6,3"/>
+  <text x="430" y="153" text-anchor="middle" font-size="10" font-weight="700" fill="#9ca3af" letter-spacing="1.5">ENCRYPTED MESH FABRIC</text>
+
+  <!-- Control plane connections: Controller → Routers (drawn before routers so boxes cover the lines) -->
+  <line x1="380" y1="90" x2="240" y2="170" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="480" y1="90" x2="620" y2="170" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Control plane connections: Controller → Endpoints -->
+  <line x1="365" y1="90" x2="175" y2="340" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+  <line x1="355" y1="90" x2="175" y2="400" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+  <line x1="495" y1="90" x2="685" y2="340" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+  <line x1="505" y1="90" x2="685" y2="400" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- Mesh connections between routers -->
+  <line x1="300" y1="193" x2="560" y2="193" stroke="#0066FF" stroke-width="2" opacity="0.3"/>
+  <text x="430" y="190" text-anchor="middle" font-size="9" fill="#0066FF" opacity="0.5" font-weight="500">smart routing</text>
+
+  <!-- Edge Router — Public (drawn after lines so box covers them) -->
+  <rect x="130" y="170" width="170" height="55" rx="5" fill="#00489f"/>
+  <text x="215" y="194" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">Edge Router</text>
+  <text x="215" y="212" text-anchor="middle" font-size="10" fill="#ffffff" opacity="0.8">Public</text>
+
+  <!-- Edge Router — Private (Dark) (drawn after lines so box covers them) -->
+  <rect x="560" y="170" width="170" height="55" rx="5" fill="#00489f"/>
+  <text x="645" y="194" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">Edge Router</text>
+  <text x="645" y="212" text-anchor="middle" font-size="10" fill="#ffffff" opacity="0.8">Private (Dark)</text>
+
+  <!-- ========== OUTBOUND ANNOTATIONS ========== -->
+  <text x="130" y="288" text-anchor="middle" font-size="9" fill="#16a34a" font-weight="600">OUTBOUND ONLY ↑</text>
+  <text x="730" y="288" text-anchor="middle" font-size="9" fill="#16a34a" font-weight="600">↑ OUTBOUND ONLY</text>
+
+  <!-- ========== CLIENT ENDPOINTS (Left) ========== -->
+  <text x="215" y="308" text-anchor="middle" font-size="11" font-weight="700" fill="#111827" letter-spacing="0.5">CLIENTS</text>
+  <text x="215" y="322" text-anchor="middle" font-size="9" fill="#6b7280">Users · Devices · Apps</text>
+
+  <!-- Client: Application with SDK -->
+  <rect x="90" y="340" width="170" height="50" rx="5" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <rect x="90" y="341" width="4" height="48" fill="#0066FF"/>
+  <text x="182" y="361" text-anchor="middle" font-size="12" font-weight="600" fill="#111827">Application</text>
+  <text x="182" y="377" text-anchor="middle" font-size="10" fill="#0066FF" font-weight="500">with embedded SDK</text>
+
+  <!-- Client: Tunneler -->
+  <rect x="90" y="400" width="170" height="50" rx="5" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <rect x="90" y="401" width="4" height="48" fill="#6b7280"/>
+  <text x="182" y="421" text-anchor="middle" font-size="12" font-weight="600" fill="#111827">Tunneler</text>
+  <text x="182" y="437" text-anchor="middle" font-size="10" fill="#6b7280">Desktop · Mobile</text>
+
+  <!-- ========== SERVICE ENDPOINTS (Right) ========== -->
+  <text x="645" y="308" text-anchor="middle" font-size="11" font-weight="700" fill="#111827" letter-spacing="0.5">SERVICES</text>
+  <text x="645" y="322" text-anchor="middle" font-size="9" fill="#6b7280">APIs · Workloads · Apps</text>
+
+  <!-- Service: Application with SDK -->
+  <rect x="600" y="340" width="170" height="50" rx="5" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <rect x="766" y="341" width="4" height="48" fill="#0066FF"/>
+  <text x="690" y="361" text-anchor="middle" font-size="12" font-weight="600" fill="#111827">Application</text>
+  <text x="690" y="377" text-anchor="middle" font-size="10" fill="#0066FF" font-weight="500">with embedded SDK</text>
+
+  <!-- Service: Tunneler + Existing Service -->
+  <rect x="600" y="400" width="170" height="50" rx="5" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <rect x="766" y="401" width="4" height="48" fill="#6b7280"/>
+  <text x="690" y="421" text-anchor="middle" font-size="12" font-weight="600" fill="#111827">Tunneler + Service</text>
+  <text x="690" y="437" text-anchor="middle" font-size="10" fill="#6b7280">Existing · Legacy</text>
+
+  <!-- ========== ARROWS: Endpoints → Fabric (outbound) ========== -->
+
+  <!-- Client SDK App → Public Router -->
+  <line x1="165" y1="340" x2="195" y2="225" stroke="#374151" stroke-width="1.5" marker-end="url(#ah)"/>
+  <!-- Client Tunneler → Public Router -->
+  <line x1="195" y1="400" x2="235" y2="225" stroke="#374151" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Service SDK App → Private Router -->
+  <line x1="695" y1="340" x2="665" y2="225" stroke="#374151" stroke-width="1.5" marker-end="url(#ah)"/>
+  <!-- Service Tunneler → Private Router -->
+  <line x1="665" y1="400" x2="625" y2="225" stroke="#374151" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- ========== KEY PROPERTIES BAR ========== -->
+  <rect x="140" y="480" width="580" height="30" rx="15" fill="#EBF4FF" stroke="#0066FF" stroke-width="1"/>
+  <text x="430" y="500" text-anchor="middle" font-size="10" font-weight="700" fill="#0066FF" letter-spacing="0.5">IDENTITY VERIFIED · MTLS FOR ALL LINKS · END-TO-END ENCRYPTED · NO OPEN INBOUND PORTS</text>
+
+</svg>
