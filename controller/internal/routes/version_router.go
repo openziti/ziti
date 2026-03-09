@@ -25,6 +25,7 @@ import (
 	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/common/bindpoints"
 	"github.com/openziti/ziti/v2/common/build"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -116,6 +117,9 @@ func (ir *VersionRouter) buildVersions(ae *env.AppEnv) *rest_model.Version {
 				activeBindings[api.Binding()] = struct{}{}
 			}
 			for _, bindPoint := range serverConfig.BindPoints {
+				if bindPoint.Type() != bindpoints.BindPointTypeUnderlay {
+					continue
+				}
 				apiBaseUrl := bindPoint.ServerAddress() + apiBindingToPath(api.Binding())
 				apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
 			}

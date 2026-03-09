@@ -62,8 +62,8 @@ require (
 	github.com/openziti/channel/v4 v4.3.7
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.27.4
-	github.com/openziti/foundation/v2 v2.0.88
-	github.com/openziti/identity v1.0.126
+	github.com/openziti/foundation/v2 v2.0.89
+	github.com/openziti/identity v1.0.127
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/runzmd v1.0.90
@@ -72,7 +72,7 @@ require (
 	github.com/openziti/storage v0.4.39
 	github.com/openziti/transport/v2 v2.0.214
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v3 v3.0.3
+	github.com/openziti/xweb/v3 v3.0.4-0.20260309203444-51176684b72f
 	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -97,7 +97,7 @@ require (
 	golang.org/x/net v0.51.0
 	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.41.0
+	golang.org/x/sys v0.42.0
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
 	google.golang.org/protobuf v1.36.11

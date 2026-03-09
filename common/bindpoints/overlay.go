@@ -56,6 +56,11 @@ func (o OverlayBindPoint) AfterHandler(prev http.Handler) http.Handler {
 func (o OverlayBindPoint) ServerAddress() string {
 	return o.Name
 }
+
+func (o OverlayBindPoint) Type() xweb.BindPointType {
+	return BindPointTypeOverlay
+}
+
 func newOverlayBindPoint(conf map[interface{}]interface{}) (OverlayBindPoint, error) {
 	o := OverlayBindPoint{}
 

@@ -914,6 +914,9 @@ func (c *Controller) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 		apiData := map[string][]event.ApiAddress{}
 		for _, serverConfig := range xwebConfig.ServerConfigs {
 			for _, bindPoint := range serverConfig.BindPoints {
+				if bindPoint.Type() != bindpoints.BindPointTypeUnderlay {
+					continue
+				}
 				for _, api := range serverConfig.APIs {
 					apiData[api.Binding()] = append(apiData[api.Binding()], event.ApiAddress{
 						Url:     "https://" + bindPoint.ServerAddress() + getApiPath(api.Binding()), //TODO: temp till xweb support reporting API paths
