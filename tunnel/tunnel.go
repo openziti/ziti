@@ -97,7 +97,7 @@ func Run(zitiConn edge.Conn, clientConn net.Conn, halfClose bool) {
 
 	go myCopy(clientConn, zitiConn, doneSend, halfClose, zitiConn.GetCircuitId())
 
-	go myCopy(zitiConn, clientConn, doneRecv, halfClose, zitiConn.GetRouterId())
+	go myCopy(zitiConn, clientConn, doneRecv, halfClose, zitiConn.GetCircuitId())
 
 	defer func() {
 		_ = clientConn.Close()
