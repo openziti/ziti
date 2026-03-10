@@ -50,27 +50,36 @@ control channel has its own identity (cert + key obtained during enrollment with
 network) and its own set of route/unroute handlers, all feeding into the shared
 forwarder.
 
-```
-Federated Router
-│
-├── Owner Network (host)
-│   ├── Identity (original cert + key)
-│   └── Control channel → Controller A
-│
-├── Client Network 1
-│   ├── Identity (cert from enrollment with Network 1)
-│   └── Control channel → Controller B
-│
-├── Client Network 2
-│   ├── Identity (cert from enrollment with Network 2)
-│   └── Control channel → Controller C
-│
-└── Shared Infrastructure
-    ├── Forwarder (circuit table keyed by networkId+circuitId, destination table)
-    ├── Link listener (single port, aggregated CA bundle)
-    ├── Link dialer (per-destination CA)
-    ├── Faulter (groups faults by networkId+ctrlId → correct controller)
-    └── Scanner (groups idle circuits by networkId+ctrlId → correct controller)
+```mermaid
+graph TB
+    subgraph Router["Federated Router"]
+        subgraph Owner["Owner Network (host)"]
+            OI["Identity<br/>(original cert + key)"]
+            OCC["Control channel"]
+        end
+
+        subgraph Client1["Client Network 1"]
+            C1I["Identity<br/>(cert from enrollment)"]
+            C1CC["Control channel"]
+        end
+
+        subgraph Client2["Client Network 2"]
+            C2I["Identity<br/>(cert from enrollment)"]
+            C2CC["Control channel"]
+        end
+
+        subgraph Shared["Shared Infrastructure"]
+            FW["Forwarder<br/>(circuit table keyed by networkId+circuitId)"]
+            LL["Link listener<br/>(single port, aggregated CA bundle)"]
+            LD["Link dialer<br/>(per-destination CA)"]
+            FA["Faulter<br/>(groups by networkId+ctrlId)"]
+            SC["Scanner<br/>(groups by networkId+ctrlId)"]
+        end
+    end
+
+    OCC --> CA["Controller A"]
+    C1CC --> CB["Controller B"]
+    C2CC --> CC["Controller C"]
 ```
 
 A `MultiNetworkControllers` wrapper dispatches across all per-network controller sets.
@@ -154,45 +163,22 @@ a federation peer) and **Network Router Policy** (links Networks to routers) —
 The host network admin creates a Network entity, which generates an enrollment JWT.
 The client network admin completes the enrollment.
 
-```
-  Host Network                                          Client Network
-  ════════════                                          ══════════════
+```mermaid
+sequenceDiagram
+    participant HA as Host Admin
+    participant HC as Host Controller
+    participant CA as Client Admin
+    participant CC as Client Controller
 
-  ┌───────────────┐                                     ┌───────────────┐
-  │  Admin CLI /  │                                     │  Admin CLI /  │
-  │  API call     │                                     │  API call     │
-  └──────┬────────┘                                     └──────┬────────┘
-         │                                                     │
-         │ 1. Create Network entity                            │
-         ▼                                                     │
-  ┌──────────────┐                                             │
-  │  Host         │  2. Enrollment JWT                         │
-  │  Controller   │─ ─ ─ ─ (out of band) ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─▶│
-  │               │     contains:                              │
-  │               │     • host CA bundle                       │
-  │               │     • host controller endpoints            │
-  │               │     • network ID + name                    │
-  └──────────────┘                                             │
-                                                               │
-         ┌─────────────────────────────────────────────────────┘
-         │ 3. Complete enrollment
-         ▼
-  ┌──────────────┐         ┌──────────────────────────────────────────┐
-  │  Client       │────────▶  Client creates its own Network entity   │
-  │  Controller   │         │  representing the host, storing:        │
-  │               │         │  • host CA bundle                       │
-  │               │         │  • host controller endpoints            │
-  │               │         │  • client cert for host federation API  │
-  └──────────────┘         └──────────────────────────────────────────┘
+    HA->>HC: 1. Create Network entity
+    HC-->>CA: 2. Enrollment JWT (out of band)
+    Note right of HC: Contains: host CA bundle,<br/>controller endpoints,<br/>network ID + name
 
-         ┌──────────────────────────────────────────────────────────┐
-         │  Meanwhile on the host:                                  │
-         │                                                          │
-         │  • Network Router Policies link the Network entity       │
-         │    to specific routers (owned routers only)              │
-         │  • Auth policy governs how the client authenticates      │
-         │  • Network login restricted to the federation API        │
-         └──────────────────────────────────────────────────────────┘
+    CA->>CC: 3. Complete enrollment
+    CC->>HC: Enroll (obtain client certificate)
+    CC->>CC: Create local Network entity<br/>storing host CA bundle,<br/>endpoints, and client cert
+
+    Note over HC: Meanwhile on host:<br/>• Network Router Policies link<br/> Network to routers (owned only)<br/>• Auth policy governs client auth<br/>• Network login restricted to<br/> federation API
 ```
 
 After this phase, both sides have a Network entity. The host side uses it for policy
@@ -203,63 +189,26 @@ for imported routers.
 
 The client network authenticates to the host's federation API and requests routers.
 
-```
-  Client Network                    Host Network                    Router
-  ══════════════                    ════════════                    ══════
+```mermaid
+sequenceDiagram
+    participant CC as Client Controller
+    participant HC as Host Controller
+    participant R as Router R1
 
-  ┌───────────────┐                 ┌───────────────┐
-  │  Client       │  1. Authenticate│  Host         │
-  │  Controller   │────────────────▶│  Controller   │
-  │               │  (Network cert) │  (federation  │
-  │               │                 │   API only)   │
-  │               │  2. List        │               │
-  │               │  accessible     │               │
-  │               │  routers        │               │
-  │               │◀────────────────│               │
-  │               │  (filtered by   │               │
-  │               │   Network       │               │
-  │               │   Router        │               │
-  │               │   Policies)     │               │
-  │               │                 │               │
-  │               │                 │               │               ┌──────────┐
-  │               │  3. Request     │               │               │          │
-  │               │  add router R1  │               │               │  Router  │
-  │               │────────────────▶│               │               │  R1      │
-  │               │  (includes      │  4. Validate  │               │          │
-  │               │   enrollment    │  R1 is owned  │               │          │
-  │               │   token from    │  (not shared  │               │          │
-  │               │   client)       │   from another│               │          │
-  │               │                 │   network)    │               │          │
-  │               │                 │               │  5. Deliver   │          │
-  │               │                 │               │  enrollment   │          │
-  │               │                 │               │  token via    │          │
-  │               │                 │               │  ctrl channel │          │
-  │               │                 │               │──────────────▶│          │
-  │               │                 │               │               │          │
-  │               │                 │               │  6. Router    │          │
-  │               │                 │               │  validates    │          │
-  │               │                 │               │  token came   │          │
-  │               │                 │               │  from owner   │          │
-  │               │                 │               │               │          │
-  │               │                 │               │  7. Router    │          │
-  │               │  8. Router connects with new identity           │  completes│
-  │               │◀────────────────────────────────────────────────│  enrollmt │
-  │               │  (same router ID as on host network)            │          │
-  │               │                 │               │               │          │
-  └──────┬────────┘                 └───────────────┘               └──────────┘
-         │
-         │  9. Client creates router entity:
-         │     • same router ID as host
-         │     • foreign key → client-side Network entity
-         │     • marked as imported (not owned)
-         ▼
-  ┌──────────────────────────────────────┐
-  │  Router R1 now in client's model.    │
-  │  Cannot be re-shared (imported, not  │
-  │  owned). Control channel established.│
-  │  Route/unroute handlers feed shared  │
-  │  forwarder.                          │
-  └──────────────────────────────────────┘
+    CC->>HC: 1. Authenticate (Network cert, federation API only)
+    CC->>HC: 2. List accessible routers
+    HC-->>CC: Router list (filtered by Network Router Policies)
+
+    CC->>HC: 3. Request add router R1<br/>(includes enrollment token)
+    HC->>HC: 4. Validate R1 is owned<br/>(not shared from another network)
+    HC->>R: 5. Deliver enrollment token<br/>via control channel
+    R->>R: 6. Validate token came from owner
+    R->>R: 7. Complete enrollment<br/>(CSR signed by client CA)
+    R->>CC: 8. Connect with new identity<br/>(same router ID as on host)
+
+    CC->>CC: 9. Create router entity:<br/>• same router ID as host<br/>• foreign key → Network entity<br/>• marked as imported (not owned)
+
+    Note over CC,R: Router R1 now in client's model.<br/>Cannot be re-shared. Control channel<br/>established. Route/unroute handlers<br/>feed shared forwarder.
 ```
 
 ### Phase 3: Link Establishment
@@ -267,55 +216,23 @@ The client network authenticates to the host's federation API and requests route
 Once routers are enrolled in multiple networks, links form between them. Each network's
 controller drives link formation independently.
 
-```
-  Tenant Network Controller              Transit Router           Tenant Router
-  ═════════════════════════              ══════════════           ═════════════
+```mermaid
+sequenceDiagram
+    participant TC as Tenant Controller
+    participant TR as Transit Router
+    participant TenR as Tenant Router
 
-  1. Controller includes
-     transit router in path
-     planning (sees it as a
-     normal router)
-         │
-         │  UpdateLinkDest
-         │  (transit router info
-         │   + owner network ID)
-         │──────────────────────────────────────────────────────▶│
-         │                                                       │
-         │                               2. Tenant router        │
-         │                               fetches transit         │
-         │                               network's CA from       │
-         │                               its controller          │
-         │                                                       │
-         │                                         TLS dial      │
-         │                               ◀───────────────────────│
-         │                               │                       │
-         │                               │  3. Tenant router     │
-         │                               │  verifies transit     │
-         │                               │  server cert against  │
-         │                               │  transit network CA   │
-         │                               │                       │
-         │                               │  4. Transit router    │
-         │                               │  verifies tenant      │
-         │                               │  client cert against  │
-         │                               │  aggregated CA bundle │
-         │                               │                       │
-         │                               │  5. Post-TLS:         │
-         │                               │  transit router reads │
-         │                               │  link headers, calls  │
-         │                               │  VerifyRouter on      │
-         │                               │  tenant's controller  │
-         │                               │                       │
-         │                               │  6. Link registered   │
-         │                               │  in shared forwarder  │
-         │                               ├───────────────────────│
-         │                               │                       │
-         │  7. Link reported to tenant   │                       │
-         │  controller (scoped: only     │                       │
-         │  reported to networks whose   │                       │
-         │  cache contains both          │                       │
-         │  endpoints)                   │                       │
-         │◀──────────────────────────────│                       │
-         │                               │                       │
+    Note over TC: Controller includes transit<br/>router in path planning<br/>(sees it as a normal router)
+
+    TC->>TenR: 1. UpdateLinkDest<br/>(transit router info + owner network ID)
+    TenR->>TC: 2. Fetch transit network's CA bundle
+
+    TenR->>TR: 3. TLS dial<br/>(verify transit server cert against transit CA)
+    TR->>TR: 4. Verify tenant client cert<br/>against aggregated CA bundle
+    TR->>TC: 5. VerifyRouter<br/>(confirm tenant router identity)
+    TR->>TR: 6. Register link in shared forwarder
+
+    TR->>TC: 7. Report link to tenant controller<br/>(scoped: only reported to networks<br/>whose cache contains both endpoints)
 ```
 
 ### No-Re-Sharing Enforcement
