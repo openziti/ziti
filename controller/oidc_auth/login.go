@@ -456,7 +456,7 @@ func (l *login) deleteEnrollTotp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderJson(w, http.StatusOK, &rest_model.Empty{})
+	renderJson(w, http.StatusOK, &JsonMap{})
 }
 
 func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {
