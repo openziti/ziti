@@ -433,13 +433,13 @@ cluster:
   applyTimeout: 10s
 ```
 
-2. Command Rate Limiter Configuration (command.rateLimiter)
+2. Cluster Rate Limiter Configuration (cluster.rateLimiter)
 
 A new adaptive rate limiter that controls the submission of commands to the Raft cluster. Unlike the existing command rate limiter, this specifically manages in-flight Raft operations with adaptive window sizing.
 
 Configuration Structure:
 ```
-command:
+cluster:
   rateLimiter:
     enabled: true
     minSize: 5
@@ -502,6 +502,10 @@ This specific rate limiter implementation is used in three places:
 * **Controller TLS handshake rate limiting** - controls the rate of incoming TLS handshakes on the controller
 * **Raft command submission** - controls the rate of commands submitted to the Raft distributed log
 * **Router control channel rate limiting** - controls the rate of requests from the router to the controller
+
+Note: this work was done in advance of enabling the TLS handshake rate limiter by default. The TLS
+handshake rate limiter is not yet enabled by default, but can be enabled via the `tls.rateLimiter`
+configuration section.
 
 ## Background Processing for Identity Updates
 

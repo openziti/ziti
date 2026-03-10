@@ -861,15 +861,14 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, errors.Errorf("invalid command.background configuration section, should be map, not %T", backgroundValue)
 				}
 			}
+			if value, found := cmdMap["rateLimiter"]; found {
+				if err = parseCommandRateLimiter(controllerConfig, value, "command.rateLimiter"); err != nil {
+					return nil, err
+				}
+				commandRateLimiterHandled = true
+			}
 		} else {
 			return nil, errors.Errorf("invalid command configuration section, should be map, not %T", cmdValue)
-		}
-
-		if value, found := cfgmap["rateLimiter"]; found {
-			if err = parseCommandRateLimiter(controllerConfig, value, "command.rateLimiter"); err != nil {
-				return nil, err
-			}
-			commandRateLimiterHandled = true
 		}
 	}
 
