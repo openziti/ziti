@@ -31,6 +31,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var _ xweb.BindPoint = (*UnderlayBindPoint)(nil)
+
 const (
 	ZitiCtrlAddressHeader = "ziti-ctrl-address"
 )
@@ -61,6 +63,10 @@ func (u UnderlayBindPoint) Listener(serverName string, tlsConfig *gotls.Config) 
 
 func (u UnderlayBindPoint) ServerAddress() string {
 	return u.Address
+}
+
+func (u UnderlayBindPoint) Type() xweb.BindPointType {
+	return BindPointTypeUnderlay
 }
 
 func newUnderlayBindPoint(conf map[interface{}]interface{}, legacyValidation bool) (xweb.BindPoint, error) {

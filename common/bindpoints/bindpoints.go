@@ -20,6 +20,11 @@ import (
 	"github.com/openziti/xweb/v3"
 )
 
+const (
+	BindPointTypeUnderlay xweb.BindPointType = "underlay"
+	BindPointTypeOverlay  xweb.BindPointType = "overlay"
+)
+
 // BindPointListenerFactory implements the xweb.BindPointListenerFactory.
 // It provides a factory that generates xweb.BindPoints based on the provided config section
 type BindPointListenerFactory struct {

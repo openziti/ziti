@@ -21,8 +21,8 @@ require (
 	github.com/openziti/channel/v4 v4.3.7
 	github.com/openziti/edge-api v0.27.4
 	github.com/openziti/fablab v0.6.16
-	github.com/openziti/foundation/v2 v2.0.88
-	github.com/openziti/identity v1.0.126
+	github.com/openziti/foundation/v2 v2.0.89
+	github.com/openziti/identity v1.0.127
 	github.com/openziti/metrics v1.4.3
 	github.com/openziti/sdk-golang v1.5.2
 	github.com/openziti/storage v0.4.39
@@ -189,7 +189,7 @@ require (
 	github.com/openziti/runzmd v1.0.90 // indirect
 	github.com/openziti/secretstream v0.1.48 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v3 v3.0.3 // indirect
+	github.com/openziti/xweb/v3 v3.0.4 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.3 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -243,7 +243,7 @@ require (
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
