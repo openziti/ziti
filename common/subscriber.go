@@ -511,9 +511,13 @@ func (self checkForIdentityChangesEvent) process(rdm *RouterDataModel) {
 }
 
 // syncAllSubscribersEvent is queued to trigger a full sync of all active subscriptions.
-type syncAllSubscribersEvent struct{}
+type syncAllSubscribersEvent struct {
+	completeNotify chan struct{}
+}
 
 func (self syncAllSubscribersEvent) process(rdm *RouterDataModel) {
+	defer close(self.completeNotify)
+
 	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
 		WithField("updatedIdentities", rdm.updatedIdentities.Count()).
 		Debug("sync all subscribers: start")

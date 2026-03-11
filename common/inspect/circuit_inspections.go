@@ -6,6 +6,7 @@ const (
 	RouterCircuitsKey     = "router-circuits"
 	RouterEdgeCircuitsKey = "router-edge-circuits"
 	RouterSdkCircuitsKey  = "router-sdk-circuits"
+	SdkContextKeyPrefix   = "sdk-context:"
 )
 
 type ForwarderCircuits struct {

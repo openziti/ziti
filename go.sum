@@ -551,8 +551,8 @@ github.com/openziti/metrics v1.4.3 h1:KUlhHtTH1rt2Ry59xDMlXIwNwkSnoJbqHWoflKlqvl
 github.com/openziti/metrics v1.4.3/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.90 h1:fasGlaq9xV+zohEGDC7Q0nOLA0n8Kpfccribc+VGQVw=
 github.com/openziti/runzmd v1.0.90/go.mod h1:ma3b7UdVYAC9ZCVUSjevUH/7yz9asI537XPsEh7+j14=
-github.com/openziti/sdk-golang v1.5.2 h1:QSUFCIdX6KmEj0I9iHSgmZdr3TPC9qRLN8zwTTVF5JM=
-github.com/openziti/sdk-golang v1.5.2/go.mod h1:ABATDgLqQ+XOPBERM+Ei3nvi9Fh3z1xZkM4o9ZpVn/w=
+github.com/openziti/sdk-golang v1.5.3 h1:NRw18q42st1mJpOeAw9FBy33zW986rYRhf1W6j+8Yyw=
+github.com/openziti/sdk-golang v1.5.3/go.mod h1:ABATDgLqQ+XOPBERM+Ei3nvi9Fh3z1xZkM4o9ZpVn/w=
 github.com/openziti/secretstream v0.1.48 h1:vCKldTKCInbivRvqadali9MRIpoNzhKSojQYT+x1RnU=
 github.com/openziti/secretstream v0.1.48/go.mod h1:3AwjWRMOAiVCsPCKTnkH2mn4LOzqCrX/KbTYCeOqvog=
 github.com/openziti/storage v0.4.39 h1:XLtjIDFhJIqtlobGbNvoXahu2zCiw//CXLcZFM/KYN0=

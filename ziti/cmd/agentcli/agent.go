@@ -14,6 +14,7 @@ import (
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/router"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	tunnelpkg "github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +24,7 @@ type AgentAppId byte
 const (
 	AgentAppController = AgentAppId(controller.AgentAppId)
 	AgentAppRouter     = AgentAppId(router.AgentAppId)
+	AgentAppSdk        = AgentAppId(tunnelpkg.AgentAppId)
 )
 
 func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
@@ -97,6 +99,15 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 
 	decommissionCmd := NewSimpleChAgentCustomCmd("decommission", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDecommissionRequestType), p)
 	routerCmd.AddCommand(decommissionCmd)
+
+	tunnelCmd := &cobra.Command{
+		Use:     "tunnel",
+		Aliases: []string{"t"},
+		Short:   "Interact with a ziti tunnel process using the IPC agent",
+	}
+
+	agentCmd.AddCommand(tunnelCmd)
+	tunnelCmd.AddCommand(NewSimpleAgentCmd("dump-sdk", tunnelpkg.AgentDump, p, "return sdk context information"))
 
 	return agentCmd
 }

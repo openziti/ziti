@@ -32,7 +32,7 @@ type Dialer interface {
 
 type InspectableDialer interface {
 	Dialer
-	InspectTerminator(id string, destination string, fixInvalid bool) (bool, string)
+	InspectTerminator(id string, destination string, fixInvalid bool, postCreate bool) (bool, bool, string)
 }
 
 type Inspectable interface {

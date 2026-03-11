@@ -434,11 +434,12 @@ type ManagerImpl struct {
 	ClusterId      string
 	NodeId         string
 	events.EventEmmiter
-	heartbeatRunner    runner.Runner
-	heartbeatOperation *heartbeatOperation
-	currentSync        string
-	syncLock           sync.Mutex
-	rdmLock            sync.RWMutex
+	heartbeatRunner      runner.Runner
+	heartbeatOperation   *heartbeatOperation
+	currentSync          string
+	syncLock             sync.Mutex
+	rdmLock              sync.RWMutex
+	rmdReplaceInProgress atomic.Bool
 
 	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
@@ -917,6 +918,12 @@ func (self *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 // RouterDataModel returns the current router data model containing
 // network topology and policy information.
 func (self *ManagerImpl) RouterDataModel() *common.RouterDataModel {
+	// If a router data model replace is in progress, we need to wait for it to be fully
+	// initialized before we get it, otherwise there's the possibility of race conditions
+	// Should happen rarely, so a sleep is the simplest solution
+	for self.rmdReplaceInProgress.Load() {
+		time.Sleep(100 * time.Millisecond)
+	}
 	return self.routerDataModel.Load()
 }
 
@@ -925,6 +932,9 @@ func (self *ManagerImpl) RouterDataModel() *common.RouterDataModel {
 func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool) {
 	self.rdmLock.Lock()
 	defer self.rdmLock.Unlock()
+
+	self.rmdReplaceInProgress.Store(true)
+	defer self.rmdReplaceInProgress.Store(false)
 
 	index := model.CurrentIndex()
 	logger := pfxlog.Logger().WithField("index", index)

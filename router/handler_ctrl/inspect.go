@@ -170,6 +170,8 @@ func (context *inspectRequestContext) processLocal() {
 			context.handleJsonResponse(requested, result)
 		} else if strings.EqualFold(lc, inspect.RouterEdgeCircuitsKey) || strings.EqualFold(lc, inspect.RouterSdkCircuitsKey) {
 			context.inspectXgListener(requested)
+		} else if strings.HasPrefix(lc, "sdk-context:") {
+			context.inspectXgListener(requested)
 		}
 	}
 }
