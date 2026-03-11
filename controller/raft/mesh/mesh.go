@@ -61,6 +61,8 @@ const (
 	RaftDisconnectType = 2052
 
 	ChannelTypeMesh = "ctrl.mesh"
+
+	RecentDialInterval = 5 * time.Minute
 )
 
 type Peer struct {
@@ -269,6 +271,11 @@ func (self *Peer) closeRaftConn(peerConn *raftPeerConn, timeout time.Duration) e
 	return nil
 }
 
+type dialRecord struct {
+	lastAttempt time.Time
+	peerVersion *versions.VersionInfo // nil if hello didn't complete
+}
+
 type meshAddr struct {
 	network string
 	addr    string
@@ -315,6 +322,7 @@ type Mesh interface {
 
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
+	CleanupDialRecords()
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -332,6 +340,7 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 			addr:    string(raftAddr),
 		},
 		Peers:                map[string]*Peer{},
+		dialRecords:          map[string]*dialRecord{},
 		closeNotify:          make(chan struct{}),
 		raftAccepts:          make(chan *raftPeerConn),
 		version:              env.GetVersionProvider(),
@@ -347,6 +356,7 @@ type impl struct {
 	raftAddr             raft.ServerAddress
 	netAddr              net.Addr
 	Peers                map[string]*Peer
+	dialRecords          map[string]*dialRecord
 	lock                 sync.RWMutex
 	closeNotify          chan struct{}
 	closed               atomic.Bool
@@ -461,6 +471,19 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		headerProvider.Apply(headers)
 	}
 
+	// Check if a recent dial to this address failed (e.g., hello too large for an old peer).
+	// If so, strip the new signing cert header so only the legacy header is sent, allowing
+	// the connection to succeed with old controllers that enforce the smaller hello limit.
+	self.lock.RLock()
+	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < RecentDialInterval {
+		if rec.peerVersion == nil {
+			delete(headers, SigningCertHeader)
+		} else if hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
+			delete(headers, SigningCertHeader)
+		}
+	}
+	self.lock.RUnlock()
+
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity: self.nodeId,
 		Endpoint: addr,
@@ -523,6 +546,12 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		peer.Version = versionInfo
 		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
+		self.lock.Lock()
+		if rec := self.dialRecords[address]; rec != nil {
+			rec.peerVersion = versionInfo
+		}
+		self.lock.Unlock()
+
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
 		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
@@ -530,6 +559,15 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 		return self.PeerConnected(peer, true)
 	})
+
+	self.lock.Lock()
+	rec := self.dialRecords[address]
+	if rec == nil {
+		rec = &dialRecord{}
+		self.dialRecords[address] = rec
+	}
+	rec.lastAttempt = time.Now()
+	self.lock.Unlock()
 
 	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
 		// introduce random delay in case ctrls are dialing each other and closing each other's connections
@@ -904,6 +942,16 @@ func (self *impl) GetPeers() map[string]*Peer {
 
 func (self *impl) IsReadOnly() bool {
 	return self.readonly.Load()
+}
+
+func (self *impl) CleanupDialRecords() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	for addr, rec := range self.dialRecords {
+		if time.Since(rec.lastAttempt) > 5*time.Minute {
+			delete(self.dialRecords, addr)
+		}
+	}
 }
 
 type HeaderProvider interface {

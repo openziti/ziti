@@ -57,6 +57,11 @@ import (
 	"github.com/teris-io/shortid"
 )
 
+const (
+	LeaderCheckInterval = 5 * time.Second
+	MeshCleanupInterval = time.Minute
+)
+
 type ClusterEvent uint32
 
 func (self ClusterEvent) String() string {
@@ -675,7 +680,7 @@ func (self *Controller) Init() error {
 
 func (self *Controller) StartEventGeneration() {
 	self.addEventsHandlers()
-	self.ObserveLeaderChanges()
+	go self.eventLoop()
 	self.setupPreferredLeaderTransfer()
 }
 
@@ -800,52 +805,42 @@ type clusterEventState struct {
 	leaderId       string
 }
 
-func (self *Controller) ObserveLeaderChanges() {
-	go func() {
-		leaderAddr, leaderId := self.Raft.LeaderWithID()
+func (self *Controller) eventLoop() {
+	leaderAddr, leaderId := self.Raft.LeaderWithID()
 
-		eventState := &clusterEventState{
-			isReadWrite: true,
-			hasLeader:   leaderAddr != "",
-			noLeaderAt:  time.Now(),
-			leaderId:    string(leaderId),
-		}
+	eventState := &clusterEventState{
+		isReadWrite: true,
+		hasLeader:   leaderAddr != "",
+		noLeaderAt:  time.Now(),
+		leaderId:    string(leaderId),
+	}
 
-		if eventState.hasLeader {
-			self.handleClusterStateChange(ClusterEventHasLeader, eventState)
-		} else {
-			self.handleClusterStateChange(ClusterEventIsLeaderless, eventState)
-		}
+	if eventState.hasLeader {
+		self.handleClusterStateChange(ClusterEventHasLeader, eventState)
+	} else {
+		self.handleClusterStateChange(ClusterEventIsLeaderless, eventState)
+	}
 
-		ticker := time.NewTicker(time.Second * 5)
-		defer ticker.Stop()
+	leaderTicker := time.NewTicker(LeaderCheckInterval)
+	defer leaderTicker.Stop()
 
-		first := false
+	dialCleanupTicker := time.NewTicker(MeshCleanupInterval)
+	defer dialCleanupTicker.Stop()
 
-		for {
-			select {
-			case observation := <-self.clusterEvents:
-				self.processRaftObservation(observation, eventState)
-			case <-ticker.C:
-				if first {
-					// delay this check because it seems like raft generates observations for leader state, so if we do this
-					// first we're going to get duplicates
-					if self.Raft.State() == raft.Leader {
-						if wasLeader := self.isLeader.Swap(true); !wasLeader {
-							self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
-						}
-					}
-					first = false
-				}
-
-				if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
-					pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
-						Warn("cluster running without leader for longer than configured threshold")
-					eventState.warningEmitted = true
-				}
+	for {
+		select {
+		case observation := <-self.clusterEvents:
+			self.processRaftObservation(observation, eventState)
+		case <-leaderTicker.C:
+			if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
+				pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
+					Warn("cluster running without leader for longer than configured threshold")
+				eventState.warningEmitted = true
 			}
+		case <-dialCleanupTicker.C:
+			self.Mesh.CleanupDialRecords()
 		}
-	}()
+	}
 }
 
 func (self *Controller) processRaftObservation(observation raft.Observation, eventState *clusterEventState) {
