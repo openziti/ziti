@@ -10,6 +10,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
+	managementAuthenticator "github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
@@ -616,4 +617,35 @@ func (helper *ManagementHelperClient) GetCurrentApiSessionDetailResponse() (*man
 	}
 
 	return resp, nil
+}
+
+func (helper *ManagementHelperClient) CreateUpdbIdentityWithAuthPolicy(authPolicyId string) (*edgeApis.UpdbCredentials, error) {
+	username := eid.New()
+	password := eid.New()
+
+	createIdentityParams := managementIdentity.NewCreateIdentityParams()
+	createIdentityParams.Identity = &rest_model.IdentityCreate{
+		AuthPolicyID: ToPtr(authPolicyId),
+		IsAdmin:      ToPtr(false),
+		Name:         ToPtr(username),
+		Type:         ToPtr(rest_model.IdentityTypeDefault),
+	}
+	createIdentityResp, err := helper.API.Identity.CreateIdentity(createIdentityParams, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not create identity: %w", rest_util.WrapErr(err))
+	}
+
+	createAuthenticatorParams := managementAuthenticator.NewCreateAuthenticatorParams()
+	createAuthenticatorParams.Authenticator = &rest_model.AuthenticatorCreate{
+		IdentityID: ToPtr(createIdentityResp.Payload.Data.ID),
+		Method:     ToPtr("updb"),
+		Password:   password,
+		Username:   username,
+	}
+	_, err = helper.API.Authenticator.CreateAuthenticator(createAuthenticatorParams, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not create updb authenticator: %w", rest_util.WrapErr(err))
+	}
+
+	return edgeApis.NewUpdbCredentials(username, password), nil
 }

@@ -62,7 +62,7 @@ type Storage interface {
 	// Authenticate attempts to perform authentication on supplied credentials for all known authentication methods
 	Authenticate(authCtx model.AuthContext, id string, configTypes []string) (*AuthRequest, error)
 
-	// VerifyTotpForAuthRequest will verify the supplied code for the current authentication request's subject
+	// VerifyTotp will verify the supplied code for the current authentication request's subject
 	// A change context is required for the removal of one-time TOTP recovery codes
 	VerifyTotp(ctx *change.Context, code string, id string) (*AuthRequest, error)
 
@@ -73,7 +73,8 @@ type Storage interface {
 
 	// CompleteTotpEnrollment will validate the supplied code against the current unverified MFA record for
 	// the identity in scope. If MFA enrollment hasn't been started, StartTotpEnrollment should be used.
-	CompleteTotpEnrollment(ctx *change.Context, authRequestId, code string) error
+	// On success the returned AuthRequest reflects the updated enrollment and AMR state.
+	CompleteTotpEnrollment(ctx *change.Context, authRequestId, code string) (*AuthRequest, error)
 
 	// DeleteTotpEnrollment will delete a current MFA record for the identity in scope. If the MFA record
 	// has been verified, a code must be supplied that passes verification. If the
@@ -288,14 +289,21 @@ func (s *HybridStorage) DeleteTotpEnrollment(changeCtx *change.Context, authRequ
 	return s.env.GetManagers().Mfa.Delete(mfaDetail.Id, changeCtx)
 }
 
-func (s *HybridStorage) CompleteTotpEnrollment(changeCtx *change.Context, authRequestId, code string) error {
+func (s *HybridStorage) CompleteTotpEnrollment(changeCtx *change.Context, authRequestId, code string) (*AuthRequest, error) {
 	authRequest, err := s.GetAuthRequest(authRequestId)
 
 	if err != nil {
-		return errorz.NewUnauthorized()
+		return nil, errorz.NewUnauthorized()
 	}
 
-	return s.env.GetManagers().Mfa.CompleteTotpEnrollment(authRequest.IdentityId, code, changeCtx)
+	if err = s.env.GetManagers().Mfa.CompleteTotpEnrollment(authRequest.IdentityId, code, changeCtx); err != nil {
+		return nil, err
+	}
+
+	authRequest.IsTotpEnrolled = true
+	authRequest.AddAmr(AuthMethodSecondaryTotp)
+
+	return authRequest, nil
 }
 
 func (s *HybridStorage) AddClient(client *Client) {
@@ -990,8 +998,19 @@ func (s *HybridStorage) getPrivateClaims(ctx context.Context, _, _ string, _ []s
 	}
 
 	tsClaims, err := tokenState.AccessClaims.CustomClaims.ToMap()
+	if err != nil {
+		return nil, err
+	}
 
-	return tsClaims, err
+	if amr := tokenState.AccessClaims.AuthenticationMethodsReferences; len(amr) > 0 {
+		tsClaims["amr"] = amr
+	}
+
+	if authTime := tokenState.AccessClaims.AuthTime; authTime != 0 {
+		tsClaims["auth_time"] = int64(authTime)
+	}
+
+	return tsClaims, nil
 }
 
 // GetKeyByIDAndClientID implements the op.Storage interface

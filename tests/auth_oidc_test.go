@@ -3,13 +3,8 @@
 package tests
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
-	"fmt"
-	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"testing"
 	"time"
@@ -28,137 +23,27 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
-	"github.com/zitadel/oidc/v3/pkg/client/rp"
-	httphelper "github.com/zitadel/oidc/v3/pkg/http"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
-
-type testRpServer struct {
-	Server       *http.Server
-	Port         string
-	Listener     net.Listener
-	TokenChan    <-chan *oidc.Tokens[*oidc.IDTokenClaims]
-	CallbackPath string
-	CallbackUri  string
-	LoginUri     string
-}
-
-func (t *testRpServer) Stop() {
-	_ = t.Server.Shutdown(context.Background())
-}
-
-func (t *testRpServer) Start() {
-	go func() {
-		_ = t.Server.Serve(t.Listener)
-	}()
-
-	//allow the server to actually start so connections aren't simply closed by fast followup requests
-	time.Sleep(100 * time.Millisecond)
-}
-
-func newOidcTestRp(apiHost string) (*testRpServer, error) {
-	tokenOutChan := make(chan *oidc.Tokens[*oidc.IDTokenClaims], 1)
-	result := &testRpServer{
-		CallbackPath: "/auth/callback",
-		TokenChan:    tokenOutChan,
-	}
-	var err error
-
-	// random port on localhost for our auth callback server, glob pattern mattching in controller must be on
-	result.Listener, err = net.Listen("tcp", ":0")
-
-	if err != nil {
-		return nil, fmt.Errorf("could not listen on a random port: %w", err)
-	}
-
-	_, result.Port, _ = net.SplitHostPort(result.Listener.Addr().String())
-
-	result.LoginUri = "http://127.0.0.1:" + result.Port + "/login"
-
-	key := []byte("test1234test1234")
-	urlBase := "https://" + apiHost
-	issuer := urlBase + "/oidc"
-	clientID := common.ClaimClientIdOpenZiti
-	clientSecret := ""
-	scopes := []string{"openid", "offline_access"}
-	result.CallbackUri = "http://127.0.0.1:" + result.Port + result.CallbackPath
-
-	cookieHandler := httphelper.NewCookieHandler(key, key, httphelper.WithUnsecure())
-	jar, _ := cookiejar.New(&cookiejar.Options{})
-	httpClient := &http.Client{
-
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			Proxy:                 http.ProxyFromEnvironment,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-		CheckRedirect: nil,
-		Jar:           jar,
-		Timeout:       10 * time.Second,
-	}
-
-	options := []rp.Option{
-		rp.WithHTTPClient(httpClient),
-		rp.WithPKCE(cookieHandler),
-	}
-
-	provider, err := rp.NewRelyingPartyOIDC(context.Background(), issuer, clientID, clientSecret, result.CallbackUri, scopes, options...)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not create rp OIDC: %w", err)
-	}
-
-	state := func() string {
-		return uuid.New().String()
-	}
-	serverMux := http.NewServeMux()
-
-	authhandler := rp.AuthURLHandler(state, provider, rp.WithPromptURLParam("Welcome back!"))
-	loginHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		authhandler.ServeHTTP(writer, request)
-	})
-
-	serverMux.Handle("/login", loginHandler)
-
-	marshalToken := func(w http.ResponseWriter, r *http.Request, tokens *oidc.Tokens[*oidc.IDTokenClaims], state string, relyingParty rp.RelyingParty) {
-		tokenOutChan <- tokens
-		_, _ = w.Write([]byte("done!"))
-	}
-
-	serverMux.Handle(result.CallbackPath, rp.CodeExchangeHandler(marshalToken, provider))
-
-	result.Server = &http.Server{Handler: serverMux}
-
-	return result, nil
-}
 
 func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
 
-	rpServer, err := newOidcTestRp(ctx.ApiHost)
-	ctx.Req.NoError(err)
+	clientHelper := ctx.NewEdgeClientApi(nil)
 
-	rpServer.Start()
-	defer rpServer.Stop()
+	managementHelper := ctx.NewEdgeManagementApi(nil)
+	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	adminCreds.CaPool = ctx.ControllerCaPool()
+	_, err := managementHelper.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(rest_util.WrapErr(err))
 
 	t.Run("attempt to auth with multipart form data, expect unsupported media type", func(t *testing.T) {
 		ctx.NextTest(t)
 
 		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
 
 		loginPath := "https://" + ctx.ApiHost + "/oidc/login/password?authRequestID=12345"
-
-		ctx.Req.NoError(err)
-		ctx.Req.NotEmpty(loginPath)
 
 		resp, err := client.R().SetMultipartFormData(map[string]string{
 			"username": "admin",
@@ -168,40 +53,15 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		ctx.Req.Equal(http.StatusUnsupportedMediaType, resp.StatusCode())
 	})
 
-	t.Run("updb with auth request id in body", func(t *testing.T) {
+	t.Run("updb auth", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-		resp, err := client.R().Get(rpServer.LoginUri)
-
+		tokens, _, err := clientHelper.RawOidcAuthRequest(adminCreds)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-		ctx.Req.NotEmpty(authRequestId)
-
-		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
-
-		resp, err = client.R().SetFormData(map[string]string{"id": authRequestId, "username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
-
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
-
-		select {
-		case tokens := <-rpServer.TokenChan:
-			outTokens = tokens
-		case <-time.After(5 * time.Second):
-			ctx.Fail("no tokens received, hit timeout")
-		}
-
-		ctx.Req.NotNil(outTokens)
-		ctx.Req.NotEmpty(outTokens.IDToken)
-		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
-		ctx.Req.NotEmpty(outTokens.AccessToken)
-		ctx.Req.NotEmpty(outTokens.RefreshToken)
+		ctx.Req.NotNil(tokens)
+		ctx.Req.NotEmpty(tokens.IDToken)
+		ctx.Req.NotEmpty(tokens.AccessToken)
+		ctx.Req.NotEmpty(tokens.RefreshToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
 			ctx.NextTest(t)
@@ -209,7 +69,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 			accessClaims := &common.AccessClaims{}
 
-			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+			_, _, err := parser.ParseUnverified(tokens.AccessToken, accessClaims)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
@@ -219,43 +79,36 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NotEmpty(accessClaims.JWTID)
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
+			ctx.Req.Contains(accessClaims.AuthenticationMethodsReferences, oidc_auth.AuthMethodPassword)
+			ctx.Req.NotZero(accessClaims.AuthTime)
 		})
 	})
 
 	t.Run("updb with auth request id in query string", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-		resp, err := client.R().Get(rpServer.LoginUri)
+		result, err := clientHelper.OidcAuthorize(adminCreds)
+		ctx.Req.NoError(err)
+
+		opLoginUri := "https://" + ctx.ApiHost + "/oidc/login/username?authRequestID=" + result.AuthRequestId
+
+		resp, err := result.Client.R().SetFormData(map[string]string{
+			"username": ctx.AdminAuthenticator.Username,
+			"password": ctx.AdminAuthenticator.Password,
+		}).Post(opLoginUri)
 
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusFound, resp.StatusCode())
 
-		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-		ctx.Req.NotEmpty(authRequestId)
+		locUrl, parseErr := url.Parse(resp.Header().Get("Location"))
+		ctx.Req.NoError(parseErr)
+		code := locUrl.Query().Get("code")
+		ctx.Req.NotEmpty(code)
 
-		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?authRequestID=" + authRequestId
-
-		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
-
+		tokens, err := result.Exchange(code)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
-
-		select {
-		case tokens := <-rpServer.TokenChan:
-			outTokens = tokens
-		case <-time.After(5 * time.Second):
-			ctx.Fail("no tokens received, hit timeout")
-		}
-
-		ctx.Req.NotNil(outTokens)
-		ctx.Req.NotEmpty(outTokens.IDToken)
-		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
-		ctx.Req.NotEmpty(outTokens.AccessToken)
-		ctx.Req.NotEmpty(outTokens.RefreshToken)
+		ctx.Req.NotNil(tokens)
+		ctx.Req.NotEmpty(tokens.AccessToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
 			ctx.NextTest(t)
@@ -263,7 +116,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 			accessClaims := &common.AccessClaims{}
 
-			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+			_, _, err := parser.ParseUnverified(tokens.AccessToken, accessClaims)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
@@ -273,43 +126,59 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NotEmpty(accessClaims.JWTID)
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
+			ctx.Req.Contains(accessClaims.AuthenticationMethodsReferences, oidc_auth.AuthMethodPassword)
+			ctx.Req.NotZero(accessClaims.AuthTime)
 		})
 	})
 
 	t.Run("updb with id in query string", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-		resp, err := client.R().Get(rpServer.LoginUri)
-
+		result, err := clientHelper.OidcAuthorize(adminCreds)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-		ctx.Req.NotEmpty(authRequestId)
+		opLoginUri := "https://" + ctx.ApiHost + "/oidc/login/username?id=" + result.AuthRequestId
 
-		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
-
-		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": ctx.AdminAuthenticator.Password}).Post(opLoginUri)
-
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
-
-		select {
-		case tokens := <-rpServer.TokenChan:
-			outTokens = tokens
-		case <-time.After(5 * time.Second):
-			ctx.Fail("no tokens received, hit timeout")
+		payload := &oidc_auth.OidcUpdbCreds{
+			Authenticate: rest_model.Authenticate{
+				EnvInfo: &rest_model.EnvInfo{
+					Arch:      "ARCH1",
+					Domain:    "DOMAIN1",
+					Hostname:  "HOSTNAME1",
+					Os:        "OS1",
+					OsRelease: "OSRELEASE1",
+					OsVersion: "1.1.1",
+				},
+				Password: rest_model.Password(ctx.AdminAuthenticator.Password),
+				SdkInfo: &rest_model.SdkInfo{
+					AppID:      "APPID1",
+					AppVersion: "2.2.2",
+					Branch:     "BRANCH1",
+					Revision:   "REVISION1",
+					Type:       "TEST1",
+					Version:    "3.3.3",
+				},
+				Username: rest_model.Username(ctx.AdminAuthenticator.Username),
+			},
+			AuthRequestBody: oidc_auth.AuthRequestBody{
+				AuthRequestId: result.AuthRequestId,
+			},
 		}
 
-		ctx.Req.NotNil(outTokens)
-		ctx.Req.NotEmpty(outTokens.IDToken)
-		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
-		ctx.Req.NotEmpty(outTokens.AccessToken)
-		ctx.Req.NotEmpty(outTokens.RefreshToken)
+		resp, err := result.Client.R().SetBody(payload).Post(opLoginUri)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusFound, resp.StatusCode())
+
+		locUrl, parseErr := url.Parse(resp.Header().Get("Location"))
+		ctx.Req.NoError(parseErr)
+		code := locUrl.Query().Get("code")
+		ctx.Req.NotEmpty(code)
+
+		tokens, err := result.Exchange(code)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(tokens)
+		ctx.Req.NotEmpty(tokens.AccessToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
 			ctx.NextTest(t)
@@ -317,7 +186,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 			accessClaims := &common.AccessClaims{}
 
-			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+			_, _, err := parser.ParseUnverified(tokens.AccessToken, accessClaims)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
@@ -327,117 +196,30 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NotEmpty(accessClaims.JWTID)
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
-		})
+			ctx.Req.Contains(accessClaims.AuthenticationMethodsReferences, oidc_auth.AuthMethodPassword)
+			ctx.Req.NotZero(accessClaims.AuthTime)
 
-		t.Run("updb sdk and env info", func(t *testing.T) {
-			ctx.testContextChanged(t)
-
-			client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-			client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-			resp, err := client.R().Get(rpServer.LoginUri)
-
-			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-			authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-			ctx.Req.NotEmpty(authRequestId)
-
-			opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
-
-			payload := &oidc_auth.OidcUpdbCreds{
-				Authenticate: rest_model.Authenticate{
-					EnvInfo: &rest_model.EnvInfo{
-						Arch:      "ARCH1",
-						Domain:    "DOMAIN1",
-						Hostname:  "HOSTNAME1",
-						Os:        "OS1",
-						OsRelease: "OSRELEASE1",
-						OsVersion: "1.1.1",
-					},
-					Password: rest_model.Password(ctx.AdminAuthenticator.Password),
-					SdkInfo: &rest_model.SdkInfo{
-						AppID:      "APPID1",
-						AppVersion: "2.2.2",
-						Branch:     "BRANCH1",
-						Revision:   "REVISION1",
-						Type:       "TEST1",
-						Version:    "3.3.3",
-					},
-					Username: rest_model.Username(ctx.AdminAuthenticator.Username),
-				},
-				AuthRequestBody: oidc_auth.AuthRequestBody{
-					AuthRequestId: authRequestId,
-				},
-			}
-
-			resp, err = client.R().SetBody(payload).Post(opLoginUri)
-
-			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-			var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
-
-			select {
-			case tokens := <-rpServer.TokenChan:
-				outTokens = tokens
-			case <-time.After(5 * time.Second):
-				ctx.Fail("no tokens received, hit timeout")
-			}
-
-			ctx.Req.NotNil(outTokens)
-			ctx.Req.NotEmpty(outTokens.IDToken)
-			ctx.Req.NotEmpty(outTokens.IDTokenClaims)
-			ctx.Req.NotEmpty(outTokens.AccessToken)
-			ctx.Req.NotEmpty(outTokens.RefreshToken)
-
-			t.Run("access token has expected values", func(t *testing.T) {
+			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				parser := jwt.NewParser()
 
-				accessClaims := &common.AccessClaims{}
-
-				_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+				time.Sleep(time.Second)
+				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
 
 				ctx.Req.NoError(err)
-				ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
-				ctx.Req.False(accessClaims.IsCertExtendable)
-				ctx.Req.True(accessClaims.IsAdmin)
-				ctx.Req.NotEmpty(accessClaims.ApiSessionId)
-				ctx.Req.NotEmpty(accessClaims.JWTID)
-				ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
-				ctx.Req.NotEmpty(accessClaims.Subject)
 
-				t.Run("has the correct sdk and env info", func(t *testing.T) {
-					ctx.testContextChanged(t)
+				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
+				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
+				ctx.Req.Equal(payload.SdkInfo.Branch, identityDetail.SdkInfo.Branch)
+				ctx.Req.Equal(payload.SdkInfo.Revision, identityDetail.SdkInfo.Revision)
+				ctx.Req.Equal(payload.SdkInfo.Type, identityDetail.SdkInfo.Type)
+				ctx.Req.Equal(payload.SdkInfo.Version, identityDetail.SdkInfo.Version)
 
-					managementClient := ctx.NewEdgeManagementApi(nil)
-					apiSessionOidc := &edge_apis.ApiSessionOidc{
-						OidcTokens:     outTokens,
-						RequestHeaders: nil,
-					}
-
-					apiSession := edge_apis.ApiSession(apiSessionOidc)
-					managementClient.ApiSession.Store(&apiSession)
-
-					time.Sleep(time.Second)
-					identityDetail, err := managementClient.GetIdentity(accessClaims.Subject)
-
-					ctx.Req.NoError(err)
-
-					ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
-					ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
-					ctx.Req.Equal(payload.SdkInfo.Branch, identityDetail.SdkInfo.Branch)
-					ctx.Req.Equal(payload.SdkInfo.Revision, identityDetail.SdkInfo.Revision)
-					ctx.Req.Equal(payload.SdkInfo.Type, identityDetail.SdkInfo.Type)
-					ctx.Req.Equal(payload.SdkInfo.Version, identityDetail.SdkInfo.Version)
-
-					ctx.Req.Equal(payload.EnvInfo.Arch, identityDetail.EnvInfo.Arch)
-					ctx.Req.Equal(payload.EnvInfo.Domain, identityDetail.EnvInfo.Domain)
-					ctx.Req.Equal(payload.EnvInfo.Hostname, identityDetail.EnvInfo.Hostname)
-					ctx.Req.Equal(payload.EnvInfo.Os, identityDetail.EnvInfo.Os)
-					ctx.Req.Equal(payload.EnvInfo.OsRelease, identityDetail.EnvInfo.OsRelease)
-					ctx.Req.Equal(payload.EnvInfo.OsVersion, identityDetail.EnvInfo.OsVersion)
-				})
+				ctx.Req.Equal(payload.EnvInfo.Arch, identityDetail.EnvInfo.Arch)
+				ctx.Req.Equal(payload.EnvInfo.Domain, identityDetail.EnvInfo.Domain)
+				ctx.Req.Equal(payload.EnvInfo.Hostname, identityDetail.EnvInfo.Hostname)
+				ctx.Req.Equal(payload.EnvInfo.Os, identityDetail.EnvInfo.Os)
+				ctx.Req.Equal(payload.EnvInfo.OsRelease, identityDetail.EnvInfo.OsRelease)
+				ctx.Req.Equal(payload.EnvInfo.OsVersion, identityDetail.EnvInfo.OsVersion)
 			})
 		})
 	})
@@ -445,19 +227,15 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	t.Run("updb with invalid password", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-		resp, err := client.R().Get(rpServer.LoginUri)
-
+		result, err := clientHelper.OidcAuthorize(adminCreds)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-		ctx.Req.NotEmpty(authRequestId)
+		opLoginUri := "https://" + ctx.ApiHost + "/oidc/login/username?id=" + result.AuthRequestId
 
-		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username?id=" + authRequestId
-
-		resp, err = client.R().SetFormData(map[string]string{"username": ctx.AdminAuthenticator.Username, "password": "invalid"}).
+		resp, err := result.Client.R().SetFormData(map[string]string{
+			"username": ctx.AdminAuthenticator.Username,
+			"password": "invalid",
+		}).
 			SetHeader("Accept", "application/json").
 			Post(opLoginUri)
 
@@ -473,17 +251,13 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 		_, certAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("test", false)
 
-		client := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransportWithClientCert(certAuth.certs, certAuth.key)))
-		client.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-		resp, err := client.R().Get(rpServer.LoginUri)
+		certCreds := edge_apis.NewCertCredentials(certAuth.certs, certAuth.key)
+		certCreds.CaPool = ctx.ControllerCaPool()
 
+		result, err := clientHelper.OidcAuthorize(certCreds)
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-		ctx.Req.NotEmpty(authRequestId)
-
-		opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/cert"
+		opLoginUri := "https://" + ctx.ApiHost + "/oidc/login/cert"
 
 		payload := &oidc_auth.OidcUpdbCreds{
 			Authenticate: rest_model.Authenticate{
@@ -505,29 +279,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 				},
 			},
 			AuthRequestBody: oidc_auth.AuthRequestBody{
-				AuthRequestId: authRequestId,
+				AuthRequestId: result.AuthRequestId,
 			},
 		}
 
-		resp, err = client.R().SetBody(payload).Post(opLoginUri)
+		resp, err := result.Client.R().SetBody(payload).Post(opLoginUri)
 
 		ctx.Req.NoError(err)
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusFound, resp.StatusCode())
 
-		var outTokens *oidc.Tokens[*oidc.IDTokenClaims]
+		locUrl, parseErr := url.Parse(resp.Header().Get("Location"))
+		ctx.Req.NoError(parseErr)
+		code := locUrl.Query().Get("code")
+		ctx.Req.NotEmpty(code)
 
-		select {
-		case tokens := <-rpServer.TokenChan:
-			outTokens = tokens
-		case <-time.After(5 * time.Second):
-			ctx.Fail("no tokens received, hit timeout")
-		}
-
-		ctx.Req.NotNil(outTokens)
-		ctx.Req.NotEmpty(outTokens.IDToken)
-		ctx.Req.NotEmpty(outTokens.IDTokenClaims)
-		ctx.Req.NotEmpty(outTokens.AccessToken)
-		ctx.Req.NotEmpty(outTokens.RefreshToken)
+		tokens, err := result.Exchange(code)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(tokens)
+		ctx.Req.NotEmpty(tokens.AccessToken)
 
 		t.Run("access token has expected values", func(t *testing.T) {
 			ctx.NextTest(t)
@@ -535,7 +304,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 			accessClaims := &common.AccessClaims{}
 
-			_, _, err := parser.ParseUnverified(outTokens.AccessToken, accessClaims)
+			_, _, err := parser.ParseUnverified(tokens.AccessToken, accessClaims)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(accessClaims.AuthenticatorId)
@@ -545,24 +314,13 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.NotEmpty(accessClaims.JWTID)
 			ctx.Req.Equal(common.TokenTypeAccess, accessClaims.Type)
 			ctx.Req.NotEmpty(accessClaims.Subject)
+			ctx.Req.Contains(accessClaims.AuthenticationMethodsReferences, oidc_auth.AuthMethodCert)
+			ctx.Req.NotZero(accessClaims.AuthTime)
 
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				managementClient := ctx.NewEdgeManagementApi(nil)
-				apiSessionOidc := &edge_apis.ApiSessionLegacy{
-					Detail: &rest_model.CurrentAPISessionDetail{
-						APISessionDetail:  ctx.AdminManagementSession.session.AuthResponse.APISessionDetail,
-						ExpirationSeconds: nil,
-						ExpiresAt:         nil,
-					},
-					RequestHeaders: nil,
-				}
-
-				apiSession := edge_apis.ApiSession(apiSessionOidc)
-				managementClient.ApiSession.Store(&apiSession)
-
-				identityDetail, err := managementClient.GetIdentity(accessClaims.Subject)
+				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
 
 				ctx.Req.NoError(err)
 
@@ -587,22 +345,6 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 	t.Run("test cert auth totp ext-jwt", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + "/edge/management/v1")
-		ctx.Req.NoError(err)
-
-		managementApiUrls := []*url.URL{managementApiUrl}
-
-		managementClient := edge_apis.NewManagementApiClient(managementApiUrls, ctx.ControllerConfig.Id.CA(), func(resp chan string) {
-			resp <- ""
-		})
-
-		adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
-
-		apiSession, err := managementClient.Authenticate(adminCreds, nil)
-		ctx.Req.NoError(rest_util.WrapErr(err))
-		ctx.NotNil(apiSession)
-
-		ctx.NextTest(t)
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
 
 		clientId := "test-client-id-99"
@@ -622,7 +364,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ExternalAuthURL: ToPtr(extAuthUrl),
 		}
 
-		extJwtCreateResp, err := managementClient.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParam, nil)
+		extJwtCreateResp, err := managementHelper.API.ExternalJWTSigner.CreateExternalJWTSigner(createExtJwtParam, nil)
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.Req.NotNil(extJwtCreateResp)
 
@@ -654,7 +396,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			},
 		}
 
-		authPolicyCreateResp, err := managementClient.API.AuthPolicy.CreateAuthPolicy(createAuthPolicyParams, nil)
+		authPolicyCreateResp, err := managementHelper.API.AuthPolicy.CreateAuthPolicy(createAuthPolicyParams, nil)
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.Req.NotNil(authPolicyCreateResp)
 
@@ -669,7 +411,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			Type:         ToPtr(rest_model.IdentityTypeDefault),
 		}
 
-		createIdentityResp, err := managementClient.API.Identity.CreateIdentity(createIdentityParams, nil)
+		createIdentityResp, err := managementHelper.API.Identity.CreateIdentity(createIdentityParams, nil)
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.Req.NotNil(createIdentityResp)
 
@@ -684,25 +426,24 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			Username:   identityName,
 		}
 
-		createIdentityUpdbAuthenticatorResp, err := managementClient.API.Authenticator.CreateAuthenticator(createIdentityUpdbAuthenticator, nil)
+		createIdentityUpdbAuthenticatorResp, err := managementHelper.API.Authenticator.CreateAuthenticator(createIdentityUpdbAuthenticator, nil)
 		ctx.Req.NoError(rest_util.WrapErr(err))
 		ctx.Req.NotNil(createIdentityUpdbAuthenticatorResp)
 
+		identityCreds := edge_apis.NewUpdbCredentials(identityName, identityPassword)
+		identityCreds.CaPool = ctx.ControllerCaPool()
+
 		t.Run("can authenticate via UPDB and see two auth queries", func(t *testing.T) {
 			ctx.NextTest(t)
-			identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-			identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-			resp, err := identityClient.R().Get(rpServer.LoginUri)
 
+			result, err := clientHelper.OidcAuthorize(identityCreds)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-			ctx.Req.NotEmpty(authRequestId)
+			opLoginUri := "https://" + ctx.ApiHost + "/oidc/login/username"
 
-			opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
-
-			resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId, "username": identityName, "password": identityPassword}).Post(opLoginUri)
+			resp, err := result.Client.R().SetHeader("content-type", "application/json").
+				SetBody(map[string]string{"id": result.AuthRequestId, "username": identityName, "password": identityPassword}).
+				Post(opLoginUri)
 
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -739,6 +480,9 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].Scopes[1], scope2)
 			ctx.Req.Equal(parsedBody.AuthQueries[extJwtIdx].HTTPURL, extAuthUrl)
 
+			totpEnrollUrl := "https://" + ctx.ApiHost + "/oidc/login/totp/enroll"
+			totpVerifyUrl := "https://" + ctx.ApiHost + "/oidc/login/totp/enroll/verify"
+
 			t.Run("totp enroll flag is false", func(t *testing.T) {
 				ctx.NextTest(t)
 
@@ -748,10 +492,11 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("can start totp enroll", func(t *testing.T) {
 				ctx.NextTest(t)
 
-				totpEnrollUrl := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/totp/enroll"
-				totpVerifyUrl := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/totp/enroll/verify"
 				mfaDetail := &rest_model.DetailMfa{}
-				resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).SetResult(mfaDetail).Post(totpEnrollUrl)
+				resp, err = result.Client.R().SetHeader("content-type", "application/json").
+					SetBody(map[string]string{"id": result.AuthRequestId}).
+					SetResult(mfaDetail).
+					Post(totpEnrollUrl)
 
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
@@ -766,7 +511,9 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 				t.Run("starting again errors", func(t *testing.T) {
 					ctx.NextTest(t)
 					apiError := &rest_model.APIError{}
-					resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).Post(totpEnrollUrl)
+					resp, err = result.Client.R().SetHeader("content-type", "application/json").
+						SetBody(map[string]string{"id": result.AuthRequestId}).
+						Post(totpEnrollUrl)
 
 					ctx.Req.NoError(err)
 					ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
@@ -779,14 +526,19 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 				t.Run("deleting unverified MFA requires no code", func(t *testing.T) {
 					ctx.NextTest(t)
-					resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).Delete(totpEnrollUrl)
+					resp, err = result.Client.R().SetHeader("content-type", "application/json").
+						SetBody(map[string]string{"id": result.AuthRequestId}).
+						Delete(totpEnrollUrl)
 					ctx.Req.NoError(err)
 					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 					t.Run("after deleting can restart", func(t *testing.T) {
 						ctx.NextTest(t)
 
-						resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId}).SetResult(mfaDetail).Post(totpEnrollUrl)
+						resp, err = result.Client.R().SetHeader("content-type", "application/json").
+							SetBody(map[string]string{"id": result.AuthRequestId}).
+							SetResult(mfaDetail).
+							Post(totpEnrollUrl)
 
 						ctx.Req.NoError(err)
 						ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
@@ -802,8 +554,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := "123456"
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -814,8 +566,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := "@#$^%$#%$&%$&#%&%$#"
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -826,8 +578,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := ""
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -838,8 +590,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := "1"
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -850,8 +602,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := "430248509285928525809580250953850938520958032598058350913850585098103598103598135091385098109589358150913809s1"
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -862,8 +614,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 							ctx.NextTest(t)
 
 							invalidCode := mfaDetail.RecoveryCodes[0]
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": invalidCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": invalidCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -879,8 +631,8 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 							validCode := computeMFACode(secret)
 
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").
-								SetBody(map[string]string{"id": authRequestId, "code": validCode}).
+							resp, err = result.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": result.AuthRequestId, "code": validCode}).
 								Post(totpVerifyUrl)
 
 							ctx.Req.NoError(err)
@@ -889,20 +641,15 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 
 						t.Run("reauthenticating shows that totp is enrolled", func(t *testing.T) {
 							ctx.NextTest(t)
-							ctx.NextTest(t)
-							identityClient := resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
-							identityClient.SetRedirectPolicy(resty.DomainCheckRedirectPolicy("127.0.0.1", "localhost"))
-							resp, err := identityClient.R().Get(rpServer.LoginUri)
 
+							reAuthResult, err := clientHelper.OidcAuthorize(identityCreds)
 							ctx.Req.NoError(err)
-							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-							authRequestId := resp.Header().Get(oidc_auth.AuthRequestIdHeader)
-							ctx.Req.NotEmpty(authRequestId)
+							reAuthLoginUri := "https://" + ctx.ApiHost + "/oidc/login/username"
 
-							opLoginUri := "https://" + resp.RawResponse.Request.URL.Host + "/oidc/login/username"
-
-							resp, err = identityClient.R().SetHeader("content-type", "application/json").SetBody(map[string]string{"id": authRequestId, "username": identityName, "password": identityPassword}).Post(opLoginUri)
+							resp, err := reAuthResult.Client.R().SetHeader("content-type", "application/json").
+								SetBody(map[string]string{"id": reAuthResult.AuthRequestId, "username": identityName, "password": identityPassword}).
+								Post(reAuthLoginUri)
 
 							ctx.Req.NoError(err)
 							ctx.Req.Equal(http.StatusOK, resp.StatusCode())

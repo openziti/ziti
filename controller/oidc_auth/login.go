@@ -274,6 +274,7 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 
 	if !authRequest.HasAmr(AuthMethodSecondaryTotp) {
 		renderTotp(w, id, errors.New("TOTP supplied but not enabled or required on identity"), nil)
+		return
 	}
 
 	callbackUrl := l.callback(r.Context(), id)
@@ -356,8 +357,6 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	authRequest.EnvInfo = credentials.EnvInfo
 	authRequest.AuthTime = time.Now()
 
-	var authQueries []*rest_model.AuthQueryDetail
-
 	if authRequest.SecondaryExtJwtSigner != nil {
 
 		secondaryJwtResult, secondaryJwtErr := l.store.ProcessSecondaryJwts(r, authRequest, securityTokenCtx)
@@ -379,23 +378,11 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !authRequest.HasSecondaryAuth() {
-		authQueries = authRequest.GetAuthQueries()
-	}
-
-	if authRequest.NeedsTotp() {
-		w.Header().Set(TotpRequiredHeader, "true")
-	}
-
-	if len(authQueries) > 0 {
 		if responseType == HtmlContentType {
-			renderTotp(w, credentials.AuthRequestId, err, authQueries)
-		} else if responseType == JsonContentType {
-			respBody := JsonMap(map[string]interface{}{
-				"authQueries": authQueries,
-			})
-			renderJson(w, http.StatusOK, &respBody)
+			renderTotp(w, credentials.AuthRequestId, err, authRequest.GetAuthQueries())
+		} else {
+			l.renderAuthQueriesJson(w, authRequest)
 		}
-
 		return
 	}
 
@@ -420,18 +407,17 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var authQueries []*rest_model.AuthQueryDetail
+	l.renderAuthQueriesJson(w, authRequest)
+}
 
-	if !authRequest.HasSecondaryAuth() {
-		authQueries = authRequest.GetAuthQueries()
-	}
-
+// renderAuthQueriesJson writes the pending secondary auth queries as a JSON response
+// and sets the totp-required header when applicable.
+func (l *login) renderAuthQueriesJson(w http.ResponseWriter, authRequest *AuthRequest) {
 	if authRequest.NeedsTotp() {
 		w.Header().Set(TotpRequiredHeader, "true")
 	}
-
 	respBody := JsonMap(map[string]interface{}{
-		"authQueries": authQueries,
+		"authQueries": authRequest.GetAuthQueries(),
 	})
 	renderJson(w, http.StatusOK, &respBody)
 }
@@ -470,7 +456,7 @@ func (l *login) deleteEnrollTotp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderJson(w, http.StatusOK, &rest_model.Empty{})
+	renderJson(w, http.StatusOK, &JsonMap{})
 }
 
 func (l *login) startEnrollTotp(w http.ResponseWriter, r *http.Request) {
@@ -532,12 +518,18 @@ func (l *login) verifyTotp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiErr = l.store.CompleteTotpEnrollment(changeCtx, payload.AuthRequestId, payload.Code)
+	authRequest, apiErr := l.store.CompleteTotpEnrollment(changeCtx, payload.AuthRequestId, payload.Code)
 
 	if apiErr != nil {
 		renderJsonError(w, apiErr)
 		return
 	}
 
-	renderJson(w, http.StatusOK, &rest_model.Empty{})
+	if authRequest.HasFullAuth() {
+		callbackUrl := l.callback(r.Context(), payload.AuthRequestId)
+		http.Redirect(w, r, callbackUrl, http.StatusFound)
+		return
+	}
+
+	l.renderAuthQueriesJson(w, authRequest)
 }

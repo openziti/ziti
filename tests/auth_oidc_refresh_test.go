@@ -20,12 +20,6 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 
-	rpServer, err := newOidcTestRp(ctx.ApiHost)
-	ctx.Req.NoError(err)
-
-	rpServer.Start()
-	defer rpServer.Stop()
-
 	clientApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeClientApiPath)
 	ctx.Req.NoError(err)
 
@@ -151,6 +145,8 @@ func Test_Authenticate_OIDC_Refresh(t *testing.T) {
 					ctx.Req.NotEmpty(newAccessClaims.JWTID)
 					ctx.Req.Equal(common.TokenTypeAccess, newAccessClaims.Type)
 					ctx.Req.NotEmpty(newAccessClaims.Subject)
+					ctx.Req.Contains(newAccessClaims.AuthenticationMethodsReferences, oidc_auth.AuthMethodPassword)
+					ctx.Req.NotZero(newAccessClaims.AuthTime)
 				})
 			})
 
