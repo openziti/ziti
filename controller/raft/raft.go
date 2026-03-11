@@ -57,6 +57,11 @@ import (
 	"github.com/teris-io/shortid"
 )
 
+const (
+	LeaderCheckInterval = 5 * time.Second
+	MeshCleanupInterval = time.Minute
+)
+
 type ClusterEvent uint32
 
 func (self ClusterEvent) String() string {
@@ -816,30 +821,17 @@ func (self *Controller) eventLoop() {
 		self.handleClusterStateChange(ClusterEventIsLeaderless, eventState)
 	}
 
-	leaderTicker := time.NewTicker(5 * time.Second)
+	leaderTicker := time.NewTicker(LeaderCheckInterval)
 	defer leaderTicker.Stop()
 
-	dialCleanupTicker := time.NewTicker(time.Minute)
+	dialCleanupTicker := time.NewTicker(MeshCleanupInterval)
 	defer dialCleanupTicker.Stop()
-
-	first := false
 
 	for {
 		select {
 		case observation := <-self.clusterEvents:
 			self.processRaftObservation(observation, eventState)
 		case <-leaderTicker.C:
-			if first {
-				// delay this check because it seems like raft generates observations for leader state, so if we do this
-				// first we're going to get duplicates
-				if self.Raft.State() == raft.Leader {
-					if wasLeader := self.isLeader.Swap(true); !wasLeader {
-						self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
-					}
-				}
-				first = false
-			}
-
 			if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
 				pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).
 					Warn("cluster running without leader for longer than configured threshold")

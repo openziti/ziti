@@ -61,6 +61,8 @@ const (
 	RaftDisconnectType = 2052
 
 	ChannelTypeMesh = "ctrl.mesh"
+
+	RecentDialInterval = 5 * time.Minute
 )
 
 type Peer struct {
@@ -473,11 +475,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	// If so, strip the new signing cert header so only the legacy header is sent, allowing
 	// the connection to succeed with old controllers that enforce the smaller hello limit.
 	self.lock.RLock()
-	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < 5*time.Minute {
-		if rec.peerVersion == nil || func() bool {
-			hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0")
-			return !hasMin
-		}() {
+	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < RecentDialInterval {
+		if rec.peerVersion == nil {
+			delete(headers, SigningCertHeader)
+		} else if hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
 			delete(headers, SigningCertHeader)
 		}
 	}
