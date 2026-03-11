@@ -203,6 +203,10 @@ func (self *visitor) VisitGauge(name string, metric metrics.Gauge) {
 	self.addIntMetric(name, "value", metric.Value())
 }
 
+func (self *visitor) VisitGaugeFloat64(name string, metric metrics.GaugeFloat64) {
+	self.addFloatMetric(name, "value", metric.Value())
+}
+
 func (self *visitor) VisitMeter(name string, metric metrics.Meter) {
 	self.addIntMetric(name, "count", metric.Count())
 	self.addFloatMetric(name, "mean_rate", metric.RateMean())
