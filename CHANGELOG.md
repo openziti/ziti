@@ -1,3 +1,18 @@
+# Release 1.6.14
+
+## What's New
+
+* Bug fixes and dependency updates
+* Update to Golang v1.26
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/sdk-golang: [v1.2.4 -> v1.2.4-patch1](https://github.com/openziti/sdk-golang/compare/v1.2.4...v1.2.4-patch1)
+    * [Issue #892](https://github.com/openziti/sdk-golang/issues/892) - Backport-1.2.4: Handle differences in xgress eof/end-of-circuit handling by adding a capabilities exchange
+
+* github.com/openziti/ziti: [v1.6.13 -> v1.6.14](https://github.com/openziti/ziti/compare/v1.6.13...v1.6.14)
+    * [Issue #3646](https://github.com/openziti/ziti/issues/3646) - Backport-1.6: Use xgress_common.Connection type for xgress_transport and xgress_proxy
+
 # Release 1.6.13
 
 ## What's New
