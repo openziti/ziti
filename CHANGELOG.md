@@ -970,7 +970,8 @@ including service listeners, connections, and terminator state.
 * github.com/openziti/identity: [v1.0.111 -> v1.0.127](https://github.com/openziti/identity/compare/v1.0.111...v1.0.127)
     * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
 
-* github.com/openziti/metrics: [v1.4.2 -> v1.4.3](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.3)
+* github.com/openziti/metrics: [v1.4.2 -> v1.4.4](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.4)
+    * [Issue #58](https://github.com/openziti/metrics/issues/58) - Add GaugeFloat64 support
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
@@ -1014,6 +1015,9 @@ including service listeners, connections, and terminator state.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3674](https://github.com/openziti/ziti/issues/3674) - Update to Go 1.26
+    * [Issue #3496](https://github.com/openziti/ziti/issues/3496) - MFA TOTP Enrollment During OIDC Authentication Does Not Work
+    * [Issue #3609](https://github.com/openziti/ziti/issues/3609) - Stabilize terminator creation test for 2.0
     * [Issue #3648](https://github.com/openziti/ziti/issues/3648) - tunnel: myCopy logs router ID as circuitId, causing misleading debug output
     * [Issue #3658](https://github.com/openziti/ziti/issues/3658) - Raft cluster join fails with "hello message too big" when using long hostnames
     * [Issue #3626](https://github.com/openziti/ziti/issues/3626) - controller: overlay bind point produces malformed URL in /versions apiBaseUrls

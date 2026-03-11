@@ -1,6 +1,6 @@
 module github.com/openziti/ziti/zititest
 
-go 1.25.5
+go 1.26.1
 
 // use parent project
 replace github.com/openziti/ziti/v2 => ../
@@ -23,7 +23,7 @@ require (
 	github.com/openziti/fablab v0.6.16
 	github.com/openziti/foundation/v2 v2.0.89
 	github.com/openziti/identity v1.0.127
-	github.com/openziti/metrics v1.4.3
+	github.com/openziti/metrics v1.4.4
 	github.com/openziti/sdk-golang v1.5.3
 	github.com/openziti/storage v0.4.39
 	github.com/openziti/transport/v2 v2.0.214

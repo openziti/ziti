@@ -1,0 +1,28 @@
+# CLA Check Workflow
+#
+# Copy this file to .github/workflows/cla.yml in any repository that should
+# require CLA signatures from contributors.
+#
+# REQUIRED: Add CLA_APP_ID and CLA_APP_PRIVATE_KEY as organization secrets
+# accessible to this repository.
+
+name: "CLA Check"
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    uses: netfoundry/cla/.github/workflows/cla-workflow.yml@main
+    secrets:
+      CLA_APP_ID: ${{ secrets.CLA_APP_ID }}
+      CLA_APP_PRIVATE_KEY: ${{ secrets.CLA_APP_PRIVATE_KEY }}
