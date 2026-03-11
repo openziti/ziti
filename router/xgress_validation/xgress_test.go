@@ -253,7 +253,7 @@ func (self *testSetup) recvBlocks(blocks <-chan []byte, conn net.Conn, reportErr
 
 func (self *testSetup) NewErtConn(originator xgress.Originator) (net.Conn, xgress.Connection) {
 	pipe := NewBufferPipe(originator.String())
-	xgConn := xgress_common.NewXgressConn(pipe.Right(), true, false)
+	xgConn := xgress_common.NewXgressConn(pipe.Right(), true, xgress_common.ConnTypeTunnel)
 	return pipe.Left(), xgConn
 }
 

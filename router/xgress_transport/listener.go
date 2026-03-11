@@ -19,22 +19,27 @@ package xgress_transport
 import (
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
-	"github.com/openziti/transport/v2"
-	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/dtls"
+	"github.com/openziti/transport/v2/udp"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/router/xgress_router"
-	"io"
 )
 
 type listener struct {
-	id      *identity.TokenId
-	ctrl    env.NetworkControllers
-	options *xgress.Options
-	tcfg    transport.Configuration
-	socket  concurrenz.AtomicValue[io.Closer]
+	id        *identity.TokenId
+	ctrl      env.NetworkControllers
+	options   *xgress.Options
+	tcfg      transport.Configuration
+	socket    concurrenz.AtomicValue[io.Closer]
+	halfClose bool
 }
 
 func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) xgress_router.Listener {
@@ -54,6 +59,8 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	if err != nil {
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)
 	}
+
+	listener.halfClose = txAddress.Type() != dtls.Type && txAddress.Type() != udp.Type
 
 	acceptF := func(peer transport.Conn) {
 		go listener.handleConnect(peer, bindHandler)
@@ -76,7 +83,7 @@ func (listener *listener) Close() error {
 }
 
 func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.BindHandler) {
-	conn := &transportXgressConn{Conn: peer}
+	conn := xgress_common.NewXgressConn(peer, listener.halfClose, xgress_common.ConnTypeTransport)
 	log := pfxlog.ContextLogger(conn.LogContext())
 
 	request, err := xgress_router.ReceiveRequest(peer)

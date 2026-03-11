@@ -155,8 +155,8 @@ func TestXgressConnHalfClose(t *testing.T) {
 	go server.handleConnection(serverClientConn)
 
 	// Wrap connections with XgressConn
-	clientXgressConn := xgress_common.NewXgressConn(clientServerConn, true, false)
-	serverXgressConn := xgress_common.NewXgressConn(serverServerConn, true, false)
+	clientXgressConn := xgress_common.NewXgressConn(clientServerConn, true, xgress_common.ConnTypeTunnel)
+	serverXgressConn := xgress_common.NewXgressConn(serverServerConn, true, xgress_common.ConnTypeTunnel)
 
 	// Set up addresses and circuit
 	clientXgAddr := xgress.Address("client-addr")
