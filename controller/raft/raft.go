@@ -698,7 +698,7 @@ func (self *Controller) setupPreferredLeaderTransfer() {
 	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState, leaderId string) {
 		if evt == ClusterEventLeadershipGained {
 			log.Info("non-preferred controller gained leadership, scheduling transfer in 10s")
-			time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+			go self.attemptTransferToPreferredLeader()
 		}
 	})
 
@@ -709,7 +709,7 @@ func (self *Controller) setupPreferredLeaderTransfer() {
 				if peer.IsPreferredLeader {
 					log.WithField("preferredPeer", peer.Id).
 						Info("preferred leader peer connected while we're leader, scheduling transfer in 10s")
-					time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+					go self.attemptTransferToPreferredLeader()
 					return
 				}
 			}
@@ -720,7 +720,15 @@ func (self *Controller) setupPreferredLeaderTransfer() {
 	// the leadership event was processed before our handler was registered.
 	if self.IsLeader() {
 		log.Info("non-preferred controller is already leader at setup time, scheduling transfer in 10s (safety net)")
-		time.AfterFunc(10*time.Second, self.transferToPreferredLeader)
+		go self.attemptTransferToPreferredLeader()
+	}
+}
+
+func (self *Controller) attemptTransferToPreferredLeader() {
+	select {
+	case <-self.env.GetCloseNotify():
+	case <-time.After(10 * time.Second):
+		self.transferToPreferredLeader()
 	}
 }
 

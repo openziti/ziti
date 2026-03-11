@@ -918,6 +918,9 @@ func (self *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 // RouterDataModel returns the current router data model containing
 // network topology and policy information.
 func (self *ManagerImpl) RouterDataModel() *common.RouterDataModel {
+	// If a router data model replace is in progress, we need to wait for it to be fully
+	// initialized before we get it, otherwise there's the possibility of race conditions
+	// Should happen rarely, so a sleep is the simplest solution
 	for self.rmdReplaceInProgress.Load() {
 		time.Sleep(100 * time.Millisecond)
 	}

@@ -460,6 +460,11 @@ func (self *addSdkCloseNotificationEvent) handle(registry *hostedServiceRegistry
 }
 
 func (self *hostedServiceRegistry) addPendingSdkCloseNotification(terminator *edgeTerminator, reason string, edgeErr *EdgeError) {
+	// We can't necessarily key by terminator as terminators can be replaced and the id can be reused.
+	// We can't use the virtual conn id, because those aren't unique across routers.
+	// If we do happen to send multiple, it should be harmless, since the second close will be ignored.
+	// We could probably use a combination of terminator id and virtual conn id.
+	// Let's try that next time we run a longer test cycle
 	self.notifyCloseSet[idgen.MustNewUUIDString()] = &pendingSdkCloseNotification{
 		terminator: terminator,
 		reason:     reason,
@@ -471,7 +476,7 @@ func (self *hostedServiceRegistry) ensureSdkCloseSent(terminator *edgeTerminator
 	self.ensureSdkCloseSentInner(terminator, reason, edgeErr, false)
 }
 
-func (self *hostedServiceRegistry) ensureSdkCloseSentInner(terminator *edgeTerminator, reason string, edgeErr *EdgeError, queueDirect bool) {
+func (self *hostedServiceRegistry) ensureSdkCloseSentInner(terminator *edgeTerminator, reason string, edgeErr *EdgeError, inEventLoop bool) {
 	if terminator.GetChannel().IsClosed() {
 		return
 	}
@@ -481,7 +486,7 @@ func (self *hostedServiceRegistry) ensureSdkCloseSentInner(terminator *edgeTermi
 	}
 	queued, _ := terminator.GetDefaultSender().TrySend(closeMsg)
 	if !queued {
-		if queueDirect {
+		if inEventLoop {
 			self.addPendingSdkCloseNotification(terminator, reason, edgeErr)
 		} else {
 			self.queueSdkCloseNotification(terminator, reason, edgeErr)
@@ -977,7 +982,8 @@ func (self *hostedServiceRegistry) handleSdkReturnedInvalid(terminator *edgeTerm
 	select {
 	case result := <-event.resultC:
 		return result
-	case <-time.After(250 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond): // Failsafe in case the hosting registry event loop gets too busy
+		//                                     // If we bail out, the notify process will be retried
 		if !self.terminators.Has(terminator.terminatorId) {
 			return invalidTerminatorRemoveResult{
 				existed: false,
@@ -1020,7 +1026,6 @@ func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 			Precedence:      terminator.precedence.String(),
 			AssignIds:       terminator.assignIds,
 			UseSdkXgress:    terminator.useSdkXgress,
-			V2:              true,
 			SupportsInspect: terminator.supportsInspect,
 			OperationActive: terminator.operationActive.Load(),
 			CreateTime:      terminator.createTime.Format("2006-01-02 15:04:05"),

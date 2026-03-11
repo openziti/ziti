@@ -30,8 +30,6 @@ type Dialer interface {
 	IsTerminatorValid(id string, destination string) bool
 }
 
-type InspectResult int
-
 type InspectableDialer interface {
 	Dialer
 	InspectTerminator(id string, destination string, fixInvalid bool, postCreate bool) (bool, bool, string)
