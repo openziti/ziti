@@ -596,6 +596,22 @@ func (helper *ManagementHelperClient) PatchIdentity(id string, patch *rest_model
 	return helper.GetIdentity(id)
 }
 
+// AuthenticateOidc sets the client to use OIDC, authenticates with the given
+// credentials, and returns the OIDC API session. Returns an error if
+// authentication fails or the session is not an OIDC session.
+func (helper *ManagementHelperClient) AuthenticateOidc(creds edgeApis.Credentials) (*edgeApis.ApiSessionOidc, error) {
+	helper.SetUseOidc(true)
+	apiSession, err := helper.Authenticate(creds, nil)
+	if err != nil {
+		return nil, err
+	}
+	oidcSession, ok := apiSession.(*edgeApis.ApiSessionOidc)
+	if !ok {
+		return nil, fmt.Errorf("expected *edge_apis.ApiSessionOidc, got %T", apiSession)
+	}
+	return oidcSession, nil
+}
+
 func (helper *ManagementHelperClient) GetCurrentApiSessionDetail() (*rest_model.CurrentAPISessionDetail, error) {
 	resp, err := helper.GetCurrentApiSessionDetailResponse()
 

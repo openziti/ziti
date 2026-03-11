@@ -822,7 +822,7 @@ func (s *HybridStorage) TokenRequestByRefreshToken(_ context.Context, refreshTok
 // TerminateSession implements the op.Storage interface
 func (s *HybridStorage) TerminateSession(_ context.Context, identityId string, clientID string) error {
 	now := time.Now()
-	return s.saveRevocation(NewRevocation(identityId+","+clientID, now.Add(s.config.MaxTokenDuration())))
+	return s.saveRevocation(NewRevocation(identityId, now.Add(s.config.MaxTokenDuration())))
 }
 
 // GetRefreshTokenInfo implements the op.Storage interface
@@ -848,6 +848,7 @@ func (s *HybridStorage) RevokeToken(_ context.Context, tokenIDOrToken string, _ 
 			return oidc.ErrServerError()
 		}
 
+		return nil
 	}
 
 	revocation := NewRevocation(tokenIDOrToken, time.Now().Add(s.config.MaxTokenDuration()))

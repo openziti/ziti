@@ -1826,7 +1826,7 @@ func (strategy *InstantStrategy) RevocationUpdate(index uint64, revocation *db.R
 }
 
 func (strategy *InstantStrategy) RevocationDelete(index uint64, revocation *db.Revocation) {
-	strategy.handleRevocation(index, edge_ctrl_pb.DataState_Create, revocation)
+	strategy.handleRevocation(index, edge_ctrl_pb.DataState_Delete, revocation)
 }
 
 func (strategy *InstantStrategy) handlePublicKey(index uint64, action edge_ctrl_pb.DataState_Action, publicKey *edge_ctrl_pb.DataState_PublicKey) {
