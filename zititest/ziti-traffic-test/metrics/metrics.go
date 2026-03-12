@@ -22,6 +22,7 @@ type ZitiReporter struct {
 	clientId string
 	closer   chan struct{}
 	service  string
+	flushCh  chan chan struct{}
 }
 
 type ZitiReporterConfig struct {
@@ -68,7 +69,14 @@ func NewZitiReporter(cfg *ZitiReporterConfig) (*ZitiReporter, error) {
 		clientId: cfg.ClientId,
 		closer:   cfg.CloseNotify,
 		service:  cfg.ServiceName,
+		flushCh:  make(chan chan struct{}, 1),
 	}, nil
+}
+
+func (r *ZitiReporter) Flush() {
+	done := make(chan struct{})
+	r.flushCh <- done
+	<-done
 }
 
 func (r *ZitiReporter) Run(reportInterval time.Duration) {
@@ -78,7 +86,6 @@ func (r *ZitiReporter) Run(reportInterval time.Duration) {
 	ticker := time.NewTicker(reportInterval)
 	defer ticker.Stop()
 
-	var err error
 	var conn edge.Conn
 
 	defer func() {
@@ -91,44 +98,52 @@ func (r *ZitiReporter) Run(reportInterval time.Duration) {
 
 	errLoggedSinceLastSuccess := false
 
+	sendMetrics := func() {
+		var err error
+		if conn == nil {
+			conn, err = r.client.Dial(r.service)
+			if err != nil {
+				if errLoggedSinceLastSuccess {
+					log.WithError(err).Debug("failed to dial metrics services")
+				} else {
+					log.WithError(err).Error("failed to dial metrics services")
+					errLoggedSinceLastSuccess = true
+				}
+				return
+			}
+		}
+
+		errLoggedSinceLastSuccess = false
+
+		event := r.createMetricsEvent()
+		buf, err := proto.Marshal(event)
+		if err != nil {
+			log.WithError(err).Error("unable to marshal streaming metrics")
+		} else {
+			length := len(buf)
+			binary.LittleEndian.PutUint32(lenBuf, uint32(length))
+			log.Debugf("sending metrics message with len %v, %+v", length, lenBuf)
+			if _, err = conn.Write(lenBuf); err != nil {
+				log.WithError(err).Error("failed to write metrics message length")
+				_ = conn.Close()
+				conn = nil
+			} else if _, err = conn.Write(buf); err != nil {
+				log.WithError(err).Error("failed to write metrics message length")
+				_ = conn.Close()
+				conn = nil
+			} else {
+				log.Debug("reported metrics")
+			}
+		}
+	}
+
 	for {
 		select {
 		case <-ticker.C:
-			if conn == nil {
-				conn, err = r.client.Dial(r.service)
-				if err != nil {
-					if errLoggedSinceLastSuccess {
-						log.WithError(err).Debug("failed to dial metrics services")
-					} else {
-						log.WithError(err).Error("failed to dial metrics services")
-						errLoggedSinceLastSuccess = true
-					}
-					continue
-				}
-			}
-
-			errLoggedSinceLastSuccess = false
-
-			event := r.createMetricsEvent()
-			buf, err := proto.Marshal(event)
-			if err != nil {
-				log.WithError(err).Error("unable to marshal streaming metrics")
-			} else {
-				length := len(buf)
-				binary.LittleEndian.PutUint32(lenBuf, uint32(length))
-				log.Debugf("sending metrics message with len %v, %+v", length, lenBuf)
-				if _, err = conn.Write(lenBuf); err != nil {
-					log.WithError(err).Error("failed to write metrics message length")
-					_ = conn.Close()
-					conn = nil
-				} else if _, err = conn.Write(buf); err != nil {
-					log.WithError(err).Error("failed to write metrics message length")
-					_ = conn.Close()
-					conn = nil
-				} else {
-					log.Debug("reported metrics")
-				}
-			}
+			sendMetrics()
+		case done := <-r.flushCh:
+			sendMetrics()
+			close(done)
 		case <-r.closer:
 			log.Info("stopping metrics reporter")
 			return

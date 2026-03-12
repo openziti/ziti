@@ -94,7 +94,7 @@ func (self *modelMetrics) handleMetricsMessages(msg *channel.Message, _ channel.
 	if err == nil {
 		modelEvent := self.toModelMetricsEvent(evt)
 		self.m.AcceptHostMetrics(host, modelEvent)
-		logrus.Infof("<$= [%s] - model metrics", evt.SourceAppId)
+		logrus.Debugf("<$= [%s] - model metrics", evt.SourceAppId)
 	} else {
 		logrus.Errorf("modelMetrics: unable to find host (%v)", err)
 	}

@@ -31,7 +31,7 @@ func NewSyncModelEdgeStateAction() model.ActionBinder {
 func (a *syncModelEdgeStateAction) bind(*model.Model) model.Action {
 	workflow := actions.Workflow()
 	workflow.AddAction(edge.Login("#ctrl"))
-	workflow.AddAction(edge.SyncModelEdgeState(models.EdgeRouterTag))
+	workflow.AddAction(edge.SyncModelRouterIds(models.EdgeRouterTag))
 	return workflow
 }
 

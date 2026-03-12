@@ -66,6 +66,7 @@ type Sim struct {
 	closeNotify          chan struct{}
 	scenario             *Scenario
 	metrics              metrics.Registry
+	metricsReporter      *trafficMetrics.ZitiReporter
 }
 
 func (sim *Sim) InitScenario(path string) error {
@@ -263,6 +264,7 @@ func (sim *Sim) StartSdkMetricsReporter(registry metrics.Registry, ctx ziti.Cont
 		return err
 	}
 
+	sim.metricsReporter = reporter
 	go reporter.Run(sim.scenario.Metrics.ReportInterval)
 
 	return nil
