@@ -623,7 +623,7 @@ var m = &model.Model{
 
 	Operation: model.Stages{
 		model.RunAction("login"),
-		edge.SyncModelEdgeState(models.EdgeRouterTag),
+		edge.SyncModelRouterIds(models.EdgeRouterTag),
 
 		fablibOps.StreamSarMetrics("*", 5, 1, nil),
 

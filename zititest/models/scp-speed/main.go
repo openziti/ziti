@@ -198,7 +198,7 @@ var Model = &model.Model{
 	},
 
 	Operation: model.Stages{
-		edge.SyncModelEdgeState(models.EdgeRouterTag),
+		edge.SyncModelRouterIds(models.EdgeRouterTag),
 		fablib_5_operation.InfluxMetricsReporter(),
 		zitilib_5_operation.ModelMetricsWithIdMapper(nil, func(id string) string {
 			if id == "ctrl" {
