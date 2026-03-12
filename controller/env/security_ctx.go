@@ -26,6 +26,7 @@ import (
 
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -393,6 +394,28 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 	}
 	if authPolicy == nil {
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+
+	// Check if this specific token has been revoked by JWTID.
+	tokenRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.JWTID)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+	if tokenRevocation != nil {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+
+	// Check if the issuing identity has been terminated via a high-water-mark revocation.
+	identityRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.Subject)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+	if identityRevocation != nil && identityRevocation.CreatedAt.Truncate(time.Second).After(claims.IssuedAt.AsTime()) {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcExpired())
 		return
 	}
 

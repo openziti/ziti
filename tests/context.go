@@ -75,6 +75,8 @@ import (
 	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	oidcPkg "github.com/zitadel/oidc/v3/pkg/oidc"
+	oauth2Pkg "golang.org/x/oauth2"
 	"gopkg.in/resty.v1"
 )
 
@@ -157,7 +159,7 @@ func NewTestContext(t *testing.T) *TestContext {
 }
 
 // NewTestContextWithConfigSet creates a TestContext that uses the supplied ConfigSet
-// instead of DefaultATS. All other behaviour, including DB path and API host, is unchanged.
+// instead of DefaultATS. All other behavior, including DB path and API host, is unchanged.
 func NewTestContextWithConfigSet(t *testing.T, cs ConfigSet) *TestContext {
 	ret := NewTestContext(t)
 	ret.configSet = cs
@@ -239,6 +241,36 @@ func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *Ma
 		ManagementApiClient: client,
 		testCtx:             ctx,
 	}
+}
+
+// NewEdgeManagementApiWithToken returns a ManagementHelperClient pre-loaded with
+// the given raw OIDC access token. No authentication step is required.
+func (ctx *TestContext) NewEdgeManagementApiWithToken(accessToken string) *ManagementHelperClient {
+	client := ctx.NewEdgeManagementApi(nil)
+	var session edgeApis.ApiSession = &edgeApis.ApiSessionOidc{
+		OidcTokens: &oidcPkg.Tokens[*oidcPkg.IDTokenClaims]{
+			Token: &oauth2Pkg.Token{
+				AccessToken: accessToken,
+			},
+		},
+	}
+	client.ApiSession.Store(&session)
+	return client
+}
+
+// NewEdgeClientApiWithToken returns a ClientHelperClient pre-loaded with the
+// given raw OIDC access token. No authentication step is required.
+func (ctx *TestContext) NewEdgeClientApiWithToken(accessToken string) *ClientHelperClient {
+	client := ctx.NewEdgeClientApi(nil)
+	var session edgeApis.ApiSession = &edgeApis.ApiSessionOidc{
+		OidcTokens: &oidcPkg.Tokens[*oidcPkg.IDTokenClaims]{
+			Token: &oauth2Pkg.Token{
+				AccessToken: accessToken,
+			},
+		},
+	}
+	client.ApiSession.Store(&session)
+	return client
 }
 
 func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {
@@ -397,11 +429,23 @@ func (ctx *TestContext) NewClientComponentsWithClientCert(certs []*x509.Certific
 
 }
 
-func (ctx *TestContext) StartServer() {
-	ctx.StartServerFor("testdata/default.db", true)
+func (ctx *TestContext) StartServer() *ControllerHelper {
+	return ctx.StartServerFor("testdata/default.db", true)
 }
 
-func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
+// StartServerWithConfigModifier starts the controller and edge layer, applying
+// modifier to the loaded config before the controller is created. This lets a
+// single test override settings (e.g., OIDC token durations) without affecting
+// other tests that call StartServer with the shared default config.
+func (ctx *TestContext) StartServerWithConfigModifier(modifier func(*config.Config)) *ControllerHelper {
+	return ctx.startServerWith("testdata/default.db", true, modifier)
+}
+
+func (ctx *TestContext) StartServerFor(testDb string, clean bool) *ControllerHelper {
+	return ctx.startServerWith(testDb, clean, nil)
+}
+
+func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config)) *ControllerHelper {
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -431,6 +475,10 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctrlConfig, err := config.LoadConfig(ctx.controllerConfFile())
 	ctx.Req.NoError(err)
 
+	if modifier != nil {
+		modifier(ctrlConfig)
+	}
+
 	ctx.ControllerConfig = ctrlConfig
 
 	log.Info("creating fabric controller")
@@ -458,6 +506,8 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	}()
 	err = ctx.waitForRestAPIPort(time.Minute * 5)
 	ctx.Req.NoError(err)
+
+	return &ControllerHelper{Controller: ctx.EdgeController}
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
@@ -543,25 +593,25 @@ func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ..
 	ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*routerEnv.Config), roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*routerEnv.Config), roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(cfgTweaks)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *router.Router {
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *EdgeRouterHelper {
 	configFile := ctx.configSet.EdgeRouter
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
 		configFile = ctx.configSet.TunnelerRouter
@@ -574,7 +624,7 @@ func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *rout
 	newRouter := router.Create(routerCfg, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
 	ctx.Req.NoError(newRouter.Start())
-	return newRouter
+	return &EdgeRouterHelper{Router: newRouter}
 }
 
 func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
@@ -958,9 +1008,9 @@ func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
 	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
 }
 
-func (self *TestContext) EnrollFabricRouter(id string, name string, certFile string) {
+func (ctx *TestContext) EnrollFabricRouter(id string, name string, certFile string) {
 	cert, err := certtools.LoadCertFromFile(certFile)
-	self.Req.NoError(err)
+	ctx.Req.NoError(err)
 
 	fingerprint := fmt.Sprintf("%x", sha1.Sum(cert[0].Raw))
 
@@ -977,12 +1027,12 @@ func (self *TestContext) EnrollFabricRouter(id string, name string, certFile str
 		},
 		Context: timeoutContext,
 	}
-	_, err = self.RestClients.Fabric.Router.CreateRouter(createRouterParams, nil)
+	_, err = ctx.RestClients.Fabric.Router.CreateRouter(createRouterParams, nil)
 	if err != nil {
 		js, _ := json.MarshalIndent(err, "", "    ")
 		fmt.Println(string(js))
 	}
-	self.Req.NoError(err)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *TestContext) startFabricRouter(index uint8) *router.Router {
@@ -1105,7 +1155,7 @@ func (server *testServer) acceptLoop() {
 		}
 	}
 
-	// If listener is closed, assume this error is just letting us know the listener was closed
+	// if the listener is closed, assume this error is just letting us know the listener was closed
 	if !server.listener.IsClosed() {
 		if err != nil {
 			server.errorC <- err
@@ -1152,7 +1202,7 @@ func (server *testServer) dispatch(conn *testServerConn) {
 		conn.RequireClose()
 	}()
 
-	log.Debugf("beginnging dispatch to conn %v-%v", conn.server.idx, conn.id)
+	log.Debugf("beginning dispatch to conn %v-%v", conn.server.idx, conn.id)
 	err := server.dispatcher(conn)
 	log.Debugf("finished dispatch to conn %v-%v", conn.server.idx, conn.id)
 	if err != nil {
