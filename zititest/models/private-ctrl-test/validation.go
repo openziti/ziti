@@ -199,7 +199,6 @@ func checkConnectedPeers(ctrlId string, ctrlClients *chaos.CtrlClients, expected
 	}
 
 	hasSelf := false
-	isLeader := false
 	hasLeader := false
 
 	connectedCount := 0
@@ -209,9 +208,6 @@ func checkConnectedPeers(ctrlId string, ctrlClients *chaos.CtrlClients, expected
 				return fmt.Errorf("controller %s is reporting as not connected", peer.Id)
 			}
 			hasSelf = true
-			if peer.IsLeader {
-				isLeader = true
-			}
 		}
 		if peer.IsLeader {
 			hasLeader = true
@@ -232,8 +228,8 @@ func checkConnectedPeers(ctrlId string, ctrlClients *chaos.CtrlClients, expected
 		return fmt.Errorf("controller %s doesn't have self as peer", ctrlId)
 	}
 
-	if isLeader && connectedCount != expectedCount {
-		return fmt.Errorf("leader connected count of %d is not equal to expected count of %d ", connectedCount, expectedCount)
+	if connectedCount != expectedCount {
+		return fmt.Errorf("controller %s connected count of %d is not equal to expected count of %d", ctrlId, connectedCount, expectedCount)
 	}
 
 	logger.Infof("connected-peers check passed: %d peers, leader present, all connected", len(peers))
