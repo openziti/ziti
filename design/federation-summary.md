@@ -20,7 +20,8 @@ forwarding traffic for all of them through its shared forwarder.
 **Principles**:
 
 - Each network keeps its own controller, PKI, and policies.
-- Shared routers are transit-only — no edge/SDK functionality.
+- Shared routers are transit-only — no edge/SDK functionality. Future improvements may
+  expand beyond this.
 - For routing purposes, controllers see shared routers as normal routers — no special handling in path selection or circuit building. Controllers may be aware that a router is federated, but that only matters for lifecycle operations (creation, deletion, re-sharing enforcement).
 - Only a router's owning network can share it. Client networks cannot re-share routers.
 - Federation uses purpose-built Network and Network Router Policy entities, not
@@ -160,30 +161,47 @@ a federation peer) and **Network Router Policy** (links Networks to routers) —
 
 ### Phase 1: Establish Federation
 
-The host network admin creates a Network entity, which generates an enrollment JWT.
-The client network admin completes the enrollment.
+Federation is established via a bidirectional JWT exchange. Each JWT carries the
+network's CA bundle, controller endpoints, and network ID so each side can verify
+the other.
 
 ```mermaid
 sequenceDiagram
-    participant HA as Host Admin
-    participant HC as Host Controller
     participant CA as Client Admin
     participant CC as Client Controller
+    participant HA as Host Admin
+    participant HC as Host Controller
 
-    HA->>HC: 1. Create Network entity
-    HC-->>CA: 2. Enrollment JWT (out of band)
-    Note right of HC: Contains: host CA bundle,<br/>controller endpoints,<br/>network ID + name
+    CA->>CC: 1. Request federation JWT
+    CC-->>CA: Client JWT
+    Note right of CC: Contains: client CA bundle,<br/>controller endpoints,<br/>network ID
 
-    CA->>CC: 3. Complete enrollment
-    CC->>HC: Enroll (obtain client certificate)
-    CC->>CC: Create local Network entity<br/>storing host CA bundle,<br/>endpoints, and client cert
+    CA-->>HA: 2. Client JWT (out of band)
 
-    Note over HC: Meanwhile on host:<br/>• Network Router Policies link<br/> Network to routers (owned only)<br/>• Auth policy governs client auth<br/>• Network login restricted to<br/> federation API
+    HA->>HC: 3. Import client JWT
+    HC->>HC: Create Network entity,<br/>ingest client CA + endpoints,<br/>create authenticator
+    HC-->>HA: Host JWT
+    Note right of HC: Contains: host CA bundle,<br/>controller endpoints,<br/>network ID
+
+    HA-->>CA: 4. Host JWT (out of band)
+
+    Note over HC: 5. On host: Network Router Policies<br/>link Network to routers (owned only)
+
+    CA->>CC: 6. Import host JWT
+    CC->>CC: Create Network entity,<br/>ingest host CA + endpoints
+    CC->>HC: Challenge-response + CSR
+    HC-->>CC: Certificate + CA bundle
+    Note over CC: Client can now authenticate<br/>to host federation API
 ```
 
-After this phase, both sides have a Network entity. The host side uses it for policy
-and authentication. The client side uses it to store credentials and as a foreign key
-for imported routers.
+After this phase, both sides have a Network entity. On the host, it represents the
+client and is linked to an authenticator and Network Router Policies. On the client,
+it represents the host and stores credentials and endpoints. Network logins are
+restricted to the federation API.
+
+**JWT signing and authentication** are still under consideration — either a network-wide
+cert (shared across controllers in a cluster) or per-host certs issued via
+enrollment/CSR. See the detailed design doc for tradeoffs.
 
 ### Phase 2: Share Routers
 
@@ -195,7 +213,7 @@ sequenceDiagram
     participant HC as Host Controller
     participant R as Router R1
 
-    CC->>HC: 1. Authenticate (Network cert, federation API only)
+    CC->>HC: 1. Authenticate (federation API only)
     CC->>HC: 2. List accessible routers
     HC-->>CC: Router list (filtered by Network Router Policies)
 

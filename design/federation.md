@@ -23,23 +23,37 @@ federation — bridging independent Ziti networks through shared routing infrast
 - **Host network**: The network that owns routers and shares them with others.
 - **Client network**: The network that uses shared routers from a host network.
 - **Network**: A model entity used on both sides of a federation relationship.
-  - On the **host** side: represents a client network, linked to an auth policy and to
+  - On the **host** side: represents a client network, linked to an authenticator and to
     Network Router Policies. The credential the client uses to authenticate.
   - On the **client** side: represents a host network, stores the certificates and
     endpoints for accessing the host's federation API. Also serves as a foreign key
     on router entities that were imported from the host network.
+- **Network cert** (under consideration): A certificate representing the network as a
+  whole, used for federation JWT signing and challenge-response authentication.
+  Provisioned once during controller/cluster bootstrap. Shared across all controllers
+  in a cluster. Alternative: per-host certs issued via enrollment/CSR (see Step 1).
 - **Network Router Policy**: A policy that associates Network entities with routers,
   controlling which routers are visible to each client network.
+- **Federation API**: The API surface that Network entities authenticate against. Network
+  logins are restricted to this API — they cannot access the general management API.
+- **Network identifier**: A 16-bit identifier assigned to each client network, used to
+  prefix circuit table keys and controller dispatch for cross-tenant isolation. The
+  identifier must be negotiated between host and client — the client must be able to
+  reject an ID that collides with one already assigned by another host network.
 - Two networks can be clients of each other if both want to share routers bidirectionally.
 
 ### Key Principles
 
-1. **Federation, not merger**: Each network retains its own controller, PKI, and policies.
-   Networks share routers, not control planes.
-2. **Transit only (for now)**: Shared routers forward packets. No edge functionality (SDK
-   connections, service termination, hosted services) on shared routers.
-3. **Existing enrollment reused**: Routers join foreign networks via standard enrollment.
-   No new trust bootstrapping protocol.
+1. **Federation**: Each network retains its own controller, PKI, and policies. Networks
+   share routers, not control planes.
+2. **Transit only**: Shared routers forward packets. No edge functionality (SDK
+   connections, service termination, hosted services) on shared routers. Future
+   improvements may expand beyond this.
+3. **Enrollment patterns reused**: Routers join foreign networks via enrollment flows
+   that follow existing patterns, but with extensions — enrollment tokens will need
+   additional fields (e.g. network identifier, trust domain), router-side storage must
+   handle per-network configuration, and the controller-side enrollment flow will be
+   purpose-built. A new enrollment token type is likely warranted (see principle 6).
 4. **Controller ignorance (routing)**: For routing purposes, each controller sees shared
    routers as normal routers — no special handling in path selection or circuit building.
    The controller may be aware that a router is federated, but that only matters for
@@ -48,16 +62,28 @@ federation — bridging independent Ziti networks through shared routing infrast
    re-share routers they received from a host network to their own clients. Routers
    enforce this by only accepting enrollments delivered through their owner's controller.
 6. **Purpose-built primitives**: Federation uses dedicated Network and Network Router Policy
-   entities rather than overloading existing identity and edge router policy types.
+   entities rather than overloading existing identity and edge router policy types. A new
+   enrollment token type for shared router enrollment avoids adding cases and edge cases
+   to the existing well-defined enrollment process.
 
 ### Architectural Note
 
 An alternative approach would be to handle federation through a custom-built application
 with a separate control interface to the router, keeping federation concerns entirely
 outside the controller and router codebases. While this would be architecturally cleaner,
-it would substantially increase install complexity — requiring additional components to
-deploy and manage. If federation is to be a commonly used feature for OpenZiti users,
-the integrated approach is preferable.
+it would introduce significant operational concerns:
+
+- Trust relationships between host network and appliance, and each client network
+  and appliance
+- A mechanism to manage which networks can federate with which in the appliance
+- Separate certificate and key management — which root CA the appliance uses
+- Potentially separate hostname/DNS registration and host machine provisioning
+- Potentially a new ALPN protocol
+- Where the CLI for the appliance lives (separate binary vs. embedded in existing CLI)
+
+The integrated approach avoids all of the above, provides a clear network-to-network
+federation model, and gives the CLI a natural home. If federation is to be a commonly
+used feature for OpenZiti users, the integrated approach is preferable.
 
 Additionally, while router sharing itself may not be a broadly used feature, service
 sharing could potentially be built on top of it. Service-level federation would likely
@@ -69,61 +95,96 @@ see much wider adoption, which further argues for keeping the install footprint 
 
 ### Step 1: Establish Federation Relationship
 
-The **host network** (the network sharing routers) initiates:
+Federation is established via a bidirectional JWT exchange. Each JWT carries the
+network's CA bundle, controller endpoints, and network ID, allowing each side to
+verify the other.
 
-1. Admin creates a **Network** entity on the host network, which:
-   - Represents the client network in the host's model
-   - Generates an enrollment JWT containing:
-     - Hosting network's CA bundle
-     - Hosting network's controller endpoints
-     - Network ID and name
+**Client generates a federation JWT:**
 
-2. The JWT is provided to the **client network** out of band.
+1. Client admin requests a federation JWT from their controller. The JWT contains the
+   client network's CA bundle, controller endpoints, and network ID. No Network entity
+   is created yet.
 
-3. The client network completes the enrollment:
-   - Creates a **Network** entity on its own controller representing the host network
-   - Stores the host network's CA bundle and controller endpoints on this entity
-   - Obtains a client certificate for the Network entity on the host network
-   - Can now authenticate to the host network's federation API
+2. The client JWT is provided to the **host network** admin out of band.
 
-4. On the host network: **Network Router Policies** associate routers with the Network
+**Host imports the client JWT:**
+
+3. Host admin imports the client JWT. The host controller:
+   - Creates a **Network** entity representing the client
+   - Ingests the client network's CA bundle and endpoints from the JWT
+   - Creates an **authenticator** for the Network entity
+   - Generates the host's own federation JWT (containing the host network's CA bundle,
+     controller endpoints, and network ID)
+
+4. The host JWT is provided back to the **client network** admin out of band.
+
+5. On the host network: **Network Router Policies** associate routers with the Network
    entity, controlling which routers are visible to the client network. Only routers
    owned by the host network are eligible for inclusion in Network Router Policies.
 
-5. On the host network: an **auth policy** is associated with the Network entity,
-   governing how the client network authenticates to the federation API.
+**Client imports the host JWT:**
+
+6. Client admin imports the host JWT. The client controller:
+   - Creates a **Network** entity representing the host
+   - Ingests the host network's CA bundle and endpoints from the JWT
+   - Contacts the host network
+   - Both sides validate each other via challenge-response
+   - Client submits a CSR; host issues a certificate and returns it with its CA bundle
+   - Client can now authenticate to the host network's federation API
+
+**JWT signing and authentication — two options under consideration:**
+
+- **Network cert**: A certificate representing the network as a whole, provisioned once
+  during controller/cluster bootstrap (added via migration for existing installs).
+  Shared across all controllers in a cluster. Used to sign federation JWTs and for
+  challenge-response. The same cert is used across all federation relationships. This
+  simplifies multi-controller clusters (one identity regardless of which controller
+  handles the request) but introduces a key distribution problem (private key must be
+  available to all controllers) and requires a cert rolling strategy.
+
+- **Per-host network cert via enrollment/CSR**: During enrollment, the host issues a
+  certificate to the client (and vice versa) via CSR. Each federation relationship
+  gets its own cert. Avoids the shared-key distribution problem but means each
+  network has a different identity per federation peer, and multi-controller clusters
+  need each controller to be able to present the cert or proxy to the one that has it.
 
 Both sides now have a Network entity. On the host, it represents the client and is
-linked to auth policies and Network Router Policies. On the client, it represents the
-host and stores the credentials and endpoints needed to access the host's federation
-API. When the client later imports routers from the host (Step 2), those router
-entities reference the client-side Network entity as a foreign key, making it clear
-which host network each shared router came from.
+linked to an authenticator and Network Router Policies. On the client, it represents
+the host and stores the credentials and endpoints needed to access the host's
+federation API. When the client later imports routers from the host (Step 2), those
+router entities reference the client-side Network entity as a foreign key, making it
+clear which host network each shared router came from.
 
 Network logins are restricted to the federation API — they cannot access the general
 management API.
 
-### Step 2: Add Routers to Consuming Network
+### Step 2: Add Routers to Client Network
 
 The client network uses its federation credentials to enable shared routers:
 
-1. Consuming network authenticates to the host network's federation API using the
-   Network entity's certificate.
+1. Client network authenticates to the host network's federation API using the
+   certificate obtained during enrollment.
 
-2. The Network entity has **limited permissions** (federation API only):
-   - List routers it has access to (filtered by Network Router Policies on the host network)
-   - Request addition or removal of a router from its network
+2. Client networks have **limited permissions** (federation API only):
+   - List routers they have access to (filtered by Network Router Policies on the host
+     network)
+   - Request addition or removal of a router from their network
 
 3. To **add a router**:
-   - Consuming network generates a standard router enrollment token
+   - Client network generates a federation router enrollment token (new token type —
+     distinct from standard router enrollment to avoid adding edge cases to the
+     existing enrollment process)
    - Passes the enrollment token to the host network via the federation API
-   - Hosting network validates that the router is owned by the host (not itself a
+   - Host network validates that the router is owned by the host (not itself a
      shared router from another network) before proceeding
-   - Hosting network delivers the token to the target router over the **control channel**
+   - Host network delivers the enrollment token to the target router over the
+     **control channel**, along with the client network's root CA (since trust between
+     host and client is already established, the router does not need to bootstrap
+     trust independently)
    - Router validates that the enrollment came from its owner controller before
      accepting it
-   - Router completes enrollment with the client network (CSR signed by client
-     network's enrollment CA, fingerprint registered)
+   - Router completes enrollment with the client network (CSR signed by the client
+     network's CA that was delivered with the token, fingerprint registered)
    - Client network creates a router entity referencing the client-side Network entity
      as a foreign key (identifying the host network it came from)
    - The imported router entity retains the same router ID as on the host network, so
@@ -361,9 +422,9 @@ Examples:
 
 ### Controller Changes
 
-- [ ] **Network entity (host side)**: Represents a client network. Linked to an auth
-  policy and to Network Router Policies. Supports enrollment (generates JWT with CA
-  bundle + endpoints + network ID) and cert-based authentication for federation API
+- [ ] **Network entity (host side)**: Represents a client network. Linked to an
+  authenticator and to Network Router Policies. Supports enrollment (generates JWT with
+  CA bundle + endpoints + network ID) and cert-based authentication for federation API
   access. Assigned a 16-bit network identifier used for circuit table segregation.
 
 - [ ] **Network entity (client side)**: Represents a host network. Stores the host's CA
@@ -376,16 +437,16 @@ Examples:
   routers. Only routers owned by the host network are eligible — shared routers
   from other networks must be excluded.
 
-- [ ] **Auth policy for Network entities**: Auth policy associated with each Network
+- [ ] **Authenticator for Network entities**: Authenticator associated with each Network
   entity on the host side, governing client network authentication.
 
-- [ ] **Network enrollment flow**: Admin creates a Network entity on the host →
-  generates enrollment JWT. Client network completes enrollment: creates its own
-  Network entity representing the host, stores host CA and endpoints, receives a
-  certificate for federation API access.
+- [ ] **Network enrollment flow**: Bidirectional JWT exchange — client generates JWT,
+  host imports it and generates host JWT, client imports host JWT and completes
+  enrollment via challenge-response + CSR. Both sides automatically create Network
+  entities during their respective import steps.
 
-- [ ] **Federation API endpoints**: Authenticated by Network certificates. Consuming
-  network can list accessible routers (filtered by Network Router Policies) and
+- [ ] **Federation API endpoints**: Authenticated by Network certificates. Client
+  networks can list accessible routers (filtered by Network Router Policies) and
   request add/remove. Network logins must be restricted to these endpoints — they
   cannot access the general management API.
 
@@ -447,12 +508,18 @@ Examples:
 
 ### Design Questions Still To Explore
 
-- [ ] **Network enrollment authentication details**: The host-side Network entity uses
-  cert-based auth (certificate obtained during enrollment). Details: Does the enrollment
-  JWT include a one-time token that the client exchanges for a CSR-signed cert? Or does
-  the client present a self-signed cert during enrollment that gets registered? How does
-  the client-side Network entity get populated — does the enrollment response include
-  the host's CA bundle and endpoints, or are those extracted from the JWT itself?
+- [ ] **Network identifier negotiation**: The 16-bit network identifier is assigned by
+  the host, but the client must be able to reject it if it collides with an identifier
+  already assigned by another host. Need to define the negotiation protocol — does it
+  happen during enrollment, during router sharing, or both? What happens if no
+  non-colliding ID can be agreed upon?
+
+- [ ] **Network cert vs per-host cert**: Two options for JWT signing and federation
+  authentication (see Step 1). Network cert simplifies multi-controller clusters but
+  requires shared private key distribution and a cert rolling strategy (migration needed
+  to provision it on existing installs). Per-host cert via enrollment/CSR avoids key
+  distribution but creates per-peer identities and complicates multi-controller setups.
+  Need to decide which path to take.
 
 - [ ] **Router removal flow**: Can be triggered from either side:
   - **Host network**: Admin or policy change triggers removal. Host controller sends an
