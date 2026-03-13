@@ -180,6 +180,15 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 			}
 			ctx.handleLocalJsonResponse(name, members)
 		}
+	} else if lc == inspect.PeerDialerKey {
+		if raftController, ok := ctx.network.Dispatcher.(*raft.Controller); ok {
+			matched, val, err := raftController.InspectPeerDialer(name)
+			if err != nil {
+				ctx.appendError(ctx.network.GetAppId(), err.Error())
+			} else if matched && val != nil {
+				ctx.appendValue(ctx.network.GetAppId(), name, *val)
+			}
+		}
 	} else if lc == "router-messaging" {
 		routerMessagingState, err := ctx.network.RouterMessaging.Inspect()
 		if err != nil {
