@@ -9,16 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SyncModelEdgeState(componentSpec string) model.Action {
+func SyncModelRouterIds(routerSpec string) model.Action {
 	return &syncModelEdgeStateAction{
-		componentSpec: componentSpec,
+		routerSpec: routerSpec,
 	}
 }
 
 func (action *syncModelEdgeStateAction) Execute(run model.Run) error {
-	routerComponents := run.GetModel().SelectComponents(action.componentSpec)
+	routerComponents := run.GetModel().SelectComponents(action.routerSpec)
 	if len(routerComponents) == 0 {
-		return errors.Errorf("no router components found for selector '%v'", action.componentSpec)
+		return errors.Errorf("no router components found for selector '%v'", action.routerSpec)
 	}
 
 	output, err := zitilibActions.EdgeExecWithOutput(run.GetModel(), "list", "edge-routers", "--output-json", "true limit none")
@@ -57,5 +57,14 @@ func (action *syncModelEdgeStateAction) Execute(run model.Run) error {
 }
 
 type syncModelEdgeStateAction struct {
-	componentSpec string
+	routerSpec string
+}
+
+func SyncModelControllerIds(ctrlSpec string) model.Action {
+	return model.ActionFunc(func(run model.Run) error {
+		return run.GetModel().ForEachComponent(ctrlSpec, 1, func(c *model.Component) error {
+			c.Tags = append(c.Tags, "edgeId:"+c.Id)
+			return nil
+		})
+	})
 }

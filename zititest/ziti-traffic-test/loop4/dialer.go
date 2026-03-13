@@ -149,6 +149,9 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 	sim.metrics.FuncGauge("service.active:"+workload.Name, func() int64 {
 		return active.Load()
 	})
+	txBytesRate := sim.metrics.Meter("service.tx.bytes:" + workload.Name)
+	effectiveByterate := sim.metrics.GaugeFloat64("service.tx.byterate:" + workload.Name)
+	workloadStart := time.Now()
 
 	var result *Result
 	for i := int64(0); i < workload.Iterations || workload.Iterations == -1; i++ {
@@ -234,6 +237,15 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		if scenario.ConnectionDelay > 0 {
 			time.Sleep(time.Duration(sim.scenario.ConnectionDelay) * time.Millisecond)
 		}
+	}
+
+	elapsed := time.Since(workloadStart).Seconds()
+	if elapsed > 0 {
+		effectiveByterate.Update(float64(txBytesRate.Count()) / elapsed)
+	}
+
+	if sim.metricsReporter != nil {
+		sim.metricsReporter.Flush()
 	}
 
 	resultCh <- &Result{
