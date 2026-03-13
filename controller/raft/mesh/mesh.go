@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/event"
 
 	"github.com/hashicorp/raft"
@@ -61,8 +61,6 @@ const (
 	RaftDisconnectType = 2052
 
 	ChannelTypeMesh = "ctrl.mesh"
-
-	RecentDialInterval = 5 * time.Minute
 )
 
 type Peer struct {
@@ -271,11 +269,6 @@ func (self *Peer) closeRaftConn(peerConn *raftPeerConn, timeout time.Duration) e
 	return nil
 }
 
-type dialRecord struct {
-	lastAttempt time.Time
-	peerVersion *versions.VersionInfo // nil if hello didn't complete
-}
-
 type meshAddr struct {
 	network string
 	addr    string
@@ -303,6 +296,9 @@ type Env interface {
 	GetEventDispatcher() event.Dispatcher
 	IsPeerMember(id string) bool
 	IsLeader() bool
+
+	// GetPeerAddresses returns the raft addresses of all other members of the cluster.
+	GetPeerAddresses() []string
 }
 
 // Mesh provides the networking layer to raft
@@ -311,8 +307,8 @@ type Mesh interface {
 
 	channel.UnderlayAcceptor
 
-	// GetOrConnectPeer returns a peer for the given address. If a peer has already been established,
-	// it will be returned, otherwise a new connection will be established
+	// GetOrConnectPeer returns a peer for the given address. It waits for the PeerDialer
+	// to establish the connection or returns an existing peer.
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
 	IsReadOnly() bool
 
@@ -320,9 +316,26 @@ type Mesh interface {
 	GetAdvertiseAddr() raft.ServerAddress
 	GetPeers() map[string]*Peer
 
+	// WaitForPeer blocks until a peer at the given address is connected or the timeout expires.
+	WaitForPeer(address string, timeout time.Duration) (*Peer, error)
+
+	// DialPeer creates a new channel connection to the given address and registers the peer.
+	// If stripSigningCert is true, the new SigningCertHeader is omitted from the hello,
+	// allowing connections to older peers that enforce smaller hello sizes.
+	DialPeer(address string, timeout time.Duration, stripSigningCert bool) (*Peer, error)
+
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
-	CleanupDialRecords()
+
+	// GetNodeId returns the local node's SPIFFE ID used for deterministic tie-breaking.
+	GetNodeId() string
+
+	// StartPeerDialer starts the PeerDialer which proactively manages connections to all
+	// cluster members.
+	StartPeerDialer(config *config.PeerDialerConfig)
+
+	// InspectPeerDialer returns the PeerDialer's state as JSON if name matches the peer dialer key.
+	InspectPeerDialer(name string) (bool, *string, error)
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -340,7 +353,7 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 			addr:    string(raftAddr),
 		},
 		Peers:                map[string]*Peer{},
-		dialRecords:          map[string]*dialRecord{},
+		peerWaiters:          map[string][]chan *Peer{},
 		closeNotify:          make(chan struct{}),
 		raftAccepts:          make(chan *raftPeerConn),
 		version:              env.GetVersionProvider(),
@@ -356,7 +369,7 @@ type impl struct {
 	raftAddr             raft.ServerAddress
 	netAddr              net.Addr
 	Peers                map[string]*Peer
-	dialRecords          map[string]*dialRecord
+	peerWaiters          map[string][]chan *Peer
 	lock                 sync.RWMutex
 	closeNotify          chan struct{}
 	closed               atomic.Bool
@@ -368,6 +381,7 @@ type impl struct {
 	clusterStateHandlers concurrenz.CopyOnWriteSlice[func(state ClusterState)]
 	eventDispatcher      event.Dispatcher
 	helloHeaderProviders []HeaderProvider
+	peerDialer           *PeerDialer
 }
 
 func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
@@ -420,7 +434,7 @@ func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.C
 
 	log := pfxlog.Logger().WithField("address", address)
 	log.Info("dialing raft peer channel")
-	peer, err := self.GetOrConnectPeer(string(address), timeout)
+	peer, err := self.WaitForPeer(string(address), timeout)
 	if err != nil {
 		log.WithError(err).Error("unable to get or connect raft peer channel")
 		return nil, err
@@ -432,15 +446,65 @@ func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.C
 }
 
 func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error) {
+	if address == "" {
+		return nil, errors.New("cannot get or connect raft peer at empty address")
+	}
+
+	self.lock.RLock()
+	peer := self.Peers[address]
+	self.lock.RUnlock()
+	if peer != nil {
+		return peer, nil
+	}
+
+	// If the address is a known cluster member, the PeerDialer is managing it — wait
+	// for it to connect. Otherwise (e.g., during initial cluster join when the target
+	// isn't in the raft config yet), dial directly.
+	for _, addr := range self.env.GetPeerAddresses() {
+		if addr == address {
+			return self.WaitForPeer(address, timeout)
+		}
+	}
+
+	return self.DialPeer(address, timeout, false)
+}
+
+// WaitForPeer blocks until a peer at the given address is connected or the timeout expires.
+// If a peer is already connected, it returns immediately. Otherwise, it registers a waiter
+// that will be notified when PeerConnected is called for that address.
+func (self *impl) WaitForPeer(address string, timeout time.Duration) (*Peer, error) {
+	if address == "" {
+		return nil, errors.New("cannot wait for raft peer at empty address")
+	}
+
+	self.lock.Lock()
+	if peer := self.Peers[address]; peer != nil {
+		self.lock.Unlock()
+		return peer, nil
+	}
+
+	waiter := make(chan *Peer, 1)
+	self.peerWaiters[address] = append(self.peerWaiters[address], waiter)
+	self.lock.Unlock()
+
+	select {
+	case peer := <-waiter:
+		return peer, nil
+	case <-time.After(timeout):
+		return nil, errors.Errorf("timeout waiting for peer at %v", address)
+	case <-self.closeNotify:
+		return nil, errors.New("mesh closed while waiting for peer")
+	}
+}
+
+// DialPeer creates a new channel connection to the given address and registers the peer.
+// If stripSigningCert is true, the new SigningCertHeader is omitted from the hello,
+// allowing connections to older peers that enforce smaller hello sizes.
+func (self *impl) DialPeer(address string, timeout time.Duration, stripSigningCert bool) (*Peer, error) {
 	log := pfxlog.Logger().WithField("address", address)
 
 	if address == "" {
-		return nil, errors.New("cannot get raft peer for empty address")
-	}
-
-	if peer := self.GetPeer(raft.ServerAddress(address)); peer != nil {
-		log.Debug("existing new raft peer channel found for address")
-		return peer, nil
+		return nil, errors.New("cannot dial raft peer at empty address")
 	}
 
 	log.Info("establishing new raft peer channel")
@@ -471,18 +535,12 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		headerProvider.Apply(headers)
 	}
 
-	// Check if a recent dial to this address failed (e.g., hello too large for an old peer).
-	// If so, strip the new signing cert header so only the legacy header is sent, allowing
+	// If a previous dial to this address failed or the peer is known to be an older version,
+	// strip the new signing cert header so only the legacy header is sent, allowing
 	// the connection to succeed with old controllers that enforce the smaller hello limit.
-	self.lock.RLock()
-	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < RecentDialInterval {
-		if rec.peerVersion == nil {
-			delete(headers, SigningCertHeader)
-		} else if hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
-			delete(headers, SigningCertHeader)
-		}
+	if stripSigningCert {
+		delete(headers, SigningCertHeader)
 	}
-	self.lock.RUnlock()
 
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity: self.nodeId,
@@ -546,12 +604,6 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		peer.Version = versionInfo
 		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
 
-		self.lock.Lock()
-		if rec := self.dialRecords[address]; rec != nil {
-			rec.peerVersion = versionInfo
-		}
-		self.lock.Unlock()
-
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
 		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
 		binding.AddReceiveHandlerF(RaftDisconnectType, peer.handleReceiveDisconnect)
@@ -560,18 +612,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return self.PeerConnected(peer, true)
 	})
 
-	self.lock.Lock()
-	rec := self.dialRecords[address]
-	if rec == nil {
-		rec = &dialRecord{}
-		self.dialRecords[address] = rec
-	}
-	rec.lastAttempt = time.Now()
-	self.lock.Unlock()
-
 	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
-		// introduce random delay in case ctrls are dialing each other and closing each other's connections
-		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
 	}
 
@@ -613,6 +654,17 @@ func (self *impl) checkCerts(ch channel.Channel) error {
 }
 
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
+	// If a peer is already connected at this address, return its info directly.
+	// This avoids creating a temporary connection that would trigger tie-breaking
+	// on the remote side and potentially close an active request channel.
+	self.lock.RLock()
+	if existing := self.Peers[address]; existing != nil {
+		id, addr := existing.Id, raft.ServerAddress(existing.Address)
+		self.lock.RUnlock()
+		return id, addr, nil
+	}
+	self.lock.RUnlock()
+
 	log := pfxlog.Logger().WithField("address", address)
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
@@ -700,19 +752,68 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 }
 
 func (self *impl) PeerConnected(peer *Peer, dial bool) error {
+	log := pfxlog.Logger().WithField("peerId", peer.Id).
+		WithField("peerAddr", peer.Address)
+
 	self.lock.Lock()
-	if self.Peers[peer.Address] != nil {
-		defer self.lock.Unlock()
-		return fmt.Errorf("connection from peer %v @ %v already present", peer.Id, peer.Address)
+	if existing := self.Peers[peer.Address]; existing != nil {
+		// Deterministic tie-breaking: the node with the lexicographically lower
+		// SPIFFE ID is the "preferred dialer" whose connection wins.
+		localId := self.nodeId.Token
+		peerId := string(peer.Id)
+
+		if localId < peerId {
+			// We are the preferred dialer. Keep the new dialed connection, close the old one.
+			if dial {
+				log.Info("duplicate peer connection, local ID wins tie-break, replacing with dialed connection")
+				self.Peers[peer.Address] = peer
+				self.updateClusterState()
+				self.lock.Unlock()
+				go func() {
+					if err := existing.Channel.Close(); err != nil {
+						log.WithError(err).Error("error closing replaced peer channel")
+					}
+				}()
+			} else {
+				// We are preferred dialer but this is an accepted connection. Close the newcomer.
+				self.lock.Unlock()
+				log.Info("duplicate peer connection, local ID wins tie-break, closing accepted connection")
+				return fmt.Errorf("connection from peer %v @ %v already present, local ID wins tie-break", peer.Id, peer.Address)
+			}
+		} else {
+			// Peer is the preferred dialer.
+			if !dial {
+				log.Info("duplicate peer connection, remote ID wins tie-break, replacing with accepted connection")
+				self.Peers[peer.Address] = peer
+				self.updateClusterState()
+				self.lock.Unlock()
+				go func() {
+					if err := existing.Channel.Close(); err != nil {
+						log.WithError(err).Error("error closing replaced peer channel")
+					}
+				}()
+			} else {
+				// Peer is preferred dialer but this is our dialed connection. Close it.
+				self.lock.Unlock()
+				log.Info("duplicate peer connection, remote ID wins tie-break, closing dialed connection")
+				return fmt.Errorf("connection from peer %v @ %v already present, remote ID wins tie-break", peer.Id, peer.Address)
+			}
+		}
+	} else {
+		self.Peers[peer.Address] = peer
+		self.updateClusterState()
+		self.lock.Unlock()
 	}
 
-	self.Peers[peer.Address] = peer
-	self.updateClusterState()
-	self.lock.Unlock()
+	// Signal any goroutines waiting for this peer
+	self.signalPeerWaiters(peer)
 
-	pfxlog.Logger().WithField("peerId", peer.Id).
-		WithField("peerAddr", peer.Address).
-		WithField("preferredLeader", peer.PreferredLeader).
+	// Notify PeerDialer if present
+	if self.peerDialer != nil {
+		self.peerDialer.PeerConnected(peer.Address)
+	}
+
+	log.WithField("preferredLeader", peer.PreferredLeader).
 		Info("peer connected")
 
 	evt := event.NewClusterEvent(event.ClusterPeerConnected)
@@ -742,6 +843,21 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	}
 
 	return nil
+}
+
+// signalPeerWaiters notifies all goroutines blocked in WaitForPeer for the given peer's address.
+func (self *impl) signalPeerWaiters(peer *Peer) {
+	self.lock.Lock()
+	waiters := self.peerWaiters[peer.Address]
+	delete(self.peerWaiters, peer.Address)
+	self.lock.Unlock()
+
+	for _, waiter := range waiters {
+		select {
+		case waiter <- peer:
+		default:
+		}
+	}
 }
 
 func (self *impl) GetEventPeerList(peers ...*Peer) []*event.ClusterPeer {
@@ -783,6 +899,11 @@ func (self *impl) PeerDisconnected(peer *Peer) {
 	pfxlog.Logger().WithField("peerId", peer.Id).
 		WithField("peerAddr", peer.Address).
 		Info("peer disconnected")
+
+	// Notify PeerDialer if present
+	if self.peerDialer != nil {
+		self.peerDialer.PeerDisconnected(peer.Address)
+	}
 
 	evt := event.NewClusterEvent(event.ClusterPeerDisconnected)
 	evt.Peers = self.GetEventPeerList(peer)
@@ -916,9 +1037,6 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 
 	_, err := channel.NewChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())
 	if err != nil {
-		// introduce random delay in case ctrls are dialing each other and closing each other's connections
-		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
-
 		return err
 	}
 
@@ -944,14 +1062,24 @@ func (self *impl) IsReadOnly() bool {
 	return self.readonly.Load()
 }
 
-func (self *impl) CleanupDialRecords() {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	for addr, rec := range self.dialRecords {
-		if time.Since(rec.lastAttempt) > 5*time.Minute {
-			delete(self.dialRecords, addr)
-		}
+// GetNodeId returns the local node's SPIFFE ID.
+func (self *impl) GetNodeId() string {
+	return self.nodeId.Token
+}
+
+// StartPeerDialer creates and starts the PeerDialer which proactively manages
+// connections to all cluster members.
+func (self *impl) StartPeerDialer(cfg *config.PeerDialerConfig) {
+	self.peerDialer = NewPeerDialer(self, self.env, cfg, self.closeNotify)
+	go self.peerDialer.Run()
+}
+
+// InspectPeerDialer delegates to the PeerDialer's Inspect method if the dialer is running.
+func (self *impl) InspectPeerDialer(name string) (bool, *string, error) {
+	if self.peerDialer == nil {
+		return false, nil, nil
 	}
+	return self.peerDialer.Inspect(name)
 }
 
 type HeaderProvider interface {
