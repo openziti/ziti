@@ -35,4 +35,13 @@ type RaftConfig struct {
 	ApplyTimeout    time.Duration
 	PreferredLeader bool
 	RateLimiter     command.AdaptiveRateLimitTrackerConfig
+	PeerDialer      PeerDialerConfig
+}
+
+// PeerDialerConfig controls retry behavior for the cluster peer dialer.
+type PeerDialerConfig struct {
+	MinRetryInterval   time.Duration
+	MaxRetryInterval   time.Duration
+	RetryBackoffFactor float64
+	FastFailureWindow  time.Duration
 }
