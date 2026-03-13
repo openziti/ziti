@@ -168,6 +168,21 @@ routers can only be shared by the network that owns them. The foreign key on imp
 routers lets the client track provenance and enforce the no-re-sharing constraint from
 its side too.
 
+**Auto-sync mode**: The manual flow above is useful for controlled environments, but
+most deployments will want hands-off operation after the initial federation setup. In
+auto-sync mode, the client subscribes to the host's router list and automatically adds
+routers as they appear in the Network Router Policy, and removes them when they
+disappear. No user interaction after Step 1.
+
+To make auto-synced routers immediately useful, the client-side Network entity includes
+an **attribute template** that maps host-side router attributes to client-side
+attributes. When a router is auto-imported, the template is applied to assign role
+attributes so the router can match existing policies from the start. For example, a
+template might map the host attribute `region=us-east` to a client attribute
+`transit-us-east`, or assign a fixed set of attributes to all routers from a given
+host. This avoids the need to manually tag each imported router before it participates
+in services.
+
 ### Step 3: Control Channel Establishment
 
 Once a router completes enrollment with a client network:
@@ -410,6 +425,16 @@ Examples:
   fingerprint with a foreign key to the client-side Network entity. Imported router
   keeps the same ID as on the host. Marked as imported (not owned) for no-re-sharing
   enforcement.
+
+- [ ] **Auto-sync mode**: Client subscribes to the host's router list and automatically
+  enrolls/removes routers as they appear/disappear in the Network Router Policy. Should
+  be the default for most deployments. Need to define the subscription mechanism (polling
+  vs push), how to handle enrollment failures/retries, and how removals propagate.
+
+- [ ] **Attribute template for auto-imported routers**: The client-side Network entity
+  includes a template that maps host-side router attributes to client-side role
+  attributes. Applied during auto-import so routers match existing policies immediately.
+  Need to define the template syntax — direct mapping, fixed attributes, or both.
 
 ### Router Changes
 

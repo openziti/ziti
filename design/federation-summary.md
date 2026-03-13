@@ -208,6 +208,13 @@ sequenceDiagram
     Note over CC,R: Router now in client's model.<br/>Cannot be re-shared. Control channel<br/>established. Route/unroute handlers<br/>feed shared forwarder.
 ```
 
+**Auto-sync mode**: Most deployments won't want to add routers one at a time. In
+auto-sync mode, the client subscribes to the host's router list and automatically
+enrolls routers as they appear in the Network Router Policy (and removes them when they
+disappear). An **attribute template** on the client-side Network entity maps host-side
+router attributes to client-side attributes, so imported routers match existing policies
+from the start — no manual tagging needed.
+
 ### Phase 3: Link Establishment
 
 Once routers are enrolled in multiple networks, links form. Each controller drives link
