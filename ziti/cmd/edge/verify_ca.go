@@ -61,7 +61,7 @@ type verifyCaOptions struct {
 }
 
 // newVerifyCaCmd creates the 'edge controller verify ca' command for the given entity type
-func newVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &verifyCaOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{

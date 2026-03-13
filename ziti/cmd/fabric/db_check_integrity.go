@@ -17,7 +17,7 @@ type dbCheckIntegrityOptions struct {
 	fix bool
 }
 
-func newDbCheckIntegrityCmd(p common.OptionsProvider) *cobra.Command {
+func NewDbCheckIntegrityCmd(p common.OptionsProvider) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
 		Options: api.Options{CommonOptions: p()},
 	}
@@ -58,7 +58,7 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 	return err
 }
 
-func newDbCheckIntegrityStatusCmd(p common.OptionsProvider) *cobra.Command {
+func NewDbCheckIntegrityStatusCmd(p common.OptionsProvider) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
 		Options: api.Options{CommonOptions: p()},
 	}
