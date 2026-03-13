@@ -1,55 +1,50 @@
 # Network Federation — Summary
 
-This document summarizes the federation design. For full details, open items, and
-decision log, see [federation.md](federation.md).
+For full details, open items, and decision log, see [federation.md](federation.md).
 
-## Design Goals
+## What Are We Trying to Do?
 
-**Primary goal**: Allow independent Ziti networks to share routers without merging their
-control planes. A single router process can serve many networks simultaneously by
-forwarding traffic for all of them through its shared forwarder.
+We want independent Ziti networks to share routers without merging their control planes.
+The main use case is multi-tenant transit: a hosting provider runs shared transit
+routers, and 50–500 tenant networks use them to bridge their private infrastructure.
+The same mechanism supports network federation (two networks sharing routers for
+cross-network circuits) and hierarchical topologies.
 
-**Target use cases**:
-
-- **Multi-tenant transit** — A hosting provider runs public transit routers. Tenant
-  networks (50–500 per host) use these routers to bridge their private networks.
-- **Network federation** — Two independent Ziti networks share routers to enable
-  cross-network circuits.
-- **Hierarchical topologies** — Regional transit networks connecting local networks.
-
-**Principles**:
+**Key principles:**
 
 - Each network keeps its own controller, PKI, and policies.
-- Shared routers are transit-only — no edge/SDK functionality. Future improvements may
-  expand beyond this.
-- For routing purposes, controllers see shared routers as normal routers — no special handling in path selection or circuit building. Controllers may be aware that a router is federated, but that only matters for lifecycle operations (creation, deletion, re-sharing enforcement).
-- Only a router's owning network can share it. Client networks cannot re-share routers.
-- Federation uses purpose-built Network and Network Router Policy entities, not
-  overloaded identity or edge router policy types.
+- Shared routers are transit-only — no edge/SDK functionality. We may expand later.
+- For routing, controllers see shared routers as normal routers. They may know a router
+  is federated, but that only matters for lifecycle operations (creation, deletion,
+  re-sharing enforcement).
+- Only a router's owning network can share it. No re-sharing.
+- We use purpose-built Network and Network Router Policy entities — not overloaded
+  identity or edge router policy types.
 
-**Why integrated, not a separate application?** Federation could be handled by a
-custom-built application with its own control interface to routers. While architecturally
-cleaner, that would substantially increase install complexity. Service-level federation
-— a likely follow-on with broader adoption — further argues for keeping the install
-footprint simple.
+**Why not a separate appliance?** We considered it. Architecturally cleaner, but it
+introduces a lot of operational overhead (trust relationships, separate PKI, DNS, where
+does the CLI live?). The integrated approach avoids all of that. And if service-level
+federation gets built on top of router sharing — which is likely — keeping the install
+simple matters even more.
 
 ---
 
 ## Router Changes for Multi-Network Support
 
-The router's forwarding data plane is already decoupled from router identity. The
-forwarding hot path: circuit table lookup, forward table lookup and destination dispatch, never references a router identity. The faulter and scanner group work by controller, and the forwarder's lookup patterns are unchanged. This means most of the forwarder works as-is for multi-network operation, with one key addition: the 16-bit network identifier is needed to disambiguate both circuit IDs and controller IDs across
-networks.
+The forwarder's data plane is already decoupled from router identity. The forwarding
+hot path (circuit table → forward table → destination → send) never references a router
+identity, and the faulter and scanner already group work by controller. Most of the
+forwarder works as-is.
 
-The key changes are in how the router manages identities, control channels, and links
-across multiple networks.
+The main addition is the 16-bit network identifier, needed to disambiguate both circuit
+IDs and controller IDs across networks. The real work is in how the router manages
+identities, control channels, and links across multiple networks.
 
 ### Multiple Control Planes
 
-A federated router maintains one control channel per network it participates in. Each
-control channel has its own identity (cert + key obtained during enrollment with that
-network) and its own set of route/unroute handlers, all feeding into the shared
-forwarder.
+A federated router has one control channel per network. Each has its own identity
+(cert + key from enrollment) and its own route/unroute handlers, all feeding into the
+shared forwarder.
 
 ```mermaid
 graph TB
@@ -84,86 +79,72 @@ graph TB
 ```
 
 A `MultiNetworkControllers` wrapper dispatches across all per-network controller sets.
-`GetChannel(networkId, ctrlId)` resolves any controller regardless of which network it belongs
-to. Per-network iteration supports scoped link notifications.
+`GetChannel(networkId, ctrlId)` resolves any controller regardless of network.
 
 ### Network-Prefixed Circuit Isolation
 
-Each client network is assigned a 16-bit network identifier by the host controller.
-This identifier is injected into payload headers when traffic crosses between networks,
-making the circuit table key `(networkId, circuitId)` rather than `circuitId` alone.
+Each client network gets a 16-bit network identifier from the host controller. It's
+injected into payload headers, making the circuit table key `(networkId, circuitId)`
+instead of just `circuitId`.
 
-This provides a structural guarantee of cross-tenant isolation — even if a circuit ID
-were somehow duplicated across networks, the network prefix prevents any overlap.
+This gives us a structural guarantee of cross-tenant isolation — even a duplicate
+circuit ID can't cross the network boundary.
 
-The network identifier is also required for controller dispatch. Controller IDs are
-not guaranteed to be unique across independent networks — two client networks could
-have controllers with the same ID. The faulter, scanner, and controller channel
-lookups all use `(networkId, ctrlId)` as the composite key.
+The identifier is also required for controller dispatch. Controller IDs aren't unique
+across independent networks — two clients could have controllers with the same ID. The
+faulter, scanner, and channel lookups all use `(networkId, ctrlId)` as the composite
+key.
 
-16 bits supports up to 65,536 client networks per host, well above the 50–500 target.
-The identifier also provides cheap per-network identification in the forwarding hot
-path for metrics and future rate limiting.
+16 bits = 65,536 client networks per host. Well above the 50–500 target. Also gives us
+cheap per-network identification for metrics and future rate limiting.
 
 ### Owner Awareness
 
-The router tracks which controller is its owner — the network it was originally
-provisioned into. Federation enrollment tokens are only accepted when delivered through
-the owner's control channel. This prevents a client network from re-sharing a router
-it received from a host.
+The router tracks its owner — the network it was originally provisioned into.
+Federation enrollment tokens are only accepted from the owner's control channel. This
+prevents re-sharing.
 
 ### Link Listener — Aggregated CA Bundle
 
-The link listener runs on a single port. Its TLS config includes an aggregated CA
-bundle containing CAs from every enrolled network. Client certs are verified at the
-TLS level during the handshake — no post-TLS certificate validation needed.
+One port. The TLS config includes CAs from every enrolled network. Client certs are
+verified during the TLS handshake — no post-TLS validation needed.
 
-When a network is added or removed, the identity framework updates the listener's
-trust roots at runtime without restart.
-
-After TLS, the router reads the link headers to determine the remote router's network,
-then calls `VerifyRouter` on that network's controller before registering the link.
+When a network is added or removed, the identity framework updates the trust roots at
+runtime. After TLS, the router reads link headers to find the remote router's network
+and calls `VerifyRouter` on that controller before registering the link.
 
 ### Link Dialer — Per-Destination CA
 
-When a controller sends `UpdateLinkDest`, it includes the destination router's owner
-network ID. The dialing router fetches and caches the CA bundle for that network from
-its controller, then uses it to verify the destination's server cert during the TLS
-handshake.
+`UpdateLinkDest` includes the destination's owner network ID. The dialing router
+fetches and caches that network's CA bundle, then uses it to verify the server cert.
 
 ### Scoped Link Reporting
 
-Each controller only learns about links relevant to its network. The router builds a
-per-network cache of known router IDs from `UpdateLinkDest` messages. When a link
-exists, the router reports it to every network whose cache contains the remote router.
+Each controller only learns about links relevant to its network. The router caches
+known router IDs from `UpdateLinkDest` messages and reports each link only to networks
+whose cache contains the remote router.
 
-This means:
-
-- A link established for Network A is reported to A.
-- If Network B later enrolls both endpoints, B learns about the existing link
-  without re-establishing it.
-- Network B never learns about links to routers it has not enrolled.
+This handles a nice edge case: if a link already exists and a new network later enrolls
+both endpoints, it learns about the link without re-establishing it.
 
 ### Runtime Add/Remove
 
-Adding a client network at runtime means completing enrollment and spinning up a new
-control channel — no restart. The aggregated CA bundle updates automatically. Removing
-a network means tearing down the control channel, draining circuits for that network,
-and removing its CA from the bundle.
+Adding a client network: complete enrollment, spin up a control channel. No restart.
+The CA bundle updates automatically. Removing: tear down the control channel, drain
+circuits, remove the CA.
 
 ---
 
 ## Provisioning with the OpenZiti Controller
 
-The OpenZiti controller is extended with two new model entities — **Network** (represents
-a federation peer) and **Network Router Policy** (links Networks to routers) — plus a
-**federation API** that Network entities authenticate against.
+The controller gets two new model entities — **Network** (represents a federation peer)
+and **Network Router Policy** (links Networks to routers) — plus a **federation API**
+restricted to Network logins.
 
 ### Phase 1: Establish Federation
 
-Federation is established via a bidirectional JWT exchange. Each JWT carries the
-network's CA bundle, controller endpoints, and network ID so each side can verify
-the other.
+We establish the relationship through a bidirectional JWT exchange. Each JWT carries
+the network's CA bundle, controller endpoints, and network ID.
 
 ```mermaid
 sequenceDiagram
@@ -194,18 +175,16 @@ sequenceDiagram
     Note over CC: Client can now authenticate<br/>to host federation API
 ```
 
-After this phase, both sides have a Network entity. On the host, it represents the
-client and is linked to an authenticator and Network Router Policies. On the client,
-it represents the host and stores credentials and endpoints. Network logins are
-restricted to the federation API.
+Both sides end up with a Network entity. The host side links it to an authenticator and
+Network Router Policies. The client side stores credentials and endpoints.
 
 **JWT signing and authentication** are still under consideration — either a network-wide
-cert (shared across controllers in a cluster) or per-host certs issued via
-enrollment/CSR. See the detailed design doc for tradeoffs.
+cert (shared across controllers) or per-host certs via enrollment/CSR. See the detailed
+design doc for tradeoffs.
 
 ### Phase 2: Share Routers
 
-The client network authenticates to the host's federation API and requests routers.
+The client authenticates to the host's federation API and requests routers.
 
 ```mermaid
 sequenceDiagram
@@ -219,20 +198,20 @@ sequenceDiagram
 
     CC->>HC: 3. Request add router R1<br/>(includes enrollment token)
     HC->>HC: 4. Validate R1 is owned<br/>(not shared from another network)
-    HC->>R: 5. Deliver enrollment token<br/>via control channel
+    HC->>R: 5. Deliver enrollment token + client root CA<br/>via control channel
     R->>R: 6. Validate token came from owner
     R->>R: 7. Complete enrollment<br/>(CSR signed by client CA)
     R->>CC: 8. Connect with new identity<br/>(same router ID as on host)
 
     CC->>CC: 9. Create router entity:<br/>• same router ID as host<br/>• foreign key → Network entity<br/>• marked as imported (not owned)
 
-    Note over CC,R: Router R1 now in client's model.<br/>Cannot be re-shared. Control channel<br/>established. Route/unroute handlers<br/>feed shared forwarder.
+    Note over CC,R: Router now in client's model.<br/>Cannot be re-shared. Control channel<br/>established. Route/unroute handlers<br/>feed shared forwarder.
 ```
 
 ### Phase 3: Link Establishment
 
-Once routers are enrolled in multiple networks, links form between them. Each network's
-controller drives link formation independently.
+Once routers are enrolled in multiple networks, links form. Each controller drives link
+formation independently.
 
 ```mermaid
 sequenceDiagram
@@ -255,11 +234,10 @@ sequenceDiagram
 
 ### No-Re-Sharing Enforcement
 
-The no-re-sharing constraint is enforced at three levels:
+Three levels:
 
-1. **Host controller**: Network Router Policies only allow owned routers. The controller
-   validates ownership before delivering enrollment tokens.
+1. **Host controller**: Network Router Policies only allow owned routers. Ownership is
+   validated before delivering enrollment tokens.
 2. **Router**: Only accepts federation enrollment tokens from its owner controller.
 3. **Client controller**: Imported routers have a foreign key to the Network entity,
-   marking them as imported. They are ineligible for inclusion in the client's own
-   Network Router Policies.
+   marking them as imported. Ineligible for the client's own Network Router Policies.
