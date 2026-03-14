@@ -12,6 +12,7 @@ declare -a ARCHS=(amd64)
 : "${TMPDIR:=$(mktemp -d)}"
 : "${INSTALL:=false}"
 : "${PUSH:=false}"
+: "${UPLOAD:=false}"
 : "${DOCKER:=false}"
 : "${CLEAN:=false}"
 BASENAME=$(basename $0)
@@ -46,6 +47,10 @@ while (( $# )); do
 			PUSH=true
 			shift
 			;;
+		--upload)
+			UPLOAD=true
+			shift
+			;;
 		--install)
 			INSTALL=true
 			shift
@@ -69,6 +74,7 @@ while (( $# )); do
 				"\n\t--clean\t\tpurge Debian package files"\
 				"\n\t--docker\tbuild docker images"\
 				"\n\t--push\t\tpush docker images"\
+				"\n\t--upload\tupload .deb packages to Artifactory via jf rt upload"\
 				"\n\t--verbose\temit informational messages and chatty stdout"\
 				"\n\t--debug\t\tdebug this script"
 			exit
@@ -420,6 +426,23 @@ then
 					echo "INFO: Skipping push for auto-added artifact '${ARTIFACT}'" >&4
 				fi
 			fi
+		done
+	done
+fi
+
+if [[ ${UPLOAD} == true ]]
+then
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		for ARCH in "${ARCHS[@]}"
+		do
+			jf rt upload \
+				"${TMPDIR}/${ARTIFACT}_*.deb" \
+				"zitipax-openziti-deb-test/pool/${ARTIFACT}/${ARCH}/" \
+				--deb="debian/main/${ARCH}" \
+				--recursive=false \
+				--flat=true
+			echo "INFO: Uploaded ${ARTIFACT} .deb to Artifactory for ${ARCH}"
 		done
 	done
 fi
