@@ -49,20 +49,20 @@ trap 'cleanup_all; exit $_exit_code' EXIT
 # ============================================================
 usage() {
   cat >&2 <<'EOF'
-Usage: linux.upgrade-test.bash --from-version <version> [--no-destroy]
+Usage: linux.upgrade-test.bash --from-version <version> [--keep]
 
   --from-version <version>  v1 package version to install from APT (e.g., 1.6.13)
-  --no-destroy              skip cleanup on exit (for post-mortem inspection)
+  --keep                    keep the test instance running on exit (for inspection)
 EOF
   exit 1
 }
 
 FROM_VERSION=""
-# shellcheck disable=SC2034  # NO_DESTROY is checked by cleanup_all in deployments-test-lib.bash
+# shellcheck disable=SC2034  # KEEP is checked by cleanup_all in deployments-test-lib.bash
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --from-version) FROM_VERSION="$2"; shift 2 ;;
-    --no-destroy)   NO_DESTROY=1; shift ;;
+    --keep)         KEEP=1; shift ;;
     *)              usage ;;
   esac
 done

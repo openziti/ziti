@@ -535,9 +535,9 @@ nspawn_dump_diagnostics() {
 
 # --- Cleanup ---
 
-# Set NO_DESTROY=1 (e.g., via --no-destroy) to skip destructive cleanup.
-# Useful for post-mortem inspection of a failed test environment.
-: "${NO_DESTROY:=0}"
+# Set KEEP=1 (e.g., via --keep) to keep the test instance running on exit.
+# Useful for post-mortem inspection. The next run always cleans up first.
+: "${KEEP:=0}"
 
 cleanup_service() {
   local _svc="$1"
@@ -563,8 +563,8 @@ cleanup_packages() {
 }
 
 cleanup_all() {
-  if (( NO_DESTROY )); then
-    log_info "cleanup skipped (--no-destroy)"
+  if (( KEEP )); then
+    log_info "keeping test instance (--keep)"
     return 0
   fi
   if [[ -t 0 ]]; then

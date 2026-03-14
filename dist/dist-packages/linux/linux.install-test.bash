@@ -36,11 +36,11 @@ _err_handler() {
   done
 }
 trap '_err_handler' ERR
-# Parse CLI flags (NO_DESTROY is checked by cleanup_all in deployments-test-lib.bash)
+# Parse CLI flags (KEEP is checked by cleanup_all in deployments-test-lib.bash)
 # shellcheck disable=SC2034
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --no-destroy) NO_DESTROY=1; shift ;;
+    --keep) KEEP=1; shift ;;
     *) break ;;
   esac
 done

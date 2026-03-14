@@ -7,7 +7,7 @@ set -o nounset
 set -o pipefail
 set -o errtrace
 
-NO_DESTROY=0
+KEEP=0
 _exit_code=0
 _in_err_handler=0
 _err_handler() {
@@ -23,8 +23,8 @@ trap '_err_handler' ERR
 cleanup(){
     # Disable errexit in cleanup — every command is best-effort
     set +o errexit
-    if (( NO_DESTROY )); then
-        echo "DEBUG: cleanup skipped (--no-destroy)" >&2
+    if (( KEEP )); then
+        echo "DEBUG: keeping test instance (--keep)" >&2
         return 0
     fi
     if [[ -t 0 ]]; then
@@ -39,7 +39,7 @@ trap 'cleanup; exit $_exit_code' EXIT
 # Parse CLI flags
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --no-destroy) NO_DESTROY=1; shift ;;
+        --keep) KEEP=1; shift ;;
         *) break ;;
     esac
 done
