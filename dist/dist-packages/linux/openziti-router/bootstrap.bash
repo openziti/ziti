@@ -194,7 +194,7 @@ loadEnvFiles() {
   then
     local -a _env_files=("${@}")
   else
-    local -a _env_files=("${BOOT_ENV_FILE}" "${SVC_ENV_FILE}")
+    local -a _env_files=("${SVC_ENV_FILE}")
   fi
   for _env_file in "${_env_files[@]}"
   do
@@ -203,19 +203,19 @@ loadEnvFiles() {
       # shellcheck disable=SC1090
       source "${_env_file}"
     else
-      echo "WARN: missing env file '${_env_file}'" >&2
-    fi 
+      echo "DEBUG: env file not found or empty: '${_env_file}'" >&3
+    fi
   done
 }
 
 promptRouterAddress() {
-    if [[ -z "${ZITI_ROUTER_ADVERTISED_ADDRESS:-}" ]]; then
-        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [localhost]: " || echo "localhost")"; then
+    if isInteractive; then
+        if ZITI_ROUTER_ADVERTISED_ADDRESS="$(prompt "Enter the DNS name or IP address of this router [${ZITI_ROUTER_ADVERTISED_ADDRESS}]: " || echo "${ZITI_ROUTER_ADVERTISED_ADDRESS}")"; then
             setAnswer "ZITI_ROUTER_ADVERTISED_ADDRESS=${ZITI_ROUTER_ADVERTISED_ADDRESS}" "${BOOT_ENV_FILE}"
-        else
-            echo "WARN: missing ZITI_ROUTER_ADVERTISED_ADDRESS in ${BOOT_ENV_FILE}" >&2
-            return 1
         fi
+    fi
+    if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == localhost ]]; then
+        echo "WARN: ZITI_ROUTER_ADVERTISED_ADDRESS='localhost'; the router will only be reachable from this host" >&2
     fi
 }
 
@@ -229,13 +229,14 @@ promptEnrollToken() {
             echo "WARN: ZITI_BOOTSTRAP_ENROLLMENT is not true in ${SVC_ENV_FILE}, not enrolling" >&2
         # do nothing if enrollment token is already defined in env file
         elif [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
-            echo "DEBUG: ZITI_ENROLL_TOKEN is defined in ${BOOT_ENV_FILE}" >&3
+            echo "DEBUG: ZITI_ENROLL_TOKEN is defined" >&3
         else
             if ZITI_ENROLL_TOKEN=$(prompt "Router enrollment token as string or path [required]: "); then
                 if [[ -n "${ZITI_ENROLL_TOKEN:-}" ]]; then
                     setAnswer "ZITI_ENROLL_TOKEN=${ZITI_ENROLL_TOKEN}" "${BOOT_ENV_FILE}"
                 else
-                    echo "WARN: missing ZITI_ENROLL_TOKEN in ${BOOT_ENV_FILE}" >&2
+                    echo "ERROR: ZITI_ENROLL_TOKEN is required to bootstrap the router" >&2
+                    return 1
                 fi
             fi
         fi
@@ -285,7 +286,7 @@ promptBootstrap() {
                 ZITI_BOOTSTRAP=false
             fi
         fi
-        setAnswer "ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" "${SVC_ENV_FILE}"
+        setAnswer "ZITI_BOOTSTRAP=${ZITI_BOOTSTRAP}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
     fi
     if [[ -n "${ZITI_BOOTSTRAP:-}" && "${ZITI_BOOTSTRAP}" != true ]]; then
         return 1
@@ -345,7 +346,8 @@ grantNetBindService() {
 }
 
 importZitiVars() {
-  # inherit Ziti vars and set answers
+  # Inherit ZITI_* vars from the environment. Feature flags (keys already in
+  # service.env) update there; all others go to the temp boot env file.
   for line in $(set | grep -e "^ZITI_" | sort); do
     # shellcheck disable=SC2013
     setAnswer "${line}" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
@@ -384,8 +386,7 @@ finalizeWorkingDir() {
     return 1
   fi
 
-  # disown root to allow systemd to manage the working directory as dynamic user
-  chown -R "${ZIGGY_UID:-65534}:${ZIGGY_GID:-65534}" "${_config_dir}/"
+  chown -R ziti-router:ziti-router "${_config_dir}/"
   chmod -R u=rwX,go-rwx "${_config_dir}/"
 }
 
@@ -394,9 +395,8 @@ hintLinuxBootstrap() {
   local _work_dir="${1:-${PWD}}"
 
   echo -e "\nProvide a configuration in '${_work_dir}' or generate with:"\
-          "\n* Set vars in'/opt/openziti/etc/controller/bootstrap.env'"\
-          "\n* Run '/opt/openziti/etc/controller/bootstrap.bash'"\
-          "\n* Run 'systemctl enable --now ziti-controller.service'"\
+          "\n* Set ZITI_* environment vars (or pipe them to stdin)"\
+          "\n* Run '/opt/openziti/etc/router/bootstrap.bash'"\
           "\n"
 }
 
@@ -417,25 +417,17 @@ exitHandler() {
     cat "${INFO_LOG_FILE:-/dev/null}" "${DEBUG_LOG_FILE:-/dev/null}" >| "${_log_file}"
     echo "WARN: see output in '${_log_file}'" >&2
   fi
+  if [[ -s "${BOOT_ENV_FILE:-}" ]]; then
+    echo "INFO: bootstrap answers preserved in '${BOOT_ENV_FILE}' for debugging" >&2
+  fi
 }
 
 # BEGIN
 
-# discard debug unless this script is executed directly with DEBUG=1
-# initialize a file descriptor for debug output
-: "${DEBUG:=0}"
-: "${VERBOSE:=${DEBUG}}"
-if (( DEBUG )); then
-  exec 3>&1
-  set -o xtrace
-else
-  exec 3>>"${DEBUG_LOG_FILE:=$(mktemp)}"
-fi
-
-trap exitHandler EXIT SIGINT SIGTERM
-
 # set defaults
 : "${ZITI_CTRL_ADVERTISED_PORT:=1280}"
+# Docker entrypoint (source path) keeps localhost; Linux (execute path)
+# overrides with hostname before prompts — see below the source/execute guard.
 : "${ZITI_ROUTER_ADVERTISED_ADDRESS:=localhost}"
 : "${ZITI_ROUTER_PORT:=3022}"
 : "${ZITI_ROUTER_BIND_ADDRESS:=0.0.0.0}"  # the interface address on which to listen
@@ -462,8 +454,20 @@ else
   set -o nounset
   set -o pipefail
 
-  export ZITI_HOME=/var/lib/private/ziti-router
-  BOOT_ENV_FILE=/opt/openziti/etc/router/bootstrap.env
+  # Debug output and exit handler — only needed for direct execution.
+  # When sourced (e.g., by entrypoint.bash), the caller manages its own
+  # fd 3 and traps.
+  : "${DEBUG:=0}"
+  : "${VERBOSE:=1}"
+  if (( DEBUG )); then
+    exec 3>&1
+    set -o xtrace
+  else
+    exec 3>>"${DEBUG_LOG_FILE:=$(mktemp)}"
+  fi
+  trap exitHandler EXIT SIGINT SIGTERM
+
+  export ZITI_HOME=/var/lib/ziti-router
   SVC_ENV_FILE=/opt/openziti/etc/router/service.env
   SVC_FILE=/etc/systemd/system/ziti-router.service.d/override.conf
 
@@ -494,15 +498,27 @@ else
 
   prepareWorkingDir "${ZITI_HOME}"
   stashZitiEnv
-  loadEnvFiles                  # load lowest precedence vars from SVC_ENV_FILE then BOOT_ENV_FILE
+  loadEnvFiles "${SVC_ENV_FILE}"  # feature flags (lowest precedence)
   restoreZitiEnv
+
+  # Aggregate answers in a temp file — deleted on success.
+  # Feature flags stay in service.env (the package conffile).
+  # On failure the temp file survives for debugging.
+  BOOT_ENV_FILE="$(mktemp)"
+  loadEnvStdin                  # slurp ZITI_*=value lines from stdin if not a tty
   importZitiVars                # get ZITI_* vars from environment and set in BOOT_ENV_FILE
+
+  # On Linux the pre-guard default is 'localhost' (useful for Docker where
+  # the container hostname is a random ID).  If nobody overrode it, use the
+  # system hostname instead — much more likely to be reachable.
+  if [[ "${ZITI_ROUTER_ADVERTISED_ADDRESS}" == localhost ]]; then
+    ZITI_ROUTER_ADVERTISED_ADDRESS="$(hostname -f 2>/dev/null || hostname)"
+  fi
+
   promptBootstrap               # prompt for ZITI_BOOTSTRAP if explicitly disabled (set and != true)
   promptRouterAddress           # prompt for ZITI_ROUTER_ADVERTISED_ADDRESS if not already set
   promptRouterPort              # prompt for ZITI_ROUTER_PORT if not already set
   promptEnrollToken             # prompt for ZITI_ENROLL_TOKEN if not already set
-  loadEnvStdin                  # slurp answers from stdin if it's not a tty
-  loadEnvFiles                  # reload env files to source new answers from prompts
 
   # suppress normal output during bootstrapping unless VERBOSE
   exec 4>&1; exec 1>>"${INFO_LOG_FILE:=$(mktemp)}"
@@ -514,16 +530,28 @@ else
   if bootstrap "${@}"
   then
     finalizeWorkingDir "${ZITI_HOME}"
-    setAnswer "ZITI_ENROLL_TOKEN=" "${SVC_ENV_FILE}" "${BOOT_ENV_FILE}"
     # successfully running this script directly means bootstrapping was enabled
     setAnswer "ZITI_BOOTSTRAP=true" "${SVC_ENV_FILE}"
     # if VERBOSE, then stdin was already restore earlier, else do it now to announce completion
     if ! (( VERBOSE )); then
       exec 1>&4
     fi
+    # clean up temp answers file — config.yml is the source of truth now
+    rm -f "${BOOT_ENV_FILE:-}"
     echo -e "INFO: bootstrap completed successfully and will not run again."\
             "Adjust ${ZITI_HOME}/config.yml to suit." >&2
     trap - EXIT  # remove exit trap
+
+    # On Linux with systemd, enable and start the service if not already running
+    if [[ -d /run/systemd/system ]]; then
+      if ! systemctl is-enabled --quiet ziti-router.service 2>/dev/null; then
+        systemctl enable ziti-router.service
+      fi
+      if ! systemctl is-active --quiet ziti-router.service 2>/dev/null; then
+        systemctl start ziti-router.service
+      fi
+      systemctl status --no-pager ziti-router.service >&2 || true
+    fi
   else
     echo "ERROR: something went wrong during bootstrapping; set DEBUG=1" >&2
   fi

@@ -42,6 +42,7 @@ jobs:
       ZITI_HOMEPAGE: "https://openziti.io"
       ZITI_VENDOR: "NetFoundry Inc."
       TARGETARCH: ${{ matrix.packager == 'deb' && matrix.arch.deb || matrix.arch.rpm }}
+      NFPM_ARCH: ${{ matrix.packager == 'deb' && 'all' || 'noarch' }}
       MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}

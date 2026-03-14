@@ -5,12 +5,41 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+set -o errtrace
 set -o xtrace
 
+KEEP=0
+_exit_code=0
+_in_err_handler=0
+_err_handler() {
+    _exit_code=$?
+    if (( _in_err_handler )); then return; fi
+    _in_err_handler=1
+    echo "ERROR: FAILED at line ${LINENO}: ${BASH_COMMAND} (exit ${_exit_code})" >&2
+    # Dump pod status and logs for diagnostics
+    (
+        set +e
+        minikube kubectl --profile "${ZITI_NAMESPACE:-zititest}" -- \
+            --context "${ZITI_NAMESPACE:-zititest}" \
+            get pods -A 2>&1 || true
+        for _ns in "${ZITI_NAMESPACE:-zititest}" traefik; do
+            minikube kubectl --profile "${ZITI_NAMESPACE:-zititest}" -- \
+                --context "${ZITI_NAMESPACE:-zititest}" \
+                logs -n "${_ns}" --all-containers --tail=100 2>&1 || true
+        done
+    ) >&2
+}
+trap '_err_handler' ERR
+
 cleanup(){
-    if ! (( I_AM_ROBOT ))
-    then
-        echo "WARNING: destroying minikube profile ${ZITI_NAMESPACE} in 30s; set I_AM_ROBOT=1 to suppress this message" >&2
+    # Disable errexit in cleanup — every command is best-effort
+    set +o errexit
+    if (( KEEP )); then
+        echo "DEBUG: keeping test instance (--keep)" >&2
+        return 0
+    fi
+    if [[ -t 0 ]]; then
+        echo "Deleting minikube profile '${ZITI_NAMESPACE}' in 30s. Re-run with </dev/null to skip this delay." >&2
         sleep 30
     fi
 	if minikube --profile "${ZITI_NAMESPACE}" delete
@@ -21,6 +50,15 @@ cleanup(){
     fi
     return 0
 }
+trap 'cleanup; exit $_exit_code' EXIT
+
+# Parse CLI flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --keep) KEEP=1; shift ;;
+        *) break ;;
+    esac
+done
 
 portcheck(){
     PORT="${1}"
@@ -51,9 +89,16 @@ for BIN in "${BINS[@]}"; do
 done
 
 
-: "${I_AM_ROBOT:=0}"
-: "${ZITI_GO_VERSION:=$(grep -E '^go \d+\.\d*' "./go.mod" | cut -d " " -f2)}"
+: "${ZITI_GO_VERSION:=$(grep -E '^go [0-9]+\.[0-9]*' "./go.mod" | cut -d " " -f2)}"
 : "${ZITI_NAMESPACE:="zititest"}"
+
+# With a miniziti subcommand: pass through (e.g., ./k8s.test.bash kubectl get pods)
+# Without args or with flags: run the full test
+case "${1:-}" in
+    kubectl|minikube|shell|ziti|creds|console|status|login|delete)
+        exec ./quickstart/kubernetes/miniziti.bash --profile "${ZITI_NAMESPACE}" "$@"
+    ;;
+esac
 
 declare -a MINIKUBE_START_ARGS=()
 declare -a MINIZITI_START_ARGS=()
@@ -210,4 +255,4 @@ then
     exit 1
 fi
 
-cleanup
+# cleanup runs via EXIT trap

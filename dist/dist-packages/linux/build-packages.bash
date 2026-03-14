@@ -12,6 +12,7 @@ declare -a ARCHS=(amd64)
 : "${TMPDIR:=$(mktemp -d)}"
 : "${INSTALL:=false}"
 : "${PUSH:=false}"
+: "${UPLOAD:=false}"
 : "${DOCKER:=false}"
 : "${CLEAN:=false}"
 BASENAME=$(basename $0)
@@ -46,6 +47,10 @@ while (( $# )); do
 			PUSH=true
 			shift
 			;;
+		--upload)
+			UPLOAD=true
+			shift
+			;;
 		--install)
 			INSTALL=true
 			shift
@@ -69,6 +74,7 @@ while (( $# )); do
 				"\n\t--clean\t\tpurge Debian package files"\
 				"\n\t--docker\tbuild docker images"\
 				"\n\t--push\t\tpush docker images"\
+				"\n\t--upload\tupload .deb packages to Artifactory via jf rt upload"\
 				"\n\t--verbose\temit informational messages and chatty stdout"\
 				"\n\t--debug\t\tdebug this script"
 			exit
@@ -85,6 +91,15 @@ done
 declare -a EXPLICIT_ARTIFACTS=("${ARTIFACTS[@]}")
 
 ARTIFACTS_DIR=./release
+# Ensure the artifacts directory is writable. A prior CI test (e.g.,
+# docker.test.bash) may have created it as root inside a container.
+if [[ -d "${ARTIFACTS_DIR}" ]] \
+	&& find "${ARTIFACTS_DIR}" -not -user "$(id -u)" -print -quit | grep -q .
+then
+	echo "WARN: ${ARTIFACTS_DIR}/ contains files not owned by $(id -un). Fixing with sudo chown." >&2
+	sudo chown -R "$(id -u):$(id -g)" "${ARTIFACTS_DIR}/"
+	echo "INFO: Fixed ownership of ${ARTIFACTS_DIR}/"
+fi
 # export to nfpm and assign right after building ziti binary
 export ZITI_VERSION ZITI_REV
 : ${HUB_USER:=kbinghamnetfoundry}
@@ -291,7 +306,7 @@ do
 		if [[ ${ARTIFACT} == openziti ]]
 		then
 			BUILDSUM=$(sha256sum $ARTIFACTS_DIR/$ARCH/linux/ziti | awk '{print $1}')
-			INSTALLSUM=$(sha256sum /opt/openziti/bin/ziti | awk '{print $1}')
+			INSTALLSUM=$(sha256sum /usr/bin/ziti | awk '{print $1}')
 			if [[ $BUILDSUM != "$INSTALLSUM" ]]
 			then
 				echo "Checksums do not match"
@@ -411,6 +426,23 @@ then
 					echo "INFO: Skipping push for auto-added artifact '${ARTIFACT}'" >&4
 				fi
 			fi
+		done
+	done
+fi
+
+if [[ ${UPLOAD} == true ]]
+then
+	for ARTIFACT in "${ARTIFACTS[@]}"
+	do
+		for ARCH in "${ARCHS[@]}"
+		do
+			jf rt upload \
+				"${TMPDIR}/${ARTIFACT}_*.deb" \
+				"zitipax-openziti-deb-test/pool/${ARTIFACT}/${ARCH}/" \
+				--deb="debian/main/${ARCH}" \
+				--recursive=false \
+				--flat=true
+			echo "INFO: Uploaded ${ARTIFACT} .deb to Artifactory for ${ARCH}"
 		done
 	done
 fi

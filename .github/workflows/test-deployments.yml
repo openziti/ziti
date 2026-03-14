@@ -15,7 +15,6 @@ concurrency:
 
 env:
   NFPM_VERSION: "2.38.0"
-  I_AM_ROBOT: 1  # skip destruction warnings when running in CI
 
 jobs:
   build-linux-packages:
@@ -63,6 +62,7 @@ jobs:
           ZITI_HOMEPAGE: "https://openziti.io"
           ZITI_VENDOR: "NetFoundry Inc."
           TARGETARCH: ${{ matrix.arch.goreleaser }}
+          NFPM_ARCH: ${{ matrix.packager == 'deb' && 'all' || 'noarch' }}
           MINIMUM_SYSTEMD_VERSION: 232
 
       - name: Upload Package to Build Summary
@@ -178,8 +178,8 @@ jobs:
           ZITI_ARGS="--verbose"
           ROUTER
 
-  linux-deployments:
-    name: Test Linux Deployments
+  linux-install-test:
+    name: Test Linux Fresh Install
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
@@ -201,9 +201,19 @@ jobs:
           wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
           nfpm --version
 
-      - name: Bootstrap & Run
+      - name: Install nspawn dependencies
         shell: bash
-        run: ./dist/dist-packages/linux/linux.test.bash
+        run: sudo apt-get update && sudo apt-get install -y mmdebstrap systemd-container
+
+      - name: Cache nspawn OS rootfs
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/openziti-test
+          key: nspawn-base-${{ hashFiles('/etc/os-release') }}
+
+      - name: Run fresh install test
+        shell: bash
+        run: ./dist/dist-packages/linux/linux.install-test.bash
 
       - name: Debug Info
         if: always()
@@ -217,6 +227,59 @@ jobs:
           sudo journalctl --no-pager -o cat -u ziti-controller.service
           sudo journalctl --no-pager -o cat -u ziti-router.service
           cat /opt/openziti/etc/**/*.env /tmp/${ZITI_ROUTER_NAME}.jwt
+          exit 0
+
+  linux-upgrade-test:
+    name: Test Linux v1-to-v2 Upgrade
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Shallow checkout
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        id: setup-go
+        uses: ./.github/actions/setup-go
+
+      - name: Install nfpm
+        shell: bash
+        run: |
+
+          set -o pipefail
+          set -o xtrace
+
+          echo ~/.local/bin >> $GITHUB_PATH
+          mkdir -p ~/.local/bin
+          wget -qO- https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz | tar --directory ~/.local/bin -xz nfpm
+          nfpm --version
+
+      - name: Resolve latest stable v1 release
+        id: v1-version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          V1_VERSION=$(
+            gh api --method GET 'repos/openziti/ziti/releases?per_page=100' \
+              --jq '[.[] | select(.prerelease == false and .draft == false) | .tag_name | select(startswith("v1."))] | map(ltrimstr("v")) | sort_by(split(".") | map(tonumber)) | last'
+          )
+          echo "V1_VERSION=${V1_VERSION}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Run v1-to-v2 upgrade test
+        shell: bash
+        run: |
+          ./dist/dist-packages/linux/linux.upgrade-test.bash \
+            --from-version "${{ steps.v1-version.outputs.V1_VERSION }}"
+
+      - name: Dump journal on failure
+        if: failure()
+        shell: bash
+        run: |
+
+          set -o xtrace
+          set +o errexit
+
+          journalctl -u ziti-controller --no-pager -n 200
+          journalctl -u ziti-router --no-pager -n 200
           exit 0
 
   docker-deployments:
@@ -237,6 +300,21 @@ jobs:
         run: dist/docker-images/docker.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+
+      - name: Debug Info
+        if: always()
+        shell: bash
+        run: |
+
+          set -o xtrace
+          set +o errexit
+
+          dist/docker-images/docker.test.bash ps --all
+          for svc in ziti-controller1 ziti-controller2 ziti-controller3 ziti-router1 ziti-router2 ziti-router3; do
+            echo "=== ${svc} ==="
+            dist/docker-images/docker.test.bash logs "${svc}" 2>/dev/null | tail -80
+          done
+          exit 0
 
   kubernetes-deployments:
     name: Test Kubernetes Deployments
