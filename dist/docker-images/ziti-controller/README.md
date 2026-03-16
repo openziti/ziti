@@ -1,9 +1,9 @@
 
-# Run Ziti Controller in Docker
+# Run Ziti controller in Docker
 
 You can use this container image to run a Ziti Controller in a Docker container.
 
-## Container Image
+## Container image
 
 The `openziti/ziti-controller` image is thin and is based on the `openziti/ziti-cli` image, which only provides the
 `ziti` CLI. The `ziti-controller` image adds an entrypoint that provides controller bootstrapping when
@@ -11,7 +11,7 @@ The `openziti/ziti-controller` image is thin and is based on the `openziti/ziti-
 
 The controller always runs in clustered mode, even for a single-node deployment.
 
-## Docker Compose
+## Docker compose
 
 The included `compose.yml` demonstrates how to bootstrap a controller container.
 
@@ -36,7 +36,7 @@ Then, log in to the controller using the `ziti` CLI.
 ziti edge login ctrl.127.21.71.0.sslip.io:1280 -u admin -p mypass
 ```
 
-### Environment Variables
+### Environment variables
 
 These are the most relevant variables for bootstrapping. See `compose.yml` for the full list.
 
@@ -49,11 +49,11 @@ These are the most relevant variables for bootstrapping. See `compose.yml` for t
 | `ZITI_CLUSTER_TRUST_DOMAIN` | no | `ziti` | Trust domain shared by all cluster nodes (SPIFFE ID) |
 | `ZITI_PWD` | yes | — | Password for the default admin user |
 
-### Joining an Existing Cluster
+### Joining an existing cluster
 
 To add a controller to an existing cluster, set `ZITI_BOOTSTRAP_CLUSTER=false` and provide the first node's root CA via a volume mount, and set `ZITI_CLUSTER_NODE_PKI` to that mountpoint. See the `compose.test.yml` for a working example.
 
-### Certificate Renewal
+### Certificate renewal
 
 Leaf certificates (server and client) are valid for 365 days and are
 automatically renewed at each container startup when
