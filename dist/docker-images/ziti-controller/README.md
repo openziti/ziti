@@ -33,3 +33,11 @@ Then, you may log in to the controller using the `ziti` CLI.
 ```text
 ziti edge login ctrl.127.21.71.0.sslip.io:1280 -u admin -p mypass
 ```
+
+### Certificate Renewal
+
+Leaf certificates (server and client) are valid for 365 days and are
+automatically renewed at each container startup when
+`ZITI_AUTO_RENEW_CERTS=true` (the default). Ensure the controller container
+is restarted at least once a year — any routine restart (image upgrade, host
+reboot, config change) is sufficient.
