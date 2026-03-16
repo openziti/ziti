@@ -295,7 +295,7 @@ promptCtrlAddress() {
   if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
     if isInteractive; then
       while [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; do
-        ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Enter DNS name of the controller (required): ")" || true
+        ZITI_CTRL_ADVERTISED_ADDRESS="$(prompt "Permanent external address of this controller (required): ")" || true
       done
     fi
     if [[ -z "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" ]]; then
@@ -342,9 +342,9 @@ promptBootstrapCluster(){
 promptClusterNodeName(){
   # Prompt if ZITI_CLUSTER_NODE_NAME is unset and database bootstrapping is enabled
   if [[ -z "${ZITI_CLUSTER_NODE_NAME:-}" && "${ZITI_BOOTSTRAP_DATABASE:-}" == true ]]; then
-    # derive default from controller address: first label of FQDN (requires at least 2 dots)
+    # derive default from controller address: first label of FQDN (requires at least one dot)
     local _default=""
-    if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" && "${ZITI_CTRL_ADVERTISED_ADDRESS}" =~ .+\..+\..+ ]]; then
+    if [[ -n "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" && "${ZITI_CTRL_ADVERTISED_ADDRESS}" == *.* ]]; then
       _default="${ZITI_CTRL_ADVERTISED_ADDRESS%%.*}"
     fi
     if [[ -n "${_default}" ]]; then
@@ -372,7 +372,7 @@ promptClusterTrustDomain() {
     local _prompt="Enter the trust domain shared by all nodes in the cluster"
     # derive default from controller address: everything after the first label
     local _default=""
-    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ .+\..+\..+ ]]; then
+    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" == *.* ]]; then
       _default="${ZITI_CTRL_ADVERTISED_ADDRESS#*.}"
     fi
     if [[ -n "${_default}" ]]; then
@@ -1059,6 +1059,9 @@ else
       fi
       echo "Run 'systemctl status ziti-controller' to verify." >&2
     fi
+    echo >&2
+    echo "Log in:" >&2
+    echo "  ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} -u ${ZITI_USER:-admin}" >&2
   else
     echo "ERROR: something went wrong during bootstrapping" >&2
   fi
