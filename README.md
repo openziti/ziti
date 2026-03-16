@@ -57,6 +57,10 @@ Give every device, sensor, and machine a unique cryptographic identity. OpenZiti
 
 Secure workload-to-workload communication across clouds and environments. Services authenticate each other with cryptographic identity, not network location. No shared secrets, no IP allowlists, no ambient authority.
 
+### Agentic AI
+
+Secure agent-to-service and agent-to-agent communication with cryptographic identity for every AI participant. MCP servers, tool endpoints, and private LLMs stay dark, with no listening ports or public URLs. Agents authenticate with strong, unique identities and reach only the resources that the policy allows, so autonomous workflows get the access they need without ambient authority over everything else.
+
 ### Multi-Cloud and Hybrid Connectivity
 
 One overlay network across AWS, Azure, GCP, on-prem data centers, and edge locations. No cloud-specific networking tools, no VPN tunnels between environments, no complex peering arrangements.
@@ -68,10 +72,6 @@ Access home lab or self-hosted services like Nextcloud, Home Assistant, media se
 ### Kubernetes and Cross-Cluster Services
 
 Connect services across Kubernetes clusters without complex ingress rules, service mesh sidecars, or VPN tunnels between clusters. Works beyond Kubernetes, supporting connecting k8s services to VMs, bare metal, IoT devices, or anything else on the overlay.
-
-### Agentic AI
-
-Private and secure connectivity to MCP Servers and private LLMs.
 
 ---
 
@@ -246,6 +246,18 @@ All SDKs are listed under the [OpenZiti GitHub organization](https://github.com/
 
 ---
 
+## Security
+
+OpenZiti is a security-focused project. Responsible disclosure of vulnerabilities helps us keep the platform and its users safe.
+
+**Reporting a vulnerability:** If you discover a security issue, please review our [Vulnerability Disclosure Policy](https://github.com/openziti/security/blob/main/vulnerability_disclosure_policy.md) for full details. Sensitive issues should be reported to **security@openziti.org**. Non-sensitive issues can be filed as GitHub issues in the appropriate repository. You should receive a response within 7 days.
+
+**How we handle vulnerabilities:** Our [Product Security Incident Response Process](https://github.com/openziti/security/blob/main/product_security_incident_response_process.md) describes how reported vulnerabilities are triaged, documented, and resolved — including how CVE releases are coordinated with fixes.
+
+**Safe harbor:** OpenZiti and NetFoundry will not pursue legal action against anyone who researches and reports vulnerabilities in good faith. We encourage security research and attribute reported findings to their reporters in advisories and release notes.
+
+---
+
 ## Community & Support
 
 OpenZiti has an active and growing community:
@@ -294,9 +306,9 @@ See the [local development tutorial](./doc/002-local-dev.md) for build instructi
 
 ## Adopters
 
-See who's using OpenZiti: **[ADOPTERS.md](./ADOPTERS.md)**
+OpenZiti is used in production by organizations including [DeltaSecure](https://deltasecure.de/) (managed SOC), [Resulticks](https://www.resulticks.com/) (marketing automation), [Chirp Wireless](https://chirpwireless.io/) (IoT/telecom), [GIGO Dev](https://gigo.dev/) (cloud dev environments), [OSMIT](https://osmit.de/) (managed IT/GDPR compliance), and open-source projects like [zrok](https://zrok.io) and [BlueBubbles](https://bluebubbles.app).
 
-Using OpenZiti in your project or organization? We'd love to add you. Open an issue or submit a PR.
+See the full list: **[ADOPTERS.md](./ADOPTERS.md)**. Using OpenZiti? We'd love to add you — open an issue or submit a PR.
 
 ---
 
