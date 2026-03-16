@@ -16,6 +16,8 @@ that influence bootstrapping.
 
 ### Standalone Example
 
+First, [create the router](/docs/guides/deployments/linux/router/deploy/#router-creation) in the controller, saving the enrollment token.
+
 ```text
 # create the router, saving the enrollment token to a file
 ziti edge create edge-router "router1" \
@@ -29,6 +31,19 @@ ZITI_ROUTER_ADVERTISED_ADDRESS=router1.127.0.0.1.sslip.io \
 ZITI_ROUTER_PORT=3022 \
     docker compose up
 ```
+
+### Environment Variables
+
+These are the most relevant variables for bootstrapping. See `compose.yml` for the full list.
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `ZITI_ROUTER_ADVERTISED_ADDRESS` | yes | — | Permanent external address of this router (DNS name or IP) |
+| `ZITI_ENROLL_TOKEN` | yes | — | Enrollment token (JWT) from the controller |
+| `ZITI_ROUTER_PORT` | no | 3022 | TCP port |
+| `ZITI_CTRL_ADVERTISED_ADDRESS` | no | (from token) | Controller address override |
+| `ZITI_CTRL_ADVERTISED_PORT` | no | (from token) | Controller port override |
+| `ZITI_ROUTER_MODE` | no | `host` | Tunneler mode: `none`, `host`, or `tproxy` |
 
 ### Sidecar Example
 
