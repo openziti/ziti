@@ -1,20 +1,22 @@
 
-# Run Ziti Router in Docker
+# Run Ziti router in Docker
 
 You can use this container image to run a Ziti Router in a Docker container.
 
-## Container Image
+## Container image
 
 The `openziti/ziti-router` image is thin and is based on the `openziti/ziti-cli` image, which only provides the `ziti`
 CLI. This `ziti-router` image adds an entrypoint that provides router bootstrapping when `ZITI_BOOTSTRAP=true` and uses
 the same defaults and options as the Linux package.
 
-## Docker Compose
+## Docker compose
 
 The included `compose.yml` demonstrates how to bootstrap a router and documents the most relevant environment variables
 that influence bootstrapping.
 
-### Standalone Example
+### Standalone example
+
+First, [create the router](/docs/guides/deployments/linux/router/deploy/#router-creation) in the controller, saving the enrollment token.
 
 ```text
 # create the router, saving the enrollment token to a file
@@ -30,7 +32,20 @@ ZITI_ROUTER_PORT=3022 \
     docker compose up
 ```
 
-### Sidecar Example
+### Environment variables
+
+These are the most relevant variables for bootstrapping. See `compose.yml` for the full list.
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `ZITI_ROUTER_ADVERTISED_ADDRESS` | yes | — | Permanent external address of this router (DNS name or IP) |
+| `ZITI_ENROLL_TOKEN` | yes | — | Enrollment token (JWT) from the controller |
+| `ZITI_ROUTER_PORT` | no | 3022 | TCP port |
+| `ZITI_CTRL_ADVERTISED_ADDRESS` | no | (from token) | Controller address override |
+| `ZITI_CTRL_ADVERTISED_PORT` | no | (from token) | Controller port override |
+| `ZITI_ROUTER_MODE` | no | `host` | Tunneler mode: `none`, `host`, or `tproxy` |
+
+### Sidecar example
 
 You can use this image as a sidecar container that provides Ziti DNS and TPROXY interception to another container. This
 contrived example provides a web server that listens on port 8000 and a client that waits for the webserver to be
