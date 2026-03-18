@@ -219,7 +219,7 @@ jobs:
 
       - name: Run fresh install test
         shell: bash
-        run: ./dist/dist-packages/linux/linux.install-test.bash
+        run: ./dist/dist-packages/linux/dangerous.install.linux.test.bash
 
       - name: Debug Info
         if: always()
@@ -273,7 +273,7 @@ jobs:
       - name: Run v1-to-v2 upgrade test
         shell: bash
         run: |
-          ./dist/dist-packages/linux/linux.upgrade-test.bash \
+          ./dist/dist-packages/linux/dangerous.upgrade.linux.test.bash \
             --from-version "${{ steps.v1-version.outputs.V1_VERSION }}"
 
       - name: Dump journal on failure
@@ -303,7 +303,7 @@ jobs:
 
       - name: Run the Docker Test Script
         shell: bash
-        run: dist/docker-images/docker.test.bash
+        run: dist/docker-images/dangerous.docker.test.bash
         env:
           ZITI_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
 
@@ -315,10 +315,10 @@ jobs:
           set -o xtrace
           set +o errexit
 
-          dist/docker-images/docker.test.bash ps --all
+          dist/docker-images/dangerous.docker.test.bash ps --all
           for svc in ziti-controller1 ziti-controller2 ziti-controller3 ziti-router1 ziti-router2 ziti-router3; do
             echo "=== ${svc} ==="
-            dist/docker-images/docker.test.bash logs "${svc}" 2>/dev/null | tail -80
+            dist/docker-images/dangerous.docker.test.bash logs "${svc}" 2>/dev/null | tail -80
           done
           exit 0
 
@@ -342,4 +342,4 @@ jobs:
 
       - name: Run the Kubernetes Test Script
         shell: bash
-        run: ./dist/docker-images/k8s.test.bash --cpus=2  # GitHub runners have 4 vCPUs
+        run: ./dist/docker-images/dangerous.k8s.test.bash --cpus=2  # GitHub runners have 4 vCPUs

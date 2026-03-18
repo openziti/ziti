@@ -2,7 +2,7 @@
 
 # Test fresh install of OpenZiti Linux controller and router packages.
 #
-# Local:  sudo -i bash /path/to/linux.install-test.bash
+# Local:  sudo -i bash /path/to/dangerous.install.linux.test.bash
 # CI:     runs as root with go, nfpm, etc. already on PATH
 
 set -o errexit
@@ -10,6 +10,23 @@ set -o nounset
 set -o pipefail
 set -o errtrace
 set -o xtrace
+
+# Handle --help/-h before sourcing the lib, traps, or any destructive setup
+for _arg in "$@"; do
+  case "$_arg" in
+    --help|-h)
+      cat <<'EOF'
+Usage: dangerous.install.linux.test.bash [--keep] [--only-clean]
+
+  --keep        keep the test instance running on exit (for inspection)
+  --only-clean  run cleanup only (tear down a kept instance) and exit
+
+Re-run with </dev/null to skip the pre-cleanup TTY delay.
+EOF
+      exit 0
+      ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deployments-test-lib.bash
@@ -38,12 +55,28 @@ _err_handler() {
 trap '_err_handler' ERR
 # Parse CLI flags (KEEP is checked by cleanup_all in deployments-test-lib.bash)
 # shellcheck disable=SC2034
+ONLY_CLEAN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --keep) KEEP=1; shift ;;
-    *) break ;;
+    --keep)       KEEP=1; shift ;;
+    --only-clean) ONLY_CLEAN=1; shift ;;
+    *)
+      trap - EXIT ERR
+      log_error "unknown argument: $1"
+      echo "Run with --help for usage." >&2
+      exit 1
+      ;;
   esac
 done
+
+if (( ONLY_CLEAN )); then
+  trap - EXIT ERR  # cleanup is intentional here; don't double-run on exit
+  # shellcheck disable=SC2034  # KEEP is used by cleanup_all in lib
+  KEEP=0
+  cleanup_all
+  log_info "cleanup-only complete"
+  exit 0
+fi
 
 trap 'cleanup_all; exit $_exit_code' EXIT
 

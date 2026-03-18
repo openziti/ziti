@@ -635,7 +635,7 @@ clusterInit() {
   : "${ZITI_USER:=admin}"
   : "${ZITI_USER_NAME:=Default Admin}"
 
-  local _pid_or_svc="${1:-}"
+  local _pid="${1:-}"
   local _output
   local _rc
   local _attempts=10
@@ -644,18 +644,6 @@ clusterInit() {
   echo "INFO: initializing cluster with default admin '${ZITI_USER}'"
 
   while (( _attempts-- )); do
-    local _pid="${_pid_or_svc}"
-
-    # If the argument looks like a systemd service name, resolve the current PID
-    if [[ "${_pid_or_svc}" == *.service ]]; then
-      _pid="$(systemctl show -p MainPID --value "${_pid_or_svc}" 2>/dev/null)" || true
-      if [[ -z "${_pid}" || "${_pid}" == 0 ]]; then
-        echo "DEBUG: service ${_pid_or_svc} has no MainPID, retrying in ${_delay}s (${_attempts} left)" >&3
-        sleep "${_delay}"
-        continue
-      fi
-    fi
-
     set +o errexit
     if [[ -n "${_pid}" ]]; then
       _output="$(ziti agent cluster init --pid "${_pid}" "${ZITI_USER}" "${ZITI_PWD}" "${ZITI_USER_NAME}" 2>&1)"
@@ -674,12 +662,9 @@ clusterInit() {
       return 0
     fi
 
-    # Retry on timeout or connection failure — raft may still be initializing,
-    # or the controller may have restarted (new PID)
-    if [[ "${_output}" == *"timeout"* || "${_output}" == *"deadline exceeded"* \
-       || "${_output}" == *"connection refused"* || "${_output}" == *"no such file"* ]] \
-       && (( _attempts > 0 )); then
-      echo "DEBUG: cluster init not ready, retrying in ${_delay}s (${_attempts} left)" >&3
+    # Retry on timeout — raft may still be initializing after the agent socket is ready
+    if [[ "${_output}" == *"timeout"* || "${_output}" == *"deadline exceeded"* ]] && (( _attempts > 0 )); then
+      echo "DEBUG: cluster init not ready, retrying in ${_delay}s (${_attempts} attempts left)" >&3
       sleep "${_delay}"
       continue
     fi
@@ -694,14 +679,11 @@ clusterInit() {
 
 # Wait for the controller agent to become available
 # Arguments:
-#   $1 - controller PID, systemd service name (e.g., "ziti-controller.service"), or empty
+#   $1 - (optional) controller PID, or empty for direct call
 #   $2 - (optional) max attempts (default: 30)
 #   $3 - (optional) delay between attempts in seconds (default: 1)
-#
-# When a service name is provided, the PID is re-read on each attempt so that
-# systemd restarts (which change the PID) are handled transparently.
 waitForAgent() {
-  local _pid_or_svc="${1:-}"
+  local _pid="${1:-}"
   local _attempts="${2:-30}"
   local _delay="${3:-1}"
 
@@ -709,18 +691,6 @@ waitForAgent() {
 
   while (( _attempts-- )); do
     local _rc
-    local _pid="${_pid_or_svc}"
-
-    # If the argument looks like a systemd service name, resolve the current PID
-    if [[ "${_pid_or_svc}" == *.service ]]; then
-      _pid="$(systemctl show -p MainPID --value "${_pid_or_svc}" 2>/dev/null)" || true
-      if [[ -z "${_pid}" || "${_pid}" == 0 ]]; then
-        echo "DEBUG: service ${_pid_or_svc} has no MainPID yet, retrying in ${_delay}s" >&3
-        sleep "${_delay}"
-        continue
-      fi
-    fi
-
     set +o errexit
     if [[ -n "${_pid}" ]]; then
       ziti agent stats --pid "${_pid}" &>/dev/null
@@ -731,7 +701,7 @@ waitForAgent() {
     set -o errexit
 
     if (( _rc == 0 )); then
-      echo "DEBUG: controller agent is available (pid=${_pid})" >&3
+      echo "DEBUG: controller agent is available" >&3
       return 0
     fi
     sleep "${_delay}"
@@ -1055,11 +1025,14 @@ else
         echo "DEBUG: starting controller service for cluster initialization" >&3
         systemctl start ziti-controller.service
 
-        # Pass the service name so waitForAgent and clusterInit can re-read
-        # the PID on each attempt — the controller may restart (new PID) while
-        # raft is initializing.
-        if waitForAgent "ziti-controller.service" 30 1; then
-          clusterInit "ziti-controller.service"
+        # Get the controller PID and wait for agent
+        _ctrl_pid="$(systemctl show -p MainPID --value ziti-controller.service)"
+        if [[ -z "${_ctrl_pid}" || "${_ctrl_pid}" == 0 ]]; then
+          echo "ERROR: unable to determine controller MainPID for cluster init" >&2
+        else
+          if waitForAgent "${_ctrl_pid}" 30 1; then
+            clusterInit "${_ctrl_pid}"
+          fi
         fi
       else
         echo "WARN: systemd not available, skipping cluster initialization (requires systemd when bootstrap.bash is executed directly)" >&2
