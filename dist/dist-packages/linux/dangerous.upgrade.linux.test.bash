@@ -9,9 +9,9 @@
 #   - Test state survives the upgrade
 #
 # Usage:
-#   linux.upgrade-test.bash --from-version <v1-version>
+#   dangerous.upgrade.linux.test.bash --from-version <v1-version>
 #
-# Local:  sudo -i bash /path/to/linux.upgrade-test.bash --from-version 1.6.13
+# Local:  sudo -i bash /path/to/dangerous.upgrade.linux.test.bash --from-version 1.6.13
 # CI:     version resolved in a prior workflow step, passed via --from-version
 
 set -o errexit
@@ -21,6 +21,24 @@ set -o errtrace
 set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
+
+# Handle --help/-h before sourcing the lib, traps, or any destructive setup
+for _arg in "$@"; do
+  case "$_arg" in
+    --help|-h)
+      cat <<'EOF'
+Usage: dangerous.upgrade.linux.test.bash --from-version <version> [--keep] [--only-clean]
+
+  --from-version <version>  v1 package version to install from APT (e.g., 1.6.13)
+  --keep                    keep the test instance running on exit (for inspection)
+  --only-clean              run cleanup only (tear down a kept instance) and exit
+
+Re-run with </dev/null to skip the pre-cleanup TTY delay.
+EOF
+      exit 0
+      ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deployments-test-lib.bash
@@ -42,32 +60,47 @@ _err_handler() {
   dump_service_diagnostics ziti-router.service >&2
 }
 trap '_err_handler' ERR
-trap 'cleanup_all; exit $_exit_code' EXIT
 
 # ============================================================
 # Parse required CLI arguments
 # ============================================================
 usage() {
+  trap - EXIT ERR  # don't clean up on usage/help exits
   cat >&2 <<'EOF'
-Usage: linux.upgrade-test.bash --from-version <version> [--keep]
+Usage: dangerous.upgrade.linux.test.bash --from-version <version> [--keep] [--only-clean]
 
   --from-version <version>  v1 package version to install from APT (e.g., 1.6.13)
   --keep                    keep the test instance running on exit (for inspection)
+  --only-clean              run cleanup only (tear down a kept instance) and exit
 EOF
   exit 1
 }
 
 FROM_VERSION=""
+ONLY_CLEAN=0
 # shellcheck disable=SC2034  # KEEP is checked by cleanup_all in deployments-test-lib.bash
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --from-version) FROM_VERSION="$2"; shift 2 ;;
     --keep)         KEEP=1; shift ;;
+    --only-clean)   ONLY_CLEAN=1; shift ;;
     *)              usage ;;
   esac
 done
 
-[[ -n "${FROM_VERSION}" ]] || { log_error "--from-version is required"; usage; }
+if (( ONLY_CLEAN )); then
+  trap - EXIT ERR  # cleanup is intentional here; don't double-run on exit
+  # shellcheck disable=SC2034  # KEEP is used by cleanup_all in lib
+  KEEP=0
+  cleanup_all
+  log_info "cleanup-only complete"
+  exit 0
+fi
+
+[[ -n "${FROM_VERSION}" ]] || { trap - EXIT ERR; log_error "--from-version is required"; usage; }
+
+# EXIT trap set here — after all early exits — so cleanup only fires for real test runs
+trap 'cleanup_all; exit $_exit_code' EXIT
 
 BASEDIR="${SCRIPT_DIR}"
 REPOROOT="$(cd "${BASEDIR}/../../.." && pwd)"

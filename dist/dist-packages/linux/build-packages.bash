@@ -92,7 +92,7 @@ declare -a EXPLICIT_ARTIFACTS=("${ARTIFACTS[@]}")
 
 ARTIFACTS_DIR=./release
 # Ensure the artifacts directory is writable. A prior CI test (e.g.,
-# docker.test.bash) may have created it as root inside a container.
+# dangerous.docker.test.bash) may have created it as root inside a container.
 if [[ -d "${ARTIFACTS_DIR}" ]] \
 	&& find "${ARTIFACTS_DIR}" -not -user "$(id -u)" -print -quit | grep -q .
 then
