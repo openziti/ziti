@@ -15,6 +15,8 @@ enum CommandType {
   UpdateServiceConfigsType = 1005;
   ReEnrollEdgeRouterType = 1006;
   CreateIdentityWithAuthenticatorsType = 1007;
+  DeleteRevocationsBatchType = 1008;
+  CreateRevocationsBatchType = 1009;
 }
 
 message ChangeContext {
@@ -438,6 +440,16 @@ message Revocation {
   string id = 1;
   google.protobuf.Timestamp expiresAt = 2;
   map<string, TagValue> tags = 3;
+}
+
+message DeleteRevocationsBatchCommand {
+  repeated string entityIds = 1;
+  ChangeContext ctx = 2;
+}
+
+message CreateRevocationsBatchCommand {
+  repeated Revocation revocations = 1;
+  ChangeContext ctx = 2;
 }
 
 // Services

@@ -32,6 +32,14 @@ func (x *UpdateServiceConfigsCmd) GetCommandType() int32 {
 	return int32(CommandType_UpdateServiceConfigsType)
 }
 
+func (x *DeleteRevocationsBatchCommand) GetCommandType() int32 {
+	return int32(CommandType_DeleteRevocationsBatchType)
+}
+
+func (x *CreateRevocationsBatchCommand) GetCommandType() int32 {
+	return int32(CommandType_CreateRevocationsBatchType)
+}
+
 func EncodeTags(tags map[string]interface{}) (map[string]*TagValue, error) {
 	if len(tags) == 0 {
 		return nil, nil
