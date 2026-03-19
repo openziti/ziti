@@ -103,6 +103,27 @@ type Oidc struct {
 	AccessTokenDuration  time.Duration
 	RefreshTokenDuration time.Duration
 	IdTokenDuration      time.Duration
+
+	// RevocationMinTokenLifetime skips revocation for refresh tokens that expire
+	// within this duration. Unset (zero) means always revoke. Must be less than
+	// 50% of RefreshTokenDuration if set.
+	RevocationMinTokenLifetime time.Duration
+
+	// RevocationBucketInterval is the bucket window for batching refresh-token
+	// revocations before flushing them through raft.
+	RevocationBucketInterval time.Duration
+
+	// RevocationBucketMaxSize is the maximum number of revocations per raft
+	// log entry / DB transaction when flushing.
+	RevocationBucketMaxSize int
+
+	// RevocationMaxQueued is the maximum number of revocations that can
+	// accumulate in memory before new ones are dropped.
+	RevocationMaxQueued int
+
+	// RevocationEnforcerFrequency is how often the controller purges expired
+	// revocation records from the database.
+	RevocationEnforcerFrequency time.Duration
 }
 
 type EdgeConfig struct {
@@ -249,6 +270,11 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 	c.Oidc.AccessTokenDuration = 30 * time.Minute
 	c.Oidc.RefreshTokenDuration = 24 * time.Hour
 	c.Oidc.IdTokenDuration = 30 * time.Minute
+	// RevocationMinTokenLifetime defaults to 0 (unset), meaning always revoke.
+	c.Oidc.RevocationBucketInterval = 1 * time.Minute
+	c.Oidc.RevocationBucketMaxSize = 200
+	c.Oidc.RevocationMaxQueued = 25000
+	c.Oidc.RevocationEnforcerFrequency = 1 * time.Minute
 
 	if value, found := edgeConfigMap["oidc"]; found {
 		oidcSubMap := value.(map[interface{}]interface{})
@@ -299,6 +325,57 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 
 				c.Oidc.AccessTokenDuration = durationValue
 			}
+
+			if val, ok := oidcSubMap["revocationMinTokenLifetime"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.revocationMinTokenLifetime], invalid duration string %s: %v", strValue, err)
+				}
+				c.Oidc.RevocationMinTokenLifetime = durationValue
+			}
+
+			if val, ok := oidcSubMap["revocationBucketInterval"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.revocationBucketInterval], invalid duration string %s: %v", strValue, err)
+				}
+				if durationValue < 1*time.Second {
+					pfxlog.Logger().Warn("field [edge.oidc.revocationBucketInterval] is too short, setting to 1s")
+					durationValue = 1 * time.Second
+				}
+				c.Oidc.RevocationBucketInterval = durationValue
+			}
+
+			if val, ok := oidcSubMap["revocationBucketMaxSize"]; ok {
+				c.Oidc.RevocationBucketMaxSize = val.(int)
+			}
+
+			if val, ok := oidcSubMap["revocationMaxQueued"]; ok {
+				c.Oidc.RevocationMaxQueued = val.(int)
+			}
+
+			if val, ok := oidcSubMap["revocationEnforcerFrequency"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.revocationEnforcerFrequency], invalid duration string %s: %v", strValue, err)
+				}
+				if durationValue < 10*time.Second {
+					pfxlog.Logger().Warn("field [edge.oidc.revocationEnforcerFrequency] is too short, setting to 10s")
+					durationValue = 10 * time.Second
+				}
+				c.Oidc.RevocationEnforcerFrequency = durationValue
+			}
+		}
+	}
+
+	if c.Oidc.RevocationMinTokenLifetime > 0 {
+		limit := c.Oidc.RefreshTokenDuration / 2
+		if c.Oidc.RevocationMinTokenLifetime >= limit {
+			return errors.Errorf("[edge.oidc.revocationMinTokenLifetime] %s must be less than 50%% of refreshTokenDuration %s",
+				c.Oidc.RevocationMinTokenLifetime, c.Oidc.RefreshTokenDuration)
 		}
 	}
 

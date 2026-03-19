@@ -126,6 +126,7 @@ type HybridStorage struct {
 
 	startOnce sync.Once
 	config    *Config
+	batcher   *RevocationBatcher
 
 	keys cmap.ConcurrentMap[string, *pubKey]
 }
@@ -253,13 +254,16 @@ func NewStorage(rootSigner *jwtsigner.TlsJwtSigner, config *Config, env model.En
 		serviceUsers: cmap.New[*Client](),
 		config:       config,
 		keys:         cmap.New[*pubKey](),
+		batcher:      NewRevocationBatcher(env, config),
 	}
+
+	env.GetManagers().RevocationBatchFlusher = store.FlushRevocationBatcher
 
 	store.start()
 	return store
 }
 
-// start will run Clean every 10 seconds
+// start will run Clean every 10 seconds and start the revocation batcher.
 func (s *HybridStorage) start() {
 	s.startOnce.Do(func() {
 		closeNotify := s.env.GetCloseNotifyChannel()
@@ -275,7 +279,14 @@ func (s *HybridStorage) start() {
 				}
 			}
 		}()
+		s.batcher.Start()
 	})
+}
+
+// FlushRevocationBatcher synchronously drains any pending batched revocations.
+// Exposed for testing.
+func (s *HybridStorage) FlushRevocationBatcher() {
+	s.batcher.Flush()
 }
 
 // Clean removes abandoned auth requests and associated data
@@ -987,8 +998,11 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 		return "", nil, fmt.Errorf("invalid refresh token")
 	}
 
-	if err = s.saveRevocation(NewRevocation(refreshClaims.JWTID, refreshClaims.Expiration.AsTime())); err != nil {
-		return "", nil, err
+	// Best-effort revocation of the old refresh token. Skip if the token is
+	// about to expire anyway; otherwise queue it for batched creation.
+	expiresAt := refreshClaims.Expiration.AsTime()
+	if s.config.RevocationMinTokenLifetime == 0 || time.Until(expiresAt) > s.config.RevocationMinTokenLifetime {
+		s.batcher.Add(NewRevocation(refreshClaims.JWTID, expiresAt))
 	}
 
 	newRefreshClaims := &common.RefreshClaims{

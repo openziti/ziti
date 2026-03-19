@@ -46,11 +46,11 @@ type Controller struct {
 }
 
 const (
-	policyMinFreq          = 1 * time.Second
-	policyMaxFreq          = 1 * time.Hour
-	policyAppWanFreq       = 1 * time.Second
-	policySessionFreq      = 5 * time.Second
-	policyRevocationFreq   = 1 * time.Minute
+	policyMinFreq               = 1 * time.Second
+	policyMaxFreq               = 1 * time.Hour
+	policyAppWanFreq            = 1 * time.Second
+	policySessionFreq           = 5 * time.Second
+	policyRevocationFreqDefault = 1 * time.Minute
 )
 
 func NewController(host env.HostController) (*Controller, error) {
@@ -196,7 +196,11 @@ func (c *Controller) Initialize() {
 
 	}
 
-	revocationEnforcer := policy.NewRevocationEnforcer(c.AppEnv, policyRevocationFreq)
+	revocationFreq := c.config.Oidc.RevocationEnforcerFrequency
+	if revocationFreq <= 0 {
+		revocationFreq = policyRevocationFreqDefault
+	}
+	revocationEnforcer := policy.NewRevocationEnforcer(c.AppEnv, revocationFreq, c.AppEnv.GetCommandDispatcher())
 	if err := c.policyEngine.AddOperation(revocationEnforcer); err != nil {
 		log.WithField("cause", err).
 			WithField("enforcerName", revocationEnforcer.GetName()).

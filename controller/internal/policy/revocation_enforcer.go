@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/change"
+	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/env"
 )
 
@@ -32,22 +33,29 @@ const (
 )
 
 // RevocationEnforcer periodically purges expired revocation records from the
-// controller database and router data models.
+// controller database and router data models. It only runs on the raft leader
+// (or in a leaderless configuration) to avoid redundant batch-delete dispatches.
 type RevocationEnforcer struct {
-	appEnv *env.AppEnv
+	appEnv     *env.AppEnv
+	dispatcher command.Dispatcher
 	*runner.BaseOperation
 }
 
 // NewRevocationEnforcer creates a RevocationEnforcer that runs at the given frequency.
-func NewRevocationEnforcer(appEnv *env.AppEnv, frequency time.Duration) *RevocationEnforcer {
+func NewRevocationEnforcer(appEnv *env.AppEnv, frequency time.Duration, dispatcher command.Dispatcher) *RevocationEnforcer {
 	return &RevocationEnforcer{
 		appEnv:        appEnv,
+		dispatcher:    dispatcher,
 		BaseOperation: runner.NewBaseOperation("RevocationEnforcer", frequency),
 	}
 }
 
-// Run deletes all expired revocation entries.
+// Run deletes all expired revocation entries. It is a no-op on non-leader nodes.
 func (e *RevocationEnforcer) Run() error {
+	if !e.dispatcher.IsLeaderOrLeaderless() {
+		return nil
+	}
+
 	startTime := time.Now()
 
 	defer func() {
