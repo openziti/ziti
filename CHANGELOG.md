@@ -2,8 +2,8 @@
 
 ## What's New
 
-This is the next major version release of OpenZiti, following the 1.0 release in April 2024. 
-Of particular note is that HA controllers are now considered ready for general use. 
+This is the next major version release of OpenZiti, following the 1.0 release in April 2024.
+Of particular note is that HA controllers are now considered ready for general use.
 This release also introduces a new permissions model, OIDC/JWT token-based enrollment, 
 clustering performance improvements, and a number of other features and fixes. Because 
 some of these changes are not backwards compatible with older routers, we're marking this 
@@ -98,6 +98,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Router-to-controller control channels now support multiple underlays with priority-based message routing
 * The dialing identity's ID and name are now forwarded to the hosting SDK
 * Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
+* Refresh-token revocations are now batched and best-effort, removing the database/raft bottleneck on token refreshes
 
 ## Basic Permission System (BETA)
 
@@ -814,7 +815,8 @@ updated to surface the circuit id when a dial failure happens.
 Router-to-controller control channels now support multiple underlays with priority-based message routing.
 This allows time-sensitive control messages (heartbeats, routing, circuit requests) to be separated from
 operational data (metrics, inspections) across dedicated TCP connections, preventing bulk operations from
-delaying user-affecting control plane traffic.
+delaying user-affecting control plane traffic. This feature does not yet allow specifying multiple 
+network interfaces to use, to load balance data across.
 
 ## Dialing Identity Forwarded to Hosting SDK
 
@@ -944,6 +946,24 @@ including service listeners, connections, and terminator state.
 * Alert Events
 * Controller-Initiated Control Channel Dials
 
+## Revocation System Improvements
+
+When a session is refreshed, the old refresh token's revocation is no longer created
+synchronously through raft. Instead, revocations are queued in memory and flushed in
+batches on a configurable interval. This removes the database and raft as a bottleneck
+on token refreshes. If the old token is close to expiring, the revocation is skipped
+entirely.
+
+New configuration tunables under `edge.oidc`:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `revocationMinTokenLifetime` | unset | Skip revocation if the old token expires within this duration (must be < 50% of `refreshTokenDuration`) |
+| `revocationBucketInterval` | `1m` | Bucket window for batching revocations before flushing through raft |
+| `revocationBucketMaxSize` | `200` | Max revocations per raft entry |
+| `revocationMaxQueued` | `25000` | Max revocations queued in memory before dropping |
+| `revocationEnforcerFrequency` | `1m` | How often expired revocations are purged (leader only) |
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.31 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.31...v1.0.33)
@@ -961,16 +981,16 @@ including service listeners, connections, and terminator state.
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
-* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.89](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.89)
+* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.90](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.90)
     * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add support for multi-bit set/get to AtomicBitSet
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
     * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
     * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
 
-* github.com/openziti/identity: [v1.0.111 -> v1.0.127](https://github.com/openziti/identity/compare/v1.0.111...v1.0.127)
+* github.com/openziti/identity: [v1.0.111 -> v1.0.128](https://github.com/openziti/identity/compare/v1.0.111...v1.0.128)
     * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
 
-* github.com/openziti/metrics: [v1.4.2 -> v1.4.4](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.4)
+* github.com/openziti/metrics: [v1.4.2 -> v1.4.5](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.5)
     * [Issue #58](https://github.com/openziti/metrics/issues/58) - Add GaugeFloat64 support
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
@@ -1000,13 +1020,13 @@ including service listeners, connections, and terminator state.
     * [Issue #807](https://github.com/openziti/sdk-golang/issues/807) - Don't send close from rxer to avoid blocking
     * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
 
-* github.com/openziti/secretstream: [v0.1.39 -> v0.1.48](https://github.com/openziti/secretstream/compare/v0.1.39...v0.1.48)
+* github.com/openziti/secretstream: [v0.1.39 -> v0.1.49](https://github.com/openziti/secretstream/compare/v0.1.39...v0.1.49)
 * github.com/openziti/storage: [v0.4.26 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.26...v0.4.39)
     * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
     * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
     * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
 
-* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.214](https://github.com/openziti/transport/compare/v2.0.188...v2.0.214)
+* github.com/openziti/transport/v2: [v2.0.188 -> v2.0.215](https://github.com/openziti/transport/compare/v2.0.188...v2.0.215)
     * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
     * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
 
@@ -1015,6 +1035,9 @@ including service listeners, connections, and terminator state.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3681](https://github.com/openziti/ziti/issues/3681) - coalesce OIDC JWT revocations to reduce controller write pressure
+    * [Issue #3683](https://github.com/openziti/ziti/issues/3683) - add fablab test for testing flow control changes over a longer term
+    * [Issue #3673](https://github.com/openziti/ziti/issues/3673) - revocation build-up in db and rdm
     * [Issue #3674](https://github.com/openziti/ziti/issues/3674) - Update to Go 1.26
     * [Issue #3496](https://github.com/openziti/ziti/issues/3496) - MFA TOTP Enrollment During OIDC Authentication Does Not Work
     * [Issue #3609](https://github.com/openziti/ziti/issues/3609) - Stabilize terminator creation test for 2.0

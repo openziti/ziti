@@ -17,16 +17,17 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -37,6 +38,8 @@ func NewRevocationManager(env Env) *RevocationManager {
 	manager.impl = manager
 
 	RegisterManagerDecoder[*Revocation](env, manager)
+	RegisterCommand(env, &DeleteRevocationsBatchCommand{}, &edge_cmd_pb.DeleteRevocationsBatchCommand{})
+	RegisterCommand(env, &CreateRevocationsBatchCommand{}, &edge_cmd_pb.CreateRevocationsBatchCommand{})
 
 	return manager
 }
@@ -85,7 +88,7 @@ func (self *RevocationManager) DeleteExpired(ctx *change.Context) (int, error) {
 			break
 		}
 
-		if err = self.deleteEntityBatch(ids, ctx); err != nil {
+		if err = self.DeleteBatch(ids, ctx); err != nil {
 			return total, err
 		}
 		total += len(ids)
@@ -127,7 +130,7 @@ func (self *RevocationManager) Unmarshall(bytes []byte) (*Revocation, error) {
 	}
 
 	if msg.ExpiresAt == nil {
-		return nil, errors.Errorf("revocation msg for id '%v' has nil ExspiresAt", msg.Id)
+		return nil, fmt.Errorf("revocation msg for id '%v' has nil ExpiresAt", msg.Id)
 	}
 
 	return &Revocation{
@@ -137,4 +140,147 @@ func (self *RevocationManager) Unmarshall(bytes []byte) (*Revocation, error) {
 		},
 		ExpiresAt: *pbTimeToTimePtr(msg.ExpiresAt),
 	}, nil
+}
+
+// DeleteBatch dispatches a batched delete of revocation IDs through raft as a
+// single log entry and a single DB transaction.
+func (self *RevocationManager) DeleteBatch(ids []string, ctx *change.Context) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	cmd := &DeleteRevocationsBatchCommand{
+		Context: ctx,
+		Manager: self,
+		Ids:     ids,
+	}
+	return self.Dispatch(cmd)
+}
+
+// ApplyDeleteBatch removes revocations by ID in a single DB transaction.
+func (self *RevocationManager) ApplyDeleteBatch(cmd *DeleteRevocationsBatchCommand, ctx boltz.MutateContext) error {
+	var errorList []error
+	err := self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		for _, id := range cmd.Ids {
+			if self.Store.IsEntityPresent(ctx.Tx(), id) {
+				if err := self.Store.DeleteById(ctx, id); err != nil {
+					errorList = append(errorList, err)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		errorList = append(errorList, err)
+	}
+	return errors.Join(errorList...)
+}
+
+// DeleteRevocationsBatchCommand deletes a batch of revocations through raft
+// in a single log entry and a single DB transaction.
+type DeleteRevocationsBatchCommand struct {
+	Context *change.Context
+	Manager *RevocationManager
+	Ids     []string
+}
+
+func (self *DeleteRevocationsBatchCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Manager.ApplyDeleteBatch(self, ctx)
+}
+
+func (self *DeleteRevocationsBatchCommand) Encode() ([]byte, error) {
+	return cmd_pb.EncodeProtobuf(&edge_cmd_pb.DeleteRevocationsBatchCommand{
+		EntityIds: self.Ids,
+		Ctx:       ContextToProtobuf(self.Context),
+	})
+}
+
+func (self *DeleteRevocationsBatchCommand) Decode(env Env, msg *edge_cmd_pb.DeleteRevocationsBatchCommand) error {
+	self.Manager = env.GetManagers().Revocation
+	self.Ids = msg.EntityIds
+	self.Context = ProtobufToContext(msg.Ctx)
+	return nil
+}
+
+func (self *DeleteRevocationsBatchCommand) GetChangeContext() *change.Context {
+	return self.Context
+}
+
+// CreateBatch dispatches a batched create of revocations through raft as a
+// single log entry and a single DB transaction.
+func (self *RevocationManager) CreateBatch(revocations []*Revocation, ctx *change.Context) error {
+	if len(revocations) == 0 {
+		return nil
+	}
+	cmd := &CreateRevocationsBatchCommand{
+		Context:     ctx,
+		Manager:     self,
+		Revocations: revocations,
+	}
+	return self.Dispatch(cmd)
+}
+
+// ApplyCreateBatch persists a batch of revocations in a single DB transaction.
+func (self *RevocationManager) ApplyCreateBatch(cmd *CreateRevocationsBatchCommand, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		for _, rev := range cmd.Revocations {
+			if _, err := self.createEntityInTx(ctx, rev); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// CreateRevocationsBatchCommand creates a batch of revocations through raft
+// in a single log entry and a single DB transaction.
+type CreateRevocationsBatchCommand struct {
+	Context     *change.Context
+	Manager     *RevocationManager
+	Revocations []*Revocation
+}
+
+func (self *CreateRevocationsBatchCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Manager.ApplyCreateBatch(self, ctx)
+}
+
+func (self *CreateRevocationsBatchCommand) Encode() ([]byte, error) {
+	var pbRevocations []*edge_cmd_pb.Revocation
+	for _, rev := range self.Revocations {
+		tags, err := edge_cmd_pb.EncodeTags(rev.Tags)
+		if err != nil {
+			return nil, err
+		}
+		pbRevocations = append(pbRevocations, &edge_cmd_pb.Revocation{
+			Id:        rev.Id,
+			ExpiresAt: timePtrToPb(&rev.ExpiresAt),
+			Tags:      tags,
+		})
+	}
+	return cmd_pb.EncodeProtobuf(&edge_cmd_pb.CreateRevocationsBatchCommand{
+		Revocations: pbRevocations,
+		Ctx:         ContextToProtobuf(self.Context),
+	})
+}
+
+func (self *CreateRevocationsBatchCommand) Decode(env Env, msg *edge_cmd_pb.CreateRevocationsBatchCommand) error {
+	self.Manager = env.GetManagers().Revocation
+	self.Context = ProtobufToContext(msg.Ctx)
+	for _, pbRev := range msg.Revocations {
+		if pbRev.ExpiresAt == nil {
+			return fmt.Errorf("revocation batch entry for id '%v' has nil ExpiresAt", pbRev.Id)
+		}
+		rev := &Revocation{
+			BaseEntity: models.BaseEntity{
+				Id:   pbRev.Id,
+				Tags: edge_cmd_pb.DecodeTags(pbRev.Tags),
+			},
+			ExpiresAt: *pbTimeToTimePtr(pbRev.ExpiresAt),
+		}
+		self.Revocations = append(self.Revocations, rev)
+	}
+	return nil
+}
+
+func (self *CreateRevocationsBatchCommand) GetChangeContext() *change.Context {
+	return self.Context
 }

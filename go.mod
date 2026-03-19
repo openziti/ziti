@@ -29,7 +29,7 @@ require (
 	github.com/go-openapi/loads v0.23.3
 	github.com/go-openapi/runtime v0.29.3
 	github.com/go-openapi/spec v0.22.4
-	github.com/go-openapi/strfmt v0.26.0
+	github.com/go-openapi/strfmt v0.26.1
 	github.com/go-openapi/swag v0.25.5
 	github.com/go-openapi/swag/jsonutils v0.25.5
 	github.com/go-openapi/validate v0.25.2
@@ -53,7 +53,7 @@ require (
 	github.com/judedaryl/go-arrayutils v0.0.1
 	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
-	github.com/mdlayher/netlink v1.8.0
+	github.com/mdlayher/netlink v1.9.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/miekg/dns v1.1.72
 	github.com/mitchellh/mapstructure v1.5.0
@@ -62,15 +62,15 @@ require (
 	github.com/openziti/channel/v4 v4.3.9
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.27.5
-	github.com/openziti/foundation/v2 v2.0.89
-	github.com/openziti/identity v1.0.127
+	github.com/openziti/foundation/v2 v2.0.90
+	github.com/openziti/identity v1.0.128
 	github.com/openziti/jwks v1.0.6
-	github.com/openziti/metrics v1.4.4
+	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.90
 	github.com/openziti/sdk-golang v1.5.3
-	github.com/openziti/secretstream v0.1.48
+	github.com/openziti/secretstream v0.1.49
 	github.com/openziti/storage v0.4.39
-	github.com/openziti/transport/v2 v2.0.214
+	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.4
 	github.com/openziti/ziti-db-explorer v1.1.3
@@ -92,9 +92,9 @@ require (
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
-	golang.org/x/net v0.51.0
+	golang.org/x/net v0.52.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.42.0
