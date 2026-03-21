@@ -32,25 +32,25 @@ metrics:
   clientId: {{ .Component.Id }}
 
 workloads:
-{{ if .Component.BoolVariable "testSdkXgHost" }}
+{{ if and (.Component.BoolVariable "testSdkXgHost") (.Component.BoolVariable "testThroughput") }}
   - name:         throughput-xg
     connector:    throughput-xg
     {{ $.Model.MustVariable "throughputWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testErtHost" }}
+{{ if and (.Component.BoolVariable "testErtHost") (.Component.BoolVariable "testThroughput") }}
   - name:         throughput-ert
     connector:    throughput-ert
     {{ $.Model.MustVariable "throughputWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testSdkXgHost" }}
+{{ if and (.Component.BoolVariable "testSdkXgHost") (.Component.BoolVariable "testLatency") }}
   - name:         latency-xg
     connector:    latency-xg
     {{ $.Model.MustVariable "latencyWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testErtHost" }}
+{{ if and (.Component.BoolVariable "testErtHost") (.Component.BoolVariable "testLatency") }}
   - name:         latency-ert
     connector:    latency-ert
     {{ $.Model.MustVariable "latencyWorkload" }}

@@ -170,6 +170,14 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *Router) GetLinkPayloadSenderQueueSize() int {
+	return self.config.Link.PayloadSenderQueueSize
+}
+
+func (self *Router) GetLinkAckSenderQueueSize() int {
+	return self.config.Link.AckSenderQueueSize
+}
+
 func (self *Router) GetXgressRegistry() *env.Registry {
 	return self.xgRegistry
 }

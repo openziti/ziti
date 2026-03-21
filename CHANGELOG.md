@@ -1074,6 +1074,17 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3706](https://github.com/openziti/ziti/issues/3706) - Increase link payload/ack queue sizes and make them configurable
+    * [Issue #3778](https://github.com/openziti/ziti/issues/3778) - SetRouterDataModel can deadlock in the router
+    * [Issue #3777](https://github.com/openziti/ziti/issues/3777) - With the new circuit reserve, we can have circuits with no path in the controller circuit set, which can cause panics
+    * [Issue #3770](https://github.com/openziti/ziti/issues/3770) - Update Token Requests Should Close Channel Connections If Invalid
+    * [Issue #3757](https://github.com/openziti/ziti/issues/3757) - Mesh peer signing cert from header is overwritten by TLS underlay cert
+    * [Issue #3756](https://github.com/openziti/ziti/issues/3756) - TLS handshake rate limiter timeout check reads from wrong config scope
+    * [Issue #3755](https://github.com/openziti/ziti/issues/3755) - commandHandler config read from wrong scope
+    * [Issue #3754](https://github.com/openziti/ziti/issues/3754) - dialFailed drops applyFailed parameter, preventing duplicate link retry jitter
+    * [Issue #3753](https://github.com/openziti/ziti/issues/3753) - SPIFFE trust domain prefix check has swapped HasPrefix arguments
+    * [Issue #3746](https://github.com/openziti/ziti/issues/3746) - The controller connect events control channel handler leaks a goroutine
+    * [Issue #3747](https://github.com/openziti/ziti/issues/3747) - Update controller peer error marshalling for app code changes
     * [Issue #3721](https://github.com/openziti/ziti/issues/3721) - Add CreateCircuitV3 to controller
     * [Issue #3719](https://github.com/openziti/ziti/issues/3719) - Allow binding specific inspects to pass through to xgress listener implementations
     * [Issue #3696](https://github.com/openziti/ziti/issues/3696) - oidc provider is non-deterministic for wildcard certs
