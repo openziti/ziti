@@ -72,6 +72,25 @@ var latencyWorkload = "" +
       payloadMaxBytes:  10000
 `
 
+// standaloneLatencyWorkload is used when testMode is "latency". Higher iteration count
+// for tighter statistics, without competing throughput traffic.
+var standaloneLatencyWorkload = "" +
+	`concurrency:  10
+    iterations:  500
+    dialer:
+      txRequests:       1
+      rxTimeout:        5s
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+      latencyFrequency: 1
+    listener:
+      txRequests:       1
+      txAfterRx:        true
+      rxTimeout:        5s
+      payloadMinBytes:  2048
+      payloadMaxBytes:  10000
+`
+
 var perfReport = NewPerfDiffReport()
 var metricsDumper = NewMetricsDumper()
 
@@ -102,6 +121,12 @@ var m = &model.Model{
 			"throughputWorkload": throughputWorkload,
 			"latencyWorkload":    latencyWorkload,
 
+			// testMode controls which workloads run. Values: "all" (default), "throughput", "latency".
+			// Override via TESTMODE env var or in code.
+			"testMode":       "all",
+			"testThroughput": true,
+			"testLatency":    true,
+
 			"testErtClient":   true,
 			"testSdkClient":   false,
 			"testSdkXgClient": true,
@@ -112,6 +137,22 @@ var m = &model.Model{
 		},
 	},
 	StructureFactories: []model.Factory{
+		// Apply testMode to select workloads. Resolved early so templates see the right values.
+		model.FactoryFunc(func(m *model.Model) error {
+			testMode, _ := m.GetStringVariable("testMode")
+			switch testMode {
+			case "latency":
+				m.Scope.PutVariable("testThroughput", false)
+				m.Scope.PutVariable("latencyWorkload", standaloneLatencyWorkload)
+			case "throughput":
+				m.Scope.PutVariable("testLatency", false)
+			case "all", "":
+				// Default: run both (no changes needed)
+			default:
+				return fmt.Errorf("unknown testMode %q, expected: all, throughput, or latency", testMode)
+			}
+			return nil
+		}),
 		model.FactoryFunc(func(m *model.Model) error {
 			// Set controller to baseline version
 			return m.ForEachComponent(".ctrl", 1, func(c *model.Component) error {

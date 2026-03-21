@@ -283,11 +283,13 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 
 	if isGrouped, _ := channel.Headers(underlay.Headers()).GetBoolHeader(channel.IsGroupedHeader); isGrouped {
 		dialLinkChangeConfig := DialLinkChannelConfig{
-			Dialer:             linkDialer,
-			Underlay:           underlay,
-			MaxDefaultChannels: int(self.config.maxDefaultConnections),
-			MaxAckChannel:      int(self.config.maxAckConnections),
-			StartupDelay:       self.config.startupDelay,
+			Dialer:                 linkDialer,
+			Underlay:               underlay,
+			MaxDefaultChannels:     int(self.config.maxDefaultConnections),
+			MaxAckChannel:          int(self.config.maxAckConnections),
+			PayloadSenderQueueSize: self.env.GetLinkPayloadSenderQueueSize(),
+			AckSenderQueueSize:     self.env.GetLinkAckSenderQueueSize(),
+			StartupDelay:           self.config.startupDelay,
 			UnderlayChangeCallback: func(ch *DialLinkChannel) {
 				self.notifyOfLinkChange(ch, bindHandler.link)
 			},

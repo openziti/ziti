@@ -1078,6 +1078,9 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3778](https://github.com/openziti/ziti/issues/3778) - SetRouterDataModel can deadlock in the router
+    * [Issue #3777](https://github.com/openziti/ziti/issues/3777) - With the new circuit reserve, we can have circuits with no path in the controller circuit set, which can cause panics
+    * [Issue #3770](https://github.com/openziti/ziti/issues/3770) - Update Token Requests Should Close Channel Connections If Invalid
     * [Issue #3762](https://github.com/openziti/ziti/issues/3762) - Revocations not included in full router data model state
     * [Issue #3757](https://github.com/openziti/ziti/issues/3757) - Mesh peer signing cert from header is overwritten by TLS underlay cert
     * [Issue #3756](https://github.com/openziti/ziti/issues/3756) - TLS handshake rate limiter timeout check reads from wrong config scope

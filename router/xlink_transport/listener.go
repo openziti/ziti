@@ -91,7 +91,7 @@ func (self *listener) GetLocalBinding() string {
 }
 
 func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
-	linkChannel := NewListenerLinkChannel(underlay)
+	linkChannel := NewListenerLinkChannel(underlay, self.env.GetLinkPayloadSenderQueueSize(), self.env.GetLinkAckSenderQueueSize())
 	multiConfig := channel.MultiChannelConfig{
 		LogicalName:     "link/" + underlay.Id(),
 		Options:         self.config.options,
