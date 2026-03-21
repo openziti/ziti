@@ -995,7 +995,8 @@ New configuration tunables under `edge.oidc`:
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.3](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.3)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.4](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.4)
+    * [Issue #902](https://github.com/openziti/sdk-golang/issues/902) - Inspect response message content types are mixed up
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
     * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
     * [Issue #885](https://github.com/openziti/sdk-golang/issues/885) - Only compare relevant service fields when looking for changes
