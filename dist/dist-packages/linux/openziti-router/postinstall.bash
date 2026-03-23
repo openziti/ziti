@@ -16,10 +16,11 @@ install() {
 
 upgrade() {
   createUser
+  # systemd needs to re-read the unit file before any systemctl calls,
+  # otherwise commands in migrateDynamicUser trigger a stale-unit warning
+  systemctl daemon-reload
   migrateDynamicUser
   commonActions
-  # systemd needs to re-read the unit file after package upgrade
-  systemctl daemon-reload
   # If migration stopped the service, restart it now that the unit file and
   # state directory are in their final form.
   if [[ "${_MIGRATION_STOPPED_SERVICE:-}" == "true" ]]; then
