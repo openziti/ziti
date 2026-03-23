@@ -2,7 +2,7 @@
 
 # get kubectl CLI from a source with Docker Content Trust (DCT)
 # FIXME: require DCT at build time
-FROM portainer/kubectl-shell:2.39.0 AS portainer-kubectl
+FROM portainer/kubectl-shell:2.39.1 AS portainer-kubectl
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
