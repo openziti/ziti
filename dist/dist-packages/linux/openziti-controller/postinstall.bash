@@ -16,10 +16,17 @@ install() {
 
 upgrade() {
   createUser
+  # systemd needs to re-read the unit file before any systemctl calls,
+  # otherwise commands in migrateDynamicUser trigger a stale-unit warning
+  systemctl daemon-reload
   migrateDynamicUser
   commonActions
-  # systemd needs to re-read the unit file after package upgrade
-  systemctl daemon-reload
+  # If migration stopped the service, restart it now that the unit file and
+  # state directory are in their final form.
+  if [[ "${_MIGRATION_STOPPED_SERVICE:-}" == "true" ]]; then
+    echo "INFO: restarting ${SVC_USER}.service after migration"
+    systemctl start "${SVC_USER}.service" || true
+  fi
 }
 
 commonActions() {
@@ -62,9 +69,10 @@ migrateDynamicUser() {
 
   echo "INFO: detected DynamicUser state layout for ${SVC_USER}; migrating..."
 
-  # Stop the service before moving files
+  # Stop the service before moving files; record this so upgrade() can restart.
   if systemctl is-active --quiet "${SVC_USER}.service" 2>/dev/null; then
     systemctl stop "${SVC_USER}.service" || true
+    _MIGRATION_STOPPED_SERVICE=true
   fi
 
   local _private_dir="/var/lib/private/${SVC_USER}"
@@ -130,10 +138,6 @@ What happened:
   File ownership was changed from the transient dynamic UID to the
   persistent ${SVC_USER} user.
 
-Why:
-  Static users provide consistent UIDs across hosts, which is required
-  for clustered deployments and simplifies backup/restore operations.
-
 This directory is safe to remove.
 README
 
@@ -143,24 +147,26 @@ README
 
 createUser() {
   # Prefer systemd-sysusers (declarative, handles UID allocation).
-  # Fall back to groupadd/useradd for older distros.
+  # Fall back to groupadd/useradd if sysusers is unavailable or fails to
+  # create the user (observed on some distros where sysusers exits 0 but
+  # does not actually provision the account).
   if command -v systemd-sysusers >/dev/null 2>&1; then
     printf 'u %s - "OpenZiti Controller" "%s" /usr/sbin/nologin\n' \
       "${SVC_USER}" "${STATE_DIR}" \
-    | systemd-sysusers --replace="/usr/lib/sysusers.d/${SVC_USER}.conf" -
-  else
-    if ! getent group "${SVC_GROUP}" >/dev/null 2>&1; then
-      groupadd --system "${SVC_GROUP}"
-    fi
-    if ! getent passwd "${SVC_USER}" >/dev/null 2>&1; then
-      useradd --system \
-        --home-dir "${STATE_DIR}" \
-        --shell /usr/sbin/nologin \
-        --comment "OpenZiti Controller" \
-        -g "${SVC_GROUP}" \
-        --no-user-group \
-        "${SVC_USER}"
-    fi
+    | systemd-sysusers --replace="/usr/lib/sysusers.d/${SVC_USER}.conf" - \
+    || true
+  fi
+  if ! getent group "${SVC_GROUP}" >/dev/null 2>&1; then
+    groupadd --system "${SVC_GROUP}"
+  fi
+  if ! getent passwd "${SVC_USER}" >/dev/null 2>&1; then
+    useradd --system \
+      --home-dir "${STATE_DIR}" \
+      --shell /usr/sbin/nologin \
+      --comment "OpenZiti Controller" \
+      -g "${SVC_GROUP}" \
+      --no-user-group \
+      "${SVC_USER}"
   fi
 }
 
