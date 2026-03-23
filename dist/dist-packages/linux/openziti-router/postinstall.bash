@@ -138,10 +138,6 @@ What happened:
   File ownership was changed from the transient dynamic UID to the
   persistent ${SVC_USER} user.
 
-Why:
-  Static users provide consistent UIDs across hosts, which is required
-  for clustered deployments and simplifies backup/restore operations.
-
 This directory is safe to remove.
 README
 
