@@ -42,7 +42,7 @@ commonActions() {
 # Detect whether the state directory uses the DynamicUser symlink layout from
 # v1 packages (DynamicUser=yes).  Returns 0 (true) when migration is needed.
 detectDynamicUserState() {
-  # The migration leaves a README breadcrumb in the old private dir.
+  # The migration leaves MIGRATED.txt in the old private dir as a flag.
   # Its presence means migration already completed — never re-migrate.
   if [[ -f "/var/lib/private/${SVC_USER}/MIGRATED.txt" ]]; then
     return 1
@@ -118,11 +118,12 @@ migrateDynamicUser() {
     echo "INFO: updated ${_config} paths from /var/lib/private/${SVC_USER} to ${STATE_DIR}"
   fi
 
-  # Leave a breadcrumb README in the old private location
+  # Leave a migration flag in the old private location so future upgrades
+  # skip re-detection. This directory is safe to remove manually.
   mkdir -p "${_private_dir}"
   chown root:root "${_private_dir}"
   chmod 0755 "${_private_dir}"
-  cat > "${_private_dir}/MIGRATED.txt" <<README
+  cat > "${_private_dir}/MIGRATED.txt" <<MIGRATED
 OpenZiti State Directory Migration
 ===================================
 Date: $(date --utc --iso-8601=seconds)
@@ -144,7 +145,7 @@ What happened:
   persistent ${SVC_USER} user.
 
 This directory is safe to remove.
-README
+MIGRATED
 
   logger -t "${SVC_USER}" "Migrated state from DynamicUser layout to static user ${SVC_USER}"
   echo "INFO: DynamicUser migration complete for ${SVC_USER}"
