@@ -16,7 +16,7 @@ that influence bootstrapping.
 
 ### Standalone example
 
-First, [create the router](/docs/guides/deployments/linux/router/deploy/#router-creation) in the controller, saving the enrollment token.
+First, create the router in the controller, saving the enrollment token.
 
 ```text
 # create the router, saving the enrollment token to a file
