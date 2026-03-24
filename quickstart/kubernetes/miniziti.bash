@@ -1062,7 +1062,12 @@ EOF
         # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
         checkDns "127.0.0.1"
     else
-        checkDns "$MINIKUBE_NODE_EXTERNAL"
+        # Use the ingress IP from MINIZITI_INGRESS_ZONE when available (e.g.
+        # kvm2 + MetalLB where the LB IP differs from the node IP).
+        local _dns_check_ip="${MINIZITI_INGRESS_ZONE%.sslip.io}"
+        [[ "$_dns_check_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+            || _dns_check_ip="$MINIKUBE_NODE_EXTERNAL"
+        checkDns "$_dns_check_ip"
     fi
 
     #
