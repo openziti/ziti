@@ -230,6 +230,9 @@ func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oid
 		}
 		curServerCert := curServerCertChain[0]
 		for _, dnsName := range curServerCert.DNSNames {
+			if strings.HasPrefix(dnsName, "*.") {
+				continue // wildcard DNS names produce unusable OIDC issuer URLs
+			}
 			for _, port := range ports {
 				newIssuer := net.JoinHostPort(dnsName, port)
 				issuerMap[newIssuer] = struct{}{}

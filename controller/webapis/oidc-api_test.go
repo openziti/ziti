@@ -145,7 +145,7 @@ func Test_getPossibleIssuers(t *testing.T) {
 
 		issuers := getPossibleIssuers(id, bindPoints)
 
-		req.Len(issuers, 21)
+		req.Len(issuers, 18) // wildcard DNS SANs (*.wildcard.io) are excluded
 
 		isValidIssuer := func(address string) error {
 			for _, issuer := range issuers {
@@ -169,9 +169,10 @@ func Test_getPossibleIssuers(t *testing.T) {
 		req.NoError(isValidIssuer("client3.netfoundry.io:443"))
 		req.NoError(isValidIssuer("client3.netfoundry.io"))
 
-		req.NoError(isValidIssuer("star.wildcard.io:1234"))
-		req.NoError(isValidIssuer("star.wildcard.io:443"))
-		req.NoError(isValidIssuer("star.wildcard.io"))
+		// wildcard DNS SANs are excluded from issuers since they produce unusable OIDC URLs
+		req.Error(isValidIssuer("star.wildcard.io:1234"))
+		req.Error(isValidIssuer("star.wildcard.io:443"))
+		req.Error(isValidIssuer("star.wildcard.io"))
 
 		req.NoError(isValidIssuer("127.0.0.1:1234"))
 		req.NoError(isValidIssuer("127.0.0.1:443"))
