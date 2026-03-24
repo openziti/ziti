@@ -309,16 +309,76 @@ verify_symlink_resolved() {
   log_pass "${_dir} is not a symlink"
 }
 
-# Check that the migration README breadcrumb exists
-verify_readme_breadcrumb() {
+# Check that the migration flag file exists in the old private state dir
+verify_migration_flag() {
   local _svc="$1"
-  local _readme="/var/lib/private/${_svc}/README.txt"
-  if [[ -s "${_readme}" ]]; then
-    log_pass "migration breadcrumb exists: ${_readme}"
+  local _flag="/var/lib/private/${_svc}/MIGRATED.txt"
+  if [[ -s "${_flag}" ]]; then
+    log_pass "migration flag exists: ${_flag}"
   else
-    log_fail "migration breadcrumb missing: ${_readme}"
+    log_fail "migration flag missing: ${_flag}"
     return 1
   fi
+}
+
+# Verify the old private dir contains only the migration flag (no leftover state)
+verify_private_dir_clean() {
+  local _svc="$1"
+  local _dir="/var/lib/private/${_svc}"
+  if [[ ! -d "${_dir}" ]]; then
+    log_pass "old private dir ${_dir} does not exist (clean)"
+    return 0
+  fi
+  local _extra
+  _extra=$(find "${_dir}" -mindepth 1 ! -name 'MIGRATED.txt' -print -quit 2>/dev/null || true)
+  if [[ -z "${_extra}" ]]; then
+    log_pass "old private dir ${_dir} contains only MIGRATED.txt"
+  else
+    log_fail "old private dir ${_dir} has leftover state: ${_extra}"
+    return 1
+  fi
+}
+
+# Verify config.yml has no references to the old /var/lib/private/ path
+verify_config_paths_migrated() {
+  local _svc="$1"
+  local _config="/var/lib/${_svc}/config.yml"
+  if [[ ! -f "${_config}" ]]; then
+    log_info "no config.yml found for ${_svc} (skipping path check)"
+    return 0
+  fi
+  if grep -q "/var/lib/private/${_svc}" "${_config}"; then
+    log_fail "${_config} still references /var/lib/private/${_svc}"
+    return 1
+  fi
+  log_pass "${_config} has no /var/lib/private/ references"
+}
+
+# Verify a systemd service is active after upgrade
+verify_service_running() {
+  local _svc="$1"
+  if systemctl is-active --quiet "${_svc}.service" 2>/dev/null; then
+    log_pass "${_svc}.service is active"
+  else
+    log_fail "${_svc}.service is not active"
+    journalctl -u "${_svc}.service" --no-pager -n 20 >&2 || true
+    return 1
+  fi
+}
+
+# Re-run the package upgrade and verify migration does NOT re-trigger.
+# Captures postinstall output and fails if the migration message appears.
+verify_migration_does_not_recur() {
+  local _pkg="$1" _svc="$2"
+  log_info "reinstalling ${_pkg} to verify migration does not recur"
+  local _output
+  _output=$(sudo apt-get install --reinstall -y "${_pkg}" 2>&1)
+  if echo "${_output}" | grep -q "detected DynamicUser state layout"; then
+    log_fail "migration re-triggered on reinstall of ${_pkg}"
+    echo "${_output}" >&2
+    return 1
+  fi
+  log_pass "migration did not recur for ${_pkg}"
 }
 
 # verify_traffic [--prefix <prefix>]

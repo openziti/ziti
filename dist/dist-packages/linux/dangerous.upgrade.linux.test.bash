@@ -340,25 +340,41 @@ else
 fi
 
 # ============================================================
-# Phase 7: Verify breadcrumb (only present if migration actually ran)
+# Phase 7: Verify migration completeness
 # ============================================================
-log_section "Phase 7: Verify breadcrumbs"
+log_section "Phase 7: Verify migration completeness"
 
-# The breadcrumb is only created when the DynamicUser layout is detected.
-# On v1 packages that used DynamicUser, the symlink would exist.
+# The migration flag is only created when the DynamicUser layout is detected.
 # On CI with v1 packages that already use static users, migration may be
 # a no-op. Check conditionally.
 if [[ -d "/var/lib/private/ziti-controller" ]]; then
-    verify_readme_breadcrumb ziti-controller
+    verify_migration_flag ziti-controller
+    verify_private_dir_clean ziti-controller
+    verify_config_paths_migrated ziti-controller
 else
     log_info "no DynamicUser layout detected for ziti-controller (v1 may already use static users)"
 fi
 
 if [[ -d "/var/lib/private/ziti-router" ]]; then
-    verify_readme_breadcrumb ziti-router
+    verify_migration_flag ziti-router
+    verify_private_dir_clean ziti-router
+    verify_config_paths_migrated ziti-router
 else
     log_info "no DynamicUser layout detected for ziti-router (v1 may already use static users)"
 fi
+
+# Verify services are running after the upgrade (postinstall should have
+# restarted them if migration stopped them)
+verify_service_running ziti-controller
+verify_service_running ziti-router
+
+# ============================================================
+# Phase 8: Verify migration does not recur on subsequent upgrade
+# ============================================================
+log_section "Phase 8: Verify migration idempotency"
+
+verify_migration_does_not_recur openziti-controller ziti-controller
+verify_migration_does_not_recur openziti-router ziti-router
 
 log_section "All upgrade tests passed"
 # cleanup runs via EXIT trap

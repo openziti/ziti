@@ -42,6 +42,11 @@ commonActions() {
 # Detect whether the state directory uses the DynamicUser symlink layout from
 # v1 packages (DynamicUser=yes).  Returns 0 (true) when migration is needed.
 detectDynamicUserState() {
+  # The migration leaves MIGRATED.txt in the old private dir as a flag.
+  # Its presence means migration already completed — never re-migrate.
+  if [[ -f "/var/lib/private/${SVC_USER}/MIGRATED.txt" ]]; then
+    return 1
+  fi
   # Case 1: symlink /var/lib/<svc> -> private/<svc> still exists
   if [[ -L "${STATE_DIR}" ]]; then
     local _target
@@ -52,7 +57,7 @@ detectDynamicUserState() {
     fi
   fi
   # Case 2: systemd v246+ already resolved the symlink but the private dir
-  # still has leftover data
+  # still has leftover state.
   if [[ -d "/var/lib/private/${SVC_USER}" && -d "${STATE_DIR}" \
      && ! -L "${STATE_DIR}" ]]; then
     return 0
@@ -91,10 +96,10 @@ migrateDynamicUser() {
   # Case 2: real dir exists and private dir has leftover content
   # (systemd v246+ already moved data back)
   if [[ -d "${_private_dir}" ]]; then
-    # If the private dir still has files, merge them (shouldn't happen in
-    # practice, but be safe)
+    # Copy only files that don't already exist in the destination to avoid
+    # clobbering newer state with stale copies from the private dir.
     if [[ -n "$(ls -A "${_private_dir}" 2>/dev/null)" ]]; then
-      cp -a "${_private_dir}/." "${STATE_DIR}/" 2>/dev/null || true
+      cp -a --no-clobber "${_private_dir}/." "${STATE_DIR}/" 2>/dev/null || true
     fi
     rm -rf "${_private_dir}"
   fi
@@ -113,11 +118,12 @@ migrateDynamicUser() {
     echo "INFO: updated ${_config} paths from /var/lib/private/${SVC_USER} to ${STATE_DIR}"
   fi
 
-  # Leave a breadcrumb README in the old private location
+  # Leave a migration flag in the old private location so future upgrades
+  # skip re-detection. This directory is safe to remove manually.
   mkdir -p "${_private_dir}"
   chown root:root "${_private_dir}"
   chmod 0755 "${_private_dir}"
-  cat > "${_private_dir}/README.txt" <<README
+  cat > "${_private_dir}/MIGRATED.txt" <<MIGRATED
 OpenZiti State Directory Migration
 ===================================
 Date: $(date --utc --iso-8601=seconds)
@@ -139,7 +145,7 @@ What happened:
   persistent ${SVC_USER} user.
 
 This directory is safe to remove.
-README
+MIGRATED
 
   logger -t "${SVC_USER}" "Migrated state from DynamicUser layout to static user ${SVC_USER}"
   echo "INFO: DynamicUser migration complete for ${SVC_USER}"
