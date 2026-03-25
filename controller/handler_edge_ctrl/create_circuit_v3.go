@@ -35,8 +35,9 @@ import (
 
 // NewCreateCircuitV3Handler creates a handler for CreateCircuitV3 requests. These requests
 // come from routers that have already authorized the dial locally via RDM, so no service
-// session token is required. Instead, the request carries identity ID, service ID, and
-// a pre-assigned circuit ID.
+// session token is required. Instead, the request carries the identity ID and service ID,
+// and either a pre-assigned circuit ID or an empty one, in which case the controller
+// generates it.
 func NewCreateCircuitV3Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{

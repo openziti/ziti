@@ -78,6 +78,13 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	})
 
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeConnectV2,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processConnectV2(m, ch)
+		},
+	})
+
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processBind(m, ch)
@@ -136,6 +143,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgPayload, conn.handleXgPayload)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgClose, conn.handleXgClose)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgControl, conn.handleXgControl)
 
 	// Since data is the most common type, usually it gets to dispatch directly.
 	// For now, we use handleDataMessage instead of the mux directly so we can log
