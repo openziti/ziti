@@ -143,6 +143,10 @@ func (self *tunneler) Listen(string, xgress.BindHandler) error {
 	return nil
 }
 
+func (self *tunneler) Binding() string {
+	return common.TunnelBinding
+}
+
 func (self *tunneler) Close() error {
 	if self.interceptor != nil {
 		self.interceptor.Stop()

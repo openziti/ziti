@@ -151,6 +151,10 @@ func (l *listener) handleConnect(session xgress_udp.Session) {
 	}
 }
 
+func (l *listener) Binding() string {
+	return BindingName
+}
+
 func (l *listener) Close() error {
 	if l.conn != nil {
 		return l.conn.Close()

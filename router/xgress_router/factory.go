@@ -9,9 +9,11 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt"
 )
 
+// Listener represents an xgress listener that handles incoming connections for a specific binding.
 type Listener interface {
 	Listen(address string, bindHandler xgress.BindHandler) error
 	Close() error
+	Binding() string
 }
 
 type DialParams interface {

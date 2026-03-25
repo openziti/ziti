@@ -78,6 +78,10 @@ func (l *listener) LogContext() string {
 	return l.address
 }
 
+func (l *listener) Binding() string {
+	return BindingName
+}
+
 func (l *listener) Close() error {
 	if l.conn != nil {
 		return l.conn.Close()

@@ -22,10 +22,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+const BindingName = "geneve"
+
 type Factory struct{}
 
 func (f Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	return &listener{}, nil
+}
+
+func (self *listener) Binding() string {
+	return BindingName
 }
 
 func (f Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_router.Dialer, error) {

@@ -695,10 +695,10 @@ func (self *Router) registerComponents() error {
 
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(acceptor, xlinkChAccepter, linkTransportConfig, self)
 
-	self.xgRegistry.Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	self.xgRegistry.Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
-	self.xgRegistry.Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
-	self.xgRegistry.Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
+	self.xgRegistry.Register(xgress_proxy.BindingName, xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	self.xgRegistry.Register(xgress_proxy_udp.BindingName, xgress_proxy_udp.NewFactory(self.ctrls))
+	self.xgRegistry.Register(xgress_transport.BindingName, xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	self.xgRegistry.Register(xgress_transport_udp.BindingName, xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
 
 	// Register edge-related xgress factories
 	xgressEdgeFactory := xgress_edge.NewFactory(self.config, self, self.stateManager)
