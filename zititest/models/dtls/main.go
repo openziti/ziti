@@ -1,3 +1,5 @@
+//go:build dtls
+
 /*
 	(c) Copyright NetFoundry Inc.
 

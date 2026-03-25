@@ -1,3 +1,5 @@
+//go:build db_creation
+
 package main
 
 import (

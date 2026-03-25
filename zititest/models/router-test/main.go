@@ -1,3 +1,5 @@
+//go:build router_test
+
 package main
 
 import (

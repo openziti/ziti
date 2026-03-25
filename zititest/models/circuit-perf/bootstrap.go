@@ -1,3 +1,5 @@
+//go:build circuit_perf
+
 /*
 	(c) Copyright NetFoundry Inc.
 

@@ -1,3 +1,5 @@
+//go:build zrok_test
+
 /*
 	Copyright NetFoundry Inc.
 
