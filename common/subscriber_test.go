@@ -111,15 +111,15 @@ func (self *subscriberTest) NotifyIdentityEvent(state *IdentityState, eventType 
 		self.identityState[state.Identity.Id] = currentState
 	}
 
-	if eventType == IdentityUpdatedEvent || eventType == IdentityFullStateState {
+	if eventType == IdentityUpdatedEvent || eventType == IdentityFullState {
 		currentState.identity = state.Identity
 	}
 
-	if eventType == IdentityFullStateState {
+	if eventType == IdentityFullState {
 		currentState.services = state.Services
 	}
 
-	if eventType == IdentityPostureChecksUpdatedEvent || eventType == IdentityFullStateState {
+	if eventType == IdentityPostureChecksUpdatedEvent || eventType == IdentityFullState {
 		currentState.postureChecks = state.PostureChecks
 	}
 }
