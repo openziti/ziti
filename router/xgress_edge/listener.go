@@ -901,7 +901,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	connectCtx.ServiceSessionToken = serviceSessionToken
 
-	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
+	if err = self.checkAccessIfOidc(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
 		log.WithError(err).Error("access denied")
 		self.sendStateClosedReply(err.Error(), req)
 		return
@@ -958,6 +958,163 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	response, err := self.sendCreateCircuitRequest(request, ctrlCh)
 
 	handler.FinishConnect(connectCtx, response, err)
+}
+
+func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("identityId", self.getIdentityId())
+
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
+	if !found {
+		pfxlog.Logger().Error("connId not set. unable to process connectv2 message")
+		self.sendStateClosedReply("connId not set, required", req)
+		return
+	}
+
+	// connect-v2 is OIDC-only: it authorizes the dial against router-local RDM
+	// state (policy + posture), which only exists for OIDC sessions. A
+	// legacy/non-OIDC session has its posture evaluated at the controller during
+	// session creation, so it must use the V1 dial path. Reject here so a
+	// non-OIDC session cannot bypass posture checks by dialing via V2.
+	if !self.apiSessionToken.IsOidc() {
+		log.Error("connect-v2 requires an OIDC API session; legacy sessions must use the V1 dial path")
+		self.sendStateClosedReply("connect-v2 requires an OIDC API session", req)
+		return
+	}
+
+	serviceIdOrName, found := req.GetStringHeader(sdkedge.ServiceIdHeader)
+	if !found || serviceIdOrName == "" {
+		log.Error("service header not set in ConnectV2 request")
+		self.sendStateClosedReply("service header not set, required", req)
+		return
+	}
+
+	// Resolve service ID
+	identifierType, _ := req.GetByteHeader(sdkedge.ServiceIdentifierTypeHeader)
+	serviceId := serviceIdOrName
+	if identifierType == byte(sdkedge.ServiceIdentifierByName) {
+		rdm := self.listener.factory.stateManager.RouterDataModel()
+		resolvedId, ok := rdm.ServiceIdByName(serviceIdOrName)
+		if !ok {
+			log.WithField("serviceName", serviceIdOrName).Error("service not found by name")
+			self.sendStateClosedReply("service not found", req)
+			return
+		}
+		serviceId = resolvedId
+	}
+
+	if err := self.checkAccess(serviceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
+		log.WithError(err).Error("access denied")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
+	if ctrlCh == nil {
+		log.Error("no controller available, cannot create circuit")
+		self.sendStateClosedReply("no controller available, cannot create circuit", req)
+		return
+	}
+
+	self.checkForStateListener()
+
+	connectCtx := &connectContext{
+		SdkConn:   self,
+		Log:       log,
+		Req:       req,
+		ConnId:    connId,
+		CtrlId:    ctrlCh.PeerId(),
+		ServiceId: serviceId,
+	}
+
+	var handler connectHandler
+	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
+		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
+		handler = &xgEdgeForwarder{
+			edgeClientConn: self,
+			serviceId:      serviceId,
+			ctrlId:         ctrlCh.PeerId(),
+			originator:     xgress.Initiator,
+			metrics:        self.listener.factory.env.GetXgressMetrics(),
+		}
+	} else {
+		handler = &nonXgConnectHandler{}
+	}
+
+	if !handler.Init(connectCtx) {
+		self.sendStateClosedReply("connect handler init failed", req)
+		return
+	}
+
+	// Build peer data from request headers
+	peerData := make(map[uint32][]byte)
+	for k, v := range peerHeaderRequestMappings {
+		if pk, found := req.Headers[int32(k)]; found {
+			peerData[v] = pk
+		}
+	}
+
+	if identityId := self.getIdentityId(); identityId != "" {
+		peerData[ctrl_msg.DialerIdentityIdHeader] = []byte(identityId)
+		if ident, found := self.listener.factory.stateManager.RouterDataModel().Identities.Get(identityId); found {
+			peerData[ctrl_msg.DialerIdentityNameHeader] = []byte(ident.Name)
+		}
+	}
+
+	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
+
+	request := &ctrl_msg.CreateCircuitV3Request{
+		IdentityId:           self.getIdentityId(),
+		ServiceId:            serviceId,
+		Fingerprints:         self.fingerprints.Prints(),
+		TerminatorInstanceId: terminatorIdentity,
+		PeerData:             peerData,
+		ApiSessionToken:      self.apiSessionToken.Token(),
+	}
+
+	response, err := self.sendCreateCircuitV3Msg(request.ToMessage(), ctrlCh)
+
+	handler.FinishConnect(connectCtx, response, err)
+}
+
+// sendCreateCircuitV3Msg sends a CreateCircuitV3 message and decodes the response.
+// The V3 response is converted to a V2 response since they have the same fields and
+// the connectHandler interface uses CreateCircuitV2Response.
+func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitV2Response, error) {
+	timeout := self.listener.options.Options.GetCircuitTimeout
+	resp, err := msg.WithTimeout(timeout).SendForReply(ctrlCh.GetHighPrioritySender())
+	if err != nil {
+		return nil, err
+	}
+	if resp.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
+		errMsg := string(resp.Body)
+		if errMsg == "" {
+			errMsg = "error state returned from controller with no message"
+		}
+		var circuitResp *ctrl_msg.CreateCircuitV2Response
+		if circuitId, found := resp.GetStringHeader(sdkedge.CircuitIdHeader); found {
+			circuitResp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
+		}
+		return circuitResp, errors.New(errMsg)
+	}
+
+	if resp.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType) {
+		return nil, errors.Errorf("unexpected response type %v to request. expected %v",
+			resp.ContentType, edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType)
+	}
+
+	v3Resp, err := ctrl_msg.DecodeCreateCircuitV3Response(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ctrl_msg.CreateCircuitV2Response{
+		CircuitId: v3Resp.CircuitId,
+		Address:   v3Resp.Address,
+		PeerData:  v3Resp.PeerData,
+		Tags:      v3Resp.Tags,
+	}, nil
 }
 
 func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
@@ -1032,7 +1189,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
+	if err = self.checkAccessIfOidc(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
 		log.Error(err.Error())
 		self.sendStateClosedReply(err.Error(), req)
 		return
@@ -1187,7 +1344,7 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 		}
 	}
 
-	if err = self.checkAccess(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
+	if err = self.checkAccessIfOidc(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
 		log.WithError(err).Error("bind access lost while terminator setup, closing")
 		edgeErr := &EdgeError{
 			Message:   "bind access lost",
@@ -1201,26 +1358,38 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	}
 }
 
+// checkAccess runs the RDM-based access check (policy + posture) unconditionally.
+// Used by code paths that don't have an equivalent posture-aware check elsewhere
+// (notably the connect-v2 path, where there's no controller-issued service session
+// whose creation would have done the check).
 func (self *edgeClientConn) checkAccess(serviceId string, policyType edge_ctrl_pb.PolicyType) error {
-	if self.apiSessionToken.IsOidc() {
-		stateManager := self.listener.factory.stateManager
-		// if oidc we check on the router, legacy tokens are checked in the controller during terminator creation
-		grantingPolicy, err := stateManager.HasAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceId, policyType)
+	stateManager := self.listener.factory.stateManager
+	grantingPolicy, err := stateManager.HasAccess(self.apiSessionToken.IdentityId, self.apiSessionToken.Id, serviceId, policyType)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		if grantingPolicy == nil {
-			policyTypeDescriptor := "dial"
-			if policyType == edge_ctrl_pb.PolicyType_BindPolicy {
-				policyTypeDescriptor = "bind"
-			}
-			return errors.Errorf("no access to service, failed %s access check", policyTypeDescriptor)
+	if grantingPolicy == nil {
+		policyTypeDescriptor := "dial"
+		if policyType == edge_ctrl_pb.PolicyType_BindPolicy {
+			policyTypeDescriptor = "bind"
 		}
+		return errors.Errorf("no access to service, failed %s access check", policyTypeDescriptor)
 	}
 
 	return nil
+}
+
+// checkAccessIfOidc is checkAccess for paths where legacy (non-OIDC) tokens have
+// their authorization performed elsewhere — historically by the controller at
+// service-session creation time. For OIDC tokens there's no such intermediate
+// step, so the router checks locally via RDM.
+func (self *edgeClientConn) checkAccessIfOidc(serviceId string, policyType edge_ctrl_pb.PolicyType) error {
+	if !self.apiSessionToken.IsOidc() {
+		return nil
+	}
+	return self.checkAccess(serviceId, policyType)
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
@@ -1605,6 +1774,38 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, _ channel.Chan
 	}
 }
 
+// handleXgControl handles an xgress control message sent by an SDK-side xgress
+// conn. For trace route requests, the SDK-side channel sequence is stashed into
+// ControlUserVal so the eventual response can be correlated back via
+// ReplyForHeader at this (initiator) router's xgEdgeForwarder.SendControl.
+// For trace route responses, the upstream ControlUserVal must be preserved
+// unchanged — it holds the initiator's request sequence and is what lets the
+// response reach the initiator SDK's SendForReply waiter. Lookup is
+// circuit-id-keyed via xgCircuits.
+func (self *edgeClientConn) handleXgControl(msg *channel.Message, _ channel.Channel) {
+	ctrl, err := xgress.UnmarshallControl(msg)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress control from sdk")
+		return
+	}
+	if ctrl.Headers == nil {
+		ctrl.Headers = channel.Headers{}
+	}
+	if ctrl.Type == xgress.ControlTypeTraceRoute {
+		ctrl.Headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
+	}
+
+	edgeFwd, _ := self.xgCircuits.Get(ctrl.CircuitId)
+	if edgeFwd == nil {
+		pfxlog.Logger().WithField("circuitId", ctrl.CircuitId).Error("no edge forwarder found for xgress control")
+		return
+	}
+
+	if err = self.forwarder.ForwardControl(edgeFwd.address, ctrl); err != nil {
+		pfxlog.Logger().WithField("circuitId", ctrl.CircuitId).WithError(err).Error("failed to forward xgress control")
+	}
+}
+
 func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ channel.Channel) {
 	ack, err := xgress.UnmarshallAcknowledgement(req)
 	if err != nil {
@@ -1643,6 +1844,7 @@ type connectContext struct {
 	CtrlId              string
 	PolicyType          edge_ctrl_pb.PolicyType
 	ServiceSessionToken *state.ServiceSessionToken
+	ServiceId           string // used by ConnectV2 when no ServiceSessionToken is available
 }
 
 type nonXgConnectHandler struct {
@@ -1656,18 +1858,28 @@ func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 		seq:        NewMsgQueue(4),
 	}
 
+	// V1 carries the service id on the token; V2 carries it directly on ctx.
+	// Either way, ConnState.ServiceId is the single source of truth downstream.
+	serviceId := ctx.ServiceId
+	if ctx.ServiceSessionToken != nil {
+		serviceId = ctx.ServiceSessionToken.ServiceId
+	}
+
 	self.conn.SetData(&state.ConnState{
 		ServiceSessionToken: ctx.ServiceSessionToken,
 		ApiSessionToken:     ctx.SdkConn.apiSessionToken,
+		ServiceId:           serviceId,
 		PolicyType:          edge_ctrl_pb.PolicyType_DialPolicy,
 	})
 
 	// need to remove session remove listener on close
-	stateManager := ctx.SdkConn.listener.factory.stateManager
-
-	self.conn.onClose = stateManager.AddLegacyServiceSessionRemovedListener(ctx.ServiceSessionToken, func(_ *state.ServiceSessionToken) {
-		self.conn.close(true, "session closed")
-	})
+	// V2 (sessionless) dials have no ServiceSessionToken, so skip the legacy listener
+	if ctx.ServiceSessionToken != nil {
+		stateManager := ctx.SdkConn.listener.factory.stateManager
+		self.conn.onClose = stateManager.AddLegacyServiceSessionRemovedListener(ctx.ServiceSessionToken, func(_ *state.ServiceSessionToken) {
+			self.conn.close(true, "session closed")
+		})
+	}
 
 	// We can't fix conn id, since it's provided by the client
 	if err := ctx.SdkConn.msgMux.Add(self.conn); err != nil {
@@ -1770,6 +1982,13 @@ func (self *xgEdgeForwarder) SetPostCreateAccessCheckDone() {
 func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.Duration, _ xgress.PayloadType) error {
 	msg := payload.Marshall()
 	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
+
+	// Track liveness for the forwarder's unroute scheduler regardless of which
+	// send path we take. The fast-path (timeout == 0, used for normal
+	// forwarding via Forwarder.ForwardPayload) previously returned without
+	// updating lastRx, making active circuits look idle to the unroute timer.
+	self.lastRx.Store(time.Now().UnixMilli())
+
 	if timeout == 0 {
 		sent, err := self.ch.GetDefaultSender().TrySend(msg)
 		if err == nil && !sent {
@@ -1783,8 +2002,6 @@ func (self *xgEdgeForwarder) SendPayload(payload *xgress.Payload, timeout time.D
 		}
 		return err
 	}
-
-	self.lastRx.Store(time.Now().UnixMilli())
 
 	if err := msg.WithTimeout(timeout).Send(self.ch.GetDefaultSender()); err != nil {
 		self.listener.droppedMsgMeter.Mark(1)
@@ -1816,6 +2033,15 @@ func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) er
 func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 	msg := ctrl.Marshall()
 	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
+	// For trace route responses, the SDK is waiting via SendForReply on the
+	// original request's channel sequence. The request's sequence was stashed
+	// into ControlUserVal by handleXgControl; promote it back to ReplyForHeader
+	// here so the channel layer matches the reply to the waiter.
+	if ctrl.Type == xgress.ControlTypeTraceRouteResponse {
+		if userVal, ok := ctrl.Headers.GetUint32Header(xgress.ControlUserVal); ok {
+			msg.PutUint32Header(channel.ReplyForHeader, userVal)
+		}
+	}
 	sent, err := self.ch.GetDefaultSender().TrySend(msg)
 	if err == nil && !sent {
 		self.listener.droppedMsgMeter.Mark(1)
@@ -1879,8 +2105,13 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 		msg.Headers[int32(k)] = v
 	}
 
-	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
-	if err = msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetControlSender()); err != nil {
+	// Must go on the default (data) sender, not the control sender. With
+	// multi-underlay channels the two are independently ordered; if
+	// state_connected went via the control sender, an early terminator-side
+	// payload arriving on the data sender could reach the SDK first — before
+	// it has registered its mux sink — and be dropped. High priority so we
+	// jump ahead of any bulk data already queued on the default sender.
+	if err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender()); err != nil {
 		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
 }
@@ -1891,8 +2122,14 @@ func (self *xgEdgeForwarder) Unrouted() {
 	defer pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("unroute: complete")
 	self.xgCircuits.Remove(self.circuitId)
 
+	// Send state_closed at standard priority on the default (data) sender so it
+	// stays ordered behind any payloads already queued for the SDK rather than
+	// leapfrogging them. The destination is unregistered before Unrouted runs,
+	// so no further payloads will be forwarded; FIFO ordering then guarantees the
+	// SDK drains all in-band data before it sees the close. (Unrouted is the
+	// ungraceful teardown path, so we don't synthesize an in-band end-of-circuit.)
 	msg := sdkedge.NewStateClosedMsg(self.connId, "xgress unrouted")
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithField("circuitId", self.circuitId).
 			WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")

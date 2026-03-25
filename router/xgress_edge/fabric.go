@@ -281,7 +281,16 @@ func (self *edgeXgressConn) GetCircuitId() string {
 }
 
 func (self *edgeXgressConn) GetServiceId() string {
-	if data := self.GetData(); data != nil && data.ServiceSessionToken != nil {
+	data := self.GetData()
+	if data == nil {
+		return ""
+	}
+	if data.ServiceId != "" {
+		return data.ServiceId
+	}
+	// Defensive fallback for any path that didn't populate ConnState.ServiceId
+	// directly but did set the legacy ServiceSessionToken.
+	if data.ServiceSessionToken != nil {
 		return data.ServiceSessionToken.ServiceId
 	}
 	return ""
@@ -496,7 +505,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) AcceptMessage(msg *channel.Message) {
+func (self *edgeXgressConn) AcceptMessage(msg *channel.Message, _ edge.SdkChannel) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)

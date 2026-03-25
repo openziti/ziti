@@ -67,9 +67,15 @@ type RemoveListener func()
 // ConnState encapsulates the authentication and authorization context for an
 // edge connection, bundling API session credentials, service-specific tokens,
 // and policy enforcement metadata for streamlined access control decisions.
+//
+// ServiceId is the authoritative service identifier for the connection. For
+// V1 dials it matches ServiceSessionToken.ServiceId; for V2 sessionless
+// dials there is no token so this field is the only carrier. Set unconditionally
+// by the connect handlers.
 type ConnState struct {
 	ApiSessionToken     *ApiSessionToken
 	ServiceSessionToken *ServiceSessionToken
+	ServiceId           string
 	PolicyType          edge_ctrl_pb.PolicyType
 }
 
