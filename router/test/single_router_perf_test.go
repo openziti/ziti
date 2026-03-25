@@ -155,7 +155,6 @@ func Test_SingleRouterPerf(t *testing.T) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           xgress_router.NewAcker(fwd, registry, closeNotify),
 		Forwarder:       fwd,
-		Retransmitter:   xgress.NewRetransmitter(fwd, fwd, registry, closeNotify),
 		PayloadIngester: xgress.NewPayloadIngester(closeNotify),
 		Metrics:         xgress.NewMetrics(registry),
 	})

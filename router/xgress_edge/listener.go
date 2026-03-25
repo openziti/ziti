@@ -823,6 +823,185 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	handler.FinishConnect(connectCtx, response, err)
 }
 
+func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("identityId", self.getIdentityId())
+
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
+	if !found {
+		pfxlog.Logger().Error("connId not set. unable to process connectv2 message")
+		self.sendStateClosedReply("connId not set, required", req)
+		return
+	}
+
+	serviceIdOrName, found := req.GetStringHeader(sdkedge.ServiceIdHeader)
+	if !found || serviceIdOrName == "" {
+		log.Error("service header not set in ConnectV2 request")
+		self.sendStateClosedReply("service header not set, required", req)
+		return
+	}
+
+	requestId, found := req.GetStringHeader(sdkedge.ConnectRequestIdHeader)
+	if !found || requestId == "" {
+		log.Error("connect request id not set in ConnectV2 request")
+		self.sendStateClosedReply("connect request id not set, required", req)
+		return
+	}
+
+	// Resolve service ID
+	identifierType, _ := req.GetByteHeader(sdkedge.ServiceIdentifierTypeHeader)
+	serviceId := serviceIdOrName
+	if identifierType == byte(sdkedge.ServiceIdentifierByName) {
+		rdm := self.listener.factory.stateManager.RouterDataModel()
+		var resolvedId string
+		rdm.Services.IterCb(func(id string, svc *common.Service) {
+			if svc.Name == serviceIdOrName {
+				resolvedId = id
+			}
+		})
+		if resolvedId == "" {
+			log.WithField("serviceName", serviceIdOrName).Error("service not found by name")
+			self.sendStateClosedReply("service not found", req)
+			return
+		}
+		serviceId = resolvedId
+	}
+
+	if err := self.checkAccess(serviceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
+		log.WithError(err).Error("access denied")
+		self.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
+	if ctrlCh == nil {
+		log.Error("no controller available, cannot create circuit")
+		self.sendStateClosedReply("no controller available, cannot create circuit", req)
+		return
+	}
+
+	self.checkForStateListener()
+
+	// Generate circuit ID early so we can send route_circuit before the full circuit is set up
+	circuitId, err := idgen.NewUUIDString()
+	if err != nil {
+		log.WithError(err).Error("failed to generate circuit id")
+		self.sendStateClosedReply("failed to generate circuit id", req)
+		return
+	}
+
+	// Send route_circuit to SDK — fire-and-forget, before full circuit setup
+	routeMsg := sdkedge.NewRouteCircuitMsg(circuitId, requestId)
+	if sendErr := routeMsg.WithPriority(channel.Highest).Send(self.ch.GetControlSender()); sendErr != nil {
+		log.WithError(sendErr).Error("failed to send route_circuit message")
+		self.sendStateClosedReply("failed to send route_circuit", req)
+		return
+	}
+
+	connectCtx := &connectContext{
+		SdkConn:   self,
+		Log:       log,
+		Req:       req,
+		ConnId:    connId,
+		CtrlId:    ctrlCh.PeerId(),
+		ServiceId: serviceId,
+	}
+
+	var handler connectHandler
+	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
+		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
+		handler = &xgEdgeForwarder{
+			edgeClientConn: self,
+			serviceId:      serviceId,
+			ctrlId:         ctrlCh.PeerId(),
+			originator:     xgress.Initiator,
+			metrics:        self.listener.factory.env.GetXgressMetrics(),
+		}
+	} else {
+		handler = &nonXgConnectHandler{}
+	}
+
+	if !handler.Init(connectCtx) {
+		// route_circuit was already sent to the SDK, so include the circuit ID in the
+		// failure reply so the SDK can clean up its pending circuit mapping
+		circuitHeaders := channel.Headers{}
+		circuitHeaders.PutStringHeader(sdkedge.CircuitIdHeader, circuitId)
+		self.sendStateClosedReply("connect handler init failed", req, circuitHeaders)
+		return
+	}
+
+	// Build peer data from request headers
+	peerData := make(map[uint32][]byte)
+	for k, v := range peerHeaderRequestMappings {
+		if pk, found := req.Headers[int32(k)]; found {
+			peerData[v] = pk
+		}
+	}
+
+	if identityId := self.getIdentityId(); identityId != "" {
+		peerData[ctrl_msg.DialerIdentityIdHeader] = []byte(identityId)
+		if ident, found := self.listener.factory.stateManager.RouterDataModel().Identities.Get(identityId); found {
+			peerData[ctrl_msg.DialerIdentityNameHeader] = []byte(ident.Name)
+		}
+	}
+
+	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
+
+	request := &ctrl_msg.CreateCircuitV3Request{
+		IdentityId:           self.getIdentityId(),
+		ServiceId:            serviceId,
+		CircuitId:            circuitId,
+		Fingerprints:         self.fingerprints.Prints(),
+		TerminatorInstanceId: terminatorIdentity,
+		PeerData:             peerData,
+		ApiSessionToken:      self.apiSessionToken.Token(),
+	}
+
+	response, err := self.sendCreateCircuitV3Msg(request.ToMessage(), ctrlCh)
+
+	handler.FinishConnect(connectCtx, response, err)
+}
+
+// sendCreateCircuitV3Msg sends a CreateCircuitV3 message and decodes the response.
+// The V3 response is converted to a V2 response since they have the same fields and
+// the connectHandler interface uses CreateCircuitV2Response.
+func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitV2Response, error) {
+	timeout := self.listener.options.Options.GetCircuitTimeout
+	resp, err := msg.WithTimeout(timeout).SendForReply(ctrlCh.GetHighPrioritySender())
+	if err != nil {
+		return nil, err
+	}
+	if resp.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
+		errMsg := string(resp.Body)
+		if errMsg == "" {
+			errMsg = "error state returned from controller with no message"
+		}
+		var circuitResp *ctrl_msg.CreateCircuitV2Response
+		if circuitId, found := resp.GetStringHeader(sdkedge.CircuitIdHeader); found {
+			circuitResp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
+		}
+		return circuitResp, errors.New(errMsg)
+	}
+
+	if resp.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType) {
+		return nil, errors.Errorf("unexpected response type %v to request. expected %v",
+			resp.ContentType, edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType)
+	}
+
+	v3Resp, err := ctrl_msg.DecodeCreateCircuitV3Response(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ctrl_msg.CreateCircuitV2Response{
+		CircuitId: v3Resp.CircuitId,
+		Address:   v3Resp.Address,
+		PeerData:  v3Resp.PeerData,
+		Tags:      v3Resp.Tags,
+	}, nil
+}
+
 func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	for k, v := range peerHeaderRespMappings {
 		if val, ok := m[k]; ok {
@@ -1506,6 +1685,7 @@ type connectContext struct {
 	CtrlId              string
 	PolicyType          edge_ctrl_pb.PolicyType
 	ServiceSessionToken *state.ServiceSessionToken
+	ServiceId           string // used by ConnectV2 when no ServiceSessionToken is available
 }
 
 type nonXgConnectHandler struct {
@@ -1526,11 +1706,13 @@ func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 	})
 
 	// need to remove session remove listener on close
-	stateManager := ctx.SdkConn.listener.factory.stateManager
-
-	self.conn.onClose = stateManager.AddLegacyServiceSessionRemovedListener(ctx.ServiceSessionToken, func(_ *state.ServiceSessionToken) {
-		self.conn.close(true, "session closed")
-	})
+	// V2 (sessionless) dials have no ServiceSessionToken, so skip the legacy listener
+	if ctx.ServiceSessionToken != nil {
+		stateManager := ctx.SdkConn.listener.factory.stateManager
+		self.conn.onClose = stateManager.AddLegacyServiceSessionRemovedListener(ctx.ServiceSessionToken, func(_ *state.ServiceSessionToken) {
+			self.conn.close(true, "session closed")
+		})
+	}
 
 	// We can't fix conn id, since it's provided by the client
 	if err := ctx.SdkConn.msgMux.Add(self.conn); err != nil {

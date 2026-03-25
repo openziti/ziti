@@ -470,7 +470,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) AcceptMessage(msg *channel.Message) {
+func (self *edgeXgressConn) AcceptMessage(msg *channel.Message, _ edge.SdkChannel) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)

@@ -353,12 +353,10 @@ func (self *Router) GetAlerter() env.Alerter {
 func (self *Router) createDataPlaneAdapter() xgress.DataPlaneAdapter {
 	payloadIngester := xgress.NewPayloadIngesterWithConfig(64, self.shutdownC)
 	ackSender := xgress_router.NewAcker(self.forwarder, self.metricsRegistry, self.shutdownC)
-	retransmitter := xgress.NewRetransmitter(self.forwarder, self.metricsRegistry, self.GetCloseNotify())
 
 	return handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           ackSender,
 		Forwarder:       self.forwarder,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(self.metricsRegistry),
 	})

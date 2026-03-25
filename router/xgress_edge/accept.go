@@ -79,6 +79,13 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	})
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeConnectV2,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processConnectV2(m, ch)
+		},
+	})
+
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processBind(m, ch)
