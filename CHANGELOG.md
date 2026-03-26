@@ -101,6 +101,8 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Refresh-token revocations are now batched and best-effort, removing the database/raft bottleneck on token refreshes
 * `ziti edge quickstart` now always runs in HA mode. The `ha` subcommand has been removed. Use
   `ziti edge quickstart join` to add additional members to the cluster.
+* The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
+  cluster-ready. If you have scripts passing `--clustered`, remove it.
 
 ## Basic Permission System (BETA)
 

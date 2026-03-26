@@ -37,7 +37,6 @@ const (
 	optionCtrlPort                       = "ctrlPort"
 	optionEdgeIdentityEnrollmentDuration = "identityEnrollmentDuration"
 	optionEdgeRouterEnrollmentDuration   = "routerEnrollmentDuration"
-	optionClustered                      = "clustered"
 )
 
 var (

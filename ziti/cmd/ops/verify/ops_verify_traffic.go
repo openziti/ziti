@@ -57,7 +57,6 @@ type traffic struct {
 	clientIdName string
 	bindSPName   string
 	dialSPName   string
-	haEnabled    bool
 }
 
 func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -130,11 +129,7 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&t.mode, "mode", "m", "", "[optional, default 'both'] The mode to perform: server, client, both.")
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
-	cmd.Flags().BoolVar(&t.haEnabled, "ha", false, "Enable high availability mode.")
 	cmd.Flags().StringVar(&t.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
-	_ = cmd.Flags().MarkHidden("ha")
-
-	_ = cmd.Flags().MarkDeprecated("ha", "use in an HA environment should now be automatically detected")
 
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
