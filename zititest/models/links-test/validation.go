@@ -26,6 +26,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/rest_client/link"
@@ -47,7 +48,7 @@ func sowChaos(run model.Run) error {
 		return err
 	}
 	toRestart := append(routers, controllers...)
-	fmt.Printf("restarting %v controllers and %v routers\n", len(controllers), len(routers))
+	tui.ValidationLogger().Infof("restarting %d controllers and %d routers\n", len(controllers), len(routers))
 	return chaos.RestartSelected(run, 100, toRestart...)
 }
 
@@ -83,12 +84,18 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	allLinksPresent := false
 	start := time.Now()
 
-	logger := pfxlog.Logger().WithField("ctrl", c.Id)
+	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
 	var lastLog time.Time
 	for time.Now().Before(deadline) && !allLinksPresent {
 		linkCount, err := getLinkCount(clients)
 		if err != nil {
-			return nil
+			logger.WithError(err).Warn("failed to get link count, retrying")
+			time.Sleep(5 * time.Second)
+			clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+			if err != nil {
+				return err
+			}
+			continue
 		}
 		if linkCount == 79800 {
 			allLinksPresent = true
@@ -142,7 +149,7 @@ func getLinkCount(clients *zitirest.Clients) (int64, error) {
 }
 
 func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
-	logger := pfxlog.Logger().WithField("ctrl", id)
+	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
 	eventNotify := make(chan *mgmt_pb.RouterLinkDetails, 1)
@@ -195,7 +202,6 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 	for expected > 0 {
 		select {
 		case <-closeNotify:
-			fmt.Printf("channel closed, exiting")
 			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
 			if !routerDetail.ValidateSuccess {

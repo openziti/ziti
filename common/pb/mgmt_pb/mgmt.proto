@@ -275,6 +275,9 @@ message RouterLinkDetail {
   string destRouterId = 6;
   bool dialed = 7;
   repeated string messages = 8;
+  bool inGossipStore = 9;
+  uint64 gossipVersion = 10;
+  uint32 gossipIteration = 11;
 }
 
 message ValidateRouterSdkTerminatorsRequest {

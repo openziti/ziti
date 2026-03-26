@@ -25,18 +25,26 @@ import (
 	"github.com/openziti/channel/v4/latency"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/sirupsen/logrus"
 )
 
-func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, heartbeatOptions *channel.HeartbeatOptions) channel.BindHandler {
+func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, gossipStore *gossip.Store, heartbeatOptions *channel.HeartbeatOptions) channel.BindHandler {
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddTypedReceiveHandler(newCommandHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newAddPeerHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newRemovePeerHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newTransferLeadershipHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newInspectHandler(n))
+
+		if gossipStore != nil {
+			binding.AddTypedReceiveHandler(gossipStore.NewDeltaHandler())
+			binding.AddTypedReceiveHandler(gossipStore.NewAckHandler())
+			binding.AddTypedReceiveHandler(gossipStore.NewDigestHandler())
+			binding.AddTypedReceiveHandler(gossipStore.NewDigestResponseHandler())
+		}
 
 		roundTripHistogram := n.GetMetricsRegistry().Histogram("peer.latency:" + binding.GetChannel().Id())
 		queueTimeHistogram := n.GetMetricsRegistry().Histogram("peer.queue_time:" + binding.GetChannel().Id())

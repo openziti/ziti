@@ -88,6 +88,10 @@ func (self *testEnv) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *testEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testLink struct {
 	id     string
 	key    string

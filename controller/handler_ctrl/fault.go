@@ -123,7 +123,7 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 		}
 
 		wasConnected := link.IsUsable()
-		h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
+		h.network.LinkFaultedViaGossip(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
 		otherRouter := link.Src
 		if link.Src.Id == h.r.Id {
 			otherRouter = link.GetDest()

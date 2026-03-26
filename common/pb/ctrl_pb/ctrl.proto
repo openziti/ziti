@@ -51,6 +51,9 @@ enum ContentType {
 
   AlertsType = 1054;
   RequestClusterMembers = 1055;
+
+  CanaryType = 1056;        // router -> controller: canary sequence number
+  CanaryStatusType = 1057;  // controller -> router: controller's view of router's canary
 }
 
 enum ControlHeaders {
@@ -59,6 +62,8 @@ enum ControlHeaders {
   RouterMetadataHeader = 1001;
   CapabilitiesHeader = 1002;
   CtrlChanListenersHeader = 1003;
+  CanarySeqHeader = 1004;
+  EpochHeader = 1005;
 }
 
 enum RouterCapability {

@@ -144,6 +144,15 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {
+		// Update router pointers — the link may have been created with a
+		// database-loaded router before it connected. Now that it's reporting
+		// links, it's connected and has version info, routerLinks, etc.
+		if src != nil && src.Connected.Load() {
+			link.Src = src
+		}
+		if dst != nil && dst.Connected.Load() {
+			link.Dst.Store(dst)
+		}
 		return link, false
 	}
 

@@ -17,11 +17,13 @@
 package link
 
 import (
+	"container/heap"
 	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
@@ -62,6 +64,7 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 
 type linkDestUpdate struct {
 	id        string
+	ctrlId    string
 	version   string
 	healthy   bool
 	listeners []*ctrl_pb.Listener
@@ -70,19 +73,27 @@ type linkDestUpdate struct {
 func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 	dest := registry.destinations[self.id]
 
-	becameHealthy := false
-
 	if dest == nil {
 		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
-	} else {
-		if !dest.healthy && self.healthy {
-			becameHealthy = true
-		}
 	}
-	dest.update(self)
 
+	wasHealthy := dest.healthy
+	dest.updateHealthFromCtrl(self.ctrlId, self.healthy)
+	dest.healthy = dest.isHealthy()
+
+	if !wasHealthy && dest.healthy {
+		dest.unhealthyAt = time.Time{}
+	} else if wasHealthy && !dest.healthy {
+		dest.unhealthyAt = time.Now()
+	}
+
+	// Only apply listener changes when this update reports healthy — an
+	// unhealthy update has no listeners and the orphan cleanup would
+	// incorrectly remove states created by a healthy controller's update.
 	if self.healthy {
+		dest.version.Store(self.version)
+		becameHealthy := !wasHealthy && dest.healthy
 		self.ApplyListenerChanges(registry, dest, becameHealthy)
 	}
 }
@@ -118,7 +129,7 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 					}
 					dest.linkMap[linkKey] = newLinkState
 					log.Info("new potential link")
-					registry.evaluateLinkState(newLinkState)
+					registry.scheduleNewLink(newLinkState)
 				} else {
 					log.Info("link already known")
 					if existingLinkState.listener.Address != listener.Address {
@@ -197,10 +208,26 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	}
 
 	if state.status == StatusLinkFailed {
-		state.retryDelay = time.Duration(0)
-		state.nextDial = time.Now()
-		registry.evaluateLinkState(state)
-		state.addPendingLinkFault(link.Id(), link.Iteration())
+		// Use the healthy min retry interval instead of zero to prevent a
+		// tight establish→fail→retry loop when links keep failing shortly
+		// after establishment (e.g., multi-underlay connection failures
+		// under load).
+		minRetry := state.dialer.GetHealthyBackoffConfig().GetMinRetryInterval()
+		state.retryDelay = minRetry
+		state.nextDial = time.Now().Add(minRetry)
+		heap.Push(registry.linkStateQueue, state)
+
+		if notifier := registry.env.GetLinkGossipNotifier(); notifier != nil &&
+			registry.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+			if err := notifier.NotifyLinkFault(link.Id(), link.Iteration()); err != nil {
+				// Send failed — fall back to pending fault so it gets retried
+				// on the next notification cycle.
+				state.addPendingLinkFault(link.Id(), link.Iteration())
+			}
+		} else {
+			state.addPendingLinkFault(link.Id(), link.Iteration())
+		}
+
 		state.link = nil
 	}
 }
@@ -314,6 +341,13 @@ func (self *markNewLinksNotified) Handle(*linkRegistryImpl) {
 	for _, pair := range self.links {
 		if pair.state.status == StatusEstablished && pair.link == pair.state.link {
 			pair.state.ctrlsNotified = true
+		} else {
+			pfxlog.Logger().
+				WithField("linkKey", pair.state.linkKey).
+				WithField("linkId", pair.link.Id()).
+				WithField("status", pair.state.status).
+				WithField("linkMatch", pair.link == pair.state.link).
+				Info("skipped marking link notified, state changed since collection")
 		}
 	}
 }
@@ -329,6 +363,33 @@ func (self *markFaultedLinksNotified) Handle(*linkRegistryImpl) {
 			state.clearFault(fault)
 		}
 	}
+}
+
+type linkConnStateChanged struct {
+	link xlink.Xlink
+}
+
+func (self *linkConnStateChanged) Handle(registry *linkRegistryImpl) {
+	link := self.link
+	log := pfxlog.Logger().WithField("linkKey", link.Key()).WithField("linkId", link.Id())
+	dest, found := registry.destinations[link.DestinationId()]
+	if !found {
+		log.WithField("linkDest", link.DestinationId()).Debug("ignoring conn state change, link destination not present in registry")
+		return
+	}
+
+	state, found := dest.linkMap[link.Key()]
+	if !found {
+		log.WithField("linkDest", link.DestinationId()).Debug("ignoring conn state change, link state not present in registry")
+		return
+	}
+
+	if state.status != StatusEstablished || state.link != link {
+		return
+	}
+
+	state.ctrlsNotified = false
+	registry.triggerNotify()
 }
 
 type scanForLinkIdEvent struct {

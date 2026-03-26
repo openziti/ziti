@@ -97,6 +97,8 @@ type NetworkControllers interface {
 	ControllersHaveMinVersion(version string) bool
 	GetLeader() NetworkController
 	AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error
+	GetSubscriptionController() NetworkController
+	AllControllersHaveCapability(cap int) bool
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -368,6 +370,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+		binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_CanaryStatusType), self.handleCanaryStatusUpdate)
 
 		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
 			return err
@@ -427,8 +430,55 @@ func (self *networkControllers) handleRouterDataModelIndexUpdate(m *channel.Mess
 	}
 }
 
+func (self *networkControllers) handleCanaryStatusUpdate(m *channel.Message, ch channel.Channel) {
+	if seq, ok := m.GetUint64Header(int32(ctrl_pb.ControlHeaders_CanarySeqHeader)); ok {
+		if ctrl := self.GetNetworkController(ch.Id()); ctrl != nil {
+			ctrl.updateCanarySeq(seq)
+		}
+	}
+}
+
+// GetSubscriptionController returns the controller that should receive canaries
+// and (when all controllers are gossip-capable) link reports. Selection prefers
+// the leader, then falls back to the most responsive controller.
+func (self *networkControllers) GetSubscriptionController() NetworkController {
+	var current NetworkController
+	for _, ctrl := range self.ctrls.AsMap() {
+		if !ctrl.IsConnected() || ctrl.IsUnresponsive() {
+			continue
+		}
+		if current == nil ||
+			(!self.isLeader(current) && self.isLeader(ctrl)) ||
+			(!self.isLeader(current) && ctrl.isMoreResponsive(current)) {
+			current = ctrl
+		}
+	}
+	return current
+}
+
+// AllControllersHaveCapability returns true if every connected controller
+// advertises the given capability. Returns false if no controllers are connected.
+func (self *networkControllers) AllControllersHaveCapability(cap int) bool {
+	all := self.ctrls.AsMap()
+	if len(all) == 0 {
+		pfxlog.Logger().WithField("capability", cap).
+			Warn("AllControllersHaveCapability: no controllers in map")
+		return false
+	}
+	for ctrlId, ctrl := range all {
+		if !ctrl.HasCapability(cap) {
+			pfxlog.Logger().WithField("capability", cap).
+				WithField("ctrlId", ctrlId).
+				Warn("AllControllersHaveCapability: controller missing capability")
+			return false
+		}
+	}
+	return true
+}
+
 func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) error {
 	ctrl := newNetworkCtrl(ctrlCh, address, self.heartbeatOptions)
+	ctrl.setCapabilities(capabilities.GetCapabilities(underlay.Headers()))
 
 	if versionValue, found := underlay.Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
@@ -462,6 +512,7 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	id := binding.GetChannel().Id()
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+	binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_CanaryStatusType), self.handleCanaryStatusUpdate)
 
 	if err := self.Add(address, ctrlCh, binding.GetChannel(), underlay); err != nil {
 		return err

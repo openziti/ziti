@@ -59,18 +59,25 @@ type linkDest struct {
 	healthy     bool
 	unhealthyAt time.Time
 	linkMap     map[string]*linkState
+	ctrlHealth  map[string]bool // per-controller health reports
 }
 
-func (self *linkDest) update(update *linkDestUpdate) {
-	if self.healthy && !update.healthy {
-		self.unhealthyAt = time.Now()
+// updateHealthFromCtrl records a health report from a specific controller.
+func (self *linkDest) updateHealthFromCtrl(ctrlId string, healthy bool) {
+	if self.ctrlHealth == nil {
+		self.ctrlHealth = map[string]bool{}
 	}
+	self.ctrlHealth[ctrlId] = healthy
+}
 
-	self.healthy = update.healthy
-
-	if update.healthy {
-		self.version.Store(update.version)
+// isHealthy returns true if any controller reports the destination as healthy.
+func (self *linkDest) isHealthy() bool {
+	for _, healthy := range self.ctrlHealth {
+		if healthy {
+			return true
+		}
 	}
+	return false
 }
 
 type linkFault struct {
