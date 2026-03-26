@@ -368,7 +368,7 @@ func (s *cliTestState) testControllerUnavailable(t *testing.T) {
 
 func (s *cliTestState) reconfigureTargetForZiti(pkiRoot string) error {
 	v2 := cmd.NewRootCommand(os.Stdin, os.Stdout, os.Stderr)
-	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti,mgmt-addressable-terminators --ca-name intermediate-ca-quickstart --server-file mgmt.ziti", " "))
+	v2.SetArgs(strings.Split("pki create server --key-file server --pki-root "+pkiRoot+" --ip 127.0.0.1,::1 --dns localhost,mgmt,mgmt.ziti,mgmt-addressable-terminators --ca-name intermediate-ca-quickstart --server-file mgmt.ziti --spiffe-id spiffe://quickstart/controller/quickstart", " "))
 	if zitiCmdErr := v2.Execute(); zitiCmdErr != nil {
 		return zitiCmdErr
 	}

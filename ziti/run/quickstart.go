@@ -134,13 +134,10 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		Use:   "join",
 		Short: "runs a Controller and Router in quickstart mode and joins an existing cluster",
 		Long:  "runs a Controller and Router in quickstart mode and joins an existing cluster with a temporary directory; suitable for testing and development",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
-			err := options.join(context)
-			if err != nil {
-				logrus.Fatal(err)
-			}
+			return options.join(context)
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
@@ -162,14 +159,16 @@ func (o *QuickstartOpts) cleanupHome() {
 
 func (o *QuickstartOpts) join(ctx context.Context) error {
 	if strings.TrimSpace(o.InstanceID) == "" {
-		logrus.Fatalf("the instance-id is required when joining a cluster")
+		return fmt.Errorf("--instance-id is required when joining a cluster")
 	}
 	if strings.TrimSpace(o.Home) == "" {
-		logrus.Fatalf("the home directory must be specified when joining an existing cluster. the root-ca is used to create the server's pki")
+		return fmt.Errorf("--home is required when joining a cluster; the root-ca is used to create the server's pki")
 	}
-
 	if o.ClusterMember == "" {
-		logrus.Fatalf("--cluster-member is required")
+		return fmt.Errorf("--cluster-member is required")
+	}
+	if strings.TrimSpace(o.TrustDomain) == "" {
+		return fmt.Errorf("--trust-domain is required when joining a cluster")
 	}
 
 	o.joinCommand = true
@@ -256,7 +255,9 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		_ = os.MkdirAll(dbDir, 0o700)
 		logrus.Debugf("made directory '%s'", dbDir)
 
-		o.CreateMinimalPki()
+		if err := o.CreateMinimalPki(); err != nil {
+			return err
+		}
 
 		_ = os.Setenv("ZITI_HOME", o.instHome())
 		ctrl := create.NewCmdCreateConfigController()
@@ -266,7 +267,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		ctrl.SetArgs(args)
 		err = ctrl.Execute()
 		if err != nil {
-			logrus.Fatal(err)
+			return err
 		}
 	}
 
@@ -280,7 +281,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		runCtrl.SetContext(curCtx)
 		runCtrlErr := runCtrl.Execute()
 		if runCtrlErr != nil {
-			logrus.Fatal(runCtrlErr)
+			logrus.Errorf("controller exited with error: %v", runCtrlErr)
 		}
 	}()
 	fmt.Println("Controller running...")
@@ -355,20 +356,20 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		}
 		agentJoinCmd.SetArgs(args)
 
-		addChan := make(chan struct{})
+		addChan := make(chan error, 1)
 		addTimeout := time.Second * 30
 		go func() {
 			o.waitForLeader()
-			agentJoinErr := agentJoinCmd.Execute()
-			if agentJoinErr != nil {
-				logrus.Fatal(agentJoinErr)
-			}
-			close(addChan)
+			addChan <- agentJoinCmd.Execute()
 		}()
 
 		select {
-		case <-addChan:
-			//completed normally
+		case agentJoinErr := <-addChan:
+			if agentJoinErr != nil {
+				o.cleanupHome()
+				cancel()
+				return fmt.Errorf("failed to join cluster: %w", agentJoinErr)
+			}
 			logrus.Info("Add command successful. continuing...")
 		case <-time.After(addTimeout):
 			o.cleanupHome()
@@ -475,10 +476,12 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		}
 		loginErr := loginCmd.Execute()
 		if loginErr != nil {
-			logrus.Fatal(loginErr)
+			return loginErr
 		}
 
-		o.configureOverlay()
+		if err := o.configureOverlay(); err != nil {
+			return err
+		}
 
 		time.Sleep(1 * time.Second)
 
@@ -495,7 +498,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		createErErr := createErCmd.Execute()
 
 		if createErErr != nil {
-			logrus.Fatal(createErErr)
+			return createErErr
 		}
 	}
 
@@ -516,7 +519,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 		o.waitForLeader()
 		erCfgErr := erCfg.Execute()
 		if erCfgErr != nil {
-			logrus.Fatal(erCfgErr)
+			return erCfgErr
 		}
 	}
 
@@ -532,7 +535,7 @@ func (o *QuickstartOpts) configureRouter(routerName string, configFile string, c
 			})
 			loginErr := loginCmd.Execute()
 			if loginErr != nil {
-				logrus.Fatal(loginErr)
+				return loginErr
 			}
 		}
 
@@ -574,12 +577,12 @@ func (o *QuickstartOpts) runRouter(configFile string) {
 		o.waitForLeader() //needed?
 		erRunCmdErr := erRunCmd.Execute()
 		if erRunCmdErr != nil {
-			logrus.Fatal(erRunCmdErr)
+			logrus.Errorf("router exited with error: %v", erRunCmdErr)
 		}
 	}()
 }
 
-func (o *QuickstartOpts) CreateMinimalPki() {
+func (o *QuickstartOpts) CreateMinimalPki() error {
 	where := path.Join(o.Home, "pki")
 	fmt.Println("emitting a minimal PKI")
 
@@ -608,7 +611,7 @@ func (o *QuickstartOpts) CreateMinimalPki() {
 			ca.SetArgs(rootCaArgs)
 			pkiErr := ca.Execute()
 			if pkiErr != nil {
-				logrus.Fatal(pkiErr)
+				return pkiErr
 			}
 
 		} else {
@@ -627,7 +630,7 @@ func (o *QuickstartOpts) CreateMinimalPki() {
 	})
 	intErr := intermediate.Execute()
 	if intErr != nil {
-		logrus.Fatal(intErr)
+		return intErr
 	}
 
 	//ziti pki create server --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --server-name "server" --server-file "server" --dns "localhost,${ZITI_HOSTNAME}" --spiffe-id="whatever"
@@ -650,7 +653,7 @@ func (o *QuickstartOpts) CreateMinimalPki() {
 	svr.SetArgs(args)
 	svrErr := svr.Execute()
 	if svrErr != nil {
-		logrus.Fatal(svrErr)
+		return svrErr
 	}
 
 	//ziti pki create client --pki-root="${ZITI_HOME}/pki" --ca-name "intermediate-ca" --client-name "client" --client-file "client" --key-file "server" --spiffe-id="whatever"
@@ -665,8 +668,9 @@ func (o *QuickstartOpts) CreateMinimalPki() {
 	})
 	clientErr := client.Execute()
 	if clientErr != nil {
-		logrus.Fatal(clientErr)
+		return clientErr
 	}
+	return nil
 }
 
 func waitForController(ctx context.Context, ctrlUrl string, done chan error) {
@@ -731,9 +735,9 @@ func (o *QuickstartOpts) instHome() string {
 	return path.Join(o.Home, o.InstanceID)
 }
 
-func (o *QuickstartOpts) configureOverlay() {
+func (o *QuickstartOpts) configureOverlay() error {
 	if o.joinCommand {
-		return
+		return nil
 	}
 
 	// Allow all identities to use any edge router with the "public" attribute
@@ -746,7 +750,7 @@ func (o *QuickstartOpts) configureOverlay() {
 	})
 	erpCmdErr := erpCmd.Execute()
 	if erpCmdErr != nil {
-		logrus.Fatal(erpCmdErr)
+		return erpCmdErr
 	}
 
 	// # Allow all edge-routers to access all services
@@ -760,8 +764,9 @@ func (o *QuickstartOpts) configureOverlay() {
 	o.waitForLeader()
 	serpCmdErr := serpCmd.Execute()
 	if serpCmdErr != nil {
-		logrus.Fatal(serpCmdErr)
+		return serpCmdErr
 	}
+	return nil
 }
 
 type raftListMembersAction struct {

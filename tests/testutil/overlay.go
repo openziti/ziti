@@ -19,6 +19,7 @@ package testutil
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -177,7 +178,7 @@ func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 		zitiPath,
 		args...,
 	)
-	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true")
+	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true", fmt.Sprintf("ZITI_CONFIG_DIR=%s/.config", o.Home))
 	_ = os.Mkdir(o.Home, 0755)
 	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
@@ -513,6 +514,29 @@ func (o *Overlay) getRunningPids() []int {
 	return running
 }
 
+func (o *Overlay) WaitForHTTPReady(timeout time.Duration) error {
+	fmt.Printf("Waiting up to %s for HTTP at %s\n", timeout, o.ControllerHostPort())
+	start := time.Now()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	timeoutCh := time.After(timeout)
+	for {
+		select {
+		case <-ticker.C:
+			elapsed := time.Since(start)
+			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+			if err != nil {
+				fmt.Printf("[%s] [%s] HTTP not ready: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+			} else {
+				fmt.Printf("[%s] [%s] HTTP ready\n", o.Name, elapsed.Truncate(time.Second))
+				return nil
+			}
+		case <-timeoutCh:
+			return fmt.Errorf("timeout waiting for HTTP at %s", o.ControllerHostPort())
+		}
+	}
+}
+
 func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 	fmt.Printf("Waiting up to %s for controller at %s\n", timeout, o.ControllerHostPort())
 
@@ -523,22 +547,54 @@ func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 	timeoutCh := time.After(timeout)
 	var lastPrint time.Time
 
+	ctrlUrl := o.ControllerHostPort()
+	httpReady := false
 	for {
 		select {
 		case <-ticker.C:
-			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
-			if err == nil {
-				return nil
-			}
+			elapsed := time.Since(start)
+			remaining := (timeout - elapsed).Truncate(time.Second)
 
-			if time.Since(lastPrint) >= 5*time.Second {
-				elapsed := time.Since(start)
-				fmt.Printf("Still waiting (%s elapsed, %s remaining)... %s\n",
-					elapsed.Truncate(time.Second),
-					(timeout - elapsed).Truncate(time.Second),
-					o.ControllerHostPort())
-
-				lastPrint = time.Now()
+			if !httpReady {
+				caCerts, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+				if err != nil {
+					fmt.Printf("[%s] [%s] HTTP not ready: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+				} else {
+					httpReady = true
+					fmt.Printf("[%s] [%s] HTTP ready, waiting for admin login...\n", o.Name, elapsed.Truncate(time.Second))
+					caPool := x509.NewCertPool()
+					for _, ca := range caCerts {
+						caPool.AddCert(ca)
+					}
+					_, authErr := rest_util.NewEdgeManagementClientWithUpdb(o.Username, o.Password, ctrlUrl, caPool)
+					if authErr != nil {
+						fmt.Printf("[%s] [%s] admin login not ready yet: %v\n", o.Name, elapsed.Truncate(time.Second), authErr)
+					} else {
+						fmt.Printf("[%s] [%s] admin login succeeded, controller ready\n", o.Name, elapsed.Truncate(time.Second))
+						return nil
+					}
+				}
+			} else {
+				caCerts, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+				if err != nil {
+					fmt.Printf("[%s] [%s] HTTP went away: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+					httpReady = false
+				} else {
+					caPool := x509.NewCertPool()
+					for _, ca := range caCerts {
+						caPool.AddCert(ca)
+					}
+					_, authErr := rest_util.NewEdgeManagementClientWithUpdb(o.Username, o.Password, ctrlUrl, caPool)
+					if authErr != nil {
+						if time.Since(lastPrint) >= 3*time.Second {
+							fmt.Printf("[%s] [%s] waiting for admin init (%s remaining)...\n", o.Name, elapsed.Truncate(time.Second), remaining)
+							lastPrint = time.Now()
+						}
+					} else {
+						fmt.Printf("[%s] [%s] admin login succeeded, controller ready\n", o.Name, elapsed.Truncate(time.Second))
+						return nil
+					}
+				}
 			}
 
 		case <-timeoutCh:
