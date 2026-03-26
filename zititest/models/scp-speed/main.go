@@ -1,3 +1,5 @@
+//go:build scp_speed
+
 /*
 	(c) Copyright NetFoundry Inc.
 

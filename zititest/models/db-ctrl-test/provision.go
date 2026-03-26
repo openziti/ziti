@@ -1,3 +1,5 @@
+//go:build db_ctrl_test
+
 /*
 	Copyright 2019 NetFoundry Inc.
 

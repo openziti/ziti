@@ -1,3 +1,5 @@
+//go:build db_sdk_hosting_test
+
 package main
 
 import (

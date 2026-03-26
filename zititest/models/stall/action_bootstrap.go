@@ -1,3 +1,5 @@
+//go:build stall
+
 /*
 	Copyright 2020 NetFoundry Inc.
 

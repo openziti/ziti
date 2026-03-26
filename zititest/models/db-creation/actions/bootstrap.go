@@ -1,3 +1,5 @@
+//go:build db_creation
+
 /*
 	(c) Copyright NetFoundry Inc.
 
