@@ -241,3 +241,7 @@ func (t testCreateCircuitParams) GetLogContext() logcontext.Context {
 func (t testCreateCircuitParams) GetDeadline() time.Time {
 	return time.Now().Add(time.Second)
 }
+
+func (t testCreateCircuitParams) GetCircuitId() string {
+	return ""
+}

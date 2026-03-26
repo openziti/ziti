@@ -788,7 +788,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
-	request := &ctrl_msg.CreateCircuitRequest{
+	request := &ctrl_msg.CreateCircuitV2Request{
 		ApiSessionToken:      self.apiSessionToken.Token(),
 		SessionToken:         serviceSessionTokenStr,
 		Fingerprints:         self.fingerprints.Prints(),
@@ -810,7 +810,7 @@ func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
 	}
 }
 
-func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitRequest, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitResponse, error) {
+func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuitV2Request, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitV2Response, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
 	msg, err := req.ToMessage().WithTimeout(timeout).SendForReply(ctrlCh.GetHighPrioritySender())
 	if err != nil {
@@ -821,9 +821,9 @@ func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuit
 		if errMsg == "" {
 			errMsg = "error state returned from controller with no message"
 		}
-		var resp *ctrl_msg.CreateCircuitResponse
+		var resp *ctrl_msg.CreateCircuitV2Response
 		if circuitId, found := msg.GetStringHeader(sdkedge.CircuitIdHeader); found {
-			resp = &ctrl_msg.CreateCircuitResponse{CircuitId: circuitId}
+			resp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
 		}
 		return resp, errors.New(errMsg)
 	}
@@ -833,7 +833,7 @@ func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuit
 			msg.ContentType, edge_ctrl_pb.ContentType_CreateCircuitV2ResponseType)
 	}
 
-	return ctrl_msg.DecodeCreateCircuitResponse(msg)
+	return ctrl_msg.DecodeCreateCircuitV2Response(msg)
 }
 
 func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
@@ -1265,7 +1265,7 @@ func (self *edgeClientConn) sendTraceRouteResponse(msg *channel.Message, ch chan
 	}
 }
 
-func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitResponse) {
+func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *ctrl_msg.CreateCircuitV2Response) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 
 	msg := sdkedge.NewStateConnectedMsg(connId)
@@ -1471,7 +1471,7 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ chan
 
 type connectHandler interface {
 	Init(ctx *connectContext) bool
-	FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error)
+	FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitV2Response, err error)
 }
 
 type connectContext struct {
@@ -1518,7 +1518,7 @@ func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 	return true
 }
 
-func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitV2Response, err error) {
 	if err != nil {
 		ctx.Log.WithError(err).Warn("failed to dial fabric")
 		var headers channel.Headers
@@ -1669,7 +1669,7 @@ func (self *xgEdgeForwarder) UnregisterRouting() {
 	self.forwarder.EndCircuit(self.circuitId)
 }
 
-func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {
+func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitV2Response, err error) {
 	if err != nil {
 		ctx.Log.WithError(err).Warn("failed to dial fabric")
 		var headers channel.Headers

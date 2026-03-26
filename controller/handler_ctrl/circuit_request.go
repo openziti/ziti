@@ -147,3 +147,7 @@ func (self *circuitParams) GetLogContext() logcontext.Context {
 func (self *circuitParams) GetDeadline() time.Time {
 	return self.deadline
 }
+
+func (self *circuitParams) GetCircuitId() string {
+	return ""
+}

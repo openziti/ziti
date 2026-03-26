@@ -130,6 +130,12 @@ func (self *CircuitManager) Add(circuit *Circuit) {
 	self.circuits.Set(circuit.Id, circuit)
 }
 
+// Reserve atomically claims a circuit ID in the map with a stub circuit. Returns false
+// if the ID is already in use. The caller must call Add to finalize or Remove to release.
+func (self *CircuitManager) Reserve(circuit *Circuit) bool {
+	return self.circuits.SetIfAbsent(circuit.Id, circuit)
+}
+
 func (self *CircuitManager) Get(id string) (*Circuit, bool) {
 	if circuit, found := self.circuits.Get(id); found {
 		return circuit, true
@@ -164,4 +170,6 @@ type CreateCircuitParams interface {
 	GetCircuitTags(terminator xt.CostedTerminator) map[string]string
 	GetLogContext() logcontext.Context
 	GetDeadline() time.Time
+	// GetCircuitId returns a pre-assigned circuit ID, or empty string to have one generated.
+	GetCircuitId() string
 }

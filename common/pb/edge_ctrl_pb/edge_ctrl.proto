@@ -38,6 +38,8 @@ enum ContentType {
   CreateCircuitV2ResponseType = 20219;
   CreateTunnelCircuitV2RequestType = 20220;
   CreateTunnelCircuitV2ResponseType = 20221;
+  CreateCircuitV3RequestType = 20222;
+  CreateCircuitV3ResponseType = 20223;
 
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;

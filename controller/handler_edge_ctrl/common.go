@@ -42,9 +42,14 @@ type UpdateTerminatorRequest interface {
 }
 
 type baseRequestHandler struct {
-	ch       channel.Channel
-	appEnv   *env.AppEnv
-	errRespF func(m *channel.Message)
+	ch     channel.Channel
+	appEnv *env.AppEnv
+}
+
+// responseMutatingRequestContext is implemented by request contexts that need to
+// modify error responses before they are sent (e.g. to attach a circuit ID).
+type responseMutatingRequestContext interface {
+	UpdateResponse(m *channel.Message)
 }
 
 func (self *baseRequestHandler) getNetwork() *network.Network {
@@ -73,8 +78,8 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 		logger = logger.WithField("token", sessionCtx.GetSessionToken())
 	}
 
-	if self.errRespF != nil {
-		self.errRespF(responseMsg)
+	if mutator, ok := ctx.(responseMutatingRequestContext); ok {
+		mutator.UpdateResponse(responseMsg)
 	}
 
 	if sendErr := self.ch.Send(responseMsg); sendErr != nil {
@@ -686,6 +691,10 @@ func (self *sessionCircuitParams) GetDeadline() time.Time {
 	return self.deadline
 }
 
+func (self *sessionCircuitParams) GetCircuitId() string {
+	return ""
+}
+
 type tunnelCircuitParams struct {
 	serviceId    string
 	sourceRouter *model.Router
@@ -729,4 +738,8 @@ func (self *tunnelCircuitParams) GetLogContext() logcontext.Context {
 
 func (self *tunnelCircuitParams) GetDeadline() time.Time {
 	return self.deadline
+}
+
+func (self *tunnelCircuitParams) GetCircuitId() string {
+	return ""
 }

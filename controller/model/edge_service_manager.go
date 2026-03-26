@@ -121,9 +121,8 @@ func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, co
 func (self *EdgeServiceManager) IsDialableByIdentity(id string, identityId string) (bool, error) {
 	result := false
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
-		var err error
-		result = self.env.GetStores().EdgeService.IsBindableByIdentity(tx, id, identityId)
-		return err
+		result = self.env.GetStores().EdgeService.IsDialableByIdentity(tx, id, identityId)
+		return nil
 	})
 	return result, err
 }
@@ -131,9 +130,8 @@ func (self *EdgeServiceManager) IsDialableByIdentity(id string, identityId strin
 func (self *EdgeServiceManager) IsBindableByIdentity(id string, identityId string) (bool, error) {
 	result := false
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
-		var err error
 		result = self.env.GetStores().EdgeService.IsBindableByIdentity(tx, id, identityId)
-		return err
+		return nil
 	})
 	return result, err
 }

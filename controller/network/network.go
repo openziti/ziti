@@ -569,10 +569,14 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 	instanceId, serviceId := parseInstanceIdAndService(service)
 
 	// 1: Allocate Circuit Identifier
-	circuitId, err := idgen.NewUUIDString()
-	if err != nil {
-		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureIdGenerationError)
-		return nil, err
+	circuitId := params.GetCircuitId()
+	if circuitId == "" {
+		var err error
+		circuitId, err = idgen.NewUUIDString()
+		if err != nil {
+			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureIdGenerationError)
+			return nil, err
+		}
 	}
 	ctx.WithFields(map[string]interface{}{
 		"circuitId":     circuitId,
@@ -586,6 +590,18 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		ClientId:  clientId.Token,
 		ServiceId: serviceId,
 	}
+
+	// Reserve the circuit ID in the map to prevent collisions and protect routing.
+	// On any error path, the deferred cleanup removes the stub.
+	if !network.Circuit.Reserve(circuit) {
+		return nil, fmt.Errorf("circuit id %v already in use", circuitId)
+	}
+	removeReserved := true
+	defer func() {
+		if removeReserved {
+			network.Circuit.Remove(circuit)
+		}
+	}()
 
 	attempt := uint32(0)
 	allCleanups := make(map[string]struct{})
@@ -712,7 +728,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		circuit.CreatedAt = now
 		circuit.UpdatedAt = now
 
-		network.Circuit.Add(circuit)
+		removeReserved = false // circuit is finalized, don't remove on defer
 		creationTimespan := time.Since(startTime)
 		network.CircuitEvent(event.CircuitCreated, circuit, &creationTimespan)
 		strategy.NotifyEvent(xt.NewDialSucceeded(terminator))

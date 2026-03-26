@@ -1000,7 +1000,8 @@ New configuration tunables under `edge.oidc`:
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.3 -> v1.5.4](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.5.4)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.6.0](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.6.0)
+    * [Issue #895](https://github.com/openziti/sdk-golang/issues/895) - Limit effect sudden rtt spikes can have on rtt moving average
     * [Issue #902](https://github.com/openziti/sdk-golang/issues/902) - Inspect response message content types are mixed up
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
     * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
@@ -1041,6 +1042,9 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3721](https://github.com/openziti/ziti/issues/3721) - Add CreateCircuitV3 to controller
+    * [Issue #3719](https://github.com/openziti/ziti/issues/3719) - Allow binding specific inspects to pass through to xgress listener implementations
+    * [Issue #3696](https://github.com/openziti/ziti/issues/3696) - oidc provider is non-deterministic for wildcard certs
     * [Issue #3681](https://github.com/openziti/ziti/issues/3681) - coalesce OIDC JWT revocations to reduce controller write pressure
     * [Issue #3683](https://github.com/openziti/ziti/issues/3683) - add fablab test for testing flow control changes over a longer term
     * [Issue #3673](https://github.com/openziti/ziti/issues/3673) - revocation build-up in db and rdm
@@ -1139,6 +1143,4 @@ New configuration tunables under `edge.oidc`:
     * [Issue #3259](https://github.com/openziti/ziti/issues/3259) - Interfaces config type not added due to wrong name
     * [Issue #3265](https://github.com/openziti/ziti/issues/3265) - Forwarding errors should log at debug, since they are usual part of circuit teardown
     * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
-    * [Issue #3207](https://github.com/openziti/ziti/issues/3207) - Allow router embedders to customize config before start
-
 
