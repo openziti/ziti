@@ -19,6 +19,7 @@ package routes
 import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -30,11 +31,17 @@ const EntityNameConfigType = "config-types"
 var ConfigTypeLinkFactory = NewBasicLinkFactory(EntityNameConfigType)
 
 func MapCreateConfigTypeToModel(configType *rest_model.ConfigTypeCreate) *model.ConfigType {
+	target := stringz.OrEmpty(configType.Target)
+	if target == "" {
+		target = db.ConfigTypeTargetService
+	}
+
 	ret := &model.ConfigType{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(configType.Tags),
 		},
-		Name: stringz.OrEmpty(configType.Name),
+		Name:   stringz.OrEmpty(configType.Name),
+		Target: target,
 	}
 
 	if schemaMap, ok := configType.Schema.(map[string]interface{}); ok {
@@ -85,6 +92,7 @@ func MapConfigTypeToRestModel(configType *model.ConfigType) (*rest_model.ConfigT
 		BaseEntity: BaseEntityToRestModel(configType, ConfigTypeLinkFactory),
 		Name:       &configType.Name,
 		Schema:     configType.Schema,
+		Target:     &configType.Target,
 	}
 
 	return ret, nil

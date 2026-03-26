@@ -4,6 +4,7 @@
 
 * [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
+* [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 
 ## Cluster Quorum Recovery
 
@@ -64,10 +65,30 @@ let a TLS-valid but non-member controller stay connected to the mesh before drop
 This gives a controller that is being added to the cluster time to be accepted as a member
 before its connection is reaped.
 
+## Config Type Target Field
+
+Config types now have an optional `target` field that indicates what kind of entity the config type
+is intended for. Valid values are `"service"`, `"router"`, and `"other"`. The field is set on creation
+and is immutable afterward.
+
+This is the first step toward controller-managed router configuration. The `target` field lets us
+distinguish between config types meant for services, config types meant for routers, and config types
+meant for other purposes, which keeps UIs, APIs, and validation clean. See
+`doc/design/ctrl-managed-router-config.md` for the full design.
+
+A database migration sets `target = "service"` on all existing config types. Services and identity
+service config overrides now require that referenced configs have a config type with
+`target = "service"`.
+
+The CLI has been updated to support the new field:
+
+* `ziti edge create config-type` now accepts a `--target` flag
+* `ziti edge list config-types` now shows a `Target` column
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
 

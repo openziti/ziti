@@ -32,6 +32,7 @@ func Test_ConfigTypeStore(t *testing.T) {
 	ctx.Init()
 
 	t.Run("test config type CRUD", ctx.testConfigTypeCrud)
+	t.Run("test config type target immutability", ctx.testConfigTypeTargetImmutability)
 }
 
 func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
@@ -77,5 +78,35 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	ctx.EqualError(err, fmt.Sprintf("cannot delete config type %v, as configs of that type exist", configType.Id))
 
 	boltztest.RequireDelete(ctx, config)
+	boltztest.RequireDelete(ctx, configType)
+}
+
+func (ctx *TestContext) testConfigTypeTargetImmutability(*testing.T) {
+	ctx.CleanupAll()
+
+	configType := newConfigType(eid.New())
+	configType.Target = ConfigTypeTargetService
+	boltztest.RequireCreate(ctx, configType)
+
+	// no-op rewrite of the same target value should succeed
+	boltztest.RequireUpdate(ctx, configType)
+
+	// changing the target should be rejected
+	configType.Target = ConfigTypeTargetRouter
+	err := boltztest.Update(ctx, configType)
+	ctx.Error(err)
+	ctx.Contains(err.Error(), "target is immutable")
+
+	// the stored target should remain unchanged
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		stored, loadErr := ctx.stores.ConfigType.LoadById(tx, configType.Id)
+		ctx.NoError(loadErr)
+		ctx.Equal(ConfigTypeTargetService, stored.Target)
+		return nil
+	})
+	ctx.NoError(err)
+
+	// reset and clean up
+	configType.Target = ConfigTypeTargetService
 	boltztest.RequireDelete(ctx, configType)
 }
