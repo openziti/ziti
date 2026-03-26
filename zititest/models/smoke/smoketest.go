@@ -41,7 +41,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 )
 
-const ZitiEdgeTunnelVersion = "v1.5.10"
+const ZitiEdgeTunnelVersion = "v1.11.2"
 const ZitiCtrlVersion = ""
 const ZitiRouterVersion = ""
 
