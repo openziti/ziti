@@ -153,7 +153,8 @@ function _pki_client_server {
     "${ZITI_BIN_DIR-}/ziti" pki create server --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${file_name}-server" \
           --dns "${dns_allow_list}" --ip "${ip_allow_list}" \
-          --server-name "${file_name} server certificate"
+          --server-name "${file_name} server certificate" \
+          --spiffe-id "spiffe://${ZITI_NETWORK}/controller/${file_name}"
   else
     echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${dns_allow_list}"
     echo "key exists"
