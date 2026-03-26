@@ -204,7 +204,7 @@ makeConfig() {
           ZITI_PKI_EDGE_CA="${ZITI_PKI_CTRL_CA}"
 
   # build config command
-  local -a _command=(ziti create config controller --clustered --output "${_config_file}")
+  local -a _command=(ziti create config controller --output "${_config_file}")
 
   # append args if ZITI_BOOTSTRAP_CONFIG_ARGS is not empty
   if [[ -n "${ZITI_BOOTSTRAP_CONFIG_ARGS:-}" ]]; then
