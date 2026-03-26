@@ -409,13 +409,17 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		fmt.Println()
 		o.printDetails()
 		fmt.Println("=======================================================================================")
+		cont := "\\"
+		if os.Getenv("PSModulePath") != "" {
+			cont = "`"
+		}
 		fmt.Println("Quickly add another member to this cluster using: ")
-		fmt.Printf("  ziti edge quickstart join \\\n")
-		fmt.Printf("    --ctrl-port %d \\\n", o.ControllerPort+1)
-		fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
-		fmt.Printf("    --home \"%s\" \\\n", o.Home)
-		fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-		fmt.Printf("    --cluster-member tls:%s:%d \\\n", o.ControllerAddress, o.ControllerPort)
+		fmt.Printf("  ziti edge quickstart join %s\n", cont)
+		fmt.Printf("    --ctrl-port %d %s\n", o.ControllerPort+1, cont)
+		fmt.Printf("    --router-port %d %s\n", o.RouterPort+1, cont)
+		fmt.Printf("    --home \"%s\" %s\n", o.Home, cont)
+		fmt.Printf("    --trust-domain=\"%s\" %s\n", o.TrustDomain, cont)
+		fmt.Printf("    --cluster-member tls:%s:%d %s\n", o.ControllerAddress, o.ControllerPort, cont)
 		fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 		fmt.Println("=======================================================================================")
 		fmt.Println()
