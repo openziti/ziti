@@ -160,18 +160,11 @@ func (o *Overlay) PrintLoginCommand(t *testing.T) {
 }
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
-	args := []string{"edge", "quickstart"}
-	if o.IsHA {
-		args = append(args, "ha")
-	}
-	args = append(args, o.startArgs()...)
+	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
 	o.RunZiti(zitiPath, args, done)
 }
 
 func (o *Overlay) StartJoin(zitiPath string, done chan error) {
-	if !o.IsHA {
-		panic("test incorrect. calling join without HA")
-	}
 	args := append([]string{"edge", "quickstart", "join"}, o.startArgs()...)
 	o.RunZiti(zitiPath, args, done)
 }
@@ -569,7 +562,7 @@ func (o *Overlay) WaitForRouterReady(timeout time.Duration) error {
 	return nil
 }
 
-func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string, ha bool) Overlay {
+func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string) Overlay {
 	o := Overlay{
 		Name:         name,
 		t:            t,
@@ -585,7 +578,6 @@ func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration
 			Routerless:        false,
 			TrustDomain:       name,
 			InstanceID:        name,
-			IsHA:              ha,
 			Username:          "admin",
 			Password:          "admin",
 			ConfigureAndExit:  false,

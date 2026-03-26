@@ -55,7 +55,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 
 	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
 	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
-	overlay := testutil.CreateOverlay(t, ctx, 60*time.Second, testRunHome, "import", false)
+	overlay := testutil.CreateOverlay(t, ctx, 60*time.Second, testRunHome, "import")
 	targetDone := make(chan error)
 	go overlay.StartExternal(zitiPath, targetDone)
 

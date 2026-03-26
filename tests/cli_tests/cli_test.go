@@ -88,8 +88,8 @@ func Test_CLI_Test_Suite(t *testing.T) {
 		homeDir:             testRunHome,
 		zitiContext:         nil,
 		zitiTransport:       nil,
-		externalZiti:        testutil.CreateOverlay(t, externalCtx, 600*time.Second, testRunHome, "external", false),
-		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 600*time.Second, testRunHome, "target", false),
+		externalZiti:        testutil.CreateOverlay(t, externalCtx, 600*time.Second, testRunHome, "external"),
+		controllerUnderTest: testutil.CreateOverlay(t, ctrlUnderTestCtx, 600*time.Second, testRunHome, "target"),
 		commonOpts: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: os.Stdout,
