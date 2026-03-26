@@ -113,8 +113,12 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
-			options.TrustDomain = "quickstart"
-			options.InstanceID = "quickstart"
+			if options.TrustDomain == "" {
+				options.TrustDomain = "quickstart"
+			}
+			if options.InstanceID == "" {
+				options.InstanceID = "quickstart"
+			}
 			return options.run(context)
 		},
 	}

@@ -72,7 +72,6 @@ type CtrlValues struct {
 	AdvertisedPort             string
 	BindAddress                string
 	AltAdvertisedAddress       string
-	InstanceId                 string
 }
 
 type HealthChecksValues struct {
