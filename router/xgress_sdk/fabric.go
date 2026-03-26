@@ -73,7 +73,7 @@ func (self *fabricImpl) updateIdentityState(state *common.IdentityState) {
 func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventType common.IdentityEventType) {
 	self.updateIdentityState(state)
 	pfxlog.Logger().Infof("identity %s event %s", state.Identity.Name, eventType.String())
-	if eventType == common.IdentityFullStateState {
+	if eventType == common.IdentityFullState {
 		for _, service := range state.Services {
 			pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, service.GetName())
 		}

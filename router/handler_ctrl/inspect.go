@@ -172,6 +172,25 @@ func (context *inspectRequestContext) processLocal() {
 			context.inspectXgListener(requested)
 		} else if strings.HasPrefix(lc, "sdk-context:") {
 			context.inspectXgListener(requested)
+		} else {
+			context.inspectBoundXgListener(lc, requested)
+		}
+	}
+}
+
+func (context *inspectRequestContext) inspectBoundXgListener(lc string, requested string) {
+	binding, _, ok := strings.Cut(lc, ":")
+	if !ok {
+		return
+	}
+	for _, l := range context.handler.env.GetXgressListeners() {
+		if l.Binding() == binding {
+			if inspectable, ok := l.(xgress_router.Inspectable); ok {
+				if result := inspectable.Inspect(lc, time.Second); result != nil {
+					context.handleJsonResponse(requested, result)
+				}
+			}
+			return
 		}
 	}
 }

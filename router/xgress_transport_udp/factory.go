@@ -24,6 +24,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const BindingName = "transport_udp"
+
 func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers) xgress_router.Factory {
 	return &factory{id: id, ctrl: ctrl}
 }

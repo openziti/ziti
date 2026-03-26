@@ -25,6 +25,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const BindingName = "proxy_udp"
+
 func NewFactory(ctrl env.NetworkControllers) xgress_router.Factory {
 	return &factory{ctrl: ctrl}
 }

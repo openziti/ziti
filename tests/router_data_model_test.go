@@ -178,7 +178,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -256,7 +256,7 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -373,7 +373,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 
@@ -528,7 +528,7 @@ func Test_RouterDataModel_DataModelReplacement(t *testing.T) {
 	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
 
 	// test that initial event shows up
-	idEvent := sub.getNextIdentityEvent(common.IdentityFullStateState)
+	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
 	ctx.Equal(0, len(idEvent.state.Services))
 	ctx.Equal(0, len(idEvent.state.PostureChecks))
 

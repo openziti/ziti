@@ -27,6 +27,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const BindingName = "proxy"
+
 func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress_router.Factory {
 	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }

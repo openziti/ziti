@@ -375,6 +375,10 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	return nil
 }
 
+func (listener *listener) Binding() string {
+	return common.EdgeBinding
+}
+
 func (listener *listener) Close() error {
 	return listener.underlayListener.Close()
 }

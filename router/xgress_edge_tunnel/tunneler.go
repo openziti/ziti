@@ -143,6 +143,10 @@ func (self *tunneler) Listen(string, xgress.BindHandler) error {
 	return nil
 }
 
+func (self *tunneler) Binding() string {
+	return common.TunnelBinding
+}
+
 func (self *tunneler) Close() error {
 	if self.interceptor != nil {
 		self.interceptor.Stop()
@@ -155,7 +159,7 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 		pfxlog.Logger().Infof("identity deleted or disabled %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
-	} else if eventType == common.IdentityFullStateState || eventType == common.IdentityUpdatedEvent {
+	} else if eventType == common.IdentityFullState || eventType == common.IdentityUpdatedEvent {
 		pfxlog.Logger().Infof("identity updated %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()

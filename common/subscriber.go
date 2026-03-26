@@ -334,7 +334,7 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	}
 
 	if oldIdentity == nil {
-		self.notifyIdentityEvent(state, IdentityFullStateState)
+		self.notifyIdentityEvent(state, IdentityFullState)
 		return
 	}
 
@@ -409,7 +409,7 @@ type IdentityEventType byte
 
 func (self IdentityEventType) String() string {
 	switch self {
-	case IdentityFullStateState:
+	case IdentityFullState:
 		return "identity.full-state"
 	case IdentityUpdatedEvent:
 		return "identity.updated"
@@ -454,7 +454,7 @@ const (
 	ServiceDialAccessLostEvent ServiceEventType = 6
 	ServiceBindAccessLostEvent ServiceEventType = 7
 
-	IdentityFullStateState            IdentityEventType = 6
+	IdentityFullState                 IdentityEventType = 6
 	IdentityUpdatedEvent              IdentityEventType = 7
 	IdentityPostureChecksUpdatedEvent IdentityEventType = 8
 	IdentityDeletedEvent              IdentityEventType = 9

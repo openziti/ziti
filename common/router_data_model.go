@@ -1926,7 +1926,7 @@ func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscr
 
 	if identity != nil {
 		state, _ := subscription.initialize(rdm, identity)
-		subscriber.NotifyIdentityEvent(state, IdentityFullStateState)
+		subscriber.NotifyIdentityEvent(state, IdentityFullState)
 	}
 
 	return nil
@@ -2253,7 +2253,7 @@ func (rdm *RouterDataModel) checkSubsForNewIdentity(identityId string, clearUpda
 				sub.checkForChanges(rdm)
 			} else {
 				for _, subscriber := range sub.listeners.Value() {
-					subscriber.NotifyIdentityEvent(state, IdentityFullStateState)
+					subscriber.NotifyIdentityEvent(state, IdentityFullState)
 				}
 			}
 		}

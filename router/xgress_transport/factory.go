@@ -25,6 +25,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const BindingName = "transport"
+
 type factory struct {
 	id   *identity.TokenId
 	ctrl env.NetworkControllers

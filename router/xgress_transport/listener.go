@@ -75,6 +75,10 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	return nil
 }
 
+func (listener *listener) Binding() string {
+	return BindingName
+}
+
 func (listener *listener) Close() error {
 	if socket := listener.socket.Load(); socket != nil {
 		return socket.Close()
