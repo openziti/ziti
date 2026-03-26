@@ -99,6 +99,8 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * The dialing identity's ID and name are now forwarded to the hosting SDK
 * Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
 * Refresh-token revocations are now batched and best-effort, removing the database/raft bottleneck on token refreshes
+* `ziti edge quickstart` now always runs in HA mode. The `ha` subcommand has been removed. Use
+  `ziti edge quickstart join` to add additional members to the cluster.
 
 ## Basic Permission System (BETA)
 

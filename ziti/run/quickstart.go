@@ -38,9 +38,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/controller/rest_client/cluster"
-	edgeSubCmd "github.com/openziti/ziti/v2/controller/subcmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
@@ -66,7 +64,6 @@ type QuickstartOpts struct {
 	errOut             io.Writer
 	cleanOnExit        bool
 	TrustDomain        string
-	IsHA               bool
 	InstanceID         string
 	ClusterMember      string
 	Routerless         bool
@@ -122,34 +119,8 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		},
 	}
 	addCommonQuickstartFlags(cmd, options)
-	cmd.AddCommand(NewQuickStartJoinClusterCmd(out, errOut, context))
-	cmd.AddCommand(NewQuickStartHaCmd(out, errOut, context))
-	return cmd
-}
-
-func NewQuickStartHaCmd(out io.Writer, errOut io.Writer, context context.Context) *cobra.Command {
-	options := &QuickstartOpts{}
-	cmd := &cobra.Command{
-		Use:   "ha",
-		Short: "runs a Controller and Router in quickstart HA mode and creates the first cluster member",
-		Long:  "runs a Controller and Router in quickstart HA mode and creates the first cluster member with a temporary directory; suitable for testing and development",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.out = out
-			options.errOut = errOut
-			options.IsHA = true
-			if options.TrustDomain == "" {
-				options.TrustDomain = uuid.New().String()
-				fmt.Println("Trust domain was not supplied. Using a random trust domain: " + options.TrustDomain)
-			}
-			err := options.run(context)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-		},
-	}
-	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
-	cmd.Hidden = true
+	cmd.AddCommand(NewQuickStartJoinClusterCmd(out, errOut, context))
 	return cmd
 }
 
@@ -197,7 +168,6 @@ func (o *QuickstartOpts) join(ctx context.Context) error {
 		logrus.Fatalf("--cluster-member is required")
 	}
 
-	o.IsHA = true
 	o.joinCommand = true
 	return o.run(ctx)
 }
@@ -289,26 +259,10 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		args := []string{
 			fmt.Sprintf("--output=%s", o.ConfigFile),
 		}
-		if o.IsHA {
-			args = append(args, "--clustered")
-		}
 		ctrl.SetArgs(args)
 		err = ctrl.Execute()
 		if err != nil {
 			logrus.Fatal(err)
-		}
-
-		if !o.IsHA {
-			initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
-			initCmd.SetArgs([]string{
-				fmt.Sprintf("--username=%s", o.Username),
-				fmt.Sprintf("--password=%s", o.Password),
-				o.ConfigFile,
-			})
-			initErr := initCmd.Execute()
-			if initErr != nil {
-				logrus.Fatal(initErr)
-			}
 		}
 	}
 
@@ -354,68 +308,68 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		return fmt.Errorf("timed out waiting for controller: %s", o.ControllerHostPort())
 	}
 
-	if o.IsHA {
-		p := common.NewOptionsProvider(o.out, o.errOut)
-		fmt.Println("waiting three seconds for controller to become ready...")
+	p := common.NewOptionsProvider(o.out, o.errOut)
+	fmt.Println("waiting three seconds for controller to become ready...")
 
-		if !o.joinCommand {
-			maxRetries := 5
-			for attempt := 1; attempt <= maxRetries; attempt++ {
-				fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
-				agentInitCmd := agentcli.NewAgentClusterInit(p)
-				pid := os.Getpid()
-				args := []string{
-					o.Username,
-					o.Password,
-					o.Username,
-					fmt.Sprintf("--pid=%d", pid),
-				}
-				agentInitCmd.SetArgs(args)
-
-				agentInitErr := agentInitCmd.Execute()
-				if agentInitErr != nil {
-					if attempt < maxRetries {
-						fmt.Println("initialization failed. waiting two seconds and trying again")
-						time.Sleep(2 * time.Second) // Wait before retrying
-					} else {
-						fmt.Println("Max retries reached. Failing.")
-						cancel()
-						return agentInitErr
-					}
-				} else {
-					break
-				}
-			}
-		} else {
-			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
-
+	if !o.joinCommand {
+		maxRetries := 5
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
+			agentInitCmd := agentcli.NewAgentClusterInit(p)
+			pid := os.Getpid()
 			args := []string{
-				o.ClusterMember,
-				fmt.Sprintf("--pid=%d", os.Getpid()),
-				fmt.Sprintf("--voter=%t", !o.nonVoter),
+				o.Username,
+				o.Password,
+				o.Username,
+				fmt.Sprintf("--pid=%d", pid),
+				"--timeout=30s",
 			}
-			agentJoinCmd.SetArgs(args)
+			agentInitCmd.SetArgs(args)
 
-			addChan := make(chan struct{})
-			addTimeout := time.Second * 30
-			go func() {
-				o.waitForLeader()
-				agentJoinErr := agentJoinCmd.Execute()
-				if agentJoinErr != nil {
-					logrus.Fatal(agentJoinErr)
+			agentInitErr := agentInitCmd.Execute()
+			if agentInitErr != nil {
+				if attempt < maxRetries {
+					fmt.Println("initialization failed. waiting two seconds and trying again")
+					time.Sleep(2 * time.Second) // Wait before retrying
+				} else {
+					fmt.Println("Max retries reached. Failing.")
+					cancel()
+					return agentInitErr
 				}
-				close(addChan)
-			}()
-
-			select {
-			case <-addChan:
-				//completed normally
-				logrus.Info("Add command successful. continuing...")
-			case <-time.After(addTimeout):
-				o.cleanupHome()
-				cancel()
-				return fmt.Errorf("timed out adding to cluster")
+			} else {
+				break
 			}
+		}
+	} else {
+		agentJoinCmd := agentcli.NewAgentClusterAdd(p)
+
+		args := []string{
+			o.ClusterMember,
+			fmt.Sprintf("--pid=%d", os.Getpid()),
+			fmt.Sprintf("--voter=%t", !o.nonVoter),
+			"--timeout=30s",
+		}
+		agentJoinCmd.SetArgs(args)
+
+		addChan := make(chan struct{})
+		addTimeout := time.Second * 30
+		go func() {
+			o.waitForLeader()
+			agentJoinErr := agentJoinCmd.Execute()
+			if agentJoinErr != nil {
+				logrus.Fatal(agentJoinErr)
+			}
+			close(addChan)
+		}()
+
+		select {
+		case <-addChan:
+			//completed normally
+			logrus.Info("Add command successful. continuing...")
+		case <-time.After(addTimeout):
+			o.cleanupHome()
+			cancel()
+			return fmt.Errorf("timed out adding to cluster")
 		}
 	}
 
@@ -449,29 +403,23 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		}
 	}
 
-	if o.IsHA {
-		go func() {
-			time.Sleep(3 * time.Second) // output this after a bit...
-			nextInstId := incrementStringSuffix(o.InstanceID)
-			fmt.Println()
-			o.printDetails()
-			fmt.Println("=======================================================================================")
-			fmt.Println("Quickly add another member to this cluster using: ")
-			fmt.Printf("  ziti edge quickstart join \\\n")
-			fmt.Printf("    --ctrl-port %d \\\n", o.ControllerPort+1)
-			fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
-			fmt.Printf("    --home \"%s\" \\\n", o.Home)
-			fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
-			fmt.Printf("    --cluster-member tls:%s:%d \\\n", o.ControllerAddress, o.ControllerPort)
-			fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
-			fmt.Println("=======================================================================================")
-			fmt.Println()
-		}()
-	} else {
+	go func() {
+		time.Sleep(3 * time.Second) // output this after a bit...
+		nextInstId := incrementStringSuffix(o.InstanceID)
 		fmt.Println()
 		o.printDetails()
 		fmt.Println("=======================================================================================")
-	}
+		fmt.Println("Quickly add another member to this cluster using: ")
+		fmt.Printf("  ziti edge quickstart join \\\n")
+		fmt.Printf("    --ctrl-port %d \\\n", o.ControllerPort+1)
+		fmt.Printf("    --router-port %d \\\n", o.RouterPort+1)
+		fmt.Printf("    --home \"%s\" \\\n", o.Home)
+		fmt.Printf("    --trust-domain=\"%s\" \\\n", o.TrustDomain)
+		fmt.Printf("    --cluster-member tls:%s:%d \\\n", o.ControllerAddress, o.ControllerPort)
+		fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
+		fmt.Println("=======================================================================================")
+		fmt.Println()
+	}()
 
 	if !o.ConfigureAndExit {
 		select {
@@ -772,10 +720,7 @@ func (o *QuickstartOpts) scopedName(name string) string {
 }
 
 func (o *QuickstartOpts) instHome() string {
-	if o.IsHA {
-		return path.Join(o.Home, o.InstanceID)
-	}
-	return o.Home
+	return path.Join(o.Home, o.InstanceID)
 }
 
 func (o *QuickstartOpts) configureOverlay() {
@@ -860,50 +805,6 @@ func incrementStringSuffix(input string) string {
 	incremented := fmt.Sprintf("%0*d", numLength, num)
 
 	return strings.TrimSuffix(input, numStr) + incremented
-}
-
-func (o *QuickstartOpts) InitHA(p common.OptionsProvider) error {
-	maxRetries := 5
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
-		agentInitCmd := agentcli.NewAgentClusterInit(p)
-		pid := os.Getpid()
-		args := []string{
-			o.Username,
-			o.Password,
-			o.Username,
-			fmt.Sprintf("--pid=%d", pid),
-		}
-		agentInitCmd.SetArgs(args)
-
-		agentInitErr := agentInitCmd.Execute()
-		if agentInitErr != nil {
-			if attempt < maxRetries {
-				fmt.Println("initialization failed. waiting two seconds and trying again")
-				time.Sleep(2 * time.Second) // Wait before retrying
-			} else {
-				fmt.Println("Max retries reached. Failing.")
-				return agentInitErr
-			}
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-func (o *QuickstartOpts) InitLegacy() error {
-	initCmd := edgeSubCmd.NewEdgeInitializeCmd(version.GetCmdBuildInfo())
-	initCmd.SetArgs([]string{
-		fmt.Sprintf("--username=%s", o.Username),
-		fmt.Sprintf("--password=%s", o.Password),
-		o.ConfigFile,
-	})
-	initErr := initCmd.Execute()
-	if initErr != nil {
-		return initErr
-	}
-	return nil
 }
 
 func (o *QuickstartOpts) ControllerHostPort() string {
