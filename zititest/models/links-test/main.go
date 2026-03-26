@@ -60,9 +60,9 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeComponent {
-		return 20
+		return 10
 	}
-	return 5
+	return 10
 }
 
 var m = &model.Model{
@@ -95,7 +95,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "c5.large"
+					host.InstanceType = "c5.xlarge"
 				}
 				return nil
 			})
@@ -108,19 +108,19 @@ var m = &model.Model{
 		}),
 	},
 	Factories: []model.Factory{
-		model.FactoryFunc(func(m *model.Model) error {
-			return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
-				if routerType, ok := c.Type.(*zitilab.RouterType); ok {
-					clone := *routerType
-					c.Type = &clone
-					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
-					if c.ScaleIndex >= 14 {
-						clone.Version = "v1.5.4"
-					}
-				}
-				return nil
-			})
-		}),
+		//model.FactoryFunc(func(m *model.Model) error {
+		//	return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
+		//		if routerType, ok := c.Type.(*zitilab.RouterType); ok {
+		//			clone := *routerType
+		//			c.Type = &clone
+		//			// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
+		//			if c.ScaleIndex >= 14 {
+		//				clone.Version = "v1.5.4"
+		//			}
+		//		}
+		//		return nil
+		//	})
+		//}),
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
@@ -234,6 +234,7 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(host.GroupExec("*", 500, "touch .hushlogin"))
+			workflow.AddAction(host.GroupExec("*", 500, "sudo sysctl -w net.ipv4.ip_local_port_range='10240 65535'"))
 			workflow.AddAction(component.StopInParallel("*", 500))
 			workflow.AddAction(host.GroupExec("*", 500, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))

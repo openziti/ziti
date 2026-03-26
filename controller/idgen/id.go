@@ -3,6 +3,7 @@ package idgen
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 
 	"github.com/dineshappavoo/basex"
@@ -68,4 +69,27 @@ func NewUUIDString() (string, error) {
 	v := &big.Int{}
 	v.SetBytes(id[:])
 	return basex.EncodeInt(v)
+}
+
+// NewEpochBytes returns a raw 16-byte UUIDv7. UUIDv7 encodes a millisecond
+// timestamp in the high bits, so raw bytes sort chronologically via
+// bytes.Compare.
+func NewEpochBytes() []byte {
+	id, err := uuid.NewV7()
+	if err != nil {
+		panic(fmt.Errorf("failed to generate epoch UUID: %w", err))
+	}
+	return id[:]
+}
+
+// FormatEpoch formats a raw epoch (16-byte UUIDv7) as a UUID string for
+// logging and display.
+func FormatEpoch(epoch []byte) string {
+	if len(epoch) == 16 {
+		id, err := uuid.FromBytes(epoch)
+		if err == nil {
+			return id.String()
+		}
+	}
+	return fmt.Sprintf("%x", epoch)
 }

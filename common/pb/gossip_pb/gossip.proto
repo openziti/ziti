@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package gossip_pb;
+
+option go_package = "github.com/openziti/ziti/v2/common/pb/gossip_pb";
+
+message GossipEntry {
+    string key = 1;
+    bytes value = 2;
+    uint64 version = 3;
+    string owner = 4;
+    bool tombstone = 5;
+    bytes epoch = 6;
+}
+
+message GossipDelta {
+    string store_type = 1;
+    repeated GossipEntry entries = 2;
+    string request_id = 3;
+    bool ack_requested = 4;
+}
+
+message GossipAck {
+    string store_type = 1;
+    string request_id = 2;
+}
+
+message DigestEntry {
+    string key = 1;
+    uint64 version = 2;
+}
+
+message GossipDigest {
+    string store_type = 1;
+    repeated DigestEntry entries = 2;
+}
+
+message GossipDigestResponse {
+    string store_type = 1;
+    repeated GossipEntry entries = 2;
+}
+
+// CanaryPayload is carried as the body of a canary message. It contains
+// per-store-type max sent gossip versions so controllers can detect when
+// they are behind on gossip entries from a router.
+message CanaryPayload {
+    map<string, uint64> max_sent_versions = 1;
+    // entry_hashes carries a hash of the router's current non-tombstoned gossip
+    // keys per store type. Controllers compare this against their own computed
+    // hash to detect state divergence (e.g., tombstone resurrection via
+    // anti-entropy).
+    map<string, uint64> entry_hashes = 2;
+    // entry_counts carries the number of non-tombstoned entries per store type.
+    // Controllers compare this before computing the expensive hash, as a count
+    // mismatch is the cheapest "definitely stale" check.
+    map<string, int64> entry_counts = 3;
+}
+
+// CanaryGossipValue is the value stored in the canary gossip store. It carries
+// the canary sequence number, the router's epoch, and per-store-type staleness
+// metadata. Gossiped between controllers so each can track router health.
+message CanaryGossipValue {
+    uint64 seq = 1;
+    bytes epoch = 2;
+    map<string, uint64> max_sent_versions = 3;
+    map<string, uint64> entry_hashes = 4;
+    map<string, int64> entry_counts = 5;
+}

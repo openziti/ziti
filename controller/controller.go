@@ -52,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/events"
+	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/handler_ctrl"
 	"github.com/openziti/ziti/v2/controller/handler_peer_ctrl"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -540,8 +541,23 @@ func (c *Controller) Run() error {
 
 	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
 	if c.raftController != nil {
-		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
-		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
+		raftMesh := c.raftController.GetMesh()
+		// Override the default no-op gossip mesh with the raft peer mesh.
+		c.network.InitGossipStore(gossip.NewRaftMeshAdapter(raftMesh), true, c.raftController.IsLeader)
+		c.network.InitLinkGossip()
+		c.network.InitCanaryGossip()
+		c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(func(evt *event.ClusterEvent) {
+			for _, peer := range evt.Peers {
+				switch evt.EventType {
+				case event.ClusterPeerConnected:
+					c.network.GossipStore.PeerConnected(peer.Id)
+				case event.ClusterPeerDisconnected:
+					c.network.GossipStore.PeerDisconnected(peer.Id)
+				}
+			}
+		}))
+		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.network.GossipStore, c.config.Ctrl.Options.PeerHeartbeatOptions))
+		ctrlAcceptors[mesh.ChannelTypeMesh] = raftMesh
 	}
 
 	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{

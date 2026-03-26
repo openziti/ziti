@@ -46,6 +46,8 @@ func newInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.RouterIdentityConnectionStatusesKey, "gets information about controller identity state"))
 	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.CtrlDialerKey, "gets information about the controller's ctrl channel dialer state"))
 	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.PeerDialerKey, "gets information about the controller's peer mesh dialer state"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "gossip-links", "gets link entries from the controller's gossip store"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "gossip-store", "gets summary statistics from the controller's gossip store"))
 
 	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
 	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())

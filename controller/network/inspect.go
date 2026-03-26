@@ -205,6 +205,10 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 	} else if lc == inspect.RouterIdentityConnectionStatusesKey {
 		result := ctx.network.env.GetManagers().Identity.GetConnectionTracker().Inspect()
 		ctx.handleLocalJsonResponse(name, result)
+	} else if lc == "gossip-links" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipLinks())
+	} else if lc == "gossip-store" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipStore())
 	} else {
 		for _, inspectTarget := range ctx.network.inspectionTargets.Value() {
 			if handled, val, err := inspectTarget(lc); handled {

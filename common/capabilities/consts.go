@@ -45,6 +45,11 @@ const (
 	// ControllerSupportsJWTLegacySessions indicates that the controller generates legacy
 	// session tokens as JWTs, carrying identity and service information
 	ControllerSupportsJWTLegacySessions int = 6
+
+	// ControllerLinkGossip indicates the controller distributes link state via gossip.
+	// Routers seeing this on all connected controllers may report links to a single
+	// controller instead of all.
+	ControllerLinkGossip int = 7
 )
 
 // Router Capabilities
@@ -62,5 +67,6 @@ func GetControllerCapabilitiesMask() *big.Int {
 	capabilityMask.SetBit(capabilityMask, ControllerRouterDataModel, 1)
 	capabilityMask.SetBit(capabilityMask, ControllerGroupedCtrlChan, 1)
 	capabilityMask.SetBit(capabilityMask, ControllerSupportsJWTLegacySessions, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerLinkGossip, 1)
 	return capabilityMask
 }

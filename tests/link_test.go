@@ -86,6 +86,10 @@ func (self *testRegistryEnv) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *testRegistryEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testDial struct {
 	Key           string
 	LinkId        string

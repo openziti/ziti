@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -69,6 +70,13 @@ func (self *Faulter) Report(circuitId string, ctrlId string) {
 }
 
 func (self *Faulter) NotifyInvalidLink(linkId string) {
+	// In gossip mode, link close already sends a proper tombstone with the
+	// correct iteration. The legacy fault (with iteration 0) would bypass the
+	// controller's iteration check and tombstone the wrong iteration. Skip it.
+	if self.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		return
+	}
+
 	log := pfxlog.Logger()
 	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}

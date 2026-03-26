@@ -38,7 +38,7 @@ const (
 
 	DefaultHealthyMinRetryInterval   = 5 * time.Second
 	DefaultHealthyMaxRetryInterval   = 5 * time.Minute
-	DefaultHealthyRetryBackoffFactor = 1.5
+	DefaultHealthyRetryBackoffFactor = 1.2
 
 	DefaultUnhealthyMinRetryInterval   = time.Minute
 	DefaultUnhealthyMaxRetryInterval   = time.Hour
@@ -127,6 +127,12 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		config.groups = append(config.groups, link.GroupDefault)
 	}
 
+	// Link listeners need higher connection limits than the channel defaults
+	// (16/1) to handle mesh startup where many routers connect simultaneously.
+	config.options = channel.DefaultOptions()
+	config.options.MaxOutstandingConnects = 32
+	config.options.MaxQueuedConnects = 8
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -137,8 +143,6 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		} else {
 			return nil, fmt.Errorf("invalid 'options' in listener config (%s)", reflect.TypeOf(value))
 		}
-	} else {
-		config.options = channel.DefaultOptions()
 	}
 
 	return config, nil
@@ -155,11 +159,15 @@ type listenerConfig struct {
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
+	defaultOpts := channel.DefaultOptions()
+	defaultOpts.ConnectTimeout = 10 * time.Second
+
 	config := &dialerConfig{
 		split:                 true,
 		maxDefaultConnections: DefaultMaxDefaultConnections,
 		maxAckConnections:     DefaultMaxAckConnections,
 		startupDelay:          DefaultStartupDelay,
+		options:               defaultOpts,
 	}
 
 	if value, found := data["split"]; found {

@@ -124,3 +124,11 @@ func (m *MockNetworkControllers) GetLeader() NetworkController {
 func (m *MockNetworkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	return nil
 }
+
+func (m *MockNetworkControllers) GetSubscriptionController() NetworkController {
+	return nil
+}
+
+func (m *MockNetworkControllers) AllControllersHaveCapability(cap int) bool {
+	return false
+}

@@ -487,14 +487,33 @@ func (self *impl) WaitForPeer(address string, timeout time.Duration) (*Peer, err
 	self.peerWaiters[address] = append(self.peerWaiters[address], waiter)
 	self.lock.Unlock()
 
+	var peer *Peer
+	var err error
 	select {
-	case peer := <-waiter:
-		return peer, nil
+	case peer = <-waiter:
 	case <-time.After(timeout):
-		return nil, errors.Errorf("timeout waiting for peer at %v", address)
+		err = errors.Errorf("timeout waiting for peer at %v", address)
 	case <-self.closeNotify:
-		return nil, errors.New("mesh closed while waiting for peer")
+		err = errors.New("mesh closed while waiting for peer")
 	}
+
+	if err != nil {
+		self.lock.Lock()
+		waiters := self.peerWaiters[address]
+		for i, w := range waiters {
+			if w == waiter {
+				self.peerWaiters[address] = append(waiters[:i], waiters[i+1:]...)
+				break
+			}
+		}
+		if len(self.peerWaiters[address]) == 0 {
+			delete(self.peerWaiters, address)
+		}
+		self.lock.Unlock()
+		return nil, err
+	}
+
+	return peer, nil
 }
 
 // DialPeer creates a new channel connection to the given address and registers the peer.

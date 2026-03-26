@@ -63,6 +63,7 @@ type RouterEnv interface {
 
 	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
 	UpdateLeader(leaderId string)
+	GetLinkGossipNotifier() LinkGossipNotifier
 }
 
 type Alerter interface {

@@ -201,6 +201,13 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
+	// Check the router's epoch for stale entry cleanup. If the epoch changed
+	// (router restarted), delete old-epoch link gossip entries before creating
+	// new links in ConnectRouter.
+	if epoch, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_EpochHeader)]; found && len(epoch) > 0 {
+		self.network.HandleRouterEpoch(r.Id, epoch)
+	}
+
 	log.Info("accepted new router connection")
 
 	if err := self.network.QueueRouterConnect(r); err != nil {

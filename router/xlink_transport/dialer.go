@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
@@ -321,6 +322,13 @@ func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
 
 	stateUuid, first := ch.LinkConnectionsChanged(self.env.GetNetworkControllers())
 	if first { // initial connection is reported by newRouterLink event
+		return
+	}
+
+	// When all controllers support gossip, route conn state changes through the
+	// link registry so the existing gossip notification cycle picks them up.
+	if self.env.GetNetworkControllers().AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		self.env.GetXLinkRegistry().NotifyLinkConnStateChanged(link)
 		return
 	}
 

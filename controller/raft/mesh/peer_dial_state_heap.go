@@ -27,19 +27,23 @@ func (self peerDialStateHeap) Less(i, j int) bool {
 }
 
 func (self peerDialStateHeap) Swap(i, j int) {
-	tmp := self[i]
-	self[i] = self[j]
-	self[j] = tmp
+	self[i], self[j] = self[j], self[i]
+	self[i].heapIndex = i
+	self[j].heapIndex = j
 }
 
 func (self *peerDialStateHeap) Push(x any) {
-	*self = append(*self, x.(*peerDialState))
+	item := x.(*peerDialState)
+	item.heapIndex = len(*self)
+	*self = append(*self, item)
 }
 
 func (self *peerDialStateHeap) Pop() any {
 	old := *self
 	n := len(old)
 	item := old[n-1]
+	old[n-1] = nil // avoid memory leak
+	item.heapIndex = -1
 	*self = old[0 : n-1]
 	return item
 }

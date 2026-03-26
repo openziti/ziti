@@ -17,7 +17,6 @@
 package mesh
 
 import (
-	"container/heap"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -43,7 +42,7 @@ func (self *peerConnectedEvent) handle(d *PeerDialer) {
 	state.dialSucceeded()
 	// Schedule a re-check after FastFailureWindow to detect fast failures
 	state.nextDial = time.Now().Add(d.config.FastFailureWindow)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	pfxlog.Logger().WithField("address", self.address).
 		Info("peer dial state updated to connected")
@@ -64,13 +63,14 @@ func (self *peerDisconnectedEvent) handle(d *PeerDialer) {
 			return
 		}
 		state = &peerDialState{
-			address: self.address,
+			address:   self.address,
+			heapIndex: -1,
 		}
 		d.states[self.address] = state
 	}
 
 	state.connectionLost(d.config)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	log.WithField("nextDial", time.Until(state.nextDial).Round(time.Millisecond)).
 		Info("peer disconnected, queued for redial")
@@ -104,14 +104,14 @@ func (self *peerDialResultEvent) handle(d *PeerDialer) {
 			WithField("retryDelay", state.retryDelay).
 			WithField("nextDial", time.Until(state.nextDial).Round(time.Millisecond)).
 			Warn("peer dial attempt failed, will retry with backoff")
-		heap.Push(&d.retryQueue, state)
+		d.scheduleRetry(state)
 		return
 	}
 
 	state.lastPeerVersion = self.peerVersion
 	state.dialSucceeded()
 	state.nextDial = time.Now().Add(d.config.FastFailureWindow)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	log.Info("successfully connected to peer")
 }

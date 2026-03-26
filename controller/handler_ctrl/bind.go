@@ -83,6 +83,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		Handler: self.network.RouterMessaging.NewValidationResponseHandler(self.network, self.router),
 	})
 	binding.AddTypedReceiveHandler(newSendClusterMembersHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newCanaryHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newCtrlGossipDeltaHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newCtrlGossipDigestResponseHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newCtrlGossipDigestRequestHandler(self.router, self.network))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
@@ -116,7 +120,18 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		binding.AddCloseHandler(newXctrlCloseHandler(xctrlDone))
 	}
 
+	canaryCloseNotify := make(chan struct{})
+	binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
+		close(canaryCloseNotify)
+	}))
+	startCanaryStatusSender(binding.GetChannel(), self.router, self.network, canaryCloseNotify)
+
 	binding.AddCloseHandler(newCloseHandler(self.router, self.network))
+
+	// Send gossip digest to the router so it can reconcile on reconnect.
+	// Run async — old routers won't respond, and that's fine.
+	go sendRouterGossipDigest(binding.GetChannel(), self.router, self.network, network.LinkGossipStoreType)
+
 	return nil
 }
 

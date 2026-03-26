@@ -167,11 +167,12 @@ func (self *PeerDialer) scan() {
 		}
 
 		state := &peerDialState{
-			address:  addr,
-			nextDial: time.Now().Add(time.Duration(newCount) * spreadInterval),
+			address:   addr,
+			nextDial:  time.Now().Add(time.Duration(newCount) * spreadInterval),
+			heapIndex: -1,
 		}
 		self.states[addr] = state
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		newCount++
 	}
 
@@ -205,7 +206,7 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 		}
 		// Was marked connected but now disconnected
 		state.connectionLost(self.config)
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		return
 	}
 
@@ -219,7 +220,7 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 	if self.mesh.GetPeer(raft.ServerAddress(state.address)) != nil {
 		state.dialSucceeded()
 		state.nextDial = time.Now().Add(self.config.FastFailureWindow)
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		return
 	}
 
@@ -229,10 +230,15 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 
 	state.status = peerStatusDialing
 
-	go self.doDial(state)
+	// Snapshot fields read by the dial goroutine to avoid racing with
+	// the event loop which may mutate them.
+	dialAttempts := state.dialAttempts
+	lastPeerVersion := state.lastPeerVersion
+
+	go self.doDial(state, dialAttempts, lastPeerVersion)
 }
 
-func (self *PeerDialer) doDial(state *peerDialState) {
+func (self *PeerDialer) doDial(state *peerDialState, dialAttempts uint32, lastPeerVersion *versions.VersionInfo) {
 	defer state.dialActive.Store(false)
 
 	log := pfxlog.Logger().WithField("component", "peerDialer").
@@ -242,10 +248,10 @@ func (self *PeerDialer) doDial(state *peerDialState) {
 	// or the peer is known to be pre-v2.0.0, strip the new signing cert header
 	// so older controllers that enforce smaller hello sizes can accept the connection.
 	stripSigningCert := false
-	if state.dialAttempts > 0 {
-		if state.lastPeerVersion == nil {
+	if dialAttempts > 0 {
+		if lastPeerVersion == nil {
 			stripSigningCert = true
-		} else if hasMin, _ := state.lastPeerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
+		} else if hasMin, _ := lastPeerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
 			stripSigningCert = true
 		}
 	}
@@ -258,6 +264,16 @@ func (self *PeerDialer) doDial(state *peerDialState) {
 		peerVersion = peer.Version
 	}
 	self.queueEvent(&peerDialResultEvent{address: state.address, err: dialErr, peerVersion: peerVersion})
+}
+
+// scheduleRetry adds or repositions a state in the retry heap. If the state is
+// already in the heap, it is repositioned; otherwise it is pushed.
+func (self *PeerDialer) scheduleRetry(state *peerDialState) {
+	if state.heapIndex >= 0 {
+		heap.Fix(&self.retryQueue, state.heapIndex)
+	} else {
+		heap.Push(&self.retryQueue, state)
+	}
 }
 
 // isCurrentPeer returns true if the address is currently a cluster peer.

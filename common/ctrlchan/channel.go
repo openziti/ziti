@@ -38,6 +38,7 @@ package ctrlchan
 import (
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -334,7 +335,10 @@ func (self *DialCtrlChannel) DialFailed(ch channel.MultiChannel, _ string, attem
 	if delay > time.Minute {
 		delay = time.Minute
 	}
-	time.Sleep(delay)
+	// Add up to 50% jitter to prevent thundering herd when many routers
+	// reconnect simultaneously after a controller disruption.
+	jitter := time.Duration(rand.Int64N(int64(delay) / 2))
+	time.Sleep(delay + jitter)
 
 	// if the constraints are no longer valid after sleeping, close the channel
 	self.constraints.CheckStateValid(ch, true)

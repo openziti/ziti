@@ -20,6 +20,8 @@ ctrl:
     - tls:{{ $host.PublicIp }}:6262{{end}}
   startupTimeout: 5m
   endpointsFile: /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.endpoints
+  options:
+    connectTimeoutMs: 15000
 
 healthChecks:
   ctrlPingCheck:
@@ -39,12 +41,15 @@ link:
     - binding:          transport
       bind:             tls:0.0.0.0:60{{printf "%02d" .Component.ScaleIndex }}
       advertise:        tls:{{$router_ip}}:60{{printf "%02d" .Component.ScaleIndex }}
+      options:
+        maxOutstandingConnects: 128
+        maxQueuedConnects:      32
   dialers:
     - binding:          transport
       healthyDialBackoff:
         maxRetryInterval: 1m
       options:
-        connectTimeout: 30s
+        connectTimeout: 10s
 
 listeners:
 {{if .Component.HasTag "tunneler"}}

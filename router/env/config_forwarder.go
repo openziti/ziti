@@ -38,7 +38,7 @@ const (
 	DefaultLinkDialQueueLength   = 1000
 	MinLinkDialWorkerQueueLength = 1
 	MaxLinkDialWorkerQueueLength = 10000
-	DefaultLinkDialWorkerCount   = 32
+	DefaultLinkDialWorkerCount   = 64
 	MinLinkDialWorkerCount       = 1
 	MaxLinkDialWorkerCount       = 10000
 

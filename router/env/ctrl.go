@@ -17,10 +17,12 @@
 package env
 
 import (
+	"math/big"
 	"sync/atomic"
 	"time"
 
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 
 	"github.com/openziti/channel/v4"
@@ -39,6 +41,10 @@ type NetworkController interface {
 	IsConnected() bool
 	GetLastReportedDataModelIndex() uint64
 	updateDataModelIndex(index uint64)
+	GetCanarySeq() uint64
+	updateCanarySeq(seq uint64)
+	HasCapability(cap int) bool
+	setCapabilities(mask *big.Int)
 }
 
 func newNetworkCtrl(ch ctrlchan.CtrlChannel, address string, heartbeatOptions *HeartbeatOptions) *networkCtrl {
@@ -62,6 +68,8 @@ type networkCtrl struct {
 	versionInfo      *versions.VersionInfo
 	lastContact      atomic.Int64
 	currentIndex     atomic.Uint64
+	canarySeq        atomic.Uint64
+	caps             *big.Int
 }
 
 func (self *networkCtrl) TimeSinceLastContact() time.Duration {
@@ -94,6 +102,22 @@ func (self *networkCtrl) GetLastReportedDataModelIndex() uint64 {
 
 func (self *networkCtrl) updateDataModelIndex(index uint64) {
 	self.currentIndex.Store(index)
+}
+
+func (self *networkCtrl) GetCanarySeq() uint64 {
+	return self.canarySeq.Load()
+}
+
+func (self *networkCtrl) updateCanarySeq(seq uint64) {
+	self.canarySeq.Store(seq)
+}
+
+func (self *networkCtrl) HasCapability(cap int) bool {
+	return self.caps != nil && capabilities.IsSet(self.caps, cap)
+}
+
+func (self *networkCtrl) setCapabilities(mask *big.Int) {
+	self.caps = mask
 }
 
 func (self *networkCtrl) Latency() time.Duration {
