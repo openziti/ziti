@@ -217,35 +217,72 @@ This is where things get interesting. The router needs to:
 2. Determine which subsystem each config belongs to.
 3. Apply the configuration, potentially starting, stopping, or reconfiguring subsystems.
 
+### Local Config Type Allowlist
+
+Not every router operator will want the controller to be able to enable arbitrary functionality. For
+example, a router deployed in a sensitive environment might need to guarantee that tunneling or edge
+functionality can never be turned on remotely. To support this, the router's local config file can
+specify which config types it will accept from the controller:
+
+```yaml
+managedConfig:
+  allow:
+    - router.link
+    - router.forwarder
+    - router.xgress.proxy
+    - router.xgress.transport
+```
+
+The allowlist rules:
+
+- If the allowlist is **empty or absent**, controller-managed config is **disabled entirely**. The
+  router operates purely from its local config file, same as today.
+- The special value `all` accepts every config type from the controller.
+- Otherwise, only the listed config types are accepted.
+
+This keeps the security boundary at the router. The controller can associate whatever configs it
+wants with a router, but the router has the final say on what it actually applies. An operator who
+doesn't want edge or tunnel functionality enabled remotely simply omits `router.xgress.edge` and
+`router.xgress.tunnel` from the allowlist. An operator who wants full controller management uses
+`all`. And existing routers with no `managedConfig` section continue to work exactly as they do
+today.
+
 ### Config Application Strategy
 
 The router maintains a config handler registry, keyed by config type name (or pattern). When a config event
 arrives:
 
-1. Look up the handler for the config type.
-2. If found, pass the config data to the handler.
-3. The handler validates and applies the config, returning any errors.
+1. Check the config type against the local allowlist. If not allowed, skip it.
+2. Look up the handler for the config type.
+3. If found, pass the config data to the handler.
+4. The handler validates and applies the config, returning any errors.
 
 For xgress configs specifically, the flow would be:
 
 1. Router receives a `router.xgress.proxy` config.
-2. It recognizes the `router.xgress.*` pattern and looks up the `proxy` binding in the xgress registry.
-3. If the factory exists, it creates/reconfigures the listener and/or dialer with the new options.
-4. If the factory doesn't exist (custom binding not loaded), it logs a warning.
+2. It checks the allowlist. If `router.xgress.proxy` is not allowed, the config is ignored.
+3. It recognizes the `router.xgress.*` pattern and looks up the `proxy` binding in the xgress registry.
+4. If the factory exists, it creates/reconfigures the listener and/or dialer with the new options.
+5. If the factory doesn't exist (custom binding not loaded), it logs a warning.
 
-### Hot Reconfiguration vs. Restart
+### Hot Reconfiguration
 
-Some config changes can be applied at runtime (metrics intervals, health check timings, forwarder pool sizes).
-Others may require tearing down and recreating subsystems (changing a link listener's bind address, for
-example). Each config handler should know whether it can apply a change in-place or needs a restart of
-its subsystem.
+For controller-managed config to work, every subsystem needs to handle config updates at runtime:
+accepting new config, tearing down and recreating if needed, or shutting down when config is removed.
+Once that machinery exists, there's no reason it should only work for configs arriving over the ctrl
+channel. The same handlers can process config from a local file reload.
 
-A reasonable approach:
+This means we get hot-reloading of the local config file as a natural side-effect of this work. A
+`ziti agent router reload-config` command can trigger a re-read of the local config file and push the
+parsed sections through the same config handler registry that processes controller-managed updates.
+No restart required.
+
+The general approach for config handlers:
 
 - **Additive changes** (new listener, new xgress binding): start the new thing.
-- **Removal** (config deleted): shut down the associated subsystem.
-- **Modification**: depends on the subsystem. Some can hot-reload, some need a restart cycle. The handler
-  decides.
+- **Removal** (config deleted or section removed): shut down the associated subsystem.
+- **Modification**: depends on the subsystem. Some can update in-place, some need a tear-down and
+  recreate cycle. The handler decides.
 
 ### Startup Behavior
 
@@ -262,6 +299,132 @@ in the first place. Those stay in the local config. Everything else can come fro
 
 We may also want to support a hybrid mode during migration, where local config is used as a fallback if
 the controller hasn't pushed config yet, or as a baseline that controller config overrides.
+
+## Consolidating Router Types
+
+### Current State
+
+The controller has three router types in a hierarchy:
+
+- **Router** (base): name, fingerprint, cost, noTraversal, disabled, ctrlChanListeners, interfaces.
+- **EdgeRouter** (extends Router): adds roleAttributes, isVerified, certPem, isTunnelerEnabled,
+  appData, unverifiedCertPem, unverifiedFingerprint. Enrolled via `erott`. Participates in
+  EdgeRouterPolicy and ServiceEdgeRouterPolicy for access control.
+- **TransitRouter** (extends Router): adds isVerified, isBase, unverifiedFingerprint,
+  unverifiedCertPem. Enrolled via `trott`. No role attributes, no policy participation.
+
+EdgeRouter and TransitRouter are stored as child entities of Router in separate database buckets
+(`edge` and `transitRouter` respectively). They have separate API endpoints (`/edge-routers` and
+`/transit-routers`), separate managers, and separate enrollment methods.
+
+The `IsTunnelerEnabled` flag on EdgeRouter triggers auto-creation of a matching Identity
+(type="Router", same ID as the router) and a system EdgeRouterPolicy that links the identity to
+the router. This gives the tunneler-enabled router an identity it can use to authenticate as a
+client and access services.
+
+The `IsBase` flag on TransitRouter is inferred at load time when a transit router has no child
+bucket. It marks legacy routers that predate the transit router store and prevents updates.
+
+### What Each Type Actually Provides
+
+When you strip away the naming, the differences boil down to:
+
+- **TransitRouter** = Router + enrollment mechanism. That's it. No role attributes, no policies, no
+  tunneling. It exists to give fabric-only routers a way to enroll.
+- **EdgeRouter** = Router + enrollment + role attributes + policy participation + optional tunneler
+  identity. The edge-specific parts are what let the router participate in the policy model and
+  optionally act as a tunneler.
+
+With controller-managed config, the distinction between "edge" and "transit" becomes less meaningful.
+Whether a router runs the edge subsystem is determined by whether it has a `router.xgress.edge`
+config. Whether it tunnels is determined by `router.xgress.tunnel`. The router type in the data
+model shouldn't need to dictate capabilities.
+
+### Collapsing to a Single Router Type
+
+We can fold EdgeRouter and TransitRouter down into the base Router type. The base Router would
+absorb the fields it needs:
+
+```go
+type Router struct {
+    boltz.BaseExtEntity
+    Name                  string
+    Fingerprint           *string
+    Cost                  uint16
+    NoTraversal           bool
+    Disabled              bool
+    CtrlChanListeners     map[string][]string
+    Interfaces            []*Interface
+
+    // From EdgeRouter
+    RoleAttributes        []string
+    AppData               map[string]interface{}
+    Configs               []string               // new, for managed config
+
+    // From EdgeRouter/TransitRouter (enrollment)
+    IsVerified            bool
+    CertPem               *string
+    UnverifiedFingerprint *string
+    UnverifiedCertPem     *string
+}
+```
+
+A single enrollment method replaces `erott` and `trott`. The API surface collapses to `/routers`.
+The separate EdgeRouterPolicy and ServiceEdgeRouterPolicy types would reference routers directly
+(or we introduce unified router policy types).
+
+### The Identity Question
+
+Today only tunneler-enabled edge routers get an identity. With a unified router type, we have a
+choice:
+
+**Option A: Identity tied to tunnel config.** When a `router.xgress.tunnel` config is associated
+with a router, the system auto-creates the matching identity and system policy, same as the
+`IsTunnelerEnabled` constraint does today. When the config is removed, the identity and policy are
+cleaned up. This preserves the current behavior, just driven by config presence instead of a boolean
+flag.
+
+**Option B: Every router gets an identity.** If every router has an identity, it simplifies the
+model. Routers can always authenticate as themselves, appear in the identity list, and participate
+in policies uniformly. The tunneler just happens to be one consumer of that identity. This also
+opens the door for other use cases, for example, a router that needs to authenticate to external
+systems using its Ziti identity.
+
+Option B is cleaner long-term but has implications: every router creation would also create an
+identity, the system edge router policy would always exist, and existing transit routers would need
+identities created during migration. It also means the router identity exists even if the router
+never uses it, which is a small cost.
+
+### System Edge Router Policy
+
+Currently the system EdgeRouterPolicy is auto-created per tunneler-enabled router, linking the
+router's identity to the router itself so the tunneler can access services through its own router.
+
+With a unified model:
+
+- If we go with **Option A**, the policy is created/deleted when `router.xgress.tunnel` config is
+  added/removed. The trigger moves from the `IsTunnelerEnabled` db constraint to a config change
+  handler.
+- If we go with **Option B**, every router gets the system policy at creation time. The policy
+  exists whether or not the router is tunneling. This is simpler but means every router has a
+  policy entry even if it's not needed.
+
+### Migration
+
+Collapsing the types requires a database migration:
+
+1. Move EdgeRouter-specific fields (roleAttributes, appData, certPem, etc.) into the base Router
+   bucket.
+2. Move TransitRouter-specific fields (isVerified, unverifiedFingerprint, etc.) into the base
+   Router bucket.
+3. Remove the `edge` and `transitRouter` child buckets.
+4. Consolidate enrollment records to use a single method.
+5. If going with Option B, create identities and system policies for all existing routers that
+   don't already have them.
+
+The API migration is trickier. The `/edge-routers` and `/transit-routers` endpoints would need to
+be deprecated in favor of `/routers`. We could keep the old endpoints as aliases for a transition
+period.
 
 ## Open Questions
 
