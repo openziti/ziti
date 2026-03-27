@@ -10,7 +10,6 @@ import (
 	"time"
 
 	cmdhelper "github.com/openziti/ziti/v2/ziti/cmd/helpers"
-	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -280,19 +279,6 @@ func TestCtrlConfigDefaultsWhenUnset(t *testing.T) {
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
 	})
 
-	t.Run("TestDatabaseFileEnv", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
-
-		assert.Equal(t, expectedValue, data.Controller.Database.DatabaseFile)
-	})
-
-	// db:
-	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
-
-		assert.Equal(t, expectedValue, ctrlConfig.Db)
-	})
-
 	// ctrl:
 	t.Run("TestBindAddress", func(t *testing.T) {
 		expectedValue := testDefaultCtrlBindAddress
@@ -494,19 +480,6 @@ func TestCtrlConfigDefaultsWhenEmpty(t *testing.T) {
 		assert.Equal(t, expectedValue, ctrlConfig.Identity.Ca)
 	})
 
-	// db:
-	t.Run("TestDatabaseFileEnv", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
-
-		assert.Equal(t, expectedValue, data.Controller.Database.DatabaseFile)
-	})
-
-	t.Run("TestDatabaseFileConfig", func(t *testing.T) {
-		expectedValue := cmdhelper.GetZitiHome() + "/" + constants.DefaultCtrlDatabaseFile
-
-		assert.Equal(t, expectedValue, ctrlConfig.Db)
-	})
-
 	// ctrl:
 	t.Run("TestBindAddress", func(t *testing.T) {
 		expectedValue := testDefaultCtrlBindAddress
@@ -685,14 +658,12 @@ func TestDatabaseFileNormalization(t *testing.T) {
 		"ZITI_CTRL_DATABASE_FILE": customValue,
 	}
 
-	ctrlConfig, data := execCreateConfigControllerCommand(nil, keys)
+	_, data := execCreateConfigControllerCommand(nil, keys)
 
 	if runtime.GOOS == "windows" {
 		assert.Equal(t, "C:/custom/path/file.db", data.Controller.Database.DatabaseFile)
-		assert.Equal(t, "C:/custom/path/file.db", ctrlConfig.Db)
 	} else {
 		assert.Equal(t, "/custom/path/file.db", data.Controller.Database.DatabaseFile)
-		assert.Equal(t, "/custom/path/file.db", ctrlConfig.Db)
 	}
 }
 

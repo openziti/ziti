@@ -3,9 +3,9 @@ services:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     healthcheck:
       test: curl -m 1 -s -k -f https://${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}/edge/client/v1/version
-      interval: 1s
+      interval: 3s
       timeout: 3s
-      retries: 30
+      retries: 60
     env_file:
       - ./.env
     ports:

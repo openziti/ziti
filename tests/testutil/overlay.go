@@ -19,6 +19,7 @@ package testutil
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -95,6 +96,8 @@ func (o *Overlay) startArgs() []string {
 		fmt.Sprintf("--ctrl-port=%d", o.ControllerPort),
 		fmt.Sprintf("--router-address=%s", o.RouterAddress),
 		fmt.Sprintf("--router-port=%d", o.RouterPort),
+		fmt.Sprintf("--instance-id=%s", o.InstanceID),
+		fmt.Sprintf("--trust-domain=%s", o.TrustDomain),
 	}
 	if o.Routerless {
 		args = append(args, "--no-router")
@@ -160,18 +163,11 @@ func (o *Overlay) PrintLoginCommand(t *testing.T) {
 }
 
 func (o *Overlay) StartExternal(zitiPath string, done chan error) {
-	args := []string{"edge", "quickstart"}
-	if o.IsHA {
-		args = append(args, "ha")
-	}
-	args = append(args, o.startArgs()...)
+	args := append([]string{"edge", "quickstart"}, o.startArgs()...)
 	o.RunZiti(zitiPath, args, done)
 }
 
 func (o *Overlay) StartJoin(zitiPath string, done chan error) {
-	if !o.IsHA {
-		panic("test incorrect. calling join without HA")
-	}
 	args := append([]string{"edge", "quickstart", "join"}, o.startArgs()...)
 	o.RunZiti(zitiPath, args, done)
 }
@@ -184,7 +180,7 @@ func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 		zitiPath,
 		args...,
 	)
-	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true")
+	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true", fmt.Sprintf("ZITI_CONFIG_DIR=%s/.config", o.Home))
 	_ = os.Mkdir(o.Home, 0755)
 	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
@@ -520,6 +516,29 @@ func (o *Overlay) getRunningPids() []int {
 	return running
 }
 
+func (o *Overlay) WaitForHTTPReady(timeout time.Duration) error {
+	fmt.Printf("Waiting up to %s for HTTP at %s\n", timeout, o.ControllerHostPort())
+	start := time.Now()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	timeoutCh := time.After(timeout)
+	for {
+		select {
+		case <-ticker.C:
+			elapsed := time.Since(start)
+			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+			if err != nil {
+				fmt.Printf("[%s] [%s] HTTP not ready: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+			} else {
+				fmt.Printf("[%s] [%s] HTTP ready\n", o.Name, elapsed.Truncate(time.Second))
+				return nil
+			}
+		case <-timeoutCh:
+			return fmt.Errorf("timeout waiting for HTTP at %s", o.ControllerHostPort())
+		}
+	}
+}
+
 func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 	fmt.Printf("Waiting up to %s for controller at %s\n", timeout, o.ControllerHostPort())
 
@@ -530,22 +549,54 @@ func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 	timeoutCh := time.After(timeout)
 	var lastPrint time.Time
 
+	ctrlUrl := o.ControllerHostPort()
+	httpReady := false
 	for {
 		select {
 		case <-ticker.C:
-			_, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
-			if err == nil {
-				return nil
-			}
+			elapsed := time.Since(start)
+			remaining := (timeout - elapsed).Truncate(time.Second)
 
-			if time.Since(lastPrint) >= 5*time.Second {
-				elapsed := time.Since(start)
-				fmt.Printf("Still waiting (%s elapsed, %s remaining)... %s\n",
-					elapsed.Truncate(time.Second),
-					(timeout - elapsed).Truncate(time.Second),
-					o.ControllerHostPort())
-
-				lastPrint = time.Now()
+			if !httpReady {
+				caCerts, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+				if err != nil {
+					fmt.Printf("[%s] [%s] HTTP not ready: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+				} else {
+					httpReady = true
+					fmt.Printf("[%s] [%s] HTTP ready, waiting for admin login...\n", o.Name, elapsed.Truncate(time.Second))
+					caPool := x509.NewCertPool()
+					for _, ca := range caCerts {
+						caPool.AddCert(ca)
+					}
+					_, authErr := rest_util.NewEdgeManagementClientWithUpdb(o.Username, o.Password, ctrlUrl, caPool)
+					if authErr != nil {
+						fmt.Printf("[%s] [%s] admin login not ready yet: %v\n", o.Name, elapsed.Truncate(time.Second), authErr)
+					} else {
+						fmt.Printf("[%s] [%s] admin login succeeded, controller ready\n", o.Name, elapsed.Truncate(time.Second))
+						return nil
+					}
+				}
+			} else {
+				caCerts, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+				if err != nil {
+					fmt.Printf("[%s] [%s] HTTP went away: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+					httpReady = false
+				} else {
+					caPool := x509.NewCertPool()
+					for _, ca := range caCerts {
+						caPool.AddCert(ca)
+					}
+					_, authErr := rest_util.NewEdgeManagementClientWithUpdb(o.Username, o.Password, ctrlUrl, caPool)
+					if authErr != nil {
+						if time.Since(lastPrint) >= 3*time.Second {
+							fmt.Printf("[%s] [%s] waiting for admin init (%s remaining)...\n", o.Name, elapsed.Truncate(time.Second), remaining)
+							lastPrint = time.Now()
+						}
+					} else {
+						fmt.Printf("[%s] [%s] admin login succeeded, controller ready\n", o.Name, elapsed.Truncate(time.Second))
+						return nil
+					}
+				}
 			}
 
 		case <-timeoutCh:
@@ -569,7 +620,7 @@ func (o *Overlay) WaitForRouterReady(timeout time.Duration) error {
 	return nil
 }
 
-func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string, ha bool) Overlay {
+func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string) Overlay {
 	o := Overlay{
 		Name:         name,
 		t:            t,
@@ -585,7 +636,6 @@ func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration
 			Routerless:        false,
 			TrustDomain:       name,
 			InstanceID:        name,
-			IsHA:              ha,
 			Username:          "admin",
 			Password:          "admin",
 			ConfigureAndExit:  false,

@@ -32,6 +32,7 @@ import (
 	"github.com/openziti/ziti/v2/tests/testutil"
 	"github.com/openziti/ziti/v2/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/v2/ziti/cmd/ascode/importer"
+	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +45,7 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	baseDir := filepath.Join(os.TempDir(), "import-tests")
+	baseDir := filepath.Join(cliTestBaseDir("import-tests"))
 	if me := os.MkdirAll(baseDir, 0755); me != nil {
 		t.Fatalf("failed creating baseDir dir: %v", baseDir)
 	}
@@ -54,8 +55,9 @@ func TestYamlUploadAndDownload(t *testing.T) {
 	}
 
 	// set ZITI_CONFIG_DIR so that anything here forth is not corrupting local stuff
+	origCfgDir := os.Getenv("ZITI_CONFIG_DIR")
 	_ = os.Setenv("ZITI_CONFIG_DIR", filepath.Join(testRunHome, ".config/ziti"))
-	overlay := testutil.CreateOverlay(t, ctx, 60*time.Second, testRunHome, "import", false)
+	overlay := testutil.CreateOverlay(t, ctx, 60*time.Second, testRunHome, "import")
 	targetDone := make(chan error)
 	go overlay.StartExternal(zitiPath, targetDone)
 
@@ -84,10 +86,12 @@ func TestYamlUploadAndDownload(t *testing.T) {
 			t.Logf("tests failed, temp dir left intact at %s", testRunHome)
 		}
 		overlay.CleanupPids()
+		util.ReloadConfig()
+		_ = os.Setenv("ZITI_CONFIG_DIR", origCfgDir)
 	}()
 	startErr := overlay.WaitForControllerReady(20 * time.Second)
 	if startErr != nil {
-		log.Fatalf("start controller failed: %v", startErr)
+		t.Fatalf("start controller failed: %v", startErr)
 	}
 
 	performImport(t, overlay.ControllerHostPort())

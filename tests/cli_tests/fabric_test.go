@@ -60,7 +60,7 @@ func (s *cliTestState) fabricListLinks(t *testing.T) {
 func (s *cliTestState) fabricValidateRouterLinks(t *testing.T) {
 	out, err := s.runCLI(`fabric validate router-links --include-valid-routers`)
 	require.NoError(t, err, out)
-	require.Contains(t, out, "routerName: router-quickstart")
+	require.Contains(t, out, "routerName: router-"+s.controllerUnderTest.InstanceID)
 	t.Log(out)
 }
 

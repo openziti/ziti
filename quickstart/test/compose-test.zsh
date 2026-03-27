@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 #
 # this script tests the quickstart's ziti-cli-functions.sh, container image creation process, and Compose project by
 # gathering files from a particular GitHub repo ref or a filesystem path and running the quickstart's Go test suite
