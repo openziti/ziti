@@ -96,6 +96,8 @@ func (o *Overlay) startArgs() []string {
 		fmt.Sprintf("--ctrl-port=%d", o.ControllerPort),
 		fmt.Sprintf("--router-address=%s", o.RouterAddress),
 		fmt.Sprintf("--router-port=%d", o.RouterPort),
+		fmt.Sprintf("--instance-id=%s", o.InstanceID),
+		fmt.Sprintf("--trust-domain=%s", o.TrustDomain),
 	}
 	if o.Routerless {
 		args = append(args, "--no-router")

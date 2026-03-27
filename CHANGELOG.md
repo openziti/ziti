@@ -100,7 +100,8 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
 * Refresh-token revocations are now batched and best-effort, removing the database/raft bottleneck on token refreshes
 * `ziti edge quickstart` now always runs in HA mode. The `ha` subcommand has been removed. Use
-  `ziti edge quickstart join` to add additional members to the cluster.
+  `ziti edge quickstart join` to add additional members to the cluster. Note: existing quickstart instances
+  are not compatible with the new HA-only mode and will need to be recreated.
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
 
