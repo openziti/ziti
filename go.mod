@@ -67,7 +67,7 @@ require (
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.90
-	github.com/openziti/sdk-golang v1.5.4
+	github.com/openziti/sdk-golang v1.6.0
 	github.com/openziti/secretstream v0.1.49
 	github.com/openziti/storage v0.4.39
 	github.com/openziti/transport/v2 v2.0.215

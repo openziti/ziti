@@ -22,7 +22,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -44,19 +43,6 @@ func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.Typ
 	return &channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(edge_ctrl_pb.ContentType_CreateCircuitRequestType),
 		Handler: handler.HandleReceiveCreateCircuitV1,
-	}
-}
-
-func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
-	handler := &createCircuitHandler{
-		baseRequestHandler: baseRequestHandler{
-			ch:     ch,
-			appEnv: appEnv,
-		},
-	}
-	return &channel.AsyncFunctionReceiveAdapter{
-		Type:    int32(edge_ctrl_pb.ContentType_CreateCircuitV2RequestType),
-		Handler: handler.HandleReceiveCreateCircuitV2,
 	}
 }
 
@@ -95,32 +81,6 @@ func (self *createCircuitHandler) CreateCircuitV1Response(circuitInfo *model.Cir
 	return responseMsg, nil
 }
 
-func (self *createCircuitHandler) HandleReceiveCreateCircuitV2(msg *channel.Message, ch channel.Channel) {
-	req, err := ctrl_msg.DecodeCreateCircuitRequest(msg)
-	if err != nil {
-		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not decode CreateCircuitRequest")
-		return
-	}
-
-	ctx := &CreateCircuitRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
-		req:                       req,
-	}
-
-	self.CreateCircuit(ctx, self.CreateCircuitV2Response)
-}
-
-func (self *createCircuitHandler) CreateCircuitV2Response(circuitInfo *model.Circuit, peerData map[uint32][]byte) (*channel.Message, error) {
-	response := &ctrl_msg.CreateCircuitResponse{
-		CircuitId: circuitInfo.Id,
-		Address:   circuitInfo.Path.IngressId,
-		PeerData:  peerData,
-		Tags:      circuitInfo.Tags,
-	}
-
-	return response.ToMessage(), nil
-}
-
 func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext, f createCircuitResponseFactory) {
 	if !ctx.loadRouter() {
 		return
@@ -133,7 +93,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 
 	if ctx.err != nil {
 		if circuitInfo != nil {
-			self.errRespF = func(resp *channel.Message) {
+			ctx.errRespF = func(resp *channel.Message) {
 				resp.PutStringHeader(edge.CircuitIdHeader, circuitInfo.Id)
 			}
 		}
@@ -167,9 +127,16 @@ type CreateCircuitRequest interface {
 
 type CreateCircuitRequestContext struct {
 	baseSessionRequestContext
-	req CreateCircuitRequest
+	req      CreateCircuitRequest
+	errRespF func(m *channel.Message)
 }
 
 func (self *CreateCircuitRequestContext) GetSessionToken() string {
 	return self.req.GetSessionToken()
+}
+
+func (self *CreateCircuitRequestContext) UpdateResponse(m *channel.Message) {
+	if self.errRespF != nil {
+		self.errRespF(m)
+	}
 }
