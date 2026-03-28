@@ -501,3 +501,12 @@ simply means the subsystem stays disabled and an alert is sent.
    it pick up the full set of configs associated with that template. The policy/attribute approach
    is unlikely to work well here because you could easily end up referencing multiple configs of
    the same type, which is not allowed.
+
+2. **Circuit disruption on config changes**: Some config changes require tearing down and recreating
+   a subsystem, which will disrupt any circuits using it. Changing `router.xgress.edge` config, for
+   example, could drop all active edge connections. We may want to quiesce the router before
+   applying disruptive changes, draining existing circuits before restarting the subsystem, and/or
+   warn the admin that the change will be disruptive. Alternatively, we could invest in making
+   circuits resilient to initiating and terminating routers going down, allowing circuits to be
+   rerouted through other routers. That's a larger piece of work but would make the system more
+   robust in general, not just for config changes.
