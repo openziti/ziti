@@ -97,6 +97,9 @@ This is helpful for UIs. A router management screen can query config types where
 only show those. A service config screen shows `target = "service"`. It also lets the API enforce that you
 don't accidentally associate a tunneler intercept config with a router, or a router link config with a service.
 
+All built-in router config types will have JSON Schema definitions so the controller can reject invalid
+config before it ever reaches a router.
+
 ### Associating Configs with Routers
 
 Today, services have a `Configs []string` field that holds config IDs. We'd add the same thing to the router
@@ -122,6 +125,33 @@ and follow the `router.xgress.<binding-name>` naming convention. The router uses
 dispatch: it strips the `router.xgress.` prefix to get the binding name, then looks that up in the xgress
 registry. If the factory exists, it starts it up with the provided configuration. If not, it logs a warning
 and moves on. No additional metadata is needed on the config type itself.
+
+### Versioning
+
+Config type names include a version suffix: `router.link.v1`, `router.xgress.edge.v1`, etc. The
+versioning rules are designed so that old routers and new configs can coexist gracefully:
+
+1. **Additive only within a version.** New fields can be added to a config version at any time.
+   Older routers that don't know about the new fields will ignore them.
+2. **No removals or semantic changes within a version.** Fields are never removed, and their
+   meaning never changes. A field can be marked deprecated, but it continues to work as it
+   always did.
+3. **Breaking changes require a new version.** If we need to remove a field, change its meaning,
+   or restructure the config, we create a new version: `router.link.v1` becomes `router.link.v2`.
+4. **Routers select the highest version they understand.** A router knows which config versions it
+   supports. When it receives its config set, it looks for configs from highest version to lowest
+   and uses the first match. A v3 router with both `router.link.v1` and `router.link.v2` configs
+   associated will use v2.
+5. **Internally, the router uses a single config format.** Regardless of which version the config
+   came from, the router populates its internal config struct from the highest-version config it
+   understands. This is the same pattern we use today for host configs.
+6. **Forward-compatible field additions.** If something that was a single value needs to become a
+   list, we add a new field for the list. The router checks for the list field first and falls
+   back to the single-value field if not present. No version bump needed.
+
+This approach gives operators a clean path for rolling upgrades. During a fleet upgrade, both
+`router.link.v1` and `router.link.v2` can be associated with the same router. Old routers pick
+v1, upgraded routers pick v2. Once the fleet is fully upgraded, v1 can be removed.
 
 ## Propagation
 
@@ -217,7 +247,7 @@ This is where things get interesting. The router needs to:
 2. Determine which subsystem each config belongs to.
 3. Apply the configuration, potentially starting, stopping, or reconfiguring subsystems.
 
-### Local Config Type Allowlist
+### Local Config Type Allow-list
 
 Not every router operator will want the controller to be able to enable arbitrary functionality. For
 example, a router deployed in a sensitive environment might need to guarantee that tunneling or edge
@@ -233,9 +263,9 @@ managedConfig:
     - router.xgress.transport
 ```
 
-The allowlist rules:
+The allow-list rules:
 
-- If the allowlist is **empty or absent**, controller-managed config is **disabled entirely**. The
+- If the allow-list is **empty or absent**, controller-managed config is **disabled entirely**. The
   router operates purely from its local config file, same as today.
 - The special value `all` accepts every config type from the controller.
 - Otherwise, only the listed config types are accepted.
@@ -243,16 +273,28 @@ The allowlist rules:
 This keeps the security boundary at the router. The controller can associate whatever configs it
 wants with a router, but the router has the final say on what it actually applies. An operator who
 doesn't want edge or tunnel functionality enabled remotely simply omits `router.xgress.edge` and
-`router.xgress.tunnel` from the allowlist. An operator who wants full controller management uses
+`router.xgress.tunnel` from the allow-list. An operator who wants full controller management uses
 `all`. And existing routers with no `managedConfig` section continue to work exactly as they do
 today.
+
+### Precedence: Local Config Wins
+
+If a router has both local config and controller-managed config for the same subsystem, local config
+always wins. The router operator has final authority.
+
+This follows from the same principle as the allow-list. Routers are often deployed on systems owned
+by someone other than the network operator. It's common for one entity to run the network and use
+it to manage devices or software for their customers. The routers sit on customer systems, and the
+customer needs to control what the router is capable of and prevent capabilities from being enabled
+that don't make sense for their environment. Controller-managed config fills in gaps where local
+config is silent, it doesn't override what the operator has explicitly set.
 
 ### Config Application Strategy
 
 The router maintains a config handler registry, keyed by config type name (or pattern). When a config event
 arrives:
 
-1. Check the config type against the local allowlist. If not allowed, skip it.
+1. Check the config type against the local allow-list. If not allowed, skip it.
 2. Look up the handler for the config type.
 3. If found, pass the config data to the handler.
 4. The handler validates and applies the config, returning any errors.
@@ -260,7 +302,7 @@ arrives:
 For xgress configs specifically, the flow would be:
 
 1. Router receives a `router.xgress.proxy` config.
-2. It checks the allowlist. If `router.xgress.proxy` is not allowed, the config is ignored.
+2. It checks the allow-list. If `router.xgress.proxy` is not allowed, the config is ignored.
 3. It recognizes the `router.xgress.*` pattern and looks up the `proxy` binding in the xgress registry.
 4. If the factory exists, it creates/reconfigures the listener and/or dialer with the new options.
 5. If the factory doesn't exist (custom binding not loaded), it logs a warning.
@@ -297,8 +339,12 @@ config, the flow becomes:
 There's a bootstrapping question here: the router needs its identity and controller endpoint to connect
 in the first place. Those stay in the local config. Everything else can come from the controller.
 
-We may also want to support a hybrid mode during migration, where local config is used as a fallback if
-the controller hasn't pushed config yet, or as a baseline that controller config overrides.
+In practice, most deployments will run in a hybrid mode: local config defines whatever the operator
+wants to control directly, and controller-managed config fills in the rest. Local config always takes
+precedence, so there's no conflict. Migration from local-only to controller-managed config is left to
+network operators. They generally have patterns specific to their environment and will know best which
+configs should be shared across routers and where they need per-router overrides. This can be scripted
+against the management API.
 
 ## Consolidating Router Types
 
@@ -307,31 +353,31 @@ the controller hasn't pushed config yet, or as a baseline that controller config
 The controller has three router types in a hierarchy:
 
 - **Router** (base): name, fingerprint, cost, noTraversal, disabled, ctrlChanListeners, interfaces.
-- **EdgeRouter** (extends Router): adds roleAttributes, isVerified, certPem, isTunnelerEnabled,
+- **Edge Router** (extends Router): adds roleAttributes, isVerified, certPem, isTunnelerEnabled,
   appData, unverifiedCertPem, unverifiedFingerprint. Enrolled via `erott`. Participates in
   EdgeRouterPolicy and ServiceEdgeRouterPolicy for access control.
-- **TransitRouter** (extends Router): adds isVerified, isBase, unverifiedFingerprint,
+- **Transit Router** (extends Router): adds isVerified, isBase, unverifiedFingerprint,
   unverifiedCertPem. Enrolled via `trott`. No role attributes, no policy participation.
 
-EdgeRouter and TransitRouter are stored as child entities of Router in separate database buckets
+Edge Router and Transi tRouter are stored as child entities of Router in separate database buckets
 (`edge` and `transitRouter` respectively). They have separate API endpoints (`/edge-routers` and
 `/transit-routers`), separate managers, and separate enrollment methods.
 
-The `IsTunnelerEnabled` flag on EdgeRouter triggers auto-creation of a matching Identity
-(type="Router", same ID as the router) and a system EdgeRouterPolicy that links the identity to
+The `IsTunnelerEnabled` flag on Edge Router triggers auto-creation of a matching Identity
+(type="Router", same ID as the router) and a system Edge Router Policy that links the identity to
 the router. This gives the tunneler-enabled router an identity it can use to authenticate as a
 client and access services.
 
-The `IsBase` flag on TransitRouter is inferred at load time when a transit router has no child
+The `IsBase` flag on Transit Router is inferred at load time when a transit router has no child
 bucket. It marks legacy routers that predate the transit router store and prevents updates.
 
 ### What Each Type Actually Provides
 
 When you strip away the naming, the differences boil down to:
 
-- **TransitRouter** = Router + enrollment mechanism. That's it. No role attributes, no policies, no
+- **Transit Router** = Router + enrollment mechanism. That's it. No role attributes, no policies, no
   tunneling. It exists to give fabric-only routers a way to enroll.
-- **EdgeRouter** = Router + enrollment + role attributes + policy participation + optional tunneler
+- **Edge Router** = Router + enrollment + role attributes + policy participation + optional tunneler
   identity. The edge-specific parts are what let the router participate in the policy model and
   optionally act as a tunneler.
 
@@ -342,7 +388,7 @@ model shouldn't need to dictate capabilities.
 
 ### Collapsing to a Single Router Type
 
-We can fold EdgeRouter and TransitRouter down into the base Router type. The base Router would
+We can fold Edge Router and Transit Router down into the base Router type. The base Router would
 absorb the fields it needs:
 
 ```go
@@ -426,28 +472,32 @@ The API migration is trickier. The `/edge-routers` and `/transit-routers` endpoi
 be deprecated in favor of `/routers`. We could keep the old endpoints as aliases for a transition
 period.
 
+### Config Rollback
+
+When applying a config update, the router follows this sequence:
+
+1. Hold on to the previous config before applying the update.
+2. Try to apply the new config.
+3. If it succeeds, drop the previous config. Done.
+4. If it fails, generate an alert to the controller.
+5. Try to re-apply the previous config.
+6. If the rollback succeeds, done. The subsystem is back to its prior state.
+7. If the rollback also fails, generate another alert to the controller. At this point the
+   subsystem is in an unknown state. If the subsystem can be shut down (xgress bindings, link
+   listeners, etc.), shut it down and alert that it's now offline. For subsystems that can't
+   meaningfully be shut down, like the forwarder where config changes are just adjusting defaults,
+   the router has to leave it in whatever state it ended up in. In practice, those subsystems are
+   also the ones least likely to fail a config application.
+
+For first-time config application where there is no previous config to roll back to, a failure
+simply means the subsystem stays disabled and an alert is sent.
+
 ## Open Questions
 
-1. **Precedence**: If a router has both local config and controller-managed config for the same subsystem,
-   which wins? Proposal: controller config wins, local config is fallback for subsystems not managed by
-   the controller.
-
-2. **Migration path**: How do we move existing routers from local-only config to controller-managed config?
-   We probably need a CLI command or API endpoint that imports a router's current YAML config into the
-   appropriate config type instances.
-
-3. **Validation**: Config types support JSON Schema validation. We should define schemas for each built-in
-   router config type so the controller can reject invalid config before it ever reaches a router.
-
-4. **Versioning**: Router software versions may not support all config fields. Do we need a way to express
-   "this config field requires router version >= X"?
-
-5. **Audit trail**: Config changes to routers should be auditable. The existing event infrastructure should
-   cover this, but we should verify.
-
-6. **Rollback**: If a config change causes a router to malfunction, what's the recovery path? Should the
-   router report back that a config application failed, and if so, what does the controller do with that
-   information?
-
-7. **Bulk operations**: We should support applying a config to multiple routers at once, likely via role
-   attributes and policies (similar to how service policies work today).
+1. **Templates/personas**: Since routers reference configs by ID, a single config can already be
+   shared across multiple routers. What we don't have yet is a way to assign a set of configs to
+   a router in one operation. Something like a router template or persona, a named bundle of
+   config references, would let an operator say "this router is a standard edge router" and have
+   it pick up the full set of configs associated with that template. The policy/attribute approach
+   is unlikely to work well here because you could easily end up referencing multiple configs of
+   the same type, which is not allowed.
