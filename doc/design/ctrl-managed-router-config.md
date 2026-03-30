@@ -510,3 +510,152 @@ simply means the subsystem stays disabled and an alert is sent.
    circuits resilient to initiating and terminating routers going down, allowing circuits to be
    rerouted through other routers. That's a larger piece of work but would make the system more
    robust in general, not just for config changes.
+
+## Implementation Plan: MVP with `router.link.v1`
+
+The MVP targets a single config type, `router.link.v1`, to prove out the full pipeline end-to-end:
+config creation, storage, association with a router, propagation via the RDM, and application on
+the router. Once this works, adding more config types is incremental.
+
+### Phase 1: Controller-Side Config Infrastructure
+
+These steps have no dependencies on each other and can be worked in parallel.
+
+**1a. Add `target` field to ConfigType.**
+
+Add the `target` field to the `ConfigType` db entity and model. Default to `"service"` for
+backward compatibility. Add it to the REST API request/response models. Add filtering support
+so the API can query by target (e.g., `?target=router`).
+
+Files: `controller/db/config_type_store.go`, `controller/model/config_type_model.go`,
+`controller/model/config_type_manager.go`, REST route/model files, db migration.
+
+**1b. Add `configs` field to Router.**
+
+Add a `Configs []string` field to the base Router db entity and model. Add the same one-config-
+per-type validation that services have. Expose it through the REST API on router create/update.
+
+Files: `controller/db/router_store.go`, `controller/model/router_model.go`,
+`controller/model/router_manager.go`, REST route/model files, db migration.
+
+**1c. Define the `router.link.v1` config type and schema.**
+
+Define the JSON Schema for `router.link.v1` covering listeners, dialers, and heartbeat config.
+This can be a migration that creates the built-in config type, similar to how `intercept-v1` and
+`host-v1` are created.
+
+Depends on: 1a (needs the `target` field to exist).
+
+### Phase 2: RDM Distribution
+
+**2a. Add Router to the DataState protobuf.**
+
+Add the `DataState.Router` message (id, name, fingerprint, configs) and add it as a variant in
+the `DataState.Event` oneof.
+
+Files: `common/pb/edge_ctrl_pb/edge_ctrl.proto`, regenerate protobuf.
+
+**2b. Populate routers in the `RouterDataModelSender`.**
+
+When the controller starts, load all routers into the sender. Register entity change listeners
+on the router store so creates, updates, and deletes produce RDM events.
+
+Files: `common/router_data_model_sender.go`, `controller/sync_strats/sync_instant.go`.
+
+**2c. Implement per-router config filtering in `RouterSender`.**
+
+When building a full `DataState` snapshot or replaying change sets, include `Router` events for
+all routers but filter `Config` events to only those associated with the receiving router. Track
+per-router previous index for correct gap handling.
+
+Depends on: 2a, 2b.
+
+Files: `controller/sync_strats/rtx.go`, `controller/sync_strats/sync_instant.go`.
+
+### Phase 3: Router-Side Config Handling
+
+**3a. Add the managed config allow-list to local config.**
+
+Parse the `managedConfig.allow` section from the router YAML config. Implement the allow-list
+logic (empty = disabled, `all` = accept everything, otherwise explicit list).
+
+Files: `router/env/config.go`.
+
+**3b. Add a config handler registry to the router.**
+
+Define a `ConfigHandler` interface that subsystems implement to receive config updates. The
+router maintains a registry keyed by config type name pattern. Include the rollback logic:
+hold previous config, try new, rollback on failure, alert on failure.
+
+Files: new file in `router/` or `router/env/`.
+
+**3c. Handle Router and Config events in the router-side RDM.**
+
+Extend the router's `RouterDataModel` to store `Router` entities. When a `Config` event arrives
+for a config associated with this router, check the allow-list and local config precedence, then
+dispatch to the config handler registry.
+
+Depends on: 2a (protobuf changes), 3a, 3b.
+
+Files: `common/router_data_model.go`, `router/state/dataState.go`,
+`router/state/dataStateChangeSetEvent.go`.
+
+### Phase 4: Link Subsystem Hot-Reconfiguration
+
+**4a. Make link listeners and dialers stoppable.**
+
+Today `startXlinkListeners` and `startXlinkDialers` are fire-and-forget at startup. Add the
+ability to stop/close existing link listeners and dialers, and track them so they can be replaced.
+
+Files: `router/router.go`, xlink factory/listener/dialer implementations.
+
+**4b. Implement the `router.link.v1` config handler.**
+
+Write the config handler that receives `router.link.v1` config data, parses it into the link
+listener/dialer/heartbeat config structures, and applies it. On update, tear down existing link
+listeners/dialers and recreate with the new config. On removal, shut down link subsystem.
+Respect local config precedence: if the local config file has a `link` section, ignore the
+managed config.
+
+Depends on: 3b (handler registry), 4a (stoppable links).
+
+Files: new file in `router/` for the link config handler.
+
+### Phase 5: Integration and Testing
+
+**5a. End-to-end test.**
+
+Test the full pipeline: create `router.link.v1` config type and config instance via API,
+associate with a router, verify the router receives it via RDM, verify link listeners/dialers
+are started with the managed config.
+
+**5b. Config update test.**
+
+Update the config, verify the router tears down old links and starts new ones. Verify rollback
+on invalid config. Verify alerts are sent on failure.
+
+**5c. Allow-list and precedence tests.**
+
+Verify that configs not on the allow-list are ignored. Verify that local config takes precedence
+over managed config.
+
+### Dependency Graph
+
+```
+1a ──┐
+     ├── 1c
+1b ──┤
+     │
+2a ──┼── 2b ── 2c
+     │
+3a ──┤
+3b ──┼── 3c (depends on 2a, 3a, 3b)
+     │
+4a ──┼── 4b (depends on 3b, 4a)
+     │
+     └── 5a, 5b, 5c (depend on all above)
+```
+
+The critical path runs through the protobuf changes (2a), RDM distribution (2b, 2c), router-side
+handling (3c), and link hot-reconfiguration (4a, 4b). The controller-side config infrastructure
+(Phase 1) and the router-side framework (3a, 3b) can proceed in parallel with the RDM work.
