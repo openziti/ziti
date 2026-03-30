@@ -511,6 +511,12 @@ simply means the subsystem stays disabled and an alert is sent.
    rerouted through other routers. That's a larger piece of work but would make the system more
    robust in general, not just for config changes.
 
+3. **Config permissions**: Today, config and config type CRUD permissions are unified. Anyone who
+   can manage service configs can also manage router configs. We may want to separate these, since
+   router config changes affect network infrastructure and should potentially require a higher
+   privilege level than application-level service config changes. The `target` field on config
+   types gives us a natural boundary for splitting permissions.
+
 ## Implementation Plan: MVP with `router.link.v1`
 
 The MVP targets a single config type, `router.link.v1`, to prove out the full pipeline end-to-end:
