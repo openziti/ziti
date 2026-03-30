@@ -312,6 +312,8 @@ func (options *Options) ToLoggableString() string {
 	fmt.Fprintf(&buf, "retxStartMs=%v\n", options.RetxStartMs)
 	fmt.Fprintf(&buf, "retxScale=%v\n", options.RetxScale)
 	fmt.Fprintf(&buf, "retxAddMs=%v\n", options.RetxAddMs)
+	fmt.Fprintf(&buf, "retxMaxMs=%v\n", options.RetxMaxMs)
+	fmt.Fprintf(&buf, "maxRttScale=%v\n", options.MaxRttScale)
 	fmt.Fprintf(&buf, "maxCloseWait=%v\n", options.MaxCloseWait)
 	fmt.Fprintf(&buf, "getCircuitTimeout=%v\n", options.GetCircuitTimeout)
 
