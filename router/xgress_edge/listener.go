@@ -524,6 +524,24 @@ func (self *edgeClientConn) getIdentityId() string {
 	return self.apiSessionToken.IdentityId
 }
 
+// handleDataMessage wraps the ConnMux data dispatch with additional diagnostic logging.
+// When data arrives for a connId with no registered sink, it logs the channel identity,
+// active mux sink count, and xgress circuit count to help diagnose whether a legacy
+// (non-xgress) client was incorrectly routed through the xgEdgeForwarder path.
+func (self *edgeClientConn) handleDataMessage(msg *channel.Message, ch channel.Channel) {
+	connId, found := msg.GetUint32Header(sdkedge.ConnIdHeader)
+	if found && !self.msgMux.HasConn(connId) {
+		pfxlog.Logger().
+			WithField("connId", connId).
+			WithField("channel", self.ch.GetChannel().Label()).
+			WithField("identityId", self.getIdentityId()).
+			WithField("muxSinkCount", self.msgMux.GetConnCount()).
+			WithField("xgCircuitCount", self.xgCircuits.Count()).
+			Warn("received edge data message for unknown conn id, data may be from a non-xgress client on an xgress circuit")
+	}
+	self.msgMux.HandleReceive(msg, ch)
+}
+
 // GetConnIdToSinks returns all active connections managed by this edgeClientConn's message multiplexer.
 // Each connection is identified by a unique connection ID (connId) and represented as a message sink
 // that contains connection state information. This method is used by security enforcement systems
@@ -699,7 +717,9 @@ func (self *edgeClientConn) removeStateListenerIfEligible() {
 func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
 	serviceSessionTokenStr := string(req.Body)
 
-	log := pfxlog.ContextLogger(ch.Label()).WithFields(sdkedge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("identityId", self.getIdentityId())
 
 	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
 	if !found {
@@ -752,8 +772,9 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	self.checkForStateListener()
 
 	var handler connectHandler
-	if useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader); useXgToSdk {
-		log.Debug("use sdk xgress set, setting up sdk flow-control connection")
+	useXgToSdk, _ := req.GetBoolHeader(sdkedge.UseXgressToSdkHeader)
+	if useXgToSdk {
+		log.WithField("useXgress", true).Info("client requested sdk xgress flow-control")
 		handler = &xgEdgeForwarder{
 			edgeClientConn: self,
 			serviceId:      serviceSessionToken.ServiceId,
@@ -762,6 +783,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 			metrics:        self.listener.factory.env.GetXgressMetrics(),
 		}
 	} else {
+		log.WithField("useXgress", false).Info("client using legacy edge data flow")
 		handler = &nonXgConnectHandler{}
 	}
 
@@ -1539,6 +1561,9 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 	self.conn.x.Store(x)
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
+	ctx.Log.WithField("circuitId", response.CircuitId).
+		WithField("connId", self.conn.Id()).
+		Info("sending connected response with legacy edge data flow")
 	ctx.SdkConn.sendConnectedReply(ctx.Req, response)
 
 	x.Start()
@@ -1699,6 +1724,10 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
 	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.CtrlId)
 	msg.PutStringHeader(sdkedge.XgressAddressHeader, response.Address)
+
+	ctx.Log.WithField("circuitId", self.circuitId).
+		WithField("useXgress", true).
+		Info("sending connected response with xgress flow-control")
 
 	self.mapResponsePeerData(response.PeerData)
 	for k, v := range response.PeerData {
