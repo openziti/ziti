@@ -18,6 +18,8 @@ package model
 
 import (
 	"errors"
+	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
@@ -178,7 +180,16 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 			return nil, apiErr
 		}
 
-		certRaw, err := module.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{})
+		trustDomain := module.env.GetConfig().SpiffeIdTrustDomain.Hostname()
+		spiffeId := &url.URL{
+			Scheme: "spiffe",
+			Host:   trustDomain,
+			Path:   fmt.Sprintf("identity/%s", newIdentity.Id),
+		}
+
+		certRaw, err := module.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
+			URIs: []*url.URL{spiffeId},
+		})
 
 		if err != nil {
 			apiErr := apierror.NewCouldNotProcessCsr()
