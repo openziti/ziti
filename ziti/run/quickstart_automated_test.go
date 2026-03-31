@@ -28,7 +28,7 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 	ctrlUrl := fmt.Sprintf("https://%s:%s", ctrlAddy, ctrlPort)
 
 	cmdComplete := make(chan error)
-	go waitForController(ctrlUrl, cmdComplete)
+	go waitForController(ctx, ctrlUrl, cmdComplete)
 	timeout, _ := time.ParseDuration("20s")
 	select {
 	case e := <-cmdComplete:
