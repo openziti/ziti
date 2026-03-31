@@ -5,6 +5,7 @@ package run
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -29,16 +30,29 @@ func TestEdgeQuickstartAutomated(t *testing.T) {
 
 	cmdComplete := make(chan error)
 	go waitForController(ctx, ctrlUrl, cmdComplete)
-	timeout, _ := time.ParseDuration("20s")
+	timeout, _ := time.ParseDuration("90s")
 	select {
 	case e := <-cmdComplete:
 		//completed, check for error
 		if e != nil {
 			t.Fatal(e)
 		}
-		expectedTestDuration, _ := time.ParseDuration("60s")
+		expectedTestDuration, _ := time.ParseDuration("120s")
 		log.Info("controller online")
 		go func() {
+			routerAddy := helpers.GetCtrlEdgeAdvertisedAddress()
+			routerPort := helpers.GetZitiEdgeRouterPort()
+			routerAddr := net.JoinHostPort(routerAddy, routerPort)
+			log.Infof("waiting for router at %s", routerAddr)
+			for {
+				conn, err := net.DialTimeout("tcp", routerAddr, 2*time.Second)
+				if err == nil {
+					_ = conn.Close()
+					log.Infof("router online at %s", routerAddr)
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
 			performQuickstartTest(t)
 			log.Info("Operation completed")
 			cmdComplete <- nil
