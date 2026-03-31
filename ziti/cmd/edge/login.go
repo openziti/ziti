@@ -201,7 +201,7 @@ func (o *LoginOptions) NewClientApiClient() (*rest_client_api_client.ZitiEdgeCli
 		nc = o.client
 	} else {
 		var newClientErr error
-		nc, newClientErr = o.newHttpClient(true)
+		nc, newClientErr = o.newHttpClient(false)
 		if newClientErr != nil {
 			return nil, newClientErr
 		}
