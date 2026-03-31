@@ -20,10 +20,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"net/url"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -605,13 +603,38 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 
 	edgeConn.apiSessionToken = apiSession
 
-	isValid := handler.validateBySpiffeId(apiSession, certificates[0])
+	now := time.Now()
+	certExpired := now.Before(certificates[0].NotBefore) || now.After(certificates[0].NotAfter)
 
-	if !isValid {
-		isValid = handler.validateByFingerprint(apiSession, fingerprint)
+	// For first-party certs, check SPIFFE ID to determine match type.
+	if handler.stateManager.IsFirstPartyCert(certificates[0]) {
+		match := handler.validateBySpiffeId(apiSession, certificates[0])
+
+		switch match {
+		case spiffehlp.SpiffeMatchApiSession:
+			// Full API session cert. Must not be expired.
+			if certExpired {
+				_ = ch.Close()
+				return errors.New("API session certificate is expired")
+			}
+			return nil
+
+		case spiffehlp.SpiffeMatchIdentity:
+			// Identity enrollment cert. SPIFFE confirms the cert belongs to this identity,
+			// but we still need to verify the fingerprint is in CertFingerprints below.
+			break
+		}
 	}
 
-	if isValid {
+	// Fingerprint matching against CertFingerprints. Required for identity-only SPIFFE
+	// matches, third-party certs, and certs without SPIFFE IDs.
+	// For OIDC sessions, expired certs are allowed only if the auth policy permits it
+	// (z_cae claim). Legacy sessions skip expiry checks entirely.
+	if handler.validateByFingerprint(apiSession, fingerprint) {
+		if certExpired && apiSession.Claims != nil && !apiSession.Claims.CertAllowExpired {
+			_ = ch.Close()
+			return errors.New("client certificate is expired and auth policy does not allow expired certs")
+		}
 		return nil
 	}
 
@@ -654,46 +677,12 @@ func (handler *sessionConnectionHandler) HandleClose(channel.Channel) {
 	//no work, interface fulfillment
 }
 
-func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.ApiSessionToken, clientCert *x509.Certificate) bool {
+func (handler *sessionConnectionHandler) validateBySpiffeId(apiSession *state.ApiSessionToken, clientCert *x509.Certificate) spiffehlp.SpiffeMatch {
 	spiffeId, err := spiffehlp.GetSpiffeIdFromCert(clientCert)
 
-	if err != nil {
-		return false
+	if err != nil || spiffeId == nil {
+		return spiffehlp.SpiffeMatchNone
 	}
 
-	if spiffeId == nil {
-		return false
-	}
-
-	return verifySpiffId(spiffeId, apiSession.Id)
-}
-
-func verifySpiffId(spiffeId *url.URL, expectedApiSessionId string) bool {
-	if spiffeId.Scheme != "spiffe" {
-		return false
-	}
-
-	path := strings.TrimPrefix(spiffeId.Path, "/")
-	parts := strings.Split(path, "/")
-
-	// /identity/<id>/apiSession/<id> or /identity/<id>/apiSession/<id>/apiSessionCertificate/<id>
-	if len(parts) != 4 && len(parts) != 6 {
-		return false
-	}
-
-	if parts[0] != "identity" {
-		return false
-	}
-
-	if parts[2] != "apiSession" {
-		return false
-	}
-
-	if len(parts) == 6 {
-		if parts[4] != "apiSessionCertificate" {
-			return false
-		}
-	}
-
-	return parts[3] == expectedApiSessionId
+	return spiffehlp.VerifySpiffeId(spiffeId, apiSession.IdentityId, apiSession.Id)
 }

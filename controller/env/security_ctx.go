@@ -24,10 +24,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/spiffehlp"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -428,6 +430,13 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 		return
 	}
 
+	// Enforce certificate proof-of-possession when the token was issued with cert bindings.
+	if len(claims.CertFingerprints) > 0 {
+		if !ctx.verifyCertProofOfPossession(securityToken, claims) {
+			return
+		}
+	}
+
 	ctx.resolvedIdentity = identity
 	ctx.resolvedAuthPolicy = authPolicy
 
@@ -460,6 +469,80 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 		IsCertKeyRollRequested:  claims.IsCertKeyRollRequested,
 		ImproperClientCertChain: claims.ImproperClientCertChain,
 	}
+}
+
+// verifyCertProofOfPossession validates that the TLS client certificate presented on this request
+// matches one of the certificate fingerprints bound to the OIDC token (z_cfs claim), and that
+// the certificate was issued by a trusted CA. SPIFFE ID matching is only allowed for certificates
+// issued by the internal (first-party) CA.
+func (ctx *SecurityCtx) verifyCertProofOfPossession(securityToken *common.SecurityToken, claims *common.AccessClaims) bool {
+	if securityToken.Request == nil || securityToken.Request.TLS == nil || len(securityToken.Request.TLS.PeerCertificates) == 0 {
+		pfxlog.Logger().Warn("OIDC cert PoP failed: no client certificate presented")
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return false
+	}
+
+	peerCerts := securityToken.Request.TLS.PeerCertificates
+	leafCert := peerCerts[0]
+
+	fpg := ctx.env.GetFingerprintGenerator()
+	fingerprint := fpg.FromCert(leafCert)
+
+	// Chain verification bypasses time checks,  expiry is enforced below based on match type
+	// and the z_cae (cert allow expired) claim from the auth policy.
+	trustCache := ctx.env.GetManagers().Ca.GetTrustCache()
+	origin := trustCache.VerifyClientCertCached(fingerprint, peerCerts, true)
+
+	if origin == model.CertOriginUntrusted {
+		pfxlog.Logger().WithField("fingerprint", fingerprint).Warn("OIDC cert PoP failed: client certificate not issued by a trusted CA")
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return false
+	}
+
+	now := time.Now()
+	certExpired := now.Before(leafCert.NotBefore) || now.After(leafCert.NotAfter)
+
+	// For first-party certs, check the SPIFFE ID to determine the match type.
+	if origin == model.CertOriginFirstParty {
+		spiffeId, err := spiffehlp.GetSpiffeIdFromCert(leafCert)
+		if err == nil && spiffeId != nil {
+			match := spiffehlp.VerifySpiffeId(spiffeId, claims.Subject, claims.ApiSessionId)
+
+			switch match {
+			case spiffehlp.SpiffeMatchApiSession:
+				// Full API session cert. Must not be expired.
+				if certExpired {
+					pfxlog.Logger().WithField("fingerprint", fingerprint).Warn("OIDC cert PoP failed: API session certificate is expired")
+					ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+					return false
+				}
+				return true
+
+			case spiffehlp.SpiffeMatchIdentity:
+				// Identity enrollment cert. The SPIFFE ID confirms the cert belongs to
+				// this identity, but we still need to verify the fingerprint is in z_cfs.
+				break
+			}
+		}
+	}
+
+	// Fingerprint matching against z_cfs (required for identity-only SPIFFE matches and
+	// for third-party certs). Expired certs are allowed only if the auth policy permits
+	// it (z_cae claim).
+	for _, boundFingerprint := range claims.CertFingerprints {
+		if fingerprint == boundFingerprint {
+			if certExpired && !claims.CertAllowExpired {
+				pfxlog.Logger().WithField("fingerprint", fingerprint).Warn("OIDC cert PoP failed: client certificate is expired and auth policy does not allow expired certs")
+				ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+				return false
+			}
+			return true
+		}
+	}
+
+	pfxlog.Logger().WithField("fingerprint", fingerprint).Warn("OIDC cert PoP failed: client certificate does not match any bound fingerprint or SPIFFE ID")
+	ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+	return false
 }
 
 func (ctx *SecurityCtx) resolvePermissions() {

@@ -47,6 +47,7 @@ const (
 	CustomClaimServiceType      = "z_st"
 	CustomClaimRemoteAddress    = "z_ra"
 	CustomClaimIsCertExtendable = "z_ice"
+	CustomClaimCertAllowExpired = "z_cae"
 	CustomClaimImproperCert     = "z_iccc"
 	CustomClaimIsLegacy         = "z_leg"
 
@@ -76,6 +77,7 @@ type CustomClaims struct {
 	EnvInfo                 *rest_model.EnvInfo `json:"z_env"`
 	RemoteAddress           string              `json:"z_ra"`
 	IsCertExtendable        bool                `json:"z_ice"`
+	CertAllowExpired        bool                `json:"z_cae,omitempty"`
 	AuthenticatorId         string              `json:"z_authid,omitempty"`
 	IsCertExtendRequested   bool                `json:"z_cer"`
 	IsCertKeyRollRequested  bool                `json:"z_ckrr"`

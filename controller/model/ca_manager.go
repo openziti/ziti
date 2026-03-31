@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
@@ -52,6 +54,8 @@ func NewCaManager(env Env) *CaManager {
 	return manager
 }
 
+const certVerifyCacheTTL = 10 * time.Minute
+
 type TrustCache struct {
 	// static root certificates from the controller's root identity CA bundle (roots and intermediates)
 	staticFirstPartyTrustAnchors []*x509.Certificate
@@ -77,9 +81,25 @@ type TrustCache struct {
 	// a pool of all roots, intermediates and 3rd parties
 	allPool *x509.CertPool
 
+	// certOriginCache caches cert chain verification results by fingerprint, avoiding repeated
+	// x509.Verify calls for the same certificate. TLS handshake guarantees private key possession
+	// per-connection, so caching the chain verification result is safe.
+	certOriginCache *ttlcache.Cache[string, CertOrigin]
+
 	sync.RWMutex
 	initOnce sync.Once
 }
+
+// CertOrigin indicates whether a client certificate was issued by a first-party (internal) CA
+// or a third-party CA. This distinction is used to gate SPIFFE ID matching, which is only
+// valid for first-party certificates.
+type CertOrigin int
+
+const (
+	CertOriginUntrusted CertOrigin = iota
+	CertOriginFirstParty
+	CertOriginThirdParty
+)
 
 func (self *TrustCache) GetAllPool() *x509.CertPool {
 	self.RLock()
@@ -92,12 +112,103 @@ func (self *TrustCache) GetAllPool() *x509.CertPool {
 	return self.allPool
 }
 
+// VerifyClientCert verifies a client certificate chain against the tiered trust pools and returns
+// which pool matched. First-party pools (roots, then roots+intermediates) are tried first, then
+// third-party. Returns CertOriginUntrusted if no pool validates the cert.
+// VerifyClientCert verifies a client certificate chain against the tiered trust pools and returns
+// which pool matched. First-party pools (roots, then roots+intermediates) are tried first, then
+// third-party. Returns CertOriginUntrusted if no pool validates the cert.
+//
+// When skipTimeCheck is true, certificate time validity (NotBefore/NotAfter) is bypassed during
+// chain verification. This supports auth policies that allow expired certificates. The caller
+// is responsible for enforcing expiry when appropriate.
+func (self *TrustCache) VerifyClientCert(clientCerts []*x509.Certificate, skipTimeCheck bool) CertOrigin {
+	if len(clientCerts) == 0 {
+		return CertOriginUntrusted
+	}
+
+	self.RLock()
+	defer self.RUnlock()
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range clientCerts[1:] {
+		intermediates.AddCert(cert)
+	}
+
+	// Shallow-copy the leaf cert so we can override time fields without mutating the original
+	// (which may be shared across concurrent HTTP/2 requests on the same TLS connection).
+	leafCopy := *clientCerts[0]
+	leaf := &leafCopy
+	if skipTimeCheck {
+		leaf.NotBefore = time.Now().Add(-1 * time.Hour)
+		leaf.NotAfter = time.Now().Add(1 * time.Hour)
+	}
+
+	if self.staticFirstPartyRootPool != nil {
+		opts := x509.VerifyOptions{
+			Roots:         self.staticFirstPartyRootPool,
+			Intermediates: intermediates,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		}
+		if _, err := leaf.Verify(opts); err == nil {
+			return CertOriginFirstParty
+		}
+	}
+
+	if self.staticFirstPartyTrustAnchorPool != nil {
+		opts := x509.VerifyOptions{
+			Roots:         self.staticFirstPartyTrustAnchorPool,
+			Intermediates: intermediates,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		}
+		if _, err := leaf.Verify(opts); err == nil {
+			return CertOriginFirstParty
+		}
+	}
+
+	if self.thirdPartyTrustAnchorPool != nil {
+		opts := x509.VerifyOptions{
+			Roots:         self.thirdPartyTrustAnchorPool,
+			Intermediates: intermediates,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		}
+		if _, err := leaf.Verify(opts); err == nil {
+			return CertOriginThirdParty
+		}
+	}
+
+	return CertOriginUntrusted
+}
+
+// VerifyClientCertCached is like VerifyClientCert but caches results by fingerprint for the
+// configured TTL. Safe because TLS handshake proves private key possession per-connection.
+func (self *TrustCache) VerifyClientCertCached(fingerprint string, clientCerts []*x509.Certificate, skipTimeCheck bool) CertOrigin {
+	if self.certOriginCache != nil {
+		if item := self.certOriginCache.Get(fingerprint); item != nil {
+			return item.Value()
+		}
+	}
+
+	origin := self.VerifyClientCert(clientCerts, skipTimeCheck)
+
+	if self.certOriginCache != nil && origin != CertOriginUntrusted {
+		self.certOriginCache.Set(fingerprint, origin, ttlcache.DefaultTTL)
+	}
+
+	return origin
+}
+
 type CaManager struct {
 	baseEntityManager[*Ca, *db.Ca]
 	cache TrustCache
 }
 
 func (self *CaManager) initCache() {
+	self.cache.certOriginCache = ttlcache.New[string, CertOrigin](
+		ttlcache.WithTTL[string, CertOrigin](certVerifyCacheTTL),
+	)
+	go self.cache.certOriginCache.Start()
+
 	err := self.RefreshActiveAuthCaCertCache()
 	if err != nil {
 		pfxlog.Logger().WithError(err).Info("failed to refresh active auth ca cert cache")
@@ -112,6 +223,11 @@ func (self *CaManager) GetTrustCache() *TrustCache {
 func (self *CaManager) RefreshActiveAuthCaCertCache() error {
 	self.cache.Lock()
 	defer self.cache.Unlock()
+
+	// invalidate cached cert verification results since trust pools are changing
+	if self.cache.certOriginCache != nil {
+		self.cache.certOriginCache.DeleteAll()
+	}
 
 	// for TLS config
 	allPool := x509.NewCertPool()
