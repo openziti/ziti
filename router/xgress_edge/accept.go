@@ -138,18 +138,20 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgClose, conn.handleXgClose)
 
-	// Since data is the most common type, it gets to dispatch directly
+	// Since data is the most common type, usually it gets to dispatch directly.
+	// For now, we use handleDataMessage instead of the mux directly so we can log
+	// additional diagnostic context when data arrives for an unknown connId.
 	if self.listener.factory.routerConfig.Metrics.EnableDataDelayMetric {
 		delayTimer := self.listener.factory.env.GetMetricsRegistry().Timer("xgress_edge.long_data_queue_time")
 		binding.AddReceiveHandlerF(conn.msgMux.ContentType(), func(m *channel.Message, ch channel.Channel) {
 			start := time.Now()
-			conn.msgMux.HandleReceive(m, ch)
+			conn.handleDataMessage(m, ch)
 			if processingTime := time.Since(start); processingTime > 5*time.Millisecond {
 				delayTimer.Update(processingTime)
 			}
 		})
 	} else {
-		binding.AddTypedReceiveHandler(conn.msgMux)
+		binding.AddReceiveHandlerF(conn.msgMux.ContentType(), conn.handleDataMessage)
 	}
 	binding.AddCloseHandler(conn)
 

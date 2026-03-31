@@ -444,7 +444,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 
 	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
-	log.Debugf("closing edge xgress conn, reason: %v", reason)
+	log.WithField("reason", reason).Info("removing mux sink, closing edge xgress conn")
 
 	self.mux.Remove(self)
 
