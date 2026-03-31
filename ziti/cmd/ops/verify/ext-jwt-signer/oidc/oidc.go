@@ -346,6 +346,12 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			}
 
 			log.Infof("found external JWT signer")
+			if s.ExternalAuthURL == nil {
+				return errors.New("external JWT signer has no externalAuthURL configured")
+			}
+			if s.ClientID == nil {
+				return errors.New("external JWT signer has no clientId configured")
+			}
 			opts.Issuer = *s.ExternalAuthURL
 			opts.ClientID = *s.ClientID
 			log.Infof("  - issuer: %s", safeValue(s.ExternalAuthURL))
