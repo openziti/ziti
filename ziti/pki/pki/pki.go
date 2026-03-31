@@ -202,13 +202,13 @@ func publicKeyFromPrivate(key crypto.PrivateKey) (crypto.PublicKey, error) {
 	return nil, errors.New("unsupported key type")
 }
 
-// Chain will...
-func (e *ZitiPKI) Chain(signer *certificate.Bundle, req *Request) error {
+// Chain concats a signing cert and a newly signed certificate and stores the chained PEM.
+func (e *ZitiPKI) Chain(signer *certificate.Bundle, req *Request, allowOverwrite bool) error {
 	destCA := signer.Name
 	if req.Template.IsCA {
 		destCA = req.Name
 	}
-	if err := e.Store.Chain(signer.Name, destCA, req.Name); err != nil {
+	if err := e.Store.Chain(signer.Name, destCA, req.Name, allowOverwrite); err != nil {
 		return fmt.Errorf("failed saving generated chain: %v", err)
 	}
 	return nil
