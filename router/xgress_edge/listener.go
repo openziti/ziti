@@ -482,7 +482,7 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
-	self.forwarder.EndCircuit(circuitId)
+	self.forwarder.EndCircuit(0, circuitId)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault
@@ -1301,13 +1301,13 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, _ channel.Chan
 		return
 	}
 
-	if err = self.forwarder.ForwardPayload(edgeFwd.address, payload, 0); err != nil {
+	if err = self.forwarder.ForwardPayload(0, edgeFwd.address, payload, 0); err != nil {
 		if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
 			pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Debug("failed to forward payload")
 		}
 
 		if !channel.IsTimeout(err) {
-			self.forwarder.ReportForwardingFault(payload.CircuitId, "") // ctrlId will be filled in by forwarder, if possible
+			self.forwarder.ReportForwardingFault(0, payload.CircuitId, "") // ctrlId will be filled in by forwarder, if possible
 		}
 	} else {
 		if !payload.IsRetransmitFlagSet() {
@@ -1336,7 +1336,7 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ chan
 		return
 	}
 
-	if err = self.forwarder.ForwardAcknowledgement(edgeFwd.address, ack); err != nil {
+	if err = self.forwarder.ForwardAcknowledgement(0, edgeFwd.address, ack); err != nil {
 		pfxlog.Logger().WithFields(ack.GetLoggerFields()).WithError(err).Error("failed to forward acknowledgement")
 	}
 }
@@ -1533,13 +1533,13 @@ func (self *xgEdgeForwarder) Init(ctx *connectContext) bool {
 
 func (self *xgEdgeForwarder) RegisterRouting() {
 	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("routing registered")
-	self.forwarder.RegisterDestination(self.circuitId, self.address, self)
+	self.forwarder.RegisterDestination(0, self.circuitId, self.address, self)
 	self.xgCircuits.Set(self.circuitId, self)
 }
 
 func (self *xgEdgeForwarder) UnregisterRouting() {
 	pfxlog.Logger().WithField("circuitId", self.circuitId).Debug("routing unregistered")
-	self.forwarder.EndCircuit(self.circuitId)
+	self.forwarder.EndCircuit(0, self.circuitId)
 }
 
 func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_msg.CreateCircuitResponse, err error) {

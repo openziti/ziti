@@ -68,16 +68,23 @@ func (self *Scanner) scan() {
 	circuits := self.circuits.circuits.Items()
 	logrus.Debugf("scanning [%d] circuits", len(circuits))
 
+	type ctrlKey struct {
+		networkId uint16
+		ctrlId    string
+	}
+
 	now := time.Now().UnixMilli()
-	idleCircuits := map[string]map[string]int64{}
-	for circuitId, ft := range circuits {
+	idleCircuits := map[ctrlKey]map[string]int64{}
+	for compositeKey, ft := range circuits {
 		idleTime := time.Duration(now-atomic.LoadInt64(&ft.last)) * time.Millisecond
 		if idleTime > self.timeout {
-			ctrlMap := idleCircuits[ft.ctrlId]
+			key := ctrlKey{networkId: ft.networkId, ctrlId: ft.ctrlId}
+			ctrlMap := idleCircuits[key]
 			if ctrlMap == nil {
 				ctrlMap = map[string]int64{}
-				idleCircuits[ft.ctrlId] = ctrlMap
+				idleCircuits[key] = ctrlMap
 			}
+			circuitId := CircuitIdFromKey(compositeKey)
 			ctrlMap[circuitId] = int64(idleTime)
 			logrus.WithField("circuitId", circuitId).
 				WithField("ctrlId", ft.ctrlId).
@@ -87,12 +94,12 @@ func (self *Scanner) scan() {
 		}
 	}
 
-	for ctrlId, idleCircuitMap := range idleCircuits {
+	for key, idleCircuitMap := range idleCircuits {
 		if len(idleCircuitMap) > 0 {
-			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+			log := pfxlog.Logger().WithField("ctrlId", key.ctrlId)
 			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitMap))
 
-			if ctrl := self.ctrls.GetChannel(ctrlId); ctrl != nil {
+			if ctrl := self.ctrls.GetChannel(key.ctrlId); ctrl != nil {
 				confirm := &ctrl_pb.CircuitConfirmation{IdleTimes: idleCircuitMap}
 				for circuitId := range idleCircuitMap {
 					confirm.CircuitIds = append(confirm.CircuitIds, circuitId)

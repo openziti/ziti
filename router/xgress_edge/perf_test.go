@@ -22,6 +22,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type hostAckForwarder struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostAckForwarder) ForwardAcknowledgement(srcAddr xgress.Address, ack *xgress.Acknowledgement) error {
+	return h.fwd.ForwardAcknowledgement(0, srcAddr, ack)
+}
+
+type hostFaultReporter struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostFaultReporter) ReportForwardingFault(circuitId string, ctrlId string) {
+	h.fwd.ReportForwardingFault(0, circuitId, ctrlId)
+}
+
 func newMirrorLink(fwd *forwarder.Forwarder) *mirrorLink {
 	result := &mirrorLink{
 		fwd:  fwd,
@@ -97,7 +113,7 @@ func (link *mirrorLink) SendPayload(payload *xgress.Payload, _ time.Duration, _ 
 
 func (link *mirrorLink) run() {
 	for ack := range link.acks {
-		err := link.fwd.ForwardAcknowledgement("router1", ack)
+		err := link.fwd.ForwardAcknowledgement(0, "router1", ack)
 		if err != nil {
 			pfxlog.Logger().WithError(err).Infof("unable to forward ack")
 		}
@@ -146,8 +162,8 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
-	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
+	acker := xgress_router.NewAcker(&hostAckForwarder{fwd: fwd}, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(&hostFaultReporter{fwd: fwd}, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -155,7 +171,7 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	err := fwd.RegisterLink(link)
 	assert.NoError(b, err)
 
-	err = fwd.Route("test", &ctrl_pb.Route{
+	err = fwd.Route("test", 0, &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -178,7 +194,7 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(xgMetrics))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
-	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
+	fwd.RegisterDestination(0, x.CircuitId(), x.Address(), x)
 
 	x.Start()
 
@@ -234,8 +250,8 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
-	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
+	acker := xgress_router.NewAcker(&hostAckForwarder{fwd: fwd}, metricsRegistry, nil)
+	retransmitter := xgress.NewRetransmitter(&hostFaultReporter{fwd: fwd}, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -243,7 +259,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	err := fwd.RegisterLink(link)
 	assert.NoError(b, err)
 
-	err = fwd.Route("test", &ctrl_pb.Route{
+	err = fwd.Route("test", 0, &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -267,7 +283,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(xgMetrics))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
-	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
+	fwd.RegisterDestination(0, x.CircuitId(), x.Address(), x)
 
 	x.Start()
 

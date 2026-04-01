@@ -77,12 +77,12 @@ type ConnectEventsConfig struct {
 }
 
 type Forwarder interface {
-	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
-	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
-	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
-	ReportForwardingFault(circuitId string, ctrlId string)
-	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
-	EndCircuit(circuitId string)
+	ForwardPayload(networkId uint16, srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
+	ForwardAcknowledgement(networkId uint16, srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(networkId uint16, srcAddr xgress.Address, control *xgress.Control) error
+	ReportForwardingFault(networkId uint16, circuitId string, ctrlId string)
+	RegisterDestination(networkId uint16, circuitId string, address xgress.Address, destination Destination)
+	EndCircuit(networkId uint16, circuitId string)
 }
 
 type Destination interface {

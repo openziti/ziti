@@ -62,6 +62,7 @@ import (
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/federation"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/handler_ctrl"
 	"github.com/openziti/ziti/v2/router/handler_link"
@@ -90,6 +91,7 @@ import (
 type Router struct {
 	config              *env.Config
 	ctrls               env.NetworkControllers
+	multiCtrls          *forwarder.MultiNetworkControllers
 	ctrlBindhandler     channel.BindHandler
 	faulter             *forwarder.Faulter
 	forwarder           *forwarder.Forwarder
@@ -325,6 +327,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
+	router.multiCtrls = forwarder.NewMultiNetworkControllers(router.ctrls)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
@@ -350,10 +353,30 @@ func (self *Router) GetAlerter() env.Alerter {
 	return self.alertReporter
 }
 
+// hostAckForwarder adapts the forwarder for the host network (networkId 0) to satisfy
+// the AckForwarder interface, which doesn't know about network IDs.
+type hostAckForwarder struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostAckForwarder) ForwardAcknowledgement(srcAddr xgress.Address, ack *xgress.Acknowledgement) error {
+	return h.fwd.ForwardAcknowledgement(0, srcAddr, ack)
+}
+
+// hostFaultReporter adapts the forwarder for the host network (networkId 0) to satisfy
+// the xgress.RetransmitterFaultReporter interface.
+type hostFaultReporter struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostFaultReporter) ReportForwardingFault(circuitId string, ctrlId string) {
+	h.fwd.ReportForwardingFault(0, circuitId, ctrlId)
+}
+
 func (self *Router) createDataPlaneAdapter() xgress.DataPlaneAdapter {
 	payloadIngester := xgress.NewPayloadIngesterWithConfig(64, self.shutdownC)
-	ackSender := xgress_router.NewAcker(self.forwarder, self.metricsRegistry, self.shutdownC)
-	retransmitter := xgress.NewRetransmitter(self.forwarder, self.metricsRegistry, self.GetCloseNotify())
+	ackSender := xgress_router.NewAcker(&hostAckForwarder{fwd: self.forwarder}, self.metricsRegistry, self.shutdownC)
+	retransmitter := xgress.NewRetransmitter(&hostFaultReporter{fwd: self.forwarder}, self.metricsRegistry, self.GetCloseNotify())
 
 	return handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           ackSender,
@@ -486,7 +509,33 @@ func (self *Router) Start() error {
 		return err
 	}
 
+	self.reconnectFederatedNetworks()
+
 	return nil
+}
+
+func (self *Router) reconnectFederatedNetworks() {
+	log := pfxlog.Logger()
+	networksDir := federation.NetworksDir(self.config.ConfigDir())
+	if _, err := os.Stat(networksDir); os.IsNotExist(err) {
+		return
+	}
+
+	identities, err := federation.LoadAllNetworkIdentities(networksDir)
+	if err != nil {
+		log.WithError(err).Warn("failed to load federated network identities")
+		return
+	}
+
+	for _, ni := range identities {
+		_, err := federation.ConnectClientNetwork(ni, ni.NetworkId, self.config, self, self.forwarder, self.multiCtrls)
+		if err != nil {
+			log.WithError(err).WithField("networkId", ni.NetworkId).
+				Warn("failed to reconnect to federated network")
+		} else {
+			log.WithField("networkId", ni.NetworkId).Info("reconnected to federated network")
+		}
+	}
 }
 
 func (self *Router) Shutdown() error {

@@ -114,10 +114,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	ctrlCh := binding.GetChannel().(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
-	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
+	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool, 0))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
-	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
+	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder, 0))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))

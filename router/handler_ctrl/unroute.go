@@ -26,10 +26,11 @@ import (
 
 type unrouteHandler struct {
 	forwarder *forwarder.Forwarder
+	networkId uint16
 }
 
-func newUnrouteHandler(forwarder *forwarder.Forwarder) *unrouteHandler {
-	return &unrouteHandler{forwarder: forwarder}
+func newUnrouteHandler(forwarder *forwarder.Forwarder, networkId uint16) *unrouteHandler {
+	return &unrouteHandler{forwarder: forwarder, networkId: networkId}
 }
 
 func (h *unrouteHandler) ContentType() int32 {
@@ -40,7 +41,7 @@ func (h *unrouteHandler) HandleReceive(msg *channel.Message, ch channel.Channel)
 	removeRoute := &ctrl_pb.Unroute{}
 	if err := proto.Unmarshal(msg.Body, removeRoute); err == nil {
 		pfxlog.ContextLogger(ch.Label()).WithField("circuitId", removeRoute.CircuitId).Debug("received unroute")
-		h.forwarder.Unroute(removeRoute.CircuitId, removeRoute.Now)
+		h.forwarder.Unroute(h.networkId, removeRoute.CircuitId, removeRoute.Now)
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%v)", err)
 	}

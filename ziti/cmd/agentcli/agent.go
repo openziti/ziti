@@ -84,6 +84,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-routes", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), p))
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-links", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), p))
 	routerCmd.AddCommand(NewForgetLinkAgentCmd(p))
+	routerCmd.AddCommand(NewFederationAddNetworkAgentCmd(p))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "disconnect", false))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "reconnect", true))
 

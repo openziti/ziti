@@ -1,4 +1,4 @@
-# Network Federation — Summary
+# Network Federation: Summary
 
 For full details, open items, and decision log, see [federation.md](federation.md).
 
@@ -6,25 +6,25 @@ For full details, open items, and decision log, see [federation.md](federation.m
 
 We want independent Ziti networks to share routers without merging their control planes.
 The main use case is multi-tenant transit: a hosting provider runs shared transit
-routers, and 50–500 tenant networks use them to bridge their private infrastructure.
+routers, and 50-500 tenant networks use them to bridge their private infrastructure.
 The same mechanism supports network federation (two networks sharing routers for
 cross-network circuits) and hierarchical topologies.
 
 **Key principles:**
 
 - Each network keeps its own controller, PKI, and policies.
-- Shared routers are transit-only — no edge/SDK functionality. We may expand later.
+- Shared routers are transit-only. No edge/SDK functionality. We may expand later.
 - For routing, controllers see shared routers as normal routers. They may know a router
   is federated, but that only matters for lifecycle operations (creation, deletion,
   re-sharing enforcement).
 - Only a router's owning network can share it. No re-sharing.
-- We use purpose-built Network and Network Router Policy entities — not overloaded
+- We use purpose-built Network and Network Router Policy entities, not overloaded
   identity or edge router policy types.
 
 **Why not a separate appliance?** We considered it. Architecturally cleaner, but it
 introduces a lot of operational overhead (trust relationships, separate PKI, DNS, where
 does the CLI live?). The integrated approach avoids all of that. And if service-level
-federation gets built on top of router sharing — which is likely — keeping the install
+federation gets built on top of router sharing, which is likely, keeping the install
 simple matters even more.
 
 ---
@@ -32,7 +32,7 @@ simple matters even more.
 ## Router Changes for Multi-Network Support
 
 The forwarder's data plane is already decoupled from router identity. The forwarding
-hot path (circuit table → forward table → destination → send) never references a router
+hot path (circuit table -> forward table -> destination -> send) never references a router
 identity, and the faulter and scanner already group work by controller. Most of the
 forwarder works as-is.
 
@@ -87,33 +87,33 @@ Each client network gets a 16-bit network identifier from the host controller. I
 injected into payload headers, making the circuit table key `(networkId, circuitId)`
 instead of just `circuitId`.
 
-This gives us a structural guarantee of cross-tenant isolation — even a duplicate
+This gives us a structural guarantee of cross-tenant isolation. Even a duplicate
 circuit ID can't cross the network boundary.
 
 The identifier is also required for controller dispatch. Controller IDs aren't unique
-across independent networks — two clients could have controllers with the same ID. The
+across independent networks; two clients could have controllers with the same ID. The
 faulter, scanner, and channel lookups all use `(networkId, ctrlId)` as the composite
 key.
 
-16 bits = 65,536 client networks per host. Well above the 50–500 target. Also gives us
+16 bits = 65,536 client networks per host. Well above the 50-500 target. Also gives us
 cheap per-network identification for metrics and future rate limiting.
 
 ### Owner Awareness
 
-The router tracks its owner — the network it was originally provisioned into.
+The router tracks its owner, the network it was originally provisioned into.
 Federation enrollment tokens are only accepted from the owner's control channel. This
 prevents re-sharing.
 
-### Link Listener — Aggregated CA Bundle
+### Link Listener: Aggregated CA Bundle
 
 One port. The TLS config includes CAs from every enrolled network. Client certs are
-verified during the TLS handshake — no post-TLS validation needed.
+verified during the TLS handshake; no post-TLS validation needed.
 
 When a network is added or removed, the identity framework updates the trust roots at
 runtime. After TLS, the router reads link headers to find the remote router's network
 and calls `VerifyRouter` on that controller before registering the link.
 
-### Link Dialer — Per-Destination CA
+### Link Dialer: Per-Destination CA
 
 `UpdateLinkDest` includes the destination's owner network ID. The dialing router
 fetches and caches that network's CA bundle, then uses it to verify the server cert.
@@ -137,8 +137,8 @@ circuits, remove the CA.
 
 ## Provisioning with the OpenZiti Controller
 
-The controller gets two new model entities — **Network** (represents a federation peer)
-and **Network Router Policy** (links Networks to routers) — plus a **federation API**
+The controller gets two new model entities, **Network** (represents a federation peer)
+and **Network Router Policy** (links Networks to routers), plus a **federation API**
 restricted to Network logins.
 
 ### Phase 1: Establish Federation
@@ -178,7 +178,7 @@ sequenceDiagram
 Both sides end up with a Network entity. The host side links it to an authenticator and
 Network Router Policies. The client side stores credentials and endpoints.
 
-**JWT signing and authentication** are still under consideration — either a network-wide
+**JWT signing and authentication** are still under consideration: either a network-wide
 cert (shared across controllers) or per-host certs via enrollment/CSR. See the detailed
 design doc for tradeoffs.
 
@@ -213,7 +213,7 @@ auto-sync mode, the client subscribes to the host's router list and automaticall
 enrolls routers as they appear in the Network Router Policy (and removes them when they
 disappear). An **attribute template** on the client-side Network entity maps host-side
 router attributes to client-side attributes, so imported routers match existing policies
-from the start — no manual tagging needed.
+from the start. No manual tagging needed.
 
 ### Phase 3: Link Establishment
 

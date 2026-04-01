@@ -82,14 +82,15 @@ func (forwarder *Forwarder) TraceController() trace.Controller {
 	return forwarder.traceController
 }
 
-func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress.Address, destination env.Destination) {
+func (forwarder *Forwarder) RegisterDestination(networkId uint16, circuitId string, address xgress.Address, destination env.Destination) {
 	forwarder.destinations.addDestination(address, destination)
-	forwarder.destinations.linkDestinationToCircuit(circuitId, address)
+	forwarder.destinations.linkDestinationToCircuit(CircuitKey(networkId, circuitId), address)
 }
 
-func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
+func (forwarder *Forwarder) UnregisterDestinations(networkId uint16, circuitId string) {
+	key := CircuitKey(networkId, circuitId)
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
-	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
+	if addresses, found := forwarder.destinations.getAddressesForCircuit(key); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				log.Debugf("unregistering destination [@/%v] for circuit", address)
@@ -99,7 +100,7 @@ func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
 				log.Debugf("no destinations found for [@/%v] for circuit", address)
 			}
 		}
-		forwarder.destinations.unlinkCircuit(circuitId)
+		forwarder.destinations.unlinkCircuit(key)
 	} else {
 		log.Debug("found no addresses to unregister for circuit")
 	}
@@ -119,13 +120,14 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.LinkDestination) {
 	forwarder.destinations.removeDestinationIfMatches(xgress.Address(link.Id()), link)
 }
 
-func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
+func (forwarder *Forwarder) Route(ctrlId string, networkId uint16, route *ctrl_pb.Route) error {
 	circuitId := route.CircuitId
+	key := CircuitKey(networkId, circuitId)
 	var circuitFt *forwardTable
-	if ft, found := forwarder.circuits.getForwardTable(circuitId, true); found {
+	if ft, found := forwarder.circuits.getForwardTable(key, true); found {
 		circuitFt = ft
 	} else {
-		circuitFt = newForwardTable(ctrlId)
+		circuitFt = newForwardTable(ctrlId, networkId)
 	}
 	for _, forward := range route.Forwards {
 		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
@@ -145,37 +147,39 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 			"destination": forward.DstAddress,
 		}).Debug("route added")
 	}
-	forwarder.circuits.setForwardTable(circuitId, circuitFt)
+	forwarder.circuits.setForwardTable(key, circuitFt)
 	return nil
 }
 
-func (forwarder *Forwarder) Unroute(circuitId string, now bool) {
+func (forwarder *Forwarder) Unroute(networkId uint16, circuitId string, now bool) {
+	key := CircuitKey(networkId, circuitId)
 	if now {
-		forwarder.circuits.removeForwardTable(circuitId)
-		forwarder.EndCircuit(circuitId)
+		forwarder.circuits.removeForwardTable(key)
+		forwarder.EndCircuit(networkId, circuitId)
 		pfxlog.Logger().WithField("circuitId", circuitId).Info("circuit unrouted")
 	} else {
-		go forwarder.unrouteTimeout(circuitId, forwarder.Options.XgressCloseCheckInterval)
+		go forwarder.unrouteTimeout(networkId, circuitId, forwarder.Options.XgressCloseCheckInterval)
 	}
 }
 
-func (forwarder *Forwarder) EndCircuit(circuitId string) {
-	forwarder.UnregisterDestinations(circuitId)
+func (forwarder *Forwarder) EndCircuit(networkId uint16, circuitId string) {
+	forwarder.UnregisterDestinations(networkId, circuitId)
 }
 
-func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error {
-	return forwarder.forwardPayload(srcAddr, payload, true, timeout)
+func (forwarder *Forwarder) ForwardPayload(networkId uint16, srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error {
+	return forwarder.forwardPayload(networkId, srcAddr, payload, true, timeout)
 }
 
-func (forwarder *Forwarder) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
-	return forwarder.forwardPayload(srcAddr, payload, false, 0)
+func (forwarder *Forwarder) RetransmitPayload(networkId uint16, srcAddr xgress.Address, payload *xgress.Payload) error {
+	return forwarder.forwardPayload(networkId, srcAddr, payload, false, 0)
 }
 
-func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgress.Payload, markActive bool, timeout time.Duration) error {
+func (forwarder *Forwarder) forwardPayload(networkId uint16, srcAddr xgress.Address, payload *xgress.Payload, markActive bool, timeout time.Duration) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
 	circuitId := payload.GetCircuitId()
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, markActive); found {
+	key := CircuitKey(networkId, circuitId)
+	if forwardTable, found := forwarder.circuits.getForwardTable(key, markActive); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				payloadType := xgress.PayloadTypeXg
@@ -200,11 +204,12 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 	}
 }
 
-func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error {
+func (forwarder *Forwarder) ForwardAcknowledgement(networkId uint16, srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
 	circuitId := acknowledgement.CircuitId
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, true); found {
+	key := CircuitKey(networkId, circuitId)
+	if forwardTable, found := forwarder.circuits.getForwardTable(key, true); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				if err := dst.SendAcknowledgement(acknowledgement); err != nil {
@@ -226,20 +231,21 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 	}
 }
 
-func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgress.Control) error {
+func (forwarder *Forwarder) ForwardControl(networkId uint16, srcAddr xgress.Address, control *xgress.Control) error {
 	circuitId := control.CircuitId
+	key := CircuitKey(networkId, circuitId)
 	log := pfxlog.ContextLogger(string(srcAddr)).WithField("circuitId", circuitId)
 
 	var err error
 
-	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, true); found {
+	if forwardTable, found := forwarder.circuits.getForwardTable(key, true); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
 				if control.IsTypeTraceRoute() {
 					hops := control.DecrementAndGetHop()
 					if hops == 0 {
 						resp := control.CreateTraceResponse("forwarder", forwarder.metricsRegistry.SourceId())
-						return forwarder.ForwardControl(dstAddr, resp)
+						return forwarder.ForwardControl(networkId, dstAddr, resp)
 					}
 				}
 				err = dst.SendControl(control)
@@ -269,16 +275,17 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 	return err
 }
 
-func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
+func (forwarder *Forwarder) ReportForwardingFault(networkId uint16, circuitId string, ctrlId string) {
 	if ctrlId == "" {
-		ct, _ := forwarder.circuits.getForwardTable(circuitId, false)
+		key := CircuitKey(networkId, circuitId)
+		ct, _ := forwarder.circuits.getForwardTable(key, false)
 		if ct != nil {
 			ctrlId = ct.ctrlId
 		}
 	}
 
 	if forwarder.faulter != nil {
-		forwarder.faulter.Report(circuitId, ctrlId)
+		forwarder.faulter.Report(networkId, circuitId, ctrlId)
 	} else {
 		logrus.Error("nil faulter, cannot accept forwarding fault report")
 	}
@@ -291,7 +298,8 @@ func (forwarder *Forwarder) Debug() string {
 // unrouteTimeout implements a goroutine to manage route timeout processing. Once a timeout processor has been launched
 // for a circuit, it will be checked repeatedly, looking to see if the circuit has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
-func (forwarder *Forwarder) unrouteTimeout(circuitId string, interval time.Duration) {
+func (forwarder *Forwarder) unrouteTimeout(networkId uint16, circuitId string, interval time.Duration) {
+	key := CircuitKey(networkId, circuitId)
 	log := pfxlog.ContextLogger("c/" + circuitId)
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
@@ -302,16 +310,16 @@ func (forwarder *Forwarder) unrouteTimeout(circuitId string, interval time.Durat
 	for {
 		select {
 		case <-ticker.C:
-			if dest := forwarder.getXgressForCircuit(circuitId); dest != nil {
+			if dest := forwarder.getXgressForCircuit(key); dest != nil {
 				elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
 				if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
-					forwarder.circuits.removeForwardTable(circuitId)
-					forwarder.EndCircuit(circuitId)
+					forwarder.circuits.removeForwardTable(key)
+					forwarder.EndCircuit(networkId, circuitId)
 					return
 				}
 			} else {
-				forwarder.circuits.removeForwardTable(circuitId)
-				forwarder.EndCircuit(circuitId)
+				forwarder.circuits.removeForwardTable(key)
+				forwarder.EndCircuit(networkId, circuitId)
 				return
 			}
 		case <-forwarder.CloseNotify:
@@ -320,8 +328,8 @@ func (forwarder *Forwarder) unrouteTimeout(circuitId string, interval time.Durat
 	}
 }
 
-func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestination {
-	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
+func (forwarder *Forwarder) getXgressForCircuit(key string) XgressDestination {
+	if addresses, found := forwarder.destinations.getAddressesForCircuit(key); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				return destination.(XgressDestination)

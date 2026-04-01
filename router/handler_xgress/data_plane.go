@@ -54,12 +54,12 @@ func NewXgressDataPlaneAdapter(cfg DataPlaneAdapterConfig) xgress.DataPlaneAdapt
 
 func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgress.Xgress, _ context.Context) {
 	for {
-		if err := adapter.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
+		if err := adapter.forwarder.ForwardPayload(0, x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
 				if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
 					pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Debug("unable to forward payload")
 				}
-				adapter.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
+				adapter.forwarder.ReportForwardingFault(0, payload.CircuitId, x.CtrlId())
 				return
 			}
 		} else {
@@ -69,11 +69,11 @@ func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgre
 }
 
 func (adapter *dataPlaneAdapter) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
-	return adapter.forwarder.RetransmitPayload(srcAddr, payload)
+	return adapter.forwarder.RetransmitPayload(0, srcAddr, payload)
 }
 
 func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
-	if err := adapter.forwarder.ForwardControl(x.Address(), control); err != nil {
+	if err := adapter.forwarder.ForwardControl(0, x.Address(), control); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Debug("unable to forward control")
 	}
 }

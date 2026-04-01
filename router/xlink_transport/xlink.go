@@ -36,6 +36,7 @@ type impl struct {
 	routerVersion string
 	linkProtocol  string
 	dialAddress   string
+	networkId_    uint16
 	closed        atomic.Bool
 	faultsSent    atomic.Bool
 	dialed        bool
@@ -129,6 +130,11 @@ func (self *impl) DestinationId() string {
 
 func (self *impl) DestVersion() string {
 	return self.routerVersion
+}
+
+// NetworkId returns the network this link belongs to. Host network links use 0.
+func (self *impl) NetworkId() uint16 {
+	return self.networkId_
 }
 
 func (self *impl) LinkProtocol() string {

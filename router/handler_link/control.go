@@ -45,7 +45,7 @@ func (self *controlHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if control, err := xgress.UnmarshallControl(msg); err == nil {
-		if err = self.forwarder.ForwardControl(xgress.Address(self.link.Id()), control); err != nil {
+		if err = self.forwarder.ForwardControl(0, xgress.Address(self.link.Id()), control); err != nil {
 			log.WithError(err).Debug("unable to forward")
 		}
 	} else {

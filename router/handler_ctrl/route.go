@@ -45,9 +45,10 @@ type routeHandler struct {
 	dialerCfg map[string]xgress.OptionsData
 	forwarder *forwarder.Forwarder
 	pool      goroutines.Pool
+	networkId uint16
 }
 
-func newRouteHandler(ch ctrlchan.CtrlChannel, env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
+func newRouteHandler(ch ctrlchan.CtrlChannel, env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool, networkId uint16) *routeHandler {
 	handler := &routeHandler{
 		id:        env.GetRouterId(),
 		ch:        ch,
@@ -55,6 +56,7 @@ func newRouteHandler(ch ctrlchan.CtrlChannel, env env.RouterEnv, forwarder *forw
 		forwarder: forwarder,
 		pool:      pool,
 		dialerCfg: env.GetDialerCfg(),
+		networkId: networkId,
 	}
 
 	return handler
@@ -114,7 +116,7 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 }
 
 func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
-	if err := rh.forwarder.Route(rh.ch.PeerId(), route); err != nil {
+	if err := rh.forwarder.Route(rh.ch.PeerId(), rh.networkId, route); err != nil {
 		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
 		return
 	}

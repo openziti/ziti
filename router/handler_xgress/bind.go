@@ -44,7 +44,7 @@ func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 
 	x.AddCloseHandler(bindHandler.closeHandler)
 
-	bindHandler.env.GetForwarder().RegisterDestination(x.CircuitId(), x.Address(), x)
+	bindHandler.env.GetForwarder().RegisterDestination(0, x.CircuitId(), x.Address(), x)
 }
 
 func (bindHandler *bindHandler) GetMetricsPeekHandler() xgress.PeekHandler {

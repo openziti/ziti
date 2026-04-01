@@ -14,6 +14,8 @@ import (
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/federation"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -35,6 +37,7 @@ func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesceRequestType), self.agentOpQuiesceRouter)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDequiesceRequestType), self.agentOpDequiesceRouter)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDecommissionRequestType), self.agentOpDecommissionRouter)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterFederationAddNetworkRequestType), self.agentOpFederationAddNetwork)
 
 		if debugEnabled {
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), self.agentOpUpdateRoute)
@@ -262,7 +265,7 @@ func (self *Router) agentOpUpdateRoute(m *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	if err := self.forwarder.Route(ctrlId, route); err != nil {
+	if err := self.forwarder.Route(ctrlId, 0, route); err != nil {
 		handler_common.SendOpResult(m, ch, "update.route", errors.Wrap(err, "error adding route").Error(), false)
 		return
 	}
@@ -280,9 +283,60 @@ func (self *Router) agentOpUnroute(m *channel.Message, ch channel.Channel) {
 		return
 	}
 
-	self.forwarder.Unroute(unroute.CircuitId, unroute.Now)
+	self.forwarder.Unroute(0, unroute.CircuitId, unroute.Now)
 	logrus.Warnf("circuit unrouted: %+v", unroute)
 	handler_common.SendOpResult(m, ch, "unroute", fmt.Sprintf("circuit unrouted [%s]", unroute.CircuitId), true)
+}
+
+func (self *Router) agentOpFederationAddNetwork(m *channel.Message, ch channel.Channel) {
+	log := pfxlog.Logger()
+
+	networkId, ok := m.GetUint16Header(int32(mgmt_pb.Header_FederationNetworkId))
+	if !ok {
+		handler_common.SendOpResult(m, ch, "federation.add_network", "missing network ID header", false)
+		return
+	}
+
+	jwtPath := string(m.Body)
+	if jwtPath == "" {
+		handler_common.SendOpResult(m, ch, "federation.add_network", "missing JWT path in message body", false)
+		return
+	}
+
+	jwtData, err := os.ReadFile(jwtPath)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "federation.add_network", fmt.Sprintf("failed to read JWT file: %v", err), false)
+		return
+	}
+
+	outputDir := federation.NetworkDir(federation.NetworksDir(self.config.ConfigDir()), networkId)
+	if _, err := os.Stat(outputDir); err == nil {
+		handler_common.SendOpResult(m, ch, "federation.add_network", fmt.Sprintf("network %d already enrolled (directory exists: %s)", networkId, outputDir), false)
+		return
+	}
+
+	var sans *env.Sans
+	if self.config.Edge != nil && self.config.Edge.Csr != nil {
+		sans = self.config.Edge.Csr.Sans
+	}
+	if sans == nil {
+		sans = &env.Sans{}
+	}
+
+	ni, err := federation.EnrollWithNetwork(jwtData, networkId, outputDir, sans)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "federation.add_network", fmt.Sprintf("enrollment failed: %v", err), false)
+		return
+	}
+
+	_, err = federation.ConnectClientNetwork(ni, networkId, self.config, self, self.forwarder, self.multiCtrls)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "federation.add_network", fmt.Sprintf("failed to connect to client network: %v", err), false)
+		return
+	}
+
+	log.WithField("networkId", networkId).Info("federation: added client network")
+	handler_common.SendOpResult(m, ch, "federation.add_network", fmt.Sprintf("successfully added network %d", networkId), true)
 }
 
 func (self *Router) HandleAgentOp(conn net.Conn) error {

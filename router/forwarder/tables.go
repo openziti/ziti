@@ -17,6 +17,7 @@
 package forwarder
 
 import (
+	"encoding/binary"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -26,6 +27,24 @@ import (
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/orcaman/concurrent-map/v2"
 )
+
+// CircuitKey returns a composite circuit table key by prepending the 2-byte big-endian
+// network ID to the circuit ID string. For non-federated routers, networkId is always 0,
+// producing "\x00\x00" + circuitId.
+func CircuitKey(networkId uint16, circuitId string) string {
+	var buf [2]byte
+	binary.BigEndian.PutUint16(buf[:], networkId)
+	return string(buf[:]) + circuitId
+}
+
+// CircuitIdFromKey extracts the original circuit ID from a composite circuit table key
+// by stripping the 2-byte network ID prefix.
+func CircuitIdFromKey(key string) string {
+	if len(key) < 2 {
+		return key
+	}
+	return key[2:]
+}
 
 // circuitTable implements a directory of forwardTables, keyed by circuitId.
 type circuitTable struct {
@@ -69,13 +88,15 @@ func (st *circuitTable) debug() string {
 
 // forwardTable implements a directory of destinations, keyed by source address.
 type forwardTable struct {
+	networkId    uint16
 	ctrlId       string
 	last         int64
 	destinations cmap.ConcurrentMap[string, string]
 }
 
-func newForwardTable(ctrlId string) *forwardTable {
+func newForwardTable(ctrlId string, networkId uint16) *forwardTable {
 	return &forwardTable{
+		networkId:    networkId,
 		ctrlId:       ctrlId,
 		destinations: cmap.New[string](),
 	}

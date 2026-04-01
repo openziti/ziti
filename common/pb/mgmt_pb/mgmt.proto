@@ -81,7 +81,10 @@ enum ContentType {
   ValidateControllerDialersResponseType = 10123;
   ValidateControllerDialersResultType = 10124;
 
-  // next id 10125
+  // Federation
+  RouterFederationAddNetworkRequestType = 10125;
+
+  // next id 10126
 }
 
 enum Header {
@@ -90,6 +93,7 @@ enum Header {
   EventTypeHeader = 10;
   CtrlChanToggle = 11;
   ControllerId = 12;
+  FederationNetworkId = 13;
 }
 
 //

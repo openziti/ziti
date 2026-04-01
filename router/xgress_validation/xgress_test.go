@@ -22,6 +22,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type hostAckForwarder struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostAckForwarder) ForwardAcknowledgement(srcAddr xgress.Address, ack *xgress.Acknowledgement) error {
+	return h.fwd.ForwardAcknowledgement(0, srcAddr, ack)
+}
+
+type hostFaultReporter struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostFaultReporter) ReportForwardingFault(circuitId string, ctrlId string) {
+	h.fwd.ReportForwardingFault(0, circuitId, ctrlId)
+}
+
 func newTestSetup() *testSetup {
 	result := &testSetup{}
 	result.init()
@@ -43,8 +59,8 @@ func (self *testSetup) init() {
 
 	fwdOptions := env.DefaultForwarderOptions()
 	self.fwd = forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, self.closeNotify)
-	acker := xgress_router.NewAcker(self.fwd, metricsRegistry, self.closeNotify)
-	retransmitter := xgress.NewRetransmitter(self.fwd, metricsRegistry, self.closeNotify)
+	acker := xgress_router.NewAcker(&hostAckForwarder{fwd: self.fwd}, metricsRegistry, self.closeNotify)
+	retransmitter := xgress.NewRetransmitter(&hostFaultReporter{fwd: self.fwd}, metricsRegistry, self.closeNotify)
 	payloadIngester := xgress.NewPayloadIngester(self.closeNotify)
 
 	self.dataPlaneAdapter = handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
@@ -62,7 +78,7 @@ func (self *testSetup) close() {
 }
 
 func (self *testSetup) cleanupCircuit(circuit *testEnv) {
-	self.fwd.UnregisterDestinations(circuit.circuitId)
+	self.fwd.UnregisterDestinations(0, circuit.circuitId)
 
 	_ = circuit.clientXgConn.Close()
 	_ = circuit.hostXgConn.Close()
@@ -82,7 +98,7 @@ func (self *testSetup) createCircuit(t *testing.T, clientF, hostF func(originato
 
 	result.clientXg = xgress.NewXgress(result.circuitId, "ctrl1", result.clientAddr, result.clientXgConn, xgress.Initiator, self.options, nil)
 	result.clientXg.SetDataPlaneAdapter(self.dataPlaneAdapter)
-	self.fwd.RegisterDestination(result.circuitId, result.clientAddr, result.clientXg)
+	self.fwd.RegisterDestination(0, result.circuitId, result.clientAddr, result.clientXg)
 
 	result.hostConn, result.hostXgConn = hostF(xgress.Terminator)
 	result.hostAddr = xgress.Address(eid.New())
@@ -90,9 +106,9 @@ func (self *testSetup) createCircuit(t *testing.T, clientF, hostF func(originato
 	result.hostXg = xgress.NewXgress(result.circuitId, "ctrl1", result.hostAddr, result.hostXgConn, xgress.Terminator, self.options, nil)
 	result.hostXg.SetDataPlaneAdapter(self.dataPlaneAdapter)
 
-	self.fwd.RegisterDestination(result.circuitId, result.hostAddr, result.hostXg)
+	self.fwd.RegisterDestination(0, result.circuitId, result.hostAddr, result.hostXg)
 
-	err := self.fwd.Route("ctrl1", &ctrl_pb.Route{
+	err := self.fwd.Route("ctrl1", 0, &ctrl_pb.Route{
 		CircuitId: result.circuitId,
 		Forwards: []*ctrl_pb.Route_Forward{
 			{SrcAddress: string(result.clientAddr), DstAddress: string(result.hostAddr)},

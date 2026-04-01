@@ -39,6 +39,7 @@ type splitImpl struct {
 	routerVersion string
 	linkProtocol  string
 	dialAddress   string
+	networkId_    uint16
 	closed        atomic.Bool
 	faultsSent    atomic.Bool
 	dialed        bool
@@ -159,6 +160,10 @@ func (self *splitImpl) DestinationId() string {
 
 func (self *splitImpl) DestVersion() string {
 	return self.routerVersion
+}
+
+func (self *splitImpl) NetworkId() uint16 {
+	return self.networkId_
 }
 
 func (self *splitImpl) LinkProtocol() string {

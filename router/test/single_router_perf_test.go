@@ -126,6 +126,22 @@ func (t testFaultReceiver) Report(circuitId string, ctrlId string) {}
 
 func (t testFaultReceiver) NotifyInvalidLink(linkId string) {}
 
+type hostAckForwarder struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostAckForwarder) ForwardAcknowledgement(srcAddr xgress.Address, ack *xgress.Acknowledgement) error {
+	return h.fwd.ForwardAcknowledgement(0, srcAddr, ack)
+}
+
+type hostFaultReporter struct {
+	fwd *forwarder.Forwarder
+}
+
+func (h *hostFaultReporter) ReportForwardingFault(circuitId string, ctrlId string) {
+	h.fwd.ReportForwardingFault(0, circuitId, ctrlId)
+}
+
 type testXgCloseHandler struct{}
 
 func (t testXgCloseHandler) HandleXgressClose(x *xgress.Xgress) {
@@ -153,9 +169,9 @@ func Test_SingleRouterPerf(t *testing.T) {
 	fwd := forwarder.NewForwarder(registry, testFaultReceiver{}, env.DefaultForwarderOptions(), closeNotify)
 
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
-		Acker:           xgress_router.NewAcker(fwd, registry, closeNotify),
+		Acker:           xgress_router.NewAcker(&hostAckForwarder{fwd: fwd}, registry, closeNotify),
 		Forwarder:       fwd,
-		Retransmitter:   xgress.NewRetransmitter(fwd, fwd, registry, closeNotify),
+		Retransmitter:   xgress.NewRetransmitter(&hostFaultReporter{fwd: fwd}, registry, closeNotify),
 		PayloadIngester: xgress.NewPayloadIngester(closeNotify),
 		Metrics:         xgress.NewMetrics(registry),
 	})
@@ -169,7 +185,7 @@ func Test_SingleRouterPerf(t *testing.T) {
 	bindHandler.HandleXgressBind(dstXg)
 
 	req := require.New(t)
-	err := fwd.Route("ctrl", &ctrl_pb.Route{
+	err := fwd.Route("ctrl", 0, &ctrl_pb.Route{
 		CircuitId: "test",
 		Attempt:   0,
 		Forwards: []*ctrl_pb.Route_Forward{

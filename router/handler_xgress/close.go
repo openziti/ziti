@@ -43,7 +43,7 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 
 	x.ForwardEndOfCircuit(func(payload *xgress.Payload) bool {
 		log.Debug("sending end of circuit payload")
-		if err := txc.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
+		if err := txc.forwarder.ForwardPayload(0, x.Address(), payload, time.Second); err != nil {
 			// ok that we couldn't forward close, as that means it was already closed
 			log.Debugf("error forwarding end circuit payload (%s)", err)
 			return false
@@ -53,7 +53,7 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 
 	// Notify the forwarder that the circuit is ending
 	log.Debug("removing circuit from forwarder")
-	txc.forwarder.EndCircuit(x.CircuitId())
+	txc.forwarder.EndCircuit(0, x.CircuitId())
 
 	// Notify the controller of the xgress fault
 	fault := &ctrl_pb.Fault{Id: x.CircuitId()}

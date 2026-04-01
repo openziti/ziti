@@ -135,6 +135,7 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	DialAddress() string
+	NetworkId() uint16
 	CloseOnce(f func())
 	IsClosed() bool
 	InspectLink() *inspect.LinkInspectDetail

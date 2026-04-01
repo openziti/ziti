@@ -6,8 +6,8 @@
 
 We want independent Ziti networks to share routers. The motivating scenario is
 multi-tenant transit: a hosting provider runs public transit routers, and tenant
-networks (50–500 per host) use them to bridge their private infrastructure. The
-transit routers just forward packets — no edge or SDK functionality.
+networks (50-500 per host) use them to bridge their private infrastructure. The
+transit routers just forward packets. No edge or SDK functionality.
 
 The same mechanism generalizes to network federation (two independent networks sharing
 routers for cross-network circuits) and hierarchical topologies (regional transit
@@ -31,8 +31,8 @@ networks connecting local ones).
 - **Federation API**: The API that Network entities authenticate against. Network logins
   can't access the general management API.
 - **Network identifier**: A 16-bit ID assigned to each client network for circuit table
-  segregation and controller dispatch. Must be negotiated — the client can reject an ID
-  that collides with one from another host.
+  segregation and controller dispatch. This must be negotiated, since the client can
+  reject an ID that collides with one from another host.
 - Two networks can be clients of each other for bidirectional sharing.
 
 ### Design Principles
@@ -48,7 +48,7 @@ networks connecting local ones).
    token type is likely warranted (see #6).
 4. **Controller ignorance (for routing)**: Controllers see shared routers as normal
    routers for path selection and circuit building. A controller may know a router is
-   federated, but that only matters for lifecycle operations — creation, deletion,
+   federated, but that only matters for lifecycle operations: creation, deletion,
    re-sharing enforcement.
 5. **No re-sharing**: Only a router's owning network can share it. Routers enforce this
    by only accepting enrollments from their owner's controller.
@@ -65,7 +65,7 @@ overhead:
 
 - Trust relationships between host network and appliance, each client and appliance
 - Its own mechanism for managing who can federate with whom
-- Separate certificate and key management — what root CA does the appliance use?
+- Separate certificate and key management. What root CA does the appliance use?
 - Potentially its own hostname/DNS registration and host machine
 - Potentially a new ALPN protocol
 - Where does the CLI live? Separate binary? Embedded in the existing one?
@@ -84,14 +84,14 @@ wider adoption, which further argues for keeping the install footprint simple.
 ### Step 1: Establish the Federation Relationship
 
 We establish federation through a bidirectional JWT exchange. Each JWT carries the
-network's CA bundle, controller endpoints, and network ID — everything the other side
-needs to verify and contact us.
+network's CA bundle, controller endpoints, and network ID, giving the other side
+everything it needs to verify and contact us.
 
 **Client generates a federation JWT:**
 
 1. Client admin requests a federation JWT from their controller. It contains the client
    network's CA bundle, controller endpoints, and network ID. No Network entity is
-   created yet — that happens when the host JWT comes back.
+   created yet; that happens when the host JWT comes back.
 
 2. The client JWT goes to the host admin out of band.
 
@@ -118,11 +118,11 @@ needs to verify and contact us.
    - Client submits a CSR; host issues a certificate and returns it with its CA bundle
    - Client can now authenticate to the host's federation API
 
-**JWT signing — two options we're considering:**
+**JWT signing, two options we're considering:**
 
 - **Network cert**: One certificate per network, provisioned during cluster bootstrap
   (migration for existing installs). Shared across all controllers. Simplifies
-  multi-controller clusters — one identity regardless of which controller handles the
+  multi-controller clusters: one identity regardless of which controller handles the
   request. But it introduces a key distribution problem and needs a cert rolling
   strategy.
 
@@ -149,7 +149,7 @@ The client authenticates to the host's federation API and requests routers.
    - Request addition or removal of a router
 
 3. To **add a router**:
-   - Client generates a federation router enrollment token (a new token type — distinct
+   - Client generates a federation router enrollment token (a new token type, distinct
      from standard enrollment to avoid adding edge cases)
    - Passes the token to the host via the federation API
    - Host validates the router is owned (not itself shared from another network)
@@ -190,7 +190,7 @@ Once a router completes enrollment with a client network:
 1. It has a cert signed by the client's CA
 2. It knows the client's controller endpoints (from the enrollment token)
 3. It establishes a control channel to the client controller using its new identity
-4. The client controller sees a normal router connection — no special handling
+4. The client controller sees a normal router connection, no special handling
 5. Route/unroute handlers feed into the shared forwarder
 
 The router now has multiple identities: its host network identity (for links) and one
@@ -244,9 +244,9 @@ The forwarder's data plane doesn't care about router identity:
   identity reference.
 
 The forwarding hot path:
-1. `circuitTable.get(networkId, circuitId)` → forwardTable
-2. `forwardTable.get(srcAddr)` → dstAddr
-3. `destinationTable.get(dstAddr)` → Destination
+1. `circuitTable.get(networkId, circuitId)` -> forwardTable
+2. `forwardTable.get(srcAddr)` -> dstAddr
+3. `destinationTable.get(dstAddr)` -> Destination
 4. `destination.SendPayload()`
 
 No router identity anywhere in that path.
@@ -258,12 +258,12 @@ when the Network entity is created. This identifier is injected into payload hea
 making the circuit table key `(networkId, circuitId)` instead of `circuitId` alone.
 
 This gives us a structural guarantee of cross-tenant isolation. Circuit IDs are UUIDs,
-so collision is astronomically unlikely — but the network prefix eliminates the
+so collision is astronomically unlikely, but the network prefix eliminates the
 possibility entirely. Even a forged or duplicate circuit ID can't cross the network
 boundary.
 
 The network identifier is also required for controller dispatch. Controller IDs aren't
-guaranteed unique across independent networks — two client networks could have
+guaranteed unique across independent networks; two client networks could have
 controllers with the same ID. The faulter, scanner, and
 `MultiNetworkControllers.GetChannel()` all use `(networkId, ctrlId)` as the composite
 key.
@@ -273,7 +273,108 @@ It also gives us:
 - A natural hook for per-network rate limiting and QoS
 - Per-network metrics at the packet level
 
-16 bits supports up to 65,536 client networks per host — well above the 50–500 target.
+16 bits supports up to 65,536 client networks per host, well above the 50-500 target.
+
+### Network ID in the Forwarding Path
+
+Payloads travel between routers over links using one of two serialization paths:
+
+1. **Raw path**: A compact binary format where flags, circuit ID, sequence, headers, and
+   data are packed into a byte slice. Transit routers pass these through without
+   deserializing. The link's datagram underlay uses `MarshalV2WithRaw`, which returns the
+   raw body bytes directly; the entire channel message envelope (headers map, content
+   type) is discarded.
+
+2. **Standard path**: A full `channel.Message` with individually keyed headers. Used when
+   the raw representation isn't available (e.g., at the originating xgress before the
+   first forward, or when headers need modification).
+
+The raw path is the common case for transit forwarding. Any mechanism for carrying the
+network ID must work within it, since channel-level message headers won't survive the wire.
+
+#### Extending the Raw Format
+
+The raw payload's second byte (the sizes field) uses bits 0-3 for circuit ID length. Bits
+4-7 are unused. We define:
+
+```
+NetworkIdFlagMask byte = 0b00010000  // bit 4 of sizes byte
+```
+
+When set, 2 bytes of big-endian uint16 network ID follow immediately after the sizes byte,
+before RTT and circuit ID:
+
+```
+[flags:1][sizes:1][networkId:2][rtt:0-2][circuitId:0-15][seq:varint][headers:var][data:var][heartbeat:0-8]
+```
+
+On the receive side (`UnmarshallPacketPayload`), after parsing the sizes byte, check bit 4.
+If set, read 2 bytes of network ID before continuing to the remaining fields.
+
+#### Two Sources of Network ID
+
+A transit router has two sources for determining which network a payload belongs to:
+
+1. **Payload bytes**: an explicit network ID in the raw format. Takes precedence when
+   present.
+2. **Link context**: each link is established for a specific network. When a single-network
+   tenant router sends a payload with no network ID, the transit router's link handler
+   knows which network the link belongs to and uses that for the circuit table lookup.
+
+This means single-network routers are completely unaware of federation. They never inject,
+strip, or read network IDs. Only transit routers, where circuits from multiple networks
+coexist, deal with the complexity.
+
+#### Injection and Stripping
+
+The forwarder is the single decision point. After resolving the destination for a payload,
+it compares the circuit's network ID (from the `forwardTable`) with the destination link's
+owner network ID:
+
+- **Dest owner != circuit network -> inject.** The next hop can't derive the network from
+  link context alone (the link belongs to a different network than the circuit). Splice 2
+  bytes into the raw payload: `[flags][sizes | flag][networkId:2][original[2:]]`.
+
+- **Dest owner = circuit network -> strip (if present).** The next hop's link context is
+  sufficient. Remove the 2 bytes: `[flags][sizes &^ flag][original[4:]]`.
+
+- **No network ID and none needed -> pass through.** Nothing to do.
+
+- **Destination is an xgress -> pass through.** Xgress is local; no network ID on the wire.
+
+Both inject and strip are a memcpy of the payload body, much cheaper than falling through
+to full message serialization. For typical payloads the cost is negligible.
+
+#### Worked Example
+
+**Single-hop transit** (R1 -> TR -> R2, all circuits for tenant A):
+
+1. R1 creates raw bytes at its xgress. No network ID; R1 is single-network.
+2. R1's forwarder sends to TR. R1 doesn't know about federation; sends clean raw bytes.
+3. TR receives on a link that belongs to network A. No network ID in payload, so it falls
+   back to link context. Circuit table lookup uses `(A, circuitId)`.
+4. TR's forwarder resolves dest = R2 link. Circuit network = A, R2 owner = A. Same network,
+   no injection. Sends clean raw bytes.
+5. R2 receives. No network ID, lookup `(0, circuitId)`. Works.
+
+**Multi-hop transit** (R1 -> TR1 -> TR2 -> R2):
+
+1-2. Same as above. R1 sends clean raw bytes to TR1.
+3. TR1 receives on network A's link, lookup `(A, circuitId)`.
+4. TR1's forwarder resolves dest = TR2 link. Circuit network = A, TR2 owner = Host.
+   A != Host, so **inject** A's network ID into raw bytes.
+5. TR2 receives. Reads network ID = A from raw bytes, lookup `(A, circuitId)`.
+6. TR2's forwarder resolves dest = R2 link. Circuit network = A, R2 owner = A.
+   Same, so **strip** network ID from raw bytes.
+7. R2 receives. No network ID, lookup `(0, circuitId)`. Works.
+
+#### Composite Circuit Table Key
+
+The circuit table uses a composite string key: the 2-byte big-endian network ID prepended
+to the circuit ID string. For non-federated routers, network ID is always 0, so the key is
+`"\x00\x00" + circuitId`, consistent with the existing single-network behavior. The
+`forwardTable` gains a `networkId uint16` field, set from the route message during
+`Route()`.
 
 ### Component Layout
 
@@ -319,19 +420,22 @@ Network B later enrolls both endpoints, Network B learns about the existing link
 without re-establishing it.
 
 Examples:
-- Tenant A router → Transit Router: A's cache has the tenant router → reported to A
-- Transit Router 1 → Transit Router 2: A enrolled both → reported to A
+- Tenant A router -> Transit Router: A's cache has the tenant router, reported to A
+- Transit Router 1 -> Transit Router 2: A enrolled both, reported to A
 - Same link NOT reported to Tenant B unless B's cache also has TR2
 
 ### What Doesn't Need to Change
 
-- `Forwarder` core (`forwardPayload`, `ForwardAcknowledgement`, `ForwardControl`) —
+- `Forwarder` core (`forwardPayload`, `ForwardAcknowledgement`, `ForwardControl`):
   the circuit table key becomes `(networkId, circuitId)` but the lookup pattern is
-  the same
-- `Faulter.run()` — groups by `(networkId, ctrlId)`
-- `Scanner.scan()` — groups by `(networkId, ctrlId)`
-- Route/Unroute message handling logic
-- Link channel handlers (payload, ack, control, close)
+  the same. The forwarder gains inject/strip logic around `SendPayload`, but the
+  forwarding decision itself is unchanged.
+- `Faulter.run()`: groups by `(networkId, ctrlId)`
+- `Scanner.scan()`: groups by `(networkId, ctrlId)`
+- Route/Unroute message handling logic (gains networkId from the route message)
+- Link channel handlers: the payload handler reads network ID from the raw bytes when
+  present, falling back to the link's network context. The handler itself doesn't change
+  structurally; it just passes the resolved network ID to the forwarder.
 - Controller circuit building / path selection (sees a normal router)
 
 ### Multi-Tenant Transit vs Multi-Process
@@ -357,7 +461,7 @@ Examples:
 | D1 | 50-500 tenants per host | Justifies shared-process approach over multi-process |
 | D2 | Transit only, no edge | Keeps edge subsystem (sessions, policies, tunneling) out of scope |
 | D3 | Controller stays ignorant (for routing) | Each controller sees a normal router for path selection; federation awareness only for lifecycle |
-| D4 | Runtime tenant add/remove | Restart disrupts all tenants — unacceptable at scale |
+| D4 | Runtime tenant add/remove | Restart disrupts all tenants; unacceptable at scale |
 | D5 | Per-network usage metrics from start | Needed for limits and billing |
 | D6 | Best-effort fairness initially | QoS and adaptive rate limiting in follow-up releases |
 | D7 | Shared fate acceptable | Transit routers aren't single points of failure; circuits reroute |
@@ -371,6 +475,10 @@ Examples:
 | D15 | Scoped link reporting | Report links only to controllers whose cache contains both endpoints |
 | D16 | Integrated federation over separate application | Separate appliance is architecturally cleaner but substantially increases install complexity |
 | D17 | 16-bit network identifier for circuit isolation | Structural cross-tenant isolation; eliminates reliance on UUID uniqueness |
+| D18 | Network ID in raw payload format | Extends the sizes byte's unused upper nibble; avoids falling through to standard serialization on the hot path |
+| D19 | Link context as implicit network ID | Single-network routers never touch network IDs; transit routers derive the network from the link when the payload doesn't carry one explicitly |
+| D20 | Strip on send at the forwarder | The forwarder already knows the circuit's network and the destination's owner; co-locates inject and strip logic in one place |
+| D21 | Composite string key for circuit table | 2-byte network ID prepended to circuit ID; works with the existing concurrent map; degenerates to `\x00\x00` + circuitId for non-federated routers |
 
 ---
 
@@ -384,14 +492,28 @@ Examples:
 - [ ] **Link header network ID**: Add `LinkHeaderNetworkId` (or similar) so the listener
   knows which controller to use for `VerifyRouter`.
 
-- [ ] **CA bundle request message**: New control channel message type — router requests
+- [ ] **CA bundle request message**: New control channel message type. Router requests
   CA bundle for a given network ID, controller responds with CA PEM.
 
-- [ ] **Federation enrollment delivery message**: New control channel message type —
-  controller delivers a federation enrollment token (+ client root CA) to a router.
+- [ ] **Federation enrollment delivery message**: New control channel message type.
+  Controller delivers a federation enrollment token (+ client root CA) to a router.
 
-- [ ] **Network ID in payload headers**: 16-bit network identifier in payload headers so
-  circuit table lookups use `(networkId, circuitId)`.
+- [ ] **Network ID in raw payload format**: Extend the sizes byte (bit 4 =
+  `NetworkIdFlagMask`) to indicate a 2-byte network ID follows. Update
+  `UnmarshallPacketPayload` to parse it. Update the chunked write path in `Xgress.Write`
+  to support setting it (for the standard marshalling path, add `NetworkId` to the
+  `Payload` struct and include it as a channel header for non-raw messages).
+
+- [ ] **Forwarder inject/strip logic**: After resolving the destination in
+  `forwardPayload`, compare `forwardTable.networkId` with the destination link's owner
+  network. Inject or strip the network ID in the raw bytes as needed. Needs the link
+  destination to expose its owner network ID.
+
+- [x] **Link network context**: Each link tracks which network it was established for.
+  The payload handler uses this as the implicit network ID when the payload doesn't carry
+  one. Populated from `UpdateLinkDest` or link establishment metadata. *(Prototype:
+  `NetworkId()` added to `Xlink` interface, field on impl/splitImpl. All existing links
+  default to 0. Actual population from UpdateLinkDest deferred.)*
 
 ### Controller Changes
 
@@ -410,7 +532,7 @@ Examples:
 - [ ] **Authenticator for Network entities**: Created on the host side during JWT import,
   governing client network authentication.
 
-- [ ] **Network enrollment flow**: Bidirectional JWT exchange — client generates JWT, host
+- [ ] **Network enrollment flow**: Bidirectional JWT exchange. Client generates JWT, host
   imports and generates host JWT, client imports host JWT and completes enrollment via
   challenge-response + CSR. Both sides create Network entities during their import step.
 
@@ -434,20 +556,24 @@ Examples:
 - [ ] **Attribute template for auto-imported routers**: The client-side Network entity
   includes a template that maps host-side router attributes to client-side role
   attributes. Applied during auto-import so routers match existing policies immediately.
-  Need to define the template syntax — direct mapping, fixed attributes, or both.
+  Need to define the template syntax: direct mapping, fixed attributes, or both.
 
 ### Router Changes
 
 - [ ] **Owner awareness**: Router tracks its owner controller. Only accepts federation
   enrollment tokens from the owner's control channel.
 
-- [ ] **Multi-identity management**: Per-network certs/keys, control channels, and CA
-  bundles. Runtime enrollment completion (new identity → new control channel). Persisted
-  across restarts.
+- [x] **Multi-identity management**: Per-network certs/keys, control channels, and CA
+  bundles. Runtime enrollment completion (new identity -> new control channel). Persisted
+  across restarts. *(Prototype: `federation` package handles per-network identity storage,
+  CSR enrollment, control channel setup. Persisted in `<config-dir>/networks/<id>/`.
+  Reconnects on startup.)*
 
-- [ ] **MultiNetworkControllers wrapper**: Wraps N per-network `NetworkControllers`.
+- [x] **MultiNetworkControllers wrapper**: Wraps N per-network `NetworkControllers`.
   `GetChannel(networkId, ctrlId)` dispatches across all networks. Per-network `ForEach`
-  for scoped link notifications.
+  for scoped link notifications. *(Prototype: `forwarder.MultiNetworkControllers` created.
+  Not yet wired into faulter/scanner dispatch; they still use `env.NetworkControllers`
+  directly.)*
 
 - [ ] **Per-destination CA selection for link dialing**: Link dialer uses the CA from
   `UpdateLinkDest` to verify the destination's server cert (currently uses the router's
@@ -462,19 +588,28 @@ Examples:
   router. When a new network enrolls, check existing links against its cache.
 
 - [ ] **State manager conditional enablement**: `state.Manager.Enabled()` returns
-  hardcoded `true`. Make conditional — skip when no edge config is present.
+  hardcoded `true`. Make conditional; skip when no edge config is present.
 
-- [ ] **Network-prefixed circuit table**: Keyed by `(networkId, circuitId)`. The 16-bit
-  identifier is carried in payload headers. Provides structural isolation and a natural
-  key for per-network metrics and rate limiting.
+- [x] **Composite circuit table key**: Circuit table keyed by 2-byte network ID prepended
+  to circuit ID string. `forwardTable` gains a `networkId uint16` field set from the route
+  message. Non-federated routers use network ID 0. *(Prototype: `CircuitKey()`,
+  `CircuitIdFromKey()` in `forwarder/tables.go`. All forwarder methods, `env.Forwarder`
+  interface, and callers updated to pass `networkId`.)*
 
-- [ ] **Per-network metrics**: Bytes forwarded, active circuits, active links — tagged by
+- [ ] **Forwarder network ID handling**: `forwardPayload` (and `ForwardAcknowledgement`,
+  `ForwardControl`) resolves network ID from the payload's raw bytes or the source link's
+  network context. Injects or strips the network ID in the raw bytes before sending based
+  on whether the destination link's owner matches the circuit's network. *(Prototype:
+  networkId parameter threaded through all forwarding methods. Inject/strip of raw bytes
+  and link-context fallback not yet implemented.)*
+
+- [ ] **Per-network metrics**: Bytes forwarded, active circuits, active links, tagged by
   network identifier.
 
 ### Design Questions
 
 - [ ] **Network identifier negotiation**: The host assigns the 16-bit ID, but the client
-  needs to reject collisions with IDs from other hosts. When does negotiation happen —
+  needs to reject collisions with IDs from other hosts. When does negotiation happen:
   during enrollment, during router sharing, or both? What if no non-colliding ID is
   available?
 
@@ -484,8 +619,8 @@ Examples:
   identities and complicates multi-controller setups. See Step 1.
 
 - [ ] **Router removal flow**: Can be triggered from either side.
-  - **Host**: Admin or policy change → unprovision message to router. Unilateral.
-  - **Client**: Requests removal via federation API → host forwards unprovision.
+  - **Host**: Admin or policy change -> unprovision message to router. Unilateral.
+  - **Client**: Requests removal via federation API -> host forwards unprovision.
   - **Teardown**: Close control channel, drain circuits, clean up identity.
   - **Tracking**: Host must track which clients have enabled which routers.
 
@@ -505,7 +640,95 @@ Examples:
 
 ### Future Work
 
-- [ ] QoS — traffic prioritization across networks/tenants
-- [ ] Adaptive rate limiting — per-network fairness under system stress
-- [ ] Dynamic scaling — auto-provision transit routers based on load
-- [ ] Service-level federation — cross-network service access via service policies
+- [ ] QoS: traffic prioritization across networks/tenants
+- [ ] Adaptive rate limiting: per-network fairness under system stress
+- [ ] Dynamic scaling: auto-provision transit routers based on load
+- [ ] Service-level federation: cross-network service access via service policies
+
+---
+
+## Prototype Progress
+
+Router-side prototype focused on multi-network forwarding and runtime enrollment via IPC.
+Uses the existing controller enrollment endpoint; federation-specific endpoints deferred.
+
+### Completed
+
+- [x] **Composite circuit table key**: `CircuitKey(networkId, circuitId)` prepends 2-byte
+  network ID. `forwardTable` carries `networkId`. All forwarder methods, the `env.Forwarder`
+  interface, and every caller updated. Host network uses networkId 0.
+  (`forwarder/tables.go`, `forwarder/forwarder.go`, `env/env.go`, plus ripple through
+  handler_ctrl, handler_link, handler_xgress, xgress_edge, agent, tests)
+
+- [x] **Faulter/scanner composite grouping**: faulter groups faults by `(networkId, ctrlId)`.
+  Scanner groups idle circuits by `(networkId, ctrlId)` and strips the composite key prefix
+  before sending circuit IDs to the controller.
+  (`forwarder/faulter.go`, `forwarder/scanner.go`)
+
+- [x] **MultiNetworkControllers**: wraps host `NetworkControllers` (networkId 0) plus
+  per-client-network controllers. `GetChannel(networkId, ctrlId)` dispatches to the right
+  network. `ForEach` iterates all. `AddNetwork`/`RemoveNetwork` for runtime changes.
+  (`forwarder/multi_network_controllers.go`)
+
+- [x] **Link network tagging**: `NetworkId() uint16` on the `Xlink` interface. Field and
+  method on `impl` and `splitImpl`. All existing links default to networkId 0.
+  (`xlink/xlink.go`, `xlink_transport/xlink.go`, `xlink_transport/xlink_split.go`)
+
+- [x] **Per-network identity storage**: `NetworkIdentity` struct with on-disk persistence
+  in `<config-dir>/networks/<networkId>/` (cert.pem, key.pem, ca.pem, endpoints.yml).
+  Load/save/scan functions for startup reconnection.
+  (`federation/network_identity.go`)
+
+- [x] **Federation enrollment**: CSR-based enrollment against a client controller's existing
+  enrollment endpoint. Parses JWT, fetches CAs, generates key, creates CSRs, stores identity
+  on disk. Extracts controller endpoints from JWT claims.
+  (`federation/enroll.go`)
+
+- [x] **Transit bind handler**: registers only route, unroute, and peer state change
+  handlers on client network control channels. No edge, terminator, inspect, or xrctrl
+  handlers. Passes the client network's `networkId` to route/unroute handlers.
+  (`handler_ctrl/transit_bind.go`)
+
+- [x] **Client network connection**: `ConnectClientNetwork` creates a `ClientDialEnv`
+  (host config with swapped identity), dials the client controller, and registers with
+  `MultiNetworkControllers`. Handles the circular dependency between the transit bind
+  handler and `NetworkControllers` by deferred bind handler assignment.
+  (`federation/connect.go`, `federation/dial_env.go`)
+
+- [x] **Agent operation**: `RouterFederationAddNetworkRequestType` (10125) with
+  `FederationNetworkId` header. Handler reads JWT from disk, enrolls, connects.
+  Rejects if network already enrolled. (`router/agent.go`, `mgmt_pb/mgmt.proto`)
+
+- [x] **Startup reconnection**: `reconnectFederatedNetworks()` loads all persisted
+  network identities and re-establishes control channels after the host control plane
+  is up. (`router/router.go`)
+
+- [x] **CLI command**: `ziti agent router federation-add-network <jwt-path> --network-id <id>`.
+  (`agentcli/agent_router_federation_add_network.go`)
+
+### Remaining
+
+- [ ] **Wire MultiNetworkControllers into faulter/scanner**: the `multiCtrls` field exists
+  on Router but faulter and scanner still use the host `NetworkControllers` directly. They
+  need to dispatch via `multiCtrls.GetChannel(networkId, ctrlId)` so faults and idle circuit
+  confirmations reach client network controllers.
+
+- [ ] **Populate link networkId from UpdateLinkDest**: links currently default to 0. When
+  a link is established for a client network (via UpdateLinkDest with owner network info),
+  the link's `networkId_` should be set so the payload handler can use it for implicit
+  network ID resolution.
+
+- [ ] **Payload handler link-context fallback**: when a payload arrives on a link with no
+  explicit network ID in the raw bytes, the handler should use `link.NetworkId()` for the
+  circuit table lookup instead of defaulting to 0.
+
+- [ ] **Raw payload network ID inject/strip**: extend the raw format's sizes byte (bit 4)
+  for multi-hop transit. The forwarder compares `forwardTable.networkId` with the
+  destination link's owner and splices 2 bytes into/out of the raw payload as needed.
+
+- [ ] **End-to-end test**: two independent controllers, one shared router. Verify circuits
+  from both networks traverse the shared router without interference.
+
+- [ ] **Channel headers for ClientDialEnv**: `GetChannelHeaders()` currently returns empty
+  headers. Should include router version and link listener addresses so the client controller
+  can build link paths.

@@ -30,17 +30,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// faultEntry tracks a circuit fault with its network context for controller dispatch.
+type faultEntry struct {
+	networkId uint16
+	ctrlId    string
+}
+
 type Faulter struct {
 	ctrls         env.NetworkControllers
 	interval      time.Duration
-	circuitIds    cmap.ConcurrentMap[string, string]
+	circuitIds    cmap.ConcurrentMap[string, faultEntry]
 	closeNotify   <-chan struct{}
 	linkFaults    metrics.Meter
 	circuitFaults metrics.Meter
 }
 
+// FaultReceiver accepts forwarding fault reports for dispatch to the appropriate controller.
 type FaultReceiver interface {
-	Report(circuitId string, ctrlId string)
+	Report(networkId uint16, circuitId string, ctrlId string)
 	NotifyInvalidLink(linkId string)
 }
 
@@ -48,7 +55,7 @@ func NewFaulter(routerEnv env.RouterEnv, interval time.Duration) *Faulter {
 	f := &Faulter{
 		ctrls:         routerEnv.GetNetworkControllers(),
 		interval:      interval,
-		circuitIds:    cmap.New[string](),
+		circuitIds:    cmap.New[faultEntry](),
 		closeNotify:   routerEnv.GetCloseNotify(),
 		linkFaults:    routerEnv.GetMetricsRegistry().Meter("faults.link"),
 		circuitFaults: routerEnv.GetMetricsRegistry().Meter("faults.circuit"),
@@ -61,10 +68,10 @@ func NewFaulter(routerEnv env.RouterEnv, interval time.Duration) *Faulter {
 	return f
 }
 
-func (self *Faulter) Report(circuitId string, ctrlId string) {
+func (self *Faulter) Report(networkId uint16, circuitId string, ctrlId string) {
 	self.circuitFaults.Mark(1)
 	if self.interval > 0 {
-		self.circuitIds.Set(circuitId, ctrlId)
+		self.circuitIds.Set(circuitId, faultEntry{networkId: networkId, ctrlId: ctrlId})
 	}
 }
 
@@ -86,15 +93,21 @@ func (self *Faulter) run() {
 	logrus.Infof("started")
 	defer logrus.Errorf("exited")
 
+	type ctrlKey struct {
+		networkId uint16
+		ctrlId    string
+	}
+
 	for {
 		select {
 		case <-time.After(self.interval):
-			workloadByCtrl := map[string][]string{}
-			self.circuitIds.IterCb(func(circuitId, ctrlId string) {
-				workloadByCtrl[ctrlId] = append(workloadByCtrl[ctrlId], circuitId)
+			workloadByCtrl := map[ctrlKey][]string{}
+			self.circuitIds.IterCb(func(circuitId string, entry faultEntry) {
+				key := ctrlKey{networkId: entry.networkId, ctrlId: entry.ctrlId}
+				workloadByCtrl[key] = append(workloadByCtrl[key], circuitId)
 			})
 
-			for ctrlId, workload := range workloadByCtrl {
+			for key, workload := range workloadByCtrl {
 				// Proactively remove from reported circuitIds. If we fail below, forwarder will continue to report.
 				for _, circuitId := range workload {
 					self.circuitIds.Remove(circuitId)
@@ -102,9 +115,9 @@ func (self *Faulter) run() {
 
 				circuitIds := strings.Join(workload, " ")
 
-				if ctrlId != "" {
-					log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-					ch := self.ctrls.GetChannel(ctrlId)
+				if key.ctrlId != "" {
+					log := pfxlog.Logger().WithField("ctrlId", key.ctrlId)
+					ch := self.ctrls.GetChannel(key.ctrlId)
 					if ch == nil {
 						log.Error("unable to report circuit fault, no control channel for controller")
 						continue

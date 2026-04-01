@@ -50,7 +50,7 @@ func (self *ackHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		return
 	}
 
-	if err = self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id()), ack); err != nil {
+	if err = self.forwarder.ForwardAcknowledgement(0, xgress.Address(self.link.Id()), ack); err != nil {
 		pfxlog.ContextLogger(ch.Label()).
 			WithField("linkId", self.link.Id()).
 			WithField("routerId", self.link.DestinationId()).

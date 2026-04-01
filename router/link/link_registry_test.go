@@ -150,6 +150,10 @@ func (self *testLink) DialAddress() string {
 	panic("implement me")
 }
 
+func (self *testLink) NetworkId() uint16 {
+	return 0
+}
+
 func (self *testLink) CloseOnce(f func()) {
 	panic("implement me")
 }

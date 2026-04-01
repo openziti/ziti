@@ -190,6 +190,11 @@ func (config *Config) CurrentCtrlAddress() string {
 	return config.Ctrl.InitialEndpoints[0].String()
 }
 
+// ConfigDir returns the directory containing the router's configuration file.
+func (config *Config) ConfigDir() string {
+	return filepath.Dir(config.path)
+}
+
 func (config *Config) Configure(sub config.Subconfig) error {
 	return sub.LoadConfig(config.Src)
 }
