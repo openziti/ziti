@@ -105,6 +105,16 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
 
+## Community Contributors
+
+Thank you to the following community members for their contributions:
+
+* @ffaraone - Azure Service Bus event sink
+* @dmuensterer - OIDC token refresh fixes
+* @nenkoru - Controller isleader health check endpoint
+* Jan Starkl - UPDB auth attempts fix
+* Mamy Ratsimbazafy - uint16 port range fix
+
 ## Basic Permission System (BETA)
 
 Added a basic permission system that allows more control over identity access to controller management API operations. 
@@ -1078,6 +1088,7 @@ New configuration tunables under `edge.oidc`:
     * [Issue #2512](https://github.com/openziti/ziti/issues/2512) - Return circuit ID and error in dial failures
     * [Issue #3569](https://github.com/openziti/ziti/issues/3569) - Version 2.0+ routers should not connect to controllers which do not support JWT formatted legacy sessions
     * [Issue #3565](https://github.com/openziti/ziti/issues/3565) - Link dialer save 'is first conn' true, so all dials claim to be first, causing potential race condition
+    * [Issue #3575](https://github.com/openziti/ziti/issues/3575) - OIDC token endpoint code bugs possibly resulting in panics/eof errors
     * [Issue #3550](https://github.com/openziti/ziti/issues/3550) - Support multi-underlay control channels
     * [Issue #3535](https://github.com/openziti/ziti/issues/3535) - Remove the legacy xgress_edge_tunnel implementation
     * [Issue #3547](https://github.com/openziti/ziti/issues/3547) - Add support for sending the dialing identity id and name to the hosting sdk
@@ -1143,4 +1154,5 @@ New configuration tunables under `edge.oidc`:
     * [Issue #3259](https://github.com/openziti/ziti/issues/3259) - Interfaces config type not added due to wrong name
     * [Issue #3265](https://github.com/openziti/ziti/issues/3265) - Forwarding errors should log at debug, since they are usual part of circuit teardown
     * [Issue #3261](https://github.com/openziti/ziti/issues/3261) - ER/T dialed xgress connections may only half-close when peer is fully closed
+
 
