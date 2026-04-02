@@ -972,6 +972,7 @@ type ConfigType struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Schema        []byte                 `protobuf:"bytes,3,opt,name=schema,proto3" json:"schema,omitempty"`
 	Tags          map[string]*TagValue   `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Target        *string                `protobuf:"bytes,5,opt,name=target,proto3,oneof" json:"target,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1032,6 +1033,13 @@ func (x *ConfigType) GetTags() map[string]*TagValue {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *ConfigType) GetTarget() string {
+	if x != nil && x.Target != nil {
+		return *x.Target
+	}
+	return ""
 }
 
 // Controllers
@@ -4858,16 +4866,18 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\v2\".ziti.edge_cmd.pb.Config.TagsEntryR\x04tags\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"\xd9\x01\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"\x81\x02\n" +
 	"\n" +
 	"ConfigType\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06schema\x18\x03 \x01(\fR\x06schema\x12:\n" +
-	"\x04tags\x18\x04 \x03(\v2&.ziti.edge_cmd.pb.ConfigType.TagsEntryR\x04tags\x1aS\n" +
+	"\x04tags\x18\x04 \x03(\v2&.ziti.edge_cmd.pb.ConfigType.TagsEntryR\x04tags\x12\x1b\n" +
+	"\x06target\x18\x05 \x01(\tH\x00R\x06target\x88\x01\x01\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"\xd8\x04\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01B\t\n" +
+	"\a_target\"\xd8\x04\n" +
 	"\n" +
 	"Controller\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -5497,6 +5507,7 @@ func file_edge_cmd_proto_init() {
 		(*Authenticator_Updb_)(nil),
 	}
 	file_edge_cmd_proto_msgTypes[8].OneofWrappers = []any{}
+	file_edge_cmd_proto_msgTypes[10].OneofWrappers = []any{}
 	file_edge_cmd_proto_msgTypes[16].OneofWrappers = []any{}
 	file_edge_cmd_proto_msgTypes[20].OneofWrappers = []any{}
 	file_edge_cmd_proto_msgTypes[22].OneofWrappers = []any{}

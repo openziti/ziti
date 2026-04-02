@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 44
+	CurrentDbVersion = 45
 	FieldVersion     = "version"
 )
 
@@ -207,6 +207,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 44 {
 		m.dropEntity(step, EntityTypeSessions)
+	}
+
+	if step.CurrentVersion < 45 {
+		m.setConfigTypeTargets(step)
 	}
 
 	// current version

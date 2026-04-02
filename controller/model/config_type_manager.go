@@ -39,6 +39,11 @@ const (
 func NewConfigTypeManager(env Env) *ConfigTypeManager {
 	manager := &ConfigTypeManager{
 		baseEntityManager: newBaseEntityManager[*ConfigType, *db.ConfigType](env, env.GetStores().ConfigType),
+		allowedFieldsChecker: fields.UpdatedFieldsMap{
+			db.FieldName:             struct{}{},
+			db.FieldConfigTypeSchema: struct{}{},
+			boltz.FieldTags:          struct{}{},
+		},
 	}
 	manager.impl = manager
 
@@ -49,6 +54,7 @@ func NewConfigTypeManager(env Env) *ConfigTypeManager {
 
 type ConfigTypeManager struct {
 	baseEntityManager[*ConfigType, *db.ConfigType]
+	allowedFieldsChecker fields.UpdatedFieldsMap
 }
 
 func (self *ConfigTypeManager) NewModelEntity() *ConfigType {
@@ -69,7 +75,13 @@ func (self *ConfigTypeManager) Update(entity *ConfigType, checker fields.Updated
 }
 
 func (self *ConfigTypeManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ConfigType], ctx boltz.MutateContext) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if checker == nil {
+		checker = self.allowedFieldsChecker
+	} else {
+		checker = &AndFieldChecker{first: self.allowedFieldsChecker, second: cmd.UpdatedFields}
+	}
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *ConfigTypeManager) Read(id string) (*ConfigType, error) {
@@ -131,6 +143,7 @@ func (self *ConfigTypeManager) Marshall(entity *ConfigType) ([]byte, error) {
 		Name:   entity.Name,
 		Schema: schema,
 		Tags:   tags,
+		Target: entity.Target,
 	}
 
 	return proto.Marshal(msg)
@@ -154,5 +167,6 @@ func (self *ConfigTypeManager) Unmarshall(bytes []byte) (*ConfigType, error) {
 		},
 		Name:   msg.Name,
 		Schema: schema,
+		Target: msg.Target,
 	}, nil
 }

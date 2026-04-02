@@ -28,6 +28,12 @@ import (
 
 const (
 	FieldConfigTypeSchema = "schema"
+	FieldConfigTypeTarget = "target"
+
+	// ConfigTypeTargetService indicates a config type used for service configuration.
+	ConfigTypeTargetService = "service"
+	// ConfigTypeTargetRouter indicates a config type used for router configuration.
+	ConfigTypeTargetRouter = "router"
 )
 
 func newConfigType(name string) *ConfigType {
@@ -41,6 +47,7 @@ type ConfigType struct {
 	boltz.BaseExtEntity
 	Name   string                 `json:"name"`
 	Schema map[string]interface{} `json:"schema"`
+	Target *string                `json:"target"`
 }
 
 func (entity *ConfigType) GetName() string {
@@ -83,6 +90,7 @@ func (store *configTypeStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
 	store.AddSymbol(FieldConfigTypeSchema, ast.NodeTypeString)
+	store.AddSymbol(FieldConfigTypeTarget, ast.NodeTypeString)
 }
 
 func (store *configTypeStoreImpl) initializeLinked() {
@@ -100,6 +108,7 @@ func (store *configTypeStoreImpl) FillEntity(entity *ConfigType, bucket *boltz.T
 		entity.Schema = map[string]interface{}{}
 		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
 	}
+	entity.Target = bucket.GetString(FieldConfigTypeTarget)
 }
 
 func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
@@ -118,6 +127,7 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 			ctx.SetStringP(FieldConfigTypeSchema, nil)
 		}
 	}
+	ctx.SetStringP(FieldConfigTypeTarget, entity.Target)
 }
 
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {

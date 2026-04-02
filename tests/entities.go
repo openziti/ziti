@@ -37,6 +37,16 @@ import (
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
+// derefOrNil returns the dereferenced value of a pointer as an interface{},
+// or nil if the pointer is nil. Useful for passing *string values to
+// pathEquals and setValue which expect interface{}.
+func derefOrNil[T any](p *T) interface{} {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 type entity interface {
 	getId() string
 	setId(string)
@@ -643,6 +653,7 @@ type configType struct {
 	Id     string
 	Name   string
 	Schema map[string]interface{}
+	Target *string
 	Tags   map[string]interface{}
 }
 
@@ -662,6 +673,7 @@ func (entity *configType) toJson(_ bool, ctx *TestContext, fields ...string) str
 	entityData := gabs.New()
 	ctx.setValue(entityData, entity.Name, fields, "name")
 	ctx.setValue(entityData, entity.Schema, fields, "schema")
+	ctx.setValue(entityData, derefOrNil(entity.Target), fields, "target")
 	ctx.setValue(entityData, entity.Tags, fields, "tags")
 	return entityData.String()
 }
@@ -672,6 +684,7 @@ func (entity *configType) validate(ctx *TestContext, c *gabs.Container) {
 	}
 	ctx.pathEquals(c, entity.Name, path("name"))
 	ctx.pathEquals(c, entity.Schema, path("schema"))
+	ctx.pathEquals(c, derefOrNil(entity.Target), path("target"))
 	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 

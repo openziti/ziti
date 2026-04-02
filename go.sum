@@ -537,8 +537,8 @@ github.com/openziti/channel/v4 v4.3.9 h1:uTiaFdS1XyFKv15g8W21Q9EjI3NE876lj5nvg+q
 github.com/openziti/channel/v4 v4.3.9/go.mod h1:pznrlRy3xAqBH1aj6EpjV7XfuoXT53nqdrw/pzXlgHg=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
-github.com/openziti/edge-api v0.27.5 h1:PkwdTLE6beIngrurVGrjOU+8WuQi+W0ISQwPkjjLtpM=
-github.com/openziti/edge-api v0.27.5/go.mod h1:pDtCR6Mq0h5e8ulJhmuhPshEBa39hpQy+yTtLpUSBOs=
+github.com/openziti/edge-api v0.27.6-0.20260402201436-e5cea2f86603 h1:645+Xk+mByiGu5z1OJLRObEwRjAntgSMaV5g6fuWnso=
+github.com/openziti/edge-api v0.27.6-0.20260402201436-e5cea2f86603/go.mod h1:pDtCR6Mq0h5e8ulJhmuhPshEBa39hpQy+yTtLpUSBOs=
 github.com/openziti/foundation/v2 v2.0.90 h1:1+Xbug8gQgi656yq+mvKvzROmmX/Lsrgt/s12l1Wz3s=
 github.com/openziti/foundation/v2 v2.0.90/go.mod h1:mJT858owwwcM6XvpEawdKM+7UAjc+ftIlpD/6toCTCg=
 github.com/openziti/go-term-markdown v1.0.1 h1:9uzMpK4tav6OtvRxRt99WwPTzAzCh+Pj9zWU2FBp3Qg=

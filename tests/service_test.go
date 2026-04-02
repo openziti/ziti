@@ -20,6 +20,7 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"testing"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
@@ -445,5 +447,87 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 
 		newService.validate(ctx, entityJson)
 		ctx.validateDateFieldsForUpdate(now, createdAt, entityJson)
+	})
+}
+
+func Test_ServiceConfigTargetValidation(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	t.Run("service with nil-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		svc := ctx.newService(nil, s(config.Id))
+		resp := ctx.AdminManagementSession.createEntity(svc)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("service with service-target config should succeed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		ctx.AdminManagementSession.requireNewService(nil, s(config.Id))
+	})
+
+	t.Run("service with router-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		svc := ctx.newService(nil, s(config.Id))
+		resp := ctx.AdminManagementSession.createEntity(svc)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+}
+
+func Test_IdentityServiceConfigTargetValidation(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), s())
+
+	session := ctx.AdminManagementSession.createUserAndLoginClientApi(false, nil, nil)
+	identityId := *session.AuthResponse.IdentityID
+
+	t.Run("identity service config override with nil-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
+		httpStatus, body := ctx.AdminManagementSession.updateIdentityServiceConfigs("POST", identityId,
+			[]serviceConfig{{ServiceId: svc.Id, ConfigId: config.Id}})
+		ctx.Req.Equal(http.StatusBadRequest, httpStatus, "expected bad request, got body: %s", string(body))
+	})
+
+	t.Run("identity service config override with service-target config should succeed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
+		ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(identityId,
+			serviceConfig{ServiceId: svc.Id, ConfigId: config.Id})
+	})
+
+	t.Run("identity service config override with router-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
+		httpStatus, body := ctx.AdminManagementSession.updateIdentityServiceConfigs("POST", identityId,
+			[]serviceConfig{{ServiceId: svc.Id, ConfigId: config.Id}})
+		ctx.Req.Equal(http.StatusBadRequest, httpStatus, "expected bad request, got body: %s", string(body))
 	})
 }

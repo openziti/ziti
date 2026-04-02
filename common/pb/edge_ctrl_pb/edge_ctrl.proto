@@ -167,6 +167,7 @@ message DataState {
   message ConfigType {
     string id = 1;
     string name = 2;
+    optional string target = 3;
   }
 
   message Config {

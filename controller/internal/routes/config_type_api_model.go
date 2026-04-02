@@ -34,7 +34,8 @@ func MapCreateConfigTypeToModel(configType *rest_model.ConfigTypeCreate) *model.
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(configType.Tags),
 		},
-		Name: stringz.OrEmpty(configType.Name),
+		Name:   stringz.OrEmpty(configType.Name),
+		Target: configType.Target,
 	}
 
 	if schemaMap, ok := configType.Schema.(map[string]interface{}); ok {
@@ -85,6 +86,7 @@ func MapConfigTypeToRestModel(configType *model.ConfigType) (*rest_model.ConfigT
 		BaseEntity: BaseEntityToRestModel(configType, ConfigTypeLinkFactory),
 		Name:       &configType.Name,
 		Schema:     configType.Schema,
+		Target:     configType.Target,
 	}
 
 	return ret, nil

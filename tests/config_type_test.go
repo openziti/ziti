@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
@@ -201,5 +202,58 @@ func Test_ConfigTypes(t *testing.T) {
 
 		ctx.AdminManagementSession.requireDeleteEntity(configType)
 		ctx.RequireNotFoundError(ctx.AdminManagementSession.query("config-types/" + configType.Id))
+	})
+
+	t.Run("create config type with nil target should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		ctx.AdminManagementSession.validateEntityWithQuery(ct)
+	})
+
+	t.Run("create config type with service target should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		ctx.AdminManagementSession.validateEntityWithQuery(ct)
+	})
+
+	t.Run("create config type with router target should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		ctx.AdminManagementSession.validateEntityWithQuery(ct)
+	})
+
+	t.Run("create config type with invalid target should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("invalid")
+		resp := ctx.AdminManagementSession.createEntity(ct)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "target")
+	})
+
+	t.Run("target should not change on update", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+
+		ct.Name = eid.New()
+		ctx.AdminManagementSession.requireUpdateEntity(ct)
+		ctx.AdminManagementSession.validateUpdate(ct)
+	})
+
+	t.Run("target should not change on patch", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+
+		ct.Name = eid.New()
+		ctx.AdminManagementSession.requirePatchEntity(ct, "name")
+		ctx.AdminManagementSession.validateUpdate(ct)
 	})
 }

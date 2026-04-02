@@ -467,6 +467,11 @@ func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigs
 				return err
 			}
 			if cmd.add {
+				configType, _ := self.env.GetStores().ConfigType.LoadById(ctx.Tx(), cfg.TypeId)
+				if configType != nil && (configType.Target == nil || *configType.Target != db.ConfigTypeTargetService) {
+					return errorz.NewFieldError(fmt.Sprintf("config %v has config type %v which does not target services",
+						cfg.Name, configType.Name), "serviceConfigs", cmd.serviceConfigs)
+				}
 				if identity.ServiceConfigs == nil {
 					identity.ServiceConfigs = map[string]map[string]string{}
 				}

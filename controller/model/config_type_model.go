@@ -32,6 +32,7 @@ type ConfigType struct {
 	models.BaseEntity
 	Name   string
 	Schema map[string]interface{}
+	Target *string
 }
 
 func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
@@ -60,6 +61,7 @@ func (entity *ConfigType) toBoltEntity() (*db.ConfigType, error) {
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
 		Schema:        entity.Schema,
+		Target:        entity.Target,
 	}, nil
 }
 
@@ -75,5 +77,6 @@ func (entity *ConfigType) fillFrom(_ Env, _ *bbolt.Tx, boltConfigType *db.Config
 	entity.FillCommon(boltConfigType)
 	entity.Name = boltConfigType.Name
 	entity.Schema = boltConfigType.Schema
+	entity.Target = boltConfigType.Target
 	return nil
 }

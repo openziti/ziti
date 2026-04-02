@@ -32,6 +32,7 @@ import (
 type createConfigTypeOptions struct {
 	api.EntityOptions
 	schemaFile string
+	target     string
 }
 
 // newCreateConfigTypeCmd creates the 'edge controller create service-policy' command
@@ -56,6 +57,7 @@ func newCreateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.schemaFile, "schema-file", "f", "", "Read config type JSON schema from a file instead of the command line")
+	cmd.Flags().StringVar(&options.target, "target", "", "The target for this config type (e.g. 'service' or 'router')")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -94,6 +96,9 @@ func runCreateConfigType(o *createConfigTypeOptions) error {
 	api.SetJSONValue(entityData, o.Args[0], "name")
 	if schemaMap != nil {
 		api.SetJSONValue(entityData, schemaMap, "schema")
+	}
+	if o.target != "" {
+		api.SetJSONValue(entityData, o.target, "target")
 	}
 	o.SetTags(entityData)
 

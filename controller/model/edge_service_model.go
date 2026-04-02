@@ -61,24 +61,31 @@ func (entity *EdgeService) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Edg
 }
 
 func (entity *EdgeService) validateConfigs(tx *bbolt.Tx, env Env) error {
-	// only need to check for config type conflicts if there is more than 1 config
-	if len(entity.Configs) < 2 {
+	if len(entity.Configs) == 0 {
 		return nil
 	}
 
 	typeMap := map[string]*db.Config{}
 	configStore := env.GetStores().Config
+	configTypeStore := env.GetStores().ConfigType
 	for _, id := range entity.Configs {
 		config, _ := configStore.LoadById(tx, id)
 		if config == nil {
 			return boltz.NewNotFoundError(db.EntityTypeConfigs, "id", id)
 		}
-		conflictConfig, found := typeMap[config.TypeId]
-		if found {
-			configTypeName := "<not found>"
-			if configType, _ := env.GetStores().ConfigType.LoadById(tx, config.TypeId); configType != nil {
-				configTypeName = configType.Name
+
+		configType, _ := configTypeStore.LoadById(tx, config.TypeId)
+		configTypeName := "<not found>"
+		if configType != nil {
+			configTypeName = configType.Name
+			if configType.Target == nil || *configType.Target != db.ConfigTypeTargetService {
+				msg := fmt.Sprintf("config %v has config type %v which does not target services",
+					config.Name, configTypeName)
+				return errorz.NewFieldError(msg, "configs", entity.Configs)
 			}
+		}
+
+		if conflictConfig, found := typeMap[config.TypeId]; found {
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
 				conflictConfig.Name, config.Name, configTypeName)
 			return errorz.NewFieldError(msg, "configs", entity.Configs)

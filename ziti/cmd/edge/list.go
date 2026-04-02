@@ -1529,13 +1529,14 @@ func runListConfigTypes(o *api.Options) error {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Schema"})
+	t.AppendHeader(table.Row{"ID", "Name", "Target", "Schema"})
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
 		t.AppendRow(table.Row{
 			wrapper.String("id"),
 			wrapper.String("name"),
+			wrapper.String("target"),
 		})
 	}
 	api.RenderTable(o, t, pagingInfo)

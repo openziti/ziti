@@ -173,6 +173,7 @@ message ConfigType {
   string name = 2;
   bytes schema = 3;
   map<string, TagValue> tags = 4;
+  optional string target = 5;
 }
 
 // Controllers

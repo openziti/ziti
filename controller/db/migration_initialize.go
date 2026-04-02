@@ -69,6 +69,7 @@ var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
 var serverConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
 	Name:          "ziti-tunneler-server.v1",
+	Target:        new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
 		"type":                 "object",
@@ -484,6 +485,7 @@ var hostV1ConfigTypeId = "NH5p4FpGR"
 var hostV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV1ConfigTypeId},
 	Name:          "host.v1",
+	Target:        new(ConfigTypeTargetService),
 	Schema: combine(
 		map[string]interface{}{
 			"$id":         "http://ziti-edge.netfoundry.io/schemas/host.v1.schema.json",
@@ -496,6 +498,7 @@ var hostV2ConfigTypeId = "host.v2"
 var hostV2ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV2ConfigTypeId},
 	Name:          "host.v2",
+	Target:        new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id": "http://ziti-edge.netfoundry.io/schemas/host.v2.schema.json",
 		"definitions": combine(
@@ -527,6 +530,7 @@ var hostV2ConfigType = &ConfigType{
 var interceptV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: "g7cIWbcGg"},
 	Name:          "intercept.v1",
+	Target:        new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/intercept.v1.config.json",
 		"type":                 "object",
@@ -591,7 +595,8 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: InterfacesV1TypeId,
+	Name:   InterfacesV1TypeId,
+	Target: new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
 		"type":                 "object",
@@ -619,7 +624,8 @@ var hostInterfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: HostInterfacesV1TypeId,
 	},
-	Name: HostInterfacesV1TypeId,
+	Name:   HostInterfacesV1TypeId,
+	Target: new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/host-interfaces.v1.config.json",
 		"type":                 "object",
@@ -647,7 +653,8 @@ var proxyConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: ProxyV1TypeId,
 	},
-	Name: ProxyV1TypeId,
+	Name:   ProxyV1TypeId,
+	Target: new(ConfigTypeTargetService),
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/proxy.v1.config.json",
 		"type":                 "object",
@@ -691,6 +698,7 @@ func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep)
 	clientConfigTypeV1 := &ConfigType{
 		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
 		Name:          "ziti-tunneler-client.v1",
+		Target:        new(ConfigTypeTargetService),
 		Schema: map[string]interface{}{
 			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
 			"type":                 "object",
