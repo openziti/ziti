@@ -39,3 +39,4 @@ doc/ha/data
 simple-transfer-*/
 etc/endpoints
 etc/endpoints.yml
+.fablab-instance

@@ -45,6 +45,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
@@ -121,7 +122,8 @@ type AppEnv struct {
 	TraceManager *TraceManager
 	timelineId   concurrenz.AtomicValue[string]
 
-	TokenIssuerCache *model.TokenIssuerCache
+	TokenIssuerCache   *model.TokenIssuerCache
+	ConnectEventsPool  goroutines.Pool
 }
 
 // GetTokenIssuerCache returns the TokenIssuerCache instance for verifying external JWT tokens.
@@ -752,6 +754,21 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 	}
 
 	ae.timelineId.Store(timelineId)
+
+	connectEventsPool, err := goroutines.NewPool(goroutines.PoolConfig{
+		QueueSize:   cfg.ConnectEventsConfig.QueueSize,
+		MinWorkers:  cfg.ConnectEventsConfig.MinWorkers,
+		MaxWorkers:  cfg.ConnectEventsConfig.MaxWorkers,
+		IdleTime:    cfg.ConnectEventsConfig.IdleTime,
+		CloseNotify: host.GetCloseNotifyChannel(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().Errorf("panic in connect events pool worker: %v", err)
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create connect events pool: %w", err)
+	}
+	ae.ConnectEventsPool = connectEventsPool
 
 	ae.identityRefreshMeter = host.GetMetricsRegistry().Meter("identity.refresh")
 

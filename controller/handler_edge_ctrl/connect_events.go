@@ -31,19 +31,16 @@ import (
 
 type connectEventsHandler struct {
 	appEnv *env.AppEnv
-	eventC chan func()
 	ch     ctrlchan.CtrlChannel
 }
 
+// NewConnectEventsHandler creates a handler that processes identity connect/disconnect
+// events from routers using the shared ConnectEventsPool on AppEnv.
 func NewConnectEventsHandler(appEnv *env.AppEnv, ch ctrlchan.CtrlChannel) channel.TypedReceiveHandler {
-	result := &connectEventsHandler{
+	return &connectEventsHandler{
 		appEnv: appEnv,
-		eventC: make(chan func(), 1000),
 		ch:     ch,
 	}
-
-	go result.processEvents()
-	return result
 }
 
 func (self *connectEventsHandler) ContentType() int32 {
@@ -57,24 +54,10 @@ func (self *connectEventsHandler) HandleReceive(msg *channel.Message, ch channel
 		return
 	}
 
-	processF := func() {
+	if err := self.appEnv.ConnectEventsPool.Queue(func() {
 		self.HandleConnectEvents(req, ch)
-	}
-
-	select {
-	case self.eventC <- processF:
-	case <-self.appEnv.GetCloseNotifyChannel():
-	}
-}
-
-func (self *connectEventsHandler) processEvents() {
-	for {
-		select {
-		case eventF := <-self.eventC:
-			eventF()
-		case <-self.appEnv.GetCloseNotifyChannel():
-			return
-		}
+	}); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to queue connect events for processing")
 	}
 }
 
