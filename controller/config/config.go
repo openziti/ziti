@@ -267,7 +267,7 @@ func LoadConfig(path string) (*Config, error) {
 		controllerConfig.Id = identity.NewIdentity(id)
 
 		if err := controllerConfig.Id.WatchFiles(); err != nil {
-			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+			pfxlog.Logger().WithError(err).Warn("could not enable file watching on identity")
 		}
 	}
 
@@ -405,7 +405,7 @@ func LoadConfig(path string) (*Config, error) {
 				controllerConfig.Raft.Logger = hclog.New(&options)
 			}
 
-			if value, found := cfgmap["commandHandler"]; found {
+			if value, found := submap["commandHandler"]; found {
 				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := chSubMap["maxQueueSize"]; found {
 						controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = uint16(value.(int))
@@ -472,7 +472,7 @@ func LoadConfig(path string) (*Config, error) {
 				}
 
 				if trustDomain != "" {
-					if !strings.HasPrefix("spiffe://", trustDomain) {
+					if !strings.HasPrefix(trustDomain, "spiffe://") {
 						trustDomain = "spiffe://" + trustDomain
 					}
 
@@ -530,7 +530,7 @@ func LoadConfig(path string) (*Config, error) {
 			for _, trustDomain := range valArr {
 				if strTrustDomain, ok := trustDomain.(string); ok {
 
-					if !strings.HasPrefix("spiffe://", strTrustDomain) {
+					if !strings.HasPrefix(strTrustDomain, "spiffe://") {
 						strTrustDomain = "spiffe://" + strTrustDomain
 					}
 
@@ -679,9 +679,8 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
-				if value != nil {
-					m := value.(map[interface{}]interface{})
-					a := strings.TrimPrefix(m["advertiseAddress"].(string), "tls:")
+				if controllerConfig.Ctrl.Options.AdvertiseAddress != nil {
+					a := strings.TrimPrefix((*controllerConfig.Ctrl.Options.AdvertiseAddress).String(), "tls:")
 					v := controllerConfig.Id.ValidFor(strings.Split(a, ":")[0])
 					if v != nil {
 						pfxlog.Logger().Fatalf("provided value for ctrl/options/advertiseAddress is invalid (%v)", v)
@@ -974,11 +973,11 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["listenerBufferSize"]; found {
 				if val, ok := value.(int); ok {
 					if val < 0 {
-						return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, must be >= 0 %v", value)
+						return nil, fmt.Errorf("failed to parse routerDataModel.listenerBufferSize, must be >= 0 %v", value)
 					}
 					controllerConfig.RouterDataModel.ListenerBufferSize = uint(val)
 				} else {
-					return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, should be int not value %T", value)
+					return nil, fmt.Errorf("failed to parse routerDataModel.listenerBufferSize, should be int not value %T", value)
 				}
 			}
 		} else {
@@ -1220,7 +1219,7 @@ func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimi
 					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMaxSizeValue)
 			}
 
-			_, timeoutSpecified = cfgmap["timeout"]
+			_, timeoutSpecified = submap["timeout"]
 		} else {
 			return errors.Errorf("invalid type for tls.rateLimiter, should be map instead of %T", value)
 		}

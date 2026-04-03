@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -98,8 +99,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		ch:                       binding.GetChannel(),
 		latencySemaphore:         concurrenz.NewSemaphore(2),
 		closeUnresponsiveTimeout: self.heartbeatOptions.CloseUnresponsiveTimeout,
-		lastResponse:             time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(), // wait at least 2x timeout before closing
 	}
+	cb.lastResponse.Store(time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli()) // wait at least 2x timeout before closing
 	channel.ConfigureHeartbeat(binding, self.heartbeatOptions.SendInterval, self.heartbeatOptions.CheckInterval, cb)
 
 	xctrlDone := make(chan struct{})
@@ -122,7 +123,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 type heartbeatCallback struct {
 	latencyMetric            metrics.Histogram
 	queueTimeMetric          metrics.Histogram
-	lastResponse             int64
+	lastResponse             atomic.Int64
 	ch                       channel.Channel
 	latencySemaphore         concurrenz.Semaphore
 	closeUnresponsiveTimeout time.Duration
@@ -136,12 +137,12 @@ func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	now := time.Now()
-	self.lastResponse = now.UnixMilli()
+	self.lastResponse.Store(now.UnixMilli())
 	self.latencyMetric.Update(now.UnixNano() - ts)
 }
 
 func (self *heartbeatCallback) timeSinceLastResponse(nowUnixMillis int64) time.Duration {
-	return time.Duration(nowUnixMillis-self.lastResponse) * time.Millisecond
+	return time.Duration(nowUnixMillis-self.lastResponse.Load()) * time.Millisecond
 }
 
 func (self *heartbeatCallback) CheckHeartBeat() {

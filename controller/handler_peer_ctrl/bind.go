@@ -17,6 +17,7 @@
 package handler_peer_ctrl
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -50,8 +51,8 @@ func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, heartbeatOpti
 			ch:                       binding.GetChannel(),
 			latencySemaphore:         concurrenz.NewSemaphore(2),
 			closeUnresponsiveTimeout: heartbeatOptions.CloseUnresponsiveTimeout,
-			lastResponse:             time.Now().Add(heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(), // wait at least 2x timeout before closing
 		}
+		cb.lastResponse.Store(time.Now().Add(heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli()) // wait at least 2x timeout before closing
 
 		channel.ConfigureHeartbeat(binding, heartbeatOptions.SendInterval, heartbeatOptions.CheckInterval, cb)
 		return nil
@@ -63,7 +64,7 @@ func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, heartbeatOpti
 type heartbeatCallback struct {
 	latencyMetric            metrics.Histogram
 	queueTimeMetric          metrics.Histogram
-	lastResponse             int64
+	lastResponse             atomic.Int64
 	ch                       channel.Channel
 	latencySemaphore         concurrenz.Semaphore
 	closeUnresponsiveTimeout time.Duration
@@ -77,12 +78,12 @@ func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	now := time.Now()
-	self.lastResponse = now.UnixMilli()
+	self.lastResponse.Store(now.UnixMilli())
 	self.latencyMetric.Update(now.UnixNano() - ts)
 }
 
 func (self *heartbeatCallback) timeSinceLastResponse(nowUnixMillis int64) time.Duration {
-	return time.Duration(nowUnixMillis-self.lastResponse) * time.Millisecond
+	return time.Duration(nowUnixMillis-self.lastResponse.Load()) * time.Millisecond
 }
 
 func (self *heartbeatCallback) CheckHeartBeat() {
@@ -117,5 +118,5 @@ func (self *heartbeatCallback) checkQueueTime() {
 }
 
 func (self *heartbeatCallback) logger() *logrus.Entry {
-	return pfxlog.Logger().WithField("channelType", "router").WithField("channelId", self.ch.Id())
+	return pfxlog.Logger().WithField("channelType", "peer").WithField("channelId", self.ch.Id())
 }
