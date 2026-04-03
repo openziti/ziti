@@ -22,6 +22,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -105,6 +106,9 @@ func sowChaos(run model.Run) error {
 			if cp, ok := runtimeErr.Response.(runtime.ClientResponse); ok {
 				body, _ := io.ReadAll(cp.Body())
 				log.WithField("msg", cp.Message()).WithField("body", string(body)).Error("runtime error")
+			}
+			if strings.HasPrefix(task.Type(), "delete.") && runtimeErr.Code == http.StatusNotFound {
+				return parallel.ErrActionIgnore
 			}
 		}
 
