@@ -608,7 +608,7 @@ func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 func (o *Overlay) WaitForRouterReady(timeout time.Duration) error {
 	if !o.Routerless {
 		routerReady := make(chan error)
-		o.WaitForRouter(timeout, routerReady)
+		go o.WaitForRouter(timeout, routerReady)
 
 		select {
 		case err := <-routerReady:

@@ -44,7 +44,7 @@ function _wait_for_controller {
 
 function _wait_for_public_router {
   local advertised_host_port="${ZITI_ROUTER_ADVERTISED_ADDRESS}:${ZITI_ROUTER_PORT}"
-  local COUNTDOWN=10
+  local COUNTDOWN=15
   until [[ -s "${ZITI_HOME}/${ZITI_ROUTER_NAME}.cert" ]] \
     && openssl s_client \
       -connect "${advertised_host_port}" \

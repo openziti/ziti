@@ -154,6 +154,10 @@ func Test_CLI_Test_Suite(t *testing.T) {
 		t.Fatalf("controllerUnderTest start failed: %v", cutStartErr)
 	}
 
+	if err := testState.controllerUnderTest.WaitForRouterReady(20 * time.Second); err != nil {
+		t.Fatalf("controllerUnderTest router not ready: %v", err)
+	}
+
 	if lo, le := testState.controllerUnderTest.Login(); le != nil {
 		t.Fatalf("unable to login before running tests: %v", le)
 	} else {
@@ -282,8 +286,8 @@ func testWithTimeout(t *testing.T, name string, fn func(*testing.T), d time.Dura
 	t.Run(name, func(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			fn(t)
-			close(done)
 		}()
 
 		select {
