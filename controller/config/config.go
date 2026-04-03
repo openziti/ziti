@@ -1220,7 +1220,7 @@ func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimi
 					rateLimitConfig.MinSize, TlsHandshakeRateLimiterMaxSizeValue)
 			}
 
-			_, timeoutSpecified = cfgmap["timeout"]
+			_, timeoutSpecified = submap["timeout"]
 		} else {
 			return errors.Errorf("invalid type for tls.rateLimiter, should be map instead of %T", value)
 		}
