@@ -405,7 +405,7 @@ func LoadConfig(path string) (*Config, error) {
 				controllerConfig.Raft.Logger = hclog.New(&options)
 			}
 
-			if value, found := cfgmap["commandHandler"]; found {
+			if value, found := submap["commandHandler"]; found {
 				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := chSubMap["maxQueueSize"]; found {
 						controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = uint16(value.(int))
