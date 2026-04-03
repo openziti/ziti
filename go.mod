@@ -23,7 +23,7 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gaissmai/extnetip v1.3.1
 	github.com/go-acme/lego/v4 v4.32.0
-	github.com/go-jose/go-jose/v4 v4.1.3
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-openapi/errors v0.22.7
 	github.com/go-openapi/jsonpointer v0.22.5
 	github.com/go-openapi/loads v0.23.3
