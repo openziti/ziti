@@ -267,7 +267,7 @@ func LoadConfig(path string) (*Config, error) {
 		controllerConfig.Id = identity.NewIdentity(id)
 
 		if err := controllerConfig.Id.WatchFiles(); err != nil {
-			pfxlog.Logger().Warn("could not enable file watching on identity: %w", err)
+			pfxlog.Logger().WithError(err).Warn("could not enable file watching on identity")
 		}
 	}
 
@@ -679,9 +679,8 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
-				if value != nil {
-					m := value.(map[interface{}]interface{})
-					a := strings.TrimPrefix(m["advertiseAddress"].(string), "tls:")
+				if controllerConfig.Ctrl.Options.AdvertiseAddress != nil {
+					a := strings.TrimPrefix((*controllerConfig.Ctrl.Options.AdvertiseAddress).String(), "tls:")
 					v := controllerConfig.Id.ValidFor(strings.Split(a, ":")[0])
 					if v != nil {
 						pfxlog.Logger().Fatalf("provided value for ctrl/options/advertiseAddress is invalid (%v)", v)
@@ -974,11 +973,11 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["listenerBufferSize"]; found {
 				if val, ok := value.(int); ok {
 					if val < 0 {
-						return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, must be >= 0 %v", value)
+						return nil, fmt.Errorf("failed to parse routerDataModel.listenerBufferSize, must be >= 0 %v", value)
 					}
 					controllerConfig.RouterDataModel.ListenerBufferSize = uint(val)
 				} else {
-					return nil, errors.Wrapf(err, "failed to parse routerDataModel.listenerBufferSize, should be int not value %T", value)
+					return nil, fmt.Errorf("failed to parse routerDataModel.listenerBufferSize, should be int not value %T", value)
 				}
 			}
 		} else {
