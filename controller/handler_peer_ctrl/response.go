@@ -50,12 +50,17 @@ func sendErrorResponse(m *channel.Message, ch channel.Channel, err error, errorC
 
 func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.ApiError) {
 	encodingMap := map[string]interface{}{}
-	encodingMap["code"] = err.Code
+	encodingMap["code"] = err.AppCode
 	encodingMap["message"] = err.Message
 	encodingMap["status"] = err.Status
-	encodingMap["cause"] = err.Cause
+
 	if err.Cause != nil {
 		encodingMap["causeType"] = fmt.Sprintf("%T", err.Cause)
+		if causeBytes, causeErr := json.Marshal(err.Cause); causeErr == nil && string(causeBytes) != "{}" {
+			encodingMap["cause"] = err.Cause
+		} else {
+			encodingMap["cause"] = err.Cause.Error()
+		}
 	}
 
 	buf, encodeErr := json.Marshal(encodingMap)
