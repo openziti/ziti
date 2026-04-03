@@ -865,13 +865,6 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			return errors.Wrap(err, "can't decode version from returned from dialing peer")
 		}
 
-		certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader)
-		if found {
-			if cert, err := x509.ParseCertificate(certHeader); err == nil {
-				peer.SigningCerts = append(peer.SigningCerts, cert)
-			}
-		}
-
 		apiAddressesHeader, found := headerWithFallback(ch.Underlay().Headers(), ApiAddressesHeader, LegacyApiAddressesHeader)
 		if found {
 			if err := json.Unmarshal(apiAddressesHeader, &peer.ApiAddresses); err != nil {
@@ -888,7 +881,14 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		}
 
 		peer.Version = versionInfo
-		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+		if certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader); found {
+			if cert, err := x509.ParseCertificate(certHeader); err == nil {
+				peer.SigningCerts = []*x509.Certificate{cert}
+			}
+		}
+		if len(peer.SigningCerts) == 0 {
+			peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+		}
 
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
 		binding.AddReceiveHandlerF(RaftConnectType, peer.handleReceiveConnect)
