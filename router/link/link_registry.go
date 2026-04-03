@@ -472,7 +472,8 @@ func (self *linkRegistryImpl) markFaultedLinksNotified(successfullySent []stateA
 
 func (self *linkRegistryImpl) dialFailed(state *linkState, applyFailed bool) {
 	self.queueEvent(&updateLinkStatusToDialFailed{
-		linkState: state,
+		linkState:   state,
+		applyFailed: applyFailed,
 	})
 }
 
