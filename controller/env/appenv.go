@@ -182,7 +182,7 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, err
 	}
 
-	if revocation != nil && revocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
+	if revocation != nil && revocation.CreatedAt.Truncate(time.Second).After(accessClaims.IssuedAt.AsTime()) {
 		return nil, errors.New("access token has been revoked by identity")
 	}
 
@@ -726,6 +726,30 @@ func (ae *AppEnv) ProcessJwt(rc *response.RequestContext, token *jwt.Token) erro
 		} else {
 			return err
 		}
+	}
+
+	// Check if this specific token has been revoked by JWTID.
+	tokenRevocation, err := ae.GetManagers().Revocation.Read(rc.Claims.JWTID)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return err
+	}
+	if tokenRevocation != nil {
+		apiErr := errorz.NewUnauthorized()
+		apiErr.Cause = errors.New("access token has been revoked by id")
+		apiErr.AppendCause = true
+		return apiErr
+	}
+
+	// Check if the issuing identity has been terminated via a high-water-mark revocation.
+	identityRevocation, err := ae.GetManagers().Revocation.Read(rc.Claims.Subject)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return err
+	}
+	if identityRevocation != nil && identityRevocation.CreatedAt.Truncate(time.Second).After(rc.Claims.IssuedAt.AsTime()) {
+		apiErr := errorz.NewUnauthorized()
+		apiErr.Cause = errors.New("access token has been revoked by identity")
+		apiErr.AppendCause = true
+		return apiErr
 	}
 
 	rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)

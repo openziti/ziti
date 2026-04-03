@@ -17,6 +17,9 @@
 package model
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/controller/change"
@@ -57,6 +60,41 @@ func (self *RevocationManager) ApplyCreate(cmd *command.CreateEntityCommand[*Rev
 
 func (self *RevocationManager) newModelEntity() *Revocation {
 	return &Revocation{}
+}
+
+const revocationDeleteBatchSize = 500
+
+// DeleteExpired deletes all revocations whose ExpiresAt is in the past, working
+// in batches of revocationDeleteBatchSize until no expired entries remain.
+// Returns the total number of entries deleted.
+func (self *RevocationManager) DeleteExpired(ctx *change.Context) (int, error) {
+	query := fmt.Sprintf(`expiresAt < datetime(%s) limit %d`, time.Now().UTC().Format(time.RFC3339), revocationDeleteBatchSize)
+	total := 0
+	for {
+		result, err := self.BaseList(query)
+		if err != nil {
+			return total, err
+		}
+
+		ids := make([]string, 0, len(result.GetEntities()))
+		for _, entity := range result.GetEntities() {
+			ids = append(ids, entity.GetId())
+		}
+
+		if len(ids) == 0 {
+			break
+		}
+
+		if err = self.deleteEntityBatch(ids, ctx); err != nil {
+			return total, err
+		}
+		total += len(ids)
+
+		if len(ids) < revocationDeleteBatchSize {
+			break
+		}
+	}
+	return total, nil
 }
 
 func (self *RevocationManager) Read(id string) (*Revocation, error) {

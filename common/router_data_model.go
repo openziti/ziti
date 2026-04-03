@@ -875,6 +875,16 @@ func (rdm *RouterDataModel) getDataStateAlreadyLocked(index uint64) *edge_ctrl_p
 		events = append(events, newEvent)
 	})
 
+	rdm.Revocations.IterCb(func(key string, v *edge_ctrl_pb.DataState_Revocation) {
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model: &edge_ctrl_pb.DataState_Event_Revocation{
+				Revocation: v,
+			},
+		}
+		events = append(events, newEvent)
+	})
+
 	var caches map[string]*edge_ctrl_pb.Cache
 
 	if !rdm.terminatorIdCache.IsEmpty() {

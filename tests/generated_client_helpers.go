@@ -17,6 +17,7 @@ import (
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	clientEnroll "github.com/openziti/edge-api/rest_client_api_client/enroll"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
@@ -622,4 +623,40 @@ func IsJwt(token string) bool {
 	}
 
 	return false
+}
+
+// AuthenticateOidc sets the client to use OIDC, authenticates with the given
+// credentials, and returns the OIDC API session. Returns an error if
+// authentication fails or the session is not an OIDC session.
+func (helper *ManagementHelperClient) AuthenticateOidc(creds edge_apis.Credentials) (*edge_apis.ApiSessionOidc, error) {
+	helper.SetUseOidc(true)
+	apiSession, err := helper.Authenticate(creds, nil)
+	if err != nil {
+		return nil, err
+	}
+	oidcSession, ok := apiSession.(*edge_apis.ApiSessionOidc)
+	if !ok {
+		return nil, fmt.Errorf("expected *edge_apis.ApiSessionOidc, got %T", apiSession)
+	}
+	return oidcSession, nil
+}
+
+// GetCurrentApiSessionDetail returns the current API session detail for a management client.
+func (helper *ManagementHelperClient) GetCurrentApiSessionDetail() (*rest_model.CurrentAPISessionDetail, error) {
+	resp, err := helper.GetCurrentApiSessionDetailResponse()
+	if err != nil {
+		return nil, err
+	}
+	return resp.Payload.Data, nil
+}
+
+// GetCurrentApiSessionDetailResponse returns the full response for the current API session,
+// including typed errors for status-code assertions.
+func (helper *ManagementHelperClient) GetCurrentApiSessionDetailResponse() (*managementCurrentApiSession.GetCurrentAPISessionOK, error) {
+	params := &managementCurrentApiSession.GetCurrentAPISessionParams{}
+	resp, err := helper.API.CurrentAPISession.GetCurrentAPISession(params, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not get current api session detail: %w", rest_util.WrapErr(err))
+	}
+	return resp, nil
 }
