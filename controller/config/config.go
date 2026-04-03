@@ -472,7 +472,7 @@ func LoadConfig(path string) (*Config, error) {
 				}
 
 				if trustDomain != "" {
-					if !strings.HasPrefix("spiffe://", trustDomain) {
+					if !strings.HasPrefix(trustDomain, "spiffe://") {
 						trustDomain = "spiffe://" + trustDomain
 					}
 
@@ -530,7 +530,7 @@ func LoadConfig(path string) (*Config, error) {
 			for _, trustDomain := range valArr {
 				if strTrustDomain, ok := trustDomain.(string); ok {
 
-					if !strings.HasPrefix("spiffe://", strTrustDomain) {
+					if !strings.HasPrefix(strTrustDomain, "spiffe://") {
 						strTrustDomain = "spiffe://" + strTrustDomain
 					}
 
