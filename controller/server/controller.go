@@ -46,10 +46,11 @@ type Controller struct {
 }
 
 const (
-	policyMinFreq     = 1 * time.Second
-	policyMaxFreq     = 1 * time.Hour
-	policyAppWanFreq  = 1 * time.Second
-	policySessionFreq = 5 * time.Second
+	policyMinFreq          = 1 * time.Second
+	policyMaxFreq          = 1 * time.Hour
+	policyAppWanFreq       = 1 * time.Second
+	policySessionFreq      = 5 * time.Second
+	policyRevocationFreq   = 1 * time.Minute
 )
 
 func NewController(host env.HostController) (*Controller, error) {
@@ -193,6 +194,14 @@ func (c *Controller) Initialize() {
 			WithField("enforcerId", sessionEnforcer.GetId()).
 			Errorf("could not add session enforcer")
 
+	}
+
+	revocationEnforcer := policy.NewRevocationEnforcer(c.AppEnv, policyRevocationFreq)
+	if err := c.policyEngine.AddOperation(revocationEnforcer); err != nil {
+		log.WithField("cause", err).
+			WithField("enforcerName", revocationEnforcer.GetName()).
+			WithField("enforcerId", revocationEnforcer.GetId()).
+			Errorf("could not add revocation enforcer")
 	}
 
 	if err := c.AppEnv.GetStores().EventualEventer.Start(c.AppEnv.GetHostController().GetCloseNotifyChannel()); err != nil {

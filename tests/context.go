@@ -39,11 +39,12 @@ import (
 	"testing"
 	"time"
 
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
-	env2 "github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/xgress_router"
+	routerEnv "github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/zitirest"
+	oidcPkg "github.com/zitadel/oidc/v3/pkg/oidc"
+	oauth2Pkg "golang.org/x/oauth2"
 
 	"github.com/Jeffail/gabs"
 	"github.com/go-openapi/strfmt"
@@ -63,7 +64,6 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
-	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller"
 	"github.com/openziti/ziti/controller/env"
@@ -71,23 +71,18 @@ import (
 	"github.com/openziti/ziti/controller/xt_smartrouting"
 	"github.com/openziti/ziti/router"
 	"github.com/openziti/ziti/router/enroll"
-	"github.com/openziti/ziti/router/xgress_edge"
-	"github.com/openziti/ziti/router/xgress_edge_tunnel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
 )
 
-const (
-	ControllerConfFile         = "ats-ctrl.yml"
-	EdgeRouterConfFile         = "ats-edge.router.yml"
-	TunnelerEdgeRouterConfFile = "ats-edge-tunneler.router.yml"
-	TransitRouterConfFile      = "ats-transit.router.yml"
-)
-
 func init() {
-	pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday())
+	logOptions := pfxlog.DefaultOptions().
+		SetTrimPrefix("github.com/openziti/").
+		StartingToday()
+
+	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
+	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
@@ -111,10 +106,6 @@ func I(i int64) *int64 {
 	return &i
 }
 
-func T(t time.Time) *time.Time {
-	return &t
-}
-
 // ST returns a pointer to a strfmt.Date time. A helper function
 // for creating rest_model types
 func ST(t time.Time) *strfmt.DateTime {
@@ -123,15 +114,16 @@ func ST(t time.Time) *strfmt.DateTime {
 }
 
 type TestContext struct {
-	*require.Assertions
+	*CustomAssertions
 	ApiHost                string
 	AdminAuthenticator     *updbAuthenticator
+	Managers               *ManagerHelpers
 	AdminManagementSession *session
 	AdminClientSession     *session
 	RestClients            *zitirest.Clients
 	fabricController       *controller.Controller
 	EdgeController         *server.Controller
-	Req                    *require.Assertions
+	Req                    *CustomAssertions
 	clientApiClient        *resty.Client
 	managementApiClient    *resty.Client
 	enabledJsonLogging     bool
@@ -142,13 +134,20 @@ type TestContext struct {
 	testing             *testing.T
 	LogLevel            string
 	ControllerConfig    *config.Config
+	configSet           ConfigSet
 }
 
-var defaultTestContext = &TestContext{
-	AdminAuthenticator: &updbAuthenticator{
-		Username: eid.New(),
-		Password: eid.New(),
-	},
+var defaultTestContext = newDefaultTestContext()
+
+func newDefaultTestContext() *TestContext {
+	ctx := &TestContext{
+		AdminAuthenticator: &updbAuthenticator{
+			Username: eid.New(),
+			Password: eid.New(),
+		},
+	}
+	ctx.Managers = &ManagerHelpers{ctx: ctx}
+	return ctx
 }
 
 func NewTestContext(t *testing.T) *TestContext {
@@ -158,13 +157,25 @@ func NewTestContext(t *testing.T) *TestContext {
 			Username: eid.New(),
 			Password: eid.New(),
 		},
-		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
-		Req:      require.New(t),
+		LogLevel:  os.Getenv("ZITI_TEST_LOG_LEVEL"),
+		configSet: DefaultATS,
 	}
-	ret.Assertions = ret.Req
+	ret.Managers = &ManagerHelpers{ctx: ret}
 	ret.testContextChanged(t)
 
 	return ret
+}
+
+// NewTestContextWithConfigSet creates a TestContext that uses the supplied ConfigSet
+// instead of DefaultATS. All other behavior, including DB path and API host, is unchanged.
+func NewTestContextWithConfigSet(t *testing.T, cs ConfigSet) *TestContext {
+	ret := NewTestContext(t)
+	ret.configSet = cs
+	return ret
+}
+
+func (ctx *TestContext) controllerConfFile() string {
+	return ctx.configSet.CtrlConfig
 }
 
 func GetTestContext() *TestContext {
@@ -176,8 +187,9 @@ func GetTestContext() *TestContext {
 // errors.
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
-	ctx.Req = require.New(t)
-	ctx.Assertions = ctx.Req
+	newReq := NewCustomAssertions(t)
+	ctx.Req = newReq
+	ctx.CustomAssertions = newReq
 }
 
 // NextTest is an alias for testContextChanged and reflects the bbolt testing framework
@@ -219,7 +231,7 @@ func (ctx *TestContext) NewEdgeClientApi(totpProvider func(chan string)) *Client
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	client := edge_apis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edgeApis.NewClientApiClient([]*url.URL{ctx.ClientApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
 	return &ClientHelperClient{
 		ClientApiClient: client,
@@ -231,7 +243,7 @@ func (ctx *TestContext) NewEdgeManagementApi(totpProvider func(chan string)) *Ma
 	if totpProvider == nil {
 		totpProvider = func(chan string) {}
 	}
-	client := edge_apis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
+	client := edgeApis.NewManagementApiClient([]*url.URL{ctx.ManagementApiUrl()}, ctx.ControllerCaPool(), totpProvider)
 
 	return &ManagementHelperClient{
 		ManagementApiClient: client,
@@ -395,11 +407,23 @@ func (ctx *TestContext) NewClientComponentsWithClientCert(certs []*x509.Certific
 
 }
 
-func (ctx *TestContext) StartServer() {
-	ctx.StartServerFor("testdata/default.db", true)
+func (ctx *TestContext) StartServer() *ControllerHelper {
+	return ctx.StartServerFor("testdata/default.db", true)
 }
 
-func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
+// StartServerWithConfigModifier starts the controller and edge layer, applying
+// modifier to the loaded config before the controller is created. This lets a
+// single test override settings (e.g., OIDC token durations) without affecting
+// other tests that call StartServer with the shared default config.
+func (ctx *TestContext) StartServerWithConfigModifier(modifier func(*config.Config)) *ControllerHelper {
+	return ctx.startServerWith("testdata/default.db", true, modifier)
+}
+
+func (ctx *TestContext) StartServerFor(testDb string, clean bool) *ControllerHelper {
+	return ctx.startServerWith(testDb, clean, nil)
+}
+
+func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config)) *ControllerHelper {
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -426,8 +450,12 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")
-	ctrlConfig, err := config.LoadConfig(ControllerConfFile)
+	ctrlConfig, err := config.LoadConfig(ctx.controllerConfFile())
 	ctx.Req.NoError(err)
+
+	if modifier != nil {
+		modifier(ctrlConfig)
+	}
 
 	ctx.ControllerConfig = ctrlConfig
 
@@ -446,16 +474,18 @@ func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 		log.WithError(err).Warn("error during initialize admin")
 	}
 
-	logrus.Infof("username: %v", ctx.AdminAuthenticator.Username)
-	logrus.Infof("password: %v", ctx.AdminAuthenticator.Password)
+	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
+	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
 
 	ctx.EdgeController.Run()
 	go func() {
 		err = ctx.fabricController.Run()
 		ctx.Req.NoError(err)
 	}()
-	err = ctx.waitForCtrlPort(time.Minute * 5)
+	err = ctx.waitForRestAPIPort(time.Minute * 5)
 	ctx.Req.NoError(err)
+
+	return &ControllerHelper{Controller: ctx.EdgeController}
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
@@ -485,11 +515,11 @@ func (ctx *TestContext) requireCreateEdgeRouter(tunneler bool, roleAttributes ..
 func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) {
 	jwt := ctx.AdminManagementSession.getEdgeRouterJwt(routerId)
 
-	configFile := EdgeRouterConfFile
+	configFile := ctx.configSet.EdgeRouter
 	if tunneler {
-		configFile = TunnelerEdgeRouterConfFile
+		configFile = ctx.configSet.TunnelerRouter
 	}
-	routerConfig, err := env2.LoadConfigWithOptions(configFile, false)
+	routerConfig, err := routerEnv.LoadConfigWithOptions(configFile, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -510,7 +540,7 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	ctx.transitRouterEntity = ctx.AdminManagementSession.requireNewTransitRouter()
 	jwt := ctx.AdminManagementSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
-	routerConfig, err := env2.LoadConfigWithOptions(TransitRouterConfFile, false)
+	routerConfig, err := routerEnv.LoadConfigWithOptions(ctx.configSet.TransitRouter, false)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller(routerConfig)
@@ -527,7 +557,7 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 }
 
 func (ctx *TestContext) startTransitRouter() {
-	routerConfig, err := env2.LoadConfig(TransitRouterConfFile)
+	routerConfig, err := routerEnv.LoadConfig(ctx.configSet.TransitRouter)
 	ctx.Req.NoError(err)
 	newRouter := router.Create(routerConfig, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
@@ -541,48 +571,38 @@ func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ..
 	ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*env2.Config), roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouterWithCfgTweaks(cfgTweaks func(*routerEnv.Config), roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(cfgTweaks)
 }
 
-func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *router.Router {
+func (ctx *TestContext) CreateEnrollAndStartHAEdgeRouter(roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	return ctx.startEdgeRouter(nil)
 }
 
-func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*env2.Config)) *router.Router {
-	configFile := EdgeRouterConfFile
+func (ctx *TestContext) startEdgeRouter(cfgTweaks func(*routerEnv.Config)) *EdgeRouterHelper {
+	configFile := ctx.configSet.EdgeRouter
 	if ctx.edgeRouterEntity.isTunnelerEnabled {
-		configFile = TunnelerEdgeRouterConfFile
+		configFile = ctx.configSet.TunnelerRouter
 	}
-	config, err := env2.LoadConfig(configFile)
+	routerCfg, err := routerEnv.LoadConfig(configFile)
 	ctx.Req.NoError(err)
 	if cfgTweaks != nil {
-		cfgTweaks(config)
+		cfgTweaks(routerCfg)
 	}
-	newRouter := router.Create(config, NewVersionProviderTest())
+	newRouter := router.Create(routerCfg, NewVersionProviderTest())
 	ctx.routers = append(ctx.routers, newRouter)
-
-	xgressEdgeFactory := xgress_edge.NewFactory(config, newRouter, newRouter.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.EdgeBinding, xgressEdgeFactory)
-
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(newRouter, newRouter.GetStateManager())
-	xgress_router.GlobalRegistry().Register(common.TunnelBinding, xgressEdgeTunnelFactory)
-
-	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeFactory))
-	ctx.Req.NoError(newRouter.RegisterXrctrl(xgressEdgeTunnelFactory))
-	ctx.Req.NoError(newRouter.RegisterXrctrl(newRouter.GetStateManager()))
 	ctx.Req.NoError(newRouter.Start())
-	return newRouter
+	return &EdgeRouterHelper{Router: newRouter}
 }
 
 func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
@@ -604,7 +624,7 @@ func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
 	return conf
 }
 
-func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
+func (ctx *TestContext) waitForRestAPIPort(duration time.Duration) error {
 	return ctx.waitForPort(ctx.ApiHost, duration)
 }
 
@@ -960,6 +980,41 @@ func (ctx *TestContext) shutdownRouters() {
 		ctx.Req.NoError(r.Shutdown())
 	}
 	ctx.routers = nil
+}
+
+// NewAdminCredentials returns OIDC-compatible UPDB credentials for the default admin user.
+func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
+	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+}
+
+// NewEdgeManagementApiWithToken returns a ManagementHelperClient pre-loaded with
+// the given raw OIDC access token. No authentication step is required.
+func (ctx *TestContext) NewEdgeManagementApiWithToken(accessToken string) *ManagementHelperClient {
+	client := ctx.NewEdgeManagementApi(nil)
+	var session edgeApis.ApiSession = &edgeApis.ApiSessionOidc{
+		OidcTokens: &oidcPkg.Tokens[*oidcPkg.IDTokenClaims]{
+			Token: &oauth2Pkg.Token{
+				AccessToken: accessToken,
+			},
+		},
+	}
+	client.ApiSession.Store(&session)
+	return client
+}
+
+// NewEdgeClientApiWithToken returns a ClientHelperClient pre-loaded with the
+// given raw OIDC access token. No authentication step is required.
+func (ctx *TestContext) NewEdgeClientApiWithToken(accessToken string) *ClientHelperClient {
+	client := ctx.NewEdgeClientApi(nil)
+	var session edgeApis.ApiSession = &edgeApis.ApiSessionOidc{
+		OidcTokens: &oidcPkg.Tokens[*oidcPkg.IDTokenClaims]{
+			Token: &oauth2Pkg.Token{
+				AccessToken: accessToken,
+			},
+		},
+	}
+	client.ApiSession.Store(&session)
+	return client
 }
 
 type TestConn struct {
