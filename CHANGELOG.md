@@ -104,6 +104,28 @@ when running HA. Legacy API and service session are now deprecated and will be r
   are not compatible with the new HA-only mode and will need to be recreated.
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
+* [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect
+
+## Connect Events Pool
+
+The controller now uses a shared, bounded goroutine pool to process identity
+connect/disconnect events from routers. Previously each router connection spawned
+a dedicated goroutine that was never cleaned up on disconnect, leaking a goroutine
+per reconnect cycle. Under churn (e.g., chaos testing with hundreds of routers) this
+could accumulate tens of thousands of leaked goroutines and destabilize the controller.
+
+The pool is configurable in the controller config file:
+
+```yaml
+connectEvents:
+  queueSize:  16    # work queue depth (default: 16)
+  minWorkers: 0     # minimum pool goroutines (default: 0)
+  maxWorkers: 16    # maximum pool goroutines (default: 16)
+  idleTime:   30s   # worker idle timeout before exit (default: 30s)
+```
+
+The defaults are suitable for most deployments. Workers scale up on demand and
+exit after the idle timeout, so no goroutines are held when there is no work.
 
 ## Basic Permission System (BETA)
 

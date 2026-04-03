@@ -98,6 +98,11 @@ const (
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
 
+	DefaultConnectEventsQueueSize  uint32 = 16
+	DefaultConnectEventsMinWorkers uint32 = 0
+	DefaultConnectEventsMaxWorkers uint32 = 16
+	DefaultConnectEventsIdleTime          = 30 * time.Second
+
 	// DefaultCtrlDialer* constants define the default values for the ctrl channel dialer configuration.
 	DefaultCtrlDialerEnabled            = false
 	DefaultCtrlDialerDialDelay          = 30 * time.Second
@@ -155,7 +160,23 @@ type Config struct {
 	}
 
 	TlsHandshakeRateLimiter command.AdaptiveRateLimitTrackerConfig
-	Src                     map[interface{}]interface{}
+
+	ConnectEventsConfig ConnectEventsConfig
+
+	Src map[interface{}]interface{}
+}
+
+// ConnectEventsConfig configures the goroutine pool used to process identity
+// connect/disconnect events from routers.
+type ConnectEventsConfig struct {
+	// QueueSize is the size of the work queue feeding the pool.
+	QueueSize uint32
+	// MinWorkers is the minimum number of pool goroutines.
+	MinWorkers uint32
+	// MaxWorkers is the maximum number of pool goroutines.
+	MaxWorkers uint32
+	// IdleTime is how long a worker can be idle before exiting.
+	IdleTime time.Duration
 }
 
 func (self *Config) ToJson() (string, error) {
@@ -875,6 +896,38 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["commandRateLimiter"]; found && !commandRateLimiterHandled {
 		if err = parseCommandRateLimiter(controllerConfig, value, "commandRateLimiter"); err != nil {
 			return nil, err
+		}
+	}
+
+	controllerConfig.ConnectEventsConfig = ConnectEventsConfig{
+		QueueSize:  DefaultConnectEventsQueueSize,
+		MinWorkers: DefaultConnectEventsMinWorkers,
+		MaxWorkers: DefaultConnectEventsMaxWorkers,
+		IdleTime:   DefaultConnectEventsIdleTime,
+	}
+
+	if value, found := cfgmap["connectEvents"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if intVal, ok := value.(int); ok && intVal > 0 {
+					controllerConfig.ConnectEventsConfig.QueueSize = uint32(intVal)
+				}
+			}
+			if value, found := submap["minWorkers"]; found {
+				if intVal, ok := value.(int); ok && intVal >= 0 {
+					controllerConfig.ConnectEventsConfig.MinWorkers = uint32(intVal)
+				}
+			}
+			if value, found := submap["maxWorkers"]; found {
+				if intVal, ok := value.(int); ok && intVal >= 1 {
+					controllerConfig.ConnectEventsConfig.MaxWorkers = uint32(intVal)
+				}
+			}
+			if value, found := submap["idleTime"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.ConnectEventsConfig.IdleTime = val
+				}
+			}
 		}
 	}
 
