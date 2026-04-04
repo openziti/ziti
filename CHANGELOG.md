@@ -977,6 +977,33 @@ ziti agent tunnel dump-sdk
 Returns JSON-formatted inspection data for all SDK contexts registered in the tunnel process,
 including service listeners, connections, and terminator state.
 
+## Router Connect Setup Pool
+
+Router connection setup (link building, presence notifications, terminator validation) now
+runs in a bounded worker pool instead of inline on the listener accept path. This prevents
+a thundering herd of reconnecting routers from saturating the controller's listener pool,
+which previously caused hello timeouts and connect/disconnect cycles lasting 10-15 minutes.
+
+If the pool is full when a router connects, the connection is rejected with an error and the
+router retries with its normal backoff. This gives the controller backpressure so it only
+processes what it can handle.
+
+New configuration under `network`:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `routerConnectPool.queueSize` | `1` | Size of the work queue feeding the pool. Kept small so excess connections are rejected fast. |
+| `routerConnectPool.maxWorkers` | `200` | Maximum concurrent router connect setup workers. |
+
+New metrics (via the goroutine pool metrics):
+
+| Metric | Description |
+|--------|-------------|
+| `pool.router.connect.current_size` | Current number of active workers |
+| `pool.router.connect.busy_workers` | Workers currently executing setup work |
+| `pool.router.connect.work_timer` | Time spent per router connect setup |
+| `pool.router.connect.queue_size` | Current queue depth |
+
 ## Current Beta Features
 
 * Basic Permission System

@@ -50,6 +50,13 @@ cluster:
   # running on the network.
   #
   cycleSeconds:         15
+
+  # Controls the bounded pool used for router connection setup (link building, presence
+  # notifications, terminator validation). If the pool is full when a router connects, the
+  # connection is rejected and the router retries with its normal backoff.
+  #routerConnectPool:
+    #queueSize:  1    # keep small so excess connections are rejected fast
+    #maxWorkers: 200  # max concurrent router connect setup workers
   #
   #smart:
     #
