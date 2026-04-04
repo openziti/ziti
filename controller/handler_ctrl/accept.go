@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -202,7 +203,9 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 
 	log.Info("accepted new router connection")
 
-	self.network.ConnectRouter(r)
+	if err := self.network.QueueRouterConnect(r); err != nil {
+		return fmt.Errorf("router connect pool full, rejecting connection: %w", err)
+	}
 
 	return nil
 }

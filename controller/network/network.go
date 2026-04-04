@@ -115,6 +115,7 @@ type Network struct {
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
+	routerConnectPool   goroutines.Pool
 	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
 	ctrlDialerValidator CtrlDialerValidator
 }
@@ -158,6 +159,12 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 
 	env.GetManagers().Command.Decoders.RegisterF(int32(cmd_pb.CommandType_SyncSnapshot), network.decodeSyncSnapshotCommand)
 
+	routerConnectPool, err := network.createRouterConnectPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.routerConnectPool = routerConnectPool
+
 	routerCommPool, err := network.createRouterCommPool(config)
 	if err != nil {
 		return nil, err
@@ -198,6 +205,27 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 
 func routerCommunicationsWorker(_ uint32, f func()) {
 	f()
+}
+
+func (network *Network) createRouterConnectPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().RouterConnectPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().RouterConnectPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during router connect setup")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.connect")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating router connect pool: %w", err)
+	}
+	return pool, nil
 }
 
 func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, error) {
@@ -347,18 +375,39 @@ func (network *Network) ConnectedRouter(id string) bool {
 	return network.Router.IsConnected(id)
 }
 
-func (network *Network) ConnectRouter(r *model.Router) {
-	network.Link.BuildRouterLinks(r)
+// QueueRouterConnect marks the router as connected and notifies synchronous
+// presence handlers immediately, then queues the remaining connection setup
+// work (link building, async handlers, terminator validation) to the bounded
+// router connect pool. Returns an error if the pool is full, which causes
+// the connection to be rejected so the router can retry later.
+func (network *Network) QueueRouterConnect(r *model.Router) error {
 	network.Router.MarkConnected(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
 			h.RouterConnected(r)
-		} else {
-			go h.RouterConnected(r)
 		}
 	}
-	go network.ValidateTerminators(r)
+
+	return network.routerConnectPool.QueueOrError(func() {
+		network.ConnectRouter(r)
+	})
+}
+
+func (network *Network) ConnectRouter(r *model.Router) {
+	if r.Control.IsClosed() {
+		return
+	}
+
+	network.Link.BuildRouterLinks(r)
+
+	for _, h := range network.routerPresenceHandlers.Value() {
+		if syncHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncHandler.InvokeRouterConnectedSynchronously() {
+			continue // already called synchronously in QueueRouterConnect
+		}
+		h.RouterConnected(r)
+	}
+	network.ValidateTerminators(r)
 }
 
 func (network *Network) ValidateTerminators(r *model.Router) {
