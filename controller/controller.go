@@ -156,7 +156,7 @@ func (c *Controller) GetCommandDispatcher() command.Dispatcher {
 		version := versions.MustParseSemVer(c.GetVersionProvider().Version())
 		c.localDispatcher = &command.LocalDispatcher{
 			EncodeDecodeCommands: devVersion.Equals(version),
-			Limiter:              command.NewRateLimiter(c.config.CommandRateLimiter, c.metricsRegistry, c.shutdownC),
+			Limiter:              command.NewRateLimiter(c.config.Command.RateLimiter, c.metricsRegistry, c.shutdownC),
 		}
 		return c.localDispatcher
 	}
@@ -204,7 +204,11 @@ func (c *Controller) GetRaftConfig() *config.RaftConfig {
 }
 
 func (c *Controller) GetCommandRateLimiterConfig() command.RateLimiterConfig {
-	return c.config.CommandRateLimiter
+	return c.config.Command.RateLimiter
+}
+
+func (c *Controller) GetRaftRateLimiterConfig() command.AdaptiveRateLimitTrackerConfig {
+	return c.config.Raft.RateLimiter
 }
 
 func (c *Controller) RenderJsonConfig() (string, error) {
@@ -220,7 +224,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	shutdownC := make(chan struct{})
 
-	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(command.NewDefaultAdaptiveRateLimitTrackerConfig(cfg.TlsHandshakeRateLimiter), metricRegistry, shutdownC)
+	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(cfg.TlsHandshakeRateLimiter, metricRegistry, shutdownC)
 	tls.SetSharedListenerRateLimiter(tlsHandshakeRateLimiter)
 
 	log := pfxlog.Logger()

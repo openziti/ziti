@@ -84,6 +84,10 @@ const (
 	DefaultRaftSnapshotInterval  = 2 * time.Minute
 	DefaultRaftSnapshotThreshold = 500
 	DefaultRaftTrailingLogs      = 500
+
+	RaftRateLimiterQueueSizeMetricName  = "raft.rate_limiter.queue_size"
+	RaftRateLimiterWorkTimerMetricName  = "raft.rate_limiter.work_timer"
+	RaftRateLimiterWindowSizeMetricName = "raft.rate_limiter.window_size"
 )
 
 type Config struct {
@@ -118,9 +122,13 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	RouterDataModel         common.RouterDataModelConfig
-	CommandRateLimiter      command.RateLimiterConfig
-	TlsHandshakeRateLimiter command.AdaptiveRateLimiterConfig
+	RouterDataModel common.RouterDataModelConfig
+
+	Command struct {
+		RateLimiter command.RateLimiterConfig
+	}
+
+	TlsHandshakeRateLimiter command.AdaptiveRateLimitTrackerConfig
 	Src                     map[interface{}]interface{}
 }
 
@@ -219,6 +227,7 @@ func LoadConfig(path string) (*Config, error) {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			controllerConfig.Raft = &RaftConfig{}
 
+			controllerConfig.Raft.ApplyTimeout = 5 * time.Second
 			controllerConfig.Raft.ElectionTimeout = 5 * time.Second
 			controllerConfig.Raft.HeartbeatTimeout = 3 * time.Second
 			controllerConfig.Raft.LeaderLeaseTimeout = 3 * time.Second
@@ -228,6 +237,10 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.SnapshotInterval = DefaultRaftSnapshotInterval
 			controllerConfig.Raft.SnapshotThreshold = DefaultRaftSnapshotThreshold
 			controllerConfig.Raft.TrailingLogs = DefaultRaftTrailingLogs
+
+			controllerConfig.Raft.RateLimiter.QueueSizeMetric = RaftRateLimiterQueueSizeMetricName
+			controllerConfig.Raft.RateLimiter.WorkTimerMetric = RaftRateLimiterWorkTimerMetricName
+			controllerConfig.Raft.RateLimiter.WindowSizeMetric = RaftRateLimiterWindowSizeMetricName
 
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
@@ -331,6 +344,24 @@ func LoadConfig(path string) (*Config, error) {
 					}
 				} else {
 					return nil, errors.New("invalid commandHandler value, should be map")
+				}
+			}
+
+			if value, found := submap["applyTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.ApplyTimeout = val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.applyTimeout value '%v", value)
+				}
+			}
+
+			controllerConfig.Raft.RateLimiter.SetDefaults()
+
+			if value, found := submap["rateLimiter"]; found {
+				if rateLimiterConfig, ok := value.(map[interface{}]interface{}); ok {
+					if err = controllerConfig.Raft.RateLimiter.Load(rateLimiterConfig); err != nil {
+						return nil, fmt.Errorf("error loading cluster rate limiting configuration (%w)", err)
+					}
 				}
 			}
 		} else {
@@ -639,13 +670,13 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	controllerConfig.CommandRateLimiter.Enabled = true
-	controllerConfig.CommandRateLimiter.QueueSize = command.DefaultLimiterSize
+	controllerConfig.Command.RateLimiter.Enabled = true
+	controllerConfig.Command.RateLimiter.QueueSize = command.DefaultLimiterSize
 
 	if value, found := cfgmap["commandRateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["enabled"]; found {
-				controllerConfig.CommandRateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
+				controllerConfig.Command.RateLimiter.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
 			}
 
 			if value, found := submap["maxQueued"]; found {
@@ -657,7 +688,7 @@ func LoadConfig(path string) (*Config, error) {
 					if v > math.MaxUint32 {
 						return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be at most %v", value, int64(math.MaxUint32))
 					}
-					controllerConfig.CommandRateLimiter.QueueSize = uint32(v)
+					controllerConfig.Command.RateLimiter.QueueSize = uint32(v)
 				} else {
 					return nil, errors.Errorf("invalid value %v for commandRateLimiter, must be integer value", value)
 				}
@@ -903,10 +934,10 @@ func GetSpiffeIdFromCert(cert *x509.Certificate) (*url.URL, error) {
 	return spiffeId, nil
 }
 
-func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+func loadTlsHandshakeRateLimiterConfig(rateLimitConfig *command.AdaptiveRateLimitTrackerConfig, cfgmap map[interface{}]interface{}) error {
 	if value, found := cfgmap["rateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+			if err := rateLimitConfig.Load(submap); err != nil {
 				return err
 			}
 			if rateLimitConfig.MaxSize < TlsHandshakeRateLimiterMinSizeValue {

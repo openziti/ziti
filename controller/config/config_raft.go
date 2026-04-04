@@ -1,11 +1,14 @@
 package config
 
 import (
+	"time"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/openziti/transport/v2"
-	"time"
+	"github.com/openziti/ziti/controller/command"
 )
 
+// RaftConfig contains configuration for the RAFT distributed consensus system
 type RaftConfig struct {
 	Recover               bool
 	DataDir               string
@@ -28,4 +31,7 @@ type RaftConfig struct {
 	Logger   hclog.Logger
 
 	WarnWhenLeaderlessFor time.Duration
+
+	ApplyTimeout time.Duration
+	RateLimiter  command.AdaptiveRateLimitTrackerConfig
 }

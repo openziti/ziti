@@ -52,7 +52,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				EndpointsFile         string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
-				RateLimit             command.AdaptiveRateLimiterConfig
+				RateLimit             command.AdaptiveRateLimitTrackerConfig
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr)},
@@ -94,7 +94,7 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				EndpointsFile         string
 				Heartbeats            env.HeartbeatOptions
 				StartupTimeout        time.Duration
-				RateLimit             command.AdaptiveRateLimiterConfig
+				RateLimit             command.AdaptiveRateLimitTrackerConfig
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},

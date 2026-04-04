@@ -113,19 +113,16 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 }
 
 func Test_AdaptiveRateLimiterTracker(t *testing.T) {
-	cfg := AdaptiveRateLimiterConfig{
-		Enabled:          true,
-		MaxSize:          250,
-		MinSize:          5,
-		WorkTimerMetric:  "workTime",
-		QueueSizeMetric:  "queueSize",
-		WindowSizeMetric: "windowSize",
-		Timeout:          time.Second,
-	}
+	cfg := AdaptiveRateLimitTrackerConfig{}
+	cfg.SetDefaults()
+	cfg.WorkTimerMetric = "workTime"
+	cfg.QueueSizeMetric = "queueSize"
+	cfg.WindowSizeMetric = "windowSize"
+	cfg.Timeout = time.Second
 
 	registry := metrics.NewRegistry("test", nil)
 	closeNotify := make(chan struct{})
-	limiter := NewAdaptiveRateLimitTracker(NewDefaultAdaptiveRateLimitTrackerConfig(cfg), registry, closeNotify).(*adaptiveRateLimitTracker)
+	limiter := NewAdaptiveRateLimitTracker(cfg, registry, closeNotify).(*adaptiveRateLimitTracker)
 
 	var queueFull atomic.Uint32
 	var timedOut atomic.Uint32
