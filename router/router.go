@@ -239,7 +239,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
-		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(cfg.Ctrl.RateLimit, metricsRegistry, closeNotify),
+		ctrlRateLimiter:     command.NewAdaptiveRateLimitTracker(command.NewDefaultAdaptiveRateLimitTrackerConfig(cfg.Ctrl.RateLimit), metricsRegistry, closeNotify),
 		rdmEnabled:          config.NewConfigValue[bool](),
 		indexWatchers:       env.NewIndexWatchers(),
 		xgMetrics:           routerMetrics.NewXgressMetrics(metricsRegistry),

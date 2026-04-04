@@ -125,7 +125,7 @@ func Test_AdaptiveRateLimiterTracker(t *testing.T) {
 
 	registry := metrics.NewRegistry("test", nil)
 	closeNotify := make(chan struct{})
-	limiter := NewAdaptiveRateLimitTracker(cfg, registry, closeNotify).(*adaptiveRateLimitTracker)
+	limiter := NewAdaptiveRateLimitTracker(NewDefaultAdaptiveRateLimitTrackerConfig(cfg), registry, closeNotify).(*adaptiveRateLimitTracker)
 
 	var queueFull atomic.Uint32
 	var timedOut atomic.Uint32

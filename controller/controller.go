@@ -220,7 +220,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	shutdownC := make(chan struct{})
 
-	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(cfg.TlsHandshakeRateLimiter, metricRegistry, shutdownC)
+	tlsHandshakeRateLimiter := command.NewAdaptiveRateLimitTracker(command.NewDefaultAdaptiveRateLimitTrackerConfig(cfg.TlsHandshakeRateLimiter), metricRegistry, shutdownC)
 	tls.SetSharedListenerRateLimiter(tlsHandshakeRateLimiter)
 
 	log := pfxlog.Logger()
