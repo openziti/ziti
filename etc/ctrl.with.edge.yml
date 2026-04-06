@@ -164,6 +164,33 @@ edge:
     # (optional, default 24hr)
     refreshTokenDuration: 24h
 
+    # --- Refresh-token revocation tuning ---
+    #
+    # When a session is refreshed the old refresh token is revoked on a best-effort basis.
+    # The settings below control when and how those revocations are created.
+
+    # (optional, default unset) If set, skip creating a revocation for refresh tokens that
+    # expire within this duration — they will become invalid on their own. Must be less than
+    # 50% of refreshTokenDuration. Unset means always revoke.
+    # revocationMinTokenLifetime: 2m
+
+    # (optional, default 1m) The bucket window for batching refresh-token revocations before
+    # flushing them through raft. A longer interval means fewer raft entries but a larger
+    # window where the old token has not yet been formally revoked.
+    # revocationBucketInterval: 1m
+
+    # (optional, default 200) Maximum number of revocations per raft log entry / DB transaction
+    # when flushing. Larger values reduce raft overhead at the cost of bigger individual writes.
+    # revocationBucketMaxSize: 200
+
+    # (optional, default 25000) Maximum number of revocations that can accumulate in memory
+    # before new ones are dropped. Acts as a safety valve under extreme load.
+    # revocationMaxQueued: 25000
+
+    # (optional, default 1m) How often the controller purges expired revocation records from the
+    # database. Only runs on the raft leader.
+    # revocationEnforcerFrequency: 1m
+
   # Set to true to disable posture check functionality
   disablePostureChecks: false
 

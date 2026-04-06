@@ -59,3 +59,11 @@ func (h *ControllerHelper) DeleteExpiredRevocations() (int, error) {
 	ctx := change.New().SetSourceType("test").SetChangeAuthorType(change.AuthorTypeController)
 	return h.AppEnv.GetManagers().Revocation.DeleteExpired(ctx)
 }
+
+// FlushRevocationBatcher synchronously drains any pending batched revocations
+// so that tests can verify they were persisted.
+func (h *ControllerHelper) FlushRevocationBatcher() {
+	if f := h.AppEnv.GetManagers().RevocationBatchFlusher; f != nil {
+		f()
+	}
+}

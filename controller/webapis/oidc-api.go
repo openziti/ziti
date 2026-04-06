@@ -117,6 +117,10 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	oidcConfig.AccessTokenDuration = ae.GetConfig().Edge.Oidc.AccessTokenDuration
 	oidcConfig.RefreshTokenDuration = ae.GetConfig().Edge.Oidc.RefreshTokenDuration
 	oidcConfig.IdTokenDuration = ae.GetConfig().Edge.Oidc.IdTokenDuration
+	oidcConfig.RevocationMinTokenLifetime = ae.GetConfig().Edge.Oidc.RevocationMinTokenLifetime
+	oidcConfig.RevocationBucketInterval = ae.GetConfig().Edge.Oidc.RevocationBucketInterval
+	oidcConfig.RevocationBucketMaxSize = ae.GetConfig().Edge.Oidc.RevocationBucketMaxSize
+	oidcConfig.RevocationMaxQueued = ae.GetConfig().Edge.Oidc.RevocationMaxQueued
 
 	if secretVal, ok := options["secret"]; ok {
 		if secret, ok := secretVal.(string); ok {

@@ -1,3 +1,16 @@
+# Release 1.6.15
+
+## What's New
+
+* Bug fixes and dependency updates
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.14 -> v1.6.15](https://github.com/openziti/ziti/compare/v1.6.14...v1.6.15)
+    * [Issue #3764](https://github.com/openziti/ziti/issues/3764) - [Backport-1.6] coalesce OIDC JWT revocations to reduce controller write pressure
+    * [Issue #3760](https://github.com/openziti/ziti/issues/3760) - [Backport-1.6] revocation build-up in db and rdm
+
+
 # Release 1.6.14
 
 ## What's New

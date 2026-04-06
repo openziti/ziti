@@ -72,6 +72,10 @@ type Managers struct {
 	PostureResponse         *PostureResponseManager
 	Mfa                     *MfaManager
 	AuthPolicy              *AuthPolicyManager
+
+	// RevocationBatchFlusher is set by the OIDC storage to allow callers
+	// (e.g., tests) to synchronously drain pending batched revocations.
+	RevocationBatchFlusher func()
 }
 
 func NewManagers() *Managers {

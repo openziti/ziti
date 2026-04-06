@@ -38,6 +38,11 @@ type Config struct {
 	RedirectURIs         []string
 	PostLogoutURIs       []string
 
+	RevocationMinTokenLifetime time.Duration
+	RevocationBucketInterval   time.Duration
+	RevocationBucketMaxSize    int
+	RevocationMaxQueued        int
+
 	maxTokenDuration *time.Duration
 	Identity         identity.Identity
 }
