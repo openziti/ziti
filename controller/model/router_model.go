@@ -17,10 +17,12 @@
 package model
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
 
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/capabilities"
@@ -53,6 +55,7 @@ type Router struct {
 	Capabilities      *big.Int
 	Interfaces        []*Interface
 	CtrlChanListeners map[string][]string
+	Configs           []string
 }
 
 func (entity *Router) GetLinks() []*Link {
@@ -63,7 +66,10 @@ func (entity *Router) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.Field
 	return entity.toBoltEntityForCreate(tx, env)
 }
 
-func (entity *Router) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Router, error) {
+func (entity *Router) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Router, error) {
+	if err := validateRouterConfigs(tx, env, entity.Configs); err != nil {
+		return nil, err
+	}
 	return &db.Router{
 		BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:              entity.Name,
@@ -73,7 +79,44 @@ func (entity *Router) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Router, error) 
 		Disabled:          entity.Disabled,
 		CtrlChanListeners: entity.CtrlChanListeners,
 		Interfaces:        InterfacesToBolt(entity.Interfaces),
+		Configs:           entity.Configs,
 	}, nil
+}
+
+// validateRouterConfigs validates that all configs target routers and have unique config types.
+func validateRouterConfigs(tx *bbolt.Tx, env Env, configs []string) error {
+	if len(configs) == 0 {
+		return nil
+	}
+
+	typeMap := map[string]*db.Config{}
+	configStore := env.GetStores().Config
+	configTypeStore := env.GetStores().ConfigType
+	for _, id := range configs {
+		config, _ := configStore.LoadById(tx, id)
+		if config == nil {
+			return boltz.NewNotFoundError(db.EntityTypeConfigs, "id", id)
+		}
+
+		configType, _ := configTypeStore.LoadById(tx, config.TypeId)
+		configTypeName := "<not found>"
+		if configType != nil {
+			configTypeName = configType.Name
+			if configType.Target == nil || *configType.Target != db.ConfigTypeTargetRouter {
+				msg := fmt.Sprintf("config %v has config type %v which does not target routers",
+					config.Name, configTypeName)
+				return errorz.NewFieldError(msg, "configs", configs)
+			}
+		}
+
+		if conflictConfig, found := typeMap[config.TypeId]; found {
+			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given type is allowed per router",
+				conflictConfig.Name, config.Name, configTypeName)
+			return errorz.NewFieldError(msg, "configs", configs)
+		}
+		typeMap[config.TypeId] = config
+	}
+	return nil
 }
 
 func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error {
@@ -84,6 +127,7 @@ func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error 
 	entity.Disabled = boltRouter.Disabled
 	entity.CtrlChanListeners = boltRouter.CtrlChanListeners
 	entity.Interfaces = InterfacesFromBolt(boltRouter.Interfaces)
+	entity.Configs = boltRouter.Configs
 	entity.FillCommon(boltRouter)
 	return nil
 }

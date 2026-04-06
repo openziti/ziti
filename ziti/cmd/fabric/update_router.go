@@ -30,13 +30,14 @@ import (
 
 type updateRouterOptions struct {
 	api.Options
-	name              string
-	fingerprint       string
-	cost              uint16
-	noTraversal       bool
-	disabled          bool
+	name                       string
+	fingerprint                string
+	cost                       uint16
+	noTraversal                bool
+	disabled                   bool
 	bootstrapCtrlChanListeners []string
-	tags              map[string]string
+	configs                    []string
+	tags                       map[string]string
 }
 
 func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
@@ -64,6 +65,7 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 	cmd.Flags().StringSliceVar(&options.bootstrapCtrlChanListeners, "bootstrap-ctrl-chan-listener", nil, "Bootstrap control channel listener address and optional groups. The router will update this automatically once connected. (e.g. 'tls:1.2.3.4:6262=group1,group2')")
+	cmd.Flags().StringSliceVar(&options.configs, "config", nil, "Config IDs to associate with this router")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
@@ -107,6 +109,11 @@ func runUpdateRouter(o *updateRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("bootstrap-ctrl-chan-listener") {
 		api.SetJSONValue(entityData, api.ParseCtrlChanListeners(o.bootstrapCtrlChanListeners), "ctrlChanListeners")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("config") {
+		api.SetJSONValue(entityData, o.configs, "configs")
 		change = true
 	}
 

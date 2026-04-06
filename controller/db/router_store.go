@@ -42,6 +42,7 @@ type Router struct {
 	Disabled          bool                `json:"disabled"`
 	CtrlChanListeners map[string][]string `json:"ctrlChanListeners"`
 	Interfaces        []*Interface        `json:"interfaces"`
+	Configs           []string            `json:"configs"`
 }
 
 func (entity *Router) GetEntityType() string {
@@ -69,6 +70,7 @@ type routerStoreImpl struct {
 	baseStore[*Router]
 	indexName         boltz.ReadIndex
 	terminatorsSymbol boltz.EntitySetSymbol
+	symbolConfigs     boltz.EntitySetSymbol
 }
 
 func (store *routerStoreImpl) initializeLocal() {
@@ -83,9 +85,11 @@ func (store *routerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldRouterNoTraversal, ast.NodeTypeBool)
 	store.AddSymbol(FieldRouterDisabled, ast.NodeTypeBool)
 	store.AddSymbol(FieldRouterCtrlChanListeners, ast.NodeTypeOther)
+	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
 }
 
 func (store *routerStoreImpl) initializeLinked() {
+	store.AddLinkCollection(store.symbolConfigs, store.stores.config.symbolRouters)
 }
 
 func (self *routerStoreImpl) NewEntity() *Router {
@@ -101,6 +105,7 @@ func (self *routerStoreImpl) FillEntity(entity *Router, bucket *boltz.TypedBucke
 	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
 	entity.CtrlChanListeners = decodeCtrlChanListeners(bucket.GetMap(FieldRouterCtrlChanListeners))
 	entity.Interfaces = loadInterfaces(bucket)
+	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
 }
 
 func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistContext) {
@@ -112,6 +117,7 @@ func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistCon
 	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
 	ctx.Bucket.PutMap(FieldRouterCtrlChanListeners, encodeCtrlChanListeners(entity.CtrlChanListeners), ctx.FieldChecker, true)
 	storeInterfaces(entity.Interfaces, ctx)
+	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
 }
 
 func (self *routerStoreImpl) UpdateInterfaces(entity *Router, interfaces map[string]*Interface, ctx *boltz.PersistContext) {

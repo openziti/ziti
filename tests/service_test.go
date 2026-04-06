@@ -459,8 +459,9 @@ func Test_ServiceConfigTargetValidation(t *testing.T) {
 	t.Run("service with nil-target config should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ct := ctx.newConfigType()
+		ct.Target = nil
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		svc := ctx.newService(nil, s(config.Id))
 		resp := ctx.AdminManagementSession.createEntity(svc)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
@@ -471,7 +472,7 @@ func Test_ServiceConfigTargetValidation(t *testing.T) {
 		ct := ctx.newConfigType()
 		ct.Target = util.Ptr("service")
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		ctx.AdminManagementSession.requireNewService(nil, s(config.Id))
 	})
 
@@ -480,7 +481,7 @@ func Test_ServiceConfigTargetValidation(t *testing.T) {
 		ct := ctx.newConfigType()
 		ct.Target = util.Ptr("router")
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		svc := ctx.newService(nil, s(config.Id))
 		resp := ctx.AdminManagementSession.createEntity(svc)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
@@ -500,8 +501,9 @@ func Test_IdentityServiceConfigTargetValidation(t *testing.T) {
 	t.Run("identity service config override with nil-target config should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ct := ctx.newConfigType()
+		ct.Target = nil
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
 		httpStatus, body := ctx.AdminManagementSession.updateIdentityServiceConfigs("POST", identityId,
 			[]serviceConfig{{ServiceId: svc.Id, ConfigId: config.Id}})
@@ -513,7 +515,7 @@ func Test_IdentityServiceConfigTargetValidation(t *testing.T) {
 		ct := ctx.newConfigType()
 		ct.Target = util.Ptr("service")
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
 		ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(identityId,
 			serviceConfig{ServiceId: svc.Id, ConfigId: config.Id})
@@ -524,7 +526,7 @@ func Test_IdentityServiceConfigTargetValidation(t *testing.T) {
 		ct := ctx.newConfigType()
 		ct.Target = util.Ptr("router")
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
-		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, nil)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
 		svc := ctx.AdminManagementSession.requireNewService(nil, nil)
 		httpStatus, body := ctx.AdminManagementSession.updateIdentityServiceConfigs("POST", identityId,
 			[]serviceConfig{{ServiceId: svc.Id, ConfigId: config.Id}})

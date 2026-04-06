@@ -231,6 +231,7 @@ message EdgeRouter {
   bool disabled = 15;
   repeated Interface interfaces = 16;
   map<string, CtrlChanListenerDetail> ctrlChanListeners = 17;
+  repeated string configs = 18;
 }
 
 message ReEnrollEdgeRouterCmd {
@@ -500,6 +501,7 @@ message TransitRouter {
   bool noTraversal = 9;
   bool disabled = 10;
   map<string, CtrlChanListenerDetail> ctrlChanListeners = 11;
+  repeated string configs = 12;
 }
 
 message CreateTransitRouterCmd {

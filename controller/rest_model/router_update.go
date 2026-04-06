@@ -44,6 +44,9 @@ import (
 // swagger:model routerUpdate
 type RouterUpdate struct {
 
+	// configs
+	Configs []string `json:"configs"`
+
 	// cost
 	// Required: true
 	// Maximum: 65535

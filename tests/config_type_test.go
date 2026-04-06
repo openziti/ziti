@@ -207,6 +207,7 @@ func Test_ConfigTypes(t *testing.T) {
 	t.Run("create config type with nil target should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ct := ctx.newConfigType()
+		ct.Target = nil
 		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
 		ctx.AdminManagementSession.validateEntityWithQuery(ct)
 	})

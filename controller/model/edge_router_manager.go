@@ -50,6 +50,7 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 			db.FieldRouterDisabled:              struct{}{},
 			db.FieldEdgeRouterAppData:           struct{}{},
 			db.FieldRouterCtrlChanListeners:     struct{}{},
+			db.EntityTypeConfigs:                struct{}{},
 		},
 	}
 
@@ -459,6 +460,7 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		NoTraversal:           entity.NoTraversal,
 		Disabled:              entity.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
+		Configs:               entity.Configs,
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -508,6 +510,7 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		NoTraversal:           msg.NoTraversal,
 		Disabled:              msg.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
+		Configs:               msg.Configs,
 	}
 
 	for _, intf := range msg.Interfaces {

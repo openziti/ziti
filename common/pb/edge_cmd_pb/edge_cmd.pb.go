@@ -1403,6 +1403,7 @@ type EdgeRouter struct {
 	Disabled              bool                               `protobuf:"varint,15,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	Interfaces            []*Interface                       `protobuf:"bytes,16,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
 	CtrlChanListeners     map[string]*CtrlChanListenerDetail `protobuf:"bytes,17,rep,name=ctrlChanListeners,proto3" json:"ctrlChanListeners,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Configs               []string                           `protobuf:"bytes,18,rep,name=configs,proto3" json:"configs,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -1552,6 +1553,13 @@ func (x *EdgeRouter) GetInterfaces() []*Interface {
 func (x *EdgeRouter) GetCtrlChanListeners() map[string]*CtrlChanListenerDetail {
 	if x != nil {
 		return x.CtrlChanListeners
+	}
+	return nil
+}
+
+func (x *EdgeRouter) GetConfigs() []string {
+	if x != nil {
+		return x.Configs
 	}
 	return nil
 }
@@ -3252,6 +3260,7 @@ type TransitRouter struct {
 	NoTraversal           bool                               `protobuf:"varint,9,opt,name=noTraversal,proto3" json:"noTraversal,omitempty"`
 	Disabled              bool                               `protobuf:"varint,10,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	CtrlChanListeners     map[string]*CtrlChanListenerDetail `protobuf:"bytes,11,rep,name=ctrlChanListeners,proto3" json:"ctrlChanListeners,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Configs               []string                           `protobuf:"bytes,12,rep,name=configs,proto3" json:"configs,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -3359,6 +3368,13 @@ func (x *TransitRouter) GetDisabled() bool {
 func (x *TransitRouter) GetCtrlChanListeners() map[string]*CtrlChanListenerDetail {
 	if x != nil {
 		return x.CtrlChanListeners
+	}
+	return nil
+}
+
+func (x *TransitRouter) GetConfigs() []string {
+	if x != nil {
+		return x.Configs
 	}
 	return nil
 }
@@ -4911,7 +4927,7 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"\x05flags\x18\x05 \x01(\x04R\x05flags\x12\x1c\n" +
 	"\taddresses\x18\x06 \x03(\tR\taddresses\"0\n" +
 	"\x16CtrlChanListenerDetail\x12\x16\n" +
-	"\x06groups\x18\x01 \x03(\tR\x06groups\"\xe1\a\n" +
+	"\x06groups\x18\x01 \x03(\tR\x06groups\"\xfb\a\n" +
 	"\n" +
 	"EdgeRouter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -4935,7 +4951,8 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"\n" +
 	"interfaces\x18\x10 \x03(\v2\x1b.ziti.edge_cmd.pb.InterfaceR\n" +
 	"interfaces\x12a\n" +
-	"\x11ctrlChanListeners\x18\x11 \x03(\v23.ziti.edge_cmd.pb.EdgeRouter.CtrlChanListenersEntryR\x11ctrlChanListeners\x1aS\n" +
+	"\x11ctrlChanListeners\x18\x11 \x03(\v23.ziti.edge_cmd.pb.EdgeRouter.CtrlChanListenersEntryR\x11ctrlChanListeners\x12\x18\n" +
+	"\aconfigs\x18\x12 \x03(\tR\aconfigs\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\x1an\n" +
@@ -5219,7 +5236,7 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"policyType\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"\xe4\x05\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"\xfe\x05\n" +
 	"\rTransitRouter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12=\n" +
@@ -5234,7 +5251,8 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"\vnoTraversal\x18\t \x01(\bR\vnoTraversal\x12\x1a\n" +
 	"\bdisabled\x18\n" +
 	" \x01(\bR\bdisabled\x12d\n" +
-	"\x11ctrlChanListeners\x18\v \x03(\v26.ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntryR\x11ctrlChanListeners\x1aS\n" +
+	"\x11ctrlChanListeners\x18\v \x03(\v26.ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntryR\x11ctrlChanListeners\x12\x18\n" +
+	"\aconfigs\x18\f \x03(\tR\aconfigs\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\x1an\n" +

@@ -453,6 +453,7 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 			v.NoTraversal = router.NoTraversal
 			v.Disabled = router.Disabled
 			v.CtrlChanListeners = router.CtrlChanListeners
+			v.Configs = router.Configs
 
 			if v.Disabled {
 				if ctrl := v.Control; ctrl != nil {
@@ -493,6 +494,7 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 		Disabled:          entity.Disabled,
 		Tags:              tags,
 		CtrlChanListeners: cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
+		Configs:           entity.Configs,
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -532,6 +534,7 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		NoTraversal:       msg.NoTraversal,
 		Disabled:          msg.Disabled,
 		CtrlChanListeners: cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
+		Configs:           msg.Configs,
 	}
 
 	for _, intf := range msg.Interfaces {

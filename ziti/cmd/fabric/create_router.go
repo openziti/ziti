@@ -29,12 +29,13 @@ import (
 
 type createRouterOptions struct {
 	api.Options
-	name              string
-	cost              uint16
-	tags              map[string]string
-	noTraversal       bool
-	disabled          bool
+	name                       string
+	cost                       uint16
+	tags                       map[string]string
+	noTraversal                bool
+	disabled                   bool
 	bootstrapCtrlChanListeners []string
+	configs                    []string
 }
 
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
@@ -62,6 +63,7 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 	cmd.Flags().StringSliceVar(&options.bootstrapCtrlChanListeners, "bootstrap-ctrl-chan-listener", nil, "Bootstrap control channel listener address and optional groups. The router will update this automatically once connected. (e.g. 'tls:1.2.3.4:6262=group1,group2')")
+	cmd.Flags().StringSliceVar(&options.configs, "config", nil, "Config IDs to associate with this router")
 
 	options.AddCommonFlags(cmd)
 
@@ -91,6 +93,9 @@ func (o *createRouterOptions) createRouter(_ *cobra.Command, args []string) erro
 	api.SetJSONValue(entityData, o.disabled, "disabled")
 	if len(o.bootstrapCtrlChanListeners) > 0 {
 		api.SetJSONValue(entityData, api.ParseCtrlChanListeners(o.bootstrapCtrlChanListeners), "ctrlChanListeners")
+	}
+	if len(o.configs) > 0 {
+		api.SetJSONValue(entityData, o.configs, "configs")
 	}
 	result, err := createEntityOfType("routers", entityData.String(), &o.Options)
 	if err != nil {

@@ -21,6 +21,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/openziti/edge-api/rest_management_api_client/config"
 	"github.com/openziti/edge-api/rest_management_api_client/router"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/util"
@@ -188,5 +189,198 @@ func Test_FabricRouters(t *testing.T) {
 		}, nil)
 		ctx.Req.NoError(err)
 		ctx.Req.Empty(detailResp.Payload.Data.CtrlChanListeners)
+	})
+}
+
+func Test_FabricRouterConfigs(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	mgmtClient := ctx.NewEdgeManagementApi(nil)
+	adminCreds := ctx.NewAdminCredentials()
+	_, err := mgmtClient.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(err)
+
+	// Helper: create a config type with the given target and return its ID.
+	createConfigType := func(t *testing.T, target *string) string {
+		t.Helper()
+		resp, err := mgmtClient.API.Config.CreateConfigType(&config.CreateConfigTypeParams{
+			ConfigType: &rest_model.ConfigTypeCreate{
+				Name:   util.Ptr(eid.New()),
+				Target: target,
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+		return resp.Payload.Data.ID
+	}
+
+	// Helper: create a config for the given config type and return its ID.
+	createConfig := func(t *testing.T, configTypeId string) string {
+		t.Helper()
+		resp, err := mgmtClient.API.Config.CreateConfig(&config.CreateConfigParams{
+			Config: &rest_model.ConfigCreate{
+				Name:         util.Ptr(eid.New()),
+				ConfigTypeID: &configTypeId,
+				Data:         map[string]interface{}{},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+		return resp.Payload.Data.ID
+	}
+
+	t.Run("create with router-target config should succeed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, util.Ptr("router"))
+		configId := createConfig(t, configTypeId)
+
+		createResp, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    util.Ptr(eid.New()),
+				Configs: []string{configId},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+
+		detailResp, err := mgmtClient.API.Router.DetailRouter(&router.DetailRouterParams{
+			ID: createResp.Payload.Data.ID,
+		}, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal([]string{configId}, detailResp.Payload.Data.Configs)
+	})
+
+	t.Run("create with service-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, util.Ptr("service"))
+		configId := createConfig(t, configTypeId)
+
+		_, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    util.Ptr(eid.New()),
+				Configs: []string{configId},
+			},
+		}, nil)
+		ctx.Req.Error(err)
+		var badReq *router.CreateRouterBadRequest
+		ctx.Req.ErrorAs(err, &badReq)
+	})
+
+	t.Run("create with nil-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, nil)
+		configId := createConfig(t, configTypeId)
+
+		_, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    util.Ptr(eid.New()),
+				Configs: []string{configId},
+			},
+		}, nil)
+		ctx.Req.Error(err)
+		var badReq *router.CreateRouterBadRequest
+		ctx.Req.ErrorAs(err, &badReq)
+	})
+
+	t.Run("create with duplicate config types should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, util.Ptr("router"))
+		configId1 := createConfig(t, configTypeId)
+		configId2 := createConfig(t, configTypeId)
+
+		_, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    util.Ptr(eid.New()),
+				Configs: []string{configId1, configId2},
+			},
+		}, nil)
+		ctx.Req.Error(err)
+		var badReq *router.CreateRouterBadRequest
+		ctx.Req.ErrorAs(err, &badReq)
+	})
+
+	t.Run("update should add configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct1 := createConfigType(t, util.Ptr("router"))
+		config1 := createConfig(t, ct1)
+
+		ct2 := createConfigType(t, util.Ptr("router"))
+		config2 := createConfig(t, ct2)
+
+		name := eid.New()
+		createResp, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    &name,
+				Configs: []string{config1},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+		id := createResp.Payload.Data.ID
+
+		_, err = mgmtClient.API.Router.UpdateRouter(&router.UpdateRouterParams{
+			ID: id,
+			Router: &rest_model.RouterUpdate{
+				Name:    &name,
+				Configs: []string{config1, config2},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+
+		detailResp, err := mgmtClient.API.Router.DetailRouter(&router.DetailRouterParams{ID: id}, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.ElementsMatch([]string{config1, config2}, detailResp.Payload.Data.Configs)
+	})
+
+	t.Run("patch should update configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, util.Ptr("router"))
+		configId := createConfig(t, configTypeId)
+
+		createResp, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name: util.Ptr(eid.New()),
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+		id := createResp.Payload.Data.ID
+
+		_, err = mgmtClient.API.Router.PatchRouter(&router.PatchRouterParams{
+			ID: id,
+			Router: &rest_model.RouterPatch{
+				Configs: []string{configId},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+
+		detailResp, err := mgmtClient.API.Router.DetailRouter(&router.DetailRouterParams{ID: id}, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal([]string{configId}, detailResp.Payload.Data.Configs)
+	})
+
+	t.Run("update should clear configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configTypeId := createConfigType(t, util.Ptr("router"))
+		configId := createConfig(t, configTypeId)
+
+		name := eid.New()
+		createResp, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name:    &name,
+				Configs: []string{configId},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+		id := createResp.Payload.Data.ID
+
+		_, err = mgmtClient.API.Router.UpdateRouter(&router.UpdateRouterParams{
+			ID: id,
+			Router: &rest_model.RouterUpdate{
+				Name: &name,
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+
+		detailResp, err := mgmtClient.API.Router.DetailRouter(&router.DetailRouterParams{ID: id}, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.Empty(detailResp.Payload.Data.Configs)
 	})
 }

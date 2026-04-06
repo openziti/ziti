@@ -42,13 +42,18 @@ type EdgeRouter struct {
 	Disabled              bool
 	CtrlChanListeners     map[string][]string
 	Interfaces            []*Interface
+	Configs               []string
 }
 
 func (self *EdgeRouter) GetName() string {
 	return self.Name
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.EdgeRouter, error) {
+	if err := entity.validateConfigs(tx, env); err != nil {
+		return nil, err
+	}
+
 	boltEntity := &db.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -58,6 +63,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter,
 			Disabled:          entity.Disabled,
 			CtrlChanListeners: entity.CtrlChanListeners,
 			Interfaces:        InterfacesToBolt(entity.Interfaces),
+			Configs:           entity.Configs,
 		},
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
@@ -68,7 +74,11 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.EdgeRouter,
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.EdgeRouter, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.EdgeRouter, error) {
+	if err := entity.validateConfigs(tx, env); err != nil {
+		return nil, err
+	}
+
 	return &db.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -79,6 +89,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCheck
 			Disabled:          entity.Disabled,
 			CtrlChanListeners: entity.CtrlChanListeners,
 			Interfaces:        InterfacesToBolt(entity.Interfaces),
+			Configs:           entity.Configs,
 		},
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
@@ -88,6 +99,10 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldCheck
 		UnverifiedFingerprint: entity.UnverifiedFingerprint,
 		UnverifiedCertPem:     entity.UnverifiedCertPem,
 	}, nil
+}
+
+func (entity *EdgeRouter) validateConfigs(tx *bbolt.Tx, env Env) error {
+	return validateRouterConfigs(tx, env, entity.Configs)
 }
 
 func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRouter) error {
@@ -106,5 +121,6 @@ func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRo
 	entity.Disabled = boltEdgeRouter.Disabled
 	entity.CtrlChanListeners = boltEdgeRouter.CtrlChanListeners
 	entity.Interfaces = InterfacesFromBolt(boltEdgeRouter.Interfaces)
+	entity.Configs = boltEdgeRouter.Configs
 	return nil
 }

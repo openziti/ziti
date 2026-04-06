@@ -381,6 +381,7 @@ type edgeRouter struct {
 	name              string
 	isTunnelerEnabled bool
 	roleAttributes    []string
+	configs           []string
 	ctrlChanListeners map[string][]string
 	tags              map[string]interface{}
 }
@@ -402,6 +403,9 @@ func (entity *edgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.isTunnelerEnabled, "isTunnelerEnabled")
+	if len(entity.configs) > 0 {
+		ctx.setJsonValue(entityData, entity.configs, "configs")
+	}
 	listeners := entity.ctrlChanListeners
 	if listeners == nil {
 		listeners = map[string][]string{}
@@ -418,6 +422,8 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
 	ctx.pathEquals(c, entity.isTunnelerEnabled, path("isTunnelerEnabled"))
+	sort.Strings(entity.configs)
+	ctx.pathEqualsStringSlice(c, entity.configs, path("configs"))
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 	ctx.pathEqualsCtrlChanListeners(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
@@ -716,6 +722,7 @@ func newTestTransitRouter() *transitRouter {
 type transitRouter struct {
 	id                string
 	name              string
+	configs           []string
 	ctrlChanListeners map[string][]string
 	tags              map[string]interface{}
 }
@@ -735,6 +742,9 @@ func (entity *transitRouter) getEntityType() string {
 func (entity *transitRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
+	if len(entity.configs) > 0 {
+		ctx.setJsonValue(entityData, entity.configs, "configs")
+	}
 	listeners := entity.ctrlChanListeners
 	if listeners == nil {
 		listeners = map[string][]string{}
@@ -750,6 +760,8 @@ func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
+	sort.Strings(entity.configs)
+	ctx.pathEqualsStringSlice(c, entity.configs, path("configs"))
 	ctx.pathEqualsCtrlChanListeners(c, entity.ctrlChanListeners, path("ctrlChanListeners"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }

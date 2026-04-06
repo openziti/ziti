@@ -60,6 +60,7 @@ func MapCreateFabricRouterToModel(router *rest_model.RouterCreate) *model.Router
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -77,6 +78,7 @@ func MapUpdateFabricRouterToModel(id string, router *rest_model.RouterUpdate) *m
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -94,6 +96,7 @@ func MapPatchFabricRouterToModel(id string, router *rest_model.RouterPatch) *mod
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -127,6 +130,7 @@ func (FabricRouterModelMapper) ToApi(ae *env.AppEnv, _ *response.RequestContext,
 		NoTraversal:       &router.NoTraversal,
 		Disabled:          &router.Disabled,
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	if connected != nil {

@@ -890,8 +890,9 @@ func (ctx *TestContext) newConfig(configType string, data map[string]interface{}
 
 func (ctx *TestContext) newConfigType() *configType {
 	return &configType{
-		Name: eid.New(),
-		Tags: nil,
+		Name:   eid.New(),
+		Target: util.Ptr("service"),
+		Tags:   nil,
 	}
 }
 

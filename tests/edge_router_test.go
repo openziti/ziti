@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	"github.com/openziti/edge-api/rest_management_api_client/role_attributes"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/common/eid"
@@ -320,5 +321,233 @@ func Test_EdgeRouter(t *testing.T) {
 			ID: createResp.Payload.Data.ID,
 		}, nil)
 		ctx.Req.NoError(err)
+	})
+}
+
+func Test_EdgeRouterConfigs(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	t.Run("create with router-target config should succeed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config.Id)
+		er.id = ctx.AdminManagementSession.requireCreateEntity(er)
+		ctx.AdminManagementSession.validateEntityWithQuery(er)
+	})
+
+	t.Run("create with service-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config.Id)
+		resp := ctx.AdminManagementSession.createEntity(er)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("create with nil-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = nil
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config.Id)
+		resp := ctx.AdminManagementSession.createEntity(er)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("create with duplicate config types should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config1 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+		config2 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config1.Id, config2.Id)
+		resp := ctx.AdminManagementSession.createEntity(er)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("update should add configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config1 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		ct2 := ctx.newConfigType()
+		ct2.Target = util.Ptr("router")
+		ct2.Id = ctx.AdminManagementSession.requireCreateEntity(ct2)
+		config2 := ctx.AdminManagementSession.requireCreateNewConfig(ct2.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config1.Id)
+		er.id = ctx.AdminManagementSession.requireCreateEntity(er)
+		ctx.AdminManagementSession.validateEntityWithQuery(er)
+
+		er.configs = s(config1.Id, config2.Id)
+		ctx.AdminManagementSession.requireUpdateEntity(er)
+		ctx.AdminManagementSession.validateUpdate(er)
+	})
+
+	t.Run("patch should update configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.id = ctx.AdminManagementSession.requireCreateEntity(er)
+
+		er.configs = s(config.Id)
+		ctx.AdminManagementSession.requirePatchEntity(er, "configs")
+		ctx.AdminManagementSession.validateUpdate(er)
+	})
+
+	t.Run("update should clear configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		er := newTestEdgeRouter()
+		er.configs = s(config.Id)
+		er.id = ctx.AdminManagementSession.requireCreateEntity(er)
+		ctx.AdminManagementSession.validateEntityWithQuery(er)
+
+		er.configs = nil
+		ctx.AdminManagementSession.requireUpdateEntity(er)
+		ctx.AdminManagementSession.validateUpdate(er)
+	})
+}
+
+func Test_TransitRouterConfigs(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	t.Run("create with router-target config should succeed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config.Id)
+		tr.id = ctx.AdminManagementSession.requireCreateEntity(tr)
+		ctx.AdminManagementSession.validateEntityWithQuery(tr)
+	})
+
+	t.Run("create with service-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("service")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config.Id)
+		resp := ctx.AdminManagementSession.createEntity(tr)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("create with nil-target config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = nil
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config.Id)
+		resp := ctx.AdminManagementSession.createEntity(tr)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("create with duplicate config types should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config1 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+		config2 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config1.Id, config2.Id)
+		resp := ctx.AdminManagementSession.createEntity(tr)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
+	})
+
+	t.Run("update should add configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config1 := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		ct2 := ctx.newConfigType()
+		ct2.Target = util.Ptr("router")
+		ct2.Id = ctx.AdminManagementSession.requireCreateEntity(ct2)
+		config2 := ctx.AdminManagementSession.requireCreateNewConfig(ct2.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config1.Id)
+		tr.id = ctx.AdminManagementSession.requireCreateEntity(tr)
+		ctx.AdminManagementSession.validateEntityWithQuery(tr)
+
+		tr.configs = s(config1.Id, config2.Id)
+		ctx.AdminManagementSession.requireUpdateEntity(tr)
+		ctx.AdminManagementSession.validateUpdate(tr)
+	})
+
+	t.Run("patch should update configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.id = ctx.AdminManagementSession.requireCreateEntity(tr)
+
+		tr.configs = s(config.Id)
+		ctx.AdminManagementSession.requirePatchEntity(tr, "configs")
+		ctx.AdminManagementSession.validateUpdate(tr)
+	})
+
+	t.Run("update should clear configs", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ct := ctx.newConfigType()
+		ct.Target = util.Ptr("router")
+		ct.Id = ctx.AdminManagementSession.requireCreateEntity(ct)
+		config := ctx.AdminManagementSession.requireCreateNewConfig(ct.Id, map[string]interface{}{"key": "value"})
+
+		tr := newTestTransitRouter()
+		tr.configs = s(config.Id)
+		tr.id = ctx.AdminManagementSession.requireCreateEntity(tr)
+		ctx.AdminManagementSession.validateEntityWithQuery(tr)
+
+		tr.configs = nil
+		ctx.AdminManagementSession.requireUpdateEntity(tr)
+		ctx.AdminManagementSession.validateUpdate(tr)
 	})
 }

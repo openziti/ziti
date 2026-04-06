@@ -77,6 +77,7 @@ type configStoreImpl struct {
 	indexName              boltz.ReadIndex
 	symbolType             boltz.EntitySymbol
 	symbolServices         boltz.EntitySetSymbol
+	symbolRouters          boltz.EntitySetSymbol
 	symbolIdentityServices boltz.EntitySetSymbol
 	identityServicesLinks  *boltz.LinkedSetSymbol
 }
@@ -91,6 +92,7 @@ func (store *configStoreImpl) initializeLocal() {
 	store.symbolType = store.AddFkSymbol(FieldConfigType, store.stores.configType)
 	store.AddMapSymbol(FieldConfigData, ast.NodeTypeAnyType, FieldConfigData)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolRouters = store.AddFkSetSymbol(EntityTypeRouters, store.stores.router)
 	store.symbolIdentityServices = store.AddSetSymbol(FieldConfigIdentityService, ast.NodeTypeOther)
 	store.identityServicesLinks = &boltz.LinkedSetSymbol{EntitySymbol: store.symbolIdentityServices}
 }
@@ -98,6 +100,7 @@ func (store *configStoreImpl) initializeLocal() {
 func (store *configStoreImpl) initializeLinked() {
 	store.AddFkIndex(store.symbolType, store.stores.configType.symbolConfigs)
 	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolConfigs)
+	store.AddLinkCollection(store.symbolRouters, store.stores.router.symbolConfigs)
 }
 
 func (store *configStoreImpl) NewEntity() *Config {
