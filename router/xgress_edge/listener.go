@@ -1354,11 +1354,11 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+		_ = ch.Close()
 		return
 	}
 
@@ -1369,9 +1369,8 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
 		_ = ch.Close()
@@ -1385,9 +1384,8 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
 		_ = ch.Close()
@@ -1399,9 +1397,8 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
 		_ = ch.Close()
@@ -1413,11 +1410,12 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, ""))
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+
+		_ = ch.Close()
 		return
 	}
 
