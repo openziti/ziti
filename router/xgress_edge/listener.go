@@ -1354,54 +1354,55 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+		_ = ch.Close()
 		return
 	}
 
 	newTokenStr := string(req.Body)
 
 	if !xgress_common.IsBearerToken(newTokenStr) {
-		retErr := NewInvalidApiSessionTokenError("message did not contain a valid JWT bearer token")
+		retErr := NewInvalidApiSessionTokenError("invalid token, could not be parsed")
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+		_ = ch.Close()
 		return
 	}
 
 	newApiSessionToken, err := self.listener.factory.stateManager.ParseApiSessionJwt(newTokenStr)
 
 	if err != nil {
-		retErr := NewInvalidApiSessionTokenError("api session JWT bearer token failed to parse or validate")
+		retErr := NewInvalidApiSessionTokenError("invalid token, invalid signature")
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+		_ = ch.Close()
 		return
 	}
 
 	if newApiSessionToken.Claims.ApiSessionId != currentApiSession.Claims.ApiSessionId {
-		retErr := NewInvalidApiSessionTokenError("api session JWT bearer token does not match current connection's api session id")
+		retErr := NewInvalidApiSessionTokenError("invalid token, API session id does not match")
 		reply := sdkedge.NewUpdateTokenFailedMsg(retErr)
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+		_ = ch.Close()
+		return
 	}
 
 	if err := self.listener.factory.stateManager.HandleClientApiSessionTokenUpdate(newApiSessionToken); err != nil {
@@ -1409,11 +1410,12 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, ""))
 
 		retErr.ApplyToMsg(reply)
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("failed to send error: " + err.Error())
 		}
+
+		_ = ch.Close()
 		return
 	}
 
