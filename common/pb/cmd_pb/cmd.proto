@@ -118,6 +118,7 @@ message Router {
   map<string, TagValue> tags = 7;
   repeated Interface interfaces = 8;
   map<string, CtrlChanListenerDetail> ctrlChanListeners = 9;
+  repeated string configs = 10;
 }
 
 message Terminator {

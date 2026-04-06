@@ -1640,6 +1640,10 @@ definitions:
               type: array
               items:
                 type: string
+          configs:
+            type: array
+            items:
+              type: string
   routerListener:
     type: object
     required:
@@ -1681,6 +1685,10 @@ definitions:
           items:
             type: string
         x-omitempty: false
+      configs:
+        type: array
+        items:
+          type: string
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
@@ -1711,6 +1719,10 @@ definitions:
           items:
             type: string
         x-omitempty: false
+      configs:
+        type: array
+        items:
+          type: string
       tags:
         $ref: '#/definitions/tags'
   routerPatch:
@@ -1739,6 +1751,10 @@ definitions:
           items:
             type: string
         x-omitempty: false
+      configs:
+        type: array
+        items:
+          type: string
       tags:
         $ref: '#/definitions/tags'
 
