@@ -135,16 +135,22 @@ func (self *commandHandler) processMessage() bool {
 
 	// Phase 1: Dequeue and submit to Raft (under lock)
 	self.lock.Lock()
-	select {
-	case pair = <-self.queue:
-		// ApplyTwoPhase acquires a rate limiter slot and submits to Raft.Apply()
-		// It returns immediately with a continuation function, not waiting for Raft consensus
-		phaseTwo, err = self.controller.ApplyTwoPhase(pair.msg.Body)
-	default:
-		self.lock.Unlock()
+	dequeued := func() bool {
+		defer self.lock.Unlock()
+		select {
+		case pair = <-self.queue:
+			// ApplyTwoPhase acquires a rate limiter slot and submits to Raft.Apply()
+			// It returns immediately with a continuation function, not waiting for Raft consensus
+			phaseTwo, err = self.controller.ApplyTwoPhase(pair.msg.Body)
+			return true
+		default:
+			return false
+		}
+	}()
+
+	if !dequeued {
 		return false
 	}
-	self.lock.Unlock()
 
 	if err != nil {
 		// Rate limiter rejected the operation (too many in-flight operations)
