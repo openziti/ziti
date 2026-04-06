@@ -18,6 +18,11 @@ package command
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
@@ -25,10 +30,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/apierror"
 	"github.com/pkg/errors"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
+	gometrics "github.com/rcrowley/go-metrics"
 )
 
 const (
@@ -42,13 +44,22 @@ const (
 	DefaultAdaptiveRateLimiterMinWindowSize = 5
 	DefaultAdaptiveRateLimiterMaxWindowSize = 250
 	DefaultAdaptiveRateLimiterTimeout       = 30 * time.Second
+
+	DefaultAdaptiveRateLimiterSuccessThreshold      = 0.9
+	DefaultAdaptiveRateLimiterIncreaseFactor        = 1.02
+	DefaultAdaptiveRateLimiterDecreaseFactor        = 0.9
+	DefaultAdaptiveRateLimiterIncreaseCheckInterval = 10
+	DefaultAdaptiveRateLimiterDecreaseCheckInterval = 10
 )
 
+// RateLimiterConfig contains configuration values used to create a new DefaultRateLimiter
 type RateLimiterConfig struct {
 	Enabled   bool
 	QueueSize uint32
 }
 
+// NewRateLimiter creates a new rate limiter using the given configuration. If the configuration has
+// Enabled set to false, a NoOpRateLimiter will be returned
 func NewRateLimiter(config RateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.RateLimiter {
 	if !config.Enabled {
 		return NoOpRateLimiter{}
@@ -78,6 +89,7 @@ func NewRateLimiter(config RateLimiterConfig, registry metrics.Registry, closeNo
 	return result
 }
 
+// NoOpRateLimiter is a rate limiter that doesn't enforce any rate limiting
 type NoOpRateLimiter struct{}
 
 func (self NoOpRateLimiter) RunRateLimited(f func() error) error {
@@ -88,12 +100,14 @@ func (self NoOpRateLimiter) GetQueueFillPct() float64 {
 	return 0
 }
 
+// NoOpAdaptiveRateLimiter is an adaptive rate limiter that doesn't enforce any rate limiting
 type NoOpAdaptiveRateLimiter struct{}
 
 func (self NoOpAdaptiveRateLimiter) RunRateLimited(f func() error) (rate.RateLimitControl, error) {
 	return rate.NoOpRateLimitControl(), f()
 }
 
+// NoOpAdaptiveRateLimitTracker is an adaptive rate limit tracker that doesn't enforce any rate limiting
 type NoOpAdaptiveRateLimitTracker struct{}
 
 func (n NoOpAdaptiveRateLimitTracker) RunRateLimited(string) (rate.RateLimitControl, error) {
@@ -113,6 +127,7 @@ type rateLimitedWork struct {
 	result  chan error
 }
 
+// DefaultRateLimiter implements rate.RateLimiter using a fixed-size buffered channel as a work queue
 type DefaultRateLimiter struct {
 	currentSize atomic.Int32
 	queue       chan *rateLimitedWork
@@ -191,6 +206,7 @@ type AdaptiveRateLimiterConfig struct {
 	Timeout time.Duration
 }
 
+// SetDefaults sets the default values for the AdaptiveRateLimiterConfig
 func (self *AdaptiveRateLimiterConfig) SetDefaults() {
 	self.Enabled = DefaultAdaptiveRateLimiterEnabled
 	self.MinSize = DefaultAdaptiveRateLimiterMinWindowSize
@@ -198,7 +214,8 @@ func (self *AdaptiveRateLimiterConfig) SetDefaults() {
 	self.Timeout = DefaultAdaptiveRateLimiterTimeout
 }
 
-func LoadAdaptiveRateLimiterConfig(cfg *AdaptiveRateLimiterConfig, cfgmap map[interface{}]interface{}) error {
+// Load reads the configuration values from the given config map
+func (cfg *AdaptiveRateLimiterConfig) Load(cfgmap map[interface{}]interface{}) error {
 	if value, found := cfgmap["enabled"]; found {
 		cfg.Enabled = strings.EqualFold("true", fmt.Sprintf("%v", value))
 	}
@@ -240,6 +257,8 @@ func LoadAdaptiveRateLimiterConfig(cfg *AdaptiveRateLimiterConfig, cfgmap map[in
 	return nil
 }
 
+// NewAdaptiveRateLimiter creates a new adaptive rate limiter using the given configuration. If the
+// configuration has Enabled set to false, a NoOpAdaptiveRateLimiter will be returned
 func NewAdaptiveRateLimiter(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.AdaptiveRateLimiter {
 	if !config.Enabled {
 		return NoOpAdaptiveRateLimiter{}
@@ -410,6 +429,7 @@ func (r rateLimitControl) Failed() {
 	// no-op for this type
 }
 
+// WasRateLimited returns true if the given error indicates that a request was rejected due to rate limiting
 func WasRateLimited(err error) bool {
 	var apiErr *errorz.ApiError
 	if errors.As(err, &apiErr) {
@@ -418,18 +438,132 @@ func WasRateLimited(err error) bool {
 	return false
 }
 
-func NewAdaptiveRateLimitTracker(config AdaptiveRateLimiterConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.AdaptiveRateLimitTracker {
+// AdaptiveRateLimitTrackerConfig contains configuration values used to create a new AdaptiveRateLimitTracker
+type AdaptiveRateLimitTrackerConfig struct {
+	AdaptiveRateLimiterConfig
+
+	// SuccessThreshold - the success rate threshold above which the window size will be increased and
+	//                    below which the window size will be decreased
+	SuccessThreshold float64
+
+	// IncreaseFactor - the multiplier applied to the current window size when increasing it
+	IncreaseFactor float64
+
+	// DecreaseFactor - the multiplier applied to the current window size when decreasing it
+	DecreaseFactor float64
+
+	// IncreaseCheckInterval - the number of successes between window size increase checks
+	IncreaseCheckInterval int
+
+	// DecreaseCheckInterval - the number of backoffs between window size decrease checks
+	DecreaseCheckInterval int
+}
+
+// SetDefaults sets the default values for the AdaptiveRateLimitTrackerConfig
+func (self *AdaptiveRateLimitTrackerConfig) SetDefaults() {
+	self.AdaptiveRateLimiterConfig.SetDefaults()
+	self.SuccessThreshold = DefaultAdaptiveRateLimiterSuccessThreshold
+	self.IncreaseFactor = DefaultAdaptiveRateLimiterIncreaseFactor
+	self.DecreaseFactor = DefaultAdaptiveRateLimiterDecreaseFactor
+	self.IncreaseCheckInterval = DefaultAdaptiveRateLimiterIncreaseCheckInterval
+	self.DecreaseCheckInterval = DefaultAdaptiveRateLimiterDecreaseCheckInterval
+}
+
+// Load reads the configuration values from the given config map
+func (cfg *AdaptiveRateLimitTrackerConfig) Load(cfgmap map[interface{}]interface{}) error {
+	if err := cfg.AdaptiveRateLimiterConfig.Load(cfgmap); err != nil {
+		return err
+	}
+
+	if value, found := cfgmap["successThreshold"]; found {
+		if v, ok := value.(float64); ok {
+			cfg.SuccessThreshold = v
+		} else {
+			return errors.Errorf("invalid value %v for adaptive rate limiter success threshold, must be floating point value", value)
+		}
+	}
+
+	if cfg.SuccessThreshold > 1 {
+		return errors.Errorf("invalid value %f for adaptive rate limiter success threshold, must be between 0 and 1", cfg.SuccessThreshold)
+	}
+
+	if cfg.SuccessThreshold < 0 {
+		return errors.Errorf("invalid value %f for adaptive rate limiter success threshold, must be between 0 and 1", cfg.SuccessThreshold)
+	}
+
+	if value, found := cfgmap["increaseFactor"]; found {
+		if v, ok := value.(float64); ok {
+			cfg.IncreaseFactor = v
+		} else {
+			return errors.Errorf("invalid value %v for adaptive rate limiter increaseFactor, must be floating point value", value)
+		}
+	}
+
+	if cfg.IncreaseFactor < 1 {
+		return errors.Errorf("invalid value %f for adaptive rate limiter increaseFactor, must be greater than 1, usually less than 2", cfg.IncreaseFactor)
+	}
+
+	if value, found := cfgmap["decreaseFactor"]; found {
+		if v, ok := value.(float64); ok {
+			cfg.DecreaseFactor = v
+		} else {
+			return errors.Errorf("invalid value %v for adaptive rate limiter decreaseFactor, must be floating point value", value)
+		}
+	}
+
+	if cfg.DecreaseFactor <= 0 || cfg.DecreaseFactor >= 1 {
+		return errors.Errorf("invalid value %f for adaptive rate limiter decreaseFactor, must be between 0 and 1", cfg.DecreaseFactor)
+	}
+
+	if value, found := cfgmap["increaseCheckInterval"]; found {
+		if intVal, ok := value.(int); ok {
+			cfg.IncreaseCheckInterval = intVal
+		} else {
+			return errors.Errorf("invalid value %v for adaptive rate limiter increaseCheckInterval, must be integer value", value)
+		}
+	}
+
+	if cfg.IncreaseCheckInterval < 1 {
+		return errors.Errorf("invalid value %d for adaptive rate limiter increaseCheckInterval, must be at least 1", cfg.IncreaseCheckInterval)
+	}
+
+	if value, found := cfgmap["decreaseCheckInterval"]; found {
+		if intVal, ok := value.(int); ok {
+			cfg.DecreaseCheckInterval = intVal
+		} else {
+			return errors.Errorf("invalid value %v for adaptive rate limiter decreaseCheckInterval, must be integer value", value)
+		}
+	}
+
+	if cfg.DecreaseCheckInterval < 1 {
+		return errors.Errorf("invalid value %d for adaptive rate limiter decreaseCheckInterval, must be at least 1", cfg.DecreaseCheckInterval)
+	}
+
+	return nil
+}
+
+// NewAdaptiveRateLimitTracker creates a new adaptive rate limit tracker using the given configuration.
+// If the configuration has Enabled set to false, a NoOpAdaptiveRateLimitTracker will be returned.
+// Unlike the AdaptiveRateLimiter, the tracker does not execute work directly. Instead it tracks
+// outstanding work and adjusts the window size based on the success rate of completed work.
+func NewAdaptiveRateLimitTracker(config AdaptiveRateLimitTrackerConfig, registry metrics.Registry, closeNotify <-chan struct{}) rate.AdaptiveRateLimitTracker {
 	if !config.Enabled {
 		return NoOpAdaptiveRateLimitTracker{}
 	}
 
 	result := &adaptiveRateLimitTracker{
-		minWindow:       int32(config.MinSize),
-		maxWindow:       int32(config.MaxSize),
-		timeout:         config.Timeout,
-		workRate:        registry.Timer(config.WorkTimerMetric),
-		outstandingWork: map[string]*adaptiveRateLimitTrackerWork{},
-		closeNotify:     closeNotify,
+		minWindow:             int32(config.MinSize),
+		maxWindow:             int32(config.MaxSize),
+		successThreshold:      config.SuccessThreshold,
+		increaseFactor:        config.IncreaseFactor,
+		decreaseFactor:        config.DecreaseFactor,
+		increaseCheckInterval: uint32(config.IncreaseCheckInterval),
+		decreaseCheckInterval: uint32(config.DecreaseCheckInterval),
+		timeout:               config.Timeout,
+		workRate:              registry.Timer(config.WorkTimerMetric),
+		outstandingWork:       map[string]*adaptiveRateLimitTrackerWork{},
+		closeNotify:           closeNotify,
+		successRate:           gometrics.NewHistogram(gometrics.NewExpDecaySample(128, 0.5)),
 	}
 
 	if existing := registry.GetGauge(config.QueueSizeMetric); existing != nil {
@@ -455,18 +589,35 @@ func NewAdaptiveRateLimitTracker(config AdaptiveRateLimiterConfig, registry metr
 	return result
 }
 
+// adaptiveRateLimitTracker manages a sliding concurrency window to control the rate of outstanding work.
+// It does not execute work directly. Callers acquire a slot via RunRateLimited and later report the
+// outcome (Success, Backoff, or Failed) through the returned RateLimitControl.
+//
+// The window size adjusts between minWindow and maxWindow based on an exponentially decaying success
+// rate histogram. Every increaseCheckInterval successes, if the success rate exceeds the configured
+// threshold the window is grown by increaseFactor. Every decreaseCheckInterval backoffs, if the
+// success rate is below the threshold the window is shrunk by decreaseFactor. A background goroutine
+// expires work that has not been completed within the configured timeout, treating it as a backoff.
 type adaptiveRateLimitTracker struct {
-	currentWindow  atomic.Int32
-	minWindow      int32
-	maxWindow      int32
+	currentWindow         atomic.Int32
+	minWindow             int32
+	maxWindow             int32
+	successThreshold      float64
+	increaseFactor        float64
+	decreaseFactor        float64
+	increaseCheckInterval uint32
+	decreaseCheckInterval uint32
+
 	timeout        time.Duration
 	lock           sync.Mutex
 	successCounter atomic.Uint32
+	backoffCounter atomic.Uint32
 
 	currentSize     atomic.Int32
 	workRate        metrics.Timer
 	outstandingWork map[string]*adaptiveRateLimitTrackerWork
 	closeNotify     <-chan struct{}
+	successRate     gometrics.Histogram
 }
 
 func (self *adaptiveRateLimitTracker) IsRateLimited() bool {
@@ -480,14 +631,23 @@ func (self *adaptiveRateLimitTracker) success(work *adaptiveRateLimitTrackerWork
 	self.currentSize.Add(-1)
 	delete(self.outstandingWork, work.id)
 	self.workRate.UpdateSince(work.createTime)
+	self.successRate.Update(1)
+
 	if self.currentWindow.Load() >= self.maxWindow {
 		return
 	}
 
-	if self.successCounter.Add(1)%10 == 0 {
-		if nextVal := self.currentWindow.Add(1); nextVal > self.maxWindow {
-			self.currentWindow.Store(self.maxWindow)
+	if self.successCounter.Add(1)%self.increaseCheckInterval == 0 && self.successRate.Mean() > self.successThreshold {
+		current := self.currentWindow.Load()
+		nextWindow := int32(float64(current) * self.increaseFactor)
+		if nextWindow == current {
+			nextWindow++
 		}
+
+		if nextWindow > self.maxWindow {
+			nextWindow = self.maxWindow
+		}
+		self.updateWindowSize(nextWindow)
 	}
 }
 
@@ -498,18 +658,34 @@ func (self *adaptiveRateLimitTracker) backoff(work *adaptiveRateLimitTrackerWork
 	self.currentSize.Add(-1)
 	delete(self.outstandingWork, work.id)
 
+	self.successRate.Update(0)
+
 	if self.currentWindow.Load() <= self.minWindow {
 		return
 	}
 
-	current := self.currentWindow.Load()
-	nextWindow := work.queuePosition - 10
-	if nextWindow < current {
+	if self.backoffCounter.Add(1)%self.decreaseCheckInterval == 0 && self.successRate.Mean() < self.successThreshold {
+		current := self.currentWindow.Load()
+		nextWindow := int32(float64(current) * self.decreaseFactor)
+
+		if nextWindow == current {
+			nextWindow--
+		}
+
 		if nextWindow < self.minWindow {
 			nextWindow = self.minWindow
 		}
-		self.currentWindow.Store(nextWindow)
+		self.updateWindowSize(nextWindow)
 	}
+}
+
+func (self *adaptiveRateLimitTracker) updateWindowSize(nextWindow int32) {
+	pfxlog.Logger().WithField("queueSize", self.currentSize.Load()).
+		WithField("currentWindowSize", self.currentWindow.Load()).
+		WithField("nextWindowSize", nextWindow).
+		WithField("successRate", self.successRate.Mean()).
+		Debug("window size updated")
+	self.currentWindow.Store(nextWindow)
 }
 
 func (self *adaptiveRateLimitTracker) complete(work *adaptiveRateLimitTrackerWork) {
@@ -599,6 +775,8 @@ func (self *adaptiveRateLimitTrackerWork) Success() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
+			WithField("currentSize", self.limiter.currentSize.Load()).
+			WithField("currentWindow", self.limiter.currentWindow.Load()).
 			Debug("success")
 		self.limiter.success(self)
 	}
@@ -608,6 +786,8 @@ func (self *adaptiveRateLimitTrackerWork) Backoff() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
+			WithField("currentSize", self.limiter.currentSize.Load()).
+			WithField("currentWindow", self.limiter.currentWindow.Load()).
 			Debug("backoff")
 		self.limiter.backoff(self)
 	}
@@ -617,6 +797,8 @@ func (self *adaptiveRateLimitTrackerWork) Failed() {
 	if self.completed.CompareAndSwap(false, true) {
 		pfxlog.Logger().WithField("label", self.label).
 			WithField("duration", time.Since(self.createTime)).
+			WithField("currentSize", self.limiter.currentSize.Load()).
+			WithField("currentWindow", self.limiter.currentWindow.Load()).
 			Debug("failed")
 		self.limiter.complete(self)
 	}

@@ -111,7 +111,7 @@ func newClusterState(isLeader, isReadWrite bool) ClusterState {
 type Env interface {
 	GetId() *identity.TokenId
 	GetVersionProvider() versions.VersionProvider
-	GetCommandRateLimiterConfig() command.RateLimiterConfig
+	GetRaftRateLimiterConfig() command.AdaptiveRateLimitTrackerConfig
 	GetRaftConfig() *config.RaftConfig
 	GetMetricsRegistry() metrics.Registry
 	GetEventDispatcher() event.Dispatcher
@@ -121,13 +121,13 @@ type Env interface {
 
 func NewController(env Env, migrationMgr MigrationManager) *Controller {
 	result := &Controller{
-		env:                env,
-		Config:             env.GetRaftConfig(),
-		indexTracker:       NewIndexTracker(),
-		migrationMgr:       migrationMgr,
-		clusterEvents:      make(chan raft.Observation, 16),
-		commandRateLimiter: command.NewRateLimiter(env.GetCommandRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
-		errorMappers:       map[string]func(map[string]any) error{},
+		env:             env,
+		Config:          env.GetRaftConfig(),
+		indexTracker:    NewIndexTracker(),
+		migrationMgr:   migrationMgr,
+		clusterEvents:   make(chan raft.Observation, 16),
+		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
+		errorMappers:    map[string]func(map[string]any) error{},
 	}
 	result.initErrorMappers()
 	return result
@@ -150,7 +150,7 @@ type Controller struct {
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
-	commandRateLimiter         rate.RateLimiter
+	raftRateLimiter            rate.AdaptiveRateLimitTracker
 	errorMappers               map[string]func(map[string]any) error
 }
 
@@ -220,7 +220,9 @@ func (self *Controller) GetMesh() mesh.Mesh {
 }
 
 func (self *Controller) GetRateLimiter() rate.RateLimiter {
-	return self.commandRateLimiter
+	// this is only used by the API session store, which is not generally used
+	// when using HA
+	return command.NoOpRateLimiter{}
 }
 
 func (self *Controller) ConfigureMeshHandlers(bindHandler channel.BindHandler) {
@@ -488,17 +490,22 @@ func (self *Controller) applyCommand(cmd command.Command) (uint64, error) {
 
 // ApplyEncodedCommand applies the command to the RAFT distributed log
 func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
-	val, idx, err := self.ApplyWithTimeout(encoded, 5*time.Second)
-	if err != nil {
-		return 0, err
+	val, idx, err := self.ApplyWithTimeout(encoded)
+	return self.HandleApplyOutput(encoded, val, idx, err)
+}
+
+// HandleApplyOutput processes the output of a RAFT Apply operation, handling error responses
+func (self *Controller) HandleApplyOutput(cmd []byte, val interface{}, idx uint64, applyErr error) (uint64, error) {
+	if applyErr != nil {
+		return 0, applyErr
 	}
 	if err, ok := val.(error); ok {
 		return 0, err
 	}
 	if val != nil {
-		cmd, err := self.Fsm.decoders.Decode(encoded)
+		cmd, err := self.Fsm.decoders.Decode(cmd)
 		if err != nil {
-			logrus.WithError(err).Error("failed to unmarshal command which returned non-nil, non-error value")
+			pfxlog.Logger().WithError(err).Error("failed to unmarshal command which returned non-nil, non-error value")
 			return 0, err
 		}
 		pfxlog.Logger().WithField("cmdType", reflect.TypeOf(cmd)).Error("command return non-nil, non-error value")
@@ -506,34 +513,57 @@ func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
 	return idx, nil
 }
 
-// ApplyWithTimeout applies the given command to the RAFT distributed log with the given timeout
-func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, uint64, error) {
-	returnValue := atomic.Value{}
-	index := atomic.Uint64{}
-	err := self.commandRateLimiter.RunRateLimited(func() error {
-		f := self.Raft.Apply(log, timeout)
-		if err := f.Error(); err != nil {
-			return err
-		}
-
-		if response := f.Response(); response != nil {
-			returnValue.Store(response)
-		}
-		index.Store(f.Index())
-		return nil
-	})
-
+// ApplyWithTimeout applies the given command to the RAFT distributed log with the configured timeout
+func (self *Controller) ApplyWithTimeout(log []byte) (interface{}, uint64, error) {
+	secondPhase, err := self.ApplyTwoPhase(log)
 	if err != nil {
-		if errors.Is(err, raft.ErrNotLeader) {
-			noLeaderErr := apierror.NewClusterHasNoLeaderError()
-			noLeaderErr.Cause = err
-			err = noLeaderErr
-		}
-
 		return nil, 0, err
 	}
+	return secondPhase()
+}
 
-	return returnValue.Load(), index.Load(), nil
+// ApplyTwoPhase submits a command to the RAFT distributed log and returns a continuation function
+// that waits for consensus. This allows callers to release locks between submission and waiting.
+func (self *Controller) ApplyTwoPhase(log []byte) (func() (interface{}, uint64, error), error) {
+	start := time.Now()
+	raftOperation, err := self.raftRateLimiter.RunRateLimited("raft operation")
+	if err != nil {
+		return nil, err
+	}
+
+	f := self.Raft.Apply(log, self.Config.ApplyTimeout)
+
+	return func() (interface{}, uint64, error) {
+		if err = f.Error(); err != nil {
+			if errors.Is(err, raft.ErrNotLeader) {
+				noLeaderErr := apierror.NewClusterHasNoLeaderError()
+				noLeaderErr.Cause = err
+				err = noLeaderErr
+				raftOperation.Failed()
+			} else if errors.Is(err, raft.ErrEnqueueTimeout) {
+				tooBusyErr := apierror.NewTooManyUpdatesError()
+				tooBusyErr.Cause = err
+				err = tooBusyErr
+				raftOperation.Backoff()
+			} else {
+				raftOperation.Failed()
+			}
+
+			return nil, 0, err
+		}
+
+		defer func() {
+			if time.Since(start) > self.Config.ApplyTimeout {
+				raftOperation.Backoff()
+			} else {
+				raftOperation.Success()
+			}
+		}()
+
+		response := f.Response()
+		index := f.Index()
+		return response, index, nil
+	}, nil
 }
 
 // Init sets up the Mesh and Raft instances

@@ -605,7 +605,7 @@ func (c *EdgeConfig) loadAuthRateLimiterConfig(cfgmap map[interface{}]interface{
 
 	if value, found := cfgmap["authRateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(&c.AuthRateLimiter, submap); err != nil {
+			if err := c.AuthRateLimiter.Load(submap); err != nil {
 				return err
 			}
 			if c.AuthRateLimiter.MaxSize < AuthRateLimiterMinSizeValue {

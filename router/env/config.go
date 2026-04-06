@@ -149,7 +149,7 @@ type Config struct {
 		EndpointsFile         string
 		Heartbeats            HeartbeatOptions
 		StartupTimeout        time.Duration
-		RateLimit             command.AdaptiveRateLimiterConfig
+		RateLimit             command.AdaptiveRateLimitTrackerConfig
 	}
 	Link struct {
 		Listeners  []map[interface{}]interface{}
@@ -980,7 +980,7 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 
 	if value, found := cfgmap["rateLimiter"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if err := command.LoadAdaptiveRateLimiterConfig(rateLimitConfig, submap); err != nil {
+			if err := rateLimitConfig.Load(submap); err != nil {
 				return err
 			}
 			if rateLimitConfig.MaxSize < CtrlRateLimiterMinSizeValue {
