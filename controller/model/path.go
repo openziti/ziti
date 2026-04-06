@@ -31,6 +31,10 @@ type Path struct {
 	TerminatorRemoteAddr string
 }
 
+func (self *Path) IsValid() bool {
+	return self != nil && len(self.Nodes) > 0
+}
+
 func (self *Path) Cost(minRouterCost uint16) int64 {
 	var cost int64
 	for _, l := range self.Links {

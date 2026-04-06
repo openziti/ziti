@@ -71,8 +71,10 @@ func (network *Network) getRerouteCandidates() []*newCircuitPath {
 	circuitCosts := make(map[string]int64)
 	var orderedCircuits []string
 	for _, circuit := range circuits {
-		circuitCosts[circuit.Id] = network.calculateCircuitCost(circuit.Path)
-		orderedCircuits = append(orderedCircuits, circuit.Id)
+		if circuit.Path.IsValid() {
+			circuitCosts[circuit.Id] = network.calculateCircuitCost(circuit.Path)
+			orderedCircuits = append(orderedCircuits, circuit.Id)
+		}
 	}
 
 	sort.SliceStable(orderedCircuits, func(i, j int) bool {

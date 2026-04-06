@@ -589,6 +589,7 @@ func (network *Network) CreateCircuit(params model.CreateCircuitParams) (*model.
 		Id:        circuitId,
 		ClientId:  clientId.Token,
 		ServiceId: serviceId,
+		Path:      &model.Path{}, // empty until the circuit is built
 	}
 
 	// Reserve the circuit ID in the map to prevent collisions and protect routing.
@@ -1093,14 +1094,17 @@ func (network *Network) rerouteLink(l *model.Link, deadline time.Time) error {
 func (network *Network) rerouteCircuitWithTries(circuit *model.Circuit, retries int) bool {
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 
-	for i := 0; i < retries; i++ {
-		deadline := time.Now().Add(config.DefaultOptionsRouteTimeout)
-		err := network.rerouteCircuit(circuit, deadline)
-		if err == nil {
-			return true
-		}
+	// Path is nil for reserved circuits that haven't been built yet
+	if circuit.Path.IsValid() {
+		for i := 0; i < retries; i++ {
+			deadline := time.Now().Add(config.DefaultOptionsRouteTimeout)
+			err := network.rerouteCircuit(circuit, deadline)
+			if err == nil {
+				return true
+			}
 
-		log.WithError(err).WithField("attempt", i).Error("error re-routing circuit")
+			log.WithError(err).WithField("attempt", i).Error("error re-routing circuit")
+		}
 	}
 
 	if err := network.RemoveCircuit(circuit.Id, true); err != nil {
