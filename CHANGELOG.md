@@ -7,6 +7,8 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.14 -> v1.6.15](https://github.com/openziti/ziti/compare/v1.6.14...v1.6.15)
+    * [Issue #3771](https://github.com/openziti/ziti/issues/3771) - [Backport-1.6] Adaptive rate limiter should use success rate rather than queue position
+    * [Issue #3770](https://github.com/openziti/ziti/issues/3770) - Update Token Requests Should Close Channel Connections If Invalid
     * [Issue #3764](https://github.com/openziti/ziti/issues/3764) - [Backport-1.6] coalesce OIDC JWT revocations to reduce controller write pressure
     * [Issue #3760](https://github.com/openziti/ziti/issues/3760) - [Backport-1.6] revocation build-up in db and rdm
 
