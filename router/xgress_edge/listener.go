@@ -20,6 +20,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/openziti/metrics"
 	sdkinspect "github.com/openziti/sdk-golang/inspect"
 	"github.com/openziti/ziti/common/ctrl_msg"
@@ -31,7 +33,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
-	"time"
 
 	"github.com/openziti/ziti/common/capabilities"
 	"github.com/openziti/ziti/common/cert"
@@ -963,48 +964,57 @@ func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.
 	currentApiSession := self.listener.factory.stateManager.GetApiSessionFromCh(ch)
 
 	if currentApiSession == nil || currentApiSession.JwtToken == nil {
-		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
-		msg.ReplyTo(req)
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.New("current connection isn't authenticated via JWT beater tokens, unable to switch to them"))
+
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with failure")
+		}
+		_ = ch.Close()
 		return
 	}
 
 	newTokenStr := string(req.Body)
 
 	if !xgress_common.IsBearerToken(newTokenStr) {
-		msg := sdkedge.NewUpdateTokenFailedMsg(errors.New("message did not contain a valid JWT bearer token"))
-		msg.ReplyTo(req)
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.New("invalid token, could not be parsed"))
+
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
+			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with failure")
+		}
+		_ = ch.Close()
 		return
 	}
 
 	newToken, newClaims, err := self.listener.factory.stateManager.ParseJwt(newTokenStr)
 
 	if err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "JWT bearer token failed to validate"))
-		reply.ReplyTo(req)
-		if err := ch.Send(reply); err != nil {
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "invalid token, invalid signature"))
+
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with validation failure")
 		}
+		_ = ch.Close()
 		return
 	}
 
 	newApiSession, err := state.NewApiSessionFromToken(newToken, newClaims)
 	if err != nil {
-		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
-		reply.ReplyTo(req)
+		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "invalid token, failed to build api session from token"))
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
 		}
+		_ = ch.Close()
 		return
 	}
 
 	if err := self.listener.factory.stateManager.UpdateChApiSession(ch, newApiSession); err != nil {
 		reply := sdkedge.NewUpdateTokenFailedMsg(errors.Wrap(err, "failed to update a JWT based api session"))
-		reply.ReplyTo(req)
 
-		if err := ch.Send(reply); err != nil {
+		if err := reply.ReplyTo(req).WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 			logrus.WithError(err).WithField("reqSeq", reply.Sequence()).Error("error responding to token update request with update failure")
 		}
+		_ = ch.Close()
 		return
 	}
 
