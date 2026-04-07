@@ -1,0 +1,93 @@
+v: 3
+
+{{if .Component.GetFlag "ha"}}
+cluster:
+  dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+  restartSelfOnSnapshot: true
+{{- if .Component.HasTag "preferredLeader"}}
+  preferredLeader: true
+{{- end}}
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
+{{end}}
+
+identity:
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
+
+trustDomain: oidc-auth-test
+
+command:
+  background:
+    enabled: true
+    queueSize: 10
+    dropWhenFull: true
+  rateLimiter:
+    enabled:   true
+    maxQueued: 25
+
+ctrl:
+  listener: tls:0.0.0.0:6262
+  options:
+    advertiseAddress: tls:{{ .Host.PublicIp }}:6262
+
+events:
+  jsonLogger:
+    subscriptions:
+      - type: entityChange
+      - type: apiSession
+      - type: entityCount
+        interval: 15s
+      - type: session
+      - type: router
+      - type: terminator
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+
+healthChecks:
+  boltCheck:
+    interval: 30s
+    timeout: 15s
+    initialDelay: 15s
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: {{ .Host.PublicIp }}:1280
+  enrollment:
+    signingCert:
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}.key
+    edgeIdentity:
+      duration: 1h
+    edgeRouter:
+      duration: 1h
+  oidc:
+    accessTokenDuration: 5m
+    refreshTokenDuration: 20m
+    idTokenDuration: 5m
+    revocationBucketInterval: 15s
+    revocationBucketMaxSize: 500
+    revocationMaxQueued: 50000
+    revocationEnforcerFrequency: 30s
+
+web:
+  - name: all-apis-localhost
+    bindPoints:
+      - interface: 0.0.0.0:1280
+        address: {{ .Host.PublicIp }}:1280
+    options:
+      idleTimeout: 5000ms
+      readTimeout: 5000ms
+      writeTimeout: 100000ms
+      minTLSVersion: TLS1.2
+      maxTLSVersion: TLS1.3
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+      - binding: edge-oidc

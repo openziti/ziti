@@ -173,7 +173,37 @@ func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Durati
 	return err
 }
 
+// LoginFunc authenticates a Clients instance against a controller component.
+type LoginFunc func(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error)
+
 func EnsureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {
+	return ensureLoggedIntoCtrl(run, c, timeout, func(clients *zitirest.Clients, username, password string) error {
+		return clients.Authenticate(username, password)
+	})
+}
+
+// EnsureLoggedIntoCtrlOidc authenticates to the controller using the OIDC PKCE
+// flow and starts a background goroutine that refreshes the session token at
+// the given interval. Use refreshInterval <= 0 to skip automatic refresh.
+func EnsureLoggedIntoCtrlOidc(run model.Run, c *model.Component, timeout time.Duration, refreshInterval time.Duration) (*zitirest.Clients, error) {
+	clients, err := ensureLoggedIntoCtrl(run, c, timeout, func(clients *zitirest.Clients, username, password string) error {
+		return clients.AuthenticateOidc(username, password)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if refreshInterval > 0 {
+		username := c.MustStringVariable("credentials.edge.username")
+		password := c.MustStringVariable("credentials.edge.password")
+		clients.StartSessionRefresh(refreshInterval, username, password)
+	}
+	return clients, nil
+}
+
+func ensureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Duration,
+	authF func(clients *zitirest.Clients, username, password string) error,
+) (*zitirest.Clients, error) {
 	username := c.MustStringVariable("credentials.edge.username")
 	password := c.MustStringVariable("credentials.edge.password")
 	edgeApiBaseUrl := c.Host.PublicIp + ":1280"
@@ -195,7 +225,7 @@ func EnsureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Durati
 			continue
 		}
 
-		if err = clients.Authenticate(username, password); err != nil {
+		if err = authF(clients, username, password); err != nil {
 			if time.Since(loginStart) > timeout {
 				return nil, err
 			}

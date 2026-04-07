@@ -1,0 +1,6 @@
+{{$ssh_username := .Model.MustVariable "credentials.ssh.username"}}
+eventLog: /home/{{$ssh_username}}/logs/event.log
+identity: /home/{{$ssh_username}}/fablab/cfg/{{.Component.Id}}.json
+destination: ziti:oidc-events
+namespaces:
+  - apiSession

@@ -37,6 +37,128 @@ func ExactCount(n int64) func(int64) bool {
 	}
 }
 
+// ServiceTerminatorExpectation pairs a service name with the expected terminator count.
+type ServiceTerminatorExpectation struct {
+	ServiceName   string
+	ExpectedCount int64
+}
+
+// ValidateServiceTerminators checks that each service has exactly the expected
+// number of terminators, then runs the specified terminator validity checks.
+func ValidateServiceTerminators(run model.Run, timeout time.Duration, expectations []ServiceTerminatorExpectation, validationType TerminatorValidationType) error {
+	ctrls := run.GetModel().SelectComponents(".ctrl")
+	errC := make(chan error, len(ctrls))
+	deadline := time.Now().Add(timeout)
+	for _, ctrl := range ctrls {
+		ctrlComponent := ctrl
+		go func() {
+			errC <- validateServiceTerminatorsForCtrl(run, ctrlComponent, deadline, expectations, validationType)
+		}()
+	}
+
+	for range len(ctrls) {
+		if err := <-errC; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateServiceTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time, expectations []ServiceTerminatorExpectation, validationType TerminatorValidationType) error {
+	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
+
+	var clients *zitirest.Clients
+	start := time.Now()
+	var lastLog time.Time
+
+	for time.Now().Before(deadline) {
+		if clients == nil {
+			var err error
+			clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+			if err != nil {
+				logger.WithError(err).Info("error logging into ctrl, will retry")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+		}
+
+		allSatisfied := true
+		for _, exp := range expectations {
+			count, err := GetTerminatorCountForService(clients, exp.ServiceName)
+			if err != nil {
+				logger.WithError(err).Warn("error getting terminator count, will retry")
+				clients = nil
+				allSatisfied = false
+				break
+			}
+			if count != exp.ExpectedCount {
+				if time.Since(lastLog) > 30*time.Second {
+					logger.Infof("waiting for %s terminators: have %d, want %d, elapsed: %v",
+						exp.ServiceName, count, exp.ExpectedCount, time.Since(start))
+					lastLog = time.Now()
+				}
+				allSatisfied = false
+				break
+			}
+		}
+
+		if allSatisfied {
+			logger.Infof("all service terminator counts satisfied, elapsed: %v", time.Since(start))
+			break
+		}
+
+		if clients != nil {
+			time.Sleep(5 * time.Second)
+		}
+	}
+
+	// Run validity checks
+	type validatorEntry struct {
+		name     string
+		validate func(string, *zitirest.Clients) (int, error)
+	}
+
+	var validators []validatorEntry
+	if validationType&ValidateSdkTerminators != 0 {
+		validators = append(validators, validatorEntry{name: "sdk", validate: ValidateRouterSdkTerminators})
+	}
+	if validationType&ValidateErtTerminators != 0 {
+		validators = append(validators, validatorEntry{name: "ert", validate: ValidateRouterErtTerminators})
+	}
+
+	for _, v := range validators {
+		for {
+			if clients == nil {
+				var err error
+				clients, err = chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
+				if err != nil {
+					logger.WithError(err).Info("error logging into ctrl, will retry")
+					if time.Now().After(deadline) {
+						return err
+					}
+					time.Sleep(15 * time.Second)
+					continue
+				}
+			}
+
+			count, err := v.validate(c.Id, clients)
+			if err == nil {
+				break
+			}
+
+			clients = nil
+			if time.Now().After(deadline) {
+				return err
+			}
+
+			logger.Infof("current count of invalid %s terminators: %v, elapsed: %v", v.name, count, time.Since(start))
+			time.Sleep(15 * time.Second)
+		}
+	}
+
+	return nil
+}
+
 func ValidateTerminators(run model.Run, timeout time.Duration, countOk func(int64) bool, validationType TerminatorValidationType) error {
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	errC := make(chan error, len(ctrls))
@@ -142,10 +264,19 @@ func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 }
 
 func GetTerminatorCount(clients *zitirest.Clients) (int64, error) {
+	return GetTerminatorCountForService(clients, "")
+}
+
+// GetTerminatorCountForService returns the number of terminators for a specific
+// service. If serviceName is empty, it returns the total terminator count.
+func GetTerminatorCountForService(clients *zitirest.Clients, serviceName string) (int64, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelF()
 
 	filter := "limit 1"
+	if serviceName != "" {
+		filter = fmt.Sprintf(`service.name="%s" limit 1`, serviceName)
+	}
 	result, err := clients.Fabric.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
 		Filter:  &filter,
 		Context: ctx,

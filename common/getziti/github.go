@@ -125,7 +125,7 @@ func GetHighestVersionRelease(appName string, releases []*GitHubReleasesData) (*
 
 func GetLatestGitHubReleaseAsset(org, appName string, appGitHub string, version string, verbose bool) (*GitHubReleasesData, error) {
 	if version != "latest" {
-		if appName == "ziti-prox-c" {
+		if appName == c.ZitiProxC {
 			version = strings.TrimPrefix(version, "v")
 		}
 
@@ -236,7 +236,7 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 	}()
 
 	if strings.HasSuffix(fileName, ".zip") {
-		if zitiApp == c.ZITI_EDGE_TUNNEL {
+		if zitiApp == c.ZitiEdgeTunnel {
 			count := 0
 			zitiFileName := "ziti-edge-tunnel-" + version
 			err = Unzip(fullPath, binDir, func(path string) (string, bool) {
@@ -253,6 +253,27 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 
 			if count != 1 {
 				return errors.Errorf("didn't find ziti-edge-tunnel executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else if zitiApp == c.ZitiProxC {
+			count := 0
+			zitiFileName := "ziti-prox-c-" + version
+			err = Unzip(fullPath, binDir, func(path string) (string, bool) {
+				if path == "ziti-prox-c" {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find ziti-prox-c executable in release archive. count: %v", count)
 			}
 
 			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
@@ -336,6 +357,29 @@ func InstallGitHubRelease(zitiApp string, release *GitHubReleasesData, binDir st
 
 			if count != 1 {
 				return errors.Errorf("didn't find caddy executable in release archive. count: %v", count)
+			}
+
+			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
+			return nil
+		} else if zitiApp == c.ZitiProxC {
+			count := 0
+			zitiFileName := "ziti-prox-c-" + version
+			expectedPath := "ziti-prox-c"
+
+			err = UnTarGz(fullPath, binDir, func(path string) (string, bool) {
+				if path == expectedPath {
+					count++
+					return zitiFileName, true
+				}
+				return "", false
+			})
+
+			if err != nil {
+				return err
+			}
+
+			if count != 1 {
+				return errors.Errorf("didn't find ziti-prox-c executable in release archive. count: %v", count)
 			}
 
 			pfxlog.Logger().Infof("Successfully installed '%s' version '%s' to %s", zitiApp, release.Version, filepath.Join(binDir, zitiFileName))
