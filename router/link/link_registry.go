@@ -377,21 +377,13 @@ func (self *linkRegistryImpl) Run(env.RouterEnv) error {
 
 func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
 	self.linkMapLocks.RLock()
+	defer self.linkMapLocks.RUnlock()
+
 	result := make(chan xlink.Xlink, len(self.linkMap))
-	self.linkMapLocks.RUnlock()
-
-	go func() {
-		self.linkMapLocks.RLock()
-		defer self.linkMapLocks.RUnlock()
-
-		for _, link := range self.linkMap {
-			select {
-			case result <- link:
-			default:
-			}
-		}
-		close(result)
-	}()
+	for _, link := range self.linkMap {
+		result <- link
+	}
+	close(result)
 
 	return result
 }
