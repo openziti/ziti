@@ -77,7 +77,17 @@ func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
+func (self *EchoServerType) Start(r model.Run, c *model.Component) error {
+	isRunning, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+
+	if isRunning {
+		fmt.Printf("echo-server %s already started\n", c.Id)
+		return nil
+	}
+
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := GetZitiBinaryPath(c, self.Version)

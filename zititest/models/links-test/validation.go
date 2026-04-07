@@ -112,6 +112,7 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	for {
 		count, err := validateRouterLinks(c.Id, clients)
 		if err == nil {
+			logger.Infof("link validation success: elapsed time: %v", time.Since(start))
 			return nil
 		}
 

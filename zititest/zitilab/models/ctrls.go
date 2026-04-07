@@ -16,7 +16,21 @@ type CtrlClients struct {
 	initialized atomic.Bool
 }
 
+// Init authenticates to all controllers matching the selector using legacy
+// password authentication.
 func (self *CtrlClients) Init(run model.Run, selector string) error {
+	return self.initWithLogin(run, selector, chaos.EnsureLoggedIntoCtrl)
+}
+
+// InitOidc authenticates to all controllers matching the selector using the
+// OIDC PKCE flow and starts background session refresh at the given interval.
+func (self *CtrlClients) InitOidc(run model.Run, selector string, refreshInterval time.Duration) error {
+	return self.initWithLogin(run, selector, func(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {
+		return chaos.EnsureLoggedIntoCtrlOidc(run, c, timeout, refreshInterval)
+	})
+}
+
+func (self *CtrlClients) initWithLogin(run model.Run, selector string, loginF chaos.LoginFunc) error {
 	if !self.initialized.CompareAndSwap(false, true) {
 		return nil
 	}
@@ -31,7 +45,7 @@ func (self *CtrlClients) Init(run model.Run, selector string) error {
 
 	for _, ctrl := range ctrls {
 		go func() {
-			clients, err := chaos.EnsureLoggedIntoCtrl(run, ctrl, time.Minute)
+			clients, err := loginF(run, ctrl, time.Minute)
 			resultC <- struct {
 				err     error
 				id      string
