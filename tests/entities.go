@@ -962,11 +962,11 @@ func copyRestModelFields(source, dest interface{}, ctx *TestContext) {
 	destVal := reflect.ValueOf(dest)
 
 	// Dereference pointers
-	if srcVal.Kind() == reflect.Ptr {
+	if srcVal.Kind() == reflect.Pointer {
 		srcVal = srcVal.Elem()
 	}
 
-	if destVal.Kind() == reflect.Ptr {
+	if destVal.Kind() == reflect.Pointer {
 		destVal = destVal.Elem()
 	}
 

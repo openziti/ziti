@@ -87,7 +87,7 @@ func mapToStruct(depth int, src map[string][]string, dst interface{}, translator
 	}
 
 	rv := reflect.ValueOf(dst)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("expected a pointer to a struct")
 	}
 
@@ -124,7 +124,7 @@ func mapToStruct(depth int, src map[string][]string, dst interface{}, translator
 				return err
 			}
 			continue
-		} else if field.Kind() == reflect.Ptr && field.Type().Elem().Kind() == reflect.Struct {
+		} else if field.Kind() == reflect.Pointer && field.Type().Elem().Kind() == reflect.Struct {
 			var fieldPtr interface{}
 
 			newPaths := make([]string, len(paths))

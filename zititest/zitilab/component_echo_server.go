@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
@@ -77,7 +78,17 @@ func (self *EchoServerType) IsRunning(_ model.Run, c *model.Component) (bool, er
 	return len(pids) > 0, nil
 }
 
-func (self *EchoServerType) Start(_ model.Run, c *model.Component) error {
+func (self *EchoServerType) Start(r model.Run, c *model.Component) error {
+	isRunning, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+
+	if isRunning {
+		pfxlog.Logger().Infof("echo-server %s already started", c.Id)
+		return nil
+	}
+
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := GetZitiBinaryPath(c, self.Version)

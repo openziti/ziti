@@ -17,8 +17,9 @@
 package exporter
 
 import (
+	"slices"
+
 	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
-	"golang.org/x/exp/slices"
 )
 
 func (exporter Exporter) IsPostureCheckExportRequired(args []string) bool {

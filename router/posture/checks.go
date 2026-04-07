@@ -2,6 +2,7 @@ package posture
 
 import (
 	"bytes"
+	"slices"
 	"sync"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 )
 

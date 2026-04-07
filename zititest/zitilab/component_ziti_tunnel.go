@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
@@ -145,7 +146,7 @@ func (self *ZitiTunnelType) Start(_ model.Run, c *model.Component) error {
 		return err
 	}
 	if len(pids) >= int(self.Count) {
-		fmt.Printf("ziti tunnel(s) %s already started\n", c.Id)
+		pfxlog.Logger().Infof("ziti tunnel(s) %s already started", c.Id)
 		return nil
 	}
 
