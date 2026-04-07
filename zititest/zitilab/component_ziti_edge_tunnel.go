@@ -116,7 +116,17 @@ func (self *ZitiEdgeTunnelType) GetConfigPath(c *model.Component) string {
 	return fmt.Sprintf("/home/%s/fablab/cfg/%s.json", c.GetHost().GetSshUser(), c.Id)
 }
 
-func (self *ZitiEdgeTunnelType) Start(_ model.Run, c *model.Component) error {
+func (self *ZitiEdgeTunnelType) Start(r model.Run, c *model.Component) error {
+	isRunninng, err := self.IsRunning(r, c)
+	if err != nil {
+		return err
+	}
+
+	if isRunninng {
+		fmt.Printf("ziti-edge-tunnel %s already started\n", c.Id)
+		return nil
+	}
+
 	user := c.GetHost().GetSshUser()
 
 	binaryPath := fmt.Sprintf("/home/%s/fablab/bin/%s", user, self.getBinaryName())
