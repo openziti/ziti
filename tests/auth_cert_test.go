@@ -39,6 +39,7 @@ import (
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,9 @@ import (
 func Test_Authenticate_Cert(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
-	ctx.StartServer()
+	ctx.StartServerWithConfigModifier(func(cfg *config.Config) {
+		cfg.Command.Background.DelayThreshold = time.Second
+	})
 
 	ctx.RequireAdminManagementApiLogin()
 
@@ -126,7 +129,6 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
 
-		time.Sleep(250 * time.Millisecond)
 		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
@@ -216,7 +218,6 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		token := data.Path("data.token").Data().(string)
 		r.NotEmpty(token)
 
-		time.Sleep(250 * time.Millisecond)
 		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
@@ -258,7 +259,6 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 
 		identityId := authData.Path("data.identity.id").Data().(string)
 
-		time.Sleep(250 * time.Millisecond)
 		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
