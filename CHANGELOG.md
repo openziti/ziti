@@ -1,3 +1,15 @@
+# Release 1.6.16
+
+## What's New
+
+* Bug fixes and dependency updates
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.15 -> v1.6.16](https://github.com/openziti/ziti/compare/v1.6.15...v1.6.16)
+    * [Issue #3781](https://github.com/openziti/ziti/issues/3781) - [Backport-1.6] ER/T half-close logic is incorrect
+
+
 # Release 1.6.15
 
 ## What's New
