@@ -369,15 +369,16 @@ func Test_RevocationSkipThreshold(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 
-	// Configure a skip threshold of 14s with a 15s refresh token. Immediately
-	// after authentication the old token has ~15s left (> 14s → revocation
-	// created). After waiting a few seconds the old token has <14s left
-	// (→ revocation skipped).
+	// Configure a skip threshold of 10s with a 15s refresh token. Immediately
+	// after authentication the old token has ~15s left (> 10s → revocation
+	// created). After waiting long enough the old token has <10s left
+	// (→ revocation skipped). The 5s margin between TTL and threshold avoids
+	// flakiness from time spent in auth and token exchange.
 	ctrl := ctx.StartServerWithConfigModifier(func(cfg *config.Config) {
 		cfg.Edge.Oidc.AccessTokenDuration = 10 * time.Second
 		cfg.Edge.Oidc.RefreshTokenDuration = 15 * time.Second
 		cfg.Edge.Oidc.IdTokenDuration = 10 * time.Second
-		cfg.Edge.Oidc.RevocationMinTokenLifetime = 14 * time.Second
+		cfg.Edge.Oidc.RevocationMinTokenLifetime = 10 * time.Second
 		cfg.Edge.Oidc.RevocationBucketInterval = 1 * time.Second
 		cfg.Edge.Oidc.RevocationBucketMaxSize = 200
 		cfg.Edge.Oidc.RevocationMaxQueued = 25000
@@ -398,7 +399,7 @@ func Test_RevocationSkipThreshold(t *testing.T) {
 		ctx.Req.NoError(err)
 		oldJTI := oldRefreshClaims.JWTID
 
-		// Refresh immediately — old token has ~15s remaining > 14s threshold.
+		// Refresh immediately — old token has ~15s remaining > 10s threshold.
 		req := &oidc.RefreshTokenRequest{
 			RefreshToken: oidcSession.OidcTokens.RefreshToken,
 			ClientID:     oidcSession.OidcTokens.IDTokenClaims.ClientID,
@@ -437,12 +438,12 @@ func Test_RevocationSkipThreshold(t *testing.T) {
 		ctx.Req.NoError(err)
 		oldJTI := oldRefreshClaims.JWTID
 
-		// Wait until the old token has <14s remaining (i.e., within skip
-		// threshold). With 15s total TTL, waiting 2s puts us at ~13s.
-		time.Sleep(2 * time.Second)
+		// Wait until the old token has <10s remaining (i.e., within skip
+		// threshold). With 15s total TTL, waiting 6s puts us at ~9s.
+		time.Sleep(6 * time.Second)
 
 		ttl := time.Until(oldRefreshClaims.Expiration.AsTime())
-		ctx.Req.True(ttl < 14*time.Second, "expected TTL < 14s, got %v", ttl)
+		ctx.Req.True(ttl < 10*time.Second, "expected TTL < 10s, got %v", ttl)
 
 		req := &oidc.RefreshTokenRequest{
 			RefreshToken: oidcSession.OidcTokens.RefreshToken,
