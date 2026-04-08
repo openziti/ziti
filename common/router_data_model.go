@@ -1399,9 +1399,7 @@ func (rdm *RouterDataModel) HandlePublicKeyEvent(event *edge_ctrl_pb.DataState_E
 	rdm.recalculateCachedPublicKeys()
 }
 
-// HandleRevocationEvent will apply the delta event to the router data model. It is not restricted by index calculations.
-// Use ApplyRevocationEvent for event logged event handling. This method is generally meant for bulk loading of data
-// during startup.
+// HandleRevocationEvent applies the given revocation delta event to the router data model.
 func (rdm *RouterDataModel) HandleRevocationEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Revocation) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Revocations.Remove(model.Revocation.Id)
@@ -1720,6 +1718,16 @@ func (rdm *RouterDataModel) getDataStateAlreadyLocked(index uint64) *edge_ctrl_p
 				PublicKey: v,
 			},
 			IsSynthetic: true,
+		}
+		events = append(events, newEvent)
+	})
+
+	rdm.Revocations.IterCb(func(key string, v *edge_ctrl_pb.DataState_Revocation) {
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model: &edge_ctrl_pb.DataState_Event_Revocation{
+				Revocation: v,
+			},
 		}
 		events = append(events, newEvent)
 	})

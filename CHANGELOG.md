@@ -979,6 +979,10 @@ including service listeners, connections, and terminator state.
 
 ## Current Beta Features
 
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will 
+be removed. 
+
 * Basic Permission System
 * Alert Events
 * Controller-Initiated Control Channel Dials
@@ -1074,6 +1078,14 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3762](https://github.com/openziti/ziti/issues/3762) - Revocations not included in full router data model state
+    * [Issue #3757](https://github.com/openziti/ziti/issues/3757) - Mesh peer signing cert from header is overwritten by TLS underlay cert
+    * [Issue #3756](https://github.com/openziti/ziti/issues/3756) - TLS handshake rate limiter timeout check reads from wrong config scope
+    * [Issue #3755](https://github.com/openziti/ziti/issues/3755) - commandHandler config read from wrong scope
+    * [Issue #3754](https://github.com/openziti/ziti/issues/3754) - dialFailed drops applyFailed parameter, preventing duplicate link retry jitter
+    * [Issue #3753](https://github.com/openziti/ziti/issues/3753) - SPIFFE trust domain prefix check has swapped HasPrefix arguments
+    * [Issue #3746](https://github.com/openziti/ziti/issues/3746) - The controller connect events control channel handler leaks a goroutine
+    * [Issue #3747](https://github.com/openziti/ziti/issues/3747) - Update controller peer error marshalling for app code changes
     * [Issue #3721](https://github.com/openziti/ziti/issues/3721) - Add CreateCircuitV3 to controller
     * [Issue #3719](https://github.com/openziti/ziti/issues/3719) - Allow binding specific inspects to pass through to xgress listener implementations
     * [Issue #3696](https://github.com/openziti/ziti/issues/3696) - oidc provider is non-deterministic for wildcard certs
