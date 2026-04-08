@@ -957,6 +957,14 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 
 	self.routerDataModel.Store(model)
 
+	// Clear the replace-in-progress flag before syncing subscribers. The model is
+	// fully stored at this point, so RouterDataModel() can safely return it.
+	// SyncAllSubscribers triggers subscriber notifications (e.g., service hosting)
+	// that call RouterDataModel(). If the flag is still set, those calls spin-wait
+	// for it to clear, which can't happen until this function returns, causing a
+	// deadlock.
+	self.rmdReplaceInProgress.Store(false)
+
 	if index < existingIndex {
 		self.env.GetIndexWatchers().NotifyOfIndexReset()
 	}

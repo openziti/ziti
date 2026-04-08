@@ -36,7 +36,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/validations"
 )
 
-var DefaultVersion = "v1.7.0"
+var DefaultVersion = ""
 var ClientRoutersVersion = ""
 var HostRoutersVersion = ""
 
@@ -48,7 +48,7 @@ const (
 	TestModeHostBackwardsCompatibility   = "host-backwards-compatibility"
 )
 
-var mode testMode = TestModeHostBackwardsCompatibility
+var mode testMode = TestModeDefault
 
 var entityCounts = map[string]uint32{
 	"loop-client":    1,
