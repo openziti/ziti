@@ -235,6 +235,16 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, errors.New("access token has been revoked by identity")
 	}
 
+	apiSessionRevocation, err := ae.GetManagers().Revocation.Read(accessClaims.ApiSessionId)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if apiSessionRevocation != nil && apiSessionRevocation.CreatedAt.After(accessClaims.IssuedAt.AsTime()) {
+		return nil, errors.New("access token has been revoked by api session")
+	}
+
 	return accessClaims, nil
 }
 

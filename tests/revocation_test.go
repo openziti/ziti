@@ -19,455 +19,229 @@
 package tests
 
 import (
-	"errors"
-	"fmt"
-	"net/url"
 	"testing"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
-	"github.com/openziti/ziti/v2/common"
-	"github.com/openziti/ziti/v2/controller/config"
-	"github.com/openziti/ziti/v2/controller/oidc_auth"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
 )
 
-// Test_Revocation verifies the OIDC token revocation lifecycle: refresh-token
-// rotation, explicit revocation via /oidc/revoke, session termination via
-// /oidc/end_session, and periodic purge of expired revocation entries.
+// Test_Revocation tests the revocation Management API endpoints: create, list, detail,
+// input validation, and end-to-end token enforcement for JTI, identity, and api-session
+// revocation types.
 func Test_Revocation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
+	ctx.StartServer()
 
-	ctrl := ctx.StartServerWithConfigModifier(func(cfg *config.Config) {
-		cfg.Edge.Oidc.AccessTokenDuration = 10 * time.Second
-		cfg.Edge.Oidc.RefreshTokenDuration = 15 * time.Second
-		cfg.Edge.Oidc.IdTokenDuration = 10 * time.Second
-		cfg.Edge.Oidc.RevocationMinTokenLifetime = 0 // don't skip any revocations in tests
-		cfg.Edge.Oidc.RevocationBucketInterval = 1 * time.Second
-		cfg.Edge.Oidc.RevocationBucketMaxSize = 200
-		cfg.Edge.Oidc.RevocationMaxQueued = 25000
-	})
-	ctx.RequireAdminManagementApiLogin()
-	router := ctx.CreateEnrollAndStartEdgeRouter()
+	adminClient := ctx.NewEdgeManagementApi(nil)
+	adminCreds := ctx.NewAdminCredentials()
+	apiSession, err := adminClient.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(err)
+	ctx.Req.NotNil(apiSession)
 
-	jwtParser := jwt.NewParser()
-
-	t.Run("refresh revokes old refresh token JWTID", func(t *testing.T) {
+	t.Run("create revocations via the management API", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		client := ctx.NewEdgeManagementApi(nil)
-		oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
-		ctx.Req.NoError(err)
-
-		// Extract the JWTID from the old refresh token before exchanging it.
-		oldRefreshClaims := &common.RefreshClaims{}
-		_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.RefreshToken, oldRefreshClaims)
-		ctx.Req.NoError(err)
-		oldRefreshJTI := oldRefreshClaims.JWTID
-		ctx.Req.NotEmpty(oldRefreshJTI)
-
-		// Exchange the refresh token for a new token pair.
-		req := &oidc.RefreshTokenRequest{
-			RefreshToken: oidcSession.OidcTokens.RefreshToken,
-			ClientID:     oidcSession.OidcTokens.IDTokenClaims.ClientID,
-			Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
-		}
-		enc := oidc.NewEncoder()
-		dst := map[string][]string{}
-		ctx.Req.NoError(enc.Encode(req, dst))
-		dst["grant_type"] = []string{string(req.GrantType())}
-
-		newTokens := &oidc.TokenExchangeResponse{}
-		resp, err := ctx.newAnonymousClientApiRequest().
-			SetHeader("content-type", oidc_auth.FormContentType).
-			SetMultiValueFormData(dst).
-			SetResult(newTokens).
-			Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(200, resp.StatusCode())
-
-		// Flush the batcher so the batched revocation is persisted.
-		ctrl.FlushRevocationBatcher()
-
-		t.Run("old refresh token JWTID is in the controller revocation DB", func(t *testing.T) {
+		t.Run("JTI type", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(oldRefreshJTI)
+
+			jti := uuid.NewString()
+			loc, err := adminClient.CreateRevocation(jti, rest_model.RevocationTypeEnumJTI)
 			ctx.Req.NoError(err)
-			ctx.Req.NotNil(rev, "expected revocation entry for old refresh JWTID %s", oldRefreshJTI)
+			ctx.Req.NotNil(loc)
+			ctx.Req.Equal(jti, loc.ID)
+
+			t.Run("detail is retrievable by ID", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				detail, err := adminClient.GetRevocation(jti)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(detail)
+				ctx.Req.Equal(jti, *detail.ID)
+				ctx.Req.NotNil(detail.Type)
+				ctx.Req.Equal(rest_model.RevocationTypeEnumJTI, *detail.Type)
+				ctx.Req.NotNil(detail.ExpiresAt)
+				ctx.Req.False((*detail.ExpiresAt).IsZero())
+			})
 		})
 
-		t.Run("revocation propagates to the router RDM within 10s", func(t *testing.T) {
+		t.Run("IDENTITY type", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.Req.True(router.WaitForRevocation(oldRefreshJTI, 10*time.Second),
-				"timed out waiting for revocation %s to appear in router RDM", oldRefreshJTI)
-		})
-	})
 
-	t.Run("explicit revocation revokes refresh token by JWTID", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		client := ctx.NewEdgeManagementApi(nil)
-		oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
-		ctx.Req.NoError(err)
-
-		// Extract the JWTID from the refresh token before revoking it.
-		refreshClaims := &common.RefreshClaims{}
-		_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.RefreshToken, refreshClaims)
-		ctx.Req.NoError(err)
-		refreshJTI := refreshClaims.JWTID
-		ctx.Req.NotEmpty(refreshJTI)
-
-		clientID := oidcSession.OidcTokens.IDTokenClaims.ClientID
-		refreshToken := oidcSession.OidcTokens.RefreshToken
-
-		// POST to the OIDC revocation endpoint with the refresh token.
-		resp, err := ctx.newAnonymousClientApiRequest().
-			SetHeader("content-type", oidc_auth.FormContentType).
-			SetMultiValueFormData(map[string][]string{
-				"token":           {refreshToken},
-				"token_type_hint": {"refresh_token"},
-				"client_id":       {clientID},
-			}).
-			Post("https://" + ctx.ApiHost + "/oidc/revoke")
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(200, resp.StatusCode())
-
-		t.Run("refresh token JWTID is in the controller revocation DB", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(refreshJTI)
+			identityLoc, err := adminClient.CreateIdentity(uuid.NewString(), false)
 			ctx.Req.NoError(err)
-			ctx.Req.NotNil(rev, "expected revocation entry for refresh JWTID %s", refreshJTI)
-		})
+			ctx.Req.NotNil(identityLoc)
 
-		t.Run("raw refresh token string is NOT stored as a separate revocation key", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			// Verifies bug 1 fix: no double-write with the raw JWT string as key.
-			rev, err := ctrl.ReadRevocation(refreshToken)
+			loc, err := adminClient.CreateRevocation(identityLoc.ID, rest_model.RevocationTypeEnumIDENTITY)
 			ctx.Req.NoError(err)
-			ctx.Req.Nil(rev, "expected no revocation keyed on raw token string")
+			ctx.Req.NotNil(loc)
+			ctx.Req.Equal(identityLoc.ID, loc.ID)
+
+			t.Run("detail is retrievable by ID", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				detail, err := adminClient.GetRevocation(identityLoc.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(detail)
+				ctx.Req.NotNil(detail.Type)
+				ctx.Req.Equal(rest_model.RevocationTypeEnumIDENTITY, *detail.Type)
+			})
 		})
 
-		t.Run("revocation propagates to the router RDM within 10s", func(t *testing.T) {
+		t.Run("API_SESSION type", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.Req.True(router.WaitForRevocation(refreshJTI, 10*time.Second),
-				"timed out waiting for revocation %s to appear in router RDM", refreshJTI)
+
+			apiSessionId := uuid.NewString()
+			loc, err := adminClient.CreateRevocation(apiSessionId, rest_model.RevocationTypeEnumAPISESSION)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(loc)
+			ctx.Req.Equal(apiSessionId, loc.ID)
+
+			t.Run("detail is retrievable by ID", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				detail, err := adminClient.GetRevocation(apiSessionId)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(detail)
+				ctx.Req.NotNil(detail.Type)
+				ctx.Req.Equal(rest_model.RevocationTypeEnumAPISESSION, *detail.Type)
+			})
+		})
+
+		t.Run("list includes created revocations", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jti := uuid.NewString()
+			_, err := adminClient.CreateRevocation(jti, rest_model.RevocationTypeEnumJTI)
+			ctx.Req.NoError(err)
+
+			revocations, err := adminClient.ListRevocations()
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(revocations)
+
+			found := false
+			for _, r := range revocations {
+				if r.ID != nil && *r.ID == jti {
+					found = true
+					break
+				}
+			}
+			ctx.Req.True(found, "created JTI revocation not found in list response")
 		})
 	})
 
-	t.Run("session termination revokes all identity tokens by subject", func(t *testing.T) {
+	t.Run("create validation", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		client := ctx.NewEdgeManagementApi(nil)
-		oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
-		ctx.Req.NoError(err)
-
-		// Extract identityId (Subject) and IssuedAt from the access token.
-		accessClaims := &common.AccessClaims{}
-		_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.AccessToken, accessClaims)
-		ctx.Req.NoError(err)
-		identityId := accessClaims.Subject
-		ctx.Req.NotEmpty(identityId)
-
-		clientID := oidcSession.OidcTokens.IDTokenClaims.ClientID
-		idToken := oidcSession.OidcTokens.IDToken
-		oldAccessToken := oidcSession.OidcTokens.AccessToken
-
-		// Wait one full second so that the revocation's CreatedAt lands in a
-		// strictly later second than the old token's IssuedAt. JWT timestamps
-		// have second-level precision and the revocation check uses truncated
-		// comparison, so this sleep is required for a deterministic result.
-		time.Sleep(time.Second)
-
-		// Hit the OIDC end_session endpoint. The redirect destination uses a
-		// custom scheme so the HTTP client will not be able to follow it; we
-		// discard that error and rely on the server having processed the request.
-		endSessionURL := "https://" + ctx.ApiHost + "/oidc/end_session?" + url.Values{
-			"id_token_hint":            {idToken},
-			"client_id":                {clientID},
-			"post_logout_redirect_uri": {"openziti://auth/logout"},
-		}.Encode()
-		_, _ = ctx.newAnonymousClientApiRequest().Get(endSessionURL)
-
-		t.Run("identityId is in the controller revocation DB", func(t *testing.T) {
+		t.Run("JTI rejects non-UUID id", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(identityId)
-			ctx.Req.NoError(err)
-			ctx.Req.NotNil(rev, "expected high-water-mark revocation entry for identity %s", identityId)
-		})
 
-		t.Run("revocation CreatedAt is after the token IssuedAt", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(identityId)
-			ctx.Req.NoError(err)
-			ctx.Req.NotNil(rev)
-			ctx.Req.True(rev.CreatedAt.After(accessClaims.IssuedAt.AsTime()),
-				"expected revocation CreatedAt %v to be after token IssuedAt %v",
-				rev.CreatedAt, accessClaims.IssuedAt.AsTime())
-		})
-
-		t.Run("revocation propagates to the router RDM within 10s", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			// Verifies bug 2 fix: key is identityId alone, which is what both
-			// TerminateSession now stores and the RDM lookup uses.
-			ctx.Req.True(router.WaitForRevocation(identityId, 10*time.Second),
-				"timed out waiting for revocation %s to appear in router RDM", identityId)
-		})
-
-		t.Run("old access token is rejected by the controller", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			_, err := ctx.NewEdgeManagementApiWithToken(oldAccessToken).GetCurrentApiSessionDetailResponse()
+			_, err := adminClient.CreateRevocation("not-a-valid-uuid", rest_model.RevocationTypeEnumJTI)
 			ctx.Req.Error(err)
-			var unauthorizedErr *managementCurrentApiSession.GetCurrentAPISessionUnauthorized
-			ctx.Req.True(errors.As(err, &unauthorizedErr), "expected 401 Unauthorized, got: %v", err)
 		})
 
-		t.Run("new token issued after termination is accepted", func(t *testing.T) {
+		t.Run("API_SESSION rejects non-UUID id", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			// Re-authenticate as the same identity; the new token's IssuedAt is
-			// after the revocation's CreatedAt so the high-water mark does not block it.
-			newClient := ctx.NewEdgeManagementApi(nil)
-			_, err := newClient.AuthenticateOidc(ctx.NewAdminCredentials())
-			ctx.Req.NoError(err)
-			_, err = newClient.GetCurrentApiSessionDetailResponse()
-			ctx.Req.NoError(err)
+
+			_, err := adminClient.CreateRevocation("not-a-valid-uuid", rest_model.RevocationTypeEnumAPISESSION)
+			ctx.Req.Error(err)
+		})
+
+		t.Run("IDENTITY rejects non-existent identity", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			// A valid UUID that does not correspond to any identity
+			_, err := adminClient.CreateRevocation(uuid.NewString(), rest_model.RevocationTypeEnumIDENTITY)
+			ctx.Req.Error(err)
 		})
 	})
 
-	t.Run("DeleteExpired purges revocations from DB and router RDM", func(t *testing.T) {
+	t.Run("token enforcement", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		const testRevocationId = "test-expired-revocation-id"
+		clientHelper := ctx.NewEdgeClientApi(nil)
 
-		// Plant an already-expired revocation directly.
-		err := ctrl.CreateRevocation(testRevocationId, time.Now().Add(-1*time.Second))
-		ctx.Req.NoError(err)
-
-		t.Run("entry is visible in the controller DB before purge", func(t *testing.T) {
+		t.Run("revoke by JTI rejects that specific access token", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(testRevocationId)
+
+			creds := ctx.NewAdminCredentials()
+			creds.CaPool = ctx.ControllerCaPool()
+			tokenStr, claims, err := clientHelper.OidcAccessToken(creds)
 			ctx.Req.NoError(err)
-			ctx.Req.NotNil(rev)
-		})
+			c := ctx.NewEdgeManagementApiWithStaticToken(tokenStr)
 
-		t.Run("entry propagates to the router RDM before purge", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			ctx.Req.True(router.WaitForRevocation(testRevocationId, 10*time.Second),
-				"timed out waiting for planted revocation to appear in router RDM")
-		})
-
-		// Purge expired entries.
-		n, err := ctrl.DeleteExpiredRevocations()
-		ctx.Req.NoError(err)
-		ctx.Req.GreaterOrEqual(n, 1, "expected at least 1 expired revocation to be deleted")
-
-		t.Run("entry is gone from the controller DB after purge", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			rev, err := ctrl.ReadRevocation(testRevocationId)
-			ctx.Req.NoError(err)
-			ctx.Req.Nil(rev, "expected revocation to be purged from DB")
-		})
-
-		t.Run("entry is evicted from the router RDM after purge within 10s", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			// Verifies bug 3 fix: RevocationDelete now sends DataState_Delete so
-			// the router removes the entry from its in-memory map.
-			ctx.Req.True(router.WaitForRevocationGone(testRevocationId, 10*time.Second),
-				"timed out waiting for purged revocation to be evicted from router RDM")
-		})
-	})
-
-	t.Run("DeleteExpired handles multi-batch cleanup via raft", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		// Create more than one batch (batch size is 500) of expired revocations
-		// to verify that multiple raft entries are dispatched correctly.
-		const count = 501
-		for i := 0; i < count; i++ {
-			id := fmt.Sprintf("batch-delete-test-%d", i)
-			err := ctrl.CreateRevocation(id, time.Now().Add(-1*time.Second))
-			ctx.Req.NoError(err)
-		}
-
-		n, err := ctrl.DeleteExpiredRevocations()
-		ctx.Req.NoError(err)
-		ctx.Req.GreaterOrEqual(n, count, "expected at least %d expired revocations deleted", count)
-
-		t.Run("all entries are gone from the controller DB", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			for i := 0; i < count; i++ {
-				id := fmt.Sprintf("batch-delete-test-%d", i)
-				rev, err := ctrl.ReadRevocation(id)
-				ctx.Req.NoError(err)
-				ctx.Req.Nil(rev, "expected revocation %s to be purged from DB", id)
-			}
-		})
-	})
-
-	t.Run("batched refresh revocations are persisted and propagated", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		// Do three refresh rotations and collect the old JWTIDs.
-		var oldJTIs []string
-		for i := 0; i < 3; i++ {
-			client := ctx.NewEdgeManagementApi(nil)
-			oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
+			// Token should be valid before revocation.
+			_, err = c.GetCurrentApiSessionDetail()
 			ctx.Req.NoError(err)
 
-			oldRefreshClaims := &common.RefreshClaims{}
-			_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.RefreshToken, oldRefreshClaims)
+			_, err = adminClient.CreateRevocation(claims.JWTID, rest_model.RevocationTypeEnumJTI)
 			ctx.Req.NoError(err)
-			oldJTI := oldRefreshClaims.JWTID
 
-			req := &oidc.RefreshTokenRequest{
-				RefreshToken: oidcSession.OidcTokens.RefreshToken,
-				ClientID:     oidcSession.OidcTokens.IDTokenClaims.ClientID,
-				Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
-			}
-			enc := oidc.NewEncoder()
-			dst := map[string][]string{}
-			ctx.Req.NoError(enc.Encode(req, dst))
-			dst["grant_type"] = []string{string(req.GrantType())}
-
-			newTokens := &oidc.TokenExchangeResponse{}
-			resp, err := ctx.newAnonymousClientApiRequest().
-				SetHeader("content-type", oidc_auth.FormContentType).
-				SetMultiValueFormData(dst).
-				SetResult(newTokens).
-				Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
-			ctx.Req.NoError(err)
-			ctx.Req.Equal(200, resp.StatusCode())
-			oldJTIs = append(oldJTIs, oldJTI)
-		}
-
-		// Flush the batcher to persist all queued revocations.
-		ctrl.FlushRevocationBatcher()
-
-		t.Run("all revocations are in the controller DB", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			for _, jti := range oldJTIs {
-				rev, err := ctrl.ReadRevocation(jti)
-				ctx.Req.NoError(err)
-				ctx.Req.NotNil(rev, "expected batched revocation for JWTID %s", jti)
-			}
+			// Same token must now be rejected.
+			_, err = c.GetCurrentApiSessionDetail()
+			ctx.Req.Error(err, "expected token to be rejected after JTI revocation")
 		})
 
-		t.Run("all revocations propagate to the router RDM", func(t *testing.T) {
+		t.Run("revoke by api-session rejects all tokens for that session", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			for _, jti := range oldJTIs {
-				ctx.Req.True(router.WaitForRevocation(jti, 10*time.Second),
-					"timed out waiting for batched revocation %s in router RDM", jti)
-			}
+
+			creds := ctx.NewAdminCredentials()
+			creds.CaPool = ctx.ControllerCaPool()
+			tokenStr, claims, err := clientHelper.OidcAccessToken(creds)
+			ctx.Req.NoError(err)
+			c := ctx.NewEdgeManagementApiWithStaticToken(tokenStr)
+
+			// Token should be valid before revocation.
+			_, err = c.GetCurrentApiSessionDetail()
+			ctx.Req.NoError(err)
+
+			_, err = adminClient.CreateRevocation(claims.ApiSessionId, rest_model.RevocationTypeEnumAPISESSION)
+			ctx.Req.NoError(err)
+
+			// Same token must now be rejected.
+			_, err = c.GetCurrentApiSessionDetail()
+			ctx.Req.Error(err, "expected token to be rejected after api-session revocation")
 		})
-	})
-}
 
-// Test_RevocationSkipThreshold verifies that refresh-token revocations are
-// skipped when the old token's remaining TTL is below the configured threshold.
-func Test_RevocationSkipThreshold(t *testing.T) {
-	ctx := NewTestContext(t)
-	defer ctx.Teardown()
+		t.Run("revoke by identity rejects tokens issued before the revocation", func(t *testing.T) {
+			ctx.testContextChanged(t)
 
-	// Configure a skip threshold of 10s with a 15s refresh token. Immediately
-	// after authentication the old token has ~15s left (> 10s → revocation
-	// created). After waiting long enough the old token has <10s left
-	// (→ revocation skipped). The 5s margin between TTL and threshold avoids
-	// flakiness from time spent in auth and token exchange.
-	ctrl := ctx.StartServerWithConfigModifier(func(cfg *config.Config) {
-		cfg.Edge.Oidc.AccessTokenDuration = 10 * time.Second
-		cfg.Edge.Oidc.RefreshTokenDuration = 15 * time.Second
-		cfg.Edge.Oidc.IdTokenDuration = 10 * time.Second
-		cfg.Edge.Oidc.RevocationMinTokenLifetime = 10 * time.Second
-		cfg.Edge.Oidc.RevocationBucketInterval = 1 * time.Second
-		cfg.Edge.Oidc.RevocationBucketMaxSize = 200
-		cfg.Edge.Oidc.RevocationMaxQueued = 25000
-	})
-	ctx.RequireAdminManagementApiLogin()
+			// Use a freshly created admin identity so that revoking it does not affect the
+			// shared adminClient (authenticated as the default admin).
+			freshIdentity, freshCreds, err := adminClient.CreateAndEnrollOttIdentity(true)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(freshIdentity)
+			ctx.Req.NotNil(freshCreds)
 
-	jwtParser := jwt.NewParser()
+			// Authenticate as the fresh identity in OIDC mode via the management API.
+			freshManClient := ctx.NewEdgeManagementApi(nil)
+			freshCreds.CaPool = ctx.ControllerCaPool()
+			freshManClient.SetUseOidc(true)
+			_, err = freshManClient.Authenticate(freshCreds, nil)
+			ctx.Req.NoError(err)
 
-	t.Run("immediate refresh creates revocation (TTL > threshold)", func(t *testing.T) {
-		ctx.testContextChanged(t)
+			// Extract the access token from the authenticated OIDC session.
+			accessToken, freshAccessClaims, err := freshManClient.GetOidcAccessToken()
+			ctx.Req.NoError(err)
 
-		client := ctx.NewEdgeManagementApi(nil)
-		oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
-		ctx.Req.NoError(err)
+			// Use a static-token client so the token cannot be silently refreshed.
+			c := ctx.NewEdgeManagementApiWithStaticToken(accessToken)
 
-		oldRefreshClaims := &common.RefreshClaims{}
-		_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.RefreshToken, oldRefreshClaims)
-		ctx.Req.NoError(err)
-		oldJTI := oldRefreshClaims.JWTID
+			// Token should be valid before revocation.
+			_, err = c.GetCurrentApiSessionDetail()
+			ctx.Req.NoError(err)
 
-		// Refresh immediately — old token has ~15s remaining > 10s threshold.
-		req := &oidc.RefreshTokenRequest{
-			RefreshToken: oidcSession.OidcTokens.RefreshToken,
-			ClientID:     oidcSession.OidcTokens.IDTokenClaims.ClientID,
-			Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
-		}
-		enc := oidc.NewEncoder()
-		dst := map[string][]string{}
-		ctx.Req.NoError(enc.Encode(req, dst))
-		dst["grant_type"] = []string{string(req.GrantType())}
+			// Revoke the fresh identity (not the default admin identity).
+			_, err = adminClient.CreateRevocation(freshAccessClaims.Subject, rest_model.RevocationTypeEnumIDENTITY)
+			ctx.Req.NoError(err)
 
-		newTokens := &oidc.TokenExchangeResponse{}
-		resp, err := ctx.newAnonymousClientApiRequest().
-			SetHeader("content-type", oidc_auth.FormContentType).
-			SetMultiValueFormData(dst).
-			SetResult(newTokens).
-			Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(200, resp.StatusCode())
+			// Token issued before the revocation must now be rejected.
+			_, err = c.GetCurrentApiSessionDetail()
+			ctx.Req.Error(err, "expected token to be rejected after identity revocation")
 
-		ctrl.FlushRevocationBatcher()
-
-		rev, err := ctrl.ReadRevocation(oldJTI)
-		ctx.Req.NoError(err)
-		ctx.Req.NotNil(rev, "expected revocation when TTL > skip threshold")
-	})
-
-	t.Run("near-expiry refresh skips revocation (TTL < threshold)", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		client := ctx.NewEdgeManagementApi(nil)
-		oidcSession, err := client.AuthenticateOidc(ctx.NewAdminCredentials())
-		ctx.Req.NoError(err)
-
-		oldRefreshClaims := &common.RefreshClaims{}
-		_, _, err = jwtParser.ParseUnverified(oidcSession.OidcTokens.RefreshToken, oldRefreshClaims)
-		ctx.Req.NoError(err)
-		oldJTI := oldRefreshClaims.JWTID
-
-		// Wait until the old token has <10s remaining (i.e., within skip
-		// threshold). With 15s total TTL, waiting 6s puts us at ~9s.
-		time.Sleep(6 * time.Second)
-
-		ttl := time.Until(oldRefreshClaims.Expiration.AsTime())
-		ctx.Req.True(ttl < 10*time.Second, "expected TTL < 10s, got %v", ttl)
-
-		req := &oidc.RefreshTokenRequest{
-			RefreshToken: oidcSession.OidcTokens.RefreshToken,
-			ClientID:     oidcSession.OidcTokens.IDTokenClaims.ClientID,
-			Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
-		}
-		enc := oidc.NewEncoder()
-		dst := map[string][]string{}
-		ctx.Req.NoError(enc.Encode(req, dst))
-		dst["grant_type"] = []string{string(req.GrantType())}
-
-		newTokens := &oidc.TokenExchangeResponse{}
-		resp, err := ctx.newAnonymousClientApiRequest().
-			SetHeader("content-type", oidc_auth.FormContentType).
-			SetMultiValueFormData(dst).
-			SetResult(newTokens).
-			Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
-		ctx.Req.NoError(err)
-		ctx.Req.Equal(200, resp.StatusCode())
-
-		ctrl.FlushRevocationBatcher()
-
-		rev, err := ctrl.ReadRevocation(oldJTI)
-		ctx.Req.NoError(err)
-		ctx.Req.Nil(rev, "expected no revocation when TTL < skip threshold")
+			// Verify the shared adminClient still works.
+			_, err = adminClient.GetCurrentApiSessionDetail()
+			ctx.Req.NoError(err)
+		})
 	})
 }

@@ -397,25 +397,34 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 		return
 	}
 
-	// Check if this specific token has been revoked by JWTID.
-	tokenRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.JWTID)
+	// Check revocations before accepting the session.
+	jtiRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.JWTID)
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
-	if tokenRevocation != nil {
+	if jtiRevocation != nil {
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
 
-	// Check if the issuing identity has been terminated via a high-water-mark revocation.
 	identityRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.Subject)
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
-	if identityRevocation != nil && identityRevocation.CreatedAt.Truncate(time.Second).After(claims.IssuedAt.AsTime()) {
-		ctx.setApiSessionError(errorz.NewUnauthorizedOidcExpired())
+	if identityRevocation != nil && identityRevocation.CreatedAt.After(claims.IssuedAt.AsTime()) {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+
+	apiSessionRevocation, err := ctx.env.GetManagers().Revocation.Read(claims.ApiSessionId)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
+		return
+	}
+	if apiSessionRevocation != nil {
+		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
 
