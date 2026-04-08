@@ -226,6 +226,8 @@ web:
         options: { }
       - binding: edge-oidc
         options: { }
+      - binding: health-checks
+        options: { }
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}- binding: zac
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}  options:
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}    location: {{ .Controller.Web.BindPoints.Console.Location }}

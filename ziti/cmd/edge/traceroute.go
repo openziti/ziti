@@ -23,7 +23,7 @@ type traceRouteOptions struct {
 	lookupRouterName bool
 }
 
-func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+func NewTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &traceRouteOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},

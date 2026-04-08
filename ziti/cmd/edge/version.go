@@ -31,8 +31,8 @@ type versionOptions struct {
 	api.Options
 }
 
-// newVersionCmd creates the command
-func newVersionCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewVersionCmd creates the command
+func NewVersionCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &versionOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},

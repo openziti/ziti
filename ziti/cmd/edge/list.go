@@ -65,6 +65,23 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Example: fmt.Sprintf(filterExamplesTemplate, "services"),
 	}
 
+	AddListCommands(cmd, out, errOut)
+
+	return cmd
+}
+
+// AddListCommands adds all edge list subcommands to the given parent command
+func AddListCommands(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addListCommandsInternal(cmd, out, errOut, true)
+}
+
+// AddListCommandsConsolidated adds edge list subcommands for consolidated top-level use
+// Excludes terminators (fabric terminators is preferred)
+func AddListCommandsConsolidated(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addListCommandsInternal(cmd, out, errOut, false)
+}
+
+func addListCommandsInternal(cmd *cobra.Command, out io.Writer, errOut io.Writer, includeTerminators bool) {
 	newOptions := func() *api.Options {
 		return &api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
@@ -90,7 +107,9 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	networkJwtsCmd.Flags().StringVarP(&networkJwtOptionOutput, "output", "o", "", "if specified, will output the default network jwt to a file")
 	cmd.AddCommand(networkJwtsCmd)
 
-	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
+	if includeTerminators {
+		cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
+	}
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions(), "serps"))
@@ -157,8 +176,6 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		serviceListRootCmd,
 		servicePolicyListRootCmd,
 	)
-
-	return cmd
 }
 
 func newPagingInfo(meta *rest_model.Meta) *api.Paging {

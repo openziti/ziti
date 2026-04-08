@@ -38,6 +38,23 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		Long:  "Creates various entities managed by the Ziti Edge Controller",
 	}
 
+	AddCreateCommands(cmd, out, errOut)
+
+	return cmd
+}
+
+// AddCreateCommands adds all edge create subcommands to the given parent command
+func AddCreateCommands(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addCreateCommandsInternal(cmd, out, errOut, true)
+}
+
+// AddCreateCommandsConsolidated adds edge create subcommands for consolidated top-level use
+// Excludes terminator (fabric terminator is preferred)
+func AddCreateCommandsConsolidated(cmd *cobra.Command, out io.Writer, errOut io.Writer) {
+	addCreateCommandsInternal(cmd, out, errOut, false)
+}
+
+func addCreateCommandsInternal(cmd *cobra.Command, out io.Writer, errOut io.Writer, includeTerminator bool) {
 	cmd.AddCommand(newCreateAuthenticatorCmd(out, errOut))
 	cmd.AddCommand(newCreateCaCmd(out, errOut))
 	cmd.AddCommand(newCreateConfigCmd(out, errOut))
@@ -50,12 +67,12 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateServiceCmd(out, errOut))
 	cmd.AddCommand(NewCreateServiceEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateServicePolicyCmd(out, errOut))
-	cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
+	if includeTerminator {
+		cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
+	}
 	cmd.AddCommand(newCreateTransitRouterCmd(out, errOut))
 	cmd.AddCommand(newCreateExtJwtSignerCmd(out, errOut))
 	cmd.AddCommand(newCreateAuthPolicyCmd(out, errOut))
-
-	return cmd
 }
 
 // CreateEntityOfType create an entity of the given type on the Ziti Controller
