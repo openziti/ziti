@@ -979,6 +979,10 @@ including service listeners, connections, and terminator state.
 
 ## Current Beta Features
 
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will 
+be removed. 
+
 * Basic Permission System
 * Alert Events
 * Controller-Initiated Control Channel Dials
