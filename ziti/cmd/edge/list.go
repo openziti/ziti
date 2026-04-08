@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
+	"github.com/openziti/edge-api/rest_management_api_client/revocation"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
@@ -105,6 +106,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newListCmdForEntityType("posture-checks", runListPostureChecks, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("posture-check-types", runListPostureCheckTypes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("revocations", runListRevocations, newOptions()))
 
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-types", "configs", outputConfigs, newOptions()))
@@ -1802,6 +1804,54 @@ func runListPostureCheckTypes(o *api.Options) error {
 	api.RenderTable(o, t, pagingInfo)
 
 	return err
+}
+
+func runListRevocations(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
+	if err != nil {
+		return err
+	}
+
+	var filter *string
+	if len(options.Args) > 0 {
+		filter = &options.Args[0]
+	}
+
+	params := revocation.NewListRevocationsParams()
+	params.Filter = filter
+
+	result, err := client.Revocation.ListRevocations(params, nil)
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Type", "ExpiresAt"})
+
+	for _, entity := range payload.Data {
+		revType := ""
+		if entity.Type != nil {
+			revType = string(*entity.Type)
+		}
+		expiresAt := ""
+		if entity.ExpiresAt != nil {
+			expiresAt = entity.ExpiresAt.String()
+		}
+		t.AppendRow(table.Row{entity.ID, revType, expiresAt})
+	}
+
+	api.RenderTable(options, t, newPagingInfo(payload.Meta))
+	return nil
 }
 
 func postureCheckOsToStrings(osContainers []*gabs.Container) []string {
