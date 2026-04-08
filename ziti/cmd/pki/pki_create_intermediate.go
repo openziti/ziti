@@ -142,7 +142,7 @@ func (o *PKICreateIntermediateOptions) Run() error {
 	}
 
 	// Concat the newly-created intermediate cert with the signing cert to create an intermediate.chain.pem file
-	if err := o.Flags.PKI.Chain(signer, req); err != nil {
+	if err := o.Flags.PKI.Chain(signer, req, false); err != nil {
 		return errors.Wrap(err, "unable to generate cert chain")
 	}
 
