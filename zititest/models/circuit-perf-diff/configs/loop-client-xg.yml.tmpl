@@ -20,28 +20,28 @@ metrics:
   clientId: {{ .Component.Id }}
 
 workloads:
-{{ if .Component.BoolVariable "testSdkXgHost" }}
+{{ if and (.Component.BoolVariable "testSdkXgHost") (.Component.BoolVariable "testThroughput") }}
   - name:         throughput-xg
     service_name: throughput-xg
     connector:    default
     {{ $.Model.MustVariable "throughputWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testErtHost" }}
+{{ if and (.Component.BoolVariable "testErtHost") (.Component.BoolVariable "testThroughput") }}
   - name:         throughput-ert
     service_name: throughput-ert
     connector:    default
     {{ $.Model.MustVariable "throughputWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testSdkXgHost" }}
+{{ if and (.Component.BoolVariable "testSdkXgHost") (.Component.BoolVariable "testLatency") }}
   - name:         latency-xg
     service_name: latency-xg
     connector:    default
     {{ $.Model.MustVariable "latencyWorkload" }}
 {{end}}
 
-{{ if .Component.BoolVariable "testErtHost" }}
+{{ if and (.Component.BoolVariable "testErtHost") (.Component.BoolVariable "testLatency") }}
   - name:         latency-ert
     service_name: latency-ert
     connector:    default

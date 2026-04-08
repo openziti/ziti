@@ -151,9 +151,11 @@ type Config struct {
 		Listeners             []*CtrlListenerConfig
 	}
 	Link struct {
-		Listeners  []map[interface{}]interface{}
-		Dialers    []map[interface{}]interface{}
-		Heartbeats channel.HeartbeatOptions
+		Listeners          []map[interface{}]interface{}
+		Dialers            []map[interface{}]interface{}
+		Heartbeats         channel.HeartbeatOptions
+		PayloadSenderQueueSize int
+		AckSenderQueueSize     int
 	}
 	Dialers   map[string]xgress.OptionsData
 	Listeners []ListenerBinding
@@ -205,6 +207,9 @@ const (
 
 	DefaultLinkHeartbeatSendInterval = 10 * time.Second
 	DefaultLinkUnresponsiveTimeout   = time.Minute
+
+	DefaultLinkPayloadSenderQueueSize = 128
+	DefaultLinkAckSenderQueueSize     = 64
 )
 
 // CreateBackup will attempt to use the current path value to create a backup of
@@ -574,6 +579,8 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	cfg.Link.Heartbeats = *channel.DefaultHeartbeatOptions()
 	cfg.Link.Heartbeats.SendInterval = DefaultLinkHeartbeatSendInterval
 	cfg.Link.Heartbeats.CloseUnresponsiveTimeout = DefaultLinkUnresponsiveTimeout
+	cfg.Link.PayloadSenderQueueSize = DefaultLinkPayloadSenderQueueSize
+	cfg.Link.AckSenderQueueSize = DefaultLinkAckSenderQueueSize
 
 	if value, found := cfgmap["link"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -627,6 +634,28 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 						return nil, err
 					}
 					cfg.Link.Heartbeats = *options
+				}
+			}
+
+			if value, found := submap["payloadSenderQueueSize"]; found {
+				if intVal, ok := value.(int); ok {
+					if intVal < 1 {
+						return nil, fmt.Errorf("[link/payloadSenderQueueSize] must be at least 1, got %d", intVal)
+					}
+					cfg.Link.PayloadSenderQueueSize = intVal
+				} else {
+					return nil, fmt.Errorf("[link/payloadSenderQueueSize] must be an integer, got %T", value)
+				}
+			}
+
+			if value, found := submap["ackSenderQueueSize"]; found {
+				if intVal, ok := value.(int); ok {
+					if intVal < 1 {
+						return nil, fmt.Errorf("[link/ackSenderQueueSize] must be at least 1, got %d", intVal)
+					}
+					cfg.Link.AckSenderQueueSize = intVal
+				} else {
+					return nil, fmt.Errorf("[link/ackSenderQueueSize] must be an integer, got %T", value)
 				}
 			}
 		}

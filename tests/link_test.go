@@ -163,6 +163,14 @@ func (self *testLinkEnv) GetXLinkRegistry() xlink.Registry {
 	return self.linkRegistry
 }
 
+func (self *testLinkEnv) GetLinkPayloadSenderQueueSize() int {
+	return env.DefaultLinkPayloadSenderQueueSize
+}
+
+func (self *testLinkEnv) GetLinkAckSenderQueueSize() int {
+	return env.DefaultLinkAckSenderQueueSize
+}
+
 func newTestLinkEnv() *testLinkEnv {
 	e := setupEnv()
 	linkRegistry := link.NewLinkRegistry(e)
