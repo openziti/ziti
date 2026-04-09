@@ -149,7 +149,7 @@ fi
 
 # wait for the controller and router to be ready and run the certificate check script; NOUNSET option is enabled after
 # sourcing quickstart functions and env because there are some unset variables in those
-docker compose exec ziti-controller \
+if ! docker compose exec ziti-controller \
     bash -eo pipefail -c '
         source "${ZITI_SCRIPTS}/ziti-cli-functions.sh" >/dev/null;
         echo "INFO: waiting for controller";
@@ -157,8 +157,13 @@ docker compose exec ziti-controller \
         _wait_for_controller >/dev/null;
         echo "INFO: waiting for public router";
         source /persistent/ziti.env >/dev/null;
-        _wait_for_public_router >/dev/null;
+        _wait_for_public_router;
     '
+then
+    echo "ERROR: router failed to come up, dumping compose logs"
+    docker compose logs
+    exit 1
+fi
         # TODO: re-add cert checks to above test suite after https://github.com/openziti/ziti/pull/1278
         # zsh /persistent/check-cert-chains.zsh;
 docker compose --profile test run --rm quickstart-test
