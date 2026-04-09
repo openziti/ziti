@@ -93,6 +93,11 @@ const (
 	CircuitFailureRouterErrMisconfiguredTerminator CircuitFailureCause = "ROUTER_ERR_MISCONFIGURED_TERMINATOR"
 	CircuitFailureRouterErrDialTimedOut            CircuitFailureCause = "ROUTER_ERR_DIAL_TIMED_OUT"
 	CircuitFailureRouterErrDialConnRefused         CircuitFailureCause = "ROUTER_ERR_CONN_REFUSED"
+	CircuitFailureRouterErrRejectedByApp           CircuitFailureCause = "ROUTER_ERR_REJECTED_BY_APPLICATION"
+	CircuitFailureRouterErrDnsResolutionFailed     CircuitFailureCause = "ROUTER_ERR_DNS_RESOLUTION_FAILED"
+	CircuitFailureRouterErrPortNotAllowed          CircuitFailureCause = "ROUTER_ERR_PORT_NOT_ALLOWED"
+	CircuitFailureRouterErrInvalidLinkDest         CircuitFailureCause = "ROUTER_ERR_INVALID_LINK_DESTINATION"
+	CircuitFailureRouterErrResourcesNotAvailable   CircuitFailureCause = "ROUTER_ERR_RESOURCES_NOT_AVAILABLE"
 )
 
 type CircuitError interface {

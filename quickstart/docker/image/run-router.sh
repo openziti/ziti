@@ -63,14 +63,26 @@ if [ ! -f "${_CONFIG_PATH}" ]; then
   fi
 
   
-  if "${ZITI_BIN_DIR-}/ziti" edge list edge-routers "name = \"${ZITI_ROUTER_NAME}\"" --csv | grep -q "${ZITI_ROUTER_NAME}"; then
-    echo "----------  Found existing edge-router ${ZITI_ROUTER_NAME}...."
-  else
-    "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" -t -a "${ZITI_ROUTER_ROLES}"
-    sleep 1
+  # Retry the edge-router creation in case the controller's Raft cluster hasn't elected a leader yet
+  _retries=20
+  while ! "${ZITI_BIN_DIR-}/ziti" edge list edge-routers "name = \"${ZITI_ROUTER_NAME}\"" --csv 2>/dev/null | grep -q "${ZITI_ROUTER_NAME}"; do
+    if "${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" -t -a "${ZITI_ROUTER_ROLES}" 2>&1; then
+      break
+    fi
+    if (( --_retries == 0 )); then
+      echo "ERROR: failed to create edge-router ${ZITI_ROUTER_NAME} after retries" >&2
+      exit 1
+    fi
+    echo "INFO: waiting for controller to be ready to create edge-router (${_retries} retries left)..."
+    sleep 3
+  done
+
+  if [ -f "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt" ]; then
     echo "---------- Enrolling edge-router ${ZITI_ROUTER_NAME}...."
     "${ZITI_BIN_DIR}/ziti" router enroll "${ZITI_HOME}/${ZITI_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_ROUTER_NAME}.jwt"
     echo ""
+  else
+    echo "----------  Found existing edge-router ${ZITI_ROUTER_NAME}...."
   fi
 else
     echo " Found existing config file ${_CONFIG_PATH}, not creating a new config."
