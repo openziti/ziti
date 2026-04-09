@@ -51,6 +51,11 @@ const (
 	ErrorTypeMisconfiguredTerminator = 2
 	ErrorTypeDialTimedOut            = 3
 	ErrorTypeConnectionRefused       = 4
+	ErrorTypeRejectedByApplication   = 5
+	ErrorTypeDnsResolutionFailed     = 6
+	ErrorTypePortNotAllowed          = 7
+	ErrorTypeInvalidLinkDestination  = 8
+	ErrorTypeResourcesNotAvailable   = 9
 
 	CreateCircuitPeerDataHeader = 10
 
