@@ -709,7 +709,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 			}
 
 			if subjectClaims.CustomClaims.Type != common.TokenTypeAccess && subjectClaims.CustomClaims.Type != common.TokenTypeRefresh {
-				return "", nil, fmt.Errorf("invalid token type: %s", claims.CustomClaims.Type)
+				return "", nil, oidc.ErrInvalidGrant().WithDescription("invalid token type for exchange")
 			}
 
 			claims.Audience = subjectClaims.Audience
@@ -799,15 +799,18 @@ func (s *HybridStorage) parseRefreshToken(tokenStr string) (*jwt.Token, *common.
 	parsedToken, err := jwt.ParseWithClaims(tokenStr, refreshClaims, s.env.JwtSignerKeyFunc)
 
 	if err != nil || parsedToken == nil {
-		return nil, nil, fmt.Errorf("failed to parse token")
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, nil, oidc.ErrInvalidGrant().WithDescription("refresh token expired").WithParent(err)
+		}
+		return nil, nil, oidc.ErrInvalidGrant().WithDescription("failed to parse refresh token").WithParent(err)
 	}
 
 	if !parsedToken.Valid {
-		return nil, nil, fmt.Errorf("invalid refresh_token")
+		return nil, nil, oidc.ErrInvalidGrant().WithDescription("invalid refresh token")
 	}
 
 	if refreshClaims.Type != common.TokenTypeRefresh {
-		return nil, nil, errors.New("invalid token type")
+		return nil, nil, oidc.ErrInvalidGrant().WithDescription("invalid token type, expected refresh")
 	}
 
 	return parsedToken, refreshClaims, nil
@@ -819,11 +822,14 @@ func (s *HybridStorage) parseAccessToken(tokenStr string) (*jwt.Token, *common.A
 	parsedToken, err := jwt.ParseWithClaims(tokenStr, accessClaims, s.env.JwtSignerKeyFunc)
 
 	if err != nil || parsedToken == nil {
-		return nil, nil, fmt.Errorf("failed to parse token")
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, nil, oidc.ErrInvalidGrant().WithDescription("access token expired").WithParent(err)
+		}
+		return nil, nil, oidc.ErrInvalidGrant().WithDescription("failed to parse access token").WithParent(err)
 	}
 
 	if !parsedToken.Valid {
-		return nil, nil, fmt.Errorf("invalid refresh_token")
+		return nil, nil, oidc.ErrInvalidGrant().WithDescription("invalid access token")
 	}
 
 	return parsedToken, accessClaims, nil
@@ -835,7 +841,10 @@ func (s *HybridStorage) TokenRequestByRefreshToken(_ context.Context, refreshTok
 	if err != nil {
 		return nil, err
 	}
-	return &RefreshTokenRequest{*token}, err
+	if s.IsTokenRevoked(token.JWTID) {
+		return nil, oidc.ErrInvalidGrant().WithDescription("refresh token revoked")
+	}
+	return &RefreshTokenRequest{*token}, nil
 }
 
 // TerminateSession implements the op.Storage interface
@@ -932,7 +941,7 @@ func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
 func (s *HybridStorage) GetClientByClientID(_ context.Context, clientID string) (op.Client, error) {
 	client, ok := s.clients.Get(clientID)
 	if !ok {
-		return nil, fmt.Errorf("client not found")
+		return nil, oidc.ErrInvalidClient().WithDescription("client not found")
 	}
 	return client, nil
 }
@@ -941,12 +950,12 @@ func (s *HybridStorage) GetClientByClientID(_ context.Context, clientID string) 
 func (s *HybridStorage) AuthorizeClientIDSecret(_ context.Context, clientID, clientSecret string) error {
 	client, ok := s.clients.Get(clientID)
 	if !ok {
-		return fmt.Errorf("client not found")
+		return oidc.ErrInvalidClient().WithDescription("client not found")
 	}
 
 	//this isn't used and is plain text comparison
 	if client.secret != clientSecret {
-		return fmt.Errorf("invalid secret")
+		return oidc.ErrInvalidClient().WithDescription("invalid client secret")
 	}
 	return nil
 }
@@ -966,7 +975,7 @@ func (s *HybridStorage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc
 	httpRequest, err := HttpRequestFromContext(ctx)
 
 	if s.IsTokenRevoked(tokenID) {
-		return errors.New("token is revoked")
+		return oidc.ErrAccessDenied().WithDescription("access token revoked")
 	}
 
 	if err != nil {
@@ -1084,7 +1093,7 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string) (string, *
 	_, refreshClaims, err := s.parseRefreshToken(currentRefreshToken)
 
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid refresh token")
+		return "", nil, oidc.ErrInvalidGrant().WithDescription("invalid refresh token").WithParent(err)
 	}
 
 	// Best-effort revocation of the old refresh token. Skip if the token is
