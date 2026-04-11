@@ -333,8 +333,6 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 	l, err := net.ListenPacket("udp", "localhost:8690")
 	ctx.Req.NoError(err)
 
-	time.Sleep(time.Second)
-
 	errC := make(chan error, 10)
 	go echoData(l, errC)
 
@@ -348,6 +346,25 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 		for idx := range buf {
 			buf[idx] = counter
 			counter++
+		}
+
+		// The first iteration acts as a readiness poll. The tunneler's UDP intercept
+		// proxy on port 8688 may not be listening yet, so retry with a longer timeout
+		// until we get a successful round-trip.
+		if i == 0 {
+			deadline := time.Now().Add(30 * time.Second)
+			for {
+				ctx.Req.NoError(conn.SetDeadline(time.Now().Add(time.Second)))
+				_, _ = conn.Write(buf)
+				readBuf := make([]byte, size)
+				_, readErr := io.ReadFull(conn, readBuf)
+				if readErr == nil {
+					ctx.Req.Equal(buf, readBuf)
+					break
+				}
+				ctx.Req.True(time.Now().Before(deadline), "timed out waiting for UDP proxy to be ready")
+			}
+			continue
 		}
 
 		time.Sleep(time.Millisecond)
