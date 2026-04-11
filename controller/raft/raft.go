@@ -59,7 +59,6 @@ import (
 
 const (
 	LeaderCheckInterval = 5 * time.Second
-	MeshCleanupInterval = time.Minute
 )
 
 type ClusterEvent uint32
@@ -278,6 +277,11 @@ func (self *Controller) IsDistributed() bool {
 func (self *Controller) GetLeaderAddr() string {
 	addr, _ := self.Raft.LeaderWithID()
 	return string(addr)
+}
+
+// InspectPeerDialer returns the PeerDialer's current state as JSON if the name matches.
+func (self *Controller) InspectPeerDialer(name string) (bool, *string, error) {
+	return self.Mesh.InspectPeerDialer(name)
 }
 
 func (self *Controller) GetPeers() map[string]channel.Channel {
@@ -682,6 +686,23 @@ func (self *Controller) StartEventGeneration() {
 	self.addEventsHandlers()
 	go self.eventLoop()
 	self.setupPreferredLeaderTransfer()
+	self.Mesh.StartPeerDialer(&self.Config.PeerDialer)
+}
+
+// GetPeerAddresses returns the raft addresses of all other members of the cluster.
+func (self *Controller) GetPeerAddresses() []string {
+	result := self.Fsm.GetCurrentState(self.Raft)
+	if result == nil {
+		return nil
+	}
+	localAddr := string(self.Mesh.GetAdvertiseAddr())
+	var addresses []string
+	for _, srv := range result.Servers {
+		if string(srv.Address) != localAddr {
+			addresses = append(addresses, string(srv.Address))
+		}
+	}
+	return addresses
 }
 
 func (self *Controller) setupPreferredLeaderTransfer() {
@@ -832,9 +853,6 @@ func (self *Controller) eventLoop() {
 	leaderTicker := time.NewTicker(LeaderCheckInterval)
 	defer leaderTicker.Stop()
 
-	dialCleanupTicker := time.NewTicker(MeshCleanupInterval)
-	defer dialCleanupTicker.Stop()
-
 	for {
 		select {
 		case observation := <-self.clusterEvents:
@@ -845,8 +863,6 @@ func (self *Controller) eventLoop() {
 					Warn("cluster running without leader for longer than configured threshold")
 				eventState.warningEmitted = true
 			}
-		case <-dialCleanupTicker.C:
-			self.Mesh.CleanupDialRecords()
 		}
 	}
 }

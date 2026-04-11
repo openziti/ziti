@@ -27,6 +27,20 @@ cluster:
   # If set to true, this controller will be preferred as the raft cluster leader. If the current leader is not a
   # preferred leader, it will transfer leadership to a preferred leader if one is available.
   #preferredLeader: true
+#  dialer:
+#    # minRetryInterval - optional, default 1s
+#    # The minimum time between peer dial retry attempts.
+#    minRetryInterval: 1s
+#    # maxRetryInterval - optional, default 1m
+#    # The maximum time between peer dial retry attempts.
+#    maxRetryInterval: 1m
+#    # retryBackoffFactor - optional, default 2.0
+#    # The multiplier applied to the retry interval after each failed dial attempt.
+#    retryBackoffFactor: 2.0
+#    # fastFailureWindow - optional, default 30s
+#    # After a successful connection, the dialer will re-check the peer after this duration. If the
+#    # connection was lost within this window, it applies backoff instead of resetting the retry delay.
+#    fastFailureWindow: 30s
 #  rateLimiter:
 #    enabled: true
 #    minSize: 5
