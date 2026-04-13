@@ -113,7 +113,7 @@ func Test_TerminatorCloseOnBindPermissionLoss(t *testing.T) {
 	conn2.RequireClose()
 
 	// Remove bind permission for service1 by deleting its bind policy
-	ctx.AdminManagementSession.requireDeleteEntity(bindPolicy1)
+	ctx.AdminManagementSession.requireDeleteServicePolicy(bindPolicy1)
 
 	// Wait for service1 terminators to be removed
 	timeout := time.After(10 * time.Second)

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
@@ -39,7 +40,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
@@ -57,7 +58,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		ctx.AdminManagementSession.requireDeleteEntity(policy)
+		ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -70,12 +71,13 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s(), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		policy.identityRoles = s("#" + identityRole)
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			IdentityRoles: s("#" + identityRole),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -88,13 +90,14 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		policy.identityRoles = s()
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			IdentityRoles: s(),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -107,12 +110,13 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s(), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		policy.serviceRoles = s("#" + serviceRole)
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			ServiceRoles: s("#" + serviceRole),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -125,13 +129,14 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
-		policy.serviceRoles = s()
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			ServiceRoles: s(),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -145,7 +150,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole2), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
@@ -169,7 +174,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole2), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		time.Sleep(time.Millisecond)
 		identity.roleAttributes = s(identityRole)
@@ -184,7 +189,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		serviceRole := eid.New()
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
@@ -203,7 +208,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 
 		service.roleAttributes = s(serviceRole)
@@ -221,7 +226,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		time.Sleep(time.Millisecond)
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
@@ -240,7 +245,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 		nonAdminUserSession.requireServiceUpdateTimeUnchanged()
@@ -256,7 +261,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		serviceRole := eid.New()
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 		defer ctx.AdminManagementSession.requireDeleteEntity(configType)
@@ -287,7 +292,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		serviceRole := eid.New()
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 		defer ctx.AdminManagementSession.requireDeleteEntity(configType)
@@ -337,7 +342,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		serviceRole := eid.New()
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 		defer ctx.AdminManagementSession.requireDeleteEntity(configType)
@@ -378,7 +383,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(service)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
@@ -401,7 +406,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s("domain1"), s(postureCheckRole))
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
@@ -423,12 +428,13 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s())
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
-		policy.postureCheckRoles = s("#" + postureCheckRole)
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			PostureCheckRoles: s("#" + postureCheckRole),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -446,12 +452,13 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
-		policy.postureCheckRoles = s()
-		ctx.AdminManagementSession.requireUpdateEntity(policy)
+		ctx.AdminManagementSession.requirePatchServicePolicy(policy, &rest_model.ServicePolicyPatch{
+			PostureCheckRoles: s(),
+		})
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 	})
 
@@ -469,7 +476,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
@@ -492,7 +499,7 @@ func Test_ServiceListRefresh(t *testing.T) {
 		defer ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 
 		policy := ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		defer ctx.AdminManagementSession.requireDeleteEntity(policy)
+		defer ctx.AdminManagementSession.requireDeleteServicePolicy(policy)
 
 		nonAdminUserSession.requireServiceUpdateTimeAdvanced()
 
