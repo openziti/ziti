@@ -234,6 +234,12 @@ func Test_CLI_Test_Suite(t *testing.T) {
 		log.Fatalf("controllerUnderTest start failed: %v", cutStartOverZitiErr)
 	}
 
+	// Wait for the controllerUnderTest's binder identity to register terminators for the
+	// mgmt service on the externalZiti network before running overlay tests.
+	if err := s.externalZiti.WaitForServiceTerminator("mgmt", 30*time.Second); err != nil {
+		t.Fatalf("mgmt service terminator not ready: %v", err)
+	}
+
 	testState.cliTestsOverZiti(t, zitiPath)
 
 	s.controllerUnderTest.ControllerName = s.externalZiti.ControllerName

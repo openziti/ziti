@@ -35,6 +35,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_util"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/v2/ziti/cmd"
@@ -601,6 +602,51 @@ func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 
 		case <-timeoutCh:
 			return fmt.Errorf("timeout waiting for controller to become ready at %s", o.ControllerHostPort())
+		}
+	}
+}
+
+func (o *Overlay) WaitForServiceTerminator(serviceName string, timeout time.Duration) error {
+	fmt.Printf("[%s] Waiting up to %s for terminator on service %q\n", o.Name, timeout, serviceName)
+	start := time.Now()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	timeoutCh := time.After(timeout)
+
+	for {
+		select {
+		case <-ticker.C:
+			elapsed := time.Since(start)
+			caCerts, err := rest_util.GetControllerWellKnownCas(o.ControllerHostPort())
+			if err != nil {
+				fmt.Printf("[%s] [%s] can't reach controller to check terminators: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+				continue
+			}
+			caPool := x509.NewCertPool()
+			for _, ca := range caCerts {
+				caPool.AddCert(ca)
+			}
+			client, err := rest_util.NewEdgeManagementClientWithUpdb(o.Username, o.Password, o.ControllerHostPort(), caPool)
+			if err != nil {
+				fmt.Printf("[%s] [%s] can't login to check terminators: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+				continue
+			}
+			filter := fmt.Sprintf(`service.name="%s"`, serviceName)
+			resp, err := client.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
+				Filter:  &filter,
+				Context: context.Background(),
+			}, nil)
+			if err != nil {
+				fmt.Printf("[%s] [%s] error listing terminators: %v\n", o.Name, elapsed.Truncate(time.Second), err)
+				continue
+			}
+			if len(resp.Payload.Data) > 0 {
+				fmt.Printf("[%s] [%s] found %d terminator(s) for service %q\n", o.Name, elapsed.Truncate(time.Second), len(resp.Payload.Data), serviceName)
+				return nil
+			}
+			fmt.Printf("[%s] [%s] no terminators yet for service %q\n", o.Name, elapsed.Truncate(time.Second), serviceName)
+		case <-timeoutCh:
+			return fmt.Errorf("[%s] timeout waiting for terminator on service %q after %s", o.Name, serviceName, timeout)
 		}
 	}
 }
