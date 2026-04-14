@@ -414,13 +414,16 @@ func Test_SDK_Events(t *testing.T) {
 			ctx.Req.Fail("time out, service added event not received")
 		}
 
-		patchServiceParams := managementservice.NewPatchServiceParams()
-		patchServiceParams.ID = serviceResp.Payload.Data.ID
-		patchServiceParams.Service = &rest_model.ServicePatch{
-			TerminatorStrategy: "weighted",
+		dialPolicyParams := managementservicepolicy.NewCreateServicePolicyParams()
+		dialPolicyParams.Policy = &rest_model.ServicePolicyCreate{
+			IdentityRoles: []string{"@" + testId.Id},
+			ServiceRoles:  []string{"@" + serviceResp.Payload.Data.ID},
+			Name:          ToPtr(uuid.NewString()),
+			Type:          ToPtr(rest_model.DialBindDial),
+			Semantic:      ToPtr(rest_model.SemanticAnyOf),
 		}
 
-		_, err = adminClient.API.Service.PatchService(patchServiceParams, nil)
+		_, err = adminClient.API.ServicePolicy.CreateServicePolicy(dialPolicyParams, nil)
 		err = rest_util.WrapErr(err)
 		ctx.Req.NoError(err)
 
