@@ -1005,7 +1005,9 @@ func (ctx *TestContext) shutdownRouters() {
 }
 
 func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
-	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	creds := edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	creds.CaPool = ctx.ControllerCaPool()
+	return creds
 }
 
 func (ctx *TestContext) EnrollFabricRouter(id string, name string, certFile string) {

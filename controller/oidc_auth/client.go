@@ -151,7 +151,7 @@ func NativeClient(id string, redirectURIs, postlogoutURIs []string) *Client {
 		applicationType:                op.ApplicationTypeNative,
 		authMethod:                     oidc.AuthMethodNone,
 		responseTypes:                  []oidc.ResponseType{oidc.ResponseTypeCode},
-		grantTypes:                     []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken},
+		grantTypes:                     []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken, oidc.GrantTypeTokenExchange},
 		accessTokenType:                op.AccessTokenTypeJWT,
 		devMode:                        false,
 		idTokenUserinfoClaimsAssertion: false,
