@@ -34,6 +34,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// InvalidLinkDestinationError indicates a route referenced a link destination that does not exist.
+type InvalidLinkDestinationError struct {
+	LinkId string
+}
+
+func (e *InvalidLinkDestinationError) Error() string {
+	return fmt.Sprintf("invalid link destination %v", e.LinkId)
+}
+
+// NewInvalidLinkDestinationError creates an error indicating that the specified link destination is not valid.
+func NewInvalidLinkDestinationError(linkId string) error {
+	return &InvalidLinkDestinationError{LinkId: linkId}
+}
+
+// IsInvalidLinkDestinationError returns true if the error is or wraps an InvalidLinkDestinationError.
+func IsInvalidLinkDestinationError(err error) bool {
+	var target *InvalidLinkDestinationError
+	return errors.As(err, &target)
+}
+
 type Forwarder struct {
 	circuits        *circuitTable
 	destinations    *destinationTable
@@ -131,7 +151,7 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
 			if forward.DstType == ctrl_pb.DestType_Link {
 				forwarder.faulter.NotifyInvalidLink(forward.DstAddress)
-				return fmt.Errorf("invalid link destination %v", forward.DstAddress)
+				return NewInvalidLinkDestinationError(forward.DstAddress)
 			}
 			if forward.DstType == ctrl_pb.DestType_End {
 				return fmt.Errorf("invalid egress destination %v", forward.DstAddress)

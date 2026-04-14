@@ -101,7 +101,14 @@ func Test_StickyTerminators(t *testing.T) {
 
 	// bump the cost and make sure we stick with the same terminator even with the higher cost
 	ctx.Req.NoError(listener1.UpdateCost(5000))
-	time.Sleep(100 * time.Millisecond)
+	ctx.AdminManagementSession.waitForTerminatorState(service.Id, func(terminators []*terminator) bool {
+		for _, t := range terminators {
+			if t.cost == 5000 {
+				return true
+			}
+		}
+		return false
+	}, 5*time.Second)
 
 	for range 10 {
 		dialOptions := &ziti.DialOptions{
@@ -118,7 +125,14 @@ func Test_StickyTerminators(t *testing.T) {
 
 	// Fail the terminator and make sure we fail over
 	ctx.Req.NoError(listener1.UpdatePrecedence(edge.PrecedenceFailed))
-	time.Sleep(100 * time.Millisecond)
+	ctx.AdminManagementSession.waitForTerminatorState(service.Id, func(terminators []*terminator) bool {
+		for _, t := range terminators {
+			if t.precedence == "failed" {
+				return true
+			}
+		}
+		return false
+	}, 5*time.Second)
 
 	dialOptions := &ziti.DialOptions{
 		ConnectTimeout:  time.Second,
@@ -134,7 +148,14 @@ func Test_StickyTerminators(t *testing.T) {
 	// Reset the initial terminator, bump the second terminator cost and make sure we stick with it
 	ctx.Req.NoError(listener1.UpdateCostAndPrecedence(0, edge.PrecedenceDefault))
 	ctx.Req.NoError(listener2.UpdateCost(5000))
-	time.Sleep(100 * time.Millisecond)
+	ctx.AdminManagementSession.waitForTerminatorState(service.Id, func(terminators []*terminator) bool {
+		for _, t := range terminators {
+			if t.precedence == "failed" {
+				return false
+			}
+		}
+		return len(terminators) == 2
+	}, 5*time.Second)
 
 	for range 10 {
 		dialOptions = &ziti.DialOptions{

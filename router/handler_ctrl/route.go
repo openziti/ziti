@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"net"
+	"strings"
 	"syscall"
 	"time"
 
@@ -115,7 +116,11 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 
 func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
 	if err := rh.forwarder.Route(rh.ch.PeerId(), route); err != nil {
-		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
+		var errCode byte = ctrl_msg.ErrorTypeGeneric
+		if forwarder.IsInvalidLinkDestinationError(err) {
+			errCode = ctrl_msg.ErrorTypeInvalidLinkDestination
+		}
+		rh.fail(msg, attempt, route, err, errCode, log)
 		return
 	}
 
@@ -169,20 +174,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 			if peerData, err := dialer.Dial(params); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {
-				var errCode byte
-
-				switch {
-				case errors.Is(err, syscall.ECONNREFUSED):
-					errCode = ctrl_msg.ErrorTypeConnectionRefused
-				case isNetworkTimeout(err) || errors.Is(err, syscall.ETIMEDOUT):
-					errCode = ctrl_msg.ErrorTypeDialTimedOut
-				case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
-					errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
-				case errors.As(err, &xgress.InvalidTerminatorError{}):
-					errCode = ctrl_msg.ErrorTypeInvalidTerminator
-				default:
-					errCode = ctrl_msg.ErrorTypeGeneric
-				}
+				errCode := classifyDialError(err)
 
 				rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 			}
@@ -196,9 +188,56 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 	}
 }
 
+// classifyDialError maps a dial error to a specific error type code for circuit failure reporting.
+func classifyDialError(err error) byte {
+	switch {
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return ctrl_msg.ErrorTypeConnectionRefused
+	case isResourcesNotAvailable(err):
+		return ctrl_msg.ErrorTypeResourcesNotAvailable
+	case isDnsError(err):
+		return ctrl_msg.ErrorTypeDnsResolutionFailed
+	case isNetworkTimeout(err):
+		return ctrl_msg.ErrorTypeDialTimedOut
+	case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
+		return ctrl_msg.ErrorTypeMisconfiguredTerminator
+	case errors.As(err, &xgress.InvalidTerminatorError{}):
+		return ctrl_msg.ErrorTypeInvalidTerminator
+	case isPortNotAllowedError(err):
+		return ctrl_msg.ErrorTypePortNotAllowed
+	case isRejectedByApplicationError(err):
+		return ctrl_msg.ErrorTypeRejectedByApplication
+	default:
+		return ctrl_msg.ErrorTypeGeneric
+	}
+}
+
+func isResourcesNotAvailable(err error) bool {
+	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || errors.Is(err, syscall.ENOBUFS)
+}
+
+func isDnsError(err error) bool {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return true
+	}
+	// ER/T hosted services send dial errors as strings via the SDK protocol,
+	// so the *net.DNSError type is lost. Fall back to string matching.
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "no such host") || strings.Contains(errMsg, "server misbehaving")
+}
+
+func isPortNotAllowedError(err error) bool {
+	return strings.Contains(err.Error(), "not in allowed port ranges")
+}
+
+func isRejectedByApplicationError(err error) bool {
+	return strings.Contains(err.Error(), "rejected by application")
+}
+
 func isNetworkTimeout(err error) bool {
 	var netErr net.Error
-	return errors.As(err, &netErr)
+	return (errors.As(err, &netErr) && netErr.Timeout()) || errors.Is(err, syscall.ETIMEDOUT)
 }
 
 func newDialParams(ctrlId string, route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {

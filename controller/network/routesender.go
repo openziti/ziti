@@ -179,6 +179,21 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 		case ctrl_msg.ErrorTypeConnectionRefused:
 			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
 			failureCause = CircuitFailureRouterErrDialConnRefused
+		case ctrl_msg.ErrorTypeRejectedByApplication:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			failureCause = CircuitFailureRouterErrRejectedByApp
+		case ctrl_msg.ErrorTypeDnsResolutionFailed:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			failureCause = CircuitFailureRouterErrDnsResolutionFailed
+		case ctrl_msg.ErrorTypePortNotAllowed:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			failureCause = CircuitFailureRouterErrPortNotAllowed
+		case ctrl_msg.ErrorTypeInvalidLinkDestination:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			failureCause = CircuitFailureRouterErrInvalidLinkDest
+		case ctrl_msg.ErrorTypeResourcesNotAvailable:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			failureCause = CircuitFailureRouterErrResourcesNotAvailable
 		default:
 			logger.WithField("errorCode", status.ErrorCode).Error("unhandled error code")
 		}
