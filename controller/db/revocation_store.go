@@ -70,7 +70,7 @@ func (store *revocationStoreImpl) NewEntity() *Revocation {
 func (store *revocationStoreImpl) FillEntity(entity *Revocation, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.ExpiresAt = bucket.GetTimeOrError(FieldRevocationExpiresAt)
-	entity.Type = bucket.GetStringOrError(FieldRevocationType)
+	entity.Type = bucket.GetStringWithDefault(FieldRevocationType, "")
 }
 
 func (store *revocationStoreImpl) PersistEntity(entity *Revocation, ctx *boltz.PersistContext) {
