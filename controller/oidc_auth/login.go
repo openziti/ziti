@@ -141,10 +141,10 @@ func (l *login) createRouter(issuerInterceptor *op.IssuerInterceptor) {
 	l.router.Path("/ext-jwt").Methods("GET").HandlerFunc(issuerInterceptor.HandlerFunc(l.genericHandler))
 	l.router.Path("/ext-jwt").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.authenticate))
 
-	l.router.Path("/totp").Methods("POST").HandlerFunc(l.checkTotp)
+	l.router.Path("/totp").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.checkTotp))
 	l.router.Path("/totp/enroll").Methods("POST").HandlerFunc(l.startEnrollTotp)
 	l.router.Path("/totp/enroll").Methods("DELETE").HandlerFunc(l.deleteEnrollTotp)
-	l.router.Path("/totp/enroll/verify").Methods("POST").HandlerFunc(l.verifyTotp)
+	l.router.Path("/totp/enroll/verify").Methods("POST").HandlerFunc(issuerInterceptor.HandlerFunc(l.verifyTotp))
 }
 
 func (l *login) genericHandler(w http.ResponseWriter, r *http.Request) {
