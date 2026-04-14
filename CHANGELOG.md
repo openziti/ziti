@@ -1036,7 +1036,10 @@ New configuration tunables under `edge.oidc`:
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.3 -> v1.6.0](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.6.0)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.7.0](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.7.0)
+    * [Issue #901](https://github.com/openziti/sdk-golang/issues/901) - Move xgress back to having retransmitter goroutine per-xgress
+    * [Issue #906](https://github.com/openziti/sdk-golang/issues/906) - Fix potential nil references on session service structs
+    * [Issue #897](https://github.com/openziti/sdk-golang/issues/897) - Allow xgress to use pull model for reads when appropriate
     * [Issue #895](https://github.com/openziti/sdk-golang/issues/895) - Limit effect sudden rtt spikes can have on rtt moving average
     * [Issue #902](https://github.com/openziti/sdk-golang/issues/902) - Inspect response message content types are mixed up
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
@@ -1078,6 +1081,9 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3778](https://github.com/openziti/ziti/issues/3778) - SetRouterDataModel can deadlock in the router
+    * [Issue #3777](https://github.com/openziti/ziti/issues/3777) - With the new circuit reserve, we can have circuits with no path in the controller circuit set, which can cause panics
+    * [Issue #3770](https://github.com/openziti/ziti/issues/3770) - Update Token Requests Should Close Channel Connections If Invalid
     * [Issue #3762](https://github.com/openziti/ziti/issues/3762) - Revocations not included in full router data model state
     * [Issue #3757](https://github.com/openziti/ziti/issues/3757) - Mesh peer signing cert from header is overwritten by TLS underlay cert
     * [Issue #3756](https://github.com/openziti/ziti/issues/3756) - TLS handshake rate limiter timeout check reads from wrong config scope

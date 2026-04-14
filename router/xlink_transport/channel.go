@@ -17,11 +17,11 @@ const (
 	ChannelTypeDefault string = "link.default"
 )
 
-func NewBaseLinkChannel(underlay channel.Underlay) *BaseLinkChannel {
+func NewBaseLinkChannel(underlay channel.Underlay, payloadSenderQueueSize, ackSenderQueueSize int) *BaseLinkChannel {
 	senderContext := channel.NewSenderContext()
 
-	defaultMsgChan := make(chan channel.Sendable, 64)
-	controlMsgChan := make(chan channel.Sendable, 4)
+	defaultMsgChan := make(chan channel.Sendable, payloadSenderQueueSize)
+	controlMsgChan := make(chan channel.Sendable, ackSenderQueueSize)
 	retryMsgChan := make(chan channel.Sendable, 4)
 
 	result := &BaseLinkChannel{
@@ -127,13 +127,15 @@ type DialLinkChannelConfig struct {
 	Underlay               channel.Underlay
 	MaxDefaultChannels     int
 	MaxAckChannel          int
+	PayloadSenderQueueSize int
+	AckSenderQueueSize     int
 	StartupDelay           time.Duration
 	UnderlayChangeCallback func(ch *DialLinkChannel)
 }
 
 func NewDialLinkChannel(config DialLinkChannelConfig) UnderlayHandlerLinkChannel {
 	result := &DialLinkChannel{
-		BaseLinkChannel: *NewBaseLinkChannel(config.Underlay),
+		BaseLinkChannel: *NewBaseLinkChannel(config.Underlay, config.PayloadSenderQueueSize, config.AckSenderQueueSize),
 		dialer:          config.Dialer,
 		changeCallback:  config.UnderlayChangeCallback,
 		syncRequired:    map[string]struct{}{},
@@ -266,9 +268,9 @@ func (self *DialLinkChannel) CreateGroupedUnderlay(groupId string, groupSecret [
 	})
 }
 
-func NewListenerLinkChannel(underlay channel.Underlay) UnderlayHandlerLinkChannel {
+func NewListenerLinkChannel(underlay channel.Underlay, payloadSenderQueueSize, ackSenderQueueSize int) UnderlayHandlerLinkChannel {
 	result := &ListenerLinkChannel{
-		BaseLinkChannel: *NewBaseLinkChannel(underlay),
+		BaseLinkChannel: *NewBaseLinkChannel(underlay, payloadSenderQueueSize, ackSenderQueueSize),
 	}
 
 	result.constraints.AddConstraint(ChannelTypeDefault, 1, 1)

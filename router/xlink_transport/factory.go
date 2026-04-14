@@ -59,6 +59,8 @@ type LinkEnv interface {
 	GetRateLimiterPool() goroutines.Pool
 	GetCloseNotify() <-chan struct{}
 	GetRouterId() *identity.TokenId
+	GetLinkPayloadSenderQueueSize() int
+	GetLinkAckSenderQueueSize() int
 }
 
 func NewFactory(accepter xlink.Acceptor,
