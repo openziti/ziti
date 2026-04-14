@@ -260,7 +260,7 @@ func (listener *listener) Close() error {
 }
 
 type edgeClientConn struct {
-	msgMux       sdkedge.MsgMux
+	msgMux       sdkedge.ConnMux[any]
 	listener     *listener
 	fingerprints cert.Fingerprints
 	ch           sdkedge.SdkChannel
@@ -1142,7 +1142,7 @@ func (self *nonXgConnectHandler) Init(ctx *connectContext) bool {
 	})
 
 	// We can't fix conn id, since it's provided by the client
-	if err := ctx.sdkConn.msgMux.AddMsgSink(self.conn); err != nil {
+	if err := ctx.sdkConn.msgMux.Add(self.conn); err != nil {
 		ctx.log.WithError(err).WithField("token", ctx.sessionToken).Error("error adding to msg mux")
 		ctx.sdkConn.sendStateClosedReply(err.Error(), ctx.req)
 		return false

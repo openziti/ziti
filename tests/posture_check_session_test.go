@@ -107,9 +107,9 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			currentPostureDomain := dialDomain
-			postureCache.DomainFunc = func() string {
+			postureCache.SetDomainProviderFunc(func() string {
 				return currentPostureDomain
-			}
+			})
 
 			clientConn := ctx.WrapConn(clientContext.Dial(service.Name))
 			defer func() { _ = clientConn.Close() }()

@@ -243,7 +243,7 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 		seq:        NewMsgQueue(4),
 	}
 
-	if err := mux.AddMsgSink(result); err != nil {
+	if err := mux.Add(result); err != nil {
 		return nil, err
 	}
 
@@ -266,7 +266,7 @@ func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl
 
 type edgeXgressConn struct {
 	edge.MsgChannel
-	mux     edge.MsgMux
+	mux     edge.ConnMux[any]
 	seq     MsgQueue
 	onClose func()
 	closed  atomic.Bool
@@ -403,7 +403,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	log := pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id())
 	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
-	self.mux.RemoveMsgSink(self)
+	self.mux.Remove(self)
 
 	// When nextSeq is closed, GetNext in Read() will return a nil.
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
@@ -427,7 +427,14 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) Accept(msg *channel.Message) {
+func (self *edgeXgressConn) GetData() any {
+	return nil
+}
+
+func (self *edgeXgressConn) SetData(any) {
+}
+
+func (self *edgeXgressConn) AcceptMessage(msg *channel.Message) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
