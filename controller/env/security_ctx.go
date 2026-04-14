@@ -413,7 +413,7 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
-	if identityRevocation != nil && identityRevocation.CreatedAt.After(claims.IssuedAt.AsTime()) {
+	if identityRevocation != nil && !identityRevocation.CreatedAt.Truncate(time.Second).Before(claims.IssuedAt.AsTime()) {
 		ctx.setApiSessionError(errorz.NewUnauthorizedOidcInvalid())
 		return
 	}
