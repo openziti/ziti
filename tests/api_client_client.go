@@ -792,7 +792,7 @@ func (helper *ClientHelperClient) OidcAccessToken(credentials edgeApis.Credentia
 		return "", nil, err
 	}
 	if tokens.AccessToken == "" {
-		return "", nil, fmt.Errorf("empty access token from OIDC auth")
+		return "", nil, errors.New("empty access token from OIDC auth")
 	}
 	return parseAccessToken(tokens.AccessToken)
 }
