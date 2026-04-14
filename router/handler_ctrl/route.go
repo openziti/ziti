@@ -197,7 +197,7 @@ func classifyDialError(err error) byte {
 		return ctrl_msg.ErrorTypeResourcesNotAvailable
 	case isDnsError(err):
 		return ctrl_msg.ErrorTypeDnsResolutionFailed
-	case isNetworkTimeout(err) || errors.Is(err, syscall.ETIMEDOUT):
+	case isNetworkTimeout(err):
 		return ctrl_msg.ErrorTypeDialTimedOut
 	case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
 		return ctrl_msg.ErrorTypeMisconfiguredTerminator
@@ -237,7 +237,7 @@ func isRejectedByApplicationError(err error) bool {
 
 func isNetworkTimeout(err error) bool {
 	var netErr net.Error
-	return errors.As(err, &netErr)
+	return (errors.As(err, &netErr) && netErr.Timeout()) || errors.Is(err, syscall.ETIMEDOUT)
 }
 
 func newDialParams(ctrlId string, route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {

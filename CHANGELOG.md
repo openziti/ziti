@@ -1081,6 +1081,13 @@ New configuration tunables under `edge.oidc`:
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3717](https://github.com/openziti/ziti/issues/3717) - Generic error message for specific error
+    * [Issue #3543](https://github.com/openziti/ziti/issues/3543) - New Circuit Failure code for sockets not available
+    * [Issue #3364](https://github.com/openziti/ziti/issues/3364) - Make no such host error specific
+    * [Issue #2888](https://github.com/openziti/ziti/issues/2888) - New specific Error code for port not allowed
+    * [Issue #2859](https://github.com/openziti/ziti/issues/2859) - Create specific error code for DNS failed resolution
+    * [Issue #1580](https://github.com/openziti/ziti/issues/1580) - Invalid link destination should have a specific error code
+    * [Issue #3706](https://github.com/openziti/ziti/issues/3706) - Increase link payload/ack queue sizes and make them configurable
     * [Issue #3778](https://github.com/openziti/ziti/issues/3778) - SetRouterDataModel can deadlock in the router
     * [Issue #3777](https://github.com/openziti/ziti/issues/3777) - With the new circuit reserve, we can have circuits with no path in the controller circuit set, which can cause panics
     * [Issue #3770](https://github.com/openziti/ziti/issues/3770) - Update Token Requests Should Close Channel Connections If Invalid

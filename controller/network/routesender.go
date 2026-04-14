@@ -189,6 +189,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrPortNotAllowed
 		case ctrl_msg.ErrorTypeInvalidLinkDestination:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrInvalidLinkDest
 		case ctrl_msg.ErrorTypeResourcesNotAvailable:
 			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())

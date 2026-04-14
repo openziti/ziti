@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"fmt"
 	"net"
+	"os"
 	"syscall"
 	"testing"
 
@@ -62,6 +63,15 @@ func Test_classifyDialError(t *testing.T) {
 
 	t.Run("timeout", func(t *testing.T) {
 		err := fmt.Errorf("dial failed: %w", syscall.ETIMEDOUT)
+		require.Equal(t, byte(ctrl_msg.ErrorTypeDialTimedOut), classifyDialError(err))
+	})
+
+	t.Run("timeout via net.OpError", func(t *testing.T) {
+		err := &net.OpError{
+			Op:  "dial",
+			Net: "tcp",
+			Err: &os.SyscallError{Syscall: "connect", Err: syscall.ETIMEDOUT},
+		}
 		require.Equal(t, byte(ctrl_msg.ErrorTypeDialTimedOut), classifyDialError(err))
 	})
 
