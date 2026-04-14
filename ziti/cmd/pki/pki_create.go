@@ -98,6 +98,31 @@ func (o *PKICreateOptions) Run() error {
 	return o.Cmd.Help()
 }
 
+// ResolveFlagsFromViper backfills struct fields from viper (env vars) when the
+// corresponding CLI flag was not explicitly set.  This allows flags like
+// --ca-file, --curve, --intermediate-file, etc. to be set via ZITI_CA_FILE,
+// ZITI_CURVE, ZITI_INTERMEDIATE_FILE environment variables.
+func (o *PKICreateOptions) ResolveFlagsFromViper(cmd *cobra.Command) {
+	resolve := func(flagName string, target *string) {
+		if !cmd.Flags().Changed(flagName) {
+			if v := o.viper.GetString(flagName); v != "" {
+				*target = v
+			}
+		}
+	}
+	resolve("ca-file", &o.Flags.CAFile)
+	resolve("ca-name", &o.Flags.CAName)
+	resolve("curve", &o.Flags.EcCurve)
+	resolve("intermediate-file", &o.Flags.IntermediateFile)
+	resolve("intermediate-name", &o.Flags.IntermediateName)
+	resolve("server-file", &o.Flags.ServerFile)
+	resolve("server-name", &o.Flags.ServerName)
+	resolve("client-file", &o.Flags.ClientFile)
+	resolve("client-name", &o.Flags.ClientName)
+	resolve("key-file", &o.Flags.KeyFile)
+	resolve("trust-domain", &o.Flags.SpiffeID)
+}
+
 // ObtainPKIRoot returns the value for pki-root
 func (o *PKICreateOptions) ObtainPKIRoot() (string, error) {
 	pkiRoot := o.Flags.PKIRoot
