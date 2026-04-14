@@ -104,28 +104,34 @@ when running HA. Legacy API and service session are now deprecated and will be r
   are not compatible with the new HA-only mode and will need to be recreated.
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
-* [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect
+* [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect and ensures per-router event ordering
 
 ## Connect Events Pool
 
-The controller now uses a shared, bounded goroutine pool to process identity
-connect/disconnect events from routers. Previously each router connection spawned
-a dedicated goroutine that was never cleaned up on disconnect, leaking a goroutine
-per reconnect cycle. Under churn (e.g., chaos testing with hundreds of routers) this
-could accumulate tens of thousands of leaked goroutines and destabilize the controller.
+The controller now uses per-router, single-worker goroutine pools to process identity
+connect/disconnect events. Previously each router connection spawned a dedicated
+goroutine that was never cleaned up on disconnect, leaking a goroutine per reconnect
+cycle. Under churn (e.g., chaos testing with hundreds of routers) this could accumulate
+tens of thousands of leaked goroutines and destabilize the controller.
+
+Using a single-worker pool per router also ensures that events from the same router are
+always processed in FIFO order. Previously, a shared multi-worker pool could process a
+full-state sync after a newer incremental event from the same router, causing identities
+to be incorrectly marked as disconnected.
 
 The pool is configurable in the controller config file:
 
 ```yaml
 connectEvents:
-  queueSize:  16    # work queue depth (default: 16)
-  minWorkers: 0     # minimum pool goroutines (default: 0)
-  maxWorkers: 16    # maximum pool goroutines (default: 16)
-  idleTime:   30s   # worker idle timeout before exit (default: 30s)
+  queueSize: 5    # per-router work queue depth (default: 5)
+  idleTime:  30s  # worker idle timeout before exit (default: 30s)
 ```
 
-The defaults are suitable for most deployments. Workers scale up on demand and
-exit after the idle timeout, so no goroutines are held when there is no work.
+The defaults are suitable for most deployments. Each router's worker starts on demand
+and exits after the idle timeout, so no goroutines are held when there is no work.
+
+Note: the `minWorkers` and `maxWorkers` settings have been removed. Each router's pool
+is fixed at one worker for correctness.
 
 ## Community Contributors
 
