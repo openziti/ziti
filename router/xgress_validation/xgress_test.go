@@ -44,13 +44,11 @@ func (self *testSetup) init() {
 	fwdOptions := env.DefaultForwarderOptions()
 	self.fwd = forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, self.closeNotify)
 	acker := xgress_router.NewAcker(self.fwd, metricsRegistry, self.closeNotify)
-	retransmitter := xgress.NewRetransmitter(self.fwd, metricsRegistry, self.closeNotify)
 	payloadIngester := xgress.NewPayloadIngester(self.closeNotify)
 
 	self.dataPlaneAdapter = handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       self.fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})

@@ -147,7 +147,6 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -169,7 +168,6 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})
@@ -235,7 +233,6 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -258,7 +255,6 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})

@@ -1036,7 +1036,10 @@ New configuration tunables under `edge.oidc`:
     * [Issue #56](https://github.com/openziti/metrics/issues/56) - underlying resources of reference counted meters are not cleaned up when reference count hits zero
 
 * github.com/openziti/runzmd: [v1.0.80 -> v1.0.90](https://github.com/openziti/runzmd/compare/v1.0.80...v1.0.90)
-* github.com/openziti/sdk-golang: [v1.2.3 -> v1.6.0](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.6.0)
+* github.com/openziti/sdk-golang: [v1.2.3 -> v1.7.0](https://github.com/openziti/sdk-golang/compare/v1.2.3...v1.7.0)
+    * [Issue #901](https://github.com/openziti/sdk-golang/issues/901) - Move xgress back to having retransmitter goroutine per-xgress
+    * [Issue #906](https://github.com/openziti/sdk-golang/issues/906) - Fix potential nil references on session service structs
+    * [Issue #897](https://github.com/openziti/sdk-golang/issues/897) - Allow xgress to use pull model for reads when appropriate
     * [Issue #895](https://github.com/openziti/sdk-golang/issues/895) - Limit effect sudden rtt spikes can have on rtt moving average
     * [Issue #902](https://github.com/openziti/sdk-golang/issues/902) - Inspect response message content types are mixed up
     * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
