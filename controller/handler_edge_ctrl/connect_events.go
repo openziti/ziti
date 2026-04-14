@@ -22,6 +22,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -32,14 +33,33 @@ import (
 type connectEventsHandler struct {
 	appEnv *env.AppEnv
 	ch     ctrlchan.CtrlChannel
+	pool   goroutines.Pool
 }
 
 // NewConnectEventsHandler creates a handler that processes identity connect/disconnect
-// events from routers using the shared ConnectEventsPool on AppEnv.
+// events from a router. Each handler gets its own single-worker pool to ensure events
+// from the same router are processed in order.
 func NewConnectEventsHandler(appEnv *env.AppEnv, ch ctrlchan.CtrlChannel) channel.TypedReceiveHandler {
+	cfg := appEnv.GetConfig().ConnectEventsConfig
+	pool, err := goroutines.NewPool(goroutines.PoolConfig{
+		QueueSize:   cfg.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  1,
+		IdleTime:    cfg.IdleTime,
+		CloseNotify: appEnv.GetCloseNotifyChannel(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField("routerId", ch.PeerId()).
+				Errorf("panic in connect events handler: %v", err)
+		},
+	})
+	if err != nil {
+		pfxlog.Logger().WithField("routerId", ch.PeerId()).WithError(err).
+			Fatal("failed to create connect events pool")
+	}
 	return &connectEventsHandler{
 		appEnv: appEnv,
 		ch:     ch,
+		pool:   pool,
 	}
 }
 
@@ -54,7 +74,7 @@ func (self *connectEventsHandler) HandleReceive(msg *channel.Message, ch channel
 		return
 	}
 
-	if err := self.appEnv.ConnectEventsPool.Queue(func() {
+	if err := self.pool.Queue(func() {
 		self.HandleConnectEvents(req, ch)
 	}); err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to queue connect events for processing")
