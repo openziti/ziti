@@ -118,6 +118,7 @@ func (self *RevocationManager) Marshall(entity *Revocation) ([]byte, error) {
 		Id:        entity.Id,
 		ExpiresAt: timePtrToPb(&entity.ExpiresAt),
 		Tags:      tags,
+		Type:      entity.Type,
 	}
 
 	return proto.Marshal(msg)
@@ -139,6 +140,7 @@ func (self *RevocationManager) Unmarshall(bytes []byte) (*Revocation, error) {
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		ExpiresAt: *pbTimeToTimePtr(msg.ExpiresAt),
+		Type:      msg.Type,
 	}, nil
 }
 

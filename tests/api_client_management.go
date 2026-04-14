@@ -19,9 +19,11 @@ import (
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_client/informational"
 	managementPostureChecks "github.com/openziti/edge-api/rest_management_api_client/posture_checks"
+	managementRevocation "github.com/openziti/edge-api/rest_management_api_client/revocation"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/ziti/util"
 )
@@ -664,4 +666,67 @@ func (helper *ManagementHelperClient) CreateUpdbIdentityWithAuthPolicy(authPolic
 	}
 
 	return edgeApis.NewUpdbCredentials(username, password), nil
+}
+
+// CreateRevocation creates a new revocation entry for the given id and type via the Management API.
+func (helper *ManagementHelperClient) CreateRevocation(id string, revocationType rest_model.RevocationTypeEnum) (*rest_model.CreateLocation, error) {
+	params := managementRevocation.NewCreateRevocationParams()
+	params.Revocation = &rest_model.RevocationCreate{
+		ID:   &id,
+		Type: &revocationType,
+	}
+
+	resp, err := helper.API.Revocation.CreateRevocation(params, nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// ListRevocations retrieves all revocation entries via the Management API.
+func (helper *ManagementHelperClient) ListRevocations() (rest_model.RevocationList, error) {
+	params := managementRevocation.NewListRevocationsParams()
+
+	resp, err := helper.API.Revocation.ListRevocations(params, nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// GetRevocation retrieves a single revocation entry by its id via the Management API.
+func (helper *ManagementHelperClient) GetRevocation(id string) (*rest_model.RevocationDetail, error) {
+	params := managementRevocation.NewDetailRevocationParams()
+	params.ID = id
+
+	resp, err := helper.API.Revocation.DetailRevocation(params, nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// GetOidcAccessToken extracts the access token and its parsed claims from the
+// client's current OIDC session. Returns an error if the session is not OIDC.
+func (helper *ManagementHelperClient) GetOidcAccessToken() (string, *common.AccessClaims, error) {
+	currentSession := helper.GetCurrentApiSession()
+	oidcSess, ok := currentSession.(*edgeApis.ApiSessionOidc)
+	if !ok {
+		return "", nil, fmt.Errorf("expected OIDC session, got %T", currentSession)
+	}
+	return parseAccessToken(oidcSess.OidcTokens.AccessToken)
+}
+
+// NewEdgeManagementApiWithStaticToken creates a ManagementHelperClient that sends
+// the given OIDC access token on every request. No refresh token is stored, so the
+// token cannot be silently refreshed.
+func (ctx *TestContext) NewEdgeManagementApiWithStaticToken(accessToken string) *ManagementHelperClient {
+	c := ctx.NewEdgeManagementApi(nil)
+	session := edgeApis.NewApiSessionOidc(accessToken, "")
+	var apiSession edgeApis.ApiSession = session
+	c.ApiSession.Store(&apiSession)
+	return c
 }

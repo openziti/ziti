@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/identity/certtools"
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
@@ -780,4 +781,30 @@ func (s *SingularClientTransportPool) TryTransportsForOp(operation *runtime.Clie
 
 func (s *SingularClientTransportPool) TryTransportForF(cb func(*edgeApis.ApiClientTransport) (any, error)) (any, error) {
 	return cb(s.ApiClientTransport)
+}
+
+// OidcAccessToken authenticates via OIDC with the given credentials and returns
+// the raw access token string plus its parsed claims. The caller must set CaPool
+// on the credentials before calling if the controller uses a self-signed certificate.
+func (helper *ClientHelperClient) OidcAccessToken(credentials edgeApis.Credentials) (string, *common.AccessClaims, error) {
+	tokens, _, err := helper.RawOidcAuthRequest(credentials)
+	if err != nil {
+		return "", nil, err
+	}
+	if tokens.AccessToken == "" {
+		return "", nil, errors.New("empty access token from OIDC auth")
+	}
+	return parseAccessToken(tokens.AccessToken)
+}
+
+// parseAccessToken parses an access token string into AccessClaims without
+// verifying the signature.
+func parseAccessToken(tokenStr string) (string, *common.AccessClaims, error) {
+	claims := &common.AccessClaims{}
+	parser := jwt.NewParser()
+	_, _, err := parser.ParseUnverified(tokenStr, claims)
+	if err != nil {
+		return "", nil, err
+	}
+	return tokenStr, claims, nil
 }

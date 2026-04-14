@@ -28,6 +28,7 @@ import (
 type Revocation struct {
 	models.BaseEntity
 	ExpiresAt time.Time
+	Type      string
 }
 
 func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Revocation, error) {
@@ -37,6 +38,7 @@ func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.F
 func (entity *Revocation) fillFrom(_ Env, _ *bbolt.Tx, boltRevocation *db.Revocation) error {
 	entity.FillCommon(boltRevocation)
 	entity.ExpiresAt = boltRevocation.ExpiresAt
+	entity.Type = boltRevocation.Type
 
 	return nil
 }
@@ -45,6 +47,7 @@ func (entity *Revocation) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Revocation,
 	boltEntity := &db.Revocation{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		ExpiresAt:     entity.ExpiresAt,
+		Type:          entity.Type,
 	}
 
 	return boltEntity, nil

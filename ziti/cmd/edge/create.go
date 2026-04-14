@@ -54,6 +54,7 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateTransitRouterCmd(out, errOut))
 	cmd.AddCommand(newCreateExtJwtSignerCmd(out, errOut))
 	cmd.AddCommand(newCreateAuthPolicyCmd(out, errOut))
+	cmd.AddCommand(newCreateRevocationCmd(out, errOut))
 
 	return cmd
 }
