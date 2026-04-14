@@ -122,7 +122,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
   are not compatible with the new HA-only mode and will need to be recreated.
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
-* [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect
+* [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect and ensures per-router event ordering
 * [Multiple DNS upstreams](#multiple-dns-upstreams) - the tunneler can now fan out recursive queries to several upstream resolvers in parallel
 
 ## OIDC Discovery Endpoint Extensions
@@ -166,24 +166,30 @@ the issuer (and port) the client connected to.
 
 ## Connect Events Pool
 
-The controller now uses a shared, bounded goroutine pool to process identity
-connect/disconnect events from routers. Previously each router connection spawned
-a dedicated goroutine that was never cleaned up on disconnect, leaking a goroutine
-per reconnect cycle. Under churn (e.g., chaos testing with hundreds of routers) this
-could accumulate tens of thousands of leaked goroutines and destabilize the controller.
+The controller now uses per-router, single-worker goroutine pools to process identity
+connect/disconnect events. Previously each router connection spawned a dedicated
+goroutine that was never cleaned up on disconnect, leaking a goroutine per reconnect
+cycle. Under churn (e.g., chaos testing with hundreds of routers) this could accumulate
+tens of thousands of leaked goroutines and destabilize the controller.
+
+Using a single-worker pool per router also ensures that events from the same router are
+always processed in FIFO order. Previously, a shared multi-worker pool could process a
+full-state sync after a newer incremental event from the same router, causing identities
+to be incorrectly marked as disconnected.
 
 The pool is configurable in the controller config file:
 
 ```yaml
 connectEvents:
-  queueSize:  16    # work queue depth (default: 16)
-  minWorkers: 0     # minimum pool goroutines (default: 0)
-  maxWorkers: 16    # maximum pool goroutines (default: 16)
-  idleTime:   30s   # worker idle timeout before exit (default: 30s)
+  queueSize: 5    # per-router work queue depth (default: 5)
+  idleTime:  30s  # worker idle timeout before exit (default: 30s)
 ```
 
-The defaults are suitable for most deployments. Workers scale up on demand and
-exit after the idle timeout, so no goroutines are held when there is no work.
+The defaults are suitable for most deployments. Each router's worker starts on demand
+and exits after the idle timeout, so no goroutines are held when there is no work.
+
+Note: the `minWorkers` and `maxWorkers` settings have been removed. Each router's pool
+is fixed at one worker for correctness.
 
 ## Community Contributors
 
@@ -1249,6 +1255,8 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3824](https://github.com/openziti/ziti/issues/3824) - Allow calling inspect using the IPC agent on the controller, router and go tunnel
+    * [Issue #2049](https://github.com/openziti/ziti/issues/2049) - The ziti agent command should have a controller connection status
     * [Issue #3784](https://github.com/openziti/ziti/issues/3784) - Fix link registry race condition on reporting links on reconnect
     * [Issue #3734](https://github.com/openziti/ziti/issues/3734) - Enforce client certificate proof-of-possession on controller REST API for OIDC sessions
     * [Issue #3806](https://github.com/openziti/ziti/issues/3806) - Expose OpenZiti-specific login and MFA endpoints in the OIDC discovery document
@@ -1358,9 +1366,6 @@ be removed.
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
     * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
     * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
-    * [Issue #122](https://github.com/openziti/ziti/pull/122) - Release 0.15.0
-    * [Issue #120](https://github.com/openziti/ziti/pull/120) - Fix buildinfo updates on non-linux-amd64 builds
-    * [Issue #119](https://github.com/openziti/ziti/pull/119) - fix log prefix netfoundry -> openziti
     * [Issue #3349](https://github.com/openziti/ziti/issues/3349) - UPDB OIDC login returns wrong content type
     * [Issue #2324](https://github.com/openziti/ziti/issues/2324) - Add Ext-JWT/OIDC enrollment
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
