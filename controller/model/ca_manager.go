@@ -115,9 +115,6 @@ func (self *TrustCache) GetAllPool() *x509.CertPool {
 // VerifyClientCert verifies a client certificate chain against the tiered trust pools and returns
 // which pool matched. First-party pools (roots, then roots+intermediates) are tried first, then
 // third-party. Returns CertOriginUntrusted if no pool validates the cert.
-// VerifyClientCert verifies a client certificate chain against the tiered trust pools and returns
-// which pool matched. First-party pools (roots, then roots+intermediates) are tried first, then
-// third-party. Returns CertOriginUntrusted if no pool validates the cert.
 //
 // When skipTimeCheck is true, certificate time validity (NotBefore/NotAfter) is bypassed during
 // chain verification. This supports auth policies that allow expired certificates. The caller

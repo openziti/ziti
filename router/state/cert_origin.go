@@ -19,6 +19,7 @@ package state
 import (
 	"crypto/x509"
 	"sync"
+	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
@@ -50,12 +51,18 @@ func (self *ManagerImpl) IsFirstPartyCert(clientCert *x509.Certificate) bool {
 		return false
 	}
 
+	// Shallow-copy the cert so we can bypass time checks without mutating the original.
+	// This determines CA origin only; expiry is enforced by the caller.
+	certCopy := *clientCert
+	certCopy.NotBefore = time.Now().Add(-1 * time.Hour)
+	certCopy.NotAfter = time.Now().Add(1 * time.Hour)
+
 	opts := x509.VerifyOptions{
 		Roots:     pool,
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	if _, err := clientCert.Verify(opts); err == nil {
+	if _, err := certCopy.Verify(opts); err == nil {
 		return true
 	}
 
