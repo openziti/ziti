@@ -52,13 +52,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	var sdkChannel edge.SdkChannel
 	if multiChannel, ok := binding.GetChannel().(channel.MultiChannel); ok {
 		sdkChannel = multiChannel.GetUnderlayHandler().(edge.SdkChannel)
-		sdkChannel.InitChannel(multiChannel)
 	} else {
 		sdkChannel = edge.NewSingleSdkChannel(binding.GetChannel())
 	}
 
 	conn := &edgeClientConn{
-		msgMux:       edge.NewMapMsgMux(),
+		msgMux:       edge.NewChannelConnMapMux[any](nil),
 		listener:     self.listener,
 		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
 		ch:           sdkChannel,
@@ -241,7 +240,7 @@ func (self *Acceptor) Run() {
 }
 
 func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
-	sdkChannel := NewListenerSdkChannel(underlay)
+	sdkChannel := NewListenerSdkChannel()
 	multiConfig := channel.MultiChannelConfig{
 		LogicalName:     "edge",
 		Options:         self.options,
@@ -275,9 +274,9 @@ func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
 	return nil
 }
 
-func NewListenerSdkChannel(underlay channel.Underlay) edge.UnderlayHandlerSdkChannel {
+func NewListenerSdkChannel() edge.UnderlayHandlerSdkChannel {
 	result := &ListenerSdkChannel{
-		BaseSdkChannel: *edge.NewBaseSdkChannel(underlay),
+		BaseSdkChannel: *edge.NewBaseSdkChannel(),
 	}
 
 	result.constraints.AddConstraint(edge.ChannelTypeDefault, 1, 1)

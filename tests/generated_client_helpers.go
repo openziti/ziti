@@ -431,8 +431,8 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string
 		},
 	}
 
-	helper.HttpTransport.TLSClientConfig.Certificates = tlsCerts
-	helper.HttpTransport.CloseIdleConnections()
+	helper.TlsAwareTransport.GetTlsClientConfig().Certificates = tlsCerts
+	helper.TlsAwareTransport.CloseIdleConnections()
 
 	if IsJwt(token) {
 		jwtParser := jwt.NewParser()
