@@ -19,6 +19,7 @@ package state
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,12 +63,12 @@ func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) 
 	if len(state.PeerCertificates) == 0 {
 		// No client cert presented. The edge listener requires a cert (RequireAnyClientCert),
 		// so this should not happen. Reject to be safe.
-		return fmt.Errorf("no client certificate presented")
+		return errors.New("no client certificate presented")
 	}
 
 	rdm := self.stateManager.RouterDataModel()
 	if rdm == nil {
-		return fmt.Errorf("router data model not yet available, cannot verify client certificate")
+		return errors.New("router data model not yet available, cannot verify client certificate")
 	}
 
 	rootPool := x509.NewCertPool()
@@ -86,7 +87,7 @@ func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) 
 	}
 
 	if certCount == 0 {
-		return fmt.Errorf("no trusted CA certificates available in router data model")
+		return errors.New("no trusted CA certificates available in router data model")
 	}
 
 	// Add the router identity's CA bundle as intermediates. The RDM PublicKeys typically

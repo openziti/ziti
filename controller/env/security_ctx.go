@@ -488,7 +488,7 @@ func (ctx *SecurityCtx) verifyCertProofOfPossession(securityToken *common.Securi
 	fpg := ctx.env.GetFingerprintGenerator()
 	fingerprint := fpg.FromCert(leafCert)
 
-	// Chain verification bypasses time checks,  expiry is enforced below based on match type
+	// Chain verification bypasses time checks, expiry is enforced below based on match type
 	// and the z_cae (cert allow expired) claim from the auth policy.
 	trustCache := ctx.env.GetManagers().Ca.GetTrustCache()
 	origin := trustCache.VerifyClientCertCached(fingerprint, peerCerts, true)
