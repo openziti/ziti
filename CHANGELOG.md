@@ -99,12 +99,52 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * The dialing identity's ID and name are now forwarded to the hosting SDK
 * Controllers can now dial routers to establish control channels, enabling connectivity when routers are behind firewalls (Beta)
 * Refresh-token revocations are now batched and best-effort, removing the database/raft bottleneck on token refreshes
+* [OIDC discovery endpoint extensions](#oidc-discovery-endpoint-extensions) - OpenZiti-specific endpoint URLs in the OIDC discovery document
 * `ziti edge quickstart` now always runs in HA mode. The `ha` subcommand has been removed. Use
   `ziti edge quickstart join` to add additional members to the cluster. Note: existing quickstart instances
   are not compatible with the new HA-only mode and will need to be recreated.
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
 * [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect
+
+## OIDC Discovery Endpoint Extensions
+
+The OIDC discovery document (`/.well-known/openid-configuration`) now includes a vendor-specific
+`openziti_endpoints` field. This lets SDKs discover OpenZiti's custom login and MFA endpoints at
+runtime instead of hardcoding paths.
+
+The field contains absolute URLs for each endpoint, derived from the issuer the client connected to:
+
+```json
+{
+  "issuer": "https://controller.example.com:1280/oidc",
+  "authorization_endpoint": "https://controller.example.com:1280/oidc/authorize",
+  "token_endpoint": "https://controller.example.com:1280/oidc/oauth/token",
+  "...other standard OIDC fields...",
+  "openziti_endpoints": {
+    "password":           "https://controller.example.com:1280/oidc/login/password",
+    "cert":               "https://controller.example.com:1280/oidc/login/cert",
+    "ext_jwt":            "https://controller.example.com:1280/oidc/login/ext-jwt",
+    "totp":               "https://controller.example.com:1280/oidc/login/totp",
+    "totp_enroll":        "https://controller.example.com:1280/oidc/login/totp/enroll",
+    "totp_enroll_verify": "https://controller.example.com:1280/oidc/login/totp/enroll/verify",
+    "auth_queries":       "https://controller.example.com:1280/oidc/login/auth-queries"
+  }
+}
+```
+
+| Key                | Method(s)   | Description                                       |
+|--------------------|-------------|---------------------------------------------------|
+| `password`         | POST        | Username/password authentication                  |
+| `cert`             | POST        | Client certificate authentication                 |
+| `ext_jwt`          | POST        | External JWT authentication                       |
+| `totp`             | POST        | TOTP code verification for MFA                    |
+| `totp_enroll`      | POST/DELETE | Start (POST) or delete (DELETE) TOTP enrollment   |
+| `totp_enroll_verify`| POST       | Verify a TOTP enrollment code                     |
+| `auth_queries`     | GET         | Retrieve pending authentication queries           |
+
+When the controller serves edge-oidc on multiple web servers, each discovery response reflects
+the issuer (and port) the client connected to.
 
 ## Connect Events Pool
 
