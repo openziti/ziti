@@ -30,8 +30,8 @@ type logoutOptions struct {
 	api.Options
 }
 
-// newLogoutCmd creates the command
-func newLogoutCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+// NewLogoutCmd creates the command
+func NewLogoutCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &logoutOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},

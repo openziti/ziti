@@ -41,11 +41,11 @@ const (
 
 var (
 	createConfigControllerLong = templates.LongDesc(`
-		Creates the controller config
+		creates a controller config file
 `)
 
 	createConfigControllerExample = templates.Examples(`
-		# Create the controller config 
+		# Creates a controller config file 
 		ziti create config controller
 
 		# Create the controller config with a particular ctrlListener host and port
@@ -89,7 +89,7 @@ func NewCmdCreateConfigController() *CreateControllerConfigCmd {
 		ConfigData: data,
 		Command: &cobra.Command{
 			Use:     "controller",
-			Short:   "Create a controller config",
+			Short:   "creates a controller config file",
 			Aliases: []string{"ctrl"},
 			Long:    createConfigControllerLong,
 			Example: createConfigControllerExample,
