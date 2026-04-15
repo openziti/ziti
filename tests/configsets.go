@@ -43,3 +43,12 @@ var DisabledOidcAutoBinding = ConfigSet{
 	Name:       "disabled-oidc-auto-binding",
 	CtrlConfig: "testdata/configs/disabled-oidc-auto-binding/ctrl.yml",
 }
+
+// DualOidcServers is a controller-only config set with two web server entries, each
+// on a different port and each hosting the edge-oidc API. Used to verify that the OIDC
+// discovery document returns issuer-specific endpoint URLs that reflect the port the
+// client connected to.
+var DualOidcServers = ConfigSet{
+	Name:       "dual-oidc-servers",
+	CtrlConfig: "testdata/configs/dual-oidc-servers/ctrl.yml",
+}

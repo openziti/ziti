@@ -23,6 +23,39 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
+// openZitiDiscoveryConfiguration extends the standard OIDC discovery response with
+// a vendor-specific "openziti_endpoints" field that advertises OpenZiti's custom
+// login and MFA endpoints. This allows SDKs to discover endpoint URLs at runtime
+// instead of hardcoding paths.
+type openZitiDiscoveryConfiguration struct {
+	*oidc.DiscoveryConfiguration
+	OpenZitiEndpoints openZitiEndpoints `json:"openziti_endpoints"`
+}
+
+// openZitiEndpoints contains the URLs for OpenZiti-specific OIDC endpoints.
+type openZitiEndpoints struct {
+	// Password is the URL for username/password authentication.
+	Password string `json:"password"`
+
+	// Cert is the URL for client certificate authentication.
+	Cert string `json:"cert"`
+
+	// ExtJwt is the URL for external JWT authentication.
+	ExtJwt string `json:"ext_jwt"`
+
+	// Totp is the URL where a TOTP code is submitted for MFA verification.
+	Totp string `json:"totp"`
+
+	// TotpEnroll is the URL for starting (POST) or deleting (DELETE) TOTP enrollment.
+	TotpEnroll string `json:"totp_enroll"`
+
+	// TotpEnrollVerify is the URL for verifying a TOTP enrollment code.
+	TotpEnrollVerify string `json:"totp_enroll_verify"`
+
+	// AuthQueries is the URL for retrieving pending authentication queries.
+	AuthQueries string `json:"auth_queries"`
+}
+
 // server embeds op.LegacyServer and overrides methods where the library's
 // helper functions re-wrap storage errors with empty descriptions, discarding
 // the error_description that storage set. The overrides call storage directly
@@ -37,6 +70,27 @@ func newServer(provider op.OpenIDProvider, endpoints op.Endpoints) *server {
 	return &server{
 		LegacyServer: op.NewLegacyServer(provider, endpoints),
 	}
+}
+
+// Discovery returns the OpenID Provider Configuration with OpenZiti-specific endpoint
+// extensions. It builds the standard OIDC discovery configuration, then wraps it with
+// vendor-specific fields under "openziti_endpoints".
+func (s *server) Discovery(ctx context.Context, r *op.Request[struct{}]) (*op.Response, error) {
+	config := op.CreateDiscoveryConfig(ctx, s.Provider(), s.Provider().Storage())
+	issuer := op.IssuerFromContext(ctx)
+
+	return op.NewResponse(&openZitiDiscoveryConfiguration{
+		DiscoveryConfiguration: config,
+		OpenZitiEndpoints: openZitiEndpoints{
+			Password:         issuer + "/login/password",
+			Cert:             issuer + "/login/cert",
+			ExtJwt:           issuer + "/login/ext-jwt",
+			Totp:             issuer + "/login/totp",
+			TotpEnroll:       issuer + "/login/totp/enroll",
+			TotpEnrollVerify: issuer + "/login/totp/enroll/verify",
+			AuthQueries:      issuer + "/login/auth-queries",
+		},
+	}), nil
 }
 
 // VerifyClient authenticates the client for a token request. It overrides
