@@ -53,6 +53,13 @@ func Test_Authenticate_OIDC_Cert_Totp_Refresh(t *testing.T) {
 		initialTokens, _, err := clientHelper.RawOidcAuthRequest(certCreds)
 		ctx.Req.NoError(err)
 
+		// Configure the client transport with the cert credentials so that subsequent
+		// API calls present the client certificate (required for cert PoP enforcement).
+		tlsCfg := clientHelper.Components.TlsAwareTransport.GetTlsClientConfig()
+		tlsCfg.Certificates = certCreds.TlsCerts()
+		clientHelper.Components.TlsAwareTransport.SetTlsClientConfig(tlsCfg)
+		clientHelper.Components.HttpClient.CloseIdleConnections()
+
 		var apiSession edge_apis.ApiSession = &edge_apis.ApiSessionOidc{OidcTokens: initialTokens}
 		clientHelper.ApiSession.Store(&apiSession)
 
@@ -126,7 +133,7 @@ func Test_Authenticate_OIDC_Cert_Totp_Refresh(t *testing.T) {
 		t.Run("authenticated token works on /services", func(t *testing.T) {
 			ctx.NextTest(t)
 
-			resp, err := ctx.newAnonymousClientApiRequest().
+			resp, err := ctx.newRequestWithTlsCerts(certCreds.TlsCerts()).
 				SetHeader("Authorization", "Bearer "+tokens.AccessToken).
 				Get("https://" + ctx.ApiHost + EdgeClientApiPath + "/services")
 			ctx.Req.NoError(err)
@@ -154,7 +161,7 @@ func Test_Authenticate_OIDC_Cert_Totp_Refresh(t *testing.T) {
 		dst["grant_type"] = []string{string(req.GrantType())}
 
 		newTokens := &oidc.TokenExchangeResponse{}
-		resp, err := ctx.newAnonymousClientApiRequest().
+		resp, err := ctx.newRequestWithTlsCerts(certCreds.TlsCerts()).
 			SetHeader("content-type", oidc_auth.FormContentType).
 			SetMultiValueFormData(dst).
 			SetResult(newTokens).
@@ -179,7 +186,7 @@ func Test_Authenticate_OIDC_Cert_Totp_Refresh(t *testing.T) {
 		t.Run("refreshed token works on /services", func(t *testing.T) {
 			ctx.NextTest(t)
 
-			resp, err := ctx.newAnonymousClientApiRequest().
+			resp, err := ctx.newRequestWithTlsCerts(certCreds.TlsCerts()).
 				SetHeader("Authorization", "Bearer "+newTokens.AccessToken).
 				Get("https://" + ctx.ApiHost + EdgeClientApiPath + "/services")
 			ctx.Req.NoError(err)
@@ -230,6 +237,13 @@ func Test_Authenticate_OIDC_Cert_With_Required_Totp(t *testing.T) {
 		ctx.Req.NotNil(tokens)
 		ctx.Req.NotEmpty(tokens.AccessToken)
 		initialTokens = tokens
+
+		// Configure the client transport with the cert credentials so that subsequent
+		// API calls present the client certificate (required for cert PoP enforcement).
+		tlsCfg := clientHelper.Components.TlsAwareTransport.GetTlsClientConfig()
+		tlsCfg.Certificates = certCreds.TlsCerts()
+		clientHelper.Components.TlsAwareTransport.SetTlsClientConfig(tlsCfg)
+		clientHelper.Components.HttpClient.CloseIdleConnections()
 
 		parser := jwt.NewParser()
 		claims := &common.AccessClaims{}

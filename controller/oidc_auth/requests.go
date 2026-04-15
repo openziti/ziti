@@ -51,6 +51,7 @@ type AuthRequest struct {
 	EnvInfo                 *rest_model.EnvInfo
 	RemoteAddress           string
 	IsCertExtendable        bool
+	CertAllowExpired        bool
 	IsCertExtendRequested   bool
 	IsCertKeyRollRequested  bool
 	AuthenticatorId         string

@@ -93,9 +93,9 @@ type ApiSessionTokenProvider interface {
 //
 // 1. subscribe to controller 1
 // 2. controller starts sending events
-// 3. before receiving any events, controller change event is triggered and we re-subscribe to controller 1
+// 3. before receiving any events, a controller change event is triggered and we re-subscribe to controller 1
 // 4. controller restarts event stream
-// 5. the resubscribe temporarily reset the current controller to ""
+// 5. the `resubscribe` temporarily resets the current controller to ""
 // 6. in that state we received event 1 from the first stream of events from the controller and discarded it
 // 7. we then were resubscribed and got event 2 from the first stream and processed it
 // 8. At some point we get event 1 again from the second stream, but because it's no longer in order, we discard it
@@ -216,7 +216,7 @@ type Manager interface {
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 
 	// ValidateSessions performs batch validation of active service sessions against
-	// controller state, enabling detection of sessions that have been revoked or expired.
+	// the controller state, enabling detection of sessions that have been revoked or expired.
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
 
 	// DumpApiSessions provides diagnostic output of all tracked API sessions
@@ -235,6 +235,10 @@ type Manager interface {
 	// VerifyClientCert validates client certificates against the router's trusted
 	// certificate authorities.
 	VerifyClientCert(cert *x509.Certificate) error
+
+	// IsFirstPartyCert determines if a client certificate was issued by the internal
+	// (first-party) CA by checking whether it chains to the controller's root CA.
+	IsFirstPartyCert(cert *x509.Certificate) bool
 
 	// StartRouterModelSave begins periodic saving of the router data model to disk.
 	StartRouterModelSave(path string, duration time.Duration)
@@ -286,7 +290,7 @@ var _ Manager = (*ManagerImpl)(nil)
 // NewManager creates a new state manager instance with all necessary components
 // for session tracking, posture monitoring, and router data model management.
 // This is the primary factory function that initializes the complete state
-// management infrastructure including goroutine pools, caches, and event handlers.
+// management infrastructure, including goroutine pools, caches, and event handlers.
 func NewManager(stateEnv env.RouterEnv) Manager {
 	routerDataModelPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(1000),
@@ -352,7 +356,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 // meet policy requirements are automatically terminated with appropriate error messages.
 //
 // Parameters:
-//   - data: The updated posture instance data containing current device state
+//   - data: The updated posture instance data containing the current device state
 func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 	rdm := self.routerDataModel.Load()
 	channels := self.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
@@ -442,6 +446,7 @@ type ManagerImpl struct {
 	rmdReplaceInProgress atomic.Bool
 
 	certCache           cmap.ConcurrentMap[string, *x509.Certificate]
+	ctrlRootCache       controllerRootCache
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
 
@@ -644,6 +649,11 @@ func (self *ManagerImpl) GetRouterDataModelPool() goroutines.Pool {
 //   - response: The posture response containing device state information
 func (self *ManagerImpl) ProcessPostureResponses(ch channel.Channel, responses *edge_client_pb.PostureResponses) {
 	apiSessionToken := GetApiSessionTokenFromCh(ch)
+
+	if apiSessionToken == nil {
+		return
+	}
+
 	self.postureCache.AddResponses(apiSessionToken.IdentityId, apiSessionToken.Id, responses)
 }
 
@@ -918,9 +928,9 @@ func (self *ManagerImpl) pubKeyLookup(token *jwt.Token) (any, error) {
 // RouterDataModel returns the current router data model containing
 // network topology and policy information.
 func (self *ManagerImpl) RouterDataModel() *common.RouterDataModel {
-	// If a router data model replace is in progress, we need to wait for it to be fully
-	// initialized before we get it, otherwise there's the possibility of race conditions
-	// Should happen rarely, so a sleep is the simplest solution
+	// If a router data model `replace` is in progress, we need to wait for it to be fully
+	// initialized before we return it. Otherwise, there's the possibility of race conditions.
+	// This should happen rarely, so a sleep is the simplest solution
 	for self.rmdReplaceInProgress.Load() {
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -972,7 +982,7 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 	model.SyncAllSubscribers()
 
 	if resetSubscription {
-		// notify subscription manager code to resubscribe with updated model and index
+		// notify subscription manager code to resubscribe with the updated model and index
 		select {
 		case self.modelChanged <- struct{}{}:
 		default:
@@ -986,7 +996,7 @@ func (self *ManagerImpl) ResyncRouterDataModel() {
 	self.resyncRouterDataModel.Store(true)
 	self.dataModelSubscription.Store(DataModelSubscription{})
 
-	// notify subscription manager code to resubscribe with updated model and index
+	// notify subscription manager code to resubscribe with the updated model and index
 	select {
 	case self.modelChanged <- struct{}{}:
 	default:
@@ -996,7 +1006,7 @@ func (self *ManagerImpl) ResyncRouterDataModel() {
 func (self *ManagerImpl) ResubscribeRouterDataModel() {
 	self.dataModelSubscription.Store(DataModelSubscription{})
 
-	// notify subscription manager code to resubscribe with current index
+	// notify subscription manager code to resubscribe with the current index
 	select {
 	case self.modelChanged <- struct{}{}:
 	default:
@@ -1043,7 +1053,7 @@ func (self *ManagerImpl) AddLegacyApiSession(apiSessionToken *ApiSessionToken) {
 
 	if apiSessionToken.Type == ApiSessionTokenLegacyProtobuf {
 		logger.Debug("adding legacy api session")
-		//for legacy api sessions, token is a UUID
+		//for legacy api sessions, the token is a UUID
 		self.legacyApiSessionsByToken.Set(apiSessionToken.Token(), apiSessionToken)
 		self.Emit(EventAddedApiSession, apiSessionToken)
 	} else {
@@ -1088,7 +1098,7 @@ func (self *ManagerImpl) RemoveLegacyApiSession(apiSessionToken *ApiSessionToken
 }
 
 // RemoveMissingApiSessions removes API Sessions not present in the knownApiSessions argument. If the beforeSessionId
-// value is not empty string, it will be used as a monotonic comparison between it and API session ids. API session ids
+// value is not an empty string, it will be used as a monotonic comparison between it and API session ids. API session ids
 // later than the sync will be ignored.
 // RemoveMissingApiSessions reconciles router session state with controller state
 // by removing sessions not present in the authoritative controller list. The
@@ -1151,7 +1161,7 @@ func (self *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *Service
 // during the window between session creation notification and local cache population.
 // This addresses race conditions where clients attempt to use newly created sessions
 // before synchronization completes, using exponential backoff to balance responsiveness
-// with system load during high session creation rates.
+// with the system load during high session creation rates.
 func (self *ManagerImpl) GetApiSessionTokenWithTimeout(token string, timeout time.Duration) *ApiSessionToken {
 	deadline := time.Now().Add(timeout)
 	session := self.GetApiSessionToken(token)
@@ -1203,7 +1213,7 @@ func (self *ManagerImpl) WasLegacyServiceSessionRecentlyRemoved(token string) bo
 
 // MarkLegacyServiceSessionRecentlyRemoved adds session invalidation timestamps
 // to enable fast-path rejection of connection attempts using recently removed
-// sessions. This optimization reduces controller query load and improves client
+// sessions. This optimization reduces the controller query load and improves client
 // error response times during session cleanup scenarios.
 func (self *ManagerImpl) MarkLegacyServiceSessionRecentlyRemoved(token string) {
 	self.recentlyRemovedSessions.Set(token, time.Now())
@@ -1411,7 +1421,7 @@ func (self *ManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 }
 
 // ValidateSessions performs batch validation of active service sessions against
-// controller state, enabling detection of sessions that have been revoked or expired.
+// the controller state, enabling detection of sessions that have been revoked or expired.
 // The chunked approach with randomized intervals prevents thundering herd effects
 // while maintaining reasonable validation latency for large session volumes.
 func (self *ManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {

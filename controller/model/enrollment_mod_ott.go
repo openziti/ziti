@@ -17,6 +17,8 @@
 package model
 
 import (
+	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/openziti/edge-api/rest_model"
@@ -86,7 +88,16 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		return nil, apiErr
 	}
 
-	certRaw, err := module.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{})
+	trustDomain := module.env.GetConfig().SpiffeIdTrustDomain.Hostname()
+	spiffeId := &url.URL{
+		Scheme: "spiffe",
+		Host:   trustDomain,
+		Path:   fmt.Sprintf("identity/%s", identity.Id),
+	}
+
+	certRaw, err := module.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
+		URIs: []*url.URL{spiffeId},
+	})
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
