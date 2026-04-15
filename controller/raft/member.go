@@ -31,6 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Member describes a single member of the raft cluster as seen from the local controller.
 type Member struct {
 	Id              string `json:"id"`
 	Addr            string `json:"addr"`
@@ -39,6 +40,7 @@ type Member struct {
 	Version         string `json:"version"`
 	Connected       bool   `json:"isConnected"`
 	PreferredLeader bool   `json:"isPreferredLeader"`
+	RaftConnCount   int    `json:"raftConnCount"`
 }
 
 func (self *Controller) ListMembers() ([]*Member, error) {
@@ -61,14 +63,17 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 		version := "<not connected>"
 		connected := false
 		preferredLeader := false
+		raftConnCount := 0
 		if string(srv.ID) == self.env.GetId().Token {
 			version = self.env.GetVersionProvider().Version()
 			connected = true
 			preferredLeader = self.Config.PreferredLeader
+			raftConnCount = -1
 		} else if peer, exists := peers[string(srv.Address)]; exists {
 			version = peer.Version.Version
 			connected = true
 			preferredLeader = peer.PreferredLeader
+			raftConnCount = len(peer.RaftConns.AsMap())
 		}
 
 		result = append(result, &Member{
@@ -79,6 +84,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Version:         version,
 			Connected:       connected,
 			PreferredLeader: preferredLeader,
+			RaftConnCount:   raftConnCount,
 		})
 	}
 
@@ -94,6 +100,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Version:         peer.Version.Version,
 			Connected:       true,
 			PreferredLeader: peer.PreferredLeader,
+			RaftConnCount:   len(peer.RaftConns.AsMap()),
 		})
 	}
 
