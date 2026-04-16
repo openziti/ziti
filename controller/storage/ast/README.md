@@ -39,7 +39,7 @@ The filter AST provides for the following types:
 5. Datetime
 6. Nil
 
-The underlying datastore may convert other types to these types (for example int32 -> int64). Providing more types would provide more flexability and better performance at the cost of more complexity and larger permutations of supported conversions. Int64/Float64 should provide good performance and enough space. If we find we need either better perf by more using smaller types or support for bigint/bigfloat, we can add that later.
+The underlying datastore may convert other types to these types (for example int32 -> int64). Providing more types would provide more flexibility and better performance at the cost of more complexity and larger permutations of supported conversions. Int64/Float64 should provide good performance and enough space. If we find we need either better perf by more using smaller types or support for bigint/bigfloat, we can add that later.
 
 Supported automatic type conversions:
 
@@ -51,7 +51,7 @@ Other type conversions are certainly possible and may be added later.
 The Symbols type is the interface which is to be implemented by the underlying data store. The root of a filter AST should be a BoolNode, on which you can call `EvalBool(s Symbols) (bool, error)`. 
 
 Set Functions
-The grammer provides for a few set functions
+The grammar provides for a few set functions
 
 * anyOf
 * allOf

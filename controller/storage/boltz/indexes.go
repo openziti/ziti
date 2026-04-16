@@ -19,6 +19,7 @@ package boltz
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
@@ -419,7 +420,7 @@ func (index *uniqueIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink 
 
 		} else if !bytes.Equal(idxId, id) {
 			// We've already verify above that all index values are pointing to entities with the correct field value
-			// so this means we've got a uniqueness contraint violation, which we can't fix
+			// so this means we've got a uniqueness constraint violation, which we can't fix
 			errorSink(errors.Errorf("unique index %v.%v has constraint violation as both %v and %v have value %v. Unable to fix automatically",
 				store.GetEntityType(), index.symbol.GetName(), string(idxId), string(id), string(fieldVal)), false)
 		}
@@ -869,7 +870,7 @@ type fkDeleteConstraint struct {
 }
 
 func (index *fkDeleteConstraint) Label() string {
-	return fmt.Sprintf("fk delete contraint %s.%s -> %s.%s",
+	return fmt.Sprintf("fk delete constraint %s.%s -> %s.%s",
 		index.symbol.GetStore().GetEntityType(), index.symbol.GetName(),
 		index.fkSymbol.GetStore().GetEntityType(), index.fkSymbol.GetName())
 }
