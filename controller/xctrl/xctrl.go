@@ -18,7 +18,7 @@ package xctrl
 
 import (
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/config"
 )
 

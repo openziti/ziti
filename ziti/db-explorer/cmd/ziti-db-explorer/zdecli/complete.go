@@ -14,9 +14,10 @@
 package zdecli
 
 import (
-	"github.com/c-bata/go-prompt"
-	"github.com/openziti/ziti-db-explorer/zdelib"
 	"strings"
+
+	"github.com/c-bata/go-prompt"
+	"github.com/openziti/ziti/v2/ziti/db-explorer/zdelib"
 )
 
 // StateCompleter is used to package a prompt.Completer with location zdelib.State as well as an CommandRegistry.

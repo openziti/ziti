@@ -18,7 +18,7 @@ package boltz
 
 import (
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"go.etcd.io/bbolt"
 )
 

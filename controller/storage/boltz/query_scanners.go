@@ -20,7 +20,7 @@ import (
 	"math"
 
 	"github.com/biogo/store/llrb"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"go.etcd.io/bbolt"
 )
 

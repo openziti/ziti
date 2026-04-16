@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 
 	"github.com/google/uuid"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

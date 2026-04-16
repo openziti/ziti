@@ -19,7 +19,7 @@ package database
 import (
 	"io"
 
-	"github.com/openziti/ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
+	"github.com/openziti/ziti/v2/ziti/db-explorer/cmd/ziti-db-explorer/zdecli"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/spf13/cobra"
 )

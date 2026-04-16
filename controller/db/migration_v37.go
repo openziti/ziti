@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func (m *Migrations) setAuthenticatorIsIssuedByNetwork(step *boltz.MigrationStep) {

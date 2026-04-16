@@ -18,7 +18,7 @@ package boltztest
 
 import (
 	"fmt"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"math/rand"
 	"os"
 	"testing"

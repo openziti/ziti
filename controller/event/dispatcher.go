@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // A TypeRegistrar handles registering and unregistering handlers for a given event type

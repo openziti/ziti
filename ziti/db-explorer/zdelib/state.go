@@ -15,10 +15,11 @@ package zdelib
 
 import (
 	"errors"
-	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"log"
 	"strings"
+
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"go.etcd.io/bbolt"
 )
 
 type State struct {
@@ -36,7 +37,7 @@ func NewState(path string) (*State, error) {
 
 	if err != nil {
 		if err == bbolt.ErrTimeout {
-			log.Print("Could not acquire db lock. Ensure the ziti controller is stopped.");
+			log.Print("Could not acquire db lock. Ensure the ziti controller is stopped.")
 		}
 		return nil, err
 	}

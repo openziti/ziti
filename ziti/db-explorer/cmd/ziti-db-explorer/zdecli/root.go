@@ -10,15 +10,17 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
+
 package zdecli
 
 import (
 	"fmt"
-	"github.com/c-bata/go-prompt"
-	"github.com/openziti/ziti-db-explorer/zdelib"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/c-bata/go-prompt"
+	"github.com/openziti/ziti/v2/ziti/db-explorer/zdelib"
 )
 
 // CommandName allow usage and such to be altered to fit a hosting executable

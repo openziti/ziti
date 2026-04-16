@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"

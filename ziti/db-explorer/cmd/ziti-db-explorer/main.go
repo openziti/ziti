@@ -10,12 +10,14 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
+
 package main
 
 import (
-	"github.com/openziti/ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
 	"log"
 	"os"
+
+	"github.com/openziti/ziti/v2/ziti/db-explorer/cmd/ziti-db-explorer/zdecli"
 )
 
 func main() {
