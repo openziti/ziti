@@ -57,9 +57,7 @@ func (completer *StateCompleter) Complete(d prompt.Document) []prompt.Suggest {
 	for _, cmd := range completer.Registry.CommandTextToCommand {
 		if cmd.Matches(firstWord) {
 			found = true
-			for _, sug := range cmd.Suggest(completer.State, d) {
-				suggestions = append(suggestions, sug)
-			}
+			suggestions = append(suggestions, cmd.Suggest(completer.State, d)...)
 			break
 		}
 	}

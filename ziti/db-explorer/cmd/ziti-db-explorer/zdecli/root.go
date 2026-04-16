@@ -84,7 +84,7 @@ func Run(commandName, arg string) error {
 		Registry: registry,
 	}
 
-	for true {
+	for {
 		input := prompt.Input(PathPrompt(state)+" ", completer.Complete, prompt.OptionPrefixTextColor(prompt.Cyan))
 		input = strings.TrimSpace(input)
 
@@ -112,6 +112,4 @@ func Run(commandName, arg string) error {
 			}
 		}
 	}
-
-	return nil
 }

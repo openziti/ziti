@@ -95,7 +95,5 @@ func (registry *CommandRegistry) add(cmd *Command, handler ActionHandler, isSugg
 
 // GetCommand returns the command with text or aliases that match cmdText. If not found, returns nil
 func (registry *CommandRegistry) GetCommand(cmdText string) *Command {
-	cmd, _ := registry.CommandTextToCommand[cmdText]
-
-	return cmd
+	return registry.CommandTextToCommand[cmdText]
 }
