@@ -205,10 +205,8 @@ func PathPrompt(state *zdelib.State) string {
 	switch {
 	case size == 0:
 		promptString = "root"
-		break
 	case size <= 4:
 		promptString = strings.Join(state.Path, ".")
-		break
 	default:
 		promptString = state.Path[0] + "..." + strings.Join(state.Path[len(state.Path)-3:], ".")
 	}
@@ -271,8 +269,8 @@ func ListCurrentBucketWithLimits(state *zdelib.State, skip int64, limit int64) e
 
 		valString := *entry.ValueString
 
-		valString = strings.Replace(valString, "\n", "\\n", -1)
-		valString = strings.Replace(valString, "\t", "\\t", -1)
+		valString = strings.ReplaceAll(valString, "\n", "\\n")
+		valString = strings.ReplaceAll(valString, "\t", "\\t")
 
 		if len(valString) < valLen {
 			valLen = len(valString)

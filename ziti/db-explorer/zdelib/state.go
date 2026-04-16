@@ -102,8 +102,7 @@ func (state *State) ListEntries() []Entry {
 	_ = state.DB.View(func(tx *bbolt.Tx) error {
 		cursor := state.CurrentBucket(tx).Cursor()
 
-		key, value := cursor.First()
-		for key != nil {
+		for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
 			fieldType, fieldValue := boltz.GetTypeAndValue(value)
 
 			// if type is nil, check to see if the key is typed (string list)
@@ -127,8 +126,6 @@ func (state *State) ListEntries() []Entry {
 			}
 
 			entries = append(entries, Entry{Name: string(key), Type: fieldType, TypeString: TypeToString(fieldType), Value: fieldValue, ValueString: valueString})
-
-			key, fieldValue = cursor.Next()
 		}
 
 		return nil
