@@ -38,7 +38,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
 	cmap "github.com/orcaman/concurrent-map/v2"

@@ -20,12 +20,12 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/spf13/cobra"
 )
 

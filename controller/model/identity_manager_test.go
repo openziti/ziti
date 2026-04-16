@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"

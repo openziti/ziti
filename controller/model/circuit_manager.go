@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/openziti/identity"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/storage/objectz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/common/datastructures"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/models"

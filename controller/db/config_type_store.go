@@ -19,8 +19,8 @@ package db
 import (
 	"encoding/json"
 
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"

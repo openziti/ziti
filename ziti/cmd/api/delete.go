@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/ziti/util"
 )
 

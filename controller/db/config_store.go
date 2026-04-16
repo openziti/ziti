@@ -21,8 +21,8 @@ import (
 	"slices"
 
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"go.etcd.io/bbolt"
 )

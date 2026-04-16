@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"

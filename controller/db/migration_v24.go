@@ -3,8 +3,8 @@ package db
 import (
 	"fmt"
 
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func (m *Migrations) addIdentityIdToSessions(step *boltz.MigrationStep) {
