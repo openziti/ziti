@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/openziti/ziti/v2/ziti/util"

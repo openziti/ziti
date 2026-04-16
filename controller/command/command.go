@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/sirupsen/logrus"

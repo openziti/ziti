@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 

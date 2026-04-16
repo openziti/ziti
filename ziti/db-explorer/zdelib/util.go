@@ -15,10 +15,11 @@ package zdelib
 
 import (
 	"errors"
-	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"os"
 	"time"
+
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"go.etcd.io/bbolt"
 )
 
 // TypeToString will convert boltz types to string values. If an unknown type is encountered, "unknown" is returned.

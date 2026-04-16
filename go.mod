@@ -13,7 +13,10 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/antchfx/jsonquery v1.3.7
+	github.com/antlr4-go/antlr/v4 v4.13.1
+	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/c-bata/go-prompt v0.2.6
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
@@ -69,15 +72,14 @@ require (
 	github.com/openziti/runzmd v1.0.90
 	github.com/openziti/sdk-golang v1.7.0
 	github.com/openziti/secretstream v0.1.49
-	github.com/openziti/storage v0.4.39
 	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.4
-	github.com/openziti/ziti-db-explorer v1.1.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
+	github.com/rodaine/table v1.0.1
 	github.com/russross/blackfriday v1.6.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
@@ -115,12 +117,9 @@ require (
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/antchfx/xpath v1.3.6 // indirect
-	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
-	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
-	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
@@ -179,7 +178,6 @@ require (
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/rodaine/table v1.0.1 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect

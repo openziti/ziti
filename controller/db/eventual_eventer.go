@@ -25,7 +25,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/change"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"

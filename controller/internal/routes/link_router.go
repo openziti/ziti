@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"

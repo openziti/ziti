@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"

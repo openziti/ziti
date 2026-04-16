@@ -7,7 +7,7 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"go.etcd.io/bbolt"
 )

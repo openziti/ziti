@@ -17,7 +17,7 @@
 package boltz
 
 import (
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 )
 
 type Location struct {

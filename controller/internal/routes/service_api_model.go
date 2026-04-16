@@ -25,7 +25,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"

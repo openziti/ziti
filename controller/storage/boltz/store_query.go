@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"strings"
 
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )

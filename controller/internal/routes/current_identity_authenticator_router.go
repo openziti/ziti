@@ -25,7 +25,7 @@ import (
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/permissions"

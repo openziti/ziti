@@ -10,17 +10,19 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
+
 package zdecli
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/ziti-db-explorer/zdelib"
-	"github.com/rodaine/table"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/fatih/color"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/ziti/db-explorer/zdelib"
+	"github.com/rodaine/table"
 )
 
 func PrintUsage() {

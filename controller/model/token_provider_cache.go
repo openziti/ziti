@@ -32,7 +32,7 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"

@@ -13,7 +13,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/command"
