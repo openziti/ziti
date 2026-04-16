@@ -189,7 +189,7 @@ func (state *State) CurrentBucketKeyCount() int64 {
 	return count
 }
 
-// CurrentBucketKeyCountInTx does the same thing as CurrentBucketKeyCount but withing an existing transaction
+// CurrentBucketKeyCountInTx does the same thing as CurrentBucketKeyCount but within an existing transaction
 func (state *State) CurrentBucketKeyCountInTx(tx *bbolt.Tx) int64 {
 	pathKey := strings.Join(state.Path, ".")
 	count, ok := state.pathCountCache[pathKey]

@@ -19,12 +19,13 @@ package boltz
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"go.etcd.io/bbolt"
 	"math/rand"
 	"sort"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
 )
 
 const (
@@ -627,7 +628,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 
 	err = test.db.View(func(tx *bbolt.Tx) error {
 		test.Nil(test.empStore.indexName.Read(tx, []byte("Joe Hill")))
-		test.Nil(test.empStore.indexName.Read(tx, []byte("Jospeh Hill")))
+		test.Nil(test.empStore.indexName.Read(tx, []byte("Joseph Hill")))
 		test.Nil(test.empStore.indexName.Read(tx, []byte("Jane Mountain")))
 		test.Nil(test.empStore.indexName.Read(tx, []byte("Bob Bobberson")))
 		test.Nil(test.empStore.indexName.Read(tx, []byte("Robert Bobberson")))

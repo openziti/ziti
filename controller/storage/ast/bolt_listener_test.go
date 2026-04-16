@@ -595,7 +595,7 @@ func TestSetFunctions(t *testing.T) {
 		{"all of true", "allOf(link.ids) < 1000", true},
 		{"all of false (false for last)", "allOf(link.ids) < 500", false},
 		{"all of false (false for all)", "allOf(link.ids) < 100", false},
-		{"all of false (only firs true)", "allOf(link.ids) = 123", false},
+		{"all of false (only first true)", "allOf(link.ids) = 123", false},
 
 		{"none of of false", "not anyOf(link.ids) < 1000", false},
 		{"none of false (true for last)", "not anyOf(link.ids) < 500", false},
