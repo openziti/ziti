@@ -41,7 +41,6 @@ const (
 	DefaultServicePollRate   = 15 * time.Second
 	DefaultDnsResolver       = "udp://127.0.0.1:53"
 	DefaultDnsServiceIpRange = "100.64.0.1/10"
-	DefaultDnsUpstream       = ""
 	DefaultDnsUnanswerable   = "refused"
 )
 
@@ -164,7 +163,7 @@ type Options struct {
 	svcPollRate      time.Duration
 	resolver         string
 	dnsSvcIpRange    string
-	dnsUpstream      string
+	dnsUpstreams     []string
 	dnsUnanswerable  string
 	lanIf            string
 	services         []string
@@ -177,7 +176,6 @@ func (options *Options) load(data xgress.OptionsData) error {
 	options.svcPollRate = DefaultServicePollRate
 	options.resolver = DefaultDnsResolver
 	options.dnsSvcIpRange = DefaultDnsServiceIpRange
-	options.dnsUpstream = DefaultDnsUpstream
 	options.dnsUnanswerable = DefaultDnsUnanswerable
 
 	var err error
@@ -218,10 +216,23 @@ func (options *Options) load(data xgress.OptionsData) error {
 		}
 
 		if value, found := data["dnsUpstream"]; found {
-			if strVal, ok := value.(string); ok {
-				options.dnsUpstream = strVal
-			} else {
-				return errors.Errorf("invalid value '%v' for dnsUpstream, must be string value", value)
+			switch v := value.(type) {
+			case string:
+				if v != "" {
+					options.dnsUpstreams = []string{v}
+				}
+			case []interface{}:
+				for _, item := range v {
+					strVal, ok := item.(string)
+					if !ok {
+						return errors.Errorf("invalid value '%v' in dnsUpstream list, must be a string", item)
+					}
+					if strVal != "" {
+						options.dnsUpstreams = append(options.dnsUpstreams, strVal)
+					}
+				}
+			default:
+				return errors.Errorf("invalid value '%v' for dnsUpstream, must be string or list of strings", value)
 			}
 		}
 
