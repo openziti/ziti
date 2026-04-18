@@ -30,7 +30,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewDnsServer(addr string, upstreamConfig string, unanswered unansweredDisposition) (Resolver, error) {
+// NewDnsServer starts a local DNS server on addr and configures zero or more
+// upstream DNS servers for recursive forwarding. Each upstream is a URL of
+// the form udp://host:port or tcp://host:port. When multiple upstreams are
+// provided, queries are fanned out in parallel; see resolver.queryUpstreams
+// for winner-selection semantics.
+func NewDnsServer(addr string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
 	log.Infof("starting dns server...")
 	s := &dns.Server{
 		Addr: addr,
@@ -48,23 +53,26 @@ func NewDnsServer(addr string, upstreamConfig string, unanswered unansweredDispo
 		unanswered: unanswered,
 	}
 
-	// Configure upstream DNS server if provided
-	if upstreamConfig != "" {
+	for _, upstreamConfig := range upstreams {
+		if upstreamConfig == "" {
+			continue
+		}
 		upstreamURL, err := url.Parse(upstreamConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse upstream DNS configuration '%s': %w", upstreamConfig, err)
 		}
 
-		if upstreamURL.Scheme == "udp" || upstreamURL.Scheme == "tcp" {
-			r.upstreamServer = upstreamURL.Host
-			r.upstreamClient = &dns.Client{
-				Net:     upstreamURL.Scheme,
-				Timeout: 5 * time.Second,
-			}
-			log.Infof("configured upstream DNS server: %s over %s", r.upstreamServer, upstreamURL.Scheme)
-		} else {
+		if upstreamURL.Scheme != "udp" && upstreamURL.Scheme != "tcp" {
 			return nil, fmt.Errorf("unsupported upstream DNS scheme '%s'. Only 'udp://' and 'tcp://' are supported", upstreamURL.Scheme)
 		}
+		r.upstreams = append(r.upstreams, upstream{
+			server: upstreamURL.Host,
+			client: &dns.Client{
+				Net:     upstreamURL.Scheme,
+				Timeout: 5 * time.Second,
+			},
+		})
+		log.Infof("configured upstream DNS server: %s over %s", upstreamURL.Host, upstreamURL.Scheme)
 	}
 	s.Handler = r
 
