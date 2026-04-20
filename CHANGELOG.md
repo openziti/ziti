@@ -118,6 +118,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
 * The `--clustered` flag on `ziti create config controller` has been removed; the generated config is always
   cluster-ready. If you have scripts passing `--clustered`, remove it.
 * [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect
+* [Multiple DNS upstreams](#multiple-dns-upstreams) - the tunneler can now fan out recursive queries to several upstream resolvers in parallel
 
 ## Connect Events Pool
 
@@ -1059,6 +1060,50 @@ ziti pki create ca ...
 Scripts that use `ziti create ca` for PKI operations should be updated to use 
 `ziti pki create ca` instead.
 
+## Multiple DNS Upstreams
+
+The tunneler's DNS resolver now accepts multiple upstream DNS servers and fans out recursive queries
+to all of them in parallel, rather than being limited to a single upstream. This is useful for split-horizon
+setups where different resolvers are authoritative for different zones, and for environments where a primary
+resolver may be slow or unreachable.
+
+### CLI
+
+The `ziti tunnel --dnsUpstream` flag is now a repeatable string slice. Upstreams can be listed by repeating
+the flag or by passing a comma-separated value:
+
+```bash
+ziti tunnel run \
+  --dnsUpstream udp://10.96.0.10:53 \
+  --dnsUpstream tcp://8.8.8.8:53
+```
+
+### Router Config
+
+In `xgress_edge_tunnel` router configs, `options.dnsUpstream` now accepts either a single string (as before)
+or a list of strings. Existing configs continue to work unchanged:
+
+```yaml
+# single upstream (unchanged)
+options:
+  dnsUpstream: udp://10.96.0.10:53
+
+# multiple upstreams
+options:
+  dnsUpstream:
+    - udp://10.96.0.10:53
+    - tcp://8.8.8.8:53
+```
+
+### How Resolution Works
+
+When a query comes in, the resolver dispatches it to every configured upstream concurrently. The first
+response with `RCODE=NOERROR` wins and is returned to the client immediately, so split-horizon lookups
+work even if one upstream is slow. If no upstream returns NOERROR, the resolver picks the best-ranked
+non-NOERROR reply (NXDOMAIN > SERVFAIL > REFUSED) so authoritative negative answers aren't masked by
+transport failures. If every upstream fails to respond, the query is treated as unanswerable and handled
+per the configured `dnsUnanswerable` disposition.
+
 ## Current Beta Features
 
 Beta features are still under development and are subject to change. They should
@@ -1072,7 +1117,8 @@ be removed.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.31 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.31...v1.0.33)
-* github.com/openziti/channel/v4: [v4.2.28 -> v4.3.9](https://github.com/openziti/channel/compare/v4.2.28...v4.3.9)
+* github.com/openziti/channel/v4: [v4.2.28 -> v4.3.11](https://github.com/openziti/channel/compare/v4.2.28...v4.3.11)
+    * [Issue #242](https://github.com/openziti/channel/issues/242) - Reconnecting channel shouldn't allow changing ids
     * [Issue #235](https://github.com/openziti/channel/issues/235) - Bump allowed hello message headers size to 16k from 4k
     * [Issue #228](https://github.com/openziti/channel/issues/228) - Ensure that Underlay never return nil on MultiChannel
     * [Issue #226](https://github.com/openziti/channel/issues/226) - Allow specifying a minimum number of underlays for a channel, regardless of underlay type
@@ -1145,6 +1191,7 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3816](https://github.com/openziti/ziti/issues/3816) - Support multiple upstream DNS providers in ziti tunnel and ER/T
     * [Issue #3699](https://github.com/openziti/ziti/issues/3699) - Consolidate CLI edge and fabric commands in top level create/update/delete/list/login commands
     * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error
     * [Issue #3680](https://github.com/openziti/ziti/issues/3680) - adds revocation control to CLI and Management API

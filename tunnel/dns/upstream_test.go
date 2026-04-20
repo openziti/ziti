@@ -105,10 +105,10 @@ func responseRcode(q *dns.Msg, rcode int) *dns.Msg {
 }
 
 func TestQueryUpstreams_SingleUpstream(t *testing.T) {
-	up := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstream := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		return responseA(q, "10.0.0.1")
 	})
-	r := makeResolver(up.addr)
+	r := makeResolver(upstream.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -118,19 +118,19 @@ func TestQueryUpstreams_SingleUpstream(t *testing.T) {
 }
 
 func TestQueryUpstreams_FastestNoerrorWins(t *testing.T) {
-	upSlow := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamSlow := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(500 * time.Millisecond)
 		return responseA(q, "10.0.0.1")
 	})
-	upFast := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamFast := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(10 * time.Millisecond)
 		return responseA(q, "10.0.0.2")
 	})
-	upMid := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamMid := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(200 * time.Millisecond)
 		return responseA(q, "10.0.0.3")
 	})
-	r := makeResolver(upSlow.addr, upFast.addr, upMid.addr)
+	r := makeResolver(upstreamSlow.addr, upstreamFast.addr, upstreamMid.addr)
 
 	start := time.Now()
 	resp, err := r.queryUpstreams(newQuery("example.com"))
@@ -161,23 +161,23 @@ func TestQueryUpstreams_SlowNoerrorBeatsFastNXDOMAIN(t *testing.T) {
 }
 
 func TestQueryUpstreams_AllNXDOMAIN(t *testing.T) {
-	u1 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return responseRcode(q, dns.RcodeNameError) })
-	u2 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return responseRcode(q, dns.RcodeNameError) })
-	r := makeResolver(u1.addr, u2.addr)
+	upstream1 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return responseRcode(q, dns.RcodeNameError) })
+	upstream2 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return responseRcode(q, dns.RcodeNameError) })
+	r := makeResolver(upstream1.addr, upstream2.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.NoError(t, err)
 	require.Equal(t, dns.RcodeNameError, resp.Rcode)
 }
 
 func TestQueryUpstreams_NXDOMAINBeatsSERVFAIL(t *testing.T) {
-	uNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(50 * time.Millisecond)
 		return responseRcode(q, dns.RcodeNameError)
 	})
-	uServfail := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamServfail := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		return responseRcode(q, dns.RcodeServerFailure)
 	})
-	r := makeResolver(uNx.addr, uServfail.addr)
+	r := makeResolver(upstreamNx.addr, upstreamServfail.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.NoError(t, err)
 	require.Equal(t, dns.RcodeNameError, resp.Rcode)
@@ -185,15 +185,15 @@ func TestQueryUpstreams_NXDOMAINBeatsSERVFAIL(t *testing.T) {
 
 // NOERROR with empty answer (NODATA) still wins over NXDOMAIN.
 func TestQueryUpstreams_NoerrorEmptyBeatsNXDOMAIN(t *testing.T) {
-	uNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(10 * time.Millisecond)
 		return responseRcode(q, dns.RcodeNameError)
 	})
-	uEmpty := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamEmpty := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(100 * time.Millisecond)
 		return responseRcode(q, dns.RcodeSuccess)
 	})
-	r := makeResolver(uNx.addr, uEmpty.addr)
+	r := makeResolver(upstreamNx.addr, upstreamEmpty.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.NoError(t, err)
 	require.Equal(t, dns.RcodeSuccess, resp.Rcode)
@@ -201,20 +201,20 @@ func TestQueryUpstreams_NoerrorEmptyBeatsNXDOMAIN(t *testing.T) {
 }
 
 func TestQueryUpstreams_OneTransportFailureOneSuccess(t *testing.T) {
-	uDrop := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
-	uOk := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamDrop := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
+	upstreamOk := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		return responseA(q, "10.0.0.77")
 	})
-	r := makeResolver(uDrop.addr, uOk.addr)
+	r := makeResolver(upstreamDrop.addr, upstreamOk.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.NoError(t, err)
 	require.Equal(t, "10.0.0.77", resp.Answer[0].(*dns.A).A.String())
 }
 
 func TestQueryUpstreams_AllTransportFailures(t *testing.T) {
-	u1 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
-	u2 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
-	r := makeResolver(u1.addr, u2.addr)
+	upstream1 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
+	upstream2 := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
+	r := makeResolver(upstream1.addr, upstream2.addr)
 	resp, err := r.queryUpstreams(newQuery("example.com"))
 	require.Error(t, err)
 	require.Nil(t, resp)
@@ -231,15 +231,15 @@ func TestQueryUpstreams_EmptyList(t *testing.T) {
 // When a fast upstream produces NOERROR, queryUpstreams returns without
 // waiting for slower upstreams — the caller must not be blocked by them.
 func TestQueryUpstreams_FastPathDoesNotWaitForSlow(t *testing.T) {
-	uFast := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamFast := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(10 * time.Millisecond)
 		return responseA(q, "10.0.0.1")
 	})
-	uSlow := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+	upstreamSlow := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
 		time.Sleep(500 * time.Millisecond)
 		return responseA(q, "10.0.0.2")
 	})
-	r := makeResolver(uSlow.addr, uFast.addr)
+	r := makeResolver(upstreamSlow.addr, upstreamFast.addr)
 
 	start := time.Now()
 	resp, err := r.queryUpstreams(newQuery("example.com"))
