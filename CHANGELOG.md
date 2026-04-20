@@ -80,6 +80,10 @@ Since we already have a breaking change, we're removing some other backwards com
     * This is the first implementation of the tunneler in edge-router code (ER/T) which used legacy api sessions and services
     * The v2 version uses the router data model and was introduced in v0.30.x
     * Github tracking issue: https://github.com/openziti/ziti/issues/3516
+* Service policy filter `type = 1` / `type = 2`
+    * Service policy list queries now expect the string form (`type = "Dial"`, `type = "Bind"`) matching the REST API
+    * The integer form was an undocumented side effect of the internal storage format and never worked with the documented filter names
+    * Github tracking issue: https://github.com/openziti/ziti/issues/3818
 
 ### Legacy Session Deprecation
 
@@ -1191,6 +1195,7 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3818](https://github.com/openziti/ziti/issues/3818) - Filtering service policies by `type = "Dial"` / `type = "Bind"` (breaking: `type = 1`/`type = 2` no longer works)
     * [Issue #3816](https://github.com/openziti/ziti/issues/3816) - Support multiple upstream DNS providers in ziti tunnel and ER/T
     * [Issue #3699](https://github.com/openziti/ziti/issues/3699) - Consolidate CLI edge and fabric commands in top level create/update/delete/list/login commands
     * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error

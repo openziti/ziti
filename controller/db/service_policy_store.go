@@ -45,6 +45,20 @@ func GetPolicyTypeForId(policyTypeId int32) PolicyType {
 	return policyType
 }
 
+// policyTypeSymbolMapper maps the stored int32 policy type to its "Dial"/"Bind"
+// string form so that queries can filter by the same names used in the REST API.
+type policyTypeSymbolMapper struct{}
+
+func (policyTypeSymbolMapper) Map(_ boltz.EntitySymbol, fieldType boltz.FieldType, value []byte) (boltz.FieldType, []byte) {
+	if fieldType != boltz.TypeInt32 {
+		return fieldType, value
+	}
+	if intVal := boltz.BytesToInt32(value); intVal != nil {
+		return boltz.TypeString, []byte(GetPolicyTypeForId(*intVal).String())
+	}
+	return fieldType, value
+}
+
 const (
 	FieldServicePolicyType = "type"
 
@@ -127,7 +141,8 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 
 	store.indexName = store.addUniqueNameField()
-	store.symbolPolicyType = store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
+	store.symbolPolicyType = store.AddSymbol(FieldServicePolicyType, ast.NodeTypeString)
+	store.MapSymbol(FieldServicePolicyType, policyTypeSymbolMapper{})
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 
 	store.symbolIdentityRoles = store.AddPublicSetSymbol(FieldIdentityRoles, ast.NodeTypeString)

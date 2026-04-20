@@ -23,6 +23,7 @@ func Test_ServicePolicyStore(t *testing.T) {
 	t.Run("test create/update service policies with invalid entity refs", ctx.testServicePolicyInvalidValues)
 	t.Run("test service policy evaluation", ctx.testServicePolicyRoleEvaluation)
 	t.Run("test update/delete referenced entities", ctx.testServicePolicyUpdateDeleteRefs)
+	t.Run("test filter service policies by type name", ctx.testServicePolicyFilterByTypeName)
 }
 
 func newServicePolicy(name string) *ServicePolicy {
@@ -37,6 +38,41 @@ func newServicePolicy(name string) *ServicePolicy {
 		PolicyType:    policyType,
 		Semantic:      SemanticAllOf,
 	}
+}
+
+func (ctx *TestContext) testServicePolicyFilterByTypeName(_ *testing.T) {
+	ctx.CleanupAll()
+
+	dialPolicy := &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		PolicyType:    PolicyTypeDial,
+		Semantic:      SemanticAllOf,
+	}
+	boltztest.RequireCreate(ctx, dialPolicy)
+
+	bindPolicy := &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		PolicyType:    PolicyTypeBind,
+		Semantic:      SemanticAllOf,
+	}
+	boltztest.RequireCreate(ctx, bindPolicy)
+
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		dialIds, _, err := ctx.stores.ServicePolicy.QueryIds(tx, `type = "Dial"`)
+		ctx.NoError(err)
+		ctx.Contains(dialIds, dialPolicy.Id)
+		ctx.NotContains(dialIds, bindPolicy.Id)
+
+		bindIds, _, err := ctx.stores.ServicePolicy.QueryIds(tx, `type = "Bind"`)
+		ctx.NoError(err)
+		ctx.Contains(bindIds, bindPolicy.Id)
+		ctx.NotContains(bindIds, dialPolicy.Id)
+
+		return nil
+	})
+	ctx.NoError(err)
 }
 
 func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
