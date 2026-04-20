@@ -55,6 +55,7 @@ import (
 
 const (
 	targetZitiVersion = ""
+	targetZetVersion  = ""
 	//targetZitiCSdkVersion = "1.14.3"
 	targetZitiCSdkVersion = ""
 
@@ -68,21 +69,21 @@ const (
 	csdkClientHostsPerRegion = 18
 	clientsPerHost           = 100
 
-	// Service hosting: 1 host per region, each running Go + ZDE instances
-	goHostsPerHostingBox  = 5
-	zdeHostsPerHostingBox = 10
+	// Service hosting: 1 host per region, each running Go + C-sdk instances
+	goHostsPerHostingBox   = 5
+	cSdkHostsPerHostingBox = 10
 
 	// Expected terminators per service.
 	// svc-ert: ER/T routers host on themselves, 1 terminator each.
-	// svc-go/svc-zde: SDKs create up to 3 terminators per hosted service by
+	// svc-go/svc-zet: SDKs create up to 3 terminators per hosted service by
 	// default (one per available edge router, capped at 3). With 3 regions
 	// each having at least 1 SDK-hosting router, every hosting app reaches
 	// the max of 3 terminators.
 	expectedErtTerminators = 2 * 3      // 2 ER/T routers * 3 regions
 	expectedGoTerminators  = 5 * 3 * 3  // 5 Go SDK * 3 regions * 3 per app
-	expectedZdeTerminators = 10 * 3 * 3 // 10 ZDE * 3 regions * 3 per app
+	expectedZetTerminators = 10 * 3 * 3 // 10 ZET * 3 regions * 3 per app
 
-	// Expected OIDC sessions: Go direct clients + ZDE proxy OIDC clients.
+	// Expected OIDC sessions: Go direct clients + C-SDK proxy OIDC clients.
 	// Go direct: 2*3*100 = 600
 	// C-SDK proxy: 18*3*100 = 5400
 	// Total: 6000
@@ -92,7 +93,7 @@ const (
 var expectedServiceTerminators = []validations.ServiceTerminatorExpectation{
 	{ServiceName: "svc-ert", ExpectedCount: expectedErtTerminators},
 	{ServiceName: "svc-go", ExpectedCount: expectedGoTerminators},
-	{ServiceName: "svc-zde", ExpectedCount: expectedZdeTerminators},
+	{ServiceName: "svc-zet", ExpectedCount: expectedZetTerminators},
 }
 
 //go:embed configs
@@ -204,7 +205,7 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 	if entity.GetType() == model.EntityTypeComponent {
 		return entity.GetScope().HasTag("client") ||
 			entity.GetScope().HasTag("go-host") ||
-			entity.GetScope().HasTag("zde-host")
+			entity.GetScope().HasTag("zet-host")
 	}
 	return false
 }
@@ -231,8 +232,8 @@ func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 		if entity.GetScope().HasTag("go-host") {
 			return goHostsPerHostingBox
 		}
-		if entity.GetScope().HasTag("zde-host") {
-			return zdeHostsPerHostingBox
+		if entity.GetScope().HasTag("zet-host") {
+			return cSdkHostsPerHostingBox
 		}
 		if entity.GetScope().HasTag("client") {
 			return clientsPerHost
@@ -293,7 +294,7 @@ var m = &model.Model{
 				return err
 			}
 
-			err = m.ForEachHost(".zde-host", 1, func(host *model.Host) error {
+			err = m.ForEachHost(".zet-host", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
 				return nil
 			})
@@ -396,7 +397,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"client", "go-client"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:           zitilab.OidcTestClientSdkDirect,
-								Services:       "svc-ert,svc-go,svc-zde",
+								Services:       "svc-ert,svc-go,svc-zet",
 								ResultsService: "traffic-results",
 							},
 						},
@@ -411,7 +412,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"prox", "client"}},
 							Type: &zitilab.ZitiProxCType{
 								Version:  targetZitiCSdkVersion,
-								Services: []string{"svc-ert", "svc-go", "svc-zde"},
+								Services: []string{"svc-ert", "svc-go", "svc-zet"},
 								BasePort: 9700,
 								LogLevel: 4,
 							},
@@ -420,7 +421,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"traffic-driver"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:               zitilab.OidcTestClientProxy,
-								Services:           "svc-ert,svc-go,svc-zde",
+								Services:           "svc-ert,svc-go,svc-zet",
 								ProxyBasePort:      9700,
 								ProxyInstanceCount: clientsPerHost,
 								ResultsService:     "traffic-results",
@@ -429,7 +430,7 @@ var m = &model.Model{
 					},
 				},
 
-				// Hosting box: 5 Go SDK + 10 ZDE instances + 1 echo server
+				// Hosting box: 5 Go SDK + 10 ZET instances + 1 echo server
 				"hosting-us": {
 					Scope: model.Scope{Tags: model.Tags{"hosting"}},
 					Components: model.Components{
@@ -440,10 +441,11 @@ var m = &model.Model{
 								Mode:    zitilab.ZitiTunnelModeHost,
 							},
 						},
-						"zde-host-us-{{.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"zde-host", "sdk-app"}},
+						"zet-host-us-{{.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"zet-host", "sdk-app"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Mode: zitilab.ZitiEdgeTunnelModeHost,
+								Mode:    zitilab.ZitiEdgeTunnelModeHost,
+								Version: targetZetVersion,
 							},
 						},
 						"echo-server-us": {
@@ -531,7 +533,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"client", "go-client"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:           zitilab.OidcTestClientSdkDirect,
-								Services:       "svc-ert,svc-go,svc-zde",
+								Services:       "svc-ert,svc-go,svc-zet",
 								ResultsService: "traffic-results",
 							},
 						},
@@ -546,7 +548,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"prox", "client"}},
 							Type: &zitilab.ZitiProxCType{
 								Version:  targetZitiCSdkVersion,
-								Services: []string{"svc-ert", "svc-go", "svc-zde"},
+								Services: []string{"svc-ert", "svc-go", "svc-zet"},
 								BasePort: 9700,
 								LogLevel: 4,
 							},
@@ -555,7 +557,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"traffic-driver"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:               zitilab.OidcTestClientProxy,
-								Services:           "svc-ert,svc-go,svc-zde",
+								Services:           "svc-ert,svc-go,svc-zet",
 								ProxyBasePort:      9700,
 								ProxyInstanceCount: clientsPerHost,
 								ResultsService:     "traffic-results",
@@ -564,7 +566,7 @@ var m = &model.Model{
 					},
 				},
 
-				// Hosting box: 5 Go SDK + 10 ZDE instances + 1 echo server
+				// Hosting box: 5 Go SDK + 10 ZET instances + 1 echo server
 				"hosting-eu": {
 					Scope: model.Scope{Tags: model.Tags{"hosting"}},
 					Components: model.Components{
@@ -575,10 +577,11 @@ var m = &model.Model{
 								Mode:    zitilab.ZitiTunnelModeHost,
 							},
 						},
-						"zde-host-eu-{{.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"zde-host", "sdk-app"}},
+						"zet-host-eu-{{.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"zet-host", "sdk-app"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Mode: zitilab.ZitiEdgeTunnelModeHost,
+								Mode:    zitilab.ZitiEdgeTunnelModeHost,
+								Version: targetZetVersion,
 							},
 						},
 						"echo-server-eu": {
@@ -666,7 +669,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"client", "go-client"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:           zitilab.OidcTestClientSdkDirect,
-								Services:       "svc-ert,svc-go,svc-zde",
+								Services:       "svc-ert,svc-go,svc-zet",
 								ResultsService: "traffic-results",
 							},
 						},
@@ -681,7 +684,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"prox", "client"}},
 							Type: &zitilab.ZitiProxCType{
 								Version:  targetZitiCSdkVersion,
-								Services: []string{"svc-ert", "svc-go", "svc-zde"},
+								Services: []string{"svc-ert", "svc-go", "svc-zet"},
 								BasePort: 9700,
 								LogLevel: 4,
 							},
@@ -690,7 +693,7 @@ var m = &model.Model{
 							Scope: model.Scope{Tags: model.Tags{"traffic-driver"}},
 							Type: &zitilab.OidcTestClientType{
 								Mode:               zitilab.OidcTestClientProxy,
-								Services:           "svc-ert,svc-go,svc-zde",
+								Services:           "svc-ert,svc-go,svc-zet",
 								ProxyBasePort:      9700,
 								ProxyInstanceCount: clientsPerHost,
 								ResultsService:     "traffic-results",
@@ -699,7 +702,7 @@ var m = &model.Model{
 					},
 				},
 
-				// Hosting box: 5 Go SDK + 10 ZDE instances + 1 echo server
+				// Hosting box: 5 Go SDK + 10 ZET instances + 1 echo server
 				"hosting-ap": {
 					Scope: model.Scope{Tags: model.Tags{"hosting"}},
 					Components: model.Components{
@@ -710,10 +713,11 @@ var m = &model.Model{
 								Mode:    zitilab.ZitiTunnelModeHost,
 							},
 						},
-						"zde-host-ap-{{.ScaleIndex}}": {
-							Scope: model.Scope{Tags: model.Tags{"zde-host", "sdk-app"}},
+						"zet-host-ap-{{.ScaleIndex}}": {
+							Scope: model.Scope{Tags: model.Tags{"zet-host", "sdk-app"}},
 							Type: &zitilab.ZitiEdgeTunnelType{
-								Mode: zitilab.ZitiEdgeTunnelModeHost,
+								Mode:    zitilab.ZitiEdgeTunnelModeHost,
+								Version: targetZetVersion,
 							},
 						},
 						"echo-server-ap": {
@@ -824,7 +828,7 @@ var m = &model.Model{
 				"--identity-roles", "#client,#prox",
 				"--edge-router-roles", "#client-router"))
 			workflow.AddAction(zitilibActions.Edge("create", "edge-router-policy", "hosting-erp",
-				"--identity-roles", "#go-host,#zde-host",
+				"--identity-roles", "#go-host,#zet-host",
 				"--edge-router-roles", "#sdk-router"))
 
 			// Service edge router policy: all services can use all edge routers
@@ -847,25 +851,25 @@ var m = &model.Model{
 			workflow.AddAction(zitilibActions.Edge("create", "service", "svc-go",
 				"-c", "host-config",
 				"-a", "go-service"))
-			workflow.AddAction(zitilibActions.Edge("create", "service", "svc-zde",
+			workflow.AddAction(zitilibActions.Edge("create", "service", "svc-zet",
 				"-c", "host-config",
-				"-a", "zde-service"))
+				"-a", "zet-service"))
 
-			// Bind service policies: ER/T routers bind svc-ert, Go hosts bind svc-go, ZDE hosts bind svc-zde
+			// Bind service policies: ER/T routers bind svc-ert, Go hosts bind svc-go, ZET hosts bind svc-zet
 			workflow.AddAction(zitilibActions.Edge("create", "service-policy", "ert-bind", "Bind",
 				"--identity-roles", "#ert-router",
 				"--service-roles", "@svc-ert"))
 			workflow.AddAction(zitilibActions.Edge("create", "service-policy", "go-bind", "Bind",
 				"--identity-roles", "#go-host",
 				"--service-roles", "@svc-go"))
-			workflow.AddAction(zitilibActions.Edge("create", "service-policy", "zde-bind", "Bind",
-				"--identity-roles", "#zde-host",
-				"--service-roles", "@svc-zde"))
+			workflow.AddAction(zitilibActions.Edge("create", "service-policy", "zet-bind", "Bind",
+				"--identity-roles", "#zet-host",
+				"--service-roles", "@svc-zet"))
 
 			// Dial service policies: clients can dial all three services
 			workflow.AddAction(zitilibActions.Edge("create", "service-policy", "client-dial", "Dial",
 				"--identity-roles", "#client,#prox",
-				"--service-roles", "#ert-service,#go-service,#zde-service"))
+				"--service-roles", "#ert-service,#go-service,#zet-service"))
 
 			// Infrastructure services: event collection and traffic results.
 			workflow.AddAction(zitilibActions.Edge("create", "service", "oidc-events"))
@@ -949,6 +953,9 @@ var m = &model.Model{
 		"testControllerFailover": model.BindF(testControllerFailover),
 		"testChaosIteration":     model.BindF(testChaosIteration),
 		"restartClients":         model.BindF(restartAllClients),
+		"healPartition": model.BindF(func(run model.Run) error {
+			return chaos.HealPartition(run, ".client", 100)
+		}),
 		"fullSuite": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"restartClients",

@@ -306,6 +306,68 @@ func checkConnectionStatuses(ctrlId string, clients *zitirest.Clients) (int, err
 	return invalid, fmt.Errorf("%d invalid identity connection statuses found", invalid)
 }
 
+// ValidateIdentitiesConnected waits until every identity in identityIds has at
+// least one active (non-closed) connection to an edge router. It uses the REST
+// inspect API to query each router's identity connection state.
+//
+// This is a stronger readiness check than ValidateOidcAuthenticated: OIDC auth
+// only confirms the SDK received a JWT, not that it successfully fetched the
+// api-session, loaded services, and connected to routers. Under load, those
+// post-auth steps can lag behind JWT issuance by minutes.
+func ValidateIdentitiesConnected(run model.Run, identityIds map[string]bool, timeout time.Duration) error {
+	log := tui.ValidationLogger()
+	deadline := time.Now().Add(timeout)
+	expectedCount := len(identityIds)
+	var lastLog time.Time
+
+	for time.Now().Before(deadline) {
+		connected, err := getConnectedIdentities(run)
+		if err != nil {
+			log.WithError(err).Warn("failed to get connected identities, will retry")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		var missing []string
+		for id := range identityIds {
+			if !connected[id] {
+				missing = append(missing, id)
+			}
+		}
+
+		if len(missing) == 0 {
+			log.Infof("confirmed %d identities are connected to edge routers", expectedCount)
+			return nil
+		}
+
+		if time.Since(lastLog) > 15*time.Second {
+			log.Infof("identities connected to routers: %d / %d, waiting...",
+				expectedCount-len(missing), expectedCount)
+			lastLog = time.Now()
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	connected, err := getConnectedIdentities(run)
+	if err != nil {
+		return fmt.Errorf("failed to get connected identities: %w", err)
+	}
+
+	var missing []string
+	for id := range identityIds {
+		if !connected[id] {
+			missing = append(missing, id)
+		}
+	}
+
+	sample := missing
+	if len(sample) > 10 {
+		sample = sample[:10]
+	}
+	return fmt.Errorf("%d of %d identities never connected to any edge router after %s. sample: %v",
+		len(missing), expectedCount, timeout, sample)
+}
+
 // ValidateIdentitiesDisconnected checks that none of the specified identities
 // have active connections to any edge router. It uses the REST inspect API to
 // query each router's identity connection state.

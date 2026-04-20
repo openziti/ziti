@@ -46,7 +46,7 @@ type ZitiProxCType struct {
 	// LocalPath overrides the binary staging path.
 	LocalPath string
 
-	// Services is a list of Ziti service names to proxy (e.g., ["svc-ert", "svc-go", "svc-zde"]).
+	// Services is a list of Ziti service names to proxy (e.g., ["svc-ert", "svc-go", "svc-zet"]).
 	// Each service gets a unique listener port per instance.
 	Services []string
 
