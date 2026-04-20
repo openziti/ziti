@@ -44,16 +44,21 @@ var unansweredKeywords = map[string]unansweredDisposition{
 	"timeout":  unansweredTimeout,
 }
 
+// upstream represents a single upstream DNS server the resolver can forward to.
+type upstream struct {
+	server string
+	client *dns.Client
+}
+
 type resolver struct {
-	server         *dns.Server
-	names          map[string]net.IP
-	ips            map[string]string
-	namesMtx       sync.Mutex
-	domains        map[string]*domainEntry
-	domainsMtx     sync.Mutex
-	upstreamServer string
-	upstreamClient *dns.Client
-	unanswered     unansweredDisposition
+	server     *dns.Server
+	names      map[string]net.IP
+	ips        map[string]string
+	namesMtx   sync.Mutex
+	domains    map[string]*domainEntry
+	domainsMtx sync.Mutex
+	upstreams  []upstream
+	unanswered unansweredDisposition
 }
 
 func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
@@ -68,7 +73,11 @@ func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
 	return unansweredRefused, fmt.Errorf("invalid unanswerable response '%s': must be one of timeout, servfail, or refused", raw)
 }
 
-func NewResolver(config string, upstreamConfig string, unansweredConfig string) (Resolver, error) {
+// NewResolver constructs a Resolver from a listener URL, zero or more upstream URLs,
+// and an unanswered-query disposition. An empty upstreams slice disables upstream
+// forwarding. When multiple upstreams are provided, queries are fanned out in
+// parallel and the first NOERROR response wins (see queryUpstreams).
+func NewResolver(config string, upstreams []string, unansweredConfig string) (Resolver, error) {
 	flushDnsCaches()
 	if config == "" {
 		return nil, nil
@@ -111,7 +120,7 @@ func NewResolver(config string, upstreamConfig string, unansweredConfig string) 
 	case "", "file":
 		return NewRefCountingResolver(NewHostFile(resolverURL.Path)), nil
 	case "udp":
-		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreamConfig, unanswered)
+		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreams, unanswered)
 		if err != nil {
 			return nil, err
 		}
@@ -187,28 +196,89 @@ func (r *resolver) getAddress(name string) (net.IP, error) {
 	return nil, errors.New("not found")
 }
 
-func (r *resolver) queryUpstream(query *dns.Msg) (*dns.Msg, error) {
-	if r.upstreamServer == "" || r.upstreamClient == nil {
+// rcodeScore ranks non-NOERROR DNS response codes. Higher is better.
+// NXDOMAIN is an authoritative "doesn't exist" and is most useful to the
+// caller, followed by SERVFAIL (server problem) and REFUSED (policy).
+func rcodeScore(rcode int) int {
+	switch rcode {
+	case dns.RcodeNameError:
+		return 3
+	case dns.RcodeServerFailure:
+		return 2
+	case dns.RcodeRefused:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// queryUpstreams forwards the query to all configured upstreams concurrently
+// and selects a winner based on response code:
+//   - the first NOERROR response is returned immediately;
+//   - otherwise, after all upstreams have returned, the best-ranked
+//     non-NOERROR response wins (NXDOMAIN > SERVFAIL > REFUSED > other);
+//   - if every upstream errored at the transport layer, the last error
+//     is returned so the caller can fall through to handleUnanswerable.
+//
+// When the fast path returns early, goroutines for slower upstreams remain
+// running until their per-client Timeout fires. The results channel is
+// buffered so these late writes don't block. This is a bounded wait, not a
+// leak — miekg/dns ExchangeContext honors ctx.Deadline but not ctx.Done,
+// so there's no mechanism to abort an in-flight UDP read sooner.
+func (r *resolver) queryUpstreams(query *dns.Msg) (*dns.Msg, error) {
+	if len(r.upstreams) == 0 {
 		return nil, errors.New("no upstream server configured")
 	}
 
-	log.Debugf("forwarding query to upstream server %s: %s", r.upstreamServer, query.Question[0].Name)
-
-	response, _, err := r.upstreamClient.Exchange(query, r.upstreamServer)
-	if err != nil {
-		log.Warnf("upstream query failed: %v", err)
-		return nil, err
+	type result struct {
+		resp *dns.Msg
+		err  error
+		from string
 	}
 
-	log.Debugf("received response from upstream server: %d answers", len(response.Answer))
-	return response, nil
+	results := make(chan result, len(r.upstreams))
+	for _, u := range r.upstreams {
+		u := u
+		go func() {
+			log.Debugf("forwarding query to upstream server %s: %s", u.server, query.Question[0].Name)
+			resp, _, err := u.client.Exchange(query, u.server)
+			results <- result{resp: resp, err: err, from: u.server}
+		}()
+	}
+
+	var bestResp *dns.Msg
+	bestScore := -1
+	var lastErr error
+	for i := 0; i < len(r.upstreams); i++ {
+		res := <-results
+		if res.err != nil || res.resp == nil {
+			if res.err != nil {
+				log.Warnf("upstream query to %s failed: %v", res.from, res.err)
+				lastErr = res.err
+			}
+			continue
+		}
+		if res.resp.Rcode == dns.RcodeSuccess {
+			log.Debugf("received NOERROR from %s: %d answers", res.from, len(res.resp.Answer))
+			return res.resp, nil
+		}
+		if s := rcodeScore(res.resp.Rcode); s > bestScore {
+			bestScore = s
+			bestResp = res.resp
+		}
+	}
+
+	if bestResp != nil {
+		return bestResp, nil
+	}
+	return nil, lastErr
 }
 
 func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	log.Tracef("received:\n%s\n", query.String())
 	msg := dns.Msg{}
 	msg.SetReply(query)
-	msg.RecursionAvailable = r.upstreamServer != ""
+	msg.RecursionAvailable = len(r.upstreams) > 0
 	q := query.Question[0]
 	switch q.Qtype {
 	case dns.TypeA:
@@ -229,8 +299,8 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 			}
 			return
 		}
-		if r.upstreamServer != "" {
-			if upstreamResp, err := r.queryUpstream(query); err == nil {
+		if len(r.upstreams) > 0 {
+			if upstreamResp, err := r.queryUpstreams(query); err == nil {
 				err := w.WriteMsg(upstreamResp)
 				if err != nil {
 					log.Errorf("write failed: %s", err)
@@ -252,8 +322,8 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 			return
 		}
 
-		if r.upstreamServer != "" {
-			if upstreamResp, err := r.queryUpstream(query); err == nil {
+		if len(r.upstreams) > 0 {
+			if upstreamResp, err := r.queryUpstreams(query); err == nil {
 				if err := w.WriteMsg(upstreamResp); err != nil {
 					log.Errorf("write failed: %s", err)
 				}
@@ -277,7 +347,7 @@ func (r *resolver) handleUnanswerable(w dns.ResponseWriter, query *dns.Msg) {
 		log.Tracef("unanswerable query for %s: responding with SERVFAIL", query.Question[0].Name)
 		resp := dns.Msg{}
 		resp.SetReply(query)
-		resp.RecursionAvailable = r.upstreamServer != ""
+		resp.RecursionAvailable = len(r.upstreams) > 0
 		resp.Rcode = dns.RcodeServerFailure
 		if err := w.WriteMsg(&resp); err != nil {
 			log.Errorf("write failed: %s", err)
@@ -286,7 +356,7 @@ func (r *resolver) handleUnanswerable(w dns.ResponseWriter, query *dns.Msg) {
 		log.Tracef("unanswerable query for %s: responding with REFUSED", query.Question[0].Name)
 		resp := dns.Msg{}
 		resp.SetReply(query)
-		resp.RecursionAvailable = r.upstreamServer != ""
+		resp.RecursionAvailable = len(r.upstreams) > 0
 		resp.Rcode = dns.RcodeRefused
 		if err := w.WriteMsg(&resp); err != nil {
 			log.Errorf("write failed: %s", err)
