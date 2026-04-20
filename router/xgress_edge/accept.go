@@ -144,6 +144,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgPayload, conn.handleXgPayload)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgClose, conn.handleXgClose)
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgControl, conn.handleXgControl)
 
 	// Since data is the most common type, usually it gets to dispatch directly.
 	// For now, we use handleDataMessage instead of the mux directly so we can log

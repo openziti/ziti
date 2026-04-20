@@ -1647,6 +1647,34 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, _ channel.Chan
 	}
 }
 
+// handleXgControl handles an xgress control message sent by an SDK-side xgress
+// conn — currently used for trace route requests. The control is unmarshalled,
+// the SDK-side channel sequence is threaded into ControlUserVal so the eventual
+// response can be correlated via ReplyForHeader, and the control is handed to
+// the fabric forwarder (which drives the decrement / hop-0 response / per-hop
+// forwarding logic). Lookup is circuit-id-keyed via xgCircuits.
+func (self *edgeClientConn) handleXgControl(msg *channel.Message, _ channel.Channel) {
+	ctrl, err := xgress.UnmarshallControl(msg)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal xgress control from sdk")
+		return
+	}
+	if ctrl.Headers == nil {
+		ctrl.Headers = channel.Headers{}
+	}
+	ctrl.Headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
+
+	edgeFwd, _ := self.xgCircuits.Get(ctrl.CircuitId)
+	if edgeFwd == nil {
+		pfxlog.Logger().WithField("circuitId", ctrl.CircuitId).Error("no edge forwarder found for xgress control")
+		return
+	}
+
+	if err = self.forwarder.ForwardControl(edgeFwd.address, ctrl); err != nil {
+		pfxlog.Logger().WithField("circuitId", ctrl.CircuitId).WithError(err).Error("failed to forward xgress control")
+	}
+}
+
 func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, _ channel.Channel) {
 	ack, err := xgress.UnmarshallAcknowledgement(req)
 	if err != nil {
@@ -1855,6 +1883,15 @@ func (self *xgEdgeForwarder) SendAcknowledgement(ack *xgress.Acknowledgement) er
 func (self *xgEdgeForwarder) SendControl(ctrl *xgress.Control) error {
 	msg := ctrl.Marshall()
 	msg.PutUint32Header(sdkedge.ConnIdHeader, self.connId)
+	// For trace route responses, the SDK is waiting via SendForReply on the
+	// original request's channel sequence. The request's sequence was stashed
+	// into ControlUserVal by handleXgControl; promote it back to ReplyForHeader
+	// here so the channel layer matches the reply to the waiter.
+	if ctrl.Type == xgress.ControlTypeTraceRouteResponse {
+		if userVal, ok := ctrl.Headers.GetUint32Header(xgress.ControlUserVal); ok {
+			msg.PutUint32Header(channel.ReplyForHeader, userVal)
+		}
+	}
 	sent, err := self.ch.GetDefaultSender().TrySend(msg)
 	if err == nil && !sent {
 		self.listener.droppedMsgMeter.Mark(1)
