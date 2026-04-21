@@ -842,13 +842,6 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 		return
 	}
 
-	requestId, found := req.GetStringHeader(sdkedge.ConnectRequestIdHeader)
-	if !found || requestId == "" {
-		log.Error("connect request id not set in ConnectV2 request")
-		self.sendStateClosedReply("connect request id not set, required", req)
-		return
-	}
-
 	// Resolve service ID
 	identifierType, _ := req.GetByteHeader(sdkedge.ServiceIdentifierTypeHeader)
 	serviceId := serviceIdOrName
@@ -883,22 +876,6 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 
 	self.checkForStateListener()
 
-	// Generate circuit ID early so we can send route_circuit before the full circuit is set up
-	circuitId, err := idgen.NewUUIDString()
-	if err != nil {
-		log.WithError(err).Error("failed to generate circuit id")
-		self.sendStateClosedReply("failed to generate circuit id", req)
-		return
-	}
-
-	// Send route_circuit to SDK — fire-and-forget, before full circuit setup
-	routeMsg := sdkedge.NewRouteCircuitMsg(circuitId, requestId)
-	if sendErr := routeMsg.WithPriority(channel.Highest).Send(self.ch.GetControlSender()); sendErr != nil {
-		log.WithError(sendErr).Error("failed to send route_circuit message")
-		self.sendStateClosedReply("failed to send route_circuit", req)
-		return
-	}
-
 	connectCtx := &connectContext{
 		SdkConn:   self,
 		Log:       log,
@@ -923,11 +900,7 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 	}
 
 	if !handler.Init(connectCtx) {
-		// route_circuit was already sent to the SDK, so include the circuit ID in the
-		// failure reply so the SDK can clean up its pending circuit mapping
-		circuitHeaders := channel.Headers{}
-		circuitHeaders.PutStringHeader(sdkedge.CircuitIdHeader, circuitId)
-		self.sendStateClosedReply("connect handler init failed", req, circuitHeaders)
+		self.sendStateClosedReply("connect handler init failed", req)
 		return
 	}
 
@@ -951,7 +924,6 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 	request := &ctrl_msg.CreateCircuitV3Request{
 		IdentityId:           self.getIdentityId(),
 		ServiceId:            serviceId,
-		CircuitId:            circuitId,
 		Fingerprints:         self.fingerprints.Prints(),
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
