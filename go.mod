@@ -77,7 +77,7 @@ require (
 	github.com/openziti/xweb/v3 v3.0.4
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/rodaine/table v1.0.1
 	github.com/russross/blackfriday v1.6.0
