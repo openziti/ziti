@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/spf13/cobra"
 )

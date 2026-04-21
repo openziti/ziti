@@ -30,7 +30,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"

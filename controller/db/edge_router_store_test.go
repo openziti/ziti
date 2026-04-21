@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/openziti/storage/boltz"
-	"github.com/openziti/storage/boltztest"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 )
 
 func Test_EdgeRouterEvents(t *testing.T) {

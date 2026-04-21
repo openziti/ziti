@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 )
 
