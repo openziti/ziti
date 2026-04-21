@@ -30,17 +30,11 @@ import (
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
-	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/sirupsen/logrus"
 )
 
-type InspectRouterEnv interface {
-	env.RouterEnv
-	GetXgressListeners() []xgress_router.Listener
-}
-
 type bindHandler struct {
-	env                        InspectRouterEnv
+	env                        env.RouterEnv
 	forwarder                  *forwarder.Forwarder
 	xgDialerPool               goroutines.Pool
 	terminatorValidationPool   goroutines.Pool
@@ -52,7 +46,7 @@ func XgressDialerWorker(_ uint32, f func()) {
 	f()
 }
 
-func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder) (channel.BindHandler, error) {
+func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder) (channel.BindHandler, error) {
 	xgDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
 		MinWorkers:  0,
@@ -119,7 +113,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
-	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
+	binding.AddTypedReceiveHandler(self.env.GetInspectHandler())
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)

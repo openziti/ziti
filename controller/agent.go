@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/ziti/v2/common/agentid"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/pkg/errors"
@@ -32,6 +34,7 @@ func (self *Controller) RegisterAgentBindHandler(bindHandler channel.BindHandler
 }
 
 func (self *Controller) bindAgentChannel(binding channel.Binding) error {
+	binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_InspectRequestType), self.agentOpInspect)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpSnapshotDb)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftListMembersRequestType), self.agentOpRaftList)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftAddPeerRequestType), self.agentOpRaftAddPeer)
@@ -59,7 +62,7 @@ func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 	}
 	appId := appIdBuf[0]
 
-	if appId != AgentAppId {
+	if appId != agentid.AppIdAny && appId != AgentAppId {
 		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
 		return errors.New("invalid operation for controller")
 	}
@@ -69,6 +72,57 @@ func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 	listener := channel.NewExistingConnListener(self.config.Id, conn, nil)
 	_, err = channel.NewChannel("agent", listener, channel.BindHandlerF(self.bindAgentChannel), options)
 	return err
+}
+
+func (self *Controller) agentOpInspect(m *channel.Message, ch channel.Channel) {
+	request := &ctrl_pb.InspectRequest{}
+	if err := proto.Unmarshal(m.Body, request); err != nil {
+		self.sendInspectError(m, ch, err.Error())
+		return
+	}
+
+	result := self.network.Inspections.InspectLocal(request.RequestedValues)
+
+	response := &ctrl_pb.InspectResponse{
+		Success: result.Success,
+		Errors:  result.Errors,
+	}
+
+	for _, val := range result.Results {
+		response.Values = append(response.Values, &ctrl_pb.InspectResponse_InspectValue{
+			Name:  val.Name,
+			Value: val.Value,
+		})
+	}
+
+	body, err := proto.Marshal(response)
+	if err != nil {
+		self.sendInspectError(m, ch, err.Error())
+		return
+	}
+
+	responseMsg := channel.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
+	responseMsg.ReplyTo(m)
+	if err := ch.Send(responseMsg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send inspect response")
+	}
+}
+
+func (self *Controller) sendInspectError(m *channel.Message, ch channel.Channel, errMsg string) {
+	response := &ctrl_pb.InspectResponse{
+		Success: false,
+		Errors:  []string{errMsg},
+	}
+	body, err := proto.Marshal(response)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal inspect error response")
+		return
+	}
+	responseMsg := channel.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
+	responseMsg.ReplyTo(m)
+	if err := ch.Send(responseMsg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send inspect error response")
+	}
 }
 
 func (self *Controller) agentOpSnapshotDb(m *channel.Message, ch channel.Channel) {

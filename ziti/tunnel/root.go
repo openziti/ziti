@@ -133,7 +133,8 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 			AppAlias:        cliAgentAlias,
 			AppType:         "tunnel",
 			CustomOps: map[byte]func(c net.Conn) error{
-				AgentDump: handleAgentDump,
+				AgentDump:           handleAgentDump,
+				agent.CustomOpAsync: HandleAgentAsyncOp,
 			},
 		})
 

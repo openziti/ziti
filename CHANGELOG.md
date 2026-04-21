@@ -1148,6 +1148,25 @@ non-NOERROR reply (NXDOMAIN > SERVFAIL > REFUSED) so authoritative negative answ
 transport failures. If every upstream fails to respond, the query is treated as unanswerable and handled
 per the configured `dnsUnanswerable` disposition.
 
+## Agent Inspect
+
+The `ziti agent` CLI now has a generic `inspect` subcommand that works against any ziti process
+(controller, router, or tunneler) over the local IPC agent channel. It sends the inspect request
+directly to the target process, so unlike `ziti fabric inspect` it doesn't fan out through the
+controller and doesn't require network connectivity to the target.
+
+```
+ziti agent inspect <value> [values...]
+```
+
+Values are matched against whatever the target process exposes. Common inspect keys:
+
+* Routers: `stackdump`, `links`, `config`, `metrics`, `sdk-terminators`, `ert-terminators`,
+  `router-circuits`, `router-data-model`, `router-controllers`
+* Controllers: `stackdump`, `config`, `metrics`, `connected-routers`, `connected-peers`,
+  `cluster-config`, `router-messaging`, `terminator-costs`, `data-model-index`
+* Tunnelers: `stackdump`, `sdk`
+
 ## Current Beta Features
 
 Beta features are still under development and are subject to change. They should
@@ -1230,6 +1249,7 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3784](https://github.com/openziti/ziti/issues/3784) - Fix link registry race condition on reporting links on reconnect
     * [Issue #3734](https://github.com/openziti/ziti/issues/3734) - Enforce client certificate proof-of-possession on controller REST API for OIDC sessions
     * [Issue #3806](https://github.com/openziti/ziti/issues/3806) - Expose OpenZiti-specific login and MFA endpoints in the OIDC discovery document
     * [Issue #3818](https://github.com/openziti/ziti/issues/3818) - Filtering policies by keywords `Dial` and `Bind` doesn't work

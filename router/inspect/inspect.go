@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package handler_ctrl
+package inspect
 
 import (
 	"encoding/json"
@@ -27,29 +27,30 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
-type inspectHandler struct {
-	env InspectRouterEnv
+type Handler struct {
+	env env.RouterEnv
 	fwd *forwarder.Forwarder
 }
 
-func newInspectHandler(env InspectRouterEnv, fwd *forwarder.Forwarder) *inspectHandler {
-	return &inspectHandler{
+func NewInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) channel.TypedReceiveHandler {
+	return &Handler{
 		env: env,
 		fwd: fwd,
 	}
 }
 
-func (*inspectHandler) ContentType() int32 {
+func (*Handler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_InspectRequestType)
 }
 
-func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (handler *Handler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	context := &inspectRequestContext{
 		handler:  handler,
 		msg:      msg,
@@ -73,7 +74,7 @@ func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 }
 
 type inspectRequestContext struct {
-	handler  *inspectHandler
+	handler  *Handler
 	msg      *channel.Message
 	ch       channel.Channel
 	request  *ctrl_pb.InspectRequest
