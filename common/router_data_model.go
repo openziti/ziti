@@ -580,6 +580,10 @@ type RouterDataModel struct {
 	Revocations      cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Revocation] `json:"revocations"`
 	cachedPublicKeys concurrenz.AtomicValue[map[string]crypto.PublicKey]
 
+	// serviceNameIndex maps service name -> service id, kept in sync with Services.
+	// Controller enforces unique service names, so this is a 1:1 mapping.
+	serviceNameIndex cmap.ConcurrentMap[string, string]
+
 	terminatorIdCache cmap.ConcurrentMap[string, string]
 
 	lastSaveIndex *uint64
@@ -616,6 +620,7 @@ func NewBareRouterDataModel() *RouterDataModel {
 		Revocations:       cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		terminatorIdCache: cmap.New[string](),
 		subscriptions:     cmap.New[*IdentitySubscription](),
+		serviceNameIndex:  cmap.New[string](),
 	}
 }
 
@@ -639,6 +644,7 @@ func NewReceiverRouterDataModel(closeNotify <-chan struct{}) *RouterDataModel {
 		closeNotify:              closeNotify,
 		stopNotify:               make(chan struct{}),
 		terminatorIdCache:        cmap.New[string](),
+		serviceNameIndex:         cmap.New[string](),
 	}
 	go result.processSubscriberEvents()
 	return result
@@ -665,6 +671,7 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 		stopNotify:               make(chan struct{}),
 		timelineId:               dataState.TimelineId,
 		terminatorIdCache:        cmap.New[string](),
+		serviceNameIndex:         cmap.New[string](),
 	}
 
 	if tIdCache, ok := dataState.Caches[edge_ctrl_pb.CacheType_TerminatorIds.String()]; ok && tIdCache != nil && tIdCache.Data != nil {
@@ -707,6 +714,7 @@ func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, closeNoti
 		stopNotify:               make(chan struct{}),
 		timelineId:               existing.timelineId,
 		terminatorIdCache:        existing.terminatorIdCache,
+		serviceNameIndex:         existing.serviceNameIndex,
 	}
 	currentIndex := existing.CurrentIndex()
 	result.SetCurrentIndex(currentIndex)
@@ -1072,8 +1080,10 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		var cleanupActions []*edge_ctrl_pb.DataState_Event
+		var removedName string
 		rdm.Services.RemoveCb(model.Service.Id, func(key string, v *Service, exists bool) bool {
 			if exists {
+				removedName = v.Name
 				removeFromConfigs(v.Configs)
 
 				v.servicePolicies.IterCb(func(servicePolicyId string, _ struct{}) {
@@ -1099,6 +1109,14 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 			return exists
 		})
 
+		if removedName != "" {
+			// Only drop the index entry if it still points at us; a new service with the
+			// same name might have been created between our RemoveCb and this step.
+			rdm.serviceNameIndex.RemoveCb(removedName, func(key string, v string, exists bool) bool {
+				return exists && v == model.Service.Id
+			})
+		}
+
 		for _, cleanupAction := range cleanupActions {
 			rdm.Handle(index, cleanupAction)
 		}
@@ -1111,6 +1129,7 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 			index:              index,
 		}
 
+		var oldName string
 		rdm.Services.Upsert(model.Service.Id, updatedService, func(exist bool, valueInMap *Service, newValue *Service) *Service {
 			var configsToRemove []string
 			var configsToAdd []string
@@ -1118,6 +1137,7 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 			if !exist {
 				configsToAdd = newValue.Configs
 			} else {
+				oldName = valueInMap.Name
 				configsToRemove, configsToAdd = diffStringSlices(valueInMap.Configs, newValue.Configs)
 			}
 
@@ -1132,6 +1152,15 @@ func (rdm *RouterDataModel) HandleServiceEvent(index uint64, event *edge_ctrl_pb
 
 			return newValue
 		})
+
+		// Keep the name -> id index in sync. On rename, only remove the old mapping
+		// if it still points at this service (same guard as on delete).
+		if oldName != "" && oldName != updatedService.Name {
+			rdm.serviceNameIndex.RemoveCb(oldName, func(key string, v string, exists bool) bool {
+				return exists && v == updatedService.Id
+			})
+		}
+		rdm.serviceNameIndex.Set(updatedService.Name, updatedService.Id)
 
 		updatedService.servicePolicies.IterCb(func(servicePolicyId string, _ struct{}) {
 			rdm.NotifyServicePolicyServiceChange(servicePolicyId, index)
@@ -1869,6 +1898,14 @@ func (rdm *RouterDataModel) withService(serviceId string, f func(service *Servic
 	}
 }
 
+// ServiceIdByName returns the ID of the service with the given name, and a
+// boolean indicating whether an entry was found. Uses an index kept in sync
+// with Services at the mutation sites. Controller enforces unique service
+// names, so this is a 1:1 lookup.
+func (rdm *RouterDataModel) ServiceIdByName(name string) (string, bool) {
+	return rdm.serviceNameIndex.Get(name)
+}
+
 func (rdm *RouterDataModel) withServicePolicy(servicePolicyId string, f func(servicePolicy *ServicePolicy)) {
 	if servicePolicy, _ := rdm.ServicePolicies.Get(servicePolicyId); servicePolicy != nil {
 		f(servicePolicy)
@@ -2389,6 +2426,33 @@ func (rdm *RouterDataModel) Validate(correct *RouterDataModel, sink DiffSink) {
 	correct.Diff(rdm, sink)
 	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
 		v.Diff(rdm, false, sink)
+	})
+	rdm.validateServiceNameIndex(sink)
+}
+
+// validateServiceNameIndex reports any inconsistency between Services and the
+// private serviceNameIndex. Each service must have a name -> id entry that
+// points back at it, and each index entry must reference an existing service
+// whose Name equals the indexed key.
+func (rdm *RouterDataModel) validateServiceNameIndex(sink DiffSink) {
+	const et = "service-name-index"
+
+	rdm.Services.IterCb(func(id string, svc *Service) {
+		indexed, ok := rdm.serviceNameIndex.Get(svc.Name)
+		if !ok {
+			sink(et, svc.Name, DiffTypeSub, fmt.Sprintf("missing index entry for service %q (id=%s)", svc.Name, id))
+		} else if indexed != id {
+			sink(et, svc.Name, DiffTypeMod, fmt.Sprintf("index entry for %q points at %s, expected %s", svc.Name, indexed, id))
+		}
+	})
+
+	rdm.serviceNameIndex.IterCb(func(name, id string) {
+		svc, ok := rdm.Services.Get(id)
+		if !ok {
+			sink(et, name, DiffTypeAdd, fmt.Sprintf("index entry %q -> %s but no such service", name, id))
+		} else if svc.Name != name {
+			sink(et, name, DiffTypeMod, fmt.Sprintf("index key %q maps to service %s but service name is %q", name, id, svc.Name))
+		}
 	})
 }
 

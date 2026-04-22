@@ -847,13 +847,8 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 	serviceId := serviceIdOrName
 	if identifierType == byte(sdkedge.ServiceIdentifierByName) {
 		rdm := self.listener.factory.stateManager.RouterDataModel()
-		var resolvedId string
-		rdm.Services.IterCb(func(id string, svc *common.Service) {
-			if svc.Name == serviceIdOrName {
-				resolvedId = id
-			}
-		})
-		if resolvedId == "" {
+		resolvedId, ok := rdm.ServiceIdByName(serviceIdOrName)
+		if !ok {
 			log.WithField("serviceName", serviceIdOrName).Error("service not found by name")
 			self.sendStateClosedReply("service not found", req)
 			return
@@ -1620,11 +1615,13 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, _ channel.Chan
 }
 
 // handleXgControl handles an xgress control message sent by an SDK-side xgress
-// conn — currently used for trace route requests. The control is unmarshalled,
-// the SDK-side channel sequence is threaded into ControlUserVal so the eventual
-// response can be correlated via ReplyForHeader, and the control is handed to
-// the fabric forwarder (which drives the decrement / hop-0 response / per-hop
-// forwarding logic). Lookup is circuit-id-keyed via xgCircuits.
+// conn. For trace route requests, the SDK-side channel sequence is stashed into
+// ControlUserVal so the eventual response can be correlated back via
+// ReplyForHeader at this (initiator) router's xgEdgeForwarder.SendControl.
+// For trace route responses, the upstream ControlUserVal must be preserved
+// unchanged — it holds the initiator's request sequence and is what lets the
+// response reach the initiator SDK's SendForReply waiter. Lookup is
+// circuit-id-keyed via xgCircuits.
 func (self *edgeClientConn) handleXgControl(msg *channel.Message, _ channel.Channel) {
 	ctrl, err := xgress.UnmarshallControl(msg)
 	if err != nil {
@@ -1634,7 +1631,9 @@ func (self *edgeClientConn) handleXgControl(msg *channel.Message, _ channel.Chan
 	if ctrl.Headers == nil {
 		ctrl.Headers = channel.Headers{}
 	}
-	ctrl.Headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
+	if ctrl.Type == xgress.ControlTypeTraceRoute {
+		ctrl.Headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
+	}
 
 	edgeFwd, _ := self.xgCircuits.Get(ctrl.CircuitId)
 	if edgeFwd == nil {
