@@ -1221,11 +1221,6 @@ be removed.
     * [Issue #800](https://github.com/openziti/sdk-golang/issues/800) - Tidy create service session logging
 
 * github.com/openziti/secretstream: [v0.1.39 -> v0.1.49](https://github.com/openziti/secretstream/compare/v0.1.39...v0.1.49)
-* github.com/openziti/storage: [v0.4.26 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.26...v0.4.39)
-    * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
-    * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
-    * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
-
 * github.com/openziti/transport/v2: [v2.0.188 -> v2.0.215](https://github.com/openziti/transport/compare/v2.0.188...v2.0.215)
     * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
     * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
@@ -1235,7 +1230,9 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
-    * [Issue #3818](https://github.com/openziti/ziti/issues/3818) - Filtering service policies by `type = "Dial"` / `type = "Bind"` (breaking: `type = 1`/`type = 2` no longer works)
+    * [Issue #3734](https://github.com/openziti/ziti/issues/3734) - Enforce client certificate proof-of-possession on controller REST API for OIDC sessions
+    * [Issue #3806](https://github.com/openziti/ziti/issues/3806) - Expose OpenZiti-specific login and MFA endpoints in the OIDC discovery document
+    * [Issue #3818](https://github.com/openziti/ziti/issues/3818) - Filtering policies by keywords `Dial` and `Bind` doesn't work
     * [Issue #3816](https://github.com/openziti/ziti/issues/3816) - Support multiple upstream DNS providers in ziti tunnel and ER/T
     * [Issue #3699](https://github.com/openziti/ziti/issues/3699) - Consolidate CLI edge and fabric commands in top level create/update/delete/list/login commands
     * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error
@@ -1341,6 +1338,9 @@ be removed.
     * [Issue #3382](https://github.com/openziti/ziti/issues/3382) - Legacy service sessions generated pre-1.7.x are incompatible with v1.7.+ and need to be cleared
     * [Issue #3339](https://github.com/openziti/ziti/issues/3339) - get router ctrl.endpoint from ctrls claim in JWT
     * [Issue #3378](https://github.com/openziti/ziti/issues/3378) - login with file stopped working
+    * [Issue #122](https://github.com/openziti/ziti/pull/122) - Release 0.15.0
+    * [Issue #120](https://github.com/openziti/ziti/pull/120) - Fix buildinfo updates on non-linux-amd64 builds
+    * [Issue #119](https://github.com/openziti/ziti/pull/119) - fix log prefix netfoundry -> openziti
     * [Issue #3349](https://github.com/openziti/ziti/issues/3349) - UPDB OIDC login returns wrong content type
     * [Issue #2324](https://github.com/openziti/ziti/issues/2324) - Add Ext-JWT/OIDC enrollment
     * [Issue #3346](https://github.com/openziti/ziti/issues/3346) - Fix confusing attempt logging
