@@ -8,10 +8,18 @@
 set -euo pipefail
 
 function down_project() {
+    # capture container stdout/stderr before killing so CI can diagnose why a
+    # container exited early (e.g., ziti-controller crash before healthcheck)
+    if [[ -d "${LOGDIR:-}" ]]; then
+        docker compose logs --no-color 2>&1 | tee "${LOGDIR}/compose-logs.log" || true
+    fi
     # don't destroy volumes or temp dir so we can inspect when running locally
-    docker compose kill
+    docker compose kill 2>&1 | tee -a "${LOGDIR}/compose-down.log" || true
     # rm -rf "${TESTDIR}"
     echo "INFO: Stopped Compose project: ${TESTDIR}"
+    if [[ -d "${LOGDIR:-}" ]]; then
+        echo "INFO: Captured command logs at: ${LOGDIR}"
+    fi
 }
 
 DATESTAMP=$(date +%Y%m%d%H%M%S)
@@ -34,6 +42,10 @@ fi
 # avoid reusing directories from previous runs to keep this one-shot (non-idempotent) script simple because we needn't
 # consider the state of the test dir
 TESTDIR="$(mktemp -d -t "${BASENAME%.*}.${DATESTAMP}.XXX")"
+
+# capture output of commands that would otherwise be silenced, so CI can upload them for post-mortem
+LOGDIR="${TESTDIR}/logs"
+mkdir -p "${LOGDIR}"
 
 # if unset, set ZITI_QUICK_DIR to this script's parent dir which is always the quickstart root in the git repo
 if [[ -z "${ZITI_QUICK_DIR:-}" ]]; then
@@ -112,7 +124,7 @@ for IMAGE in \
     "golang:${ZITI_GO_VERSION}-alpine" \
     "openziti/zac:latest"
 do
-    docker pull --quiet "${IMAGE}" &>/dev/null
+    docker pull --quiet "${IMAGE}" 2>&1 | tee -a "${LOGDIR}/docker-pull.log"
 done
 
 # any halt after this point should cause the Compose project to be torn down
@@ -128,7 +140,8 @@ echo -e "ZITI_GO_VERSION=${ZITI_GO_VERSION}"\
 if [[ -n "${ZITI_QUICK_TAG:-}" ]]; then
     sed -Ee "s/^(#[[:space:]]*)?(ZITI_VERSION)=.*/\2=${ZITI_QUICK_TAG}/" ./.env > ./.env.tmp
     mv ./.env.tmp ./.env
-    docker compose up --detach --pull=never &>/dev/null # no pull because local quickstart image
+    # no pull because local quickstart image; capture output so CI can diagnose failures
+    docker compose up --detach --pull=never 2>&1 | tee -a "${LOGDIR}/compose-up.log"
 else
     echo "ERROR: ZITI_QUICK_TAG is not set" >&2
     exit 1
@@ -161,7 +174,7 @@ if ! docker compose exec ziti-controller \
     '
 then
     echo "ERROR: router failed to come up, dumping compose logs"
-    docker compose logs
+    docker compose logs 2>&1 | tee "${LOGDIR}/compose-logs.log"
     exit 1
 fi
         # TODO: re-add cert checks to above test suite after https://github.com/openziti/ziti/pull/1278
