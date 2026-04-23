@@ -227,6 +227,12 @@ func Test_Revocation(t *testing.T) {
 			// Use a static-token client so the token cannot be silently refreshed.
 			c := ctx.NewEdgeManagementApiWithStaticToken(accessToken)
 
+			// Attach the client cert so cert PoP enforcement on the z_cfs-bearing token passes.
+			tlsCfg := c.Components.TlsAwareTransport.GetTlsClientConfig()
+			tlsCfg.Certificates = freshCreds.TlsCerts()
+			c.Components.TlsAwareTransport.SetTlsClientConfig(tlsCfg)
+			c.Components.HttpClient.CloseIdleConnections()
+
 			// Token should be valid before revocation.
 			_, err = c.GetCurrentApiSessionDetail()
 			ctx.Req.NoError(err)
