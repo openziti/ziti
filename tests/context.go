@@ -722,6 +722,20 @@ func (ctx *TestContext) newRequestWithClientCert(certs []*x509.Certificate, priv
 		SetHeader("content-type", "application/json")
 }
 
+// newRequestWithTlsCerts creates an anonymous resty request that presents the given TLS
+// certificates for client authentication. Useful for testing cert proof-of-possession
+// with OIDC bearer tokens.
+func (ctx *TestContext) newRequestWithTlsCerts(tlsCerts []cryptoTls.Certificate) *resty.Request {
+	transport := ctx.NewTransport()
+	transport.TLSClientConfig.Certificates = tlsCerts
+
+	client := resty.NewWithClient(ctx.NewHttpClient(transport))
+	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
+
+	return client.R().
+		SetHeader("content-type", "application/json")
+}
+
 func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
 	result := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 	path := result.Search(path("data.enrollment.updb.token")...)

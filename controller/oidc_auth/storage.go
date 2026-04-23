@@ -460,6 +460,7 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 			authRequest.ImproperClientCertChain = result.ImproperClientCertChain()
 		}
 
+		authRequest.CertAllowExpired = result.AuthPolicy().Primary.Cert.AllowExpiredCerts
 	}
 
 	authRequest.AuthenticatorId = result.AuthenticatorId()
@@ -671,6 +672,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		claims.CustomClaims.SdkInfo = req.SdkInfo
 		claims.CustomClaims.RemoteAddress = req.RemoteAddress
 		claims.CustomClaims.IsCertExtendable = req.IsCertExtendable
+		claims.CustomClaims.CertAllowExpired = req.CertAllowExpired
 		claims.CustomClaims.IsCertExtendRequested = req.IsCertExtendRequested
 		claims.CustomClaims.IsCertKeyRollRequested = req.IsCertKeyRollRequested
 		claims.CustomClaims.ImproperClientCertChain = req.ImproperClientCertChain

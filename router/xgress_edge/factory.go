@@ -101,7 +101,7 @@ func (factory *Factory) Run(env env.RouterEnv) error {
 	return nil
 }
 
-func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error {
+func (factory *Factory) LoadConfig(_ map[interface{}]interface{}) error {
 	factory.enabled = factory.routerConfig.Edge.Enabled
 
 	if !factory.enabled {
@@ -173,7 +173,8 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 		edge.SupportsPostureChecksHeader: {1},
 	}
 
-	return newListener(factory.env.GetRouterId(), factory, options, headers), nil
+	wrappedId := state.WrapIdentityWithCertValidation(factory.env.GetRouterId(), factory.stateManager)
+	return newListener(wrappedId, factory, options, headers), nil
 }
 
 // CreateDialer creates a new Edge Xgress dialer
@@ -187,7 +188,7 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress_rou
 		return nil, err
 	}
 
-	// CreateDialer is called for every egress route and for inspect and validations
+	// CreateDialer is called for every egress route and for `inspect` and validations
 	// can't Log this every time.
 	// pfxlog.Logger().Infof("xgress edge dialer options: %v", options.ToLoggableString())
 
@@ -203,35 +204,35 @@ type Options struct {
 
 func (options *Options) ToLoggableString() string {
 	buf := strings.Builder{}
-	fmt.Fprintf(&buf, "mtu=%v\n", options.Mtu)
-	fmt.Fprintf(&buf, "randomDrops=%v\n", options.RandomDrops)
-	fmt.Fprintf(&buf, "drop1InN=%v\n", options.Drop1InN)
-	fmt.Fprintf(&buf, "txQueueSize=%v\n", options.TxQueueSize)
-	fmt.Fprintf(&buf, "txPortalStartSize=%v\n", options.TxPortalStartSize)
-	fmt.Fprintf(&buf, "txPortalMaxSize=%v\n", options.TxPortalMaxSize)
-	fmt.Fprintf(&buf, "txPortalMinSize=%v\n", options.TxPortalMinSize)
-	fmt.Fprintf(&buf, "txPortalIncreaseThresh=%v\n", options.TxPortalIncreaseThresh)
-	fmt.Fprintf(&buf, "txPortalIncreaseScale=%v\n", options.TxPortalIncreaseScale)
-	fmt.Fprintf(&buf, "txPortalRetxThresh=%v\n", options.TxPortalRetxThresh)
-	fmt.Fprintf(&buf, "txPortalRetxScale=%v\n", options.TxPortalRetxScale)
-	fmt.Fprintf(&buf, "txPortalDupAckThresh=%v\n", options.TxPortalDupAckThresh)
-	fmt.Fprintf(&buf, "txPortalDupAckScale=%v\n", options.TxPortalDupAckScale)
-	fmt.Fprintf(&buf, "rxBufferSize=%v\n", options.RxBufferSize)
-	fmt.Fprintf(&buf, "retxStartMs=%v\n", options.RetxStartMs)
-	fmt.Fprintf(&buf, "retxScale=%v\n", options.RetxScale)
-	fmt.Fprintf(&buf, "retxAddMs=%v\n", options.RetxAddMs)
-	fmt.Fprintf(&buf, "retxMaxMs=%v\n", options.RetxMaxMs)
-	fmt.Fprintf(&buf, "maxRttScale=%v\n", options.MaxRttScale)
-	fmt.Fprintf(&buf, "maxCloseWait=%v\n", options.MaxCloseWait)
-	fmt.Fprintf(&buf, "getCircuitTimeout=%v\n", options.GetCircuitTimeout)
+	_, _ = fmt.Fprintf(&buf, "mtu=%v\n", options.Mtu)
+	_, _ = fmt.Fprintf(&buf, "randomDrops=%v\n", options.RandomDrops)
+	_, _ = fmt.Fprintf(&buf, "drop1InN=%v\n", options.Drop1InN)
+	_, _ = fmt.Fprintf(&buf, "txQueueSize=%v\n", options.TxQueueSize)
+	_, _ = fmt.Fprintf(&buf, "txPortalStartSize=%v\n", options.TxPortalStartSize)
+	_, _ = fmt.Fprintf(&buf, "txPortalMaxSize=%v\n", options.TxPortalMaxSize)
+	_, _ = fmt.Fprintf(&buf, "txPortalMinSize=%v\n", options.TxPortalMinSize)
+	_, _ = fmt.Fprintf(&buf, "txPortalIncreaseThresh=%v\n", options.TxPortalIncreaseThresh)
+	_, _ = fmt.Fprintf(&buf, "txPortalIncreaseScale=%v\n", options.TxPortalIncreaseScale)
+	_, _ = fmt.Fprintf(&buf, "txPortalRetxThresh=%v\n", options.TxPortalRetxThresh)
+	_, _ = fmt.Fprintf(&buf, "txPortalRetxScale=%v\n", options.TxPortalRetxScale)
+	_, _ = fmt.Fprintf(&buf, "txPortalDupAckThresh=%v\n", options.TxPortalDupAckThresh)
+	_, _ = fmt.Fprintf(&buf, "txPortalDupAckScale=%v\n", options.TxPortalDupAckScale)
+	_, _ = fmt.Fprintf(&buf, "rxBufferSize=%v\n", options.RxBufferSize)
+	_, _ = fmt.Fprintf(&buf, "retxStartMs=%v\n", options.RetxStartMs)
+	_, _ = fmt.Fprintf(&buf, "retxScale=%v\n", options.RetxScale)
+	_, _ = fmt.Fprintf(&buf, "retxAddMs=%v\n", options.RetxAddMs)
+	_, _ = fmt.Fprintf(&buf, "retxMaxMs=%v\n", options.RetxMaxMs)
+	_, _ = fmt.Fprintf(&buf, "maxRttScale=%v\n", options.MaxRttScale)
+	_, _ = fmt.Fprintf(&buf, "maxCloseWait=%v\n", options.MaxCloseWait)
+	_, _ = fmt.Fprintf(&buf, "getCircuitTimeout=%v\n", options.GetCircuitTimeout)
 
-	fmt.Fprintf(&buf, "lookupApiSessionTimeout=%v\n", options.lookupApiSessionTimeout)
-	fmt.Fprintf(&buf, "lookupSessionTimeout=%v\n", options.lookupSessionTimeout)
+	_, _ = fmt.Fprintf(&buf, "lookupApiSessionTimeout=%v\n", options.lookupApiSessionTimeout)
+	_, _ = fmt.Fprintf(&buf, "lookupSessionTimeout=%v\n", options.lookupSessionTimeout)
 
-	fmt.Fprintf(&buf, "channel.outQueueSize=%v\n", options.channelOptions.OutQueueSize)
-	fmt.Fprintf(&buf, "channel.connectTimeout=%v\n", options.channelOptions.ConnectTimeout)
-	fmt.Fprintf(&buf, "channel.maxOutstandingConnects=%v\n", options.channelOptions.MaxOutstandingConnects)
-	fmt.Fprintf(&buf, "channel.maxQueuedConnects=%v\n", options.channelOptions.MaxQueuedConnects)
+	_, _ = fmt.Fprintf(&buf, "channel.outQueueSize=%v\n", options.channelOptions.OutQueueSize)
+	_, _ = fmt.Fprintf(&buf, "channel.connectTimeout=%v\n", options.channelOptions.ConnectTimeout)
+	_, _ = fmt.Fprintf(&buf, "channel.maxOutstandingConnects=%v\n", options.channelOptions.MaxOutstandingConnects)
+	_, _ = fmt.Fprintf(&buf, "channel.maxQueuedConnects=%v\n", options.channelOptions.MaxQueuedConnects)
 
 	return buf.String()
 }

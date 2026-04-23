@@ -457,10 +457,13 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 		intermediatePool.AddCert(c)
 	}
 
-	peer.NotBefore = time.Now().Add(-1 * time.Hour)
-	peer.NotAfter = time.Now().Add(+1 * time.Hour)
+	// Shallow-copy the peer cert so we can override time fields without mutating the original
+	// (which may be shared across concurrent HTTP/2 requests on the same TLS connection).
+	peerCopy := *peer
+	peerCopy.NotBefore = time.Now().Add(-1 * time.Hour)
+	peerCopy.NotAfter = time.Now().Add(+1 * time.Hour)
 
-	validChain, err := peer.Verify(x509.VerifyOptions{
+	validChain, err := peerCopy.Verify(x509.VerifyOptions{
 		Roots:         rootPool,
 		Intermediates: intermediatePool,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},

@@ -73,13 +73,11 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 // certificates are allowed by authentication policy. Due to the way certificate authentication works, we may
 // not know the authentication policy until after the signing root CA is determined.
 func (module *AuthModuleCert) verifyClientCerts(clientCerts []*x509.Certificate, roots *x509.CertPool) ([][]*x509.Certificate, error) {
-	clientCert := clientCerts[0]
-
-	//time checks are done manually based on authentication policy
-	origNotBefore := clientCert.NotBefore
-	origNotAfter := clientCert.NotAfter
-	clientCert.NotBefore = time.Now().Add(-1 * time.Hour)
-	clientCert.NotAfter = time.Now().Add(1 * time.Hour)
+	// Shallow-copy the leaf cert so we can override time fields without mutating the original
+	// (which may be shared across concurrent HTTP/2 requests on the same TLS connection).
+	leafCopy := *clientCerts[0]
+	leafCopy.NotBefore = time.Now().Add(-1 * time.Hour)
+	leafCopy.NotAfter = time.Now().Add(1 * time.Hour)
 
 	intermediates := x509.NewCertPool()
 	for _, curCert := range clientCerts[1:] {
@@ -92,12 +90,7 @@ func (module *AuthModuleCert) verifyClientCerts(clientCerts []*x509.Certificate,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	chains, err := clientCert.Verify(opts)
-
-	clientCert.NotBefore = origNotBefore
-	clientCert.NotAfter = origNotAfter
-
-	return chains, err
+	return leafCopy.Verify(opts)
 }
 
 // isCertExpirationValid returns true if the provided certificates validations period is currently valid.
