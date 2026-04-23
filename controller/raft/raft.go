@@ -188,6 +188,12 @@ func (self *Controller) IsPeerMember(id string) bool {
 	return false
 }
 
+// GetNonMemberGrace returns the configured grace period for non-member peer
+// connections. Satisfies the mesh.Env interface.
+func (self *Controller) GetNonMemberGrace() time.Duration {
+	return self.Config.NonMemberGrace
+}
+
 func (self *Controller) GetListenerHeaders() map[int32][]byte {
 	headers := map[int32][]byte{
 		mesh.ClusterIdHeader:       []byte(self.clusterId.Load()),
