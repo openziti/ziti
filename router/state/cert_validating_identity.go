@@ -94,7 +94,7 @@ func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) 
 	// contain only root CAs, but client certs may be signed by an intermediate CA that
 	// is part of the router's trust bundle.
 	if idCa := self.Identity.CA(); idCa != nil {
-		intermediatePool = idCa
+		intermediatePool = idCa.Clone()
 	}
 
 	// Also add any additional certs from the TLS peer chain as intermediates.
