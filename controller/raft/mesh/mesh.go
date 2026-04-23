@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -299,6 +300,10 @@ type Env interface {
 
 	// GetPeerAddresses returns the raft addresses of all other members of the cluster.
 	GetPeerAddresses() []string
+
+	// GetNonMemberGrace returns how long a leader allows a TLS-valid but
+	// non-member controller to stay connected before dropping it.
+	GetNonMemberGrace() time.Duration
 }
 
 // Mesh provides the networking layer to raft
@@ -344,9 +349,19 @@ func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProv
 		panic(err)
 	}
 
+	nodeId := env.GetNodeId()
+	// Invariant: nodeId.Token must equal the SPIFFE suffix extracted from our
+	// own leaf cert. The tie-break in PeerConnected compares nodeId.Token
+	// directly against peer.Id (which is extracted via ExtractSpiffeId from
+	// the peer's cert chain), so the two must be in the same form for the
+	// lexicographic comparison to be meaningful. This is normally enforced by
+	// ValidateSpiffeId at config load, but assert here so a future refactor
+	// can't silently break the tie-break.
+	assertNodeTokenMatchesSpiffeId(nodeId)
+
 	return &impl{
 		env:      env,
-		nodeId:   env.GetNodeId(),
+		nodeId:   nodeId,
 		raftAddr: raftAddr,
 		netAddr: &meshAddr{
 			network: "mesh",
@@ -491,9 +506,27 @@ func (self *impl) WaitForPeer(address string, timeout time.Duration) (*Peer, err
 	case peer := <-waiter:
 		return peer, nil
 	case <-time.After(timeout):
+		self.removeWaiter(address, waiter)
 		return nil, errors.Errorf("timeout waiting for peer at %v", address)
 	case <-self.closeNotify:
+		self.removeWaiter(address, waiter)
 		return nil, errors.New("mesh closed while waiting for peer")
+	}
+}
+
+// removeWaiter removes the given waiter channel from peerWaiters[address] so
+// that timed-out or cancelled waiters do not accumulate. No-op if the waiter
+// was already consumed and cleared by signalPeerWaiters.
+func (self *impl) removeWaiter(address string, waiter chan *Peer) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	waiters := self.peerWaiters[address]
+	self.peerWaiters[address] = slices.DeleteFunc(waiters, func(w chan *Peer) bool {
+		return w == waiter
+	})
+
+	if len(self.peerWaiters[address]) == 0 {
+		delete(self.peerWaiters, address)
 	}
 }
 
@@ -612,7 +645,7 @@ func (self *impl) DialPeer(address string, timeout time.Duration, stripSigningCe
 		return self.PeerConnected(peer, true)
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != nil {
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
 	}
 
@@ -719,7 +752,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		return markerErr
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != markerErr {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != markerErr {
 		return "", "", errors.Wrapf(err, "unable to dial %v", address)
 	}
 
@@ -736,6 +769,36 @@ func (self *impl) extractPeerId(peerAddr string, certs []*x509.Certificate) (str
 	}
 
 	return ExtractSpiffeId(certs)
+}
+
+// assertNodeTokenMatchesSpiffeId panics if the SPIFFE suffix derived from
+// nodeId's server cert chain does not match nodeId.Token. The tie-break logic
+// in PeerConnected string-compares local Token to peer.Id; both must be the
+// SPIFFE suffix form (the value returned by ExtractSpiffeId) for the
+// comparison to be correct.
+//
+// The SPIFFE URI may live on the server leaf cert (quickstart PKI) or on a
+// CA cert above it (deployments where the trust domain is set at the CA
+// level). We delegate the discovery to config.GetSpiffeIdFromIdentity, which
+// is the same helper the config loader uses, so both code paths agree on
+// what "this node's SPIFFE id" means.
+func assertNodeTokenMatchesSpiffeId(nodeId *identity.TokenId) {
+	if nodeId == nil || nodeId.Identity == nil {
+		return // e.g., test harness with stubbed identity
+	}
+	spiffeId, err := config.GetSpiffeIdFromIdentity(nodeId.Identity)
+	if err != nil || spiffeId == nil {
+		panic(fmt.Sprintf("mesh: cannot extract controller SPIFFE id from node identity: %v", err))
+	}
+	if !strings.HasPrefix(spiffeId.Path, "/controller/") {
+		panic(fmt.Sprintf("mesh: SPIFFE id %q does not have /controller/ prefix; tie-break comparison would be incorrect",
+			spiffeId.String()))
+	}
+	spiffeSuffix := strings.TrimPrefix(spiffeId.Path, "/controller/")
+	if spiffeSuffix != nodeId.Token {
+		panic(fmt.Sprintf("mesh: node token %q does not match SPIFFE suffix %q; tie-break comparison in PeerConnected would be incorrect",
+			nodeId.Token, spiffeSuffix))
+	}
 }
 
 func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
@@ -759,6 +822,12 @@ func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	if existing := self.Peers[peer.Address]; existing != nil {
 		// Deterministic tie-breaking: the node with the lexicographically lower
 		// SPIFFE ID is the "preferred dialer" whose connection wins.
+		//
+		// Both sides of this comparison must be the SPIFFE suffix form (the
+		// value returned by ExtractSpiffeId). That invariant is asserted for
+		// nodeId.Token at Mesh construction (see assertNodeTokenMatchesSpiffeId),
+		// and peer.Id is populated from ExtractSpiffeId on the peer's cert
+		// chain in DialPeer / AcceptUnderlay.
 		localId := self.nodeId.Token
 		peerId := string(peer.Id)
 
@@ -1017,10 +1086,11 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		binding.AddCloseHandler(peer)
 
 		if self.env.IsLeader() && !self.env.IsPeerMember(id) {
-			time.AfterFunc(time.Minute, func() {
+			grace := self.env.GetNonMemberGrace()
+			time.AfterFunc(grace, func() {
 				if !self.env.IsPeerMember(id) && !binding.GetChannel().IsClosed() {
-					logger := pfxlog.Logger().WithField("peer", peer.Id)
-					logger.Info("disconnecting non-member peer after 1 minute")
+					logger := pfxlog.Logger().WithField("peer", peer.Id).WithField("grace", grace)
+					logger.Info("disconnecting non-member peer after grace period")
 					if err := binding.GetChannel().Close(); err != nil {
 						log.WithError(err).Error("error closing channel to non-member peer")
 					}

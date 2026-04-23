@@ -56,6 +56,16 @@ type peerDialState struct {
 	connectedAt     time.Time
 	dialActive      atomic.Bool
 	lastPeerVersion *versions.VersionInfo // nil if hello didn't complete on last attempt
+	heapIndex       int                   // position on the retry heap; -1 if not on the heap
+}
+
+// newPeerDialState returns a zero-valued peerDialState for the given address,
+// with heapIndex initialized to -1 (not yet on the retry heap).
+func newPeerDialState(address string) *peerDialState {
+	return &peerDialState{
+		address:   address,
+		heapIndex: -1,
+	}
 }
 
 func (self *peerDialState) dialFailed(cfg *config.PeerDialerConfig) {

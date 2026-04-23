@@ -40,7 +40,12 @@ type Member struct {
 	Version         string `json:"version"`
 	Connected       bool   `json:"isConnected"`
 	PreferredLeader bool   `json:"isPreferredLeader"`
-	RaftConnCount   int    `json:"raftConnCount"`
+	// IsSelf is true when this Member entry describes the local controller.
+	// RaftConnCount is not meaningful for self (there is no local raft channel
+	// to ourselves) and will be zero in that case — consumers should consult
+	// IsSelf to distinguish "self" from "peer with zero raft conns".
+	IsSelf        bool `json:"isSelf"`
+	RaftConnCount int  `json:"raftConnCount"`
 }
 
 func (self *Controller) ListMembers() ([]*Member, error) {
@@ -64,11 +69,12 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 		connected := false
 		preferredLeader := false
 		raftConnCount := 0
+		isSelf := false
 		if string(srv.ID) == self.env.GetId().Token {
 			version = self.env.GetVersionProvider().Version()
 			connected = true
 			preferredLeader = self.Config.PreferredLeader
-			raftConnCount = -1
+			isSelf = true
 		} else if peer, exists := peers[string(srv.Address)]; exists {
 			version = peer.Version.Version
 			connected = true
@@ -84,6 +90,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Version:         version,
 			Connected:       connected,
 			PreferredLeader: preferredLeader,
+			IsSelf:          isSelf,
 			RaftConnCount:   raftConnCount,
 		})
 	}

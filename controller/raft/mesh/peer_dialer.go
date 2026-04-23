@@ -30,6 +30,25 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 )
 
+// peerDialSpreadInterval staggers initial dials across newly-discovered peers
+// so they don't all fire at t=0 on controller startup. This avoids TLS
+// rate-limiter bursts and reduces how often the cross-dial tie-break has to
+// run. 50ms gives ~300ms total spread on a 7-node cluster — modest
+// mitigation, not worth exposing as a tunable.
+const peerDialSpreadInterval = 50 * time.Millisecond
+
+// peerDialEventsBufferSize is deliberately generous: producers are membership
+// changes, per-peer connect/disconnect callbacks, and one result per
+// in-flight dial. For realistic HA cluster sizes (<= ~11 peers) queue depth
+// stays in single digits, so 64 leaves plenty of headroom without being
+// worth exposing as a tunable.
+const peerDialEventsBufferSize = 64
+
+// peerDialInspectTimeout caps how long the diagnostic inspect endpoint waits
+// for the event loop to respond before returning an empty result. Keeps
+// `ziti fabric inspect` snappy when the loop is wedged.
+const peerDialInspectTimeout = time.Second
+
 // PeerDialer proactively manages channel connections to all cluster peers.
 // It runs a single-threaded event loop that tracks per-peer dial state and
 // dispatches dial attempts with exponential backoff on failure.
@@ -51,7 +70,7 @@ func NewPeerDialer(mesh *impl, env Env, cfg *config.PeerDialerConfig, closeNotif
 		env:         env,
 		config:      cfg,
 		closeNotify: closeNotify,
-		events:      make(chan peerDialEvent, 64),
+		events: make(chan peerDialEvent, peerDialEventsBufferSize),
 		states:      make(map[string]*peerDialState),
 	}
 }
@@ -93,10 +112,10 @@ func (self *PeerDialer) Run() {
 	// Initial scan
 	self.scan()
 
-	fullScanTicker := time.NewTicker(30 * time.Second)
+	fullScanTicker := time.NewTicker(self.config.ScanInterval)
 	defer fullScanTicker.Stop()
 
-	queueCheckTicker := time.NewTicker(5 * time.Second)
+	queueCheckTicker := time.NewTicker(self.config.QueueCheckInterval)
 	defer queueCheckTicker.Stop()
 
 	for {
@@ -127,9 +146,10 @@ func (self *PeerDialer) scan() {
 	}
 
 	// Remove states for addresses that are no longer peers
-	for addr := range self.states {
+	for addr, state := range self.states {
 		if _, ok := currentAddrs[addr]; !ok {
 			log.WithField("address", addr).Info("peer removed from cluster, cleaning up dial state")
+			self.removeFromRetry(state)
 			delete(self.states, addr)
 			// Close existing connection to removed member
 			if peer := self.mesh.GetPeer(raft.ServerAddress(addr)); peer != nil {
@@ -145,7 +165,6 @@ func (self *PeerDialer) scan() {
 	}
 
 	newCount := 0
-	spreadInterval := 50 * time.Millisecond
 
 	for _, addr := range addresses {
 		// Already connected, skip
@@ -166,17 +185,33 @@ func (self *PeerDialer) scan() {
 			continue
 		}
 
-		state := &peerDialState{
-			address:  addr,
-			nextDial: time.Now().Add(time.Duration(newCount) * spreadInterval),
-		}
+		state := newPeerDialState(addr)
+		state.nextDial = time.Now().Add(time.Duration(newCount) * peerDialSpreadInterval)
 		self.states[addr] = state
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		newCount++
 	}
 
 	if newCount > 0 {
 		log.WithField("newPeers", newCount).Info("scan found peers needing dial")
+	}
+}
+
+// scheduleRetry inserts the state onto the retry heap if it is not already
+// present, or calls heap.Fix to re-order it if it is. This prevents the same
+// state from being pushed multiple times from different event handlers.
+func (self *PeerDialer) scheduleRetry(state *peerDialState) {
+	if state.heapIndex >= 0 {
+		heap.Fix(&self.retryQueue, state.heapIndex)
+		return
+	}
+	heap.Push(&self.retryQueue, state)
+}
+
+// removeFromRetry removes the state from the retry heap if it is present.
+func (self *PeerDialer) removeFromRetry(state *peerDialState) {
+	if state.heapIndex >= 0 {
+		heap.Remove(&self.retryQueue, state.heapIndex)
 	}
 }
 
@@ -205,7 +240,7 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 		}
 		// Was marked connected but now disconnected
 		state.connectionLost(self.config)
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		return
 	}
 
@@ -219,7 +254,7 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 	if self.mesh.GetPeer(raft.ServerAddress(state.address)) != nil {
 		state.dialSucceeded()
 		state.nextDial = time.Now().Add(self.config.FastFailureWindow)
-		heap.Push(&self.retryQueue, state)
+		self.scheduleRetry(state)
 		return
 	}
 
@@ -229,35 +264,42 @@ func (self *PeerDialer) evaluateDialState(state *peerDialState) {
 
 	state.status = peerStatusDialing
 
-	go self.doDial(state)
+	// Resolve all fields that depend on state here, on the event loop, before
+	// handing off to the dial goroutine. Passing pre-resolved values avoids
+	// reading state fields concurrently with event-loop writes.
+	stripSigningCert := shouldStripSigningCert(state)
+
+	go self.doDial(state, state.address, stripSigningCert)
 }
 
-func (self *PeerDialer) doDial(state *peerDialState) {
+// shouldStripSigningCert returns true if the dial should omit the new signing
+// cert header because a previous attempt failed with a peer that could not
+// accept the larger hello (pre-v2.0.0 or hello never completed).
+func shouldStripSigningCert(state *peerDialState) bool {
+	if state.dialAttempts == 0 {
+		return false
+	}
+	if state.lastPeerVersion == nil {
+		return true
+	}
+	hasMin, _ := state.lastPeerVersion.HasMinimumVersion("v2.0.0")
+	return !hasMin
+}
+
+func (self *PeerDialer) doDial(state *peerDialState, address string, stripSigningCert bool) {
 	defer state.dialActive.Store(false)
 
 	log := pfxlog.Logger().WithField("component", "peerDialer").
-		WithField("address", state.address)
-
-	// If a previous dial attempt never completed the hello (no version learned),
-	// or the peer is known to be pre-v2.0.0, strip the new signing cert header
-	// so older controllers that enforce smaller hello sizes can accept the connection.
-	stripSigningCert := false
-	if state.dialAttempts > 0 {
-		if state.lastPeerVersion == nil {
-			stripSigningCert = true
-		} else if hasMin, _ := state.lastPeerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
-			stripSigningCert = true
-		}
-	}
+		WithField("address", address)
 
 	log.Info("dialing peer")
-	peer, dialErr := self.mesh.DialPeer(state.address, 10*time.Second, stripSigningCert)
+	peer, dialErr := self.mesh.DialPeer(address, self.config.DialTimeout, stripSigningCert)
 
 	var peerVersion *versions.VersionInfo
 	if peer != nil {
 		peerVersion = peer.Version
 	}
-	self.queueEvent(&peerDialResultEvent{address: state.address, err: dialErr, peerVersion: peerVersion})
+	self.queueEvent(&peerDialResultEvent{address: address, err: dialErr, peerVersion: peerVersion})
 }
 
 // isCurrentPeer returns true if the address is currently a cluster peer.
@@ -294,7 +336,7 @@ func (self *PeerDialer) Inspect(name string) (bool, *string, error) {
 		}
 		val := string(js)
 		return true, &val, nil
-	case <-time.After(time.Second):
+	case <-time.After(peerDialInspectTimeout):
 		return true, nil, nil
 	case <-self.closeNotify:
 		return false, nil, nil

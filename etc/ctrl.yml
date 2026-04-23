@@ -41,6 +41,20 @@ cluster:
 #    # After a successful connection, the dialer will re-check the peer after this duration. If the
 #    # connection was lost within this window, it applies backoff instead of resetting the retry delay.
 #    fastFailureWindow: 30s
+#    # dialTimeout - optional, default 10s
+#    # The maximum time a single peer dial attempt is allowed to run before being abandoned.
+#    dialTimeout: 10s
+#    # scanInterval - optional, default 30s
+#    # Period of the dialer's full scan that reconciles dial state against current membership.
+#    scanInterval: 30s
+#    # queueCheckInterval - optional, default 5s
+#    # How often the dialer pops expired entries from its retry heap. Effectively the
+#    # resolution at which MinRetryInterval is honored.
+#    queueCheckInterval: 5s
+#  # nonMemberGrace - optional, default 1m
+#  # How long the leader will allow a TLS-valid but non-member controller to stay connected
+#  # to the mesh before dropping it.
+#  nonMemberGrace: 1m
 #  rateLimiter:
 #    enabled: true
 #    minSize: 5

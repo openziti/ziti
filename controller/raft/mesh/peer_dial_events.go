@@ -17,7 +17,6 @@
 package mesh
 
 import (
-	"container/heap"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -43,7 +42,7 @@ func (self *peerConnectedEvent) handle(d *PeerDialer) {
 	state.dialSucceeded()
 	// Schedule a re-check after FastFailureWindow to detect fast failures
 	state.nextDial = time.Now().Add(d.config.FastFailureWindow)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	pfxlog.Logger().WithField("address", self.address).
 		Info("peer dial state updated to connected")
@@ -63,14 +62,12 @@ func (self *peerDisconnectedEvent) handle(d *PeerDialer) {
 		if !d.isCurrentPeer(self.address) {
 			return
 		}
-		state = &peerDialState{
-			address: self.address,
-		}
+		state = newPeerDialState(self.address)
 		d.states[self.address] = state
 	}
 
 	state.connectionLost(d.config)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	log.WithField("nextDial", time.Until(state.nextDial).Round(time.Millisecond)).
 		Info("peer disconnected, queued for redial")
@@ -99,19 +96,27 @@ func (self *peerDialResultEvent) handle(d *PeerDialer) {
 	log := pfxlog.Logger().WithField("address", self.address)
 
 	if self.err != nil {
+		// If the accepted side of a concurrent cross-dial already established
+		// the peer (tie-break winner arrived first), the dial error is expected
+		// and must not regress the state out of peerStatusConnected.
+		if state.status == peerStatusConnected && d.GetPeer(self.address) != nil {
+			log.WithError(self.err).
+				Debug("dial attempt failed but peer is already connected via accepted channel, ignoring")
+			return
+		}
 		state.dialFailed(d.config)
 		log.WithError(self.err).
 			WithField("retryDelay", state.retryDelay).
 			WithField("nextDial", time.Until(state.nextDial).Round(time.Millisecond)).
 			Warn("peer dial attempt failed, will retry with backoff")
-		heap.Push(&d.retryQueue, state)
+		d.scheduleRetry(state)
 		return
 	}
 
 	state.lastPeerVersion = self.peerVersion
 	state.dialSucceeded()
 	state.nextDial = time.Now().Add(d.config.FastFailureWindow)
-	heap.Push(&d.retryQueue, state)
+	d.scheduleRetry(state)
 
 	log.Info("successfully connected to peer")
 }
