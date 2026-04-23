@@ -112,6 +112,19 @@ const (
 	DefaultCtrlDialerFastFailureWindow  = 5 * time.Second
 	DefaultCtrlDialerQueueSize          = uint32(32)
 	DefaultCtrlDialerMaxWorkers         = uint32(10)
+
+	// DefaultPeerDialer* constants define the default values for the cluster peer dialer configuration.
+	DefaultPeerDialerMinRetryInterval   = time.Second
+	DefaultPeerDialerMaxRetryInterval   = time.Minute
+	DefaultPeerDialerRetryBackoffFactor = 2.0
+	DefaultPeerDialerFastFailureWindow  = 30 * time.Second
+	DefaultPeerDialerDialTimeout        = 10 * time.Second
+	DefaultPeerDialerScanInterval       = 30 * time.Second
+	DefaultPeerDialerQueueCheckInterval = 5 * time.Second
+
+	// DefaultRaftNonMemberGrace is how long the leader allows a TLS-valid but
+	// non-member controller to stay connected before dropping it.
+	DefaultRaftNonMemberGrace = time.Minute
 )
 
 type Config struct {
@@ -302,6 +315,17 @@ func LoadConfig(path string) (*Config, error) {
 			controllerConfig.Raft.RateLimiter.WorkTimerMetric = RaftRateLimiterWorkTimerMetricName
 			controllerConfig.Raft.RateLimiter.WindowSizeMetric = RaftRateLimiterWindowSizeMetricName
 
+			controllerConfig.Raft.PeerDialer = PeerDialerConfig{
+				MinRetryInterval:   DefaultPeerDialerMinRetryInterval,
+				MaxRetryInterval:   DefaultPeerDialerMaxRetryInterval,
+				RetryBackoffFactor: DefaultPeerDialerRetryBackoffFactor,
+				FastFailureWindow:  DefaultPeerDialerFastFailureWindow,
+				DialTimeout:        DefaultPeerDialerDialTimeout,
+				ScanInterval:       DefaultPeerDialerScanInterval,
+				QueueCheckInterval: DefaultPeerDialerQueueCheckInterval,
+			}
+			controllerConfig.Raft.NonMemberGrace = DefaultRaftNonMemberGrace
+
 			if value, found := submap["dataDir"]; found {
 				controllerConfig.Raft.DataDir = value.(string)
 			} else {
@@ -429,6 +453,82 @@ func LoadConfig(path string) (*Config, error) {
 				if rateLimiterConfig, ok := value.(map[interface{}]interface{}); ok {
 					if err = controllerConfig.Raft.RateLimiter.Load(rateLimiterConfig); err != nil {
 						return nil, fmt.Errorf("error loading cluster rate limiting configuration (%w)", err)
+					}
+				}
+			}
+
+			if value, found := submap["dialer"]; found {
+				if dialerMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := dialerMap["minRetryInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.MinRetryInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.minRetryInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["maxRetryInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.MaxRetryInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.maxRetryInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["retryBackoffFactor"]; found {
+						if f, ok := v.(float64); ok {
+							controllerConfig.Raft.PeerDialer.RetryBackoffFactor = f
+						} else if i, ok := v.(int); ok {
+							controllerConfig.Raft.PeerDialer.RetryBackoffFactor = float64(i)
+						}
+					}
+					if v, found := dialerMap["fastFailureWindow"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.FastFailureWindow = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.fastFailureWindow: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["dialTimeout"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.DialTimeout = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.dialTimeout: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["scanInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.ScanInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.scanInterval: %w", err)
+							}
+						}
+					}
+					if v, found := dialerMap["queueCheckInterval"]; found {
+						if s, ok := v.(string); ok {
+							if d, err := time.ParseDuration(s); err == nil {
+								controllerConfig.Raft.PeerDialer.QueueCheckInterval = d
+							} else {
+								return nil, fmt.Errorf("invalid cluster.dialer.queueCheckInterval: %w", err)
+							}
+						}
+					}
+				}
+			}
+
+			if v, found := submap["nonMemberGrace"]; found {
+				if s, ok := v.(string); ok {
+					if d, err := time.ParseDuration(s); err == nil {
+						controllerConfig.Raft.NonMemberGrace = d
+					} else {
+						return nil, fmt.Errorf("invalid cluster.nonMemberGrace: %w", err)
 					}
 				}
 			}
@@ -748,6 +848,8 @@ func LoadConfig(path string) (*Config, error) {
 					if v, found := dialerMap["retryBackoffFactor"]; found {
 						if f, ok := v.(float64); ok {
 							controllerConfig.Ctrl.Dialer.RetryBackoffFactor = f
+						} else if i, ok := v.(int); ok {
+							controllerConfig.Ctrl.Dialer.RetryBackoffFactor = float64(i)
 						}
 					}
 					if v, found := dialerMap["fastFailureWindow"]; found {

@@ -393,6 +393,7 @@ web:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"
 
+# cluster configures HA cluster settings (HA deployments only)
 #cluster:
 #  advertiseAddress: tls:localhost:1380
 #  bindAddress: tls:0.0.0.0:1380
@@ -401,14 +402,34 @@ web:
 #  # If set to true, this controller will be preferred as the raft cluster leader. If the current leader is not a
 #  # preferred leader, it will transfer leadership to a preferred leader if one is available.
 #  #preferredLeader: true
-
-commandRateLimiter:
-    enabled: true
-    maxQueued: 100
-
-# cluster configures HA cluster settings (HA deployments only)
-#cluster:
-#  dataDir: /path/to/raft/data
+#  dialer:
+#    # minRetryInterval - optional, default 1s
+#    # The minimum time between peer dial retry attempts.
+#    minRetryInterval: 1s
+#    # maxRetryInterval - optional, default 1m
+#    # The maximum time between peer dial retry attempts.
+#    maxRetryInterval: 1m
+#    # retryBackoffFactor - optional, default 2.0
+#    # The multiplier applied to the retry interval after each failed dial attempt.
+#    retryBackoffFactor: 2.0
+#    # fastFailureWindow - optional, default 30s
+#    # After a successful connection, the dialer will re-check the peer after this duration. If the
+#    # connection was lost within this window, it applies backoff instead of resetting the retry delay.
+#    fastFailureWindow: 30s
+#    # dialTimeout - optional, default 10s
+#    # The maximum time a single peer dial attempt is allowed to run before being abandoned.
+#    dialTimeout: 10s
+#    # scanInterval - optional, default 30s
+#    # Period of the dialer's full scan that reconciles dial state against current membership.
+#    scanInterval: 30s
+#    # queueCheckInterval - optional, default 5s
+#    # How often the dialer pops expired entries from its retry heap. Effectively the
+#    # resolution at which MinRetryInterval is honored.
+#    queueCheckInterval: 5s
+#  # nonMemberGrace - optional, default 1m
+#  # How long the leader will allow a TLS-valid but non-member controller to stay connected
+#  # to the mesh before dropping it.
+#  nonMemberGrace: 1m
 #  rateLimiter:
 #    enabled: true
 #    minSize: 5
@@ -419,3 +440,7 @@ commandRateLimiter:
 #    decreaseFactor: 0.9
 #    increaseCheckInterval: 10
 #    decreaseCheckInterval: 10
+
+commandRateLimiter:
+    enabled: true
+    maxQueued: 100

@@ -35,4 +35,24 @@ type RaftConfig struct {
 	ApplyTimeout    time.Duration
 	PreferredLeader bool
 	RateLimiter     command.AdaptiveRateLimitTrackerConfig
+	PeerDialer      PeerDialerConfig
+
+	// NonMemberGrace is how long the leader will allow a TLS-valid but
+	// non-member controller to stay connected to the mesh before dropping it.
+	NonMemberGrace time.Duration
+}
+
+// PeerDialerConfig controls retry behavior for the cluster peer dialer.
+type PeerDialerConfig struct {
+	MinRetryInterval   time.Duration
+	MaxRetryInterval   time.Duration
+	RetryBackoffFactor float64
+	FastFailureWindow  time.Duration
+	DialTimeout        time.Duration
+	// ScanInterval is the period of the dialer's full scan, which reconciles
+	// dial states against current cluster membership.
+	ScanInterval time.Duration
+	// QueueCheckInterval is how often the dialer pops expired entries from its
+	// retry heap. Effectively the resolution of MinRetryInterval.
+	QueueCheckInterval time.Duration
 }
