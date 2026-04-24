@@ -58,6 +58,23 @@ type InspectionsManager struct {
 	network *Network
 }
 
+// InspectLocal runs inspect processing only on the local controller, without fanning out to
+// routers or peer controllers.
+func (self *InspectionsManager) InspectLocal(values []string) *InspectResult {
+	ctx := &inspectRequestContext{
+		network:         self.network,
+		timeout:         time.Second * 10,
+		requestedValues: values,
+		response:        InspectResult{Success: true},
+	}
+
+	for _, requested := range values {
+		ctx.InspectLocal(requested)
+	}
+
+	return &ctx.response
+}
+
 func (self *InspectionsManager) Inspect(appRegex string, values []string) *InspectResult {
 	ctx := &inspectRequestContext{
 		network:         self.network,

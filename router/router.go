@@ -66,6 +66,7 @@ import (
 	"github.com/openziti/ziti/v2/router/handler_ctrl"
 	"github.com/openziti/ziti/v2/router/handler_link"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
+	"github.com/openziti/ziti/v2/router/inspect"
 	"github.com/openziti/ziti/v2/router/interfaces"
 	"github.com/openziti/ziti/v2/router/link"
 	routerMetrics "github.com/openziti/ziti/v2/router/metrics"
@@ -122,6 +123,7 @@ type Router struct {
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
 	alertReporter       *alert.Reporter
+	inspectHandler      channel.TypedReceiveHandler
 }
 
 func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
@@ -237,6 +239,10 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
+func (self *Router) GetInspectHandler() channel.TypedReceiveHandler {
+	return self.inspectHandler
+}
+
 func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 	routerVersion, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
 
@@ -342,6 +348,8 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	if err != nil {
 		panic(err)
 	}
+
+	router.inspectHandler = inspect.NewInspectHandler(router, router.forwarder)
 
 	router.xgBindHandler = handler_xgress.NewBindHandler(router, router.createDataPlaneAdapter(),
 		handler_xgress.NewCloseHandler(router.ctrls, router.forwarder),

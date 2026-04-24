@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
 
@@ -63,6 +64,8 @@ type RouterEnv interface {
 
 	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
 	UpdateLeader(leaderId string)
+	GetXgressListeners() []xgress_router.Listener
+	GetInspectHandler() channel.TypedReceiveHandler
 }
 
 type Alerter interface {

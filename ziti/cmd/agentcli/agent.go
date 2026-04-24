@@ -10,6 +10,7 @@ import (
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/agentid"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/router"
@@ -22,6 +23,10 @@ import (
 type AgentAppId byte
 
 const (
+	// AgentAppAny targets an agent request at any ziti application, regardless
+	// of type. Use for operations that are not app-specific.
+	AgentAppAny = AgentAppId(agentid.AppIdAny)
+
 	AgentAppController = AgentAppId(controller.AgentAppId)
 	AgentAppRouter     = AgentAppId(router.AgentAppId)
 	AgentAppSdk        = AgentAppId(tunnelpkg.AgentAppId)
@@ -54,6 +59,8 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 		Aliases: []string{"c"},
 		Short:   "Interact with a ziti controller process using the IPC agent",
 	}
+
+	agentCmd.AddCommand(NewAgentInspectCmd(p))
 
 	agentCmd.AddCommand(ctrlCmd)
 	ctrlCmd.AddCommand(NewAgentSnapshotDb(p))
