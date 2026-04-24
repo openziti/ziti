@@ -98,10 +98,8 @@ const (
 	DefaultBackgroundQueueDropWhenFull = false
 	DefaultBackgroundQueueThreshold    = 50 * time.Millisecond
 
-	DefaultConnectEventsQueueSize  uint32 = 16
-	DefaultConnectEventsMinWorkers uint32 = 0
-	DefaultConnectEventsMaxWorkers uint32 = 16
-	DefaultConnectEventsIdleTime          = 30 * time.Second
+	DefaultConnectEventsQueueSize uint32 = 5
+	DefaultConnectEventsIdleTime         = 30 * time.Second
 
 	// DefaultCtrlDialer* constants define the default values for the ctrl channel dialer configuration.
 	DefaultCtrlDialerEnabled            = false
@@ -166,16 +164,13 @@ type Config struct {
 	Src map[interface{}]interface{}
 }
 
-// ConnectEventsConfig configures the goroutine pool used to process identity
-// connect/disconnect events from routers.
+// ConnectEventsConfig configures the per-router goroutine pools used to process
+// identity connect/disconnect events. Each router gets its own single-worker pool
+// to ensure events from the same router are processed in order.
 type ConnectEventsConfig struct {
-	// QueueSize is the size of the work queue feeding the pool.
+	// QueueSize is the size of the work queue for each per-router pool.
 	QueueSize uint32
-	// MinWorkers is the minimum number of pool goroutines.
-	MinWorkers uint32
-	// MaxWorkers is the maximum number of pool goroutines.
-	MaxWorkers uint32
-	// IdleTime is how long a worker can be idle before exiting.
+	// IdleTime is how long a pool worker can be idle before exiting.
 	IdleTime time.Duration
 }
 
@@ -899,10 +894,8 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	controllerConfig.ConnectEventsConfig = ConnectEventsConfig{
-		QueueSize:  DefaultConnectEventsQueueSize,
-		MinWorkers: DefaultConnectEventsMinWorkers,
-		MaxWorkers: DefaultConnectEventsMaxWorkers,
-		IdleTime:   DefaultConnectEventsIdleTime,
+		QueueSize: DefaultConnectEventsQueueSize,
+		IdleTime:  DefaultConnectEventsIdleTime,
 	}
 
 	if value, found := cfgmap["connectEvents"]; found {
@@ -910,16 +903,6 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["queueSize"]; found {
 				if intVal, ok := value.(int); ok && intVal > 0 {
 					controllerConfig.ConnectEventsConfig.QueueSize = uint32(intVal)
-				}
-			}
-			if value, found := submap["minWorkers"]; found {
-				if intVal, ok := value.(int); ok && intVal >= 0 {
-					controllerConfig.ConnectEventsConfig.MinWorkers = uint32(intVal)
-				}
-			}
-			if value, found := submap["maxWorkers"]; found {
-				if intVal, ok := value.(int); ok && intVal >= 1 {
-					controllerConfig.ConnectEventsConfig.MaxWorkers = uint32(intVal)
 				}
 			}
 			if value, found := submap["idleTime"]; found {
