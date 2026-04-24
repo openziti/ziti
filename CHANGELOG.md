@@ -60,6 +60,7 @@
     * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
 
 * github.com/openziti/ziti: [v1.6.15 -> v1.6.16](https://github.com/openziti/ziti/compare/v1.6.15...v1.6.16)
+    * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error
     * [Issue #3781](https://github.com/openziti/ziti/issues/3781) - [Backport-1.6] ER/T half-close logic is incorrect
 
 
