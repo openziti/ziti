@@ -1255,6 +1255,7 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
+    * [Issue #3830](https://github.com/openziti/ziti/issues/3830) - statemanager is holding on to edge connections and they're never getting cleared
     * [Issue #3824](https://github.com/openziti/ziti/issues/3824) - Allow calling inspect using the IPC agent on the controller, router and go tunnel
     * [Issue #2049](https://github.com/openziti/ziti/issues/2049) - The ziti agent command should have a controller connection status
     * [Issue #3784](https://github.com/openziti/ziti/issues/3784) - Fix link registry race condition on reporting links on reconnect

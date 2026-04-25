@@ -393,6 +393,11 @@ type edgeClientConn struct {
 	forwarder       env.Forwarder
 	xgCircuits      cmap.ConcurrentMap[string, *xgEdgeForwarder]
 
+	// removeApiSessionListener removes the legacy api-session-removed listener registered in completeBinding.
+	// Nil for OIDC sessions (no listener is registered for them). Must be called from HandleClose to avoid
+	// pinning the channel via the listener closure on the state manager's event emitter.
+	removeApiSessionListener state.RemoveListener
+
 	stateListener struct {
 		sync.Mutex
 		enabled      atomic.Bool
@@ -580,6 +585,9 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	self.msgMux.Close()
 	self.cleanupXgressCircuits()
 	self.listener.factory.stateManager.RouterDataModel().UnsubscribeFromIdentityChanges(self.getIdentityId(), self)
+	if self.removeApiSessionListener != nil {
+		self.removeApiSessionListener()
+	}
 }
 
 func (self *edgeClientConn) cleanupXgressCircuits() {

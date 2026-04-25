@@ -642,19 +642,27 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 	return errors.New("invalid client certificate for api session")
 }
 
-// completeBinding finalizes the connection setup after successful validation by registering
-// the connection for lifecycle management. This includes setting up cleanup handlers for
-// API session removal, adding the connection to active tracking systems, and ensuring
-// proper cleanup coordination to prevent resource leaks.
+// completeBinding finalizes the connection setup after successful validation. For legacy
+// (controller-synchronized) API sessions, it registers a listener that closes the channel
+// when the controller notifies the router of session removal. The RemoveListener is stored
+// on edgeConn so that HandleClose can unregister it; without that, the listener closure
+// pins the channel (and transitively the whole edgeClientConn graph) in the state manager's
+// event emitter for the lifetime of the router process.
+//
+// For OIDC sessions no listener is registered: the EventRemovedApiSession event is only
+// emitted from RemoveLegacyApiSession, so the callback would never fire for a JWT token.
 //
 // Parameters:
 //   - binding: The validated channel binding to complete setup for
 //   - edgeConn: The validated edgeClientConn to register for operation
 func (handler *sessionConnectionHandler) completeBinding(binding channel.Binding, edgeConn *edgeClientConn) {
-	ch := binding.GetChannel()
 	apiSession := edgeConn.apiSessionToken
+	if apiSession.IsOidc() {
+		return
+	}
 
-	_ = handler.stateManager.AddApiSessionRemovedListener(apiSession, func(_ *state.ApiSessionToken) {
+	ch := binding.GetChannel()
+	edgeConn.removeApiSessionListener = handler.stateManager.AddApiSessionRemovedListener(apiSession, func(_ *state.ApiSessionToken) {
 		if !ch.IsClosed() {
 			if err := ch.Close(); err != nil {
 				pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
