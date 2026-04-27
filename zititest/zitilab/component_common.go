@@ -67,12 +67,24 @@ func startZitiComponent(c *model.Component, zitiType string, version string, con
 	return nil
 }
 
+// canonicalizeGoAppVersion adds a leading "v" to bare semver versions
+// (e.g. "2.0.0" → "v2.0.0") for consistency with GitHub release tags.
+// Versions that don't look like semver — commit hashes, branch names, "main",
+// "HEAD" — pass through unchanged so they can be fed to git-build paths.
+//
+// Heuristic: only prefix "v" when the version contains a dot. Bare semver
+// always has dots; hashes and branches almost never do.
 func canonicalizeGoAppVersion(version *string) {
-	if version != nil {
-		if *version != "" && *version != "latest" && !strings.HasPrefix(*version, "v") {
-			*version = "v" + *version
-		}
+	if version == nil || *version == "" || *version == "latest" {
+		return
 	}
+	if strings.HasPrefix(*version, "v") {
+		return
+	}
+	if !strings.Contains(*version, ".") {
+		return
+	}
+	*version = "v" + *version
 }
 
 func GetZitiBinaryPath(c *model.Component, version string) string {

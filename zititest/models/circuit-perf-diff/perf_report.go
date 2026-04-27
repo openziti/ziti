@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -32,10 +33,21 @@ type PerfDiffReport struct {
 	// count of events per run+host (for warm-up skip)
 	eventCounts map[string]int
 
+	// runLabel -> hostId -> latest xgress-level snapshot (router/SDK process scope,
+	// not per-service). Cumulative meter Counts; takes the max value seen for each
+	// host (data-plane processes restart between baseline/candidate runs, so
+	// max-Count == events during that run).
+	xgressByHost map[string]map[string]*xgressSnapshot
+
 	// Accumulated stats across run pairs.
 	// Key order matches metricKeys for deterministic output.
 	metricKeys []string
 	allSamples map[string][]metricSample // metric key -> samples across run pairs
+
+	// Aggregate (sum-across-hosts) xgress samples; printed in a separate
+	// "Network health" block in the summary.
+	xgressKeys    []string
+	xgressSamples map[string][]metricSample
 
 	refFile *os.File
 }
@@ -51,6 +63,20 @@ type serviceSnapshot struct {
 	failures           int64
 }
 
+// xgressSnapshot holds the latest cumulative xgress-level meter counts seen for
+// a single host during a single run. Diagnostic for flow-control changes: a
+// candidate that retransmits more, sees more dup acks, or stalls more often
+// than baseline is a likely culprit for throughput regressions.
+type xgressSnapshot struct {
+	retxCount             int64
+	retxFailureCount      int64
+	dupAckCount           int64
+	droppedPayloadsCount  int64
+	dupPayloadsCount      int64 // payload_duplicates: receiver got the same payload twice
+	blockedLocalCount     int64 // blocked_by_local_window_rate.count
+	blockedRemoteCount    int64 // blocked_by_remote_window_rate.count
+}
+
 var (
 	clients  = []string{"loop-client-xg", "ert"}
 	services = []string{"throughput-xg", "latency-xg", "throughput-ert", "latency-ert"}
@@ -58,9 +84,11 @@ var (
 
 func NewPerfDiffReport() *PerfDiffReport {
 	return &PerfDiffReport{
-		runs:        map[string]map[string][]*serviceSnapshot{},
-		eventCounts: map[string]int{},
-		allSamples:  map[string][]metricSample{},
+		runs:          map[string]map[string][]*serviceSnapshot{},
+		eventCounts:   map[string]int{},
+		allSamples:    map[string][]metricSample{},
+		xgressByHost:  map[string]map[string]*xgressSnapshot{},
+		xgressSamples: map[string][]metricSample{},
 	}
 }
 
@@ -110,6 +138,7 @@ func (self *PerfDiffReport) ResetRuns() {
 	defer self.lock.Unlock()
 	self.runs = map[string]map[string][]*serviceSnapshot{}
 	self.eventCounts = map[string]int{}
+	self.xgressByHost = map[string]map[string]*xgressSnapshot{}
 }
 
 func (self *PerfDiffReport) AcceptHostMetrics(host *model.Host, event *model.MetricsEvent) {
@@ -144,6 +173,14 @@ func (self *PerfDiffReport) AcceptHostMetrics(host *model.Host, event *model.Met
 		if !ok {
 			continue
 		}
+
+		// xgress.* meters are router-/SDK-process-scoped (not per-service);
+		// route them to the per-host xgress snapshot.
+		if strings.HasPrefix(k, "xgress.") {
+			self.acceptXgressMetric(label, host.Id, k, set)
+			continue
+		}
+
 		if !strings.HasPrefix(k, "service.") {
 			continue
 		}
@@ -189,6 +226,69 @@ func (self *PerfDiffReport) AcceptHostMetrics(host *model.Host, event *model.Met
 			}
 		}
 	}
+}
+
+// acceptXgressMetric updates the per-host xgress snapshot. Caller holds the
+// PerfDiffReport lock. Counters are cumulative since process start; we keep
+// the max value seen during the run, which equals the end-of-run count
+// because the data-plane processes restart between baseline/candidate runs.
+//
+// The xgress meters arrive over the controller's event stream with only the
+// `count` field populated (no mean_rate / m1_rate), so set.AsMeter() fails on
+// the missing rate fields. We can't use set.GetInt64Metric either: JSON
+// deserialization produces float64 values and GetInt64Metric does a strict
+// int64 type assertion. Use the float getter and cast.
+func (self *PerfDiffReport) acceptXgressMetric(label, hostId, key string, set model.MetricSet) {
+	countF, ok := set.GetFloat64Metric("count")
+	if !ok {
+		return
+	}
+	count := int64(countF)
+	snap := self.getOrCreateXgressSnap(label, hostId)
+	switch key {
+	case "xgress.retransmissions":
+		if count > snap.retxCount {
+			snap.retxCount = count
+		}
+	case "xgress.retransmission_failures":
+		if count > snap.retxFailureCount {
+			snap.retxFailureCount = count
+		}
+	case "xgress.ack_duplicates":
+		if count > snap.dupAckCount {
+			snap.dupAckCount = count
+		}
+	case "xgress.dropped_payloads":
+		if count > snap.droppedPayloadsCount {
+			snap.droppedPayloadsCount = count
+		}
+	case "xgress.payload_duplicates":
+		if count > snap.dupPayloadsCount {
+			snap.dupPayloadsCount = count
+		}
+	case "xgress.blocked_by_local_window_rate":
+		if count > snap.blockedLocalCount {
+			snap.blockedLocalCount = count
+		}
+	case "xgress.blocked_by_remote_window_rate":
+		if count > snap.blockedRemoteCount {
+			snap.blockedRemoteCount = count
+		}
+	}
+}
+
+func (self *PerfDiffReport) getOrCreateXgressSnap(label, hostId string) *xgressSnapshot {
+	hosts := self.xgressByHost[label]
+	if hosts == nil {
+		hosts = map[string]*xgressSnapshot{}
+		self.xgressByHost[label] = hosts
+	}
+	snap := hosts[hostId]
+	if snap == nil {
+		snap = &xgressSnapshot{}
+		hosts[hostId] = snap
+	}
+	return snap
 }
 
 func (self *PerfDiffReport) getOrCreateSnapshot(serviceMap map[string][]*serviceSnapshot, service string) *serviceSnapshot {
@@ -253,9 +353,109 @@ func (self *PerfDiffReport) RecordComparison(pairIdx int, baselineLabel, candida
 			fmt.Fprintf(self.refFile, "\n")
 		}
 	}
+
+	self.recordXgress(baselineLabel, candidateLabel)
+
 	if self.refFile != nil {
 		fmt.Fprintf(self.refFile, "\n")
 	}
+}
+
+// recordXgress sums xgress-level meter counts across all hosts for the pair
+// and adds samples for the summary. Also writes per-host detail to the
+// reference file so an anomalous host is visible.
+func (self *PerfDiffReport) recordXgress(baselineLabel, candidateLabel string) {
+	baselineHosts := self.xgressByHost[baselineLabel]
+	candidateHosts := self.xgressByHost[candidateLabel]
+
+	var baseTotal, candTotal xgressSnapshot
+	for _, snap := range baselineHosts {
+		baseTotal.retxCount += snap.retxCount
+		baseTotal.retxFailureCount += snap.retxFailureCount
+		baseTotal.dupAckCount += snap.dupAckCount
+		baseTotal.droppedPayloadsCount += snap.droppedPayloadsCount
+		baseTotal.dupPayloadsCount += snap.dupPayloadsCount
+		baseTotal.blockedLocalCount += snap.blockedLocalCount
+		baseTotal.blockedRemoteCount += snap.blockedRemoteCount
+	}
+	for _, snap := range candidateHosts {
+		candTotal.retxCount += snap.retxCount
+		candTotal.retxFailureCount += snap.retxFailureCount
+		candTotal.dupAckCount += snap.dupAckCount
+		candTotal.droppedPayloadsCount += snap.droppedPayloadsCount
+		candTotal.dupPayloadsCount += snap.dupPayloadsCount
+		candTotal.blockedLocalCount += snap.blockedLocalCount
+		candTotal.blockedRemoteCount += snap.blockedRemoteCount
+	}
+
+	self.addXgressSample("Retransmissions", float64(baseTotal.retxCount), float64(candTotal.retxCount))
+	self.addXgressSample("Retx failures", float64(baseTotal.retxFailureCount), float64(candTotal.retxFailureCount))
+	self.addXgressSample("Duplicate acks", float64(baseTotal.dupAckCount), float64(candTotal.dupAckCount))
+	self.addXgressSample("Dropped payloads", float64(baseTotal.droppedPayloadsCount), float64(candTotal.droppedPayloadsCount))
+	self.addXgressSample("Duplicate payloads", float64(baseTotal.dupPayloadsCount), float64(candTotal.dupPayloadsCount))
+	self.addXgressSample("Blocked by local win", float64(baseTotal.blockedLocalCount), float64(candTotal.blockedLocalCount))
+	self.addXgressSample("Blocked by remote win", float64(baseTotal.blockedRemoteCount), float64(candTotal.blockedRemoteCount))
+
+	if self.refFile != nil {
+		fmt.Fprintf(self.refFile, "Network health (sum across data-plane hosts):\n")
+		writeXgressLine(self.refFile, "Retransmissions", baseTotal.retxCount, candTotal.retxCount)
+		writeXgressLine(self.refFile, "Retx failures", baseTotal.retxFailureCount, candTotal.retxFailureCount)
+		writeXgressLine(self.refFile, "Duplicate acks", baseTotal.dupAckCount, candTotal.dupAckCount)
+		writeXgressLine(self.refFile, "Dropped payloads", baseTotal.droppedPayloadsCount, candTotal.droppedPayloadsCount)
+		writeXgressLine(self.refFile, "Duplicate payloads", baseTotal.dupPayloadsCount, candTotal.dupPayloadsCount)
+		writeXgressLine(self.refFile, "Blocked by local win", baseTotal.blockedLocalCount, candTotal.blockedLocalCount)
+		writeXgressLine(self.refFile, "Blocked by remote win", baseTotal.blockedRemoteCount, candTotal.blockedRemoteCount)
+
+		// Per-host detail — sorted by host id so successive pairs line up.
+		hostIds := map[string]struct{}{}
+		for h := range baselineHosts {
+			hostIds[h] = struct{}{}
+		}
+		for h := range candidateHosts {
+			hostIds[h] = struct{}{}
+		}
+		ordered := make([]string, 0, len(hostIds))
+		for h := range hostIds {
+			ordered = append(ordered, h)
+		}
+		sort.Strings(ordered)
+		for _, h := range ordered {
+			b := baselineHosts[h]
+			c := candidateHosts[h]
+			if b == nil {
+				b = &xgressSnapshot{}
+			}
+			if c == nil {
+				c = &xgressSnapshot{}
+			}
+			fmt.Fprintf(self.refFile,
+				"    %-20s retx: b=%8d c=%8d   dupAck: b=%8d c=%8d   drop: b=%8d c=%8d   dupPld: b=%8d c=%8d   blkLocal: b=%8d c=%8d   blkRem: b=%8d c=%8d\n",
+				h,
+				b.retxCount, c.retxCount,
+				b.dupAckCount, c.dupAckCount,
+				b.droppedPayloadsCount, c.droppedPayloadsCount,
+				b.dupPayloadsCount, c.dupPayloadsCount,
+				b.blockedLocalCount, c.blockedLocalCount,
+				b.blockedRemoteCount, c.blockedRemoteCount,
+			)
+		}
+	}
+}
+
+func writeXgressLine(f *os.File, label string, base, cand int64) {
+	fmt.Fprintf(f, "  %-22s baseline: %10d  candidate: %10d  delta: %+.1f%%\n",
+		label+":", base, cand, pctDelta(float64(base), float64(cand)))
+}
+
+func (self *PerfDiffReport) addXgressSample(key string, baseline, candidate float64) {
+	if _, exists := self.xgressSamples[key]; !exists {
+		self.xgressKeys = append(self.xgressKeys, key)
+	}
+	self.xgressSamples[key] = append(self.xgressSamples[key], metricSample{
+		baseline:  baseline,
+		candidate: candidate,
+		delta:     pctDelta(baseline, candidate),
+	})
 }
 
 func (self *PerfDiffReport) addSample(key string, baseline, candidate float64) {
@@ -373,6 +573,21 @@ func (self *PerfDiffReport) EmitSummary(baselineLabel, candidateLabel string, el
 			avgDelta, minDelta, maxDelta, stddev, better, len(samples), betterPct)
 	}
 	fmt.Println()
+
+	if len(self.xgressKeys) > 0 {
+		fmt.Println("Network health (sum across data-plane hosts; lower is better):")
+		for _, key := range self.xgressKeys {
+			samples := self.xgressSamples[key]
+			// lowerIsBetter=true: fewer retx / dup-acks is better.
+			avgBase, avgCand, avgDelta, minDelta, maxDelta, stddev, better, _ := computeStats(samples, true)
+			fmt.Printf("    %-18s avg baseline: %12.0f  avg candidate: %12.0f\n",
+				key+":", avgBase, avgCand)
+			betterPct := float64(better) / float64(len(samples)) * 100
+			fmt.Printf("      avg delta: %+6.1f%%  min: %+6.1f%%  max: %+6.1f%%  stddev: %5.1f%%  better: %d/%d (%.0f%%)\n",
+				avgDelta, minDelta, maxDelta, stddev, better, len(samples), betterPct)
+		}
+		fmt.Println()
+	}
 }
 
 func computeStats(samples []metricSample, lowerIsBetter bool) (avgBase, avgCand, avgDelta, minDelta, maxDelta, stddev float64, better, worse int) {

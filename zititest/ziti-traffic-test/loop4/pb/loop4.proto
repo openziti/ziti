@@ -5,9 +5,12 @@ option go_package = "github.com/openziti/ziti/zititest/v2/ziti-test/subcmd/loop4
 
 enum ContentType {
   ZeroContentType = 0;
-  RunScenarioRequestType = 1;
-  RunScenarioResultType = 2;
-  RequestDiagnostic = 3;
+  // Values 1-5 are reserved by channel/v4 (Ping=1, Result=2, Latency=3,
+  // LatencyResponse=4, Heartbeat=5). User content types start at 1000 to
+  // match the convention used by ctrl_pb / edge_client_pb / edge_ctrl_pb.
+  RunScenarioRequestType = 1000;
+  RunScenarioResultType = 1001;
+  RequestDiagnostic = 1002;
 }
 
 enum HeaderType {

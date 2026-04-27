@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
@@ -35,10 +33,9 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
-	"github.com/sirupsen/logrus"
 )
 
-var BaselineVersion = "v2.0.0-pre3"
+var BaselineVersion = "e68ee8d6f3ff7de241"
 
 //go:embed configs
 var configResource embed.FS
@@ -151,6 +148,7 @@ var m = &model.Model{
 			default:
 				return fmt.Errorf("unknown testMode %q, expected: all, throughput, or latency", testMode)
 			}
+			pfxlog.Logger().Infof("testMode=%q", testMode)
 			return nil
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
@@ -222,6 +220,8 @@ var m = &model.Model{
 			m.AddActionF("stageBaselineTrafficTest", func(run model.Run) error {
 				return stageBaselineTrafficTest(run, BaselineVersion)
 			})
+
+			registerNetemActions(m)
 
 			return nil
 		}),
@@ -320,7 +320,12 @@ var m = &model.Model{
 				"loop-host-xg": {
 					Components: model.Components{
 						"loop-host-xg": {
-							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host", "data-plane"}},
+							// sim-services-client grants dial access to the metrics
+							// service so this listener can push its SDK xgress
+							// metrics into fablab via the same channel the sim
+							// clients use. Without it, the listener's xgress
+							// state (drops, blocked-window, retx) is invisible.
+							Scope: model.Scope{Tags: model.Tags{"loop-host-xg", "sdk-app", "host", "sim-services-host", "sim-services-client", "data-plane"}},
 							Type: &zitilab.Loop4SimType{
 								ConfigSource: "loop-host-xg.yml.tmpl",
 								Mode:         zitilab.Loop4Listener,
@@ -423,18 +428,25 @@ var m = &model.Model{
 	},
 }
 
+// stageBaselineTrafficTest builds ziti-traffic-test from a tagged release of
+// the openziti/ziti repository (matching BaselineVersion) and stages it as
+// ziti-traffic-test-<version>. The build runs in a temp dir and the result is
+// cached in the kit's bin dir. Override the source repo with the
+// ZITI_TRAFFIC_TEST_REPO_URL env var (a local filesystem path is acceptable).
 func stageBaselineTrafficTest(run model.Run, version string) error {
-	return run.DoOnce("install.ziti-traffic-test-"+version, func() error {
-		srcName := "ziti-traffic-test-" + version
-		src := filepath.Join(os.Getenv("GOPATH"), "bin", srcName)
-		dst := filepath.Join(run.GetBinDir(), srcName)
-		logrus.Infof("staging baseline traffic test: [%s] => [%s]", src, dst)
-		return util.CopyFile(src, dst)
-	})
+	ctrls := run.GetModel().SelectComponents(".ctrl")
+	if len(ctrls) == 0 {
+		return fmt.Errorf("no controller components found")
+	}
+	return stageziti.StageZitiTrafficTestOnce(run, ctrls[0], version, "")
 }
 
+// stageBaselineZiti stages the ziti multi-tool binary as ziti-<version>. When
+// BaselineVersion is a semver tag (e.g. v2.0.0-pre11) StageZitiOnce downloads
+// the prebuilt release; otherwise (commit hash, branch name, "main") it builds
+// from source by cloning the ziti repo. Override the source repo with the
+// ZITI_TRAFFIC_TEST_REPO_URL env var (a local filesystem path is acceptable).
 func stageBaselineZiti(run model.Run, version string) error {
-	// StageZitiOnce with version downloads the released binary as ziti-{version}
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	if len(ctrls) == 0 {
 		return fmt.Errorf("no controller components found")
@@ -527,6 +539,12 @@ func restartDataPlane(run model.Run) error {
 	return nil
 }
 
+// maxConsecutivePairFailures is how many pairs may fail in a row before we
+// give up and exit. A single failed pair (e.g., transient SSH dropout during
+// binary swap) gets logged and skipped — we'd rather lose one data point
+// than abort an 8-hour test halfway through.
+const maxConsecutivePairFailures = 5
+
 func runFullComparison(run model.Run) error {
 	log := pfxlog.Logger()
 
@@ -542,69 +560,119 @@ func runFullComparison(run model.Run) error {
 	// First pair starts with activateBaseline (saves candidate copies and activates baseline).
 	// Subsequent pairs use swapToBaseline/swapToCandidate which just copy the saved binaries.
 	firstPair := true
+	consecutiveFailures := 0
+	totalSkipped := 0
 
 	for pairIdx := 1; time.Since(start) < targetDuration; pairIdx++ {
-		log.Infof("=== Run Pair #%d (elapsed: %s) ===", pairIdx, time.Since(start).Truncate(time.Second))
+		log.Infof("=== Run Pair #%d (elapsed: %s, skipped: %d) ===",
+			pairIdx, time.Since(start).Truncate(time.Second), totalSkipped)
 
-		// === Baseline run ===
-		log.Info("--- Starting baseline run ---")
-		if firstPair {
-			if err := run.GetModel().Exec(run, "stopDataPlane", "activateBaseline", "startDataPlane"); err != nil {
-				return fmt.Errorf("pair %d: failed to activate baseline: %w", pairIdx, err)
+		err := runOnePair(run, pairIdx, firstPair, baselineLabel, candidateLabel, start)
+		// firstPair is consumed on first attempt regardless of success — the
+		// initial activateBaseline+startDataPlane only ever needs to run once.
+		firstPair = false
+
+		if err != nil {
+			consecutiveFailures++
+			totalSkipped++
+			log.WithError(err).Warnf("pair %d failed (consecutive failures: %d/%d); attempting recovery and skipping",
+				pairIdx, consecutiveFailures, maxConsecutivePairFailures)
+
+			// Idempotent recovery so the next pair starts from a clean state:
+			// stop collecting metrics, reset accumulated samples for this pair,
+			// best-effort stop of the data plane.
+			perfReport.StopCollecting()
+			perfReport.ResetRuns()
+			if recoverErr := run.GetModel().Exec(run, "stopDataPlane"); recoverErr != nil {
+				log.WithError(recoverErr).Warn("recovery stopDataPlane also failed; continuing anyway")
 			}
-			firstPair = false
-		} else {
-			if err := run.GetModel().Exec(run, "stopDataPlane"); err != nil {
-				return fmt.Errorf("pair %d: failed to stop data plane: %w", pairIdx, err)
+			// Brief breather before the next pair tries; gives transient
+			// network/SSH issues a chance to clear.
+			time.Sleep(15 * time.Second)
+
+			if consecutiveFailures >= maxConsecutivePairFailures {
+				return fmt.Errorf("aborting: %d consecutive pair failures (last: %w)",
+					consecutiveFailures, err)
 			}
-			if err := swapToBaseline(run, BaselineVersion); err != nil {
-				return fmt.Errorf("pair %d: failed to swap to baseline: %w", pairIdx, err)
-			}
+			continue
 		}
 
-		time.Sleep(5 * time.Second)
-
-		perfReport.SetRunLabel(baselineLabel)
-		metricsDumper.SetRunLabel(baselineLabel)
-		if err := run.GetModel().Exec(run, "enableMetrics"); err != nil {
-			return fmt.Errorf("pair %d: failed to enable metrics for baseline: %w", pairIdx, err)
-		}
-		if err := run.GetModel().Exec(run, "runSimScenario"); err != nil {
-			return fmt.Errorf("pair %d: baseline scenario failed: %w", pairIdx, err)
-		}
-		log.Info("draining final metrics...")
-		time.Sleep(7 * time.Second)
-		perfReport.StopCollecting()
-		log.Info("--- Baseline run complete ---")
-
-		// === Candidate run ===
-		log.Info("--- Swapping to candidate ---")
-		if err := run.GetModel().Exec(run, "stopDataPlane", "swapToCandidate"); err != nil {
-			return fmt.Errorf("pair %d: failed to swap to candidate: %w", pairIdx, err)
-		}
-
-		log.Info("--- Starting candidate run ---")
-		perfReport.SetRunLabel(candidateLabel)
-		metricsDumper.SetRunLabel(candidateLabel)
-		if err := run.GetModel().Exec(run, "enableMetrics"); err != nil {
-			return fmt.Errorf("pair %d: failed to enable metrics for candidate: %w", pairIdx, err)
-		}
-		if err := run.GetModel().Exec(run, "runSimScenario"); err != nil {
-			return fmt.Errorf("pair %d: candidate scenario failed: %w", pairIdx, err)
-		}
-		log.Info("draining final metrics...")
-		time.Sleep(7 * time.Second)
-		perfReport.StopCollecting()
-		log.Info("--- Candidate run complete ---")
-
-		// Record comparison for this pair, emit running summary, and reset for next
-		perfReport.RecordComparison(pairIdx, baselineLabel, candidateLabel)
-		perfReport.EmitSummary(baselineLabel, candidateLabel, time.Since(start))
-		perfReport.ResetRuns()
+		consecutiveFailures = 0
 	}
 
 	metricsDumper.Close()
+	if totalSkipped > 0 {
+		log.Warnf("test complete: %d pair(s) skipped due to transient failures", totalSkipped)
+	}
+	return nil
+}
 
+// runOnePair executes a single baseline+candidate pair and records its
+// comparison. Any error returned is per-pair: the caller may skip and
+// continue. State changes that are visible to subsequent pairs (firstPair,
+// metric dumpers' file rotation) are managed by the caller.
+func runOnePair(
+	run model.Run,
+	pairIdx int,
+	firstPair bool,
+	baselineLabel, candidateLabel string,
+	start time.Time,
+) error {
+	log := pfxlog.Logger()
+	// === Baseline run ===
+	log.Info("--- Starting baseline run ---")
+	if firstPair {
+		if err := run.GetModel().Exec(run, "stopDataPlane", "activateBaseline", "startDataPlane"); err != nil {
+			return fmt.Errorf("failed to activate baseline: %w", err)
+		}
+	} else {
+		if err := run.GetModel().Exec(run, "stopDataPlane"); err != nil {
+			return fmt.Errorf("failed to stop data plane: %w", err)
+		}
+		if err := swapToBaseline(run, BaselineVersion); err != nil {
+			return fmt.Errorf("failed to swap to baseline: %w", err)
+		}
+	}
+
+	time.Sleep(5 * time.Second)
+
+	perfReport.SetRunLabel(baselineLabel)
+	metricsDumper.SetRunLabel(baselineLabel)
+	if err := run.GetModel().Exec(run, "enableMetrics"); err != nil {
+		return fmt.Errorf("failed to enable metrics for baseline: %w", err)
+	}
+	if err := run.GetModel().Exec(run, "runSimScenario"); err != nil {
+		return fmt.Errorf("baseline scenario failed: %w", err)
+	}
+	log.Info("draining final metrics...")
+	time.Sleep(7 * time.Second)
+	perfReport.StopCollecting()
+	log.Info("--- Baseline run complete ---")
+
+	// === Candidate run ===
+	log.Info("--- Swapping to candidate ---")
+	if err := run.GetModel().Exec(run, "stopDataPlane", "swapToCandidate"); err != nil {
+		return fmt.Errorf("failed to swap to candidate: %w", err)
+	}
+
+	log.Info("--- Starting candidate run ---")
+	perfReport.SetRunLabel(candidateLabel)
+	metricsDumper.SetRunLabel(candidateLabel)
+	if err := run.GetModel().Exec(run, "enableMetrics"); err != nil {
+		return fmt.Errorf("failed to enable metrics for candidate: %w", err)
+	}
+	if err := run.GetModel().Exec(run, "runSimScenario"); err != nil {
+		return fmt.Errorf("candidate scenario failed: %w", err)
+	}
+	log.Info("draining final metrics...")
+	time.Sleep(7 * time.Second)
+	perfReport.StopCollecting()
+	log.Info("--- Candidate run complete ---")
+
+	// Record comparison for this pair, emit running summary, and reset for next.
+	perfReport.RecordComparison(pairIdx, baselineLabel, candidateLabel)
+	perfReport.EmitSummary(baselineLabel, candidateLabel, time.Since(start))
+	perfReport.ResetRuns()
 	return nil
 }
 

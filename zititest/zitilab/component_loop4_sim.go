@@ -54,6 +54,12 @@ type Loop4SimType struct {
 	ConfigName     string
 	ConfigSource   string
 	Mode           Loop4Mode
+	// Version, when set, is treated as a git ref (tag, branch, or commit SHA)
+	// of the openziti/ziti repository. The fablab run will clone the repo into
+	// a temp dir, check out that ref, and build ziti-traffic-test from source
+	// before staging. Empty preserves the legacy behavior (use a pre-built
+	// binary from LocalPath / ZITI_TRAFFIC_TEST_PATH / PATH).
+	Version string
 }
 
 func (self *Loop4SimType) Label() string {
@@ -61,7 +67,10 @@ func (self *Loop4SimType) Label() string {
 }
 
 func (self *Loop4SimType) GetVersion() string {
-	return "local"
+	if self.Version == "" {
+		return "local"
+	}
+	return self.Version
 }
 
 func (self *Loop4SimType) Dump() any {
@@ -70,6 +79,7 @@ func (self *Loop4SimType) Dump() any {
 		"local_path":    self.LocalPath,
 		"config_source": self.ConfigSource,
 		"mode":          self.Mode.String(),
+		"version":       self.GetVersion(),
 	}
 }
 
@@ -85,7 +95,7 @@ func (self *Loop4SimType) StageFiles(r model.Run, c *model.Component) error {
 		return err
 	}
 
-	return stageziti.StageLocalOnce(r, "ziti-traffic-test", c, self.LocalPath)
+	return stageziti.StageZitiTrafficTestOnce(r, c, self.Version, self.LocalPath)
 }
 
 func (self *Loop4SimType) GetConfigName(c *model.Component) string {
@@ -117,7 +127,7 @@ func (self *Loop4SimType) IsRunning(_ model.Run, c *model.Component) (bool, erro
 func (self *Loop4SimType) Start(_ model.Run, c *model.Component) error {
 	user := c.GetHost().GetSshUser()
 
-	binaryPath := getBinaryPath(c, "ziti-traffic-test", "")
+	binaryPath := getBinaryPath(c, "ziti-traffic-test", self.Version)
 	logsPath := fmt.Sprintf("/home/%s/logs/%s.log", user, c.Id)
 	configPath := self.GetConfigPath(c)
 

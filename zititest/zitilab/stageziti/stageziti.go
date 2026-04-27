@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/openziti/fablab/kernel/model"
@@ -13,6 +14,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
+// zitiReleaseVersionRe matches semver-style release tags (e.g. v2.0.0,
+// v2.0.0-pre11). Anything else — bare commit hashes, branch names, "main",
+// "HEAD" — is treated as a git ref and built from source.
+var zitiReleaseVersionRe = regexp.MustCompile(`^v\d+\.\d+\.\d+([-+][0-9A-Za-z.\-]+)?$`)
 
 func StageZitiOnce(run model.Run, component *model.Component, version string, source string) error {
 	op := "install.ziti-"
@@ -68,6 +74,14 @@ func StageZitiEdgeTunnelOnce(run model.Run, component *model.Component, version 
 
 func StageZiti(run model.Run, component *model.Component, version string, source string) error {
 	return StageExecutable(run, "ziti", component, version, source, func() error {
+		// Release-tagged versions download a prebuilt binary from GitHub
+		// (fast). Anything else (commit hash, branch name) gets built from
+		// source via git clone + go build. Override the source repo with
+		// ZITI_TRAFFIC_TEST_REPO_URL (a local path is fine).
+		if version != "" && !zitiReleaseVersionRe.MatchString(version) {
+			target := filepath.Join(run.GetBinDir(), "ziti-"+version)
+			return buildZitiFromGit(version, target)
+		}
 		return getziti.InstallZiti(version, "linux", "amd64", run.GetBinDir(), false)
 	})
 }
@@ -81,6 +95,44 @@ func StageZrok(run model.Run, component *model.Component, version string, source
 func StageCaddy(run model.Run, component *model.Component, version string, source string) error {
 	return StageExecutable(run, "caddy", component, version, source, func() error {
 		return getziti.InstallCaddy(version, "linux", "amd64", run.GetBinDir(), false)
+	})
+}
+
+// StageZitiTrafficTestOnce stages ziti-traffic-test onto the fablab nodes.
+// version="" preserves the legacy behavior (use a pre-built binary from
+// `source`, the *_PATH env var, or PATH); a non-empty version is treated as a
+// git ref (tag, branch, or commit SHA) and built from source by cloning the
+// ziti repo into a temp dir.
+//
+// Caching: the resulting binary is named ziti-traffic-test-<version>. If a file
+// of that name already exists in the kit's bin dir from a prior run, the build
+// is skipped. For moving refs (branches, re-pointed tags) delete the cached
+// file to force a rebuild.
+func StageZitiTrafficTestOnce(run model.Run, component *model.Component, version string, source string) error {
+	op := "install.ziti-traffic-test-"
+	if version == "" {
+		op += "local"
+	} else {
+		op += version
+	}
+	return run.DoOnce(op, func() error {
+		return StageZitiTrafficTest(run, component, version, source)
+	})
+}
+
+// StageZitiTrafficTest performs the staging unconditionally. Prefer
+// StageZitiTrafficTestOnce when called from per-component StageFiles to avoid
+// redundant builds across components on the same run.
+func StageZitiTrafficTest(run model.Run, component *model.Component, version string, source string) error {
+	if version == "" {
+		// Legacy local-only path: error if no pre-built binary is available.
+		return StageExecutable(run, "ziti-traffic-test", component, "", source, func() error {
+			return fmt.Errorf("unable to fetch ziti-traffic-test, as it is a local-only application")
+		})
+	}
+	target := filepath.Join(run.GetBinDir(), "ziti-traffic-test-"+version)
+	return StageExecutable(run, "ziti-traffic-test", component, version, source, func() error {
+		return buildZitiTrafficTestFromGit(version, target)
 	})
 }
 

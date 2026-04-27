@@ -103,31 +103,78 @@ func (self *SimServices) CollectSimMetrics(run model.Run, service string) error 
 
 	self.model = run.GetModel()
 
+	// Validate the context can listen at startup so callers see a synchronous
+	// error if something is fundamentally wrong (bad identity, no service,
+	// etc.). The supervisor goroutine handles transient mid-run failures.
 	context, err := self.GetZitiContext(run)
 	if err != nil {
 		return err
 	}
-
 	listener, err := context.Listen(service)
 	if err != nil {
 		return err
 	}
-
 	self.listener = listener
 
-	go func() {
-		pfxlog.Logger().Info("ziti client metrics listener started")
+	go self.superviseMetricsListener(run, service, listener)
+	return nil
+}
+
+// superviseMetricsListener owns the listener Accept loop and re-establishes
+// the listener if it dies (e.g. SDK channel closed by a transient network
+// dropout). Without this, a single Accept error left the simController
+// permanently unable to receive metric pushes for the rest of the test run.
+//
+// Recovery uses exponential backoff (capped) on consecutive listener-create
+// failures, but resets to the base delay as soon as we have a working
+// listener.
+func (self *SimServices) superviseMetricsListener(run model.Run, service string, initialListener net.Listener) {
+	log := pfxlog.Logger().WithField("service", service)
+	log.Info("ziti client metrics listener started")
+
+	listener := initialListener
+	const baseBackoff = time.Second
+	const maxBackoff = 30 * time.Second
+	backoff := baseBackoff
+
+	for {
+		// Accept loop for the current listener.
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				pfxlog.Logger().WithError(err).Info("metrics listener closed, returning")
-				return
+				log.WithError(err).Warn("metrics listener accept failed; will re-listen")
+				_ = listener.Close()
+				break
 			}
 			go self.HandleMetricsConn(conn)
 		}
-	}()
 
-	return nil
+		// Re-establish. Loop until we succeed or the run is shutting down.
+		for {
+			time.Sleep(backoff)
+			if backoff < maxBackoff {
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+			}
+			ctx, err := self.GetZitiContext(run)
+			if err != nil {
+				log.WithError(err).Warn("metrics listener: failed to get ziti context, retrying")
+				continue
+			}
+			newListener, err := ctx.Listen(service)
+			if err != nil {
+				log.WithError(err).Warn("metrics listener: failed to relisten, retrying")
+				continue
+			}
+			listener = newListener
+			self.listener = newListener
+			backoff = baseBackoff
+			log.Info("metrics listener re-established after failure")
+			break
+		}
+	}
 }
 
 func (self *SimServices) CollectSimMetricStage(service string) model.Stage {
