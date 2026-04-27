@@ -54,9 +54,39 @@ func NewHttpChangeCtx(r *http.Request) *change.Context {
 	return ctx
 }
 
+// TokenState carries per-request token state through the OIDC context. It is created at the
+// start of each OIDC HTTP request (see provider.go) and is shared between the zitadel library
+// callbacks and our server method overrides.
+//
+// The zitadel library's token creation flow works in two phases:
+//  1. Storage callbacks (CreateAccessToken / CreateAccessAndRefreshTokens) build the claim data
+//     and store it on AccessClaims / RefreshClaims.
+//  2. Library functions (CreateJWT, CreateIDToken) read back those claims via
+//     GetPrivateClaimsFromScopes and SetUserinfoFromRequest to produce the final JWTs.
+//
+// TokenState bridges these phases. It also carries CSR data submitted at the token endpoint
+// through to createAccessToken (where the signing happens), and carries the resulting
+// certificate PEM back out to the server method override (where it is added to the JSON
+// response).
 type TokenState struct {
-	AccessClaims  *common.AccessClaims
+	// AccessClaims holds the custom claims produced by createAccessToken. Read by
+	// getPrivateClaims to populate the access token JWT.
+	AccessClaims *common.AccessClaims
+
+	// RefreshClaims holds the refresh token claims produced alongside the access token.
 	RefreshClaims *common.RefreshClaims
+
+	// CsrPem holds an optional CSR submitted as a form parameter on the token endpoint
+	// (refresh or token exchange). Read by createAccessToken to sign and produce a
+	// session-bound certificate. For the initial code exchange path, the CSR is carried
+	// on the AuthRequest instead.
+	CsrPem string
+
+	// SessionCertPem holds the PEM certificate chain produced by signing a CSR. Set by
+	// createAccessToken and read by the server method overrides (CodeExchange, RefreshToken,
+	// TokenExchange) to include as a top-level "session_cert" field in the token endpoint
+	// JSON response.
+	SessionCertPem string
 }
 
 func TokenStateFromContext(ctx context.Context) (*TokenState, error) {

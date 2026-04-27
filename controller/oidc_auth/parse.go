@@ -37,6 +37,7 @@ type TotpRequestBody struct {
 type OidcUpdbCreds struct {
 	rest_model.Authenticate
 	AuthRequestBody
+	CsrPem string `json:"csrPem"`
 }
 
 func (u *OidcUpdbCreds) Translate(in string, paths ...string) (string, bool) {

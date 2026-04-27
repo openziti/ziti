@@ -43,6 +43,7 @@ func Test_OIDC_Auto_Enable(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(version)
 		ctx.Req.Contains(version.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
+		ctx.Req.Contains(version.Capabilities, "OIDC_AUTH_WITH_CSR")
 		ctx.Req.Contains(version.APIVersions, "edge-oidc")
 	})
 
@@ -142,6 +143,7 @@ func Test_OIDC_Auto_Binding_Disabled(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(version)
 		ctx.Req.NotContains(version.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
+		ctx.Req.NotContains(version.Capabilities, "OIDC_AUTH_WITH_CSR")
 		ctx.Req.NotContains(version.APIVersions, "edge-oidc")
 	})
 

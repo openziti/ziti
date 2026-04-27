@@ -60,6 +60,9 @@ type openZitiEndpoints struct {
 // helper functions re-wrap storage errors with empty descriptions, discarding
 // the error_description that storage set. The overrides call storage directly
 // and pass errors through so that WriteError serializes the original description.
+//
+// It also overrides CodeExchange, RefreshToken, and TokenExchange to support
+// CSR submission and cert-binding verification.
 type server struct {
 	*op.LegacyServer
 }
@@ -70,6 +73,20 @@ func newServer(provider op.OpenIDProvider, endpoints op.Endpoints) *server {
 	return &server{
 		LegacyServer: op.NewLegacyServer(provider, endpoints),
 	}
+}
+
+// accessTokenResponseWithCert extends the standard OIDC access token response
+// with a session certificate PEM returned from CSR signing.
+type accessTokenResponseWithCert struct {
+	*oidc.AccessTokenResponse
+	SessionCert string `json:"session_cert,omitempty"`
+}
+
+// tokenExchangeResponseWithCert extends the standard OIDC token exchange response
+// with a session certificate PEM returned from CSR signing.
+type tokenExchangeResponseWithCert struct {
+	*oidc.TokenExchangeResponse
+	SessionCert string `json:"session_cert,omitempty"`
 }
 
 // Discovery returns the OpenID Provider Configuration with OpenZiti-specific endpoint
@@ -138,11 +155,45 @@ func (s *server) VerifyClient(ctx context.Context, r *op.Request[op.ClientCreden
 	return client, nil
 }
 
+// CodeExchange handles authorization code exchange. It overrides
+// LegacyServer.CodeExchange to return a session certificate PEM when a CSR
+// was submitted during the OIDC login flow.
+func (s *server) CodeExchange(ctx context.Context, r *op.ClientRequest[oidc.AccessTokenRequest]) (*op.Response, error) {
+	authReq, err := op.AuthRequestByCode(ctx, s.Provider().Storage(), r.Data.Code)
+	if err != nil {
+		return nil, err
+	}
+	if r.Client.AuthMethod() == oidc.AuthMethodNone || r.Data.CodeVerifier != "" {
+		if err = op.AuthorizeCodeChallenge(r.Data.CodeVerifier, authReq.GetCodeChallenge()); err != nil {
+			return nil, err
+		}
+	}
+	if r.Data.RedirectURI != authReq.GetRedirectURI() {
+		return nil, oidc.ErrInvalidGrant().WithDescription("redirect_uri does not correspond")
+	}
+
+	resp, err := op.CreateTokenResponse(ctx, authReq, r.Client, s.Provider(), true, r.Data.Code, "")
+	if err != nil {
+		return nil, err
+	}
+
+	ts, _ := TokenStateFromContext(ctx)
+	if ts != nil && ts.SessionCertPem != "" {
+		return op.NewResponse(&accessTokenResponseWithCert{
+			AccessTokenResponse: resp,
+			SessionCert:         ts.SessionCertPem,
+		}), nil
+	}
+
+	return op.NewResponse(resp), nil
+}
+
 // RefreshToken handles refresh token requests. It overrides
-// LegacyServer.RefreshToken to call storage.TokenRequestByRefreshToken
-// directly instead of through the library's RefreshTokenRequestByRefreshToken
-// helper, which re-wraps errors in a new oidc.ErrInvalidGrant with an empty
-// description.
+// LegacyServer.RefreshToken to:
+//   - call storage.TokenRequestByRefreshToken directly (preserving error descriptions)
+//   - verify cert binding against the refresh token's certificate fingerprints
+//   - accept an optional CSR for cert rotation
+//   - return a session certificate PEM when a CSR was signed
 func (s *server) RefreshToken(ctx context.Context, r *op.ClientRequest[oidc.RefreshTokenRequest]) (*op.Response, error) {
 	if !s.Provider().GrantTypeRefreshTokenSupported() {
 		return nil, oidc.ErrInvalidRequest().WithDescription("grant_type refresh_token not supported")
@@ -161,9 +212,85 @@ func (s *server) RefreshToken(ctx context.Context, r *op.ClientRequest[oidc.Refr
 		return nil, err
 	}
 
+	// Cert-binding verification: the TLS peer cert must match the token's cert fingerprints
+	// or SPIFFE ID. This prevents use of stolen refresh tokens.
+	if refreshReq, ok := request.(*RefreshTokenRequest); ok {
+		httpReq, _ := HttpRequestFromContext(ctx)
+		leafCert := tlsLeafCert(httpReq)
+
+		if err := verifyCertBinding(leafCert, refreshReq.ApiSessionId, refreshReq.Subject, refreshReq.CertFingerprints); err != nil {
+			return nil, err
+		}
+	}
+
+	// Accept optional CSR for cert rotation
+	ts, _ := TokenStateFromContext(ctx)
+	if ts != nil {
+		if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
+			ts.CsrPem = csrPem
+		}
+	}
+
 	resp, err := op.CreateTokenResponse(ctx, request, r.Client, s.Provider(), true, "", r.Data.RefreshToken)
 	if err != nil {
 		return nil, err
+	}
+
+	if ts != nil && ts.SessionCertPem != "" {
+		return op.NewResponse(&accessTokenResponseWithCert{
+			AccessTokenResponse: resp,
+			SessionCert:         ts.SessionCertPem,
+		}), nil
+	}
+
+	return op.NewResponse(resp), nil
+}
+
+// TokenExchange handles token exchange requests. It overrides
+// LegacyServer.TokenExchange to:
+//   - verify cert binding against the subject token's certificate fingerprints
+//   - accept an optional CSR for cert rotation
+//   - return a session certificate PEM when a CSR was signed
+func (s *server) TokenExchange(ctx context.Context, r *op.ClientRequest[oidc.TokenExchangeRequest]) (*op.Response, error) {
+	if !s.Provider().GrantTypeTokenExchangeSupported() {
+		return nil, oidc.ErrUnsupportedGrantType().WithDescription("token exchange not supported")
+	}
+
+	// Parse the subject token to verify cert binding before proceeding
+	storage := s.Provider().Storage().(*HybridStorage)
+	_, subjectClaims, parseErr := storage.parseAccessToken(r.Data.SubjectToken)
+	if parseErr == nil && subjectClaims != nil {
+		httpReq, _ := HttpRequestFromContext(ctx)
+		leafCert := tlsLeafCert(httpReq)
+
+		if err := verifyCertBinding(leafCert, subjectClaims.ApiSessionId, subjectClaims.Subject, subjectClaims.CertFingerprints); err != nil {
+			return nil, err
+		}
+	}
+
+	// Accept optional CSR for cert rotation
+	ts, _ := TokenStateFromContext(ctx)
+	if ts != nil {
+		if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
+			ts.CsrPem = csrPem
+		}
+	}
+
+	tokenExchangeRequest, err := op.CreateTokenExchangeRequest(ctx, r.Data, r.Client, s.Provider())
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := op.CreateTokenExchangeResponse(ctx, tokenExchangeRequest, r.Client, s.Provider())
+	if err != nil {
+		return nil, err
+	}
+
+	if ts != nil && ts.SessionCertPem != "" {
+		return op.NewResponse(&tokenExchangeResponseWithCert{
+			TokenExchangeResponse: resp,
+			SessionCert:           ts.SessionCertPem,
+		}), nil
 	}
 
 	return op.NewResponse(resp), nil

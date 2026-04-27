@@ -357,6 +357,10 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 	authRequest.EnvInfo = credentials.EnvInfo
 	authRequest.AuthTime = time.Now()
 
+	if credentials.CsrPem != "" {
+		authRequest.CsrPem = credentials.CsrPem
+	}
+
 	if authRequest.SecondaryExtJwtSigner != nil {
 
 		secondaryJwtResult, secondaryJwtErr := l.store.ProcessSecondaryJwts(r, authRequest, securityTokenCtx)

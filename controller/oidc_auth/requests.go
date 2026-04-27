@@ -56,6 +56,7 @@ type AuthRequest struct {
 	IsCertKeyRollRequested  bool
 	AuthenticatorId         string
 	ImproperClientCertChain bool
+	CsrPem                  string
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest
@@ -185,14 +186,13 @@ func (a *AuthRequest) Done() bool {
 	return a.HasFullAuth()
 }
 
-func (a *AuthRequest) GetCertFingerprints() []string {
-	var prints []string
-
-	for _, cert := range a.PeerCerts {
-		prints = append(prints, fmt.Sprintf("%x", sha1.Sum(cert.Raw)))
+// GetCertFingerprint returns the SHA-1 fingerprint of the leaf peer certificate (index 0).
+// Returns an empty string if no peer certificates are present.
+func (a *AuthRequest) GetCertFingerprint() string {
+	if len(a.PeerCerts) == 0 {
+		return ""
 	}
-
-	return prints
+	return fmt.Sprintf("%x", sha1.Sum(a.PeerCerts[0].Raw))
 }
 
 func (a *AuthRequest) NeedsTotp() bool {

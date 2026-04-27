@@ -79,11 +79,14 @@ type ApiSessionEvent struct {
 
 	// The IP address from which the identity to connected to require the api session.
 	IpAddress string `json:"ip_address"`
+
+	// CertGenerated is true when a certificate was generated from a CSR during authentication.
+	CertGenerated bool `json:"cert_generate"`
 }
 
 func (event *ApiSessionEvent) String() string {
-	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v identityId=%v ipAddress=%v",
-		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.IdentityId, event.IpAddress)
+	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v identityId=%v ipAddress=%v certGenerated=%v",
+		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.IdentityId, event.IpAddress, event.CertGenerated)
 }
 
 type ApiSessionEventHandler interface {

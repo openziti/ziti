@@ -100,6 +100,26 @@ func Test_Map(t *testing.T) {
 		req.Equal(dst.ConfigTypes[1], configType2)
 	})
 
+	t.Run("csrPem field is populated", func(t *testing.T) {
+		const csrPem = "-----BEGIN CERTIFICATE REQUEST-----\nfake\n-----END CERTIFICATE REQUEST-----"
+
+		srcMap := map[string][]string{
+			"id":       {"req-1"},
+			"csrPem":   {csrPem},
+			"username": {"admin"},
+			"password": {"pass"},
+		}
+
+		dst := &OidcUpdbCreds{}
+		err := MapToStruct(srcMap, dst)
+
+		req := require.New(t)
+		req.NoError(err)
+		req.Equal("req-1", dst.AuthRequestId)
+		req.Equal(csrPem, dst.CsrPem)
+		req.Equal("admin", string(dst.Username))
+	})
+
 	// test - operator
 	// test nil translator
 	// test bad field names in translator

@@ -72,6 +72,7 @@ type CustomClaims struct {
 	ApplicationId           string              `json:"z_aid,omitempty"`
 	Type                    string              `json:"z_t"`
 	CertFingerprints        []string            `json:"z_cfs"`
+	AuthCertFingerprint     string              `json:"z_acf,omitempty"`
 	Scopes                  []string            `json:"scopes,omitempty"`
 	SdkInfo                 *rest_model.SdkInfo `json:"z_sdk"`
 	EnvInfo                 *rest_model.EnvInfo `json:"z_env"`
