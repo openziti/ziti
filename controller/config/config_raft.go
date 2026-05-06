@@ -9,7 +9,6 @@ import (
 )
 
 type RaftConfig struct {
-	Recover               bool
 	DataDir               string
 	RestartSelf           bool
 	AdvertiseAddress      transport.Address

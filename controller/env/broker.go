@@ -101,6 +101,13 @@ func (broker *Broker) GetRouterSyncStrategy() RouterSyncStrategy {
 func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	if clusterEvent.EventType == event.ClusterLeadershipGained {
 		broker.ae.Managers.Controller.UpdateControllerState(clusterEvent.Peers, false)
+		// Reconcile the controllers entity table against the current raft
+		// configuration on every leadership transition so rows for peers no
+		// longer in the cluster get pruned. This makes the entity table
+		// self-healing for any membership change a non-leader missed (e.g. a
+		// 'cluster remove' applied while another node was leader, or an
+		// offline recovery via 'ziti ops cluster recover').
+		broker.ae.Managers.Controller.DeleteRemovedPeers(clusterEvent.Peers)
 	} else if clusterEvent.EventType == event.ClusterHasLeader && !broker.ae.HostController.IsRaftLeader() {
 		//gained a leader and it isn't us
 		broker.ae.Managers.Controller.UpdateSelfOnNewLeader()
