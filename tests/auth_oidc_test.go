@@ -320,6 +320,9 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
+				// IdentityManager.UpdateSdkEnvInfo queues the identity patch as a background task,
+				// so we have to wait for the queue to drain before reading the identity back.
+				time.Sleep(time.Second)
 				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
 
 				ctx.Req.NoError(err)
