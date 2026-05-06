@@ -45,6 +45,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.addSystemAuthPolicies(step)
 	m.createConfigType(step, interfacesConfigTypeV1)
 	m.createConfigType(step, proxyConfigTypeV1)
+	m.createConfigType(step, routerLinkV1ConfigType)
 
 	return CurrentDbVersion
 }
@@ -689,6 +690,186 @@ var proxyConfigTypeV1 = &ConfigType{
 			},
 			"binding": map[string]interface{}{
 				"type": "string",
+			},
+		},
+	},
+}
+
+var RouterLinkV1TypeId = "router.link.v1"
+
+// routerLinkV1ConfigType is the built-in config type that describes a router's
+// link subsystem (listeners, dialers, heartbeats, queue sizes). Targets routers.
+var routerLinkV1ConfigType = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{
+		Id: RouterLinkV1TypeId,
+	},
+	Name:   RouterLinkV1TypeId,
+	Target: ConfigTypeTargetRouter,
+	Schema: map[string]interface{}{
+		"$id":                  "https://netfoundry.io/schemas/router.link.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"definitions": map[string]interface{}{
+			"duration": map[string]interface{}{
+				"type":    "string",
+				"pattern": "^[0-9]+(h|m|s|ms)$",
+			},
+			"groups": map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"type": "string"},
+					map[string]interface{}{
+						"type":  "array",
+						"items": map[string]interface{}{"type": "string"},
+					},
+				},
+			},
+			"channelOptions": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"outQueueSize": map[string]interface{}{
+						"type":    "integer",
+						"minimum": 1,
+					},
+					"maxQueuedConnects": map[string]interface{}{
+						"type":    "integer",
+						"minimum": 1,
+						"maximum": 5000,
+					},
+					"maxOutstandingConnects": map[string]interface{}{
+						"type":    "integer",
+						"minimum": 1,
+						"maximum": 1000,
+					},
+					"connectTimeout": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"writeTimeout": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+				},
+			},
+			"backoff": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"retryBackoffFactor": map[string]interface{}{
+						"type":    "number",
+						"minimum": 1,
+						"maximum": 100,
+					},
+					"minRetryInterval": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"maxRetryInterval": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+				},
+			},
+			"listener": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required":             []interface{}{"bind"},
+				"properties": map[string]interface{}{
+					"binding": map[string]interface{}{
+						"type":      "string",
+						"minLength": 1,
+						"default":   "transport",
+					},
+					"bind": map[string]interface{}{
+						"type":        "string",
+						"minLength":   1,
+						"description": "transport address e.g. tls:0.0.0.0:6262",
+					},
+					"advertise": map[string]interface{}{
+						"type": "string",
+					},
+					"bindInterface": map[string]interface{}{
+						"type": "string",
+					},
+					"groups": map[string]interface{}{
+						"$ref": "#/definitions/groups",
+					},
+					"options": map[string]interface{}{
+						"$ref": "#/definitions/channelOptions",
+					},
+				},
+			},
+			"dialer": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"binding": map[string]interface{}{
+						"type":      "string",
+						"minLength": 1,
+						"default":   "transport",
+					},
+					"maxDefaultConnections": map[string]interface{}{
+						"type":    "integer",
+						"minimum": 1,
+						"maximum": 100,
+					},
+					"maxAckConnections": map[string]interface{}{
+						"type":    "integer",
+						"minimum": 0,
+						"maximum": 100,
+					},
+					"startupDelay": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"bindInterface": map[string]interface{}{
+						"type":        "string",
+						"description": "interface name (matches listener.bindInterface)",
+					},
+					"groups": map[string]interface{}{
+						"$ref": "#/definitions/groups",
+					},
+					"healthyDialBackoff": map[string]interface{}{
+						"$ref": "#/definitions/backoff",
+					},
+					"unhealthyDialBackoff": map[string]interface{}{
+						"$ref": "#/definitions/backoff",
+					},
+					"options": map[string]interface{}{
+						"$ref": "#/definitions/channelOptions",
+					},
+				},
+			},
+			"heartbeats": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"sendInterval": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"checkInterval": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"closeUnresponsiveTimeout": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+				},
+			},
+		},
+		"properties": map[string]interface{}{
+			"listeners": map[string]interface{}{
+				"type":  "array",
+				"items": map[string]interface{}{"$ref": "#/definitions/listener"},
+			},
+			"dialers": map[string]interface{}{
+				"type":  "array",
+				"items": map[string]interface{}{"$ref": "#/definitions/dialer"},
+			},
+			"heartbeats": map[string]interface{}{
+				"$ref": "#/definitions/heartbeats",
+			},
+			"payloadSenderQueueSize": map[string]interface{}{
+				"type":    "integer",
+				"minimum": 1,
+			},
+			"ackSenderQueueSize": map[string]interface{}{
+				"type":    "integer",
+				"minimum": 1,
 			},
 		},
 	},
