@@ -215,6 +215,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.collapseEdgeServices(step)               // migration 47
 	}
 
+	if step.CurrentVersion < 47 {
+		m.createOrUpdateConfigType(step, routerLinkV1ConfigType)
+	}
+
 	// current version
 	if step.CurrentVersion <= CurrentDbVersion {
 		return CurrentDbVersion
