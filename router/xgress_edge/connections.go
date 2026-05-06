@@ -603,14 +603,28 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 
 	edgeConn.apiSessionToken = apiSession
 
+	leafCert := certificates[0]
 	now := time.Now()
-	certExpired := now.Before(certificates[0].NotBefore) || now.After(certificates[0].NotAfter)
+	certExpired := now.Before(leafCert.NotBefore) || now.After(leafCert.NotAfter)
 
-	// For first-party certs, check SPIFFE ID to determine match type.
-	if handler.stateManager.IsFirstPartyCert(certificates[0]) {
-		match := handler.validateBySpiffeId(apiSession, certificates[0])
+	// Fingerprint match against z_cfs is the direct binding. The controller pre-validated
+	// chain provenance for any fingerprint it bound, so a hit accepts any cert origin. For
+	// OIDC sessions, expired certs are allowed only if the auth policy permits it (z_cae);
+	// legacy sessions skip expiry enforcement entirely.
+	if handler.validateByFingerprint(apiSession, fingerprint) {
+		if certExpired && apiSession.Claims != nil && !apiSession.Claims.CertAllowExpired {
+			_ = ch.Close()
+			return errors.New("client certificate is expired and auth policy does not allow expired certs")
+		}
+		return nil
+	}
 
-		switch match {
+	// SPIFFE fallback for first-party certs. Accepts when z_cfs is empty (non-cert OIDC
+	// session presenting an enrollment or session cert) and when z_cfs is populated but
+	// fingerprint match failed (cert rotation past the bound list). Third-party certs and
+	// first-party certs without SPIFFE fall through to rejection.
+	if handler.stateManager.IsFirstPartyCert(leafCert) {
+		switch handler.validateBySpiffeId(apiSession, leafCert) {
 		case spiffehlp.SpiffeMatchApiSession:
 			// Full API session cert. Must not be expired.
 			if certExpired {
@@ -620,22 +634,12 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 			return nil
 
 		case spiffehlp.SpiffeMatchIdentity:
-			// Identity enrollment cert. SPIFFE confirms the cert belongs to this identity,
-			// but we still need to verify the fingerprint is in CertFingerprints below.
-			break
+			if certExpired && apiSession.Claims != nil && !apiSession.Claims.CertAllowExpired {
+				_ = ch.Close()
+				return errors.New("client certificate is expired and auth policy does not allow expired certs")
+			}
+			return nil
 		}
-	}
-
-	// Fingerprint matching against CertFingerprints. Required for identity-only SPIFFE
-	// matches, third-party certs, and certs without SPIFFE IDs.
-	// For OIDC sessions, expired certs are allowed only if the auth policy permits it
-	// (z_cae claim). Legacy sessions skip expiry checks entirely.
-	if handler.validateByFingerprint(apiSession, fingerprint) {
-		if certExpired && apiSession.Claims != nil && !apiSession.Claims.CertAllowExpired {
-			_ = ch.Close()
-			return errors.New("client certificate is expired and auth policy does not allow expired certs")
-		}
-		return nil
 	}
 
 	_ = ch.Close()
