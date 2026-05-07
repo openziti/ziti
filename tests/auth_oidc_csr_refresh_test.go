@@ -430,6 +430,24 @@ func Test_OIDC_CSR_Refresh(t *testing.T) {
 			"refresh without cert should fail when z_cfs is present")
 	})
 
+	t.Run("refresh without cert and with CSR fails when z_cfs present", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		if len(origClaims.CertFingerprints) == 0 {
+			t.Skip("z_cfs is empty, cert binding not enforced")
+		}
+
+		csrPem, _, genErr := generateCsrPem()
+		ctx.Req.NoError(genErr)
+
+		_, _, sessionCertPem, statusCode := doRefreshRequest(
+			ctx, refreshToken, clientID, nil, csrPem, true,
+		)
+		ctx.Req.NotEqual(http.StatusOK, statusCode,
+			"a CSR must not bypass the cert binding check on a PoP session")
+		ctx.Req.Empty(sessionCertPem)
+	})
+
 	t.Run("refresh without CSR preserves z_cfs", func(t *testing.T) {
 		ctx.NextTest(t)
 
@@ -910,55 +928,37 @@ func Test_OIDC_CSR_SpiffeFallback(t *testing.T) {
 		_ = origClaims
 	})
 
-	t.Run("transition from no z_cfs to z_cfs via CSR on refresh", func(t *testing.T) {
+	t.Run("refresh with CSR is ignored in bearer mode", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		csrPem, csrKey, genErr := generateCsrPem()
+		// Bearer-mode sessions (z_cfs empty) cannot transition into PoP via a CSR
+		// submitted at the token endpoint. The CSR is silently ignored so that a
+		// stolen refresh token cannot establish PoP under an attacker-supplied
+		// keypair and lock the legitimate user out of their own session.
+		csrPem, _, genErr := generateCsrPem()
 		ctx.Req.NoError(genErr)
 
 		newAccess, newRefresh, sessionCertPem, statusCode := doRefreshRequest(
 			ctx, tokens.RefreshToken, clientID, nil, csrPem, true,
 		)
-		ctx.Req.Equal(http.StatusOK, statusCode,
-			"refresh with CSR should succeed and transition to z_cfs")
+		ctx.Req.Equal(http.StatusOK, statusCode, "bearer-mode refresh must succeed")
 		ctx.Req.NotEmpty(newAccess)
+		ctx.Req.Empty(sessionCertPem,
+			"no session_cert should be returned when CSR is ignored")
 
 		newClaims, parseErr := parseAccessClaims(newAccess)
 		ctx.Req.NoError(parseErr)
-		ctx.Req.NotEmpty(newClaims.CertFingerprints,
-			"z_cfs should be populated after submitting CSR on refresh")
+		ctx.Req.Empty(newClaims.CertFingerprints,
+			"z_cfs must remain empty; CSR submitted in bearer mode must not establish PoP")
 
-		if sessionCertPem != "" {
-			fp := fingerprintFromPem(sessionCertPem)
-			ctx.Req.Contains(newClaims.CertFingerprints, fp,
-				"z_cfs should contain the session cert fingerprint")
-		}
-
-		t.Run("after transition, refresh without cert fails", func(t *testing.T) {
+		t.Run("session remains bearer mode after the CSR-bearing refresh", func(t *testing.T) {
 			ctx.NextTest(t)
 
 			_, _, _, statusCode := doRefreshRequest(
 				ctx, newRefresh, clientID, nil, "", false,
 			)
-			ctx.Req.NotEqual(http.StatusOK, statusCode,
-				"refresh without cert should fail after transitioning to z_cfs")
-		})
-
-		t.Run("after transition, refresh with session cert succeeds", func(t *testing.T) {
-			ctx.NextTest(t)
-
-			if sessionCertPem == "" {
-				t.Skip("no session cert returned")
-			}
-
-			sessionTlsCerts, buildErr := buildTlsCertFromPem(sessionCertPem, csrKey)
-			ctx.Req.NoError(buildErr)
-
-			_, _, _, statusCode := doRefreshRequest(
-				ctx, newRefresh, clientID, sessionTlsCerts, "", false,
-			)
 			ctx.Req.Equal(http.StatusOK, statusCode,
-				"refresh with session cert should succeed after transition to z_cfs")
+				"a follow-up refresh without a cert must still succeed")
 		})
 	})
 }

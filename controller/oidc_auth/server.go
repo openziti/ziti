@@ -212,24 +212,29 @@ func (s *server) RefreshToken(ctx context.Context, r *op.ClientRequest[oidc.Refr
 		return nil, err
 	}
 
-	// Cert-binding verification: the TLS peer cert must match the token's cert fingerprints
-	// or SPIFFE ID. This prevents use of stolen refresh tokens.
 	refreshReq, ok := request.(*RefreshTokenRequest)
 	if !ok {
 		return nil, oidc.ErrServerError().WithDescription("unexpected refresh token request type")
 	}
-	httpReq, _ := HttpRequestFromContext(ctx)
-	leafCert := tlsLeafCert(httpReq)
 
-	if err := verifyCertBinding(leafCert, refreshReq.ApiSessionId, refreshReq.Subject, refreshReq.CertFingerprints); err != nil {
-		return nil, err
-	}
-
-	// Accept optional CSR for cert rotation
+	// Cert binding and CSR rotation only apply when the session is in PoP mode
+	// (z_cfs non-empty). A session that authenticated without a cert and never
+	// submitted a CSR at code exchange remains a bearer-token session: any TLS
+	// client cert the SDK happens to present is incidental and ignored, and a
+	// CSR submitted now is ignored.
 	ts, _ := TokenStateFromContext(ctx)
-	if ts != nil {
-		if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
-			ts.CsrPem = csrPem
+	if len(refreshReq.CertFingerprints) > 0 {
+		httpReq, _ := HttpRequestFromContext(ctx)
+		leafCert := tlsLeafCert(httpReq)
+
+		if err := verifyCertBinding(leafCert, refreshReq.ApiSessionId, refreshReq.Subject, refreshReq.CertFingerprints); err != nil {
+			return nil, err
+		}
+
+		if ts != nil {
+			if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
+				ts.CsrPem = csrPem
+			}
 		}
 	}
 
@@ -258,23 +263,27 @@ func (s *server) TokenExchange(ctx context.Context, r *op.ClientRequest[oidc.Tok
 		return nil, oidc.ErrUnsupportedGrantType().WithDescription("token exchange not supported")
 	}
 
-	// Parse the subject token to verify cert binding before proceeding
 	storage := s.Provider().Storage().(*HybridStorage)
 	_, subjectClaims, parseErr := storage.parseAccessToken(r.Data.SubjectToken)
-	if parseErr == nil && subjectClaims != nil {
+
+	// Cert binding and CSR rotation only apply when the session is in PoP mode
+	// (z_cfs non-empty). A session that authenticated without a cert and never
+	// submitted a CSR at code exchange remains a bearer-token session: any TLS
+	// client cert the SDK happens to present is incidental and ignored, and a
+	// CSR submitted now is ignored.
+	ts, _ := TokenStateFromContext(ctx)
+	if parseErr == nil && subjectClaims != nil && len(subjectClaims.CertFingerprints) > 0 {
 		httpReq, _ := HttpRequestFromContext(ctx)
 		leafCert := tlsLeafCert(httpReq)
 
 		if err := verifyCertBinding(leafCert, subjectClaims.ApiSessionId, subjectClaims.Subject, subjectClaims.CertFingerprints); err != nil {
 			return nil, err
 		}
-	}
 
-	// Accept optional CSR for cert rotation
-	ts, _ := TokenStateFromContext(ctx)
-	if ts != nil {
-		if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
-			ts.CsrPem = csrPem
+		if ts != nil {
+			if csrPem := r.Form.Get("csr_pem"); csrPem != "" {
+				ts.CsrPem = csrPem
+			}
 		}
 	}
 

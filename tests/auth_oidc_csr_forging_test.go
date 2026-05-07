@@ -40,9 +40,12 @@ func Test_OIDC_CSR_Forging(t *testing.T) {
 	_, err := managementHelper.Authenticate(adminCreds, nil)
 	ctx.Req.NoError(err)
 
-	// refreshWithCsr authenticates fresh, then performs a token refresh with the given CSR PEM.
-	// Each call gets its own tokens to avoid z_cfs binding from a previous CSR-bearing refresh
-	// preventing subsequent refreshes.
+	// Forging the CSR signing path requires a session that is already in PoP mode
+	_, certCreds, err := managementHelper.CreateAndEnrollOttIdentity(false)
+	ctx.Req.NoError(err)
+	certCreds.CaPool = ctx.ControllerCaPool()
+	authTlsCerts := certCreds.TlsCerts()
+
 	type forgingTokenResponse struct {
 		AccessToken  string `json:"access_token"`
 		TokenType    string `json:"token_type"`
@@ -55,7 +58,7 @@ func Test_OIDC_CSR_Forging(t *testing.T) {
 	refreshWithCsr := func(t *testing.T, csrPem string) (*x509.Certificate, *forgingTokenResponse, int) {
 		t.Helper()
 
-		tokens, _, authErr := clientHelper.RawOidcAuthRequest(adminCreds)
+		tokens, _, authErr := clientHelper.RawOidcAuthRequest(certCreds)
 		ctx.Req.NoError(authErr)
 		ctx.Req.NotNil(tokens)
 		ctx.Req.NotEmpty(tokens.RefreshToken)
@@ -75,7 +78,7 @@ func Test_OIDC_CSR_Forging(t *testing.T) {
 		dst["csr_pem"] = []string{csrPem}
 
 		result := &forgingTokenResponse{}
-		resp, httpErr := ctx.newAnonymousClientApiRequest().
+		resp, httpErr := ctx.newRequestWithTlsCerts(authTlsCerts).
 			SetHeader("content-type", oidc_auth.FormContentType).
 			SetMultiValueFormData(dst).
 			SetResult(result).
