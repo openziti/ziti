@@ -21,6 +21,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -55,6 +56,8 @@ type SigningOpts struct {
 
 	NotBefore *time.Time
 	NotAfter  *time.Time
+
+	Subject *pkix.Name
 }
 
 func (so *SigningOpts) Apply(c *x509.Certificate) {
@@ -69,6 +72,10 @@ func (so *SigningOpts) Apply(c *x509.Certificate) {
 
 	if so.NotAfter != nil {
 		c.NotAfter = *so.NotAfter
+	}
+
+	if so.Subject != nil {
+		c.Subject = *so.Subject
 	}
 }
 

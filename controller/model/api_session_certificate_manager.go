@@ -18,6 +18,7 @@ package model
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"net/url"
 	"time"
@@ -80,6 +81,7 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(identity *Identity, apiS
 		URIs: []*url.URL{
 			spiffeId,
 		},
+		Subject: &pkix.Name{CommonName: identity.Id},
 	})
 
 	if err != nil {

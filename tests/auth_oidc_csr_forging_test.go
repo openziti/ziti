@@ -92,21 +92,33 @@ func Test_OIDC_CSR_Forging(t *testing.T) {
 		return certs[0], result, resp.StatusCode()
 	}
 
-	t.Run("CSR subject fields are copied to issued cert", func(t *testing.T) {
+	t.Run("CSR Subject fields are not accepted", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		// NOTE: The current CSR signer (ClientSigner.SignCsr) copies the CSR Subject into the
-		// issued certificate. This is existing behavior. The test documents it rather than
-		// asserting the Subject is stripped. SANs (DNS, IP, email, URI) are the critical
-		// fields that are controlled by the signer, not the Subject.
 		csrPem := generateForgedCsrPem(t)
-		cert, _, statusCode := refreshWithCsr(t, csrPem)
+		cert, result, statusCode := refreshWithCsr(t, csrPem)
 		ctx.Req.Equal(http.StatusOK, statusCode)
 		ctx.Req.NotNil(cert)
+		ctx.Req.NotNil(result)
 
-		// The Subject is copied from the CSR (documenting existing behavior).
-		ctx.Req.Contains(cert.Subject.Organization, "Evil Corp",
-			"CSR Subject Organization is currently copied to issued cert")
+		parser := jwt.NewParser()
+		accessClaims := &common.AccessClaims{}
+		_, _, parseErr := parser.ParseUnverified(result.AccessToken, accessClaims)
+		ctx.Req.NoError(parseErr)
+		ctx.Req.NotEmpty(accessClaims.Subject)
+
+		// Subject CN must be the controller-set identity id, not anything from the CSR.
+		ctx.Req.Equal(accessClaims.Subject, cert.Subject.CommonName,
+			"issued cert Subject CN must be the identity id")
+
+		// All other Subject fields from the CSR (Organization=Evil Corp, Country=RU, etc.)
+		// must be stripped.
+		ctx.Req.Empty(cert.Subject.Organization,
+			"CSR Subject Organization must not be copied to issued cert")
+		ctx.Req.Empty(cert.Subject.Country,
+			"CSR Subject Country must not be copied to issued cert")
+		ctx.Req.Empty(cert.Subject.OrganizationalUnit,
+			"CSR Subject OrganizationalUnit must not be copied to issued cert")
 	})
 
 	t.Run("CSR SAN URIs are not in issued cert", func(t *testing.T) {
