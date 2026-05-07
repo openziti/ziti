@@ -186,8 +186,10 @@ func (a *AuthRequest) Done() bool {
 	return a.HasFullAuth()
 }
 
-// GetCertFingerprint returns the SHA-1 fingerprint of the leaf peer certificate (index 0).
-// Returns an empty string if no peer certificates are present.
+// GetCertFingerprint returns the SHA-1 fingerprint of the leaf peer certificate,
+// or an empty string if no peer certificates are present. Only the leaf is
+// returned so that z_cfs binds proof-of-possession to the auth cert and not to
+// incidental intermediates the client may have presented on the TLS chain.
 func (a *AuthRequest) GetCertFingerprint() string {
 	if len(a.PeerCerts) == 0 {
 		return ""

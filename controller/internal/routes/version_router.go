@@ -150,7 +150,7 @@ func (ir *VersionRouter) buildVersions(ae *env.AppEnv) *rest_model.Version {
 
 	if oidcEnabled {
 		v.Capabilities = append(v.Capabilities, string(rest_model.CapabilitiesOIDCAUTH))
-		v.Capabilities = append(v.Capabilities, "OIDC_AUTH_WITH_CSR")
+		v.Capabilities = append(v.Capabilities, string(rest_model.CapabilitiesOIDCAUTHWITHCSR))
 	}
 
 	if ae.HostController.IsRaftEnabled() {
@@ -164,15 +164,11 @@ func (ir *VersionRouter) Shutdown(ae *env.AppEnv) {
 	ir.versionCache.Delete(ae.InstanceId)
 }
 
-// CapabilityOidcAuthWithCsr is the capability string advertised when the controller
-// supports CSR submission during OIDC authentication for session-bound certificates.
-const CapabilityOidcAuthWithCsr = "OIDC_AUTH_WITH_CSR"
-
 func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestContext) {
 	capabilities := []rest_model.Capabilities{
 		rest_model.CapabilitiesOIDCAUTH,
 		rest_model.CapabilitiesHACONTROLLER,
-		CapabilityOidcAuthWithCsr,
+		rest_model.CapabilitiesOIDCAUTHWITHCSR,
 	}
 
 	rc.RespondWithOk(capabilities, &rest_model.Meta{})

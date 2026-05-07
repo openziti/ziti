@@ -214,13 +214,15 @@ func (s *server) RefreshToken(ctx context.Context, r *op.ClientRequest[oidc.Refr
 
 	// Cert-binding verification: the TLS peer cert must match the token's cert fingerprints
 	// or SPIFFE ID. This prevents use of stolen refresh tokens.
-	if refreshReq, ok := request.(*RefreshTokenRequest); ok {
-		httpReq, _ := HttpRequestFromContext(ctx)
-		leafCert := tlsLeafCert(httpReq)
+	refreshReq, ok := request.(*RefreshTokenRequest)
+	if !ok {
+		return nil, oidc.ErrServerError().WithDescription("unexpected refresh token request type")
+	}
+	httpReq, _ := HttpRequestFromContext(ctx)
+	leafCert := tlsLeafCert(httpReq)
 
-		if err := verifyCertBinding(leafCert, refreshReq.ApiSessionId, refreshReq.Subject, refreshReq.CertFingerprints); err != nil {
-			return nil, err
-		}
+	if err := verifyCertBinding(leafCert, refreshReq.ApiSessionId, refreshReq.Subject, refreshReq.CertFingerprints); err != nil {
+		return nil, err
 	}
 
 	// Accept optional CSR for cert rotation

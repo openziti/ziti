@@ -81,7 +81,7 @@ type ApiSessionEvent struct {
 	IpAddress string `json:"ip_address"`
 
 	// CertGenerated is true when a certificate was generated from a CSR during authentication.
-	CertGenerated bool `json:"cert_generate"`
+	CertGenerated bool `json:"cert_generated"`
 }
 
 func (event *ApiSessionEvent) String() string {

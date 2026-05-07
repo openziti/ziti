@@ -155,6 +155,7 @@ when running HA. Legacy API and service session are now deprecated and will be r
   cluster-ready. If you have scripts passing `--clustered`, remove it.
 * [Connect events pool](#connect-events-pool) - fixes a goroutine leak when routers reconnect and ensures per-router event ordering
 * [Multiple DNS upstreams](#multiple-dns-upstreams) - the tunneler can now fan out recursive queries to several upstream resolvers in parallel
+* [OIDC CSR authentication](#oidc-csr-authentication) - identities can submit a CSR during OIDC authentication to obtain a session-bound certificate for mTLS channel communication
 
 ## OIDC Discovery Endpoint Extensions
 
@@ -194,6 +195,84 @@ The field contains absolute URLs for each endpoint, derived from the issuer the 
 
 When the controller serves edge-oidc on multiple web servers, each discovery response reflects
 the issuer (and port) the client connected to.
+
+## OIDC CSR Authentication
+
+Identities that authenticate via non-certificate methods (password, external JWT) can now submit
+a CSR during OIDC authentication to obtain a session-bound certificate. This enables mTLS channel
+communication with edge routers for identities that would otherwise have no client certificate.
+
+Certificate-authenticated identities can also submit a CSR to obtain an additional session
+certificate alongside their authenticating certificate.
+
+### How It Works
+
+A CSR is submitted as part of the OIDC login credentials. The controller signs it and returns
+the certificate PEM as a `session_cert` field in the token endpoint JSON response:
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "bearer",
+  "refresh_token": "eyJ...",
+  "id_token": "eyJ...",
+  "expires_in": 1800,
+  "session_cert": "-----BEGIN CERTIFICATE-----\nMII..."
+}
+```
+
+The issued certificate contains a SPIFFE ID binding it to the identity and API session:
+```
+spiffe://{trustDomain}/identity/{identityId}/apiSession/{apiSessionId}/apiSessionCertificate/{certId}
+```
+
+### CSR Submission Points
+
+| Token Endpoint Grant Type | CSR Source                            | Use Case             |
+|---------------------------|---------------------------------------|----------------------|
+| Authorization Code        | `csrPem` field in login POST body     | Initial cert issue   |
+| Refresh Token             | `csr_pem` form parameter              | Cert rotation        |
+| Token Exchange            | `csr_pem` form parameter              | Cert rotation        |
+
+### Certificate Fingerprint Claims
+
+The access token JWT includes two related claims:
+
+- `z_cfs` (CertFingerprints): all certificate fingerprints valid for this session. Contains the
+  authenticating cert fingerprint (for cert auth) and/or the CSR-issued session cert fingerprint.
+- `z_acf` (AuthCertFingerprint): the authenticating certificate fingerprint, present only for
+  certificate-authenticated sessions.
+
+On cert rotation via refresh or token exchange, `z_cfs` is rebuilt as the auth cert fingerprint
+(if present) plus the new CSR cert fingerprint. The previous session cert fingerprint is replaced.
+
+### Certificate Binding Verification
+
+When a token carries `z_cfs`, the controller enforces certificate binding on the refresh token
+and token exchange endpoints:
+
+- If `z_cfs` is non-empty, the TLS leaf certificate must match at least one fingerprint in
+  `z_cfs`. Requests without a matching certificate are rejected.
+- If `z_cfs` is empty, the controller falls back to SPIFFE ID verification, checking whether
+  the leaf certificate's SAN URI references the correct API session.
+
+A session that starts without `z_cfs` can transition to having it by submitting a CSR during
+a refresh. Once `z_cfs` is present, it cannot be removed.
+
+### Controller Capability
+
+Controllers advertise `OIDC_AUTH_WITH_CSR` in the `/version` capabilities list when OIDC is
+enabled. SDKs can check for this capability before attempting CSR submission.
+
+### Requirements
+
+- The CSR must be a valid PEM-encoded PKCS#10 certificate request. Invalid CSRs are rejected
+  with a 400 Bad Request error in OIDC error format.
+- The controller only uses the public key from the CSR. Subject, DNS names, IP addresses,
+  email addresses, and URI SANs in the CSR are ignored.
+- Issued certificates have a one-year lifetime.
+- Only the leaf certificate fingerprint is tracked in token claims. Intermediate certificates
+  in the TLS chain are not considered.
 
 ## Connect Events Pool
 

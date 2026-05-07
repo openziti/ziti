@@ -671,7 +671,10 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		claims.AuthenticationMethodsReferences = req.GetAMR()
 		// cert backed auth should bind tokens for cert pop, avoid for auth requests that do not establish cert pop prior or during the request
 		if req.HasAmr(AuthMethodCert) {
-			claims.CustomClaims.CertFingerprints = req.GetCertFingerprints()
+			if fp := req.GetCertFingerprint(); fp != "" {
+				claims.CustomClaims.CertFingerprints = []string{fp}
+				claims.CustomClaims.AuthCertFingerprint = fp
+			}
 		}
 		claims.CustomClaims.EnvInfo = req.EnvInfo
 		claims.CustomClaims.SdkInfo = req.SdkInfo
