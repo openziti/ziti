@@ -42,10 +42,14 @@ type controllerRootCache struct {
 	inited   bool
 }
 
-// IsFirstPartyCert determines if a client certificate was issued by the internal (first-party) CA
-// by checking whether it chains to the same root CA as the controller connection. The controller
-// root CA is extracted from any ctrl channel and cached for subsequent calls.
-func (self *ManagerImpl) IsFirstPartyCert(clientCert *x509.Certificate) bool {
+// IsFirstPartyCert reports whether the leaf of peerCerts chains to a controller-trusted
+// root CA. peerCerts is a TLS peer chain with the leaf at index 0; remaining entries are
+// used as intermediates. Time validity is not checked; callers enforce expiry.
+func (self *ManagerImpl) IsFirstPartyCert(peerCerts []*x509.Certificate) bool {
+	if len(peerCerts) == 0 {
+		return false
+	}
+
 	pool := self.getControllerRootPool()
 	if pool == nil {
 		return false
@@ -53,13 +57,19 @@ func (self *ManagerImpl) IsFirstPartyCert(clientCert *x509.Certificate) bool {
 
 	// Shallow-copy the cert so we can bypass time checks without mutating the original.
 	// This determines CA origin only; expiry is enforced by the caller.
-	certCopy := *clientCert
+	certCopy := *peerCerts[0]
 	certCopy.NotBefore = time.Now().Add(-1 * time.Hour)
 	certCopy.NotAfter = time.Now().Add(1 * time.Hour)
 
+	intermediates := x509.NewCertPool()
+	for _, c := range peerCerts[1:] {
+		intermediates.AddCert(c)
+	}
+
 	opts := x509.VerifyOptions{
-		Roots:     pool,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		Roots:         pool,
+		Intermediates: intermediates,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
 	if _, err := certCopy.Verify(opts); err == nil {

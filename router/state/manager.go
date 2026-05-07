@@ -236,9 +236,10 @@ type Manager interface {
 	// certificate authorities.
 	VerifyClientCert(cert *x509.Certificate) error
 
-	// IsFirstPartyCert determines if a client certificate was issued by the internal
-	// (first-party) CA by checking whether it chains to the controller's root CA.
-	IsFirstPartyCert(cert *x509.Certificate) bool
+	// IsFirstPartyCert reports whether the leaf of peerCerts chains to a controller-trusted
+	// root CA. peerCerts is a TLS peer chain with the leaf at index 0; remaining entries are
+	// used as intermediates. Time validity is not checked; callers enforce expiry.
+	IsFirstPartyCert(peerCerts []*x509.Certificate) bool
 
 	// StartRouterModelSave begins periodic saving of the router data model to disk.
 	StartRouterModelSave(path string, duration time.Duration)

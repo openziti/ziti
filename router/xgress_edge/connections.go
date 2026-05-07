@@ -623,7 +623,7 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 	// session presenting an enrollment or session cert) and when z_cfs is populated but
 	// fingerprint match failed (cert rotation past the bound list). Third-party certs and
 	// first-party certs without SPIFFE fall through to rejection.
-	if handler.stateManager.IsFirstPartyCert(leafCert) {
+	if handler.stateManager.IsFirstPartyCert(certificates) {
 		switch handler.validateBySpiffeId(apiSession, leafCert) {
 		case spiffehlp.SpiffeMatchApiSession:
 			// Full API session cert. Must not be expired.
