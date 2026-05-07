@@ -172,7 +172,7 @@ func Test_Authenticate_OIDC_PoP(t *testing.T) {
 		_, _, err = jwt.NewParser().ParseUnverified(oidcSession.OidcTokens.AccessToken, claims)
 		ctx.Req.NoError(err)
 		ctx.Req.Contains(claims.AuthenticationMethodsReferences, oidc_auth.AuthMethodCert)
-		ctx.Req.NotEmpty(claims.CertFingerprints, "cert auth must bind tokens to the presenting cert")
+		ctx.Req.Len(claims.CertFingerprints, 1, "cert auth must bind exactly one (leaf) fingerprint into z_cfs")
 
 		t.Run("can query a protected endpoint", func(t *testing.T) {
 			ctx.NextTest(t)
@@ -203,6 +203,42 @@ func Test_Authenticate_OIDC_PoP(t *testing.T) {
 				ctx.Fail("router connection did not occur within 5 seconds")
 			}
 		})
+	})
+
+	t.Run("cert auth with junk trailing certs binds only the leaf in z_cfs", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		// Pad the cert chain with two unrelated self-signed certs at indices >0.
+		// TLS client auth uses only the leaf at index 0, so the handshake still
+		// succeeds; the junk certs are ignored as potential intermediates. The
+		// server's PeerCertificates list nevertheless contains them, which is the
+		// scenario this test exercises: z_cfs must not bind any of the trailing
+		// junk certs.
+		junk1, _ := newSelfSignedCert("junk-trailing-cert-1")
+		junk2, _ := newSelfSignedCert("junk-trailing-cert-2")
+		paddedCerts := append([]*x509.Certificate{}, certAuth.certs...)
+		paddedCerts = append(paddedCerts, junk1, junk2)
+
+		creds := edge_apis.NewCertCredentials(paddedCerts, certAuth.key)
+		creds.CaPool = ctx.ControllerCaPool()
+
+		clientContext, err := ziti.NewContext(&ziti.Config{
+			ZtAPI:       "https://" + ctx.ApiHost + EdgeClientApiPath,
+			Credentials: creds,
+		})
+		ctx.Req.NoError(err)
+		defer clientContext.Close()
+		ctx.Req.NoError(clientContext.Authenticate())
+
+		ctxImpl, ok := clientContext.(*ziti.ContextImpl)
+		ctx.Req.True(ok, "expected *ziti.ContextImpl from ziti.NewContext")
+		oidcSession, ok := ctxImpl.CtrlClt.GetCurrentApiSession().(*edge_apis.ApiSessionOidc)
+		ctx.Req.True(ok, "expected OIDC api session; SDK fell back to legacy, this test requires OIDC mode")
+		claims := &common.AccessClaims{}
+		_, _, err = jwt.NewParser().ParseUnverified(oidcSession.OidcTokens.AccessToken, claims)
+		ctx.Req.NoError(err)
+		ctx.Req.Contains(claims.AuthenticationMethodsReferences, oidc_auth.AuthMethodCert)
+		ctx.Req.Len(claims.CertFingerprints, 1, "junk trailing certs must not appear in z_cfs; only the leaf should bind")
 	})
 
 	t.Run("UPDB auth without TLS cert leaves z_cfs empty", func(t *testing.T) {
