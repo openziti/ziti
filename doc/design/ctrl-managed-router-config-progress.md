@@ -1,0 +1,1003 @@
+# Controller-Managed Router Config: MVP Implementation Plan
+
+## Context
+
+The design doc (`doc/design/ctrl-managed-router-config.md`) describes managing router configuration
+from the controller via the existing config type infrastructure. The MVP targets `router.link.v1` to
+prove the full pipeline end-to-end. This plan covers the implementation phases in dependency order.
+
+The work spans two repos:
+- `edge-api` at `/home/plorenz/work/4/edge-api` (OpenAPI spec + generated models)
+- `ziti` at `/home/plorenz/work/4/ziti` (everything else)
+
+---
+
+## Phase 1a: Add `target` field to ConfigType -- DONE
+
+**Goal**: Distinguish router config types from service config types.
+
+**Status**: Complete. Branch `config-type-target`.
+
+### What was implemented
+
+**DB store** (`controller/db/config_type_store.go`):
+- `Target *string` field on `ConfigType` struct
+- Constants `ConfigTypeTargetService` and `ConfigTypeTargetRouter`
+- Symbol, FillEntity, PersistEntity for the new field
+
+**Model** (`controller/model/config_type_model.go`):
+- `Target *string` field, wired through `toBoltEntity` and `fillFrom`
+
+**Manager** (`controller/model/config_type_manager.go`):
+- `allowedFieldsChecker` excludes `target` from updates (immutable after creation)
+- `ApplyUpdate` uses `AndFieldChecker` to enforce the whitelist
+- Marshall/Unmarshall updated for raft replication
+
+**Protobuf**:
+- `optional string target = 5` in `edge_cmd_pb.ConfigType` (raft replication)
+- `optional string target = 3` in `edge_ctrl_pb.DataState.ConfigType` (RDM)
+- `newConfigType()` in `sync_instant.go` includes `Target`
+
+**REST API** (`controller/internal/routes/config_type_api_model.go`):
+- `Target` set on create and detail response
+- Not included in update or patch (immutable)
+
+**edge-api** (`source/management/config-types.yml`):
+- `target` field on `configTypeCreate` and `configTypeDetail` (nullable string, enum: service/router)
+- Not on `configTypeUpdate` or `configTypePatch`
+
+**CLI** (`ziti/cmd/edge/`):
+- `create config-type`: `--target` flag
+- `list config-types`: `Target` column in output
+
+**Built-in config types** (`controller/db/migration_initialize.go`):
+- All 8 built-in types set to `target = "service"`
+
+**Migration** (`controller/db/migration_v45.go`):
+- Iterates all config types, sets `target = "service"` on any without a target
+- Covers built-in and user-created types
+
+**Validation**:
+- Services require configs with `target = "service"` (`edge_service_model.go`)
+- Identity service config overrides require `target = "service"` (`identity_manager.go`)
+- Nil target is rejected for both
+
+**Integration tests** (`tests/`):
+- Config type CRUD with nil, service, router, and invalid targets
+- Immutability verification on update and patch
+- Service config target validation (nil/service/router)
+- Identity service config override target validation (nil/service/router)
+
+---
+
+## Phase 1b: Add `configs` field to Router -- DONE
+
+**Goal**: Let routers reference config instances, with one-config-per-type enforcement.
+
+**Status**: Complete. Commit `d870f75` (issue #3780), with follow-ups for stricter validation
+and config-delete cleanup.
+
+### What was implemented
+
+The `Configs` field lives on the base `Router`, not on `EdgeRouter`/`TransitRouter`. This keeps
+the field reachable from the fabric router endpoints as well, and avoids having to plumb it
+through the child stores separately. EdgeRouter and TransitRouter inherit it via their embedded
+`Router` struct.
+
+**DB store** (`controller/db/router_store.go`, `config_store.go`):
+- `Configs []string` on the base `Router` struct.
+- `symbolConfigs` (FK set) on `routerStoreImpl`, with the bidirectional link collection
+  `router.configs <-> config.routers` registered in both stores' `initializeLinked()`.
+- `FillEntity` reads via `bucket.GetStringList(EntityTypeConfigs)`.
+- `PersistEntity` writes via `ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)`.
+- `configStoreImpl.DeleteById` rewrites `router.Configs` and re-`Update`s every referencing
+  router (mirroring the existing service loop) so future entity-update listeners see the
+  change.
+
+**Model** (`controller/model/router_model.go`, `edge_router_model.go`, `transit_router_model.go`):
+- `Configs []string` field on `Router`, `EdgeRouter`, `TransitRouter`.
+- Single `validateRouterConfigs(tx, env, configs, checker)` helper, called from each router
+  type's `toBoltEntityForCreate`/`toBoltEntityForUpdate`.
+- Validation is **strict**: every config must resolve to an existing config type, and that
+  type's `Target` must equal `db.ConfigTypeTargetRouter`. Unlike the edge-service path
+  (which tolerates a missing config type), routers reject the reference outright.
+- Validation is skipped when `checker` is non-nil and the `configs` field is not in the
+  field set being updated. This avoids re-loading every config and config type on unrelated
+  updates (e.g. `UpdateCtrlChanListeners`).
+- Same one-config-per-type rule as services.
+- `fillFrom` reads `Configs` from the bolt entity.
+
+**Manager** (`controller/model/router_manager.go`, `edge_router_manager.go`, `transit_router_manager.go`):
+- `EntityTypeConfigs` added to the allowed-fields whitelist for edge and transit router
+  PATCH paths.
+- Marshall/Unmarshall (raft replication) carry `Configs` through `cmd_pb.Router`,
+  `edge_cmd_pb.EdgeRouter`, and `edge_cmd_pb.TransitRouter`.
+- `RouterManager.UpdateCachedRouter` refreshes the cached router's `Configs`.
+
+**Wire formats** (`cmd.proto`, `edge_cmd.proto`, `swagger.yml`, `rest_model/router_*.go`):
+- `repeated string configs` added to `Router`, `EdgeRouter`, `TransitRouter` proto messages.
+- `configs` array added to `routerCreate`, `routerUpdate`, `routerPatch`, `routerDetail`
+  swagger schemas, and the corresponding edge-api edge-router schemas.
+
+**REST mappers** (`controller/internal/routes/{edge,fabric,router}_router_api_model.go`):
+- `Configs` populated on map-to-model and model-to-REST in all directions.
+
+**CLI** (`ziti/cmd/edge`, `ziti/cmd/fabric`):
+- `--config` repeatable flag added to `create`/`update` commands for edge, transit, and
+  fabric routers.
+
+**Integration tests** (`tests/edge_router_test.go`, `fabric_router_test.go`, `entities.go`):
+- `Test_EdgeRouterConfigs`, `Test_TransitRouterConfigs`, `Test_FabricRouterConfigs` cover
+  create/update/patch/clear with router-target configs, plus rejection of service-target
+  configs and duplicate-type configs.
+
+---
+
+## Phase 1c: Define `router.link.v1` config type and schema -- DONE
+
+**Goal**: Create the built-in `router.link.v1` config type with a JSON Schema.
+
+**Status**: Complete.
+
+### What was implemented
+
+**Type definition** (`controller/db/migration_initialize.go`):
+- `RouterLinkV1TypeId = "router.link.v1"` constant.
+- `routerLinkV1ConfigType` `var` with `Target = ConfigTypeTargetRouter` and a
+  JSON Schema covering listeners, dialers, heartbeats, queue sizes, channel
+  options, and backoff settings. `additionalProperties: false` everywhere
+  to surface typos.
+
+**Schema notes**:
+- `listener.binding` and `dialer.binding` are optional with documented default
+  `"transport"`. Phase 4b's link config handler is responsible for substituting
+  the default at apply time. JSON Schema's `default` keyword does not enforce.
+- `dialer.bindInterface` (renamed from the YAML's `dialer.bind`) for parity
+  with `listener.bindInterface`. The YAML loader still reads `bind`; the
+  config handler in Phase 4b will reconcile.
+- `channel.Options` is modeled prescriptively. When `openziti/channel` adds or
+  changes a field on the loaded shape, the schema must be updated alongside it
+  and the version bumped if the change is breaking.
+- `connectTimeout` is a duration string in the schema, not the milliseconds
+  integer that `channel.LoadOptions` reads (`connectTimeoutMs`). Phase 4b
+  converts before calling `LoadOptions`.
+- Dropped from the v1 schema: `listener.costTags` (unused in practice) and
+  `dialer.split` (only consulted as fallback when the peer doesn't support
+  multi-underlay; v1 routers always use multi-underlay).
+
+**Registration**:
+- `migration_initialize.go` `initialize()` calls
+  `m.createConfigType(step, routerLinkV1ConfigType)` for fresh installs.
+- `migrations.go` `CurrentDbVersion` bumped 45 -> 46. New v46 step calls
+  `m.createOrUpdateConfigType(step, routerLinkV1ConfigType)` for upgrades.
+
+**Tests** (`controller/db/config_type_store_test.go` `Test_RouterLinkV1Builtin`):
+- Asserts existence, identity, and `Target = router`.
+- Compiles the schema via `gojsonschema` (catches malformed `$ref`/`oneOf`
+  before any user can hit them via config-create).
+- Validates a representative known-good payload.
+- Verifies binding is optional on both listener and dialer.
+- Confirms rejection of: extra top-level key, listener missing `bind`,
+  `maxDefaultConnections: 0`, `retryBackoffFactor: 0.5`, `groups` of wrong
+  type, `channelOptions.maxQueuedConnects: 0`.
+
+---
+
+## Phase 2a: Add Router to DataState protobuf -- DONE
+
+**Goal**: Let the RDM carry router entity events.
+
+**Status**: Complete.
+
+### What was implemented
+
+In `common/pb/edge_ctrl_pb/edge_ctrl.proto`:
+
+- New nested message:
+  ```protobuf
+  message Router {
+    string id = 1;
+    string name = 2;
+    string fingerprint = 3;
+    repeated string configs = 4;
+    bool disabled = 5;
+  }
+  ```
+- New `Router router = 19` entry in the `Event.Model` oneof.
+- Regenerated `edge_ctrl.pb.go` via `go generate`.
+
+### Field choices
+
+Minimal set — only fields with a clear router-side consumer:
+
+- `id`, `fingerprint`, `configs` — link-peer validation and config dispatch.
+- `name` — diagnostics.
+- `disabled` — lets a router refuse incoming links from peers the controller
+  has marked disabled (router-side enforcement is a later phase, but the wire
+  field is in place now to avoid a future proto bump).
+
+Deliberately omitted: `cost`, `noTraversal`. Routers consume those today via
+`PeerStateChanges`; nothing in the RDM consumer path needs them. Additive-only
+within v1 means we can add later if a use case appears.
+
+### What this phase did NOT touch
+
+- `RouterDataModelSender.Handle()` — the type-switch silently ignores the new
+  `Router` variant until Phase 2b wires it.
+- Router-side RDM `Handle` — same; Phase 3c wires it.
+- No new tests — there's no logic to exercise yet, just a wire format.
+
+---
+
+## Phase 2b: Populate routers in RouterDataModelSender -- DONE
+
+**Goal**: Load routers into the RDM and generate events on changes.
+
+**Status**: Complete.
+
+### What was implemented
+
+**`common/router_data_model_sender.go`**:
+- New `Routers cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Router]` field,
+  initialized in `NewRouterDataModelSender`.
+- `Handle()` switch extended with a `*edge_ctrl_pb.DataState_Event_Router` case
+  dispatching to `HandleRouterEvent`.
+- `HandleRouterEvent` mirrors the simple Set/Remove pattern of
+  `HandleConfigEvent` / `HandleServiceEvent`.
+- `getDataStateAlreadyLocked` (full snapshot builder) emits a `Create` event
+  for every cached router.
+- `GetEntityCounts` adds a `routers` entry.
+
+**`controller/sync_strats/sync_instant.go`**:
+- New `routerHandler` constraint registered on the **base `Router` store** in
+  `Initialize()`. Subscribing on the parent (not edge/transit child stores)
+  catches changes from any of the three router APIs because child store
+  persistence delegates to the parent's `PersistEntity`. Verified by the
+  existing `routerStore.AddEntityIdListener` use in `router_manager.go`.
+- `RouterCreate` / `RouterUpdate` / `RouterDelete` thin dispatchers to
+  `handleRouter(index, action, entity)`.
+- `handleRouter` builds the `DataState_Event_Router` and calls
+  `addToChangeSet`.
+- `BuildRouters(index, tx, rdm)` iterates the `Router` store and dispatches a
+  `Create` event per row into the RDM. Wired into `BuildAll` after
+  `BuildPostureChecks`.
+- `newRouter(*db.Router)` and `newRouterById(tx, ae, id)` helpers, mirroring
+  `newService`/`newServiceById`. `newRouter` flattens the `*string`
+  fingerprint to `""` for un-enrolled routers (the wire field is non-nullable
+  `string`).
+
+### Field projection notes
+
+- `db.Router.Fingerprint` is `*string` on the controller side but flat
+  `string` on the wire. Empty string represents "not yet enrolled". Phase 3c's
+  link-peer validation logic will need to handle this case (skip vs reject).
+- `cost` and `noTraversal` are not propagated (per the field-set decision in
+  Phase 2a).
+
+### Validation
+
+`ValidateRouters` follows the existing pattern of `ValidateServices` /
+`ValidateConfigs`, comparing the controller's `Router` store rows against
+`rdm.Routers` on name, fingerprint, disabled, and configs. To accommodate
+`RouterStore` (which embeds `boltz.EntityStore[*Router]` directly rather than
+the local `db.Store[E]`), the `ValidateType` generic was relaxed from
+`db.Store[T]` to `boltz.EntityStore[T]`. The helper only uses `IterateIds` /
+`LoadById`, both of which live on `boltz.EntityStore`, so the looser bound
+is strictly more permissive — every existing caller still satisfies it.
+
+### Deliberately not in this phase
+
+- **No filtering**. `Router` events broadcast to all connected routers, and
+  the snapshot includes all routers. Per-router config filtering is Phase 2c.
+- **No router-side handling**. Phase 3c teaches the router-side RDM to apply
+  `Router` events.
+
+---
+
+## Phase 2c: Per-router config filtering in RouterSender -- DONE
+
+**Goal**: Each router only receives its own configs, but all router entities.
+
+**Status**: Complete.
+
+The motivation is blast radius (per-router secrets shouldn't leak to peers), not memory — for
+realistic networks the in-memory RDM is well under 1 GB per router. We do not filter
+identities, services, policies, or router entities; only `Config` events get scoped per-router.
+
+### What was implemented
+
+All filtering lives in `controller/sync_strats/rtx.go`. The shared `RouterDataModelSender`
+remains a global event log; each `RouterSender` filters events for its own connected router as
+they leave.
+
+**Filter** (`RouterSender.filterEventsForRouter`):
+- `*edge_ctrl_pb.DataState_Event_Config`: keep iff the receiving router's Configs list (read
+  from `rtx.routerDataModel.Routers.Get(rtx.Router.Id).Configs`) contains the config ID.
+  Reading from the RDM cache instead of `rtx.Router.Configs` avoids a race: the RDM cache is
+  updated synchronously by `Handle()` *before* `sendEvent` fans out to listeners, while the
+  `*model.Router` cache update via `UpdateCachedRouter` is a separate post-commit hook with
+  no ordering guarantee.
+- `*edge_ctrl_pb.DataState_Event_Router` for any router: pass through.
+- For the **self**-Router event (action != Delete) when `synthesizeMissing == true`
+  (delta path): before the Router event, append a synthetic `Config Create` event for each
+  config currently in `Router.Configs`, sourced from `rtx.routerDataModel.Configs`. Marked
+  `IsSynthetic: true`. This guarantees the receiving router has the entity data alongside the
+  assignment, even if it had previously filtered the config out.
+- All other event types: pass through.
+
+The filter does a fast pre-scan and returns `(events, false)` unchanged when nothing needs
+to be filtered or synthesized. The vast majority of change sets fall into this case (most
+events have no Config payload, or the configs all belong to the receiving router). The
+caller uses the `changed` flag to skip allocating a per-router change-set rebuild on the
+delta path, sending the original change-set pointer when both `!changed` and
+`curEvent.PreviousIndex == rtx.currentIndex` hold.
+
+**Delta replay** (`handleModelChange`):
+- For each replayed change set, call `filterEventsForRouter(changes, true)`.
+- If filtered list is empty, advance `rtx.currentIndex` and skip the wire send. This is the
+  per-router gap absorption the design doc anticipated.
+- Otherwise, build a per-router `DataState_ChangeSet` whose `PreviousIndex` is rewritten to
+  `rtx.currentIndex` so the receiver sees a continuous chain even when intermediate change
+  sets were entirely filtered out. `Index`, `IsSynthetic`, and `TimestampId` are preserved.
+  Update `rtx.currentIndex` after a successful send.
+
+**Full sync** (`handleModelChange` fallback):
+- After `GetDataState()`, call `filterEventsForRouter(dataState.Events, false)` and assign back.
+- `EndIndex` and `TimelineId` unchanged. The snapshot already includes every relevant Config
+  event globally, so synthesis is unnecessary on this path.
+- Receiver-side: orphaned `Config` entities cached from earlier associations get pruned by
+  the full-sync diff (per the agreed cleanup policy in the design doc).
+
+### Two-trigger emission
+
+1. **Router's `Configs` list changes**: the constraint handler emits a Router event into the
+   change set. When that change set flows to the affected router, the filter synthesizes
+   accompanying Config Create events. Other routers see only the Router event (they care about
+   peer fingerprints, not per-router configs). Newly-removed IDs require no extra work — the
+   receiver derives "what to apply" from its own `Router.Configs` list and drops anything not
+   in it; the orphan `Config` entity stays cached harmlessly.
+2. **A config's data changes**: the constraint handler emits a Config event. The filter
+   delivers it to every router whose `Router.Configs` contains the config's ID.
+
+### Tests
+
+`controller/sync_strats/rtx_test.go` covers the filter:
+- Drops unrelated configs, passes related ones.
+- Pass-through for non-Config events (services, identities).
+- Self-Router updates trigger Config synthesis in delta mode.
+- Other-router events do NOT synthesize.
+- Full-sync mode does NOT synthesize.
+- Self-Router Delete does NOT synthesize.
+- Synthesis silently skips IDs not yet in the RDM cache.
+
+### Risks / follow-ups
+
+- **Synthesis overhead**: every self-Router event re-emits all configs, even on unrelated
+  updates (e.g. router rename). Acceptable cost — the receiver applies idempotently. Future
+  optimization: diff `InitialState` vs `FinalState` in the constraint handler so we only
+  synthesize on actual `Configs` changes.
+- The `RouterStore` interface still embeds `boltz.EntityStore[*Router]` directly rather than
+  the local `db.Store[E]`; the `ValidateType` generic was relaxed in 2b to accept the broader
+  bound. Worth normalizing at some point but not blocking 2c.
+
+---
+
+## Phase 2d: Validate router configs end-to-end via the fablab RDM test -- DONE
+
+**Goal**: Exercise the controller-side router-config plumbing against the
+`router-data-model-test` fablab smoke test, and fix the gaps that surfaced
+when planning that.
+
+**Status**: Complete.
+
+### What was implemented
+
+**Filter only router-target configs** (`common/router_data_model_sender.go`,
+`controller/sync_strats/rtx.go`):
+- Phase 2c's filter dropped *all* configs not in a router's `Configs` list,
+  including service-target configs that need to broadcast. The filter now
+  consults `rdm.ConfigTypes` and only filters when `Target == "router"`.
+  Service-target (and any unknown-type) configs pass through unchanged.
+
+**Reusable filter on `RouterDataModelSender`**:
+- Moved the filter logic from `RouterSender.filterEventsForRouter` down to
+  `RouterDataModelSender.FilterEventsForRouter(routerId, events, synthesize)`.
+  The rtx wrapper is now a one-line delegate.
+- Added `RouterDataModelSender.GetDataStateForRouter(routerId)` which returns
+  a per-router-filtered snapshot. The rtx full-sync path uses it directly.
+- Added `common.ConfigTypeTargetRouter = "router"` to mirror the controller-db
+  constant without introducing an import cycle.
+
+**Validation flow filtered too**
+(`controller/handler_mgmt/validate_router_data_model.go`): the
+`ValidateRouterDataModelOnRouter` path used to send the global, unfiltered
+snapshot to every router for diffing — which would have produced false
+positives once any router had configs. It now calls `GetDataStateForRouter`
+per-router. The "snapshot once and reuse" optimization is gone (each router
+needs a different filtered view); the existing concurrency cap of 10 keeps
+the cost bounded.
+
+**`ValidateRouters` wired into `ValidateAll`**
+(`controller/sync_strats/sync_instant.go`): the controller-side validator
+now compares `db.Router` rows against `rdm.Routers`, catching name /
+fingerprint / configs / disabled drift. (We added `ValidateRouters` in
+Phase 2b but never called it.)
+
+**Filter unit tests** (`controller/sync_strats/rtx_test.go`):
+- `passesServiceTargetConfigs`: service-target config flows through even with
+  no router association.
+- `filtersOnlyRouterTargetConfigs`: in a mixed change set, router-target
+  configs are filtered while service-target ones pass through.
+- `unknownTypePassesThrough`: defensive — if a Config event references a
+  ConfigType not in the cache, broadcast (rather than silently dropping).
+- Existing tests adapted: `newTestRtx` now seeds router-target and
+  service-target test ConfigTypes, and `cfgEvent` defaults to the
+  router-target type.
+
+**Fablab bootstrap extension**
+(`zititest/models/router-data-model-test/main.go`,
+`validation.go`): a new bootstrap step creates a router-target config type
+with a permissive schema, a pool of 20 router configs, and patches each
+edge router to associate two of them. Helpers added:
+- `createRouterTargetConfigType(ctrl) (typeId, error)`.
+- `createNewRouterConfig(ctrl, configTypeId) parallel.LabeledTask`.
+- `associateRouterConfigs(ctrl, routerId, configIds, perRouter) error`.
+- `models.PatchEdgeRouter(clients, id, patch, timeout)` in
+  `zititest/zitilab/models/api.go`.
+
+The existing `validateRouterDataModel` flow exercises the new code paths
+end-to-end: each router's RDM should match the per-router-filtered
+snapshot, and the controller-side `ValidateRouters` confirms the DB matches
+`rdm.Routers`.
+
+### Verification
+
+```bash
+go build ./...
+go test ./controller/... ./common/...      # all green
+cd zititest && go build ./models/router-data-model-test/
+# In a fablab session:
+kitty test router-data-model-test          # bootstrap + validate
+```
+
+### Out of scope
+
+- Per-router inspect-based assertion (walk every router via
+  `ziti fabric inspect router-data-model` and confirm Configs map shape) —
+  the existing diff-based validation is sufficient for now.
+- Router-side `Routers` map dispatch through allow-list / handler registry —
+  that's the rest of Phase 3c.
+
+---
+
+## Phase 2e: Router-side Routers map -- DONE
+
+**Goal**: Receive and store the `Router` events Phase 2a/2b emit, so the
+fablab test's existing diff-based validation actually checks router-entity
+propagation. Carved off from Phase 3c because it's purely receive-side
+plumbing for an already-shipping wire format and doesn't depend on 3a (allow-
+list) or 3b (handler registry).
+
+**Status**: Complete.
+
+### What was implemented
+
+In `common/router_data_model.go`:
+- New `Routers cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Router]`
+  field on `RouterDataModel`. Initialized in `NewBareRouterDataModel`,
+  `NewReceiverRouterDataModel`, and `NewReceiverRouterDataModelFromDataState`.
+  Inherited in `NewReceiverRouterDataModelFromExisting`.
+- New `HandleRouterEvent(event, model)` method, mirroring the
+  Set/Remove pattern of `HandleConfigEvent` etc.
+- New `*edge_ctrl_pb.DataState_Event_Router` case in the `Handle()` switch.
+- `Diff()` now calls `diffType("router", rdm.Routers, o.Routers, sink, ...)`,
+  so the existing controller→router validation flow checks router entities.
+- `GetEntityCounts()` includes `routers`.
+- `inspect router-data-model` JSON now includes a `routers` map (id, name,
+  fingerprint, configs, disabled per entry).
+
+**Self-router config GC**: when the receiver processes its own (`selfRouterId`)
+Router event with action != Delete, it iterates `rdm.Configs` and removes any
+router-target entry whose ID is no longer in the new `Configs` list. This
+replaces the originally proposed "leave orphans cached, prune on full sync"
+policy: the receiver now keeps its Configs map aligned with its assignment
+without requiring the controller to send synthetic remove events. The
+`selfRouterId` is set at construction via the receiver constructors (Phase 2e
+also added the `Target` field to the router-side `ConfigType` so the GC can
+distinguish router-target from service-target configs). Service-target configs
+broadcast as before and are never GC'd by this path.
+
+The receiver constructors take a `routerId` argument:
+`NewBareRouterDataModel(routerId)`, `NewReceiverRouterDataModel(routerId, closeNotify)`,
+`NewReceiverRouterDataModelFromDataState(routerId, ...)`,
+`NewReceiverRouterDataModelFromExisting(routerId, ...)`,
+`NewReceiverRouterDataModelFromFile(routerId, ...)`. Pass `""` for non-receiver
+views (controller-side construction, validate-snapshot parsing).
+
+### What this phase did NOT touch
+
+- No allow-list. The router accepts every Router event the controller sends.
+  Phase 3a will gate this.
+- No config dispatch through the handler registry. Phase 3b/3c.
+- No router-side use of the Routers map for any behavior (e.g. filtering
+  outbound link dials by `disabled`). The map is populated and validated;
+  consumers come later.
+
+---
+
+## Phase 2f: Router-config chaos coverage in the fablab test -- DONE
+
+**Goal**: Phase 2d set up router configs at bootstrap and left them static.
+The chaos action only churned services / service-policies / identities /
+service-target configs, so the dynamic router-config paths Phase 2c
+specifically targeted were never exercised at scale. Phase 2f extends the
+chaos pipeline to cover them.
+
+**Status**: Complete.
+
+### What was implemented
+
+In `zititest/models/router-data-model-test/validation.go`:
+
+- `taskGenerationContext.loadEntities` now splits configs and configTypes
+  into service-target (existing chaos pool) and router-target (new pool)
+  by inspecting `ConfigType.Target`. Also loads all edge routers.
+- New fields on `taskGenerationContext`: `routerConfigTypes`,
+  `routerConfigs`, `routers`, `routerConfigsDeleted`.
+- New `generateRouterConfigTasks` chaos generator covering four operations:
+  - **modify a router-config's data** — PATCH some `routerConfigs[i]` with
+    fresh `Data`. Hits both currently-associated and currently-unassociated
+    configs; the controller filter must deliver the modified config to the
+    right routers and only the right routers.
+  - **delete a router-config** every other iteration — exercises the
+    `configStore.DeleteById` cleanup loop that strips the deleted ID from
+    each referencing router's Configs slice (Phase 1b).
+  - **create new router-configs** to keep the pool around 20 entries so
+    re-shuffle has variety.
+  - **re-shuffle every router's Configs** — picks a new random subset
+    (1-3 entries) per router, with one router per iteration deliberately
+    set to empty. Exercises both the synthesis-on-add path in the rtx
+    delta filter and the leave-orphan-cached behavior on remove, plus the
+    "router goes from some configs to none" case.
+- Wired into `getServiceAndConfigChaosTasks` so each chaos cycle now
+  includes router-config churn alongside service churn.
+
+The existing `validateRouterDataModel` flow (with the Phase 2d filter fix
+and the Phase 2e Diff extension) catches any drift introduced by the new
+chaos.
+
+### Coverage matrix
+
+|                                    | Pre-2f | 2f |
+|------------------------------------|:------:|:--:|
+| Static config association          |   ✓    | ✓  |
+| Add config to a router             |   -    | ✓  |
+| Remove config from a router        |   -    | ✓  |
+| Router goes from some to no configs|   -    | ✓  |
+| Modify associated config data      |   -    | ✓  |
+| Modify unassociated config data    |   -    | ✓  |
+| Delete an associated config        |   -    | ✓  |
+
+### Out of scope
+
+- Multi-config-type chaos (the test uses one router-target type). Adding more
+  types would exercise per-type uniqueness validation (one config per type per
+  router) but that's already covered by the integration tests in `tests/`.
+
+---
+
+## Phase 3a: Managed config allow-list -- DONE
+
+**Goal**: Router local config controls which config types it accepts from
+the controller. This is the operator's "controller-can-do-this" boundary.
+
+**Status**: Complete.
+
+### What was implemented
+
+**New types** (`router/env/config_managed.go`):
+- `ManagedConfigOptions{Allow []string}`.
+- `LoadManagedConfigFromMap(cfgmap)` parses the optional `managedConfig`
+  section out of the router YAML map. Always returns a non-nil
+  `*ManagedConfigOptions` so callers don't need a nil guard. Returns an
+  error on malformed shape (non-map `managedConfig`, non-list `allow`).
+- `(m *ManagedConfigOptions).IsAllowed(configType)` returns:
+  - false when `m == nil` or `Allow` is empty (disabled — the safe default
+    when the section is absent).
+  - true if any entry equals `"all"`.
+  - true on exact match (`entry == configType`) or family prefix match
+    (`configType` starts with `entry + "."`). The trailing-dot guard
+    prevents `router.link` from matching `router.linkx.v1`.
+- `ManagedConfigAllowAll = "all"` constant.
+
+**Wiring** (`router/env/config.go`):
+- New `ManagedConfig *ManagedConfigOptions` field on `Config`.
+- `LoadConfigWithOptions` calls `LoadManagedConfigFromMap` near the end of
+  the parse, after the `interfaceDiscovery` block.
+
+**Tests** (`router/env/config_managed_test.go`):
+- Absent / nil / empty-list `managedConfig` -> disabled.
+- `["all"]` -> all types accepted.
+- Exact match (`router.link.v1`) only matches that one type.
+- Family prefix (`router.link`) matches `router.link.v1`, `router.link.v2`,
+  rejects `router.linker.v1` (trailing-dot guard) and unrelated families.
+- Mixed list with `"all"` short-circuits to true.
+- Invalid shapes (non-map `managedConfig`, non-list `allow`) error.
+- Nil receiver `IsAllowed` returns false.
+
+### Family-prefix matching rationale
+
+The design doc's example uses `router.link`, not `router.link.v1`. Operators
+typically want to allow a family of config types and have version bumps
+"just work" without re-editing the YAML. Prefix-by-family supports this
+while still accepting exact-match (operators can pin to a specific version
+if they want).
+
+### Out of scope
+
+- Phase 3c will read `env.GetConfig().ManagedConfig.IsAllowed(...)` when
+  dispatching `Config` events to the handler registry.
+- Hot reload of the allow-list (Phase 4b's broader hot-reconfig story).
+
+---
+
+## Phase 3b: Config handler registry -- DONE
+
+**Goal**: Define the contract every config-aware router subsystem implements,
+plus the central registry that routes events with version selection and
+rollback. The blocker for Phase 3c's RDM dispatch and Phase 4b's link
+handler.
+
+**Status**: Complete.
+
+### What was implemented
+
+**Naming convention**: every config type is `<baseType>.v<N>` where N is a
+positive integer (e.g. `router.link.v2`). The registry parses incoming names
+into `(baseType, version)`, keys all state by base, and selects the highest
+version that's both supported by the handler and available from the
+controller. This matches the design's versioning policy and keeps handler
+APIs free of version-string parsing.
+
+**New package `router/managedconfig/`**:
+
+`handler.go` — `ConfigHandler` interface:
+- `BaseType() string` — un-versioned family, e.g. `router.link`.
+- `SupportedVersions() []int` — the integer versions this handler can
+  apply; order doesn't matter (registry picks max).
+- `Apply(version int, data []byte) error` — registry has chosen this
+  version; reconcile your subsystem.
+- `Remove() error` — nothing of yours is currently available; tear down.
+
+`registry.go`:
+- `ParseConfigType(name) (baseType, version, err)` — parses
+  `router.link.v2` into `("router.link", 2)`. Rejects empty base, empty
+  version, non-integer, non-positive, or absent `.vN` suffix.
+- `NewRegistry(alert AlertCallback)` — alert defaults to a logger.
+- `Register(handler)` — keyed by `BaseType()`. Rejects duplicate
+  registrations for the same base (`ErrHandlerAlreadyRegistered`).
+  Panics if called after `Seal()`.
+- `Seal()` — marks the registration phase complete. Lifecycle is:
+  construct → register handlers → Seal → process events → Close. The Seal
+  point is a strict barrier: late `Register` calls **and** `Apply` / `Remove`
+  before Seal are both programming errors and panic. Operationally, Phase
+  3c will call Seal between "subsystems registered" and "RDM dispatch
+  started," so production Apply / Remove always happen post-Seal.
+- `ApplyController(configType, data)` / `ApplyLocal(configType, data)` —
+  Phase 3c / Phase 4b entry points; parse the name, look up the handler's
+  entry, update `entry.versions[source][version]` under a short critical
+  section, then **spawn a goroutine** to reconcile. Panic if called
+  pre-Seal. Return parse errors synchronously for malformed types, and
+  `ErrNoHandlerRegistered` when no handler owns the base.
+- `RemoveController(configType)` / `RemoveLocal(configType)` — drop the
+  corresponding source's data and reconcile.
+- `ConfigSource` enum (`SourceController`, `SourceLocal`). Source
+  precedence is at the **base level**: any local data for `router.link`
+  hides all controller versions for that base. Once local is removed, the
+  highest-supported controller version becomes effective.
+- `Applied(configType) (source, version, found)` — diagnostics accessor.
+  `AppliedVersion` keeps the source-agnostic shape for backward compat.
+- `Handler(configType)` — lookup helper, routes by base.
+- `AppliedVersion(configType)` — diagnostics / test accessor.
+- `Close()` — marks the registry shut down, blocks until every in-flight
+  reconcile goroutine has exited. After Close, Apply/Remove still update
+  state but don't spawn new reconciles.
+- `WaitForIdle()` — blocks until the WaitGroup of in-flight reconciles
+  hits zero. For tests.
+- `reconcileAsync(entry)` (internal) — drives the four-case transition
+  matrix:
+
+  | prev    | next    | action                                                      |
+  |---------|---------|-------------------------------------------------------------|
+  | empty   | empty   | nothing                                                     |
+  | empty   | vN      | Apply(N). On error: Remove + alert; applied=∅               |
+  | vN      | empty   | Remove. On error: alert; applied stays vN                   |
+  | vN      | vM (≠N) | Apply(M). On error: Apply(N) rollback. Both fail: Remove + alert |
+
+  Rollback uses the previously-**successfully**-applied data tracked on
+  the registry side, not whatever's currently in `availableData`, so
+  "v2 broke and v2 was just removed" still rolls back to v1.
+
+**Concurrency model**:
+
+- `r.mu` (the global registry lock) is held only for short critical
+  sections — reading/writing the shared maps and snapshotting state. It's
+  never held across handler calls, so a slow handler can't stall any
+  caller.
+- Each registered handler owns a `handlerEntry.lock`. A reconcile
+  goroutine acquires this lock, snapshots state under r.mu, releases r.mu,
+  runs the transition matrix (calling the handler with no global locks
+  held), then re-acquires r.mu briefly to update `applied[handler]`.
+- Different handlers reconcile in parallel. Reconciles for the same
+  handler serialize via the entry lock.
+- Bursts of events for the same configType collapse: each Apply call
+  spawns a goroutine and updates `availableData`. The first goroutine to
+  acquire the entry lock snapshots the latest data and runs the handler;
+  later goroutines snapshot the same already-applied state and exit
+  without calling the handler.
+- `Apply`/`Remove` return as soon as state is recorded; the handler call
+  runs asynchronously. The channel-receive goroutine and RDM event pool
+  are never blocked by handler latency.
+
+**Tests** (`registry_test.go`):
+- ParseConfigType: valid forms (single-segment base, multi-segment base,
+  multi-digit version) and invalid forms (no suffix, empty version,
+  non-integer, trailing junk, non-positive, empty base, no `.v`).
+- Register: single, base-ownership-routes-by-base, duplicate, late-arrival
+  apply.
+- Apply/Remove parse errors return up to caller.
+- Single-version flow: no-handler stash, first-time, update, no-op when
+  identical, first-failure-triggers-remove, update-failure-rollback-succeeds,
+  update-failure-rollback-fails-triggers-remove.
+- Multi-version flow: highest-wins, handler-supports-subset (v2 ignored
+  when handler only supports v1), fallback-on-remove, fallback-on-apply-
+  failure, remove-last-available, out-of-order arrival.
+- Remove: no-handler drops data, handler error keeps applied state.
+- Default alert smoke.
+
+- Concurrency: different handlers reconcile in parallel even when one is
+  slow.
+- Close: drains in-flight reconciles; prevents new spawns after.
+
+- Seal lifecycle: panics on late Register, on Apply before Seal, on Remove
+  before Seal; Apply still works after Seal.
+- Apply/Remove: returns `ErrNoHandlerRegistered` when no handler owns the
+  base.
+- Source tracking: ApplyLocal beats ApplyController at the base level;
+  RemoveLocal falls back to controller data; RemoveController is a no-op
+  when local is set; ConfigSource.String for diagnostics.
+
+37 unit tests, all green (race-clean under `go test -race`). Tests use a
+`newSealedRegistry(t, handlers...)` helper to reduce lifecycle boilerplate.
+
+### Out of scope
+
+- Phase 3c will plug the registry into the router-side RDM event dispatch
+  and pair it with Phase 3a's allow-list (allow-list filters before
+  hitting the registry).
+- Backoff / retry-throttling on persistently-failing configs. The
+  registry retries on every reconcile cycle, alerting each time. Operator
+  problem to fix.
+- Phase 4b will be the first concrete handler (`router.link.v1`).
+
+---
+
+## Phase 3c: Handle Router and Config events in router-side RDM
+
+**Depends on**: 2a, 3a, 3b.
+
+- Add `Routers` map to `RouterDataModel`, wire into `Handle()`
+- Dispatch config events through allow-list and handler registry
+
+---
+
+## Phase 4a: Make link listeners/dialers stoppable
+
+- Track link listeners/dialers, add stop methods
+- May need `Close()` on `Dialer` interface
+
+---
+
+## Phase 4b: Implement `router.link.v1` config handler
+
+**Depends on**: 3b, 4a.
+
+- Parse config JSON into link structures
+- Reconcile incrementally — see "Incremental reconciliation" below
+- Respect local config precedence
+
+---
+
+## Phase 4 design note: Incremental reconciliation
+
+When a config update changes the link section, the reconciliation should be
+**as seamless as possible** — touch only what actually changed:
+
+- **Add a listener** -> create the new listener; leave existing ones running.
+- **Change advertise address only** -> update the running listener in place if
+  possible; don't tear it down and rebuild.
+- **Two listeners, only one changes binding** -> stop and recreate that one;
+  leave the other one alone.
+- **Remove a listener** -> stop just that listener.
+- **No-op fields touched** -> no work at all.
+
+The naive "tear everything down on any config change" approach disrupts
+established links unnecessarily. Worse, it does so for changes that are
+meaningful only to *future* connections (e.g. advertise-address updates).
+
+This is the same diff-and-apply pattern used by Kubernetes-style controllers
+and applies to any subsystem with a set of identifiable items: link
+listeners, link dialers, ctrl-channel listeners, xgress listeners, edge
+listeners. We should write the diff helper once and reuse.
+
+A general-purpose helper might look like:
+
+```go
+// ReconcileSet drives an incremental update from oldItems to newItems. For
+// each key:
+//   - present in new but not old        -> onAdd
+//   - present in both with diff content -> onUpdate (handler decides whether
+//                                          to hot-update or stop+recreate)
+//   - present in old but not new        -> onRemove
+//   - present in both with same content -> nothing
+//
+// K is whatever stable identity the items use (listener bind address, dialer
+// binding name, etc.). The handler picks K so identity-shape is per-domain.
+func ReconcileSet[K comparable, V any](
+    oldItems, newItems map[K]V,
+    equal func(a, b V) bool,
+    onAdd    func(K, V) error,
+    onUpdate func(K, oldV, newV V) error,
+    onRemove func(K) error,
+) error
+```
+
+Phase 4b uses this for link listeners and dialers. Future phases (e.g. an
+xgress.v1 handler) reuse the same helper. The helper itself probably belongs
+in `router/managedconfig/` (or a sibling utility package) so multiple
+subsystems can pick it up without depending on each other.
+
+Identity choice per subsystem (TBD, captured here for design memory):
+- **Link listeners**: bind address (the user-facing identity; advertise can
+  change without a tear-down).
+- **Link dialers**: binding name.
+- **Xgress listeners**: binding name.
+- **Ctrl-channel listeners**: bind address.
+
+---
+
+## Phase 4 design note: Source tracking and local-config precedence
+
+The design doc states two things that have to be reconciled mechanically:
+
+1. **Local config always wins** (`Precedence` section).
+2. **Handlers receive config events from either source — controller OR local
+   file reload — via the same registry** (`Hot Reconfiguration` section).
+
+We're going with **Option B: the registry tracks the source of each piece of
+data and applies local-wins as a rule**. Reasons:
+
+- Single code path for handlers. Apply is always "here's a config; reconcile."
+  Handlers don't grow source-aware branching.
+- Better introspection. The registry can report "v1 is active from a local
+  config" vs "v2 was supplied by the controller but is overridden by the
+  local v1," which surfaces operator intent in diagnostics.
+- The `ziti agent router reload-config` story works out of the box: the
+  YAML loader translates local config to the per-handler JSON form and pushes
+  it through `Apply(..., SourceLocal)`. Handlers don't need to know that
+  reload happened.
+
+### API additions (Phase 4b territory)
+
+```go
+type ConfigSource int
+
+const (
+    SourceController ConfigSource = iota
+    SourceLocal
+)
+
+func (r *Registry) Apply(configType string, data []byte, source ConfigSource) error
+func (r *Registry) Remove(configType string, source ConfigSource) error
+```
+
+### Selection semantics
+
+Per handler, the registry stores `availableData[source][version] = data`.
+Reconcile computes effective as:
+
+- If `availableData[SourceLocal]` is non-empty: pick
+  `max(supportedVersions ∩ localKeys)`.
+- Else: pick `max(supportedVersions ∩ controllerKeys)`.
+
+Local takes precedence at the **base level** — if the operator set anything
+locally for `router.link`, the controller's versions are ignored for that
+base. This matches operator intent: someone who set v1 locally probably
+doesn't want the controller silently upgrading them to v2.
+
+(Per-field merge — the richest interpretation of "fills in gaps where local
+config is silent" — is **out of scope**. Wait for operator demand.)
+
+### YAML → JSON translation
+
+For each config type registered with the registry, the YAML loader needs a
+translation function that maps the corresponding YAML section to the
+controller-equivalent JSON. For `router.link.v1`:
+
+- Drop fields removed in the v1 schema (`costTags`, `split`).
+- Rename `dialer.bind` → `dialer.bindInterface`.
+- Default `binding` if absent.
+
+This is per-config-type code, lives next to the handler. The registry
+remains agnostic to it.
+
+---
+
+## Phase 4 design note: Registry inspection
+
+We need a way to introspect the registry for diagnostics — "why is the
+router link subsystem configured this way?" The answer should surface:
+
+- Which handlers are registered (base, supported versions).
+- What data is available for each, by source and version.
+- What is currently applied (source + version).
+- Any recent alerts (parse failures, rollbacks, offline subsystems).
+
+### Implementation
+
+Add to `router/managedconfig/registry.go`:
+
+```go
+type RegistryInspect struct {
+    Handlers []HandlerInspect `json:"handlers"`
+}
+
+type HandlerInspect struct {
+    BaseType          string                       `json:"baseType"`
+    SupportedVersions []int                        `json:"supportedVersions"`
+    Available         map[string]map[int]int       `json:"available"` // source -> version -> byteCount
+    Applied           *AppliedInspect              `json:"applied,omitempty"`
+}
+
+type AppliedInspect struct {
+    Source  string `json:"source"`
+    Version int    `json:"version"`
+}
+
+func (r *Registry) Inspect() RegistryInspect
+```
+
+`Available` reports byte counts rather than raw data — keeps the output
+compact, sufficient for "yes this is present" diagnostics. A future
+extension could include a hash or summary.
+
+### Wiring (Phase 3c or 4b, easy to slot in)
+
+Register an inspect target on the router's inspect handler so
+`ziti fabric inspect <router> managed-config` returns the registry view.
+Follows the same pattern as the existing `router-data-model` inspect
+target (`router/inspect/inspect.go`).
+
+---
+
+## Dependency Graph
+
+```
+1a (DONE) ---|
+1b (DONE) ---|
+1c (DONE) ---|
+              |
+2a (DONE) ---|
+2b (DONE) ---|
+2c (DONE) ---|
+2d (DONE) ---|
+2e (DONE) ---|
+2f (DONE) ---|
+              |
+3a (DONE) ---|
+3b (DONE) ---|--> 3c
+              |
+4a -----------|--> 4b
+              |
+              └--> Phase 5 (testing)
+```
