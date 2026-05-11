@@ -665,8 +665,9 @@ APIs free of version-string parsing.
 - `BaseType() string` — un-versioned family, e.g. `router.link`.
 - `SupportedVersions() []int` — the integer versions this handler can
   apply; order doesn't matter (registry picks max).
-- `Apply(version int, data []byte) error` — registry has chosen this
-  version; reconcile your subsystem.
+- `Apply(version int, data string) error` — registry has chosen this
+  version; reconcile your subsystem. Data is a raw JSON string (router
+  configs are always JSON); use `[]byte(data)` if a parser needs bytes.
 - `Remove() error` — nothing of yours is currently available; tear down.
 
 `registry.go`:
@@ -689,12 +690,20 @@ APIs free of version-string parsing.
   section, then **spawn a goroutine** to reconcile. Panic if called
   pre-Seal. Return parse errors synchronously for malformed types, and
   `ErrNoHandlerRegistered` when no handler owns the base.
-- `RemoveController(configType)` / `RemoveLocal(configType)` — drop the
-  corresponding source's data and reconcile.
+- `RemoveController(configType)` — drops a specific (base, version) entry
+  from the controller-source set; other controller versions for the same
+  base remain. Reconciles.
+- `RemoveLocal(baseType)` — takes a base type, not a configType. There's
+  at most one local entry per base, so the version is meaningless for
+  removal; the asymmetry with `RemoveController` is deliberate.
 - `ConfigSource` enum (`SourceController`, `SourceLocal`). Source
-  precedence is at the **base level**: any local data for `router.link`
-  hides all controller versions for that base. Once local is removed, the
-  highest-supported controller version becomes effective.
+  precedence is **strict local-wins at the base level**: if any local data
+  is set for `router.link`, the controller's versions are ignored
+  entirely. If local's version isn't one the handler supports (e.g.
+  YAML translator emitted vN but build only supports vN-1), the registry
+  applies nothing and logs an error every reconcile — operator intent
+  ("use my local config") must not be silently overridden by falling back
+  to the controller's data.
 - `Applied(configType) (source, version, found)` — diagnostics accessor.
   `AppliedVersion` keeps the source-agnostic shape for backward compat.
 - `Handler(configType)` — lookup helper, routes by base.
@@ -704,6 +713,17 @@ APIs free of version-string parsing.
   state but don't spawn new reconciles.
 - `WaitForIdle()` — blocks until the WaitGroup of in-flight reconciles
   hits zero. For tests.
+- `Inspect()` — snapshot of registry state for diagnostics. Returns
+  `common/inspect.RouterConfigRegistryState`. Inspect types live in
+  `common/inspect/managed_config_inspections.go` so they can be used by
+  any caller. The registry walks handlers in `BaseType` order for
+  deterministic output, and each `handlerEntry`/`localEntry`/`appliedState`
+  has its own `inspect()` method that produces its slice of the snapshot.
+  `RouterConfigVersionDetail.Data` is `any`: stored JSON strings are
+  unmarshaled so the inspect output inlines the config as a nested object
+  (`"data":{"hello":"world"}`) rather than an escaped string. On unmarshal
+  failure the raw string is preserved so the diagnostic still shows what
+  the registry actually holds.
 - `reconcileAsync(entry)` (internal) — drives the four-case transition
   matrix:
 
@@ -767,8 +787,19 @@ APIs free of version-string parsing.
   RemoveLocal falls back to controller data; RemoveController is a no-op
   when local is set; ConfigSource.String for diagnostics.
 
-37 unit tests, all green (race-clean under `go test -race`). Tests use a
+42 unit tests, all green (race-clean under `go test -race`). Tests use a
 `newSealedRegistry(t, handlers...)` helper to reduce lifecycle boilerplate.
+
+**Router wiring**:
+
+- `RouterEnv.GetRouterConfigRegistry()` exposes the registry to the rest
+  of the router.
+- `router.Router` constructs the registry unconditionally via
+  `managedconfig.NewRegistry(nil)`; the default alert callback logs.
+- `router/inspect/inspect.go` dispatches `router-config-registry` to
+  `registry.Inspect()`, addressable from the CLI as
+  `ziti fabric inspect router-config-registry`. The inspect key is the
+  `inspect.RouterConfigRegistryKey` constant in `common/inspect/`.
 
 ### Out of scope
 
@@ -782,12 +813,156 @@ APIs free of version-string parsing.
 
 ---
 
-## Phase 3c: Handle Router and Config events in router-side RDM
+## Phase 3c: Handle Router and Config events in router-side RDM -- DONE
 
-**Depends on**: 2a, 3a, 3b.
+**Goal**: Wire the router-side RDM through Phase 3a's allow-list and Phase 3b's
+registry, so Config events arriving from the controller actually drive the
+registry instead of just landing in `rdm.Configs`. With this in place, Phase
+4b's link handler will receive events end-to-end as soon as it registers.
 
-- Add `Routers` map to `RouterDataModel`, wire into `Handle()`
-- Dispatch config events through allow-list and handler registry
+**Status**: Complete.
+
+**Depends on**: 2a (Router protobuf), 2e (router-side Routers map), 3a
+(allow-list), 3b (registry).
+
+### What was implemented
+
+**New subscriber interface in `common/subscriber.go`**:
+
+```go
+type RouterConfigEventSubscriber interface {
+    OnRouterConfigApplied(configType string, data string)
+    OnRouterConfigRemoved(configType string)
+}
+```
+
+Single global broadcast hook (not per-entity). Existing `IdentitySubscription`
+machinery is shaped for per-ID subscriptions with denormalized snapshots and
+cascading events; router configs need none of that, and the only "subscriber"
+is the registry's bridge. Naming borrowed from the existing subscriber
+vocabulary; machinery is not.
+
+**RDM-side dispatch in `common/router_data_model.go`**:
+
+- `RouterDataModel` gains a `routerConfigSubscriber` field guarded by a
+  dedicated `RWMutex`.
+- `SetRouterConfigSubscriber(s)` / `RouterConfigSubscriber()` accessors.
+- `HandleConfigEvent` dispatches to the subscriber whenever the affected
+  Config's `TypeId` resolves to a `ConfigType` with `Target ==
+  ConfigTypeTargetRouter`:
+  - Create / Update → `OnRouterConfigApplied(configType.Name, dataJson)`
+  - Delete → `OnRouterConfigRemoved(configType.Name)` — `TypeId` is captured
+    inside the `RemoveCb` before the Config is removed; the `ConfigType`
+    lookup still succeeds because `ConfigType` records outlive the `Config`s
+    that reference them.
+
+Non-router-target Configs (services, etc.) flow through `HandleConfigEvent`
+unchanged; the dispatch is gated on target. Unknown `TypeId`s, nil
+subscriber, and Configs without a matching ConfigType all short-circuit
+safely.
+
+**Router-side bridge in `router/state/router_config_subscriber.go`**:
+
+`RouterConfigSubscriber` translates RDM events into registry calls:
+
+- `OnRouterConfigApplied(configType, data)`: gate on `allow.IsAllowed`;
+  reject → info log + drop; allow → `registry.ApplyController(configType,
+  data)`. Errors logged.
+- `OnRouterConfigRemoved(configType)`: gate on `allow.IsAllowed`; allow →
+  `registry.RemoveController(configType)`. (Rejected removes are no-ops; the
+  registry was never told about that type to begin with.)
+
+The subscriber takes a narrow `configAllowList` interface (one method,
+`IsAllowed`) and a `*managedconfig.Registry`, not the full `RouterEnv`. The
+public `NewRouterConfigSubscriber(env)` resolves both off the env;
+`newRouterConfigSubscriberFromParts` is the unexported test-friendly
+constructor.
+
+**State-manager lifecycle in `router/state/manager.go`**:
+
+The state manager owns the subscriber across full-state resyncs (which
+construct a fresh RDM and call `SetRouterDataModel(new)`).
+
+- `SetRouterConfigSubscriber(s)` on the `Manager` interface — stores the
+  subscriber, attaches it to the current RDM (if any), and bootstraps by
+  walking the current `rdm.Configs` and dispatching `OnRouterConfigApplied`
+  for every router-target entry. Treats "before subscriber was set" as an
+  empty prior state, so the bootstrap is just "everything in current."
+- `SetRouterDataModel(new, ...)`:
+  1. Attach the subscriber to the new model before the swap, so any
+     `HandleConfigEvent` on the new RDM dispatches correctly the moment it
+     becomes reachable.
+  2. Store the new RDM and clear `rmdReplaceInProgress`.
+  3. Run `dispatchRouterConfigDiff(existing, new, sub)` — by now the new
+     model is authoritative, so a subscriber that calls `RouterDataModel()`
+     during dispatch sees the post-swap state. This matches the contract of
+     `HandleConfigEvent`, which dispatches *after* `rdm.Configs` is updated.
+     - For every router-target type present in old but not new:
+       `OnRouterConfigRemoved`.
+     - For every router-target type in new whose data differs from old (or
+       is brand new): `OnRouterConfigApplied`. Unchanged entries are
+       skipped — each dispatched Apply takes registry locks and spawns a
+       reconcile goroutine, so skipping the no-ops meaningfully cheapens the
+       common case of a full-state resync where most configs are stable.
+
+The registry no-ops same-data Applies, so dispatching everything in `new`
+on the apply pass is cheap and idempotent. The diff is the load-bearing
+piece — without it, configs that vanish during a full-state resync would
+never surface as removes (the new RDM's `HandleConfigEvent` runs inside the
+constructor, before the subscriber is attached).
+
+**Router startup wiring in `router/router.go`**:
+
+In `Run()`, right after `registerComponents`/`registerPlugins` and before
+`startControlPlane`:
+
+```go
+self.configRegistry.Seal()
+self.stateManager.SetRouterConfigSubscriber(state.NewRouterConfigSubscriber(self))
+```
+
+Seal happens after all subsystem-side `Register` calls (today: none; Phase
+4b's link handler will be the first registrant). The subscriber is wired
+between Seal and the controller connection so events from any inbound bulk
+or delta state will route through the allow-list and into the registry.
+
+**Tests**:
+
+`common/router_data_model_test.go` adds 5 `HandleConfigEvent` cases — dispatch
+on router-target Apply / Remove, no-dispatch for non-router-target,
+no-panic with nil subscriber, no-dispatch when `ConfigType` is unknown.
+
+`router/state/router_config_subscriber_test.go` adds 4 allow-list cases —
+allowed Apply hits the registry, disallowed Apply is dropped, allowed
+Remove hits the registry, disallowed Remove is dropped — plus 7 cases for
+`dispatchRouterConfigDiff` covering nil RDMs, all-new, all-old (full
+remove), mixed add/remove/keep, and service-target filtering.
+
+All tests race-clean under `go test -race ./router/managedconfig/...
+./router/state/... ./common/`.
+
+### Pre-Seal events
+
+A subtle race-safety property fell out of the design: pre-Seal events never
+reach the registry. `Seal()` happens before the subscriber is attached;
+events arriving before Seal (e.g. a fast controller pushing bulk state
+during router startup) flow through `HandleConfigEvent` but find no
+subscriber set on the RDM, so they store in `rdm.Configs` without
+dispatching. The subsequent `SetRouterConfigSubscriber` call walks the
+already-loaded `rdm.Configs` and dispatches as a bootstrap pass. No queue,
+no drops, no panic — events are simply replayed once.
+
+### Out of scope
+
+- A real handler. Phase 4b implements `router.link.v1`.
+- Local YAML translation feeding `ApplyLocal` — the local-config side of
+  Phase 3b's strict-local-wins semantics is also Phase 4b's job.
+- Alert-callback transport from the registry back to the controller. The
+  callback hook is in place (default logs); payload/protocol is a later
+  phase.
+- Inspection of subscriber state. Today the registry's `Inspect()` shows
+  applied state per handler; the subscriber itself is stateless beyond the
+  allow-list it closes over.
 
 ---
 

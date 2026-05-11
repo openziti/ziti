@@ -477,6 +477,23 @@ type IdentityEventSubscriber interface {
 	NotifyServiceChange(state *IdentityState, previousService, service *IdentityService, eventType ServiceEventType)
 }
 
+// RouterConfigEventSubscriber receives notifications about router-managed
+// configuration changes. The router-side RDM dispatches to a single subscriber
+// for any Config whose ConfigType.Target is "router". Configs targeted at
+// services or other entities do not flow through this interface.
+//
+// OnRouterConfigApplied is called for both Create and Update events; consumers
+// (e.g. the managedconfig.Registry) handle the same-data no-op case
+// themselves. OnRouterConfigRemoved is called for Delete events and for
+// configs that disappear during a full-state resync.
+//
+// configType is the ConfigType.Name (e.g. "router.link.v1"); data is the
+// raw JSON payload from the controller.
+type RouterConfigEventSubscriber interface {
+	OnRouterConfigApplied(configType string, data string)
+	OnRouterConfigRemoved(configType string)
+}
+
 // subscriberEvent is an internal interface for events that need to be processed to update
 // identity subscriptions. These events are queued and processed asynchronously.
 type subscriberEvent interface {

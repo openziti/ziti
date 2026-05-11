@@ -197,6 +197,16 @@ type Manager interface {
 	// optionally resetting the controller subscription.
 	SetRouterDataModel(model *common.RouterDataModel, resetSubscription bool)
 
+	// SetRouterConfigSubscriber registers the subscriber that receives Config
+	// events for router-target ConfigTypes. Called once during router startup,
+	// after handler registration and managedconfig.Registry.Seal. The manager
+	// attaches the subscriber to the current RDM (if any), bootstraps by
+	// dispatching Applied for every router-target Config already loaded, and
+	// re-attaches the subscriber to any subsequent RDM provided via
+	// SetRouterDataModel — with a remove/apply diff against the prior RDM so
+	// configs that vanish during a full-state resync are surfaced as removals.
+	SetRouterConfigSubscriber(s common.RouterConfigEventSubscriber)
+
 	// GetRouterDataModelPool returns the goroutine pool used for processing
 	// router data model events and updates.
 	GetRouterDataModelPool() goroutines.Pool
@@ -456,6 +466,12 @@ type ManagerImpl struct {
 	modelChanged          chan struct{}
 	dataModelSubscription concurrenz.AtomicValue[DataModelSubscription]
 	dataModelSubTimeout   time.Time
+
+	// routerConfigSubscriber is the bridge between RDM Config events and the
+	// managedconfig.Registry. Stored on the manager (not just the RDM) so it
+	// survives full-state resyncs that swap the RDM out from under us. Read/
+	// written under rdmLock so attach is serialized with SetRouterDataModel.
+	routerConfigSubscriber common.RouterConfigEventSubscriber
 
 	postureCache *posture.Cache
 
@@ -974,6 +990,13 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 		logger = logger.WithField("existingIndex", existingIndex)
 	}
 
+	// Attach the subscriber to the new model before the swap so any
+	// HandleConfigEvent on the new RDM dispatches correctly the moment it
+	// becomes reachable.
+	if self.routerConfigSubscriber != nil {
+		model.SetRouterConfigSubscriber(self.routerConfigSubscriber)
+	}
+
 	self.routerDataModel.Store(model)
 
 	// Clear the replace-in-progress flag before syncing subscribers. The model is
@@ -990,6 +1013,14 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 
 	model.SyncAllSubscribers()
 
+	// Diff router-target configs between old and new now that the new model
+	// is the authoritative one. Subscribers that query RouterDataModel()
+	// during dispatch see the post-swap state — matching the contract of
+	// HandleConfigEvent, which also fires after rdm.Configs is updated.
+	if self.routerConfigSubscriber != nil {
+		dispatchRouterConfigDiff(existing, model, self.routerConfigSubscriber)
+	}
+
 	if resetSubscription {
 		// notify subscription manager code to resubscribe with the updated model and index
 		select {
@@ -999,6 +1030,84 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 	}
 
 	logger.Infof("router data model replacement complete, old: %p, new: %p", existing, model)
+}
+
+// SetRouterConfigSubscriber registers the subscriber and bootstraps it
+// against the current RDM. Called once at router startup, after the registry
+// has been Sealed and all subsystem handlers have been registered.
+func (self *ManagerImpl) SetRouterConfigSubscriber(s common.RouterConfigEventSubscriber) {
+	self.rdmLock.Lock()
+	defer self.rdmLock.Unlock()
+
+	self.routerConfigSubscriber = s
+	current := self.routerDataModel.Load()
+	if current != nil {
+		current.SetRouterConfigSubscriber(s)
+	}
+	if s == nil {
+		return
+	}
+	// Bootstrap: dispatch Applied for every router-target config currently in
+	// the RDM. Treats "before the subscriber was set" as an empty prior state,
+	// so the diff is just "everything in current."
+	dispatchRouterConfigDiff(nil, current, s)
+}
+
+// dispatchRouterConfigDiff walks router-target Configs in oldRdm and newRdm,
+// dispatching OnRouterConfigRemoved for types present in old but not new and
+// OnRouterConfigApplied for types whose data has actually changed (new or
+// different from old). Either RDM may be nil.
+//
+// Unchanged entries are skipped: the registry would no-op them anyway, but
+// each dispatched Apply still spawns a reconcile goroutine and takes locks,
+// so skipping is meaningfully cheaper for the common case of a full-state
+// resync where most configs are stable.
+//
+// The fast path through HandleConfigEvent dispatches via the subscriber
+// already attached to the RDM. This function is used at the transition
+// points (subscriber attach, RDM swap) where events that *would have*
+// fired through HandleConfigEvent are replayed against the latest state.
+func dispatchRouterConfigDiff(oldRdm, newRdm *common.RouterDataModel, sub common.RouterConfigEventSubscriber) {
+	if sub == nil {
+		return
+	}
+	oldTypes := collectRouterConfigTypes(oldRdm)
+	newTypes := collectRouterConfigTypes(newRdm)
+
+	for typeName := range oldTypes {
+		if _, stillPresent := newTypes[typeName]; !stillPresent {
+			sub.OnRouterConfigRemoved(typeName)
+		}
+	}
+	for typeName, newData := range newTypes {
+		if oldData, ok := oldTypes[typeName]; ok && oldData == newData {
+			continue
+		}
+		sub.OnRouterConfigApplied(typeName, newData)
+	}
+}
+
+// collectRouterConfigTypes scans rdm.Configs for entries whose ConfigType has
+// Target == "router" and returns a map of ConfigType.Name -> DataJson. Empty
+// map when rdm is nil. If multiple Configs share a ConfigType (which the
+// design doesn't currently allow, but is cheap to be safe about), the last
+// one wins; an alert here would surface a controller bug.
+func collectRouterConfigTypes(rdm *common.RouterDataModel) map[string]string {
+	out := map[string]string{}
+	if rdm == nil {
+		return out
+	}
+	rdm.Configs.IterCb(func(_ string, cfg *common.Config) {
+		if cfg == nil {
+			return
+		}
+		ct, ok := rdm.ConfigTypes.Get(cfg.TypeId)
+		if !ok || ct == nil || ct.Target != common.ConfigTypeTargetRouter {
+			return
+		}
+		out[ct.Name] = cfg.DataJson
+	})
+	return out
 }
 
 func (self *ManagerImpl) ResyncRouterDataModel() {

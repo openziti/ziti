@@ -66,10 +66,10 @@ import (
 	"github.com/openziti/ziti/v2/router/handler_ctrl"
 	"github.com/openziti/ziti/v2/router/handler_link"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
-	"github.com/openziti/ziti/v2/router/managedconfig"
 	"github.com/openziti/ziti/v2/router/inspect"
 	"github.com/openziti/ziti/v2/router/interfaces"
 	"github.com/openziti/ziti/v2/router/link"
+	"github.com/openziti/ziti/v2/router/managedconfig"
 	routerMetrics "github.com/openziti/ziti/v2/router/metrics"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_edge"
@@ -502,6 +502,15 @@ func (self *Router) Start() error {
 	for _, web := range self.xwebs {
 		go web.Run()
 	}
+
+	// Seal the managed-config registry. All subsystem handler registration
+	// must be complete before this point; subsequent ApplyController /
+	// RemoveController calls from RDM events will route to registered
+	// handlers. Wire the router-side subscriber into the state manager so
+	// Config events arriving from the controller dispatch through the
+	// allow-list and into the registry.
+	self.configRegistry.Seal()
+	self.stateManager.SetRouterConfigSubscriber(state.NewRouterConfigSubscriber(self))
 
 	// Start control plane (must be last)
 	if err := self.startControlPlane(); err != nil {
