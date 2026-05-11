@@ -44,10 +44,10 @@ type ConfigHandler interface {
 	SupportedVersions() []int
 
 	// Apply is called when the registry has selected an active version for
-	// this handler. data is the raw JSON bytes from the controller,
+	// this handler. data is the raw JSON payload from the controller,
 	// untransformed. Returning an error triggers rollback (or, if no previous
 	// config exists, Remove).
-	Apply(version int, data []byte) error
+	Apply(version int, data string) error
 
 	// Remove is called when no version of this handler's BaseType is
 	// currently available, or when both a fresh Apply and rollback Apply have

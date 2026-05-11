@@ -17,15 +17,17 @@
 package managedconfig
 
 import (
-	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common/inspect"
 )
 
 // ConfigSource identifies where a Config event originated. The registry
@@ -95,7 +97,7 @@ func ParseConfigType(name string) (baseType string, version int, err error) {
 type appliedState struct {
 	source  ConfigSource
 	version int
-	data    []byte
+	data    string
 }
 
 // localEntry is the local config currently in effect for a handler base.
@@ -104,7 +106,7 @@ type appliedState struct {
 // (typically the newest the build supports); data is the raw JSON.
 type localEntry struct {
 	version int
-	data    []byte
+	data    string
 }
 
 // handlerEntry binds a registered handler with the per-handler lock that
@@ -119,7 +121,7 @@ type localEntry struct {
 // pointer rather than a map.
 type handlerEntry struct {
 	handler            ConfigHandler
-	controllerVersions map[int][]byte // version -> data
+	controllerVersions map[int]string // version -> data
 	local              *localEntry    // nil means no local config set
 	applied            appliedState
 	lock               sync.Mutex
@@ -133,13 +135,13 @@ type handlerEntry struct {
 //
 // Lifecycle:
 //
-//   1. Construct with NewRegistry.
-//   2. Subsystems Register their handlers.
-//   3. Caller invokes Seal. After Seal, Register panics. Apply / Remove
-//      before Seal also panic.
-//   4. Config events arrive via ApplyController / ApplyLocal (and the
-//      matching Remove* methods).
-//   5. Close drains in-flight reconciles and stops the registry.
+//  1. Construct with NewRegistry.
+//  2. Subsystems Register their handlers.
+//  3. Caller invokes Seal. After Seal, Register panics. Apply / Remove
+//     before Seal also panic.
+//  4. Config events arrive via ApplyController / ApplyLocal (and the
+//     matching Remove* methods).
+//  5. Close drains in-flight reconciles and stops the registry.
 //
 // Apply / Remove return as soon as the registry has updated its shared state;
 // the actual handler.Apply / handler.Remove call runs on a freshly-spawned
@@ -191,7 +193,7 @@ func (self *Registry) Register(handler ConfigHandler) error {
 	if _, ok := self.handlers[base]; !ok {
 		self.handlers[base] = &handlerEntry{
 			handler:            handler,
-			controllerVersions: map[int][]byte{},
+			controllerVersions: map[int]string{},
 		}
 	}
 	return nil
@@ -222,7 +224,7 @@ func (self *Registry) Handler(configType string) ConfigHandler {
 // and spawns a goroutine to reconcile the owning handler. Returns parse
 // errors synchronously, ErrNoHandlerRegistered when no handler owns the
 // base, or nil. Panics if called pre-Seal.
-func (self *Registry) ApplyController(configType string, data []byte) error {
+func (self *Registry) ApplyController(configType string, data string) error {
 	if !self.sealed.Load() {
 		panic("managedconfig.Registry.ApplyController called before Seal")
 	}
@@ -277,7 +279,7 @@ func (self *Registry) RemoveController(configType string) error {
 // local entry. Local takes precedence over controller versions for the
 // same base, so as long as a local entry exists, the controller's data is
 // ignored. Panics if called pre-Seal.
-func (self *Registry) ApplyLocal(configType string, data []byte) error {
+func (self *Registry) ApplyLocal(configType string, data string) error {
 	if !self.sealed.Load() {
 		panic("managedconfig.Registry.ApplyLocal called before Seal")
 	}
@@ -389,7 +391,7 @@ func (self *Registry) reconcileAsync(entry *handlerEntry) {
 		self.setApplied(entry, appliedState{})
 
 	case prev.version != 0 && hasNext:
-		if prev.source == nextSource && prev.version == nextVersion && bytes.Equal(prev.data, nextData) {
+		if prev.source == nextSource && prev.version == nextVersion && prev.data == nextData {
 			return
 		}
 		if err := handler.Apply(nextVersion, nextData); err != nil {
@@ -421,7 +423,7 @@ func (self *Registry) reconcileAsync(entry *handlerEntry) {
 //
 // If local isn't set, the effective config is the highest controller
 // version the handler supports. Caller holds Registry.mu.
-func (self *Registry) findEffectiveLocked(entry *handlerEntry) (source ConfigSource, version int, data []byte, found bool) {
+func (self *Registry) findEffectiveLocked(entry *handlerEntry) (source ConfigSource, version int, data string, found bool) {
 	if entry.local != nil {
 		for _, v := range entry.handler.SupportedVersions() {
 			if v == entry.local.version {
@@ -429,11 +431,11 @@ func (self *Registry) findEffectiveLocked(entry *handlerEntry) (source ConfigSou
 			}
 		}
 		pfxlog.Logger().WithField("baseType", entry.handler.BaseType()).WithField("version", entry.local.version).WithField("supported", entry.handler.SupportedVersions()).Error("local config at unsupported version; nothing applied (likely a programming error in the YAML translator)")
-		return 0, 0, nil, false
+		return 0, 0, "", false
 	}
 
 	bestVersion := 0
-	var bestData []byte
+	var bestData string
 	for _, v := range entry.handler.SupportedVersions() {
 		if d, ok := entry.controllerVersions[v]; ok {
 			if v > bestVersion {
@@ -445,7 +447,7 @@ func (self *Registry) findEffectiveLocked(entry *handlerEntry) (source ConfigSou
 	if bestVersion > 0 {
 		return SourceController, bestVersion, bestData, true
 	}
-	return 0, 0, nil, false
+	return 0, 0, "", false
 }
 
 func (self *Registry) setApplied(entry *handlerEntry, state appliedState) {
@@ -460,6 +462,87 @@ func (self *Registry) setApplied(entry *handlerEntry, state appliedState) {
 func (self *Registry) AppliedVersion(configType string) int {
 	_, version, _ := self.Applied(configType)
 	return version
+}
+
+// Inspect returns a snapshot of the registry's state, intended for diagnostics
+// via `ziti fabric inspect router-config-registry`. Handlers are returned in
+// BaseType order for deterministic output.
+func (self *Registry) Inspect() inspect.RouterConfigRegistryState {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
+	result := inspect.RouterConfigRegistryState{
+		Sealed:   self.sealed.Load(),
+		Closed:   self.closed.Load(),
+		Handlers: make([]inspect.RouterConfigHandlerDetail, 0, len(self.handlers)),
+	}
+
+	bases := make([]string, 0, len(self.handlers))
+	for base := range self.handlers {
+		bases = append(bases, base)
+	}
+	sort.Strings(bases)
+
+	for _, base := range bases {
+		result.Handlers = append(result.Handlers, self.handlers[base].inspect())
+	}
+	return result
+}
+
+// inspect returns a snapshot of this handler's registry state. Caller must
+// hold Registry.mu.
+func (self *handlerEntry) inspect() inspect.RouterConfigHandlerDetail {
+	detail := inspect.RouterConfigHandlerDetail{
+		BaseType:          self.handler.BaseType(),
+		SupportedVersions: self.handler.SupportedVersions(),
+	}
+	versions := make([]int, 0, len(self.controllerVersions))
+	for v := range self.controllerVersions {
+		versions = append(versions, v)
+	}
+	sort.Ints(versions)
+	for _, v := range versions {
+		detail.ControllerConfigs = append(detail.ControllerConfigs, inspect.RouterConfigVersionDetail{
+			Version: v,
+			Data:    parseInspectData(self.controllerVersions[v]),
+		})
+	}
+	if self.local != nil {
+		local := self.local.inspect()
+		detail.LocalConfig = &local
+	}
+	detail.Applied = self.applied.inspect()
+	return detail
+}
+
+// inspect returns a version detail for this local entry.
+func (self *localEntry) inspect() inspect.RouterConfigVersionDetail {
+	return inspect.RouterConfigVersionDetail{
+		Version: self.version,
+		Data:    parseInspectData(self.data),
+	}
+}
+
+// parseInspectData decodes a stored config payload into the parsed structure
+// the inspect output should display. If the payload isn't valid JSON, the raw
+// string is returned so the diagnostic still shows what the registry holds.
+func parseInspectData(data string) any {
+	var parsed any
+	if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+		return data
+	}
+	return parsed
+}
+
+// inspect returns the applied detail, or nil if nothing is applied.
+func (self appliedState) inspect() *inspect.RouterConfigAppliedDetail {
+	if self.version == 0 {
+		return nil
+	}
+	return &inspect.RouterConfigAppliedDetail{
+		Source:  self.source.String(),
+		Version: self.version,
+	}
 }
 
 // Applied returns the source and version currently applied for the handler

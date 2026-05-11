@@ -17,6 +17,7 @@
 package managedconfig
 
 import (
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -27,7 +28,7 @@ import (
 
 type applyCall struct {
 	version int
-	data    []byte
+	data    string
 }
 
 // fakeHandler is a scriptable ConfigHandler for tests. ApplyErrs and
@@ -47,10 +48,10 @@ type fakeHandler struct {
 func (f *fakeHandler) BaseType() string         { return f.base }
 func (f *fakeHandler) SupportedVersions() []int { return f.versions }
 
-func (f *fakeHandler) Apply(version int, data []byte) error {
+func (f *fakeHandler) Apply(version int, data string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.applies = append(f.applies, applyCall{version, append([]byte(nil), data...)})
+	f.applies = append(f.applies, applyCall{version, data})
 	if len(f.applyErrs) == 0 {
 		return nil
 	}
@@ -217,7 +218,7 @@ func Test_Seal_ApplyStillWorks(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{}`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -230,7 +231,7 @@ func Test_Seal_PanicsOnApplyBeforeSeal(t *testing.T) {
 	defer func() {
 		req.NotNil(recover(), "Apply before Seal should panic")
 	}()
-	_ = r.ApplyController("router.link.v1", []byte(`{}`))
+	_ = r.ApplyController("router.link.v1", `{}`)
 }
 
 func Test_Seal_PanicsOnRemoveBeforeSeal(t *testing.T) {
@@ -247,7 +248,7 @@ func Test_Seal_PanicsOnRemoveBeforeSeal(t *testing.T) {
 func Test_Apply_InvalidConfigType_ReturnsError(t *testing.T) {
 	req := require.New(t)
 	r, _ := newSealedRegistry(t)
-	err := r.ApplyController("router.link", []byte(`{}`))
+	err := r.ApplyController("router.link", `{}`)
 	req.Error(err)
 }
 
@@ -263,7 +264,7 @@ func Test_Remove_InvalidConfigType_ReturnsError(t *testing.T) {
 func Test_Apply_NoHandler_ReturnsError(t *testing.T) {
 	req := require.New(t)
 	r, _ := newSealedRegistry(t)
-	err := r.ApplyController("router.unknown.v1", []byte(`{}`))
+	err := r.ApplyController("router.unknown.v1", `{}`)
 	req.Error(err)
 	req.ErrorIs(err, ErrNoHandlerRegistered)
 }
@@ -283,7 +284,7 @@ func Test_Apply_FirstTime(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"v"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"v"}`))
 	r.WaitForIdle()
 
 	applies, removes := h.snapshot()
@@ -298,9 +299,9 @@ func Test_Apply_Update(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"a"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"a"}`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"b"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"b"}`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -314,9 +315,9 @@ func Test_Apply_NoOpWhenIdentical(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"v"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"v"}`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"v"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"v"}`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -328,7 +329,7 @@ func Test_Apply_FirstFailure_TriggersRemove(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}, applyErrs: []error{errors.New("bad")}}
 	r, alerts := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{}`))
 	r.WaitForIdle()
 
 	applies, removes := h.snapshot()
@@ -347,9 +348,9 @@ func Test_Apply_UpdateFailure_RollbackSucceeds(t *testing.T) {
 	}
 	r, alerts := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"a"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"a"}`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"b"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"b"}`))
 	r.WaitForIdle()
 
 	applies, removes := h.snapshot()
@@ -371,9 +372,9 @@ func Test_Apply_UpdateFailure_RollbackFails(t *testing.T) {
 	}
 	r, alerts := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"a"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"a"}`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{"k":"b"}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{"k":"b"}`))
 	r.WaitForIdle()
 
 	applies, removes := h.snapshot()
@@ -390,9 +391,9 @@ func Test_MultiVersion_HighestWins(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1data`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1data`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2data`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2data`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -407,9 +408,9 @@ func Test_MultiVersion_HandlerSupportsSubset(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -422,9 +423,9 @@ func Test_MultiVersion_FallbackOnRemove(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1data`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1data`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2data`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2data`))
 	r.WaitForIdle()
 	req.NoError(r.RemoveController("router.link.v2"))
 	r.WaitForIdle()
@@ -445,9 +446,9 @@ func Test_MultiVersion_FallbackOnApplyFailure(t *testing.T) {
 	}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1data`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1data`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2data`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2data`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -463,9 +464,9 @@ func Test_MultiVersion_RemoveLastAvailable(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2`))
 	r.WaitForIdle()
 	req.NoError(r.RemoveController("router.link.v2"))
 	r.WaitForIdle()
@@ -482,10 +483,10 @@ func Test_MultiVersion_OutOfOrderArrival(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`v1`)))
+	req.NoError(r.ApplyController("router.link.v1", `v1`))
 	r.WaitForIdle()
 	req.Equal(1, r.AppliedVersion("router.link.v1"))
-	req.NoError(r.ApplyController("router.link.v2", []byte(`v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `v2`))
 	r.WaitForIdle()
 	req.Equal(2, r.AppliedVersion("router.link.v1"))
 
@@ -504,7 +505,7 @@ func Test_Remove_HandlerError(t *testing.T) {
 	}
 	r, alerts := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{}`))
 	r.WaitForIdle()
 	req.NoError(r.RemoveController("router.link.v1"))
 	r.WaitForIdle()
@@ -523,7 +524,7 @@ func Test_Source_LocalApplies(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-data`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-data`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -543,11 +544,11 @@ func Test_Source_LocalBeatsController(t *testing.T) {
 
 	// Controller arrives first with v2, then local arrives with v1.
 	// Local-wins is at the base level, so local v1 should beat controller v2.
-	req.NoError(r.ApplyController("router.link.v2", []byte(`ctrl-v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `ctrl-v2`))
 	r.WaitForIdle()
 	req.Equal(2, r.AppliedVersion("router.link.v1"))
 
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-v1`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-v1`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -566,9 +567,9 @@ func Test_Source_ControllerIgnoredWhileLocalSet(t *testing.T) {
 	r, _ := newSealedRegistry(t, h)
 
 	// Local v1 first, then controller tries v2. Controller should be ignored.
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-v1`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-v1`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyController("router.link.v2", []byte(`ctrl-v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `ctrl-v2`))
 	r.WaitForIdle()
 
 	applies, _ := h.snapshot()
@@ -585,9 +586,9 @@ func Test_Source_RemoveLocalFallsBackToController(t *testing.T) {
 	r, _ := newSealedRegistry(t, h)
 
 	// Both sources have data; local wins.
-	req.NoError(r.ApplyController("router.link.v2", []byte(`ctrl-v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `ctrl-v2`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-v1`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-v1`))
 	r.WaitForIdle()
 	src, _, _ := r.Applied("router.link.v1")
 	req.Equal(SourceLocal, src)
@@ -611,9 +612,9 @@ func Test_Source_RemoveControllerWhileLocalSet_NoChange(t *testing.T) {
 	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
 	r, _ := newSealedRegistry(t, h)
 
-	req.NoError(r.ApplyController("router.link.v2", []byte(`ctrl-v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `ctrl-v2`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-v1`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-v1`))
 	r.WaitForIdle()
 	appliesBefore, _ := h.snapshot()
 
@@ -635,9 +636,9 @@ func Test_Source_LocalMultiVersion(t *testing.T) {
 	r, _ := newSealedRegistry(t, h)
 
 	// Both local versions present; highest wins within the source.
-	req.NoError(r.ApplyLocal("router.link.v1", []byte(`local-v1`)))
+	req.NoError(r.ApplyLocal("router.link.v1", `local-v1`))
 	r.WaitForIdle()
-	req.NoError(r.ApplyLocal("router.link.v2", []byte(`local-v2`)))
+	req.NoError(r.ApplyLocal("router.link.v2", `local-v2`))
 	r.WaitForIdle()
 
 	src, ver, _ := r.Applied("router.link.v1")
@@ -651,14 +652,14 @@ func Test_Source_LocalUnsupportedVersion_NothingApplies(t *testing.T) {
 	r, _ := newSealedRegistry(t, h)
 
 	// Controller has v2 that the handler supports.
-	req.NoError(r.ApplyController("router.link.v2", []byte(`ctrl-v2`)))
+	req.NoError(r.ApplyController("router.link.v2", `ctrl-v2`))
 	r.WaitForIdle()
 	req.Equal(2, r.AppliedVersion("router.link.v1"))
 
 	// Operator sets local at v3 — handler doesn't support v3. Local-wins is
 	// strict: controller's v2 must NOT silently take over. Subsystem should
 	// reconcile to "nothing applied," surfacing the problem.
-	req.NoError(r.ApplyLocal("router.link.v3", []byte(`local-v3`)))
+	req.NoError(r.ApplyLocal("router.link.v3", `local-v3`))
 	r.WaitForIdle()
 
 	_, _, found := r.Applied("router.link.v1")
@@ -671,6 +672,80 @@ func Test_ConfigSource_String(t *testing.T) {
 	req.Equal("local", SourceLocal.String())
 }
 
+// --- Inspect ----------------------------------------------------------------
+
+func Test_Inspect_Empty(t *testing.T) {
+	req := require.New(t)
+	r, _ := newSealedRegistry(t)
+	snap := r.Inspect()
+	req.True(snap.Sealed)
+	req.False(snap.Closed)
+	req.Empty(snap.Handlers)
+}
+
+func Test_Inspect_HandlersSortedByBase(t *testing.T) {
+	req := require.New(t)
+	h1 := &fakeHandler{base: "router.xgress.proxy", versions: []int{1}}
+	h2 := &fakeHandler{base: "router.link", versions: []int{1, 2}}
+	h3 := &fakeHandler{base: "router.forwarder", versions: []int{1}}
+	r, _ := newSealedRegistry(t, h1, h2, h3)
+
+	snap := r.Inspect()
+	req.Len(snap.Handlers, 3)
+	req.Equal("router.forwarder", snap.Handlers[0].BaseType)
+	req.Equal("router.link", snap.Handlers[1].BaseType)
+	req.Equal("router.xgress.proxy", snap.Handlers[2].BaseType)
+}
+
+func Test_Inspect_ReportsControllerAndLocalAndApplied(t *testing.T) {
+	req := require.New(t)
+	h := &fakeHandler{base: "router.link", versions: []int{1, 2}}
+	r, _ := newSealedRegistry(t, h)
+
+	req.NoError(r.ApplyController("router.link.v1", `{"src":"ctrl","v":1}`))
+	r.WaitForIdle()
+	req.NoError(r.ApplyController("router.link.v2", `{"src":"ctrl","v":2}`))
+	r.WaitForIdle()
+	req.NoError(r.ApplyLocal("router.link.v1", `{"src":"local","v":1}`))
+	r.WaitForIdle()
+
+	snap := r.Inspect()
+	req.Len(snap.Handlers, 1)
+	hi := snap.Handlers[0]
+	req.Equal("router.link", hi.BaseType)
+	req.Equal([]int{1, 2}, hi.SupportedVersions)
+	req.Len(hi.ControllerConfigs, 2)
+	req.Equal(1, hi.ControllerConfigs[0].Version)
+	req.Equal(map[string]any{"src": "ctrl", "v": float64(1)}, hi.ControllerConfigs[0].Data)
+	req.Equal(2, hi.ControllerConfigs[1].Version)
+	req.Equal(map[string]any{"src": "ctrl", "v": float64(2)}, hi.ControllerConfigs[1].Data)
+	req.NotNil(hi.LocalConfig)
+	req.Equal(1, hi.LocalConfig.Version)
+	req.Equal(map[string]any{"src": "local", "v": float64(1)}, hi.LocalConfig.Data)
+	req.NotNil(hi.Applied)
+	req.Equal("local", hi.Applied.Source)
+	req.Equal(1, hi.Applied.Version)
+}
+
+func Test_Inspect_JSON(t *testing.T) {
+	req := require.New(t)
+	h := &fakeHandler{base: "router.link", versions: []int{1}}
+	r, _ := newSealedRegistry(t, h)
+	req.NoError(r.ApplyController("router.link.v1", `{"hello":"world"}`))
+	r.WaitForIdle()
+
+	b, err := json.Marshal(r.Inspect())
+	req.NoError(err)
+	// Spot-check the marshaled output for the expected keys; not a full
+	// schema validation, just enough to confirm the struct tags work and that
+	// the config payload is inlined as parsed JSON rather than a quoted string.
+	out := string(b)
+	req.Contains(out, `"sealed":true`)
+	req.Contains(out, `"baseType":"router.link"`)
+	req.Contains(out, `"applied":{"source":"controller","version":1}`)
+	req.Contains(out, `"data":{"hello":"world"}`)
+}
+
 // --- Concurrency -------------------------------------------------------------
 
 func Test_DifferentHandlersReconcileInParallel(t *testing.T) {
@@ -680,8 +755,8 @@ func Test_DifferentHandlersReconcileInParallel(t *testing.T) {
 	fast := &fakeHandler{base: "router.fast", versions: []int{1}}
 	r, _ := newSealedRegistry(t, slow, fast)
 
-	req.NoError(r.ApplyController("router.slow.v1", []byte(`a`)))
-	req.NoError(r.ApplyController("router.fast.v1", []byte(`b`)))
+	req.NoError(r.ApplyController("router.slow.v1", `a`))
+	req.NoError(r.ApplyController("router.fast.v1", `b`))
 
 	pollUntil(t, func() bool {
 		applies, _ := fast.snapshot()
@@ -705,11 +780,11 @@ type slowHandler struct {
 
 func (s *slowHandler) BaseType() string         { return s.base }
 func (s *slowHandler) SupportedVersions() []int { return s.versions }
-func (s *slowHandler) Apply(version int, data []byte) error {
+func (s *slowHandler) Apply(version int, data string) error {
 	<-s.gate
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.applies = append(s.applies, applyCall{version, append([]byte(nil), data...)})
+	s.applies = append(s.applies, applyCall{version, data})
 	return nil
 }
 func (s *slowHandler) Remove() error { return nil }
@@ -740,7 +815,7 @@ func Test_Default_AlertLogs(t *testing.T) {
 	h := &fakeHandler{base: "x", versions: []int{1}, applyErrs: []error{errors.New("nope")}}
 	require.NoError(t, r.Register(h))
 	r.Seal()
-	require.NoError(t, r.ApplyController("x.v1", []byte(`{}`)))
+	require.NoError(t, r.ApplyController("x.v1", `{}`))
 	r.WaitForIdle()
 }
 
@@ -752,7 +827,7 @@ func Test_Close_DrainsInFlight(t *testing.T) {
 	slow := &slowHandler{base: "router.slow", versions: []int{1}, gate: gate}
 	r, _ := newSealedRegistry(t, slow)
 
-	req.NoError(r.ApplyController("router.slow.v1", []byte(`a`)))
+	req.NoError(r.ApplyController("router.slow.v1", `a`))
 
 	closeDone := make(chan struct{})
 	go func() {
@@ -777,7 +852,7 @@ func Test_Close_PreventsNewSpawns(t *testing.T) {
 	r.Close()
 
 	// After Close, Apply still records data but does not spawn a reconcile.
-	req.NoError(r.ApplyController("router.link.v1", []byte(`{}`)))
+	req.NoError(r.ApplyController("router.link.v1", `{}`))
 	applies, _ := h.snapshot()
 	req.Empty(applies, "no apply should be observed after Close")
 }

@@ -66,6 +66,7 @@ import (
 	"github.com/openziti/ziti/v2/router/handler_ctrl"
 	"github.com/openziti/ziti/v2/router/handler_link"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
+	"github.com/openziti/ziti/v2/router/managedconfig"
 	"github.com/openziti/ziti/v2/router/inspect"
 	"github.com/openziti/ziti/v2/router/interfaces"
 	"github.com/openziti/ziti/v2/router/link"
@@ -123,6 +124,7 @@ type Router struct {
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
 	alertReporter       *alert.Reporter
+	configRegistry      *managedconfig.Registry
 	inspectHandler      channel.TypedReceiveHandler
 }
 
@@ -212,6 +214,11 @@ func (self *Router) GetStateManager() state.Manager {
 
 func (self *Router) GetRouterDataModel() *common.RouterDataModel {
 	return self.stateManager.RouterDataModel()
+}
+
+// GetRouterConfigRegistry returns the controller-managed config registry.
+func (self *Router) GetRouterConfigRegistry() *managedconfig.Registry {
+	return self.configRegistry
 }
 
 // WithRouterDataModel passes the current router data model into the provide function
@@ -337,6 +344,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
+	router.configRegistry = managedconfig.NewRegistry(nil)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
