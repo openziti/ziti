@@ -27,20 +27,27 @@ instead of inline on the channel receive path. This prevents thundering herd rec
 and gossip lock contention from starving heartbeat processing, which previously caused
 cascading disconnects.
 
-Two pools split work by connection type so router floods can't starve peer processing:
+Three pools split work by purpose so a flood in one path can't starve the others:
 
-- **Router events pool**: handles ConnectRouter, gossip deltas/digests from routers, and
-  canary messages. If the pool is full when a router connects, the connection is rejected.
-  For gossip messages, the message is dropped silently (anti-entropy recovers).
+- **Router connect pool**: handles `ConnectRouter` (link building, presence handlers,
+  terminator validation). If full when a router connects, the connection is rejected so
+  the router retries via its normal backoff. Kept separate from the gossip events pool
+  because connect work is heavy and bursty (a chaos restart of N routers fires N
+  `ConnectRouter` jobs at once), and we don't want that burst to drop gossip messages.
+- **Router events pool**: handles gossip deltas/digests/canaries from routers. The queue
+  is generous because dropping gossip causes router/controller state to diverge and
+  forces an extra digest-exchange round trip to recover.
 - **Peer events pool**: handles gossip deltas/digests/responses from peer controllers.
-  Messages are dropped when the pool is full.
+  Messages are dropped when the pool is full; anti-entropy recovers.
 
 New configuration under `network`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `routerEventsPool.queueSize` | `1` | Work queue size. Kept small so excess work is rejected fast. |
-| `routerEventsPool.maxWorkers` | `200` | Max concurrent router event workers. |
+| `routerConnectPool.queueSize` | `1` | Work queue size. Kept small so excess work is rejected fast. |
+| `routerConnectPool.maxWorkers` | `200` | Max concurrent `ConnectRouter` workers. |
+| `routerEventsPool.queueSize` | `1024` | Work queue size. Generous so gossip bursts get buffered rather than dropped. |
+| `routerEventsPool.maxWorkers` | `50` | Max concurrent gossip/canary workers. |
 | `peerEventsPool.queueSize` | `1` | Work queue size for peer events. |
 | `peerEventsPool.maxWorkers` | `10` | Max concurrent peer event workers. |
 
@@ -48,7 +55,8 @@ New metrics (via goroutine pool metrics):
 
 | Metric prefix | Description |
 |---------------|-------------|
-| `pool.router.events.*` | Router events pool: `current_size`, `busy_workers`, `work_timer`, `queue_size` |
+| `pool.router.connect.*` | Router connect pool: `current_size`, `busy_workers`, `work_timer`, `queue_size` |
+| `pool.router.events.*` | Router events pool: same metrics |
 | `pool.peer.events.*` | Peer events pool: same metrics |
 
 ### Bug Fixes

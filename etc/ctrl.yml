@@ -100,11 +100,20 @@ cluster:
   # Defaults to 1 minute
   routerConnectChurnLimit: 1m
 
-  # Bounded pool for router events (connection setup, gossip, canary messages).
-  # If full on connect, the connection is rejected. For gossip, messages are dropped.
+  # Bounded pool for router connection setup (ConnectRouter). If full, the
+  # incoming router connection is rejected so the router retries via its normal
+  # backoff. Keeping the queue small ensures excess connect work is rejected
+  # fast rather than piling up.
+  #routerConnectPool:
+    #queueSize:  1
+    #maxWorkers: 200
+
+  # Bounded pool for router-originated gossip and canary message processing.
+  # The queue is generous because dropping gossip causes router/controller state
+  # to diverge and forces an extra digest-exchange round trip to recover.
   #routerEventsPool:
-    #queueSize:  1    # keep small so excess work is rejected fast
-    #maxWorkers: 200  # max concurrent router event workers
+    #queueSize:  1024
+    #maxWorkers: 50
 
   # Bounded pool for peer controller events (gossip deltas, digests).
   # Messages are dropped when full; anti-entropy recovers.

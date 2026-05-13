@@ -124,6 +124,7 @@ type Network struct {
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
+	routerConnectPool   goroutines.Pool
 	routerEventsPool    goroutines.Pool
 	peerEventsPool      goroutines.Pool
 	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
@@ -168,6 +169,12 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	}
 
 	env.GetManagers().Command.Decoders.RegisterF(int32(cmd_pb.CommandType_SyncSnapshot), network.decodeSyncSnapshotCommand)
+
+	routerConnectPool, err := network.createRouterConnectPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.routerConnectPool = routerConnectPool
 
 	routerEventsPool, err := network.createRouterEventsPool(config)
 	if err != nil {
@@ -251,6 +258,27 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 
 func routerCommunicationsWorker(_ uint32, f func()) {
 	f()
+}
+
+func (network *Network) createRouterConnectPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().RouterConnectPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().RouterConnectPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during router connect processing")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.connect")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating router connect pool: %w", err)
+	}
+	return pool, nil
 }
 
 func (network *Network) createRouterEventsPool(config Config) (goroutines.Pool, error) {
@@ -438,7 +466,15 @@ func (network *Network) GetCloseNotify() <-chan struct{} {
 	return network.closeNotify
 }
 
-// GetRouterEventsPool returns the bounded pool for router event processing.
+// GetRouterConnectPool returns the bounded pool for router connection setup
+// work (ConnectRouter). It is kept separate from the gossip/canary events pool
+// so that bursts of router reconnects can't starve the gossip hot path.
+func (network *Network) GetRouterConnectPool() goroutines.Pool {
+	return network.routerConnectPool
+}
+
+// GetRouterEventsPool returns the bounded pool for router-originated gossip
+// and canary message processing.
 func (network *Network) GetRouterEventsPool() goroutines.Pool {
 	return network.routerEventsPool
 }
@@ -466,7 +502,7 @@ func (network *Network) QueueRouterConnect(r *model.Router) error {
 		}
 	}
 
-	return network.routerEventsPool.QueueOrError(func() {
+	return network.routerConnectPool.QueueOrError(func() {
 		network.ConnectRouter(r)
 	})
 }
