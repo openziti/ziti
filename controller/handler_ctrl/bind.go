@@ -120,11 +120,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		binding.AddCloseHandler(newXctrlCloseHandler(xctrlDone))
 	}
 
-	canaryCloseNotify := make(chan struct{})
-	binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
-		close(canaryCloseNotify)
-	}))
-	startCanaryStatusSender(binding.GetChannel(), self.router, self.network, canaryCloseNotify)
+	startCanaryStatusSender(binding.GetChannel(), self.router, self.network)
 
 	binding.AddCloseHandler(newCloseHandler(self.router, self.network))
 

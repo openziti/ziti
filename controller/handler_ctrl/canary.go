@@ -87,7 +87,12 @@ const (
 // controller's view of the router's canary sequence back to the router. It also
 // checks for gossip staleness: if the router reports a higher max sent version
 // than this controller has, it triggers a digest exchange after a brief delay.
-func startCanaryStatusSender(ch channel.Channel, router *model.Router, n *network.Network, closeNotify <-chan struct{}) {
+//
+// The goroutine ties its lifetime to ch.CloseNotify(), which is closed when the
+// channel is closed (including the bind-error path in channel.NewMultiChannel,
+// where the rejected channel's Close() runs all registered handlers and closes
+// CloseNotify). No separate close handler is needed.
+func startCanaryStatusSender(ch channel.Channel, router *model.Router, n *network.Network) {
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
@@ -97,6 +102,8 @@ func startCanaryStatusSender(ch channel.Channel, router *model.Router, n *networ
 		behindTicks := map[string]int{}
 		lastSyncedMaxSent := map[string]uint64{}
 		hashState := map[string]*hashMismatchState{}
+
+		closeNotify := ch.CloseNotify()
 
 		for {
 			select {
