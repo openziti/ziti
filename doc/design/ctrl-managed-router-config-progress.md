@@ -1376,6 +1376,17 @@ cfgTweaks; routers default to empty allow-list which drops everything.
 - **edge-api `v0.31.0` adds `Configs` to `EdgeRouterCreate`/`Update`/`Patch`.**
   Previous `v0.25.x` had the field on `RouterCreate` (transit) only, which
   made the feature unusable for edge routers via the REST API.
+- **Pre-existing flaky data race in `pfxlog` global state.** `go test -race
+  ./controller/network -run TestShortestPathAgainstEstablished` fails
+  intermittently. The race is between `pfxlog.GlobalInit(...)` at the top
+  of `route_perf_test.go:31` and a `HeartbeatCollector.flush()` goroutine
+  at `controller/model/api_session_heartbeats.go:106` from a *prior* test
+  that's still running. The flush goroutine reads `pfxlog`'s global
+  logger state while the new test writes it. Reproduced on `main` without
+  any managed-config changes. Fixes belong outside this work: move
+  `pfxlog.GlobalInit` to `TestMain` (one-time init), stop the heartbeat
+  collector at test cleanup so leaked goroutines don't outlive their
+  test, or make `pfxlog.GlobalInit` itself thread-safe.
 
 ### Deliberately not tested in `tests/`
 
@@ -1474,6 +1485,59 @@ tracker but get a stripped feed.
 Until this work happens, managed router configs only flow to edge
 routers. Operators using transit routers must continue to configure
 links via local YAML.
+
+### Link subsystem change notifications
+
+`link.FactoryRegistry` invokes a `LinkSubsystemChangeHandler` after every
+Apply / Remove that mutates the listener or dialer set. The handler
+receives a `LinkSubsystemChange{ListenersChanged, DialersChanged}`
+struct so each consumer knows what to inspect. Apply / Remove invokes
+the handler asynchronously off the reconcile path; identical Apply
+(same parsed `link.Config`) is a no-op.
+
+Two consumers today, both wired in `router.Router`:
+
+- **`ListenersChanged` → republish to controller.** Marshals current
+  listener set into `ctrl_pb.Listeners`, sends as a `ctrl_pb.ContentType_UpdateLinkListenersType (1056)`
+  message to every connected controller via `NetworkControllers.ForEach`.
+  Controller's `update_link_listeners.go` handler updates `Router.Listeners`
+  and triggers `RouterMessaging.RouterListenersUpdated`, which reuses
+  the existing `routerChanged` event path to fan a `PeerStateChange`
+  out to all other connected routers carrying the new listener set.
+- **`DialersChanged` → local rescan.** Calls
+  `xlinkRegistry.RescanForDialOpportunities()`, which queues a new
+  `localDialersChangedEvent` on the registry's event loop. The handler
+  walks each known healthy destination's cached listener set (cached on
+  `linkDest.listeners` at last `UpdateLinkDest`) and re-runs the existing
+  `ApplyListenerChanges` matching logic against the current local
+  dialer set. New matches produce new `linkState`s; existing ones are
+  untouched.
+
+### Followups deferred to enable hot-reload safely
+
+- **`RouterCapability.ControllerManagedConfig`** — declare the
+  capability in `ctrl.proto`, router advertises it in the existing
+  Hello CapabilitiesHeader. Today it's not load-bearing (the existing
+  trigger paths are safe), but if/when hot-reload of local YAML lands,
+  routers with managed-config enabled would publish `UpdateLinkListeners`
+  even to old controllers. The capability gives controllers a way to
+  detect support, and gives us a clean place to gate future controller→
+  router-aimed managed-config messages.
+- **Changelog entries** for this phase's behavior changes:
+  - New `ctrl_pb.ContentType_UpdateLinkListenersType (1056)` — router →
+    controller, fire-and-forget.
+  - Routers with `managedConfig.allow` set now republish listeners to
+    the controller after every link subsystem change. Old controllers
+    will log an unknown-content-type warning but stay functional.
+  - Router-target Config reassignment / unassignment via
+    `PATCH /edge-routers/{id} configs=[...]` now drives runtime listener
+    rebuild on the affected router; previously required a router restart.
+  - Bug fix: GC of orphaned router-target configs in the router's RDM
+    now correctly dispatches the remove event to the managed-config
+    subscriber (was silently leaving listeners bound).
+  - `link.ConfigFromLocalYaml` no longer counts auto-filled heartbeat
+    defaults as "local content"; previously this suppressed controller
+    management for routers without an explicit `link:` YAML section.
 
 ---
 

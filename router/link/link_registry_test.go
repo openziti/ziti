@@ -17,6 +17,8 @@
 package link
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,6 +41,16 @@ type testEnv struct {
 	closeNotify     chan struct{}
 	ctrls           env.NetworkControllers
 	config          *env.Config
+	dialerPool      goroutines.Pool
+
+	dialersMu sync.Mutex
+	dialers   []xlink.Dialer
+}
+
+func (self *testEnv) setDialers(d []xlink.Dialer) {
+	self.dialersMu.Lock()
+	defer self.dialersMu.Unlock()
+	self.dialers = d
 }
 
 func (self *testEnv) GetRouterId() *identity.TokenId {
@@ -69,7 +81,11 @@ func (self *testEnv) GetNetworkControllers() env.NetworkControllers {
 }
 
 func (self *testEnv) GetXlinkDialers() []xlink.Dialer {
-	panic("implement me")
+	self.dialersMu.Lock()
+	defer self.dialersMu.Unlock()
+	out := make([]xlink.Dialer, len(self.dialers))
+	copy(out, self.dialers)
+	return out
 }
 
 func (self *testEnv) GetCloseNotify() <-chan struct{} {
@@ -77,7 +93,7 @@ func (self *testEnv) GetCloseNotify() <-chan struct{} {
 }
 
 func (self *testEnv) GetLinkDialerPool() goroutines.Pool {
-	panic("implement me")
+	return self.dialerPool
 }
 
 func (self *testEnv) GetRateLimiterPool() goroutines.Pool {
@@ -207,6 +223,20 @@ func newTestEnv() *testEnv {
 
 	testEnv.config.Ctrl.DefaultRequestTimeout = time.Second
 	testEnv.ctrls = env.NewNetworkControllers(testEnv, env.NewDefaultHeartbeatOptions())
+
+	pool, err := goroutines.NewPool(goroutines.PoolConfig{
+		QueueSize:      32,
+		MinWorkers:     0,
+		MaxWorkers:     2,
+		IdleTime:       10 * time.Second,
+		CloseNotify:    closeNotify,
+		PanicHandler:   func(err interface{}) {},
+		WorkerFunction: func(_ uint32, f func()) { f() },
+	})
+	if err != nil {
+		panic(err)
+	}
+	testEnv.dialerPool = pool
 	return testEnv
 }
 
@@ -355,4 +385,109 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId2, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId5, getRegistryMetrics())
+}
+
+// stubDialer is a minimal xlink.Dialer for tests. Only the accessors the
+// link registry consults during match evaluation are needed.
+type stubDialer struct {
+	binding string
+	groups  []string
+}
+
+func (d *stubDialer) Dial(xlink.Dial) (xlink.Xlink, error) {
+	return nil, fmt.Errorf("stubDialer never actually dials")
+}
+func (d *stubDialer) GetGroups() []string                          { return d.groups }
+func (d *stubDialer) GetBinding() string                           { return d.binding }
+func (d *stubDialer) GetHealthyBackoffConfig() xlink.BackoffConfig { return nil }
+func (d *stubDialer) GetUnhealthyBackoffConfig() xlink.BackoffConfig {
+	return nil
+}
+func (d *stubDialer) AdoptBinding(xlink.Listener) {}
+
+// destLinkCountProbe is a synchronized event that snapshots the linkMap
+// count of a given destination by piggybacking on the registry's event
+// loop. Avoids races between the test reader and the run() goroutine.
+type destLinkCountProbe struct {
+	destId string
+	out    chan int
+}
+
+func (p destLinkCountProbe) Handle(reg *linkRegistryImpl) {
+	if d, ok := reg.destinations[p.destId]; ok {
+		p.out <- len(d.linkMap)
+		return
+	}
+	p.out <- 0
+}
+
+func destLinkCount(reg *linkRegistryImpl, destId string) int {
+	probe := destLinkCountProbe{destId: destId, out: make(chan int, 1)}
+	reg.queueEvent(probe)
+	select {
+	case n := <-probe.out:
+		return n
+	case <-time.After(2 * time.Second):
+		return -1
+	}
+}
+
+func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	// Peer destination advertises a listener in group "a". Local has no
+	// matching dialer yet, so the listener doesn't produce a linkState.
+	destId := "peer-router-1"
+	tenv.setDialers(nil)
+	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+	})
+
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) == 0
+	}, 2*time.Second, 25*time.Millisecond, "no dialer → no linkState")
+
+	// Add a local dialer that matches group "a". Without the rescan,
+	// nothing notices — the peer's listener already arrived and won't
+	// re-trigger the match. Call RescanForDialOpportunities and assert a
+	// linkState is created.
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
+	reg.RescanForDialOpportunities()
+
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) == 1
+	}, 2*time.Second, 25*time.Millisecond, "rescan should discover the now-possible match")
+}
+
+func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	// Peer listener in group "a"; local dialer in group "b". Rescan
+	// shouldn't create a state because there's no group intersection.
+	destId := "peer-router-2"
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
+	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+	})
+
+	// Let the initial update settle. destLinkCount goes through the
+	// event-loop probe, so it both serializes the read and waits for
+	// the linkDestUpdate to land.
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) >= 0
+	}, time.Second, 25*time.Millisecond)
+
+	reg.RescanForDialOpportunities()
+
+	// Probe again; the rescan probe ordered after the rescan event must
+	// observe no matches (groups didn't intersect).
+	req.Equal(0, destLinkCount(reg, destId), "rescan should not produce matches when groups don't intersect")
 }

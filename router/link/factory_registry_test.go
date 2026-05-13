@@ -32,7 +32,7 @@ import (
 // --- Test doubles for xlink.Factory / Listener / Dialer ---------------------
 
 type fakeFactory struct {
-	mu              sync.Mutex
+	mu               sync.Mutex
 	createdListeners []*fakeListener
 	createdDialers   []*fakeDialer
 	dialerConfigs    []transport.Configuration
@@ -48,7 +48,8 @@ func (f *fakeFactory) CreateListener(id *identity.TokenId, cfg transport.Configu
 	}
 	bind, _ := cfg["bind"].(string)
 	binding, _ := cfg["binding"].(string)
-	l := &fakeListener{bind: bind, binding: binding}
+	localBinding, _ := cfg["bindInterface"].(string)
+	l := &fakeListener{bind: bind, binding: binding, localBinding: localBinding}
 	f.createdListeners = append(f.createdListeners, l)
 	return l, nil
 }
@@ -64,18 +65,19 @@ func (f *fakeFactory) CreateDialer(id *identity.TokenId, cfg transport.Configura
 		configCopy[k] = v
 	}
 	f.dialerConfigs = append(f.dialerConfigs, configCopy)
-	binding, _ := cfg["binding"].(string)
+	binding, _ := cfg["bind"].(string)
 	d := &fakeDialer{binding: binding}
 	f.createdDialers = append(f.createdDialers, d)
 	return d, nil
 }
 
 type fakeListener struct {
-	bind    string
-	binding string
-	started bool
-	closed  bool
-	listenErr error
+	bind         string
+	binding      string
+	localBinding string
+	started      bool
+	closed       bool
+	listenErr    error
 }
 
 func (l *fakeListener) Listen() error             { l.started = true; return l.listenErr }
@@ -83,7 +85,7 @@ func (l *fakeListener) GetAdvertisement() string  { return l.bind }
 func (l *fakeListener) GetLinkProtocol() string   { return l.binding }
 func (l *fakeListener) GetLinkCostTags() []string { return nil }
 func (l *fakeListener) GetGroups() []string       { return nil }
-func (l *fakeListener) GetLocalBinding() string   { return "" }
+func (l *fakeListener) GetLocalBinding() string   { return l.localBinding }
 func (l *fakeListener) Close() error              { l.closed = true; return nil }
 
 type fakeDialer struct {
@@ -100,7 +102,7 @@ func (d *fakeDialer) GetHealthyBackoffConfig() xlink.BackoffConfig {
 func (d *fakeDialer) GetUnhealthyBackoffConfig() xlink.BackoffConfig { return nil }
 func (d *fakeDialer) AdoptBinding(l xlink.Listener) {
 	d.adopted = l.GetLocalBinding()
-	d.binding = "adopted"
+	d.binding = d.adopted
 }
 
 func mustTokenId(t *testing.T) *identity.TokenId {
@@ -165,13 +167,12 @@ func Test_FactoryRegistry_Apply_AdoptsBindingWhenSingleListenerAndDialer(t *test
 	r, _ := newTestRegistry(t)
 
 	data := `{
-		"listeners": [{"bind": "tls:0.0.0.0:6262"}],
+		"listeners": [{"bind": "tls:0.0.0.0:6262", "bindInterface":"eth0"}],
 		"dialers":   [{}]
 	}`
 	req.NoError(r.Apply(1, data))
 
-	// fakeDialer.AdoptBinding sets binding to "adopted"
-	req.Equal("adopted", r.Dialers()[0].GetBinding())
+	req.Equal("eth0", r.Dialers()[0].GetBinding())
 }
 
 func Test_FactoryRegistry_Apply_ClosesOldListenersOnRebuild(t *testing.T) {
@@ -245,6 +246,181 @@ func Test_FactoryRegistry_Remove_TearsDown(t *testing.T) {
 	req.True(f.createdListeners[0].closed)
 }
 
+// changeRecorder captures ConfigurationChange events for assertions.
+type changeRecorder struct {
+	mu      sync.Mutex
+	changes []ConfigurationChange
+	done    chan struct{}
+}
+
+func newChangeRecorder() *changeRecorder {
+	return &changeRecorder{done: make(chan struct{}, 4)}
+}
+
+func (r *changeRecorder) handle(c ConfigurationChange) {
+	r.mu.Lock()
+	r.changes = append(r.changes, c)
+	r.mu.Unlock()
+	select {
+	case r.done <- struct{}{}:
+	default:
+	}
+}
+
+func (r *changeRecorder) snapshot() []ConfigurationChange {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]ConfigurationChange, len(r.changes))
+	copy(out, r.changes)
+	return out
+}
+
+// waitForChange blocks until at least one change event fires or the
+// timeout expires. Returns true if an event arrived.
+func (r *changeRecorder) waitForChange(timeout time.Duration) bool {
+	select {
+	case <-r.done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+func Test_FactoryRegistry_ChangeHandler_FiresOnFirstApply(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"dialers":[{}]}`))
+	req.True(rec.waitForChange(time.Second), "handler should fire on Apply")
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.True(changes[0].ListenersChanged, "listeners went 0→1")
+	req.True(changes[0].DialersChanged, "dialers went 0→1")
+}
+
+func Test_FactoryRegistry_ChangeHandler_NoFireOnIdenticalApply(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// Prime with an initial apply (no handler).
+	data := `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`
+	req.NoError(r.Apply(1, data))
+
+	// Install handler and re-apply the same data. No change → no fire.
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+	req.NoError(r.Apply(1, data))
+
+	// Allow async settling.
+	req.False(rec.waitForChange(150*time.Millisecond),
+		"handler must not fire when listeners and dialers are unchanged")
+}
+
+func Test_FactoryRegistry_ChangeHandler_ListenersOnlyChange(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"dialers":[{}]}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// Same dialer, different listener bind.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6263"}],"dialers":[{}]}`))
+	req.True(rec.waitForChange(time.Second))
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.True(changes[0].ListenersChanged)
+	req.False(changes[0].DialersChanged, "dialer slice unchanged")
+}
+
+func Test_FactoryRegistry_ChangeHandler_ListenerBindInterfaceChangeAffectsDefaultDialer(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262","bindInterface":"eth0"}],"dialers":[{}]}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262","bindInterface":"eth1"}],"dialers":[{}]}`))
+	req.True(rec.waitForChange(time.Second))
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.True(changes[0].ListenersChanged)
+	req.True(changes[0].DialersChanged, "default-adopted dialer binding changed")
+	req.Equal("eth1", r.Dialers()[0].GetBinding())
+}
+
+func Test_FactoryRegistry_ChangeHandler_ExplicitDialerBindInterfaceIgnoresListenerDefault(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262","bindInterface":"eth0"}],"dialers":[{"bindInterface":"wan0"}]}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262","bindInterface":"eth1"}],"dialers":[{"bindInterface":"wan0"}]}`))
+	req.True(rec.waitForChange(time.Second))
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.True(changes[0].ListenersChanged)
+	req.False(changes[0].DialersChanged, "explicit dialer binding should not follow listener binding")
+	req.Equal("wan0", r.Dialers()[0].GetBinding())
+}
+
+func Test_FactoryRegistry_ChangeHandler_DialersOnlyChange(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"dialers":[{"groups":["a"]}]}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// Same listener, different dialer groups.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"dialers":[{"groups":["a","b"]}]}`))
+	req.True(rec.waitForChange(time.Second))
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.False(changes[0].ListenersChanged, "listener slice unchanged")
+	req.True(changes[0].DialersChanged)
+}
+
+func Test_FactoryRegistry_ChangeHandler_FiresOnRemove(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"dialers":[{}]}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	req.NoError(r.Remove())
+	req.True(rec.waitForChange(time.Second))
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.True(changes[0].ListenersChanged, "listeners went N→0")
+	req.True(changes[0].DialersChanged, "dialers went N→0")
+}
+
+func Test_FactoryRegistry_ChangeHandler_RemoveOnEmptyIsNoop(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// Remove with nothing applied. Both sides go from nil to nil — no
+	// change to publish.
+	req.NoError(r.Remove())
+	req.False(rec.waitForChange(150 * time.Millisecond))
+}
+
 // --- Concurrent access -------------------------------------------------------
 
 func Test_FactoryRegistry_AccessorsReturnSnapshots(t *testing.T) {
@@ -290,8 +466,8 @@ func Test_ConfigFromLocalYaml_Roundtrip(t *testing.T) {
 		},
 		Dialers: []map[interface{}]interface{}{
 			{
-				"binding":  "transport",
-				"groups":   "default", // single-string form
+				"binding": "transport",
+				"groups":  "default", // single-string form
 			},
 		},
 		Heartbeats: channel.HeartbeatOptions{

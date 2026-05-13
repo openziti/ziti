@@ -18,6 +18,7 @@ package link
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/michaelquigley/pfxlog"
@@ -51,6 +52,40 @@ type FactoryRegistry struct {
 	config    *Config
 	listeners []xlink.Listener
 	dialers   []xlink.Dialer
+
+	changeHandler ConfigurationChangeHandler
+}
+
+// ConfigurationChange describes which parts of the link configuration
+// changed during an Apply / Remove. Both flags may be true (e.g. on
+// Remove from a config that had both listeners and dialers); either may
+// be false to let consumers skip work they don't care about.
+type ConfigurationChange struct {
+	// ListenersChanged is true when the listener set differs from the
+	// previous state (membership and/or any listener field that affects
+	// what peers should know — bind address, advertise, groups, etc.).
+	ListenersChanged bool
+	// DialersChanged is true when the dialer set differs from the
+	// previous state, including dialer groups and effective local
+	// binding. The effective local binding includes the single
+	// listener/single dialer default adoption rule.
+	DialersChanged bool
+}
+
+// ConfigurationChangeHandler is invoked asynchronously after a successful
+// Apply or Remove when the listener and/or dialer set actually changed.
+// Consumers inspect the change flags to decide what to do (e.g., publish
+// new listeners to the controller, re-evaluate dial opportunities).
+type ConfigurationChangeHandler func(change ConfigurationChange)
+
+// SetConfigurationChangeHandler installs a callback that fires after each successful
+// Apply or Remove with non-trivial state changes. Pass nil to unset.
+// Safe to call concurrent with Apply / Remove; the handler is invoked
+// off the apply path so handler work doesn't block reconcile.
+func (self *FactoryRegistry) SetConfigurationChangeHandler(h ConfigurationChangeHandler) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	self.changeHandler = h
 }
 
 // NewFactoryRegistry constructs an empty registry. Caller registers
@@ -115,15 +150,22 @@ func (self *FactoryRegistry) Apply(version int, data string) error {
 	}
 
 	self.mu.Lock()
+	prevConfig := self.config
 	oldListeners := self.listeners
 	self.listeners = newListeners
 	self.dialers = newDialers
 	self.config = cfg
+	handler := self.changeHandler
 	self.mu.Unlock()
 
 	closeListeners(oldListeners)
 	setDefaultDialerBinding(newListeners, newDialers)
-	return startListeners(newListeners)
+	if err := startListeners(newListeners); err != nil {
+		return err
+	}
+
+	notifyChange(handler, prevConfig, cfg)
+	return nil
 }
 
 // Remove implements managedconfig.ConfigHandler. Tears down listeners and
@@ -131,14 +173,92 @@ func (self *FactoryRegistry) Apply(version int, data string) error {
 // Apply. Established Xlinks are not touched.
 func (self *FactoryRegistry) Remove() error {
 	self.mu.Lock()
+	prevConfig := self.config
 	oldListeners := self.listeners
 	self.listeners = nil
 	self.dialers = nil
 	self.config = nil
+	handler := self.changeHandler
 	self.mu.Unlock()
 
 	closeListeners(oldListeners)
+	notifyChange(handler, prevConfig, nil)
 	return nil
+}
+
+// notifyChange invokes handler asynchronously when prev and next differ.
+// nil handler is a no-op. Compares listeners and dialers slices by
+// deep-equality; identical state is a no-op (avoids spurious peer
+// notifications and dialer rescans when an Apply was just re-applying
+// the same config).
+func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
+	if handler == nil {
+		return
+	}
+	change := ConfigurationChange{
+		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
+		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+	}
+	if !change.ListenersChanged && !change.DialersChanged {
+		return
+	}
+	go handler(change)
+}
+
+func getListeners(c *Config) []ListenerConfig {
+	if c == nil {
+		return nil
+	}
+	return c.Listeners
+}
+
+func getDialers(c *Config) []DialerConfig {
+	if c == nil {
+		return nil
+	}
+	return c.Dialers
+}
+
+func getEffectiveDialers(c *Config) []DialerConfig {
+	if c == nil {
+		return nil
+	}
+	out := make([]DialerConfig, len(c.Dialers))
+	copy(out, c.Dialers)
+	if len(c.Listeners) == 1 && len(out) == 1 && out[0].BindInterface == "" {
+		out[0].BindInterface = c.Listeners[0].BindInterface
+	}
+	return out
+}
+
+// listenerSlicesEqual compares listener configs by every field that
+// affects what the controller (and through it, peer routers) should
+// see — binding, bind, advertise, bindInterface, groups, options.
+func listenerSlicesEqual(a, b []ListenerConfig) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !reflect.DeepEqual(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// dialerSlicesEqual compares effective dialer configs by every field
+// that affects local dial decisions — binding, groups, bindInterface,
+// options, backoffs.
+func dialerSlicesEqual(a, b []DialerConfig) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !reflect.DeepEqual(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // Listeners returns a snapshot of the current listener slice. Safe to

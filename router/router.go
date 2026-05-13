@@ -263,17 +263,7 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		channel.HelloVersionHeader: routerVersion,
 	}
 
-	listeners := &ctrl_pb.Listeners{}
-	for _, listener := range self.linkSubsystem.Listeners() {
-		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address:      listener.GetAdvertisement(),
-			Protocol:     listener.GetLinkProtocol(),
-			CostTags:     listener.GetLinkCostTags(),
-			Groups:       listener.GetGroups(),
-			LocalBinding: listener.GetLocalBinding(),
-		})
-	}
-
+	listeners := self.currentLinkListeners()
 	if len(listeners.Listeners) > 0 {
 		buf, err := proto.Marshal(listeners)
 		if err != nil {
@@ -348,6 +338,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 	router.configRegistry = managedconfig.NewRegistry(newManagedConfigAlertCallback(router.alertReporter))
 	router.linkSubsystem = link.NewFactoryRegistry(cfg.Id)
+	router.linkSubsystem.SetConfigurationChangeHandler(router.onLinkSubsystemChanged)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
@@ -841,6 +832,60 @@ func (self *Router) registerPlugins() error {
 		}
 	}
 	return nil
+}
+
+// currentLinkListeners builds a ctrl_pb.Listeners snapshot from the
+// linkSubsystem's current listener slice. Shared between Hello-time
+// header packing and the post-Apply publish path so both wire shapes
+// stay aligned.
+func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
+	listeners := &ctrl_pb.Listeners{}
+	for _, listener := range self.linkSubsystem.Listeners() {
+		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
+			Address:      listener.GetAdvertisement(),
+			Protocol:     listener.GetLinkProtocol(),
+			CostTags:     listener.GetLinkCostTags(),
+			Groups:       listener.GetGroups(),
+			LocalBinding: listener.GetLocalBinding(),
+		})
+	}
+	return listeners
+}
+
+// onLinkSubsystemChanged is invoked after every Apply/Remove that
+// actually mutates the link subsystem. Listener changes get republished
+// to every connected controller so peer routers see the new state via
+// PeerStateChange. Dialer changes trigger a local rescan against known
+// peers, in case the new dialer set unlocks previously-unmatched
+// listeners.
+func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
+	if change.ListenersChanged {
+		self.publishLinkListeners()
+	}
+	if change.DialersChanged && self.xlinkRegistry != nil {
+		self.xlinkRegistry.RescanForDialOpportunities()
+	}
+}
+
+// publishLinkListeners marshals the current listener set and sends an
+// UpdateLinkListeners message to every connected controller. The
+// controller's handler updates Router.Listeners + triggers peer
+// redistribution. Hello continues to carry the initial snapshot at
+// connect time; this message handles mid-session changes.
+func (self *Router) publishLinkListeners() {
+	listeners := self.currentLinkListeners()
+	buf, err := proto.Marshal(listeners)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to marshal Listeners for UpdateLinkListeners")
+		return
+	}
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateLinkListenersType), buf)
+	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+		if err := ch.Send(msg); err != nil {
+			pfxlog.Logger().WithError(err).WithField("ctrlId", ctrlId).
+				Warn("failed to send UpdateLinkListeners to controller")
+		}
+	})
 }
 
 // applyLocalLinkConfig translates the router's local YAML link config into

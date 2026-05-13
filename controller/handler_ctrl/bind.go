@@ -68,6 +68,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newUpdateTerminatorHandler(self.network, self.router))
 	binding.AddTypedReceiveHandler(newLinkStateHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newRouterLinkHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newUpdateLinkListenersHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newVerifyRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newMetricsHandler(self.network))

@@ -192,6 +192,82 @@ func Test_ManagedConfig_DelayedConfigStartsListener(t *testing.T) {
 	}, 5*time.Second, 50*time.Millisecond, "listener port should be open after config arrives")
 }
 
+// Test_ManagedConfig_ListenerUpdatePublishesToController verifies that
+// when a router's link listener set changes mid-session (via managed
+// config Apply), the router pushes UpdateLinkListeners to the controller
+// and the controller's view of the router's listeners updates.
+//
+// Without this, peers would keep dialing the old listener address /
+// using stale group memberships for link matching.
+func Test_ManagedConfig_ListenerUpdatePublishesToController(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	port := pickFreePort(t)
+	bindAddr := fmt.Sprintf("tls:127.0.0.1:%d", port)
+
+	r := ctx.CreateEnrollAndStartEdgeRouterWithCfgTweaks(func(cfg *routerEnv.Config) {
+		cfg.ManagedConfig.Allow = []string{"router.link"}
+	})
+
+	// Push a config with the listener in group "a".
+	configId := createRouterLinkConfig(t, ctx, map[string]interface{}{
+		"listeners": []interface{}{
+			map[string]interface{}{"binding": "transport", "bind": bindAddr, "groups": []interface{}{"a"}},
+		},
+	})
+	assignConfigsToRouter(t, ctx, ctx.edgeRouterEntity.id, []string{configId})
+
+	// Wait for the listener to actually bind, then the controller's
+	// view should reflect groups: [a].
+	ctx.Req.Eventually(func() bool {
+		return portIsOpen(fmt.Sprintf("127.0.0.1:%d", port))
+	}, 10*time.Second, 50*time.Millisecond, "listener should bind from initial config")
+
+	ctx.Req.Eventually(func() bool {
+		ctrlRouter := ctx.fabricController.GetNetwork().Router.GetConnected(r.Router.GetRouterId().Token)
+		if ctrlRouter == nil {
+			return false
+		}
+		return len(ctrlRouter.Listeners) == 1 &&
+			len(ctrlRouter.Listeners[0].Groups) == 1 &&
+			ctrlRouter.Listeners[0].Groups[0] == "a"
+	}, 10*time.Second, 50*time.Millisecond, "controller should see groups=[a] from Hello time")
+
+	// Update the same config to change groups to ["a","b"].
+	mgmtClient := ctx.NewEdgeManagementApi(nil)
+	_, err := mgmtClient.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
+	_, err = mgmtClient.API.Config.UpdateConfig(&config.UpdateConfigParams{
+		ID: configId,
+		Config: &rest_model.ConfigUpdate{
+			Name: util.Ptr(eid.New()),
+			Data: map[string]interface{}{
+				"listeners": []interface{}{
+					map[string]interface{}{"binding": "transport", "bind": bindAddr, "groups": []interface{}{"a", "b"}},
+				},
+			},
+		},
+	}, nil)
+	ctx.Req.NoError(err)
+
+	// The router applies the new config and pushes UpdateLinkListeners.
+	// Controller's Router.Listeners should reflect the new groups.
+	ctx.Req.Eventually(func() bool {
+		ctrlRouter := ctx.fabricController.GetNetwork().Router.GetConnected(r.Router.GetRouterId().Token)
+		if ctrlRouter == nil {
+			return false
+		}
+		if len(ctrlRouter.Listeners) != 1 {
+			return false
+		}
+		groups := ctrlRouter.Listeners[0].Groups
+		return len(groups) == 2 && groups[0] == "a" && groups[1] == "b"
+	}, 10*time.Second, 50*time.Millisecond, "controller should see updated groups=[a,b] after UpdateLinkListeners")
+}
+
 // Test_ManagedConfig_RemoveConfigShutsDownListener verifies that removing
 // a controller-managed config from a router (by unassigning it) closes
 // the listener it provisioned. Exercises the linkSubsystem.Remove path
