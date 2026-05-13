@@ -1676,8 +1676,15 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 			detail.IsValid = !detail.DestConnected
 		}
 
+		// Gossip entries are owned by the dialing router. From this side of the
+		// validation, if the router we're asking dialed the link, it's the owner;
+		// otherwise the destination is.
+		gossipOwner := router.Id
+		if !link.Dialed {
+			gossipOwner = link.Dest
+		}
 		gossipKey := LinkGossipKey(link.Id, link.Iteration)
-		gossipVal, gossipVer, gossipFound := network.LinkGossipType.Get(gossipKey)
+		gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(gossipOwner, gossipKey)
 		if gossipFound {
 			detail.InGossipStore = true
 			detail.GossipVersion = gossipVer
@@ -1717,7 +1724,7 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 			}
 
 			gossipKey := LinkGossipKey(link.Id, link.Iteration)
-			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.Get(gossipKey); gossipFound {
+			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(link.Src.Id, gossipKey); gossipFound {
 				detail.InGossipStore = true
 				detail.GossipVersion = gossipVer
 				detail.GossipIteration = gossipVal.Iteration

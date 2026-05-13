@@ -59,23 +59,14 @@ func (s *Store) setConfirmed(ctx context.Context, sm *stateMap, key, owner strin
 		UpdatedAt: time.Now(),
 	}
 
-	var wasSet bool
-	var isCreate bool
-	sm.entries.Upsert(key, e, func(exist bool, existing *entry, newValue *entry) *entry {
-		if exist && existing.Version >= version {
-			return existing
-		}
-		wasSet = true
-		isCreate = !exist || existing.Tombstone
-		return e
-	})
+	od := sm.getOrCreateOwner(owner)
+	od.mu.Lock()
+	wasSet, isCreate := sm.applyEntryLocked(od, e)
+	od.mu.Unlock()
 
 	if !wasSet {
 		return nil
 	}
-
-	sm.invalidateOwnerHash(owner)
-	sm.updateOwnerStats(owner, version, false, isCreate)
 
 	if sm.listener != nil {
 		sm.listener.entryChanged(key, value, version, owner, isCreate, OriginLocal)

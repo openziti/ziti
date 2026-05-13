@@ -129,10 +129,15 @@ func (st *StateType[T]) Reconcile(owner string, currentKeys map[string]struct{})
 	st.sm.reconcile(owner, currentKeys, OriginLocal)
 }
 
-// Get retrieves a decoded value by key.
-func (st *StateType[T]) Get(key string) (T, uint64, bool) {
+// GetForOwner retrieves a decoded value by (owner, key). Returns ok=false if
+// the owner is unknown, the entry is missing, or the entry is a tombstone.
+//
+// Callers always know the owner because keys are scoped to an owner by design
+// (the gossip keyspace is partitioned per owner). The owner-keyed lookup is
+// O(1) under the owner-first store layout.
+func (st *StateType[T]) GetForOwner(owner, key string) (T, uint64, bool) {
 	var zero T
-	e, ok := st.sm.entries.Get(key)
+	e, ok := st.sm.entryAt(owner, key)
 	if !ok || e.Tombstone {
 		return zero, 0, false
 	}
@@ -143,13 +148,18 @@ func (st *StateType[T]) Get(key string) (T, uint64, bool) {
 	return val, e.Version, true
 }
 
-// Iter calls fn for each non-tombstoned entry.
+// Iter calls fn for each non-tombstoned entry across all owners.
 func (st *StateType[T]) Iter(fn func(key string, value T, owner string)) {
-	st.sm.entries.IterCb(func(key string, e *entry) {
-		if !e.Tombstone {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
 			val, err := st.decode(e.Value)
 			if err == nil {
-				fn(key, val, e.Owner)
+				fn(key, val, owner)
 			}
 		}
 	})
@@ -157,11 +167,16 @@ func (st *StateType[T]) Iter(fn func(key string, value T, owner string)) {
 
 // IterWithVersion calls fn for each non-tombstoned entry, including the version.
 func (st *StateType[T]) IterWithVersion(fn func(key string, value T, owner string, version uint64)) {
-	st.sm.entries.IterCb(func(key string, e *entry) {
-		if !e.Tombstone {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
 			val, err := st.decode(e.Value)
 			if err == nil {
-				fn(key, val, e.Owner, e.Version)
+				fn(key, val, owner, e.Version)
 			}
 		}
 	})
@@ -169,11 +184,16 @@ func (st *StateType[T]) IterWithVersion(fn func(key string, value T, owner strin
 
 // IterFull calls fn for each non-tombstoned entry with all metadata.
 func (st *StateType[T]) IterFull(fn func(key string, value T, owner string, version uint64, epoch []byte)) {
-	st.sm.entries.IterCb(func(key string, e *entry) {
-		if !e.Tombstone {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
 			val, err := st.decode(e.Value)
 			if err == nil {
-				fn(key, val, e.Owner, e.Version, e.Epoch)
+				fn(key, val, owner, e.Version, e.Epoch)
 			}
 		}
 	})
@@ -181,14 +201,21 @@ func (st *StateType[T]) IterFull(fn func(key string, value T, owner string, vers
 
 // IterByOwner calls fn for each non-tombstoned entry belonging to the given owner.
 func (st *StateType[T]) IterByOwner(owner string, fn func(key string, value T)) {
-	st.sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner && !e.Tombstone {
-			val, err := st.decode(e.Value)
-			if err == nil {
-				fn(key, val)
-			}
+	od := st.sm.getOwner(owner)
+	if od == nil {
+		return
+	}
+	od.mu.RLock()
+	defer od.mu.RUnlock()
+	for key, e := range od.entries {
+		if e.Tombstone {
+			continue
 		}
-	})
+		val, err := st.decode(e.Value)
+		if err == nil {
+			fn(key, val)
+		}
+	}
 }
 
 // MaxVersionForOwner returns the highest version among all entries (including

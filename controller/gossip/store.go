@@ -110,12 +110,16 @@ func (s *Store) GetStats() []StoreStats {
 		sm := value.(*stateMap)
 		entries := 0
 		tombstones := 0
-		sm.entries.IterCb(func(_ string, e *entry) {
-			if e.Tombstone {
-				tombstones++
-			} else {
-				entries++
+		sm.owners.IterCb(func(_ string, od *ownerData) {
+			od.mu.RLock()
+			for _, e := range od.entries {
+				if e.Tombstone {
+					tombstones++
+				} else {
+					entries++
+				}
 			}
+			od.mu.RUnlock()
 		})
 		stats = append(stats, StoreStats{
 			TypeName:   key.(string),
@@ -224,82 +228,121 @@ type stateMapConfig struct {
 	antiEntropyInterval time.Duration
 }
 
-// stateMap holds the gossip entries for a single registered type.
+// stateMap holds the gossip entries for a single registered type, organized
+// by owner. Each owner has its own ownerData containing that owner's entries
+// plus aggregate state (hash cache, max version, non-tombstone count). The
+// owner-first layout lets per-owner operations (HashForOwner, GetDigestForOwner,
+// DeleteByOwnerBefore, Reconcile) run in O(entries-for-owner) instead of
+// O(total entries).
 type stateMap struct {
 	name     string
 	config   stateMapConfig
-	entries  cmap.ConcurrentMap[string, *entry]
+	owners   cmap.ConcurrentMap[string, *ownerData]
 	store    *Store
 	listener untypedListener
-
-	// Per-owner hash cache for staleness detection. The hash covers sorted
-	// non-tombstone keys owned by a given router. A nil value means the cache
-	// is dirty and needs recomputation. Invalidated on any mutation affecting
-	// that owner's entries.
-	ownerHashes sync.Map // owner (string) -> *uint64 (nil = dirty)
-
-	// Per-owner stats tracked incrementally on every mutation. Avoids full-map
-	// scans for max version and entry count lookups.
-	ownerStats sync.Map // owner (string) -> *ownerStats
 }
 
-// ownerStats tracks per-owner counters that are updated atomically on every
-// mutation, avoiding full-map scans.
-type ownerStats struct {
-	maxVersion    atomic.Uint64
-	nonTombstones atomic.Int64
+// ownerData holds all state for a single owner: the owner's entries plus
+// derived aggregates. The mutex serializes mutations to the entries map and
+// keeps the aggregates consistent with it.
+type ownerData struct {
+	mu            sync.RWMutex
+	entries       map[string]*entry // key -> entry, including tombstones
+	hash          uint64            // FNV-64a of sorted (key||version) over live entries
+	hashDirty     bool              // hash needs recomputation
+	maxVersion    uint64            // highest version ever observed for this owner
+	nonTombstones int64             // count of live (non-tombstone) entries
 }
 
-// defaultOwnerStats is returned for owners with no tracked state, avoiding
-// allocations in the sync.Map for unknown or reaped owners.
-var defaultOwnerStats = &ownerStats{}
-
-// getOwnerStats returns the stats for the given owner, or a zero-value default
-// if none exist. Use getOrCreateOwnerStats for mutation paths.
-func (sm *stateMap) getOwnerStats(owner string) *ownerStats {
-	if v, ok := sm.ownerStats.Load(owner); ok {
-		return v.(*ownerStats)
+func newOwnerData() *ownerData {
+	return &ownerData{
+		entries:   map[string]*entry{},
+		hashDirty: true,
 	}
-	return defaultOwnerStats
 }
 
-// getOrCreateOwnerStats returns the stats for the given owner, creating them if needed.
-func (sm *stateMap) getOrCreateOwnerStats(owner string) *ownerStats {
-	if v, ok := sm.ownerStats.Load(owner); ok {
-		return v.(*ownerStats)
+// getOwner returns the ownerData for the given owner, or nil if none exists.
+// Callers that only read state and want a "zero" answer for unknown owners
+// should use this and check for nil.
+func (sm *stateMap) getOwner(owner string) *ownerData {
+	if od, ok := sm.owners.Get(owner); ok {
+		return od
 	}
-	stats := &ownerStats{}
-	actual, _ := sm.ownerStats.LoadOrStore(owner, stats)
-	return actual.(*ownerStats)
+	return nil
 }
 
-// updateOwnerStats updates the per-owner counters after a successful mutation.
-// isTombstone refers to the new entry state; isCreate means the entry is new or
-// was previously tombstoned.
-func (sm *stateMap) updateOwnerStats(owner string, version uint64, isTombstone bool, isCreate bool) {
-	stats := sm.getOrCreateOwnerStats(owner)
-	for {
-		cur := stats.maxVersion.Load()
-		if version <= cur || stats.maxVersion.CompareAndSwap(cur, version) {
-			break
+// getOrCreateOwner returns the ownerData for the given owner, creating it if
+// needed. The cmap's Upsert callback runs under the shard lock, so concurrent
+// callers receive the same instance.
+func (sm *stateMap) getOrCreateOwner(owner string) *ownerData {
+	var result *ownerData
+	sm.owners.Upsert(owner, nil, func(exist bool, existing *ownerData, _ *ownerData) *ownerData {
+		if exist {
+			result = existing
+			return existing
 		}
-	}
-	if isCreate && !isTombstone {
-		stats.nonTombstones.Add(1)
-	} else if !isCreate && isTombstone {
-		// live entry being replaced by a tombstone
-		stats.nonTombstones.Add(-1)
-	}
+		result = newOwnerData()
+		return result
+	})
+	return result
 }
 
 func newStateMap(name string, cfg stateMapConfig, store *Store, listener untypedListener) *stateMap {
 	return &stateMap{
 		name:     name,
 		config:   cfg,
-		entries:  cmap.New[*entry](),
+		owners:   cmap.New[*ownerData](),
 		store:    store,
 		listener: listener,
 	}
+}
+
+// entryAt returns the raw entry for (owner, key), including tombstones, along
+// with whether it exists. Package-private helper used by tests and the typed
+// StateType.GetForOwner; production callers should use the typed accessors.
+func (sm *stateMap) entryAt(owner, key string) (*entry, bool) {
+	od := sm.getOwner(owner)
+	if od == nil {
+		return nil, false
+	}
+	od.mu.RLock()
+	e, ok := od.entries[key]
+	od.mu.RUnlock()
+	return e, ok
+}
+
+// applyEntryLocked installs incoming into the owner's entries map under
+// owner.mu (already held by the caller). Returns (wasSet, isCreate). When
+// wasSet is false the version check rejected the incoming entry and nothing
+// was changed. Aggregates (maxVersion, nonTombstones, hashDirty) are updated
+// in-place. The caller is responsible for listener notification and broadcast
+// after releasing the lock.
+func (sm *stateMap) applyEntryLocked(od *ownerData, incoming *entry) (wasSet, isCreate bool) {
+	existing, ok := od.entries[incoming.Key]
+	if ok && existing.Version >= incoming.Version {
+		return false, false
+	}
+
+	wasLive := ok && !existing.Tombstone
+	isCreate = !ok || existing.Tombstone
+
+	od.entries[incoming.Key] = incoming
+
+	if incoming.Version > od.maxVersion {
+		od.maxVersion = incoming.Version
+	}
+	if incoming.Tombstone {
+		if wasLive {
+			od.nonTombstones--
+			od.hashDirty = true
+		}
+	} else {
+		od.hashDirty = true
+		if isCreate {
+			od.nonTombstones++
+		}
+	}
+	return true, isCreate
 }
 
 func (sm *stateMap) set(key, owner string, value []byte, origin ChangeOrigin) {
@@ -314,23 +357,14 @@ func (sm *stateMap) set(key, owner string, value []byte, origin ChangeOrigin) {
 		UpdatedAt: time.Now(),
 	}
 
-	var wasSet bool
-	var isCreate bool
-	sm.entries.Upsert(key, e, func(exist bool, existing *entry, newValue *entry) *entry {
-		if exist && existing.Version >= version {
-			return existing
-		}
-		wasSet = true
-		isCreate = !exist || existing.Tombstone
-		return e
-	})
+	od := sm.getOrCreateOwner(owner)
+	od.mu.Lock()
+	wasSet, isCreate := sm.applyEntryLocked(od, e)
+	od.mu.Unlock()
 
 	if !wasSet {
 		return
 	}
-
-	sm.invalidateOwnerHash(owner)
-	sm.updateOwnerStats(owner, version, false, isCreate)
 
 	if sm.listener != nil {
 		sm.listener.entryChanged(key, value, version, owner, isCreate, origin)
@@ -345,23 +379,14 @@ func (sm *stateMap) applyDelta(incoming *entry) {
 	incoming.UpdatedAt = time.Now()
 	sm.store.observeVersion(incoming.Version)
 
-	var wasSet bool
-	var isCreate bool
-	sm.entries.Upsert(incoming.Key, incoming, func(exist bool, existing *entry, newValue *entry) *entry {
-		if exist && existing.Version >= incoming.Version {
-			return existing
-		}
-		wasSet = true
-		isCreate = !exist || existing.Tombstone
-		return incoming
-	})
+	od := sm.getOrCreateOwner(incoming.Owner)
+	od.mu.Lock()
+	wasSet, isCreate := sm.applyEntryLocked(od, incoming)
+	od.mu.Unlock()
 
 	if !wasSet {
 		return
 	}
-
-	sm.invalidateOwnerHash(incoming.Owner)
-	sm.updateOwnerStats(incoming.Owner, incoming.Version, incoming.Tombstone, isCreate)
 
 	if incoming.Tombstone {
 		if sm.listener != nil {
@@ -380,23 +405,15 @@ func (sm *stateMap) applyAndBroadcast(incoming *entry) {
 	incoming.UpdatedAt = time.Now()
 	sm.store.observeVersion(incoming.Version)
 
-	var wasSet bool
-	var isCreate bool
-	sm.entries.Upsert(incoming.Key, incoming, func(exist bool, existing *entry, newValue *entry) *entry {
-		if exist && existing.Version >= incoming.Version {
-			return existing
-		}
-		wasSet = true
-		isCreate = !exist || existing.Tombstone
-		return incoming
-	})
+	od := sm.getOrCreateOwner(incoming.Owner)
+	od.mu.Lock()
+	wasSet, isCreate := sm.applyEntryLocked(od, incoming)
+	od.mu.Unlock()
 
 	if !wasSet {
 		return
 	}
 
-	sm.invalidateOwnerHash(incoming.Owner)
-	sm.updateOwnerStats(incoming.Owner, incoming.Version, incoming.Tombstone, isCreate)
 	sm.notifyListener(incoming, isCreate)
 	sm.broadcastDelta(incoming)
 }
@@ -423,28 +440,20 @@ func (sm *stateMap) delete(key, owner string, origin ChangeOrigin) {
 			UpdatedAt: time.Now(),
 		}
 
-		var wasSet bool
-		var wasLive bool
-		sm.entries.Upsert(key, e, func(exist bool, existing *entry, newValue *entry) *entry {
-			if exist && existing.Version >= version {
-				return existing
-			}
-			wasSet = true
-			wasLive = exist && !existing.Tombstone
-			if exist {
-				// Carry the replaced entry's epoch onto the tombstone so the
-				// wire entry stays self-consistent with what it supersedes.
-				e.Epoch = existing.Epoch
-			}
-			return e
-		})
+		od := sm.getOrCreateOwner(owner)
+		od.mu.Lock()
+		if existing, ok := od.entries[key]; ok {
+			// Carry the replaced entry's epoch onto the tombstone so the wire
+			// entry stays self-consistent with what it supersedes.
+			e.Epoch = existing.Epoch
+		}
+		wasSet, _ := sm.applyEntryLocked(od, e)
+		od.mu.Unlock()
 
 		if !wasSet {
 			return
 		}
 
-		sm.invalidateOwnerHash(owner)
-		sm.updateOwnerStats(owner, version, true, !wasLive)
 		if sm.listener != nil {
 			sm.listener.entryRemoved(key, owner, origin)
 		}
@@ -452,39 +461,65 @@ func (sm *stateMap) delete(key, owner string, origin ChangeOrigin) {
 			sm.broadcastDelta(e)
 		}
 	} else {
-		sm.entries.Remove(key)
-		sm.invalidateOwnerHash(owner)
-		sm.getOrCreateOwnerStats(owner).nonTombstones.Add(-1)
-		if sm.listener != nil {
+		od := sm.getOrCreateOwner(owner)
+		od.mu.Lock()
+		existing, ok := od.entries[key]
+		delete(od.entries, key)
+		notify := ok && !existing.Tombstone
+		if notify {
+			od.nonTombstones--
+			od.hashDirty = true
+		}
+		od.mu.Unlock()
+
+		if sm.listener != nil && notify {
 			sm.listener.entryRemoved(key, owner, origin)
 		}
 	}
 }
 
-func (sm *stateMap) deleteByOwner(owner string, origin ChangeOrigin) {
+// collectKeysToDelete iterates the owner's live entries under RLock and
+// returns those for which filter returns true. Used by deleteByOwner and
+// friends to capture the deletion set before mutating.
+func (od *ownerData) collectKeysToDelete(filter func(key string, e *entry) bool) []string {
+	od.mu.RLock()
+	defer od.mu.RUnlock()
 	var toDelete []string
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner && !e.Tombstone {
+	for key, e := range od.entries {
+		if !e.Tombstone && filter(key, e) {
 			toDelete = append(toDelete, key)
 		}
-	})
+	}
+	return toDelete
+}
+
+func (sm *stateMap) deleteByOwner(owner string, origin ChangeOrigin) {
+	od := sm.getOwner(owner)
+	if od == nil {
+		return
+	}
+	toDelete := od.collectKeysToDelete(func(string, *entry) bool { return true })
 	for _, key := range toDelete {
 		sm.delete(key, owner, origin)
 	}
 }
 
 func (sm *stateMap) deleteByOwnerBefore(owner string, epoch []byte, origin ChangeOrigin) {
-	var toDelete []string
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner && !e.Tombstone && bytes.Compare(e.Epoch, epoch) < 0 {
+	od := sm.getOwner(owner)
+	if od == nil {
+		return
+	}
+	toDelete := od.collectKeysToDelete(func(key string, e *entry) bool {
+		if bytes.Compare(e.Epoch, epoch) < 0 {
 			pfxlog.Logger().
 				WithField("key", key).
 				WithField("owner", owner).
 				WithField("entryEpoch", fmt.Sprintf("%x", e.Epoch)).
 				WithField("cleanupEpoch", fmt.Sprintf("%x", epoch)).
 				Info("epoch cleanup: deleting old-epoch entry")
-			toDelete = append(toDelete, key)
+			return true
 		}
+		return false
 	})
 	for _, key := range toDelete {
 		sm.delete(key, owner, origin)
@@ -492,13 +527,13 @@ func (sm *stateMap) deleteByOwnerBefore(owner string, epoch []byte, origin Chang
 }
 
 func (sm *stateMap) reconcile(owner string, currentKeys map[string]struct{}, origin ChangeOrigin) {
-	var toDelete []string
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner && !e.Tombstone {
-			if _, ok := currentKeys[key]; !ok {
-				toDelete = append(toDelete, key)
-			}
-		}
+	od := sm.getOwner(owner)
+	if od == nil {
+		return
+	}
+	toDelete := od.collectKeysToDelete(func(key string, _ *entry) bool {
+		_, ok := currentKeys[key]
+		return !ok
 	})
 	for _, key := range toDelete {
 		sm.delete(key, owner, origin)
@@ -507,43 +542,67 @@ func (sm *stateMap) reconcile(owner string, currentKeys map[string]struct{}, ori
 
 func (sm *stateMap) getDigest() []*gossip_pb.DigestEntry {
 	var digest []*gossip_pb.DigestEntry
-	sm.entries.IterCb(func(key string, e *entry) {
-		digest = append(digest, &gossip_pb.DigestEntry{
-			Key:     key,
-			Version: e.Version,
-		})
-	})
-	return digest
-}
-
-func (sm *stateMap) getDigestForOwner(owner string) []*gossip_pb.DigestEntry {
-	var digest []*gossip_pb.DigestEntry
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner {
+	sm.owners.IterCb(func(_ string, od *ownerData) {
+		od.mu.RLock()
+		for key, e := range od.entries {
 			digest = append(digest, &gossip_pb.DigestEntry{
 				Key:     key,
 				Version: e.Version,
 			})
 		}
+		od.mu.RUnlock()
 	})
+	return digest
+}
+
+func (sm *stateMap) getDigestForOwner(owner string) []*gossip_pb.DigestEntry {
+	od := sm.getOwner(owner)
+	if od == nil {
+		return nil
+	}
+	od.mu.RLock()
+	defer od.mu.RUnlock()
+	digest := make([]*gossip_pb.DigestEntry, 0, len(od.entries))
+	for key, e := range od.entries {
+		digest = append(digest, &gossip_pb.DigestEntry{
+			Key:     key,
+			Version: e.Version,
+		})
+	}
 	return digest
 }
 
 // maxVersionForOwner returns the highest version among all entries (including
 // tombstones) belonging to the given owner. Returns 0 if no entries exist.
 func (sm *stateMap) maxVersionForOwner(owner string) uint64 {
-	return sm.getOwnerStats(owner).maxVersion.Load()
+	od := sm.getOwner(owner)
+	if od == nil {
+		return 0
+	}
+	od.mu.RLock()
+	defer od.mu.RUnlock()
+	return od.maxVersion
 }
 
 // nonTombstoneCount returns the number of non-tombstone entries for the given owner.
 func (sm *stateMap) nonTombstoneCount(owner string) int64 {
-	return sm.getOwnerStats(owner).nonTombstones.Load()
+	od := sm.getOwner(owner)
+	if od == nil {
+		return 0
+	}
+	od.mu.RLock()
+	defer od.mu.RUnlock()
+	return od.nonTombstones
 }
 
 func (sm *stateMap) getAllEntries() []*entry {
 	var result []*entry
-	sm.entries.IterCb(func(_ string, e *entry) {
-		result = append(result, e)
+	sm.owners.IterCb(func(_ string, od *ownerData) {
+		od.mu.RLock()
+		for _, e := range od.entries {
+			result = append(result, e)
+		}
+		od.mu.RUnlock()
 	})
 	return result
 }
@@ -554,29 +613,19 @@ func (sm *stateMap) reapTombstones() {
 	}
 	cutoff := time.Now().Add(-sm.config.tombstoneTTL)
 
-	var toRemove []string
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Tombstone && e.UpdatedAt.Before(cutoff) {
-			toRemove = append(toRemove, key)
+	// Reap under each owner's write lock, so a tombstone that has been promoted
+	// back to a live entry between scan and remove (via a concurrent applyDelta
+	// or applyAndBroadcast) can't be silently dropped — the check and the
+	// delete are atomic relative to mutations.
+	sm.owners.IterCb(func(_ string, od *ownerData) {
+		od.mu.Lock()
+		for key, e := range od.entries {
+			if e.Tombstone && e.UpdatedAt.Before(cutoff) {
+				delete(od.entries, key)
+			}
 		}
+		od.mu.Unlock()
 	})
-
-	// Use RemoveCb so the eligibility check and delete happen under the shard
-	// lock. Without this, an entry can be promoted from tombstone back to a
-	// live entry between scan and remove (via applyDelta from a peer broadcast
-	// or applyAndBroadcast from a router), and an unconditional Remove would
-	// silently drop the new live entry.
-	//
-	// Per-owner stats and hashes are intentionally not garbage collected here.
-	// The maxVersion high-water mark is monotonic and safe to retain; the hash
-	// cache covers only non-tombstone entries, so reaping tombstones does not
-	// change it. Any concurrent insert for the owner would race with a deletion
-	// here and could leave the stats in an inconsistent state.
-	for _, key := range toRemove {
-		sm.entries.RemoveCb(key, func(_ string, e *entry, exists bool) bool {
-			return exists && e.Tombstone && e.UpdatedAt.Before(cutoff)
-		})
-	}
 }
 
 func (sm *stateMap) broadcastDelta(e *entry) {
@@ -617,31 +666,42 @@ func (sm *stateMap) sendSnapshotTo(peerId string) {
 	_ = sm.store.mesh.Send(peerId, msg)
 }
 
-// invalidateOwnerHash marks the cached hash for the given owner as dirty.
-func (sm *stateMap) invalidateOwnerHash(owner string) {
-	sm.ownerHashes.Store(owner, (*uint64)(nil))
-}
-
-// hashForOwner returns a FNV-64a hash of the sorted non-tombstone entry keys
-// for the given owner. The result is cached and only recomputed when the
-// owner's entries have changed.
+// hashForOwner returns a FNV-64a hash of the sorted (key||version) over the
+// owner's non-tombstone entries. The cached value is returned when clean.
+// On the recompute path the cost is O(entries-for-owner), not O(total entries).
 func (sm *stateMap) hashForOwner(owner string) uint64 {
-	if v, ok := sm.ownerHashes.Load(owner); ok {
-		if p, _ := v.(*uint64); p != nil {
-			return *p
-		}
+	od := sm.getOwner(owner)
+	if od == nil {
+		return 0
+	}
+
+	// Fast path: cached hash is clean.
+	od.mu.RLock()
+	if !od.hashDirty {
+		h := od.hash
+		od.mu.RUnlock()
+		return h
+	}
+	od.mu.RUnlock()
+
+	// Slow path: recompute. Take the write lock, re-check (another goroutine
+	// may have computed it), then iterate this owner's entries only.
+	od.mu.Lock()
+	defer od.mu.Unlock()
+	if !od.hashDirty {
+		return od.hash
 	}
 
 	type keyVersion struct {
 		key     string
 		version uint64
 	}
-	var kvs []keyVersion
-	sm.entries.IterCb(func(key string, e *entry) {
-		if e.Owner == owner && !e.Tombstone {
-			kvs = append(kvs, keyVersion{key: key, version: e.Version})
+	kvs := make([]keyVersion, 0, len(od.entries))
+	for k, e := range od.entries {
+		if !e.Tombstone {
+			kvs = append(kvs, keyVersion{key: k, version: e.Version})
 		}
-	})
+	}
 	sort.Slice(kvs, func(i, j int) bool { return kvs[i].key < kvs[j].key })
 
 	h := fnv.New64a()
@@ -651,9 +711,9 @@ func (sm *stateMap) hashForOwner(owner string) uint64 {
 		binary.LittleEndian.PutUint64(buf[:], kv.version)
 		_, _ = h.Write(buf[:])
 	}
-	result := h.Sum64()
-	sm.ownerHashes.Store(owner, &result)
-	return result
+	od.hash = h.Sum64()
+	od.hashDirty = false
+	return od.hash
 }
 
 func entryFromProto(pb *gossip_pb.GossipEntry) *entry {

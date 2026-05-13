@@ -238,7 +238,7 @@ func TestVersionMerge_NewerWins(t *testing.T) {
 		Owner:   "owner1",
 	})
 
-	val, _, ok := st.Get("key1")
+	val, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 	assert.Equal(t, "value2", val)
 }
@@ -268,7 +268,7 @@ func TestVersionMerge_EqualNoOp(t *testing.T) {
 	// listener should not have fired again
 	assert.Equal(t, changesBefore, len(listener.getChanges()))
 
-	val, _, ok := st.Get("key1")
+	val, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 	assert.Equal(t, "value1", val)
 }
@@ -297,7 +297,7 @@ func TestVersionMerge_OlderIgnored(t *testing.T) {
 
 	assert.Equal(t, changesBefore, len(listener.getChanges()))
 
-	val, _, ok := st.Get("key1")
+	val, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 	assert.Equal(t, "value1", val)
 }
@@ -317,16 +317,16 @@ func TestTombstoneLifecycle(t *testing.T) {
 	})
 
 	require.NoError(t, st.Set("key1", "owner1", "value1"))
-	_, _, ok := st.Get("key1")
+	_, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 
 	st.Delete("key1", "owner1")
-	_, _, ok = st.Get("key1")
-	assert.False(t, ok, "tombstoned entry should not be visible via Get")
+	_, _, ok = st.GetForOwner("owner1", "key1")
+	assert.False(t, ok, "tombstoned entry should not be visible via GetForOwner")
 
 	// The tombstone should exist in the internal map
 	sm := store.getStateMap("test")
-	e, exists := sm.entries.Get("key1")
+	e, exists := sm.entryAt("owner1", "key1")
 	require.True(t, exists)
 	assert.True(t, e.Tombstone)
 
@@ -334,7 +334,7 @@ func TestTombstoneLifecycle(t *testing.T) {
 	time.Sleep(60 * time.Millisecond)
 	sm.reapTombstones()
 
-	_, exists = sm.entries.Get("key1")
+	_, exists = sm.entryAt("owner1", "key1")
 	assert.False(t, exists, "tombstone should be reaped after TTL")
 }
 
@@ -361,7 +361,7 @@ func TestDelete_TombstoneInheritsEpoch(t *testing.T) {
 
 	st.Delete("key1", "owner1")
 
-	e, exists := sm.entries.Get("key1")
+	e, exists := sm.entryAt("owner1", "key1")
 	require.True(t, exists)
 	require.True(t, e.Tombstone)
 	assert.Equal(t, epoch, e.Epoch, "tombstone should inherit the replaced entry's epoch")
@@ -386,7 +386,7 @@ func TestReapTombstones_PromotedEntryNotReaped(t *testing.T) {
 	st.Delete("key1", "owner1")
 
 	sm := store.getStateMap("test")
-	e, exists := sm.entries.Get("key1")
+	e, exists := sm.entryAt("owner1", "key1")
 	require.True(t, exists)
 	require.True(t, e.Tombstone)
 
@@ -406,18 +406,19 @@ func TestReapTombstones_PromotedEntryNotReaped(t *testing.T) {
 	})
 
 	// Sanity: the live entry is in place.
-	e, exists = sm.entries.Get("key1")
+	e, exists = sm.entryAt("owner1", "key1")
 	require.True(t, exists)
 	require.False(t, e.Tombstone)
 
-	// Reap. The RemoveCb predicate should reject the now-live entry.
+	// Reap. The check-and-remove under the owner write lock should reject the
+	// now-live entry.
 	sm.reapTombstones()
 
-	e, exists = sm.entries.Get("key1")
+	e, exists = sm.entryAt("owner1", "key1")
 	require.True(t, exists, "live entry must not be reaped")
 	assert.False(t, e.Tombstone)
 
-	val, _, ok := st.Get("key1")
+	val, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 	assert.Equal(t, "v2", val)
 }
@@ -469,11 +470,15 @@ func TestAntiEntropyReconciliation(t *testing.T) {
 	}
 
 	var needed []*entry
-	smB.entries.IterCb(func(key string, e *entry) {
-		rv, exists := remoteVersions[key]
-		if !exists || e.Version > rv {
-			needed = append(needed, e)
+	smB.owners.IterCb(func(_ string, od *ownerData) {
+		od.mu.RLock()
+		for key, e := range od.entries {
+			rv, exists := remoteVersions[key]
+			if !exists || e.Version > rv {
+				needed = append(needed, e)
+			}
 		}
+		od.mu.RUnlock()
 	})
 
 	// Apply the missing entries to store A
@@ -482,7 +487,7 @@ func TestAntiEntropyReconciliation(t *testing.T) {
 	}
 
 	// Store A should now have key2
-	val, _, ok := stA.Get("key2")
+	val, _, ok := stA.GetForOwner("o1", "key2")
 	require.True(t, ok)
 	assert.Equal(t, "v2", val)
 
@@ -519,7 +524,7 @@ func TestConfirmedPropagation(t *testing.T) {
 		t.Fatal("SetConfirmed did not complete in time")
 	}
 
-	val, _, ok := st.Get("key1")
+	val, _, ok := st.GetForOwner("owner1", "key1")
 	require.True(t, ok)
 	assert.Equal(t, "confirmed_value", val)
 }
@@ -551,14 +556,14 @@ func TestReconcile(t *testing.T) {
 	// Reconcile owner1 with only key "a" present
 	st.Reconcile("owner1", map[string]struct{}{"a": {}})
 
-	_, _, ok := st.Get("a")
+	_, _, ok := st.GetForOwner("owner1", "a")
 	assert.True(t, ok, "key a should still exist")
 
-	_, _, ok = st.Get("b")
+	_, _, ok = st.GetForOwner("owner1", "b")
 	assert.False(t, ok, "key b should be removed/tombstoned")
 
 	// key c belongs to owner2 and should be unaffected
-	_, _, ok = st.Get("c")
+	_, _, ok = st.GetForOwner("owner2", "c")
 	assert.True(t, ok, "key c should still exist")
 }
 
@@ -575,11 +580,11 @@ func TestDeleteByOwner(t *testing.T) {
 
 	st.DeleteByOwner("owner1")
 
-	_, _, ok := st.Get("a")
+	_, _, ok := st.GetForOwner("owner1", "a")
 	assert.False(t, ok)
-	_, _, ok = st.Get("b")
+	_, _, ok = st.GetForOwner("owner1", "b")
 	assert.False(t, ok)
-	_, _, ok = st.Get("c")
+	_, _, ok = st.GetForOwner("owner2", "c")
 	assert.True(t, ok)
 
 	removes := listener.getRemoves()
@@ -713,7 +718,7 @@ func TestApplyAndBroadcast(t *testing.T) {
 	})
 
 	// Entry should be stored
-	e, ok := sm.entries.Get("link1")
+	e, ok := sm.entryAt("routerA", "link1")
 	require.True(t, ok)
 	assert.Equal(t, uint64(42), e.Version)
 	assert.Equal(t, "routerA", e.Owner)
@@ -746,7 +751,7 @@ func TestApplyAndBroadcast(t *testing.T) {
 	// No broadcast
 	assert.Empty(t, mesh.getSent())
 	// Value unchanged
-	e, _ = sm.entries.Get("link1")
+	e, _ = sm.entryAt("routerA", "link1")
 	assert.Equal(t, uint64(42), e.Version)
 }
 

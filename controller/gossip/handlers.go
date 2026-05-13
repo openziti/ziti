@@ -143,11 +143,15 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		}
 
 		var needed []*gossip_pb.GossipEntry
-		sm.entries.IterCb(func(key string, e *entry) {
-			remoteVersion, exists := remoteVersions[key]
-			if !exists || e.Version > remoteVersion {
-				needed = append(needed, e.toProto())
+		sm.owners.IterCb(func(_ string, od *ownerData) {
+			od.mu.RLock()
+			for key, e := range od.entries {
+				remoteVersion, exists := remoteVersions[key]
+				if !exists || e.Version > remoteVersion {
+					needed = append(needed, e.toProto())
+				}
 			}
+			od.mu.RUnlock()
 		})
 
 		if len(needed) == 0 {
