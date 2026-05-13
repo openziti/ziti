@@ -966,20 +966,607 @@ no drops, no panic — events are simply replayed once.
 
 ---
 
-## Phase 4a: Make link listeners/dialers stoppable
+## Phase 4a: Make listeners safely closeable mid-run -- DONE
 
-- Track link listeners/dialers, add stop methods
-- May need `Close()` on `Dialer` interface
+**Goal**: Let Phase 4b's link handler reconcile a `router.link.v1` config change
+by closing the current listeners and constructing fresh ones from the new
+config, without leaking goroutines and without disturbing any already-
+established `Xlink`s.
+
+**Status**: Complete.
+
+### What was implemented
+
+**`xlink_transport/listener.go`**:
+
+- Added `stopC chan struct{}` and `closeOnce sync.Once` to the listener
+  struct. Initialized in the factory.
+- `Close()` is now idempotent (via `closeOnce`). It closes `stopC`, closes
+  the listening socket (with nil guard for "Listen never called"), and
+  drains `pendingLinks` by calling `Close()` on each not-yet-fully-accepted
+  link's underlay. Accepted Xlinks are independent and **not** touched.
+- `cleanupExpiredPartialLinks` now selects on `stopC` in addition to
+  `env.GetCloseNotify()`. Closing a single listener mid-run exits its
+  cleanup goroutine without affecting the router-wide shutdown path.
+
+**`xlink_transport/listener_close_test.go`** (new):
+
+Four unit tests using a minimal LinkEnv stub (panic-on-unused methods,
+only `GetCloseNotify` actually wired):
+
+- `Test_Listener_Close_StopsCleanupGoroutine` — Close() makes the cleanup
+  goroutine exit within 2s.
+- `Test_Listener_Close_RouterShutdownAlsoStopsCleanupGoroutine` — sanity
+  check that the existing router-wide close path still works.
+- `Test_Listener_Close_Idempotent` — multiple Close() calls don't panic
+  (would otherwise close an already-closed `stopC`).
+- `Test_Listener_OpenClose_NoCleanupGoroutineLeak` — 25 open/close cycles
+  leave zero `cleanupExpiredPartialLinks` goroutines (verified via runtime
+  stack snapshot grep). Catches future leaks.
+
+All race-clean under `go test -race`.
+
+**Reconciliation strategy — rebuild, don't diff**:
+
+After surveying the listener and dialer lifecycles, the simplest workable
+approach for Phase 4b is "tear down all listeners, replace dialer config
+structs, build new listeners." No per-entry diff, no identity-keyed
+bookkeeping. The reasoning:
+
+- **Dialers have no persistent state.** Each `Dial()` creates fresh sockets
+  and channels; the dialer struct is a config holder plus refs to the
+  acceptor, env, etc. Replacing a dialer is "swap the struct pointer" — no
+  Close() needed, the old struct is GC'd. `AdoptBinding` state re-establishes
+  naturally when the new listener registers.
+- **Listeners do hold a listening socket and a cleanup goroutine**, but
+  `Listener.Close()` is fast (it closes one socket; cleanup goroutine exits;
+  accepted `Xlink`s are independent `channel.MultiChannel`s that survive).
+  Close-then-reopen on the same TCP port works immediately on Linux —
+  TIME_WAIT is for connected sockets, not listening sockets.
+- **Brief accept gap during reconfig** is acceptable. Link
+  re-establishment retries already exist; reconfig events are rare; the gap
+  is sub-second. The simplicity is worth it.
+
+Established `Xlink`s are *never* closed by config-driven reconciliation.
+Operators use `ziti fabric delete link <id>` (which sends a `LinkFault`
+control-plane message to both routers — see
+`controller/network/network.go:1029` — and tears the link down cleanly) for
+explicit cleanup.
+
+### Tasks
+
+- **Per-listener close signal in `xlink_transport/listener.go`**: today
+  `cleanupExpiredPartialLinks` only exits on `env.GetCloseNotify()`, so
+  closing a single listener mid-run leaks its cleanup goroutine. Add a
+  per-listener `stopC chan struct{}`, close it from `Listener.Close()`, and
+  select on it in the cleanup loop. Make `Close()` idempotent (multiple
+  closes don't double-close `stopC`).
+- **Tests** (`xlink_transport/listener_test.go`): (1) open-then-close cycle
+  N times — verify no goroutine leak via a runtime stack snapshot looking
+  for `cleanupExpiredPartialLinks` frames; (2) close listener while it has
+  pending partial links — confirm cleanup goroutine exits and the listener
+  doesn't deadlock; (3) double-close is a no-op.
+
+That's the entire surface area for 4a. No new interface methods, no
+`Dialer.Close()`, no registry API changes, no handler-side bookkeeping —
+all of which Phase 4b also avoids by following the rebuild-don't-diff
+strategy above.
+
+### Out of scope (deferred admin tooling)
+
+- **Stale-link GC tool**: an operator-facing command to scan currently
+  established links against the active config and report (and optionally
+  close) links that no longer have any reachable listener-or-dialer pair
+  under the current config. Two-phase usage: a default dry-run flag that
+  prints the link IDs and reasons, plus an explicit `--apply` (or `--gc`)
+  flag that performs the cleanup. Until this exists, operators clean up
+  with `ziti fabric delete link <id>` after consulting `ziti fabric list
+  links`. The tool is the *answer* to "we let everything drain — how do I
+  reclaim?" — important enough to track here even though it's not part of
+  the config-reconciliation work itself.
+- **Anti-affinity / quarantine** ("stop talking to router X right now,
+  kill the link"). Different feature from config reconciliation; if needed,
+  add as a separate command rather than overloading the link config.
 
 ---
 
-## Phase 4b: Implement `router.link.v1` config handler
+## Phase 4b: Implement `router.link.v1` config handler -- DONE
+
+**Status**: Complete.
 
 **Depends on**: 3b, 4a.
 
-- Parse config JSON into link structures
-- Reconcile incrementally — see "Incremental reconciliation" below
-- Respect local config precedence
+**Goal**: A single object owns the router's link subsystem configuration — the
+factories for each binding, the currently-applied `router.link.v1` config,
+and the listener / dialer instances built from it. Local YAML is translated
+to JSON at startup and fed in as `ApplyLocal`, which preempts any controller
+config via the registry's strict-local-wins semantics. Controller-managed
+link configs only take effect when the operator has *not* set listeners /
+dialers in their local YAML.
+
+### What was implemented
+
+**`router/link/config.go`** — typed `Config`, `ListenerConfig`,
+`DialerConfig`, `ChannelOptions`, `BackoffConfig`, `HeartbeatsConfig`,
+matching the `router.link.v1` schema. `Groups` is a slice-typed alias with
+custom `UnmarshalJSON` that accepts either string or array (per schema)
+and `MarshalJSON` that always emits the array form. Duration fields stay
+as strings (e.g. `"30s"`) so they round-trip cleanly into the existing
+`channel.LoadOptions` parser.
+
+**`router/link/factory_registry.go`** — `FactoryRegistry`:
+
+- Owns `factories map[string]xlink.Factory`, the active `config`,
+  `listeners`, `dialers`. `RWMutex`-guarded; accessor methods return slice
+  copies so callers can iterate safely.
+- `Register(binding, factory)` — pre-Seal phase. Idempotent for the same
+  factory; errors on a different factory for the same binding.
+- `BaseType()` → `"router.link"`. `SupportedVersions()` → `[1]`.
+- `Apply(1, data)` — parses JSON, builds new listeners and dialers from
+  the typed config (errors out without mutating state if any
+  construction fails), closes the *old* listener slice, swaps in the new
+  state, runs `setDefaultDialerBinding` for the single-listener
+  single-dialer compatibility case, then calls `Listen()` on the new
+  listeners. Established `Xlink`s on old listeners survive — Phase 4a
+  made `Listener.Close()` safe for that.
+- `Remove()` — closes listeners and clears all state.
+- `Listeners()` / `Dialers()` / `GetConfig()` — snapshot accessors.
+- Typed-struct → `transport.Configuration` map conversion (mirroring what
+  YAML would produce) so the existing `xlink.Factory.CreateListener` /
+  `CreateDialer` interface (and any third-party plugin factories) keeps
+  working unchanged.
+
+**`router/link/local_config.go`** — `ConfigFromLocalYaml`:
+
+- Translates the router env's `config.Link.{Listeners,Dialers,
+  Heartbeats,PayloadSenderQueueSize,AckSenderQueueSize}` into the typed
+  `Config`, then JSON-marshals it.
+- Returns `("", nil)` when no local link config is set — caller skips
+  `ApplyLocal` and lets the controller manage instead.
+- Type-strict per-field readers (`yamlString`, `yamlInt`, `yamlFloat`,
+  `yamlGroups`, `yamlChannelOptions`, `yamlBackoff`) with clear errors;
+  unknown keys silently ignored (the factory revalidates downstream).
+
+**`router/router.go` wiring**:
+
+- Removed `xlinkFactories map[string]xlink.Factory`, `xlinkListeners`,
+  `xlinkDialers` fields. Replaced with `linkSubsystem *link.FactoryRegistry`.
+- Removed `startXlinkListeners()`, `startXlinkDialers()`, and
+  `setDefaultDialerBindings()` — their work happens inside
+  `linkSubsystem.Apply()` now.
+- `GetXlinkListeners()` / `GetXlinkDialers()` delegate to
+  `linkSubsystem.Listeners()` / `.Dialers()`.
+- `registerComponents()` registers the built-in transport factory via
+  `linkSubsystem.Register("transport", ...)` instead of into a map.
+- New `applyLocalLinkConfig()` — translates local YAML, calls
+  `configRegistry.ApplyLocal(link.ConfigTypeV1, json)`, then
+  `WaitForIdle()` so listeners are up before the rest of startup.
+- Startup order in `Start()`:
+  1. `registerComponents` (registers factories with `linkSubsystem`).
+  2. `configRegistry.Register(linkSubsystem)` — pre-Seal.
+  3. `configRegistry.Seal()`.
+  4. `applyLocalLinkConfig()` — drives listeners up via the handler.
+  5. `startXgressListeners()`.
+  6. Start web services.
+  7. `stateManager.SetRouterConfigSubscriber(...)` — controller events
+     can now flow in.
+- Shutdown closes listeners via `linkSubsystem.Listeners()`.
+
+### Tests
+
+`router/link/factory_registry_test.go` — 15 race-clean tests using fake
+factory / listener / dialer doubles:
+
+- Factory registration: rejects different factory for same binding;
+  same-factory re-register is a no-op.
+- `Apply` builds listeners and dialers; calls `Listen()`; single
+  listener + single dialer auto-adoption works.
+- `Apply` closes old listeners on rebuild.
+- `Apply` errors out without mutating state on listener-create failure
+  (verified previous listener stays uncllosed).
+- `Apply` errors on unknown binding, malformed JSON, unsupported
+  version.
+- `Remove` tears down listeners and clears all state.
+- Accessors return stable snapshots — a slice returned before a later
+  `Apply` still holds the old contents.
+- `Groups` JSON unmarshal accepts both single-string and array forms;
+  marshal always emits array.
+- `ConfigFromLocalYaml` round-trip preserves listeners, dialers,
+  channel options, heartbeats, and queue sizes through YAML map →
+  typed `Config` → JSON → re-parsed `Config`.
+
+### Out of scope (deferred follow-ups)
+
+- **Graceful link replacement on settings change**: dial replacement
+  links with the new connection settings, transition traffic onto them,
+  then close the originals — disrupting nothing. Today an `Apply` that
+  changes link-level connection parameters takes effect only for *new*
+  links. Worth exploring as a separate feature; need to validate that
+  link-identity hand-off is supported by the protocol.
+- **Hot reload of local YAML**: file-watch the local config and call
+  `ApplyLocal` on change. Same machinery, just trigger plumbing.
+- **Stale-link GC tool**: already documented under Phase 4a's "deferred
+  admin tooling."
+
+### Design choice — `link.FactoryRegistry` as the handler
+
+Today the router has a plain `map[string]xlink.Factory` field
+(`Router.xlinkFactories`) plus separate `[]xlink.Listener` /
+`[]xlink.Dialer` slices. These three things together describe the link
+subsystem's configurable surface; nothing else owns them. Phase 4b
+promotes them to a single typed object — `link.FactoryRegistry` — which
+also implements `managedconfig.ConfigHandler`:
+
+```go
+type FactoryRegistry struct {
+    factories map[string]xlink.Factory  // binding -> factory
+
+    mu        sync.RWMutex
+    config    *Config             // current applied (or nil)
+    listeners []xlink.Listener
+    dialers   []xlink.Dialer
+
+    // refs needed to construct listeners/dialers from config
+    routerId *identity.TokenId
+    // ... acceptor, bind handler factory, etc.
+}
+
+// Register binds a factory to a binding name. Called during router init,
+// before any Apply.
+func (fr *FactoryRegistry) Register(binding string, f xlink.Factory)
+
+// ConfigHandler
+func (fr *FactoryRegistry) BaseType() string                  // "router.link"
+func (fr *FactoryRegistry) SupportedVersions() []int          // [1]
+func (fr *FactoryRegistry) Apply(version int, data string) error
+func (fr *FactoryRegistry) Remove() error
+
+// Replace Router.xlinkListeners / Router.xlinkDialers
+func (fr *FactoryRegistry) Listeners() []xlink.Listener
+func (fr *FactoryRegistry) Dialers() []xlink.Dialer
+
+func (fr *FactoryRegistry) Inspect() inspect.LinkSubsystemDetail
+```
+
+Bundling these in one object makes the lifecycle obvious: factories are
+registered before Seal; `Apply` rebuilds listeners/dialers from the parsed
+config; `Remove` tears down. Inspect surfaces it as a single unit.
+
+### Reconciliation strategy — rebuild, don't diff
+
+(Per Phase 4a's analysis.) On `Apply(1, data)`:
+
+1. Parse `data` into the typed `link.Config` struct.
+2. Close every current listener (`xlink.Listener.Close()` — Phase 4a made
+   this safe mid-run).
+3. Replace the dialer slice with freshly-constructed dialers from the new
+   config. Old dialer structs are GC'd; they hold no persistent state.
+4. Build + `Listen()` new listeners from the new config. Established
+   `Xlink`s accepted by the old listeners survive — they're independent
+   channels at this point.
+
+On `Remove()`: close listeners, clear dialers, set `config = nil`. The
+router has no link surface until the next `Apply`.
+
+The factory interface (`xlink.Factory.CreateListener(id, transport.Configuration)`)
+takes a `map[interface{}]interface{}`. Phase 4b parses JSON into the typed
+struct, then converts each listener / dialer entry back into the map shape
+when calling the factory. Keeps the factory interface (and third-party
+plugin factories) unchanged.
+
+### YAML translation for `ApplyLocal`
+
+`config.Link.{Listeners,Dialers,Heartbeats,...}` is the YAML-decoded form.
+The shape matches the JSON schema's properties closely (same field names,
+same nesting). A small translator builds a `link.Config`, marshals it to
+JSON, and calls `registry.ApplyLocal("router.link.v1", json)` at startup.
+Strict local-wins ensures any later controller `router.link.v1` is ignored
+as long as the local entry is present.
+
+### Wiring into `router.Start()`
+
+- `Router` constructs `*link.FactoryRegistry` early (before
+  `registerComponents`).
+- `registerComponents` calls `factoryRegistry.Register("transport", ...)`
+  for the built-in transport factory, and (eventually) for plugin
+  factories.
+- `startXlinkListeners()` / `startXlinkDialers()` go away. Instead:
+  - Translate local YAML to JSON.
+  - Call `configRegistry.Register(factoryRegistry)`.
+  - If local data exists, call `configRegistry.ApplyLocal("router.link.v1", localJson)`.
+  - Existing `configRegistry.Seal()` + `SetRouterConfigSubscriber` happen
+    as today.
+- `Router.GetXlinkListeners()` / `Router.GetXlinkDialers()` delegate to
+  the factory registry.
+
+### Tests
+
+- Handler-side reconcile: `Apply` with new config rebuilds listeners /
+  dialers; `Apply` with same data is a registry-level no-op (already
+  covered in Phase 3b tests but worth integration-checking); `Remove`
+  tears down; `Apply` with malformed JSON returns an error; `Apply` with
+  an unknown binding returns an error.
+- YAML → JSON translator: round-trip a representative YAML config and
+  assert the JSON shape conforms to the schema.
+- Factory registration: registering after Seal panics (lifecycle
+  enforcement).
+- Listener/dialer accessor stability: while `Apply` is replacing the
+  slices, concurrent `Listeners()` / `Dialers()` reads return consistent
+  snapshots (covered by the RWMutex).
+
+### Out of scope (deferred follow-ups)
+
+- **Graceful link replacement on settings change**: today, an `Apply`
+  that changes link-level connection parameters (e.g. heartbeat interval,
+  queue sizes) only takes effect for *new* links. The follow-up idea:
+  dial replacement links with the new settings, transition traffic onto
+  them, then close the originals — disrupting nothing. Worth exploring
+  as a separate feature; need to check whether the protocol supports
+  link-identity hand-off cleanly. Documented here for traceability.
+- **Hot reload of local YAML**: file-watch the local config and call
+  `ApplyLocal` on change. Same machinery; just trigger plumbing.
+- **Plugin factories registered after Seal**: today plugin registration
+  happens before Seal; if a plugin needs to add a binding later, that's
+  a lifecycle change worth designing separately.
+- **Stale-link GC tool**: already documented under Phase 4a's "deferred
+  admin tooling."
+
+---
+
+## Phase 5: Integration tests -- DONE
+
+Apitests in `tests/` (in-process controller + routers, `//go:build apitests`)
+covering the end-to-end controller → router managed config path.
+
+### Tests
+
+All in `tests/`, all use the in-process controller + a single edge router
+(see Phase 6 for the reason multi-router scenarios live elsewhere):
+
+- **`Test_ManagedConfigAlert_EndToEnd`** (`managed_config_alert_test.go`).
+  Bad controller-side config (malformed JSON) → router's registry alerts
+  → `ctrl_pb.Alert` reaches the controller's `event.Dispatcher`. Verifies
+  the wiring added via `newManagedConfigAlertCallback`.
+- **`Test_ManagedConfig_LocalWinsOverController`**
+  (`managed_config_local_wins_test.go`). Local seed via `ApplyLocal`;
+  controller pushes a `router.link.v1` Config via management API +
+  edge-router PATCH; assert `Applied` stays `SourceLocal` with both
+  sources visible in `Inspect`.
+- **`Test_ManagedConfig_ControllerAppliesListener`**
+  (`managed_config_apply_test.go`). Controller pushes a config with a
+  listener; assert `Applied` source = Controller AND the listener's bind
+  port is actually open (TCP connect succeeds).
+- **`Test_ManagedConfig_DelayedConfigStartsListener`**
+  (same file). Router starts with no config; assert no listeners / no
+  Applied state / port closed. Push config; assert listener comes up and
+  port opens.
+- **`Test_ManagedConfig_DefaultsBindingToTransport`** (same file).
+  Config omits the `binding` field on a listener entry; assert the
+  listener still comes up on `transport`. Exercises `defaultBinding()`.
+- **`Test_ManagedConfig_UpdateRebindsListener`** (same file). Config
+  with port A → port A opens. Update the same config to use port B →
+  port B opens and port A *closes*. Verifies the rebuild-on-Apply path
+  in `link.FactoryRegistry` closes old listeners after building new
+  ones, and old sockets really do release.
+- **`Test_ManagedConfig_BadUpdateRollsBack`** (same file). Good config
+  applied → listener bound. Push an Update to the same Config with an
+  unknown binding (schema-valid, apply-failing). Assert: alert fires
+  with `configBaseType: router.link`, original listener still bound
+  (rollback to previous-good), `Applied` still Controller v1.
+
+All race-clean. Each completes in <2s due to the in-process harness.
+
+Tests require `cfg.ManagedConfig.Allow = []string{"router.link"}` via
+cfgTweaks; routers default to empty allow-list which drops everything.
+
+### Discoveries during integration test work
+
+- **`MarkRouterDataModelRequired` triggered by allow-list opt-in** in
+  `router.Start()`: gated on `len(cfg.ManagedConfig.Allow) > 0`. Edge
+  routers separately mark RDM required via the edge xgress factory, so
+  for the common edge case this is a no-op; the gate matters for
+  non-edge routers that opt in via allow-list. The allow-list serves
+  as the unified opt-in: empty = managed configs disabled, no RDM
+  subscription attempted.
+- **`ConfigFromLocalYaml` heuristic fixed**: heartbeats and queue-size
+  alone no longer count as "local content." The env loader auto-fills
+  heartbeat defaults on every router, so the previous heuristic
+  suppressed controller management for every router without an explicit
+  `link:` YAML section.
+- **edge-api `v0.31.0` adds `Configs` to `EdgeRouterCreate`/`Update`/`Patch`.**
+  Previous `v0.25.x` had the field on `RouterCreate` (transit) only, which
+  made the feature unusable for edge routers via the REST API.
+
+### Deliberately not tested in `tests/`
+
+- **Two-router link establishment.** The `tests/` harness builds around a
+  single edge router (port allocations, identity files, the
+  `ctx.edgeRouterEntity` singleton). Standing up two concurrent edge
+  routers is a multi-day infra change for marginal gain — the per-router
+  config delivery + listener bring-up is already covered above. The
+  multi-router link handshake is fabric/SDK behavior, not managed-config
+  behavior, and is exercised in fablab scale tests.
+
+### Fablab smoketest coverage (Tier 1)
+
+`zititest/models/smoke/` has two of its three edge routers
+(`router-east-2`, `router-west`) converted to controller-managed link
+config. They carry the same listener/dialer settings the local YAML
+would have produced; the third router (`router-east-1`) stays on local
+YAML as a known-good control.
+
+Setup:
+- The two routers get a `ctrl-managed-link` tag in `smoketest.go`.
+- `configs/router.yml.tmpl` uses `{{if .Component.HasTag
+  "ctrl-managed-link"}}` to swap the local `link:` block for a
+  `managedConfig: { allow: [router.link] }` block on those routers.
+- `actions/managed_link_configs.go` defines a bootstrap-time action
+  that iterates `.ctrl-managed-link` components, creates a
+  `router.link.v1` config with listener (`tls:0.0.0.0:6000`, advertise
+  `tls:<router_ip>:6000`) and dialer matching the YAML defaults, then
+  assigns the config to the matching edge router via
+  `ziti edge update edge-router --configs`.
+- Hooked into `actions/bootstrap.go` after `InitEdgeRouters` and
+  before router processes start.
+
+If managed-config delivery breaks at fablab scale, the converted
+routers fail to come up with their links and the smoketest fails
+loud. Tier 2/3 fablab tests (config-change-under-traffic, restart
+resilience, HA failover) are deferred until Phase 6 lands.
+
+---
+
+## Phase 6: Managed config delivery for non-edge routers
+
+**Status**: Not started. Deferred from Phase 4b.
+
+**Goal**: Let the controller deliver managed router configs to **transit**
+(non-edge) routers, not just edge routers. The RDM transport is in place;
+the gate is on the controller side.
+
+### Current limitation
+
+`controller/env/broker.go:RouterConnected` only invokes
+`routerSyncStrategy.RouterConnected(edgeRouter, router)` when an
+EdgeRouter record is matched by fingerprint. Transit routers fall into
+the `else` branch and are never added to the strategy's `rtxMap`. The
+side effects: transit routers' RDM subscribe requests are rejected with
+*"received subscribe from router that is currently not tracked by the
+strategy, dropping subscribe"*, no Config events flow to them.
+
+Historically, the sync strategy was designed for distributing edge data
+(identities, services, policies, edge-target configs). Phase 2a/2b/2c
+made the RDM also the channel for general router configuration, but the
+broker gate hasn't been relaxed.
+
+### Approach (deferred)
+
+Two options sketched during Phase 5 work:
+
+**Option A — type-aware single strategy (smaller change, recommended for
+first cut):**
+
+- Broker calls `strategy.RouterConnected(maybeEdgeRouter, router)`
+  unconditionally; `maybeEdgeRouter` may be nil.
+- `InstantStrategy.RouterConnected` handles nil edgeRouter: creates the
+  rtx entry, drives RDM subscription, skips edge-only setup (identity
+  tracking, tunneler flag, etc.).
+- `filterEventsForRouter` extends to drop edge-only event types
+  (`Identity`, `ServicePolicy`, `Service`, `PostureCheck`,
+  `Revocation`) when the destination router is non-edge.
+- Edge-only event handlers (`ApiSessionAdded`, etc.) keep working —
+  they only fire from edge-side managers and already walk `rtxMap`
+  selecting edge routers.
+
+Net: one strategy, one RDM, one `rtxMap`. Transit routers join the
+tracker but get a stripped feed.
+
+**Option B — split concerns (cleaner, do when complexity grows):**
+
+- Split `RouterSyncStrategy` interface into `RouterStateSync` (general
+  router state + Router/Config events) and `EdgeDataSync` (identity/
+  policy/posture/revocation).
+- Two implementation files; `sync_instant.go` becomes a thin composer.
+- Broker calls both as appropriate.
+
+### Out of scope until Phase 6
+
+Until this work happens, managed router configs only flow to edge
+routers. Operators using transit routers must continue to configure
+links via local YAML.
+
+---
+
+## Phase 7: Friendly CLI for router.link.v1 configs
+
+**Status**: Not started.
+
+**Goal**: Replace hand-typed JSON with an ergonomic CLI for creating and
+editing `router.link.v1` configs. Today the only path is:
+
+```bash
+ziti edge create config my-link router.link.v1 '{"listeners":[{"binding":"transport","bind":"tls:0.0.0.0:6000","advertise":"tls:1.2.3.4:6000"}],"dialers":[{"binding":"transport","options":{"connectTimeout":"30s"}}]}'
+```
+
+That's fiddly: nested JSON, multiple sections (listeners / dialers /
+heartbeats / queue sizes), nested objects for channelOptions and backoff,
+duration strings, easy to typo a key. Schema validation only fires after
+submit; operator iterates by trial-and-error.
+
+### Design options
+
+**Flag-based subcommand** (most discoverable, easiest to script):
+
+```bash
+ziti edge create router-link-config my-link \
+  --listener "transport@tls:0.0.0.0:6000=tls:1.2.3.4:6000" \
+  --listener "ws@ws:0.0.0.0:8080=ws://router1:8080,groups=mesh" \
+  --dialer "transport,connect-timeout=30s" \
+  --heartbeat-send-interval 5s
+```
+
+Or with explicit flag groups:
+
+```bash
+ziti edge create router-link-config my-link \
+  --listener-binding transport \
+  --listener-bind tls:0.0.0.0:6000 \
+  --listener-advertise tls:1.2.3.4:6000 \
+  --dialer-binding transport \
+  --dialer-connect-timeout 30s
+```
+
+Tradeoff: multiple listeners/dialers need repeated `--listener=...`
+shorthand parsing OR a from-file fallback. Probably both: simple
+single-listener common case via flags, complex multi-section via
+`--from-file` or `--from-yaml`.
+
+**Wizard mode** (most beginner-friendly):
+
+```bash
+ziti edge create router-link-config --wizard
+# How many listeners? [1]
+# Listener 1 binding [transport]:
+# Listener 1 bind address: tls:0.0.0.0:6000
+# Listener 1 advertise address: tls:1.2.3.4:6000
+# Add another listener? [N]
+# How many dialers? [1]
+# ...
+```
+
+Easy for first-time setup. Not scriptable.
+
+**Edit mode** (round-trip from existing config):
+
+```bash
+ziti edge edit router-link-config my-link
+# Opens $EDITOR with the YAML representation of the current config;
+# parses on save; rejects if invalid against the schema.
+```
+
+### Recommendation
+
+Hybrid:
+
+1. **`ziti edge create router-link-config <name>`** with flags for the
+   common single-listener single-dialer case. `--from-file <path>` for
+   complex configs. Listeners and dialers can each be specified
+   multiple times (`--listener=...`).
+2. **`ziti edge edit router-link-config <name>`** opens the config as
+   YAML in `$EDITOR`. Round-trip via the `router/link/config.go` typed
+   struct + a YAML marshaler. Schema-validate on save.
+3. **No wizard** in the first cut — flags + edit cover the cases.
+   Wizard can come later if operators ask for it.
+
+### Out of scope
+
+- Editing the assignment of a config to a router. That's
+  `ziti edge update edge-router --configs` already.
+- Schema discovery (`ziti edge list config-types --schema
+  router.link.v1`). Useful but separate.
+- Auto-generation from local YAML (operator hands the CLI a router's
+  YAML, it spits out the equivalent `router.link.v1` config).
+  Also useful, also separate.
 
 ---
 

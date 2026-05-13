@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -44,6 +45,9 @@ type listener struct {
 	lock               sync.Mutex
 	env                LinkEnv
 	xlinkRegistery     xlink.Registry
+
+	stopC  chan struct{}
+	closed atomic.Bool
 }
 
 func (self *listener) Listen() error {
@@ -82,8 +86,32 @@ func (self *listener) GetGroups() []string {
 	return self.config.groups
 }
 
+// Close shuts down the listener: stops the cleanup goroutine, closes the
+// listening socket, and closes any partial (not-yet-fully-accepted) links.
+// Accepted Xlinks are independent channels at this point and are NOT closed
+// — they continue to operate until naturally torn down or until an operator
+// removes them via `ziti fabric delete link`. Safe to call multiple times.
 func (self *listener) Close() error {
-	return self.listener.Close()
+	if self.closed.CompareAndSwap(false, true) {
+		close(self.stopC)
+		var err error
+		if self.listener != nil {
+			err = self.listener.Close()
+		}
+
+		// Drop any partial (pre-accept) links the cleanup goroutine would
+		// otherwise have eventually expired. They hold underlay resources
+		// that should release immediately when the listener goes away.
+		self.lock.Lock()
+		defer self.lock.Unlock()
+		for k, v := range self.pendingLinks {
+			_ = v.link.Close()
+			delete(self.pendingLinks, k)
+		}
+
+		return err
+	}
+	return nil
 }
 
 func (self *listener) GetLocalBinding() string {
@@ -349,6 +377,8 @@ func (self *listener) cleanupExpiredPartialLinks() {
 					}
 				}
 			}()
+		case <-self.stopC:
+			return
 		case <-self.env.GetCloseNotify():
 			return
 		}

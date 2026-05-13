@@ -38,6 +38,11 @@ metrics:
   reportInterval: 15s
   messageQueueSize: 10
 
+{{if .Component.HasTag "ctrl-managed-link"}}
+managedConfig:
+  allow:
+    - router.link
+{{else}}
 link:
   listeners:
     - binding:          transport
@@ -47,6 +52,7 @@ link:
     - binding:          transport
       options:
         connectTimeout: 30s
+{{end}}
 
 listeners:
 {{if .Component.HasTag "tunneler"}}
