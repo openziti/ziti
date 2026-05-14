@@ -156,6 +156,7 @@ type Config struct {
 		Heartbeats             channel.HeartbeatOptions
 		PayloadSenderQueueSize int
 		AckSenderQueueSize     int
+		GcMode                 string
 	}
 	Dialers   map[string]xgress.OptionsData
 	Listeners []ListenerBinding
@@ -657,6 +658,19 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 					cfg.Link.AckSenderQueueSize = intVal
 				} else {
 					return nil, fmt.Errorf("[link/ackSenderQueueSize] must be an integer, got %T", value)
+				}
+			}
+
+			if value, found := submap["gcMode"]; found {
+				strVal, ok := value.(string)
+				if !ok {
+					return nil, fmt.Errorf("[link/gcMode] must be a string, got %T", value)
+				}
+				switch strVal {
+				case "preserve", "orphaned", "changed":
+					cfg.Link.GcMode = strVal
+				default:
+					return nil, fmt.Errorf("[link/gcMode] must be preserve|orphaned|changed, got %q", strVal)
 				}
 			}
 		}
