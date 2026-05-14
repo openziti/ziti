@@ -337,6 +337,29 @@ func Test_FactoryRegistry_ChangeHandler_ListenersOnlyChange(t *testing.T) {
 	req.False(changes[0].DialersChanged, "dialer slice unchanged")
 }
 
+func Test_FactoryRegistry_ChangeHandler_GcModeOnlyChange(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// Prime with a listener and the default gc mode.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"preserve"}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// Only gcMode changes; listeners and dialers are identical. The apply must
+	// still take effect (the config data differs, so it is not a no-op).
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"orphaned"}`))
+	req.True(rec.waitForChange(time.Second), "handler should fire when only gcMode changes")
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.False(changes[0].ListenersChanged, "listeners unchanged")
+	req.False(changes[0].DialersChanged, "dialers unchanged")
+	req.True(changes[0].GcModeChanged, "gcMode changed preserve→orphaned")
+	req.Equal("orphaned", r.GetConfig().GcMode)
+}
+
 func Test_FactoryRegistry_ChangeHandler_ListenerBindInterfaceChangeAffectsDefaultDialer(t *testing.T) {
 	req := require.New(t)
 	r, _ := newTestRegistry(t)

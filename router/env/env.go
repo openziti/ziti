@@ -40,6 +40,7 @@ type RouterEnv interface {
 	GetRouterCapabilities() *capabilities.RouterCapabilityMask
 	GetDialerCfg() map[string]xgress.OptionsData
 	GetXlinkDialers() []xlink.Dialer
+	GetXlinkListeners() []xlink.Listener
 	GetXrctrls() []Xrctrl
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry

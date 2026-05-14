@@ -272,6 +272,37 @@ func (self *updateLinkStatusToDialFailed) Handle(registry *linkRegistryImpl) {
 	}
 }
 
+// getDestinationListenersEvent snapshots the registry's per-destination
+// listener cache so off-loop callers (e.g., the stale-link handler) can
+// read it without racing with event-loop writes.
+type getDestinationListenersEvent struct {
+	result atomic.Pointer[map[string][]*ctrl_pb.Listener]
+	done   chan struct{}
+}
+
+func (self *getDestinationListenersEvent) Handle(registry *linkRegistryImpl) {
+	snapshot := make(map[string][]*ctrl_pb.Listener, len(registry.destinations))
+	for id, dest := range registry.destinations {
+		if len(dest.listeners) == 0 {
+			continue
+		}
+		listeners := make([]*ctrl_pb.Listener, len(dest.listeners))
+		copy(listeners, dest.listeners)
+		snapshot[id] = listeners
+	}
+	self.result.Store(&snapshot)
+	close(self.done)
+}
+
+func (self *getDestinationListenersEvent) GetResults(timeout time.Duration) map[string][]*ctrl_pb.Listener {
+	select {
+	case <-self.done:
+		return *self.result.Load()
+	case <-time.After(timeout):
+		return nil
+	}
+}
+
 type inspectLinkStatesEvent struct {
 	result atomic.Pointer[[]*inspect.LinkDest]
 	done   chan struct{}

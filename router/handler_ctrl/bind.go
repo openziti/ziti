@@ -114,6 +114,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	channel.AddReceiveHandlers(binding, newUnrouteHandler(self.forwarder))
 	channel.AddReceiveHandlers(binding, newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	channel.AddReceiveHandlers(binding, self.env.GetInspectHandler())
+	channel.AddReceiveHandlers(binding, newCheckStaleLinksHandler(self.env))
 	channel.AddReceiveHandlers(binding, newSettingsHandler(self.env))
 	channel.AddReceiveHandlers(binding, newFaultHandler(self.env.GetXlinkRegistry()))
 	channel.AddReceiveHandlers(binding, self.ctrlAddrChangeHandler)

@@ -144,7 +144,7 @@ func (self *testLink) Key() string {
 	return self.key
 }
 
-func (self *testLink) Init(metricsRegistry metrics.Registry) error {
+func (self *testLink) Init(metrics.Registry) error {
 	panic("implement me")
 }
 
@@ -172,7 +172,11 @@ func (self *testLink) DialAddress() string {
 	panic("implement me")
 }
 
-func (self *testLink) CloseOnce(f func()) {
+func (self *testLink) LinkKey() xlink.LinkKey {
+	return xlink.LinkKey{}
+}
+
+func (self *testLink) CloseOnce(func()) {
 	panic("implement me")
 }
 

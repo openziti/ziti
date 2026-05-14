@@ -30,12 +30,16 @@ import (
 
 type impl struct {
 	id            string
-	key           string
 	ch            LinkChannel
 	routerId      string
 	routerVersion string
 	linkProtocol  string
 	dialAddress   string
+	// linkKey is the structured identity of this link, captured at
+	// establishment. Key() returns its canonical string form (the
+	// registry map key); individual components are used by the
+	// stale-link check to compare against the current configuration.
+	linkKey xlink.LinkKey
 	closed        atomic.Bool
 	faultsSent    atomic.Bool
 	dialed        bool
@@ -53,7 +57,7 @@ func (self *impl) Id() string {
 }
 
 func (self *impl) Key() string {
-	return self.key
+	return self.linkKey.String()
 }
 
 func (self *impl) Iteration() uint32 {
@@ -137,6 +141,10 @@ func (self *impl) LinkProtocol() string {
 
 func (self *impl) DialAddress() string {
 	return self.dialAddress
+}
+
+func (self *impl) LinkKey() xlink.LinkKey {
+	return self.linkKey
 }
 
 func (self *impl) IsDialed() bool {

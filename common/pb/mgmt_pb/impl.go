@@ -40,6 +40,18 @@ func (request *RouterLinkDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterLinksResultType)
 }
 
+func (request *ValidateStaleLinksRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateStaleLinksRequestType)
+}
+
+func (request *ValidateStaleLinksResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateStaleLinksResponseType)
+}
+
+func (request *StaleLinkResult) GetContentType() int32 {
+	return int32(ContentType_ValidateStaleLinksResultType)
+}
+
 func (request *ValidateRouterSdkTerminatorsRequest) GetContentType() int32 {
 	return int32(ContentType_ValidateRouterSdkTerminatorsRequestType)
 }

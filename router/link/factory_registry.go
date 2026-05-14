@@ -50,16 +50,19 @@ type FactoryRegistry struct {
 	mu        sync.RWMutex
 	factories map[string]xlink.Factory
 	config    *Config
-	listeners []xlink.Listener
-	dialers   []xlink.Dialer
+	// appliedData is the raw JSON of the currently-applied config, kept so
+	// Apply can detect a redundant re-apply (notably rollback, which replays
+	// the previous data verbatim) by comparing the incoming data against it.
+	appliedData string
+	listeners   []xlink.Listener
+	dialers     []xlink.Dialer
 
 	changeHandler ConfigurationChangeHandler
 }
 
 // ConfigurationChange describes which parts of the link configuration
-// changed during an Apply / Remove. Both flags may be true (e.g. on
-// Remove from a config that had both listeners and dialers); either may
-// be false to let consumers skip work they don't care about.
+// changed during an Apply / Remove. Any flag may be true; consumers
+// inspect them to decide what work to do.
 type ConfigurationChange struct {
 	// ListenersChanged is true when the listener set differs from the
 	// previous state (membership and/or any listener field that affects
@@ -70,6 +73,9 @@ type ConfigurationChange struct {
 	// binding. The effective local binding includes the single
 	// listener/single dialer default adoption rule.
 	DialersChanged bool
+	// GcModeChanged is true when the gcMode field transitioned. The
+	// handler should consult the current config for the new mode.
+	GcModeChanged bool
 }
 
 // ConfigurationChangeHandler is invoked asynchronously after a successful
@@ -151,13 +157,13 @@ func (self *FactoryRegistry) Apply(version int, data string) error {
 
 	self.mu.Lock()
 	prevConfig := self.config
-	// Re-applying an identical config is a no-op: leave the running listeners
-	// in place rather than tearing them down and rebuilding them. This matters
-	// for rollback, where a failed update is undone by re-applying the current
-	// config; without this, the rollback would briefly close and reopen an
-	// otherwise-undisturbed listener.
-	if listenerSlicesEqual(getListeners(prevConfig), getListeners(cfg)) &&
-		dialerSlicesEqual(getEffectiveDialers(prevConfig), getEffectiveDialers(cfg)) {
+	// Re-applying the current config is a no-op: leave the running listeners in
+	// place rather than tearing them down and rebuilding them. This matters for
+	// rollback, where a failed update is undone by re-applying the current
+	// config verbatim; without this, the rollback would briefly close and reopen
+	// an otherwise-undisturbed listener. Comparing the raw config data covers
+	// every field the config carries, so a change to any of them still applies.
+	if prevConfig != nil && data == self.appliedData {
 		self.mu.Unlock()
 		return nil
 	}
@@ -165,6 +171,7 @@ func (self *FactoryRegistry) Apply(version int, data string) error {
 	self.listeners = newListeners
 	self.dialers = newDialers
 	self.config = cfg
+	self.appliedData = data
 	handler := self.changeHandler
 	self.mu.Unlock()
 
@@ -188,6 +195,7 @@ func (self *FactoryRegistry) Remove() error {
 	self.listeners = nil
 	self.dialers = nil
 	self.config = nil
+	self.appliedData = ""
 	handler := self.changeHandler
 	self.mu.Unlock()
 
@@ -208,11 +216,19 @@ func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
 	change := ConfigurationChange{
 		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
 		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+		GcModeChanged:    getGcMode(prev) != getGcMode(next),
 	}
-	if !change.ListenersChanged && !change.DialersChanged {
+	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged {
 		return
 	}
 	go handler(change)
+}
+
+func getGcMode(c *Config) string {
+	if c == nil {
+		return ""
+	}
+	return c.GcMode
 }
 
 func getListeners(c *Config) []ListenerConfig {
