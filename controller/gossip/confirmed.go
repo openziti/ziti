@@ -92,7 +92,11 @@ func (s *Store) setConfirmed(ctx context.Context, sm *stateMap, key, owner strin
 		done:      make(chan struct{}),
 	}
 	s.pendingAcks.Store(requestId, pa)
-	defer s.pendingAcks.Delete(requestId)
+	s.pendingAcksCount.Add(1)
+	defer func() {
+		s.pendingAcks.Delete(requestId)
+		s.pendingAcksCount.Add(-1)
+	}()
 
 	delta := &gossip_pb.GossipDelta{
 		StoreType:    sm.name,

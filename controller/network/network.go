@@ -200,6 +200,9 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
+	fabricMetrics.RegisterHostStats(network.metricsRegistry, fabricMetrics.HostStatsConfig{
+		Enabled: config.GetOptions().HostMetrics.Enabled,
+	})
 	network.AddRouterPresenceHandler(network.RouterMessaging)
 	go network.RouterMessaging.run()
 
@@ -219,6 +222,7 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 func (network *Network) InitGossipStore(m gossip.Mesh, isHA bool, leaderCheck func() bool) {
 	network.GossipStore = gossip.NewStore(network.nodeId, m)
 	network.GossipStore.SetEventsPool(network.peerEventsPool)
+	network.GossipStore.SetMetricsRegistry(network.metricsRegistry)
 	network.isHA = isHA
 	network.leaderCheck = leaderCheck
 }
@@ -239,6 +243,13 @@ func (network *Network) IsLeader() bool {
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
+	// Drop the router's gossip-store owner data so memory doesn't grow
+	// unboundedly when routers are added/removed over time (e.g., autoscaling).
+	// Live entries are tombstoned and broadcast; the ownerData is compacted out
+	// of the gossip store by the reaper once tombstones age out.
+	if self.LinkGossipType != nil {
+		self.LinkGossipType.DropOwner(id)
+	}
 }
 
 func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {

@@ -29,6 +29,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/pb/gossip_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"google.golang.org/protobuf/proto"
@@ -45,13 +46,15 @@ const (
 // Store is the central gossip state store. It owns the Lamport clock and routes
 // messages to per-type stateMaps.
 type Store struct {
-	peerId      string
-	mesh        Mesh
-	clock       atomic.Uint64
-	types       sync.Map // map[string]*stateMap
-	pendingAcks sync.Map // map[requestId]*pendingAck
-	closeCh     chan struct{}
-	eventsPool  goroutines.Pool
+	peerId           string
+	mesh             Mesh
+	clock            atomic.Uint64
+	types            sync.Map // map[string]*stateMap
+	pendingAcks      sync.Map // map[requestId]*pendingAck
+	pendingAcksCount atomic.Int64
+	closeCh          chan struct{}
+	eventsPool       goroutines.Pool
+	metricsRegistry  metrics.Registry
 }
 
 // NewStore creates a gossip Store for the given local peer identity.
@@ -67,6 +70,18 @@ func NewStore(peerId string, mesh Mesh) *Store {
 // messages. Must be called before any peer connections are established.
 func (s *Store) SetEventsPool(pool goroutines.Pool) {
 	s.eventsPool = pool
+}
+
+// SetMetricsRegistry installs the registry used for store-level and per-stateMap
+// metrics. Must be called before any state types are registered, so each
+// Register call can wire up its own metrics against this registry.
+func (s *Store) SetMetricsRegistry(reg metrics.Registry) {
+	s.metricsRegistry = reg
+	if reg != nil {
+		reg.FuncGauge("gossip.pending_acks", func() int64 {
+			return s.pendingAcksCount.Load()
+		})
+	}
 }
 
 // queueOrRun submits work to the events pool if one is configured, otherwise
@@ -155,6 +170,7 @@ func (s *Store) ApplyPeerDelta(delta *gossip_pb.GossipDelta) {
 		return
 	}
 
+	sm.markDeltaReceived(int64(len(delta.Entries)))
 	for _, pbEntry := range delta.Entries {
 		sm.applyDelta(entryFromProto(pbEntry))
 	}
@@ -170,6 +186,7 @@ func (s *Store) ApplyAndBroadcast(delta *gossip_pb.GossipDelta) {
 		return
 	}
 
+	sm.markDeltaReceived(int64(len(delta.Entries)))
 	for _, pbEntry := range delta.Entries {
 		sm.applyAndBroadcast(entryFromProto(pbEntry))
 	}
@@ -240,11 +257,109 @@ type stateMap struct {
 	owners   cmap.ConcurrentMap[string, *ownerData]
 	store    *Store
 	listener untypedListener
+	metrics  *stateMapMetrics
+}
+
+// stateMapMetrics holds the meters maintained for a stateMap. Gauges are
+// registered with the metrics.Registry directly (poll-time closures over
+// stateMap fields) and not held here.
+type stateMapMetrics struct {
+	deltaReceived      metrics.Meter
+	deltaApplied       metrics.Meter
+	deltaRejectedStale metrics.Meter
+	broadcastSent      metrics.Meter
+}
+
+// markDeltaReceived records n entries received from peers (direct broadcast
+// or anti-entropy digest response).
+func (sm *stateMap) markDeltaReceived(n int64) {
+	if sm.metrics != nil && n > 0 {
+		sm.metrics.deltaReceived.Mark(n)
+	}
+}
+
+// markDeltaApplied records an incoming entry that won its version check.
+func (sm *stateMap) markDeltaApplied() {
+	if sm.metrics != nil {
+		sm.metrics.deltaApplied.Mark(1)
+	}
+}
+
+// markDeltaRejectedStale records an incoming entry rejected because its
+// version was not newer than the local copy (or the owner was drained).
+func (sm *stateMap) markDeltaRejectedStale() {
+	if sm.metrics != nil {
+		sm.metrics.deltaRejectedStale.Mark(1)
+	}
+}
+
+// markBroadcastSent records a broadcast initiated by this controller.
+func (sm *stateMap) markBroadcastSent() {
+	if sm.metrics != nil {
+		sm.metrics.broadcastSent.Mark(1)
+	}
+}
+
+// registerMetrics wires up the meters and poll-time gauges for this stateMap
+// against the store's metrics registry. Safe to call with a nil registry.
+func (sm *stateMap) registerMetrics(reg metrics.Registry) {
+	if reg == nil {
+		return
+	}
+	prefix := "gossip." + sm.name
+	sm.metrics = &stateMapMetrics{
+		deltaReceived:      reg.Meter(prefix + ".delta.received"),
+		deltaApplied:       reg.Meter(prefix + ".delta.applied"),
+		deltaRejectedStale: reg.Meter(prefix + ".delta.rejected_stale"),
+		broadcastSent:      reg.Meter(prefix + ".broadcast.sent"),
+	}
+	reg.FuncGauge(prefix+".owners", func() int64 {
+		return int64(sm.owners.Count())
+	})
+	reg.FuncGauge(prefix+".entries.live", func() int64 {
+		var live int64
+		sm.owners.IterCb(func(_ string, od *ownerData) {
+			od.mu.RLock()
+			live += od.nonTombstones
+			od.mu.RUnlock()
+		})
+		return live
+	})
+	reg.FuncGauge(prefix+".entries.tombstones", func() int64 {
+		var tombstones int64
+		sm.owners.IterCb(func(_ string, od *ownerData) {
+			od.mu.RLock()
+			tombstones += int64(len(od.entries)) - od.nonTombstones
+			od.mu.RUnlock()
+		})
+		return tombstones
+	})
+	reg.FuncGauge(prefix+".owners.drained", func() int64 {
+		var drained int64
+		sm.owners.IterCb(func(_ string, od *ownerData) {
+			od.mu.RLock()
+			if od.drained {
+				drained++
+			}
+			od.mu.RUnlock()
+		})
+		return drained
+	})
 }
 
 // ownerData holds all state for a single owner: the owner's entries plus
 // derived aggregates. The mutex serializes mutations to the entries map and
 // keeps the aggregates consistent with it.
+//
+// Lifecycle: a fresh ownerData has drained=false and accepts writes. When
+// DropOwner is called (e.g., a router is deleted), drained is set under the
+// write lock after all live entries have been tombstoned. While drained,
+// applyEntryLocked rejects all writes and read methods return zero values.
+// Once tombstones have aged out via reapTombstones (so entries is empty), the
+// reaper removes the ownerData from sm.owners under the cmap shard write lock
+// with a check that re-validates drained && empty atomically. If a new write
+// for the same owner arrives after removal, a fresh non-drained ownerData is
+// created.
 type ownerData struct {
 	mu            sync.RWMutex
 	entries       map[string]*entry // key -> entry, including tombstones
@@ -252,6 +367,7 @@ type ownerData struct {
 	hashDirty     bool              // hash needs recomputation
 	maxVersion    uint64            // highest version ever observed for this owner
 	nonTombstones int64             // count of live (non-tombstone) entries
+	drained       bool              // dropOwner called; rejects writes and eligible for compaction
 }
 
 func newOwnerData() *ownerData {
@@ -313,11 +429,14 @@ func (sm *stateMap) entryAt(owner, key string) (*entry, bool) {
 
 // applyEntryLocked installs incoming into the owner's entries map under
 // owner.mu (already held by the caller). Returns (wasSet, isCreate). When
-// wasSet is false the version check rejected the incoming entry and nothing
-// was changed. Aggregates (maxVersion, nonTombstones, hashDirty) are updated
-// in-place. The caller is responsible for listener notification and broadcast
-// after releasing the lock.
+// wasSet is false the version check rejected the incoming entry, the owner is
+// drained, or there was no change. Aggregates (maxVersion, nonTombstones,
+// hashDirty) are updated in-place. The caller is responsible for listener
+// notification and broadcast after releasing the lock.
 func (sm *stateMap) applyEntryLocked(od *ownerData, incoming *entry) (wasSet, isCreate bool) {
+	if od.drained {
+		return false, false
+	}
 	existing, ok := od.entries[incoming.Key]
 	if ok && existing.Version >= incoming.Version {
 		return false, false
@@ -385,8 +504,10 @@ func (sm *stateMap) applyDelta(incoming *entry) {
 	od.mu.Unlock()
 
 	if !wasSet {
+		sm.markDeltaRejectedStale()
 		return
 	}
+	sm.markDeltaApplied()
 
 	if incoming.Tombstone {
 		if sm.listener != nil {
@@ -411,8 +532,10 @@ func (sm *stateMap) applyAndBroadcast(incoming *entry) {
 	od.mu.Unlock()
 
 	if !wasSet {
+		sm.markDeltaRejectedStale()
 		return
 	}
+	sm.markDeltaApplied()
 
 	sm.notifyListener(incoming, isCreate)
 	sm.broadcastDelta(incoming)
@@ -474,6 +597,81 @@ func (sm *stateMap) delete(key, owner string, origin ChangeOrigin) {
 
 		if sm.listener != nil && notify {
 			sm.listener.entryRemoved(key, owner, origin)
+		}
+	}
+}
+
+// dropOwner tombstones every live entry for the owner and marks the owner
+// drained. Subsequent writes for the owner are rejected by applyEntryLocked
+// until the reaper compacts the ownerData out of sm.owners; after that, a
+// fresh write would create a new non-drained ownerData.
+//
+// Used when the owner is gone for good (e.g., router deletion). For state
+// types with tombstones=false, entries are simply cleared with no broadcast,
+// since there is no tombstone mechanism to propagate the removal.
+func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
+	od := sm.getOwner(owner)
+	if od == nil {
+		// Mark the owner as drained even if there are no entries yet, so that
+		// any race with an in-flight write is rejected. Create the ownerData
+		// in the cmap so the reaper can find and compact it out.
+		od = sm.getOrCreateOwner(owner)
+	}
+
+	type tombstoned struct {
+		key string
+		e   *entry // nil for tombstones=false (no broadcast)
+	}
+	var produced []tombstoned
+
+	od.mu.Lock()
+	if od.drained {
+		od.mu.Unlock()
+		return
+	}
+	od.drained = true
+
+	if sm.config.tombstones {
+		for key, existing := range od.entries {
+			if existing.Tombstone {
+				continue
+			}
+			version := sm.store.nextVersion()
+			ts := &entry{
+				Key:       key,
+				Version:   version,
+				Owner:     owner,
+				Tombstone: true,
+				Epoch:     existing.Epoch,
+				UpdatedAt: time.Now(),
+			}
+			od.entries[key] = ts
+			od.nonTombstones--
+			if version > od.maxVersion {
+				od.maxVersion = version
+			}
+			produced = append(produced, tombstoned{key: key, e: ts})
+		}
+	} else {
+		for key := range od.entries {
+			produced = append(produced, tombstoned{key: key})
+		}
+		od.entries = map[string]*entry{}
+		od.nonTombstones = 0
+	}
+	if len(produced) > 0 {
+		od.hashDirty = true
+	}
+	od.mu.Unlock()
+
+	// Fire listener and broadcast outside the lock to avoid lock-order
+	// inversions with downstream consumers (e.g., the link manager lock).
+	for _, t := range produced {
+		if sm.listener != nil {
+			sm.listener.entryRemoved(t.key, owner, origin)
+		}
+		if origin == OriginLocal && t.e != nil {
+			sm.broadcastDelta(t.e)
 		}
 	}
 }
@@ -617,15 +815,39 @@ func (sm *stateMap) reapTombstones() {
 	// back to a live entry between scan and remove (via a concurrent applyDelta
 	// or applyAndBroadcast) can't be silently dropped — the check and the
 	// delete are atomic relative to mutations.
-	sm.owners.IterCb(func(_ string, od *ownerData) {
+	//
+	// Also collect drained owners whose entries have fully drained, so they
+	// can be compacted out of sm.owners below.
+	var emptyDrained []string
+	sm.owners.IterCb(func(owner string, od *ownerData) {
 		od.mu.Lock()
 		for key, e := range od.entries {
 			if e.Tombstone && e.UpdatedAt.Before(cutoff) {
 				delete(od.entries, key)
 			}
 		}
+		if od.drained && len(od.entries) == 0 {
+			emptyDrained = append(emptyDrained, owner)
+		}
 		od.mu.Unlock()
 	})
+
+	// Compact empty drained owners out of sm.owners. RemoveCb holds the cmap
+	// shard write lock for the duration of the callback, so the re-check of
+	// drained && empty under the owner lock is atomic with the delete: a
+	// concurrent write that won the race (created a fresh ownerData or
+	// recreated entries on this one) is preserved by the predicate returning
+	// false.
+	for _, owner := range emptyDrained {
+		sm.owners.RemoveCb(owner, func(_ string, od *ownerData, exists bool) bool {
+			if !exists {
+				return false
+			}
+			od.mu.Lock()
+			defer od.mu.Unlock()
+			return od.drained && len(od.entries) == 0
+		})
+	}
 }
 
 func (sm *stateMap) broadcastDelta(e *entry) {
@@ -640,6 +862,7 @@ func (sm *stateMap) broadcastDelta(e *entry) {
 	}
 	msg := channel.NewMessage(gossip_pb.GossipDeltaType, body)
 	sm.store.mesh.Broadcast(msg)
+	sm.markBroadcastSent()
 }
 
 func (sm *stateMap) sendSnapshotTo(peerId string) {

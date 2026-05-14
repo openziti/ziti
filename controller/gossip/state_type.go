@@ -71,6 +71,7 @@ func Register[T any](store *Store, config StateTypeConfig[T]) *StateType[T] {
 		antiEntropyInterval: config.AntiEntropyInterval,
 	}
 	sm := newStateMap(config.Name, cfg, store, listener)
+	sm.registerMetrics(store.metricsRegistry)
 	store.types.Store(config.Name, sm)
 
 	if config.AntiEntropy && config.AntiEntropyInterval > 0 {
@@ -115,6 +116,19 @@ func (st *StateType[T]) Delete(key, owner string) {
 // DeleteByOwner removes or tombstones all entries belonging to the given owner.
 func (st *StateType[T]) DeleteByOwner(owner string) {
 	st.sm.deleteByOwner(owner, OriginLocal)
+}
+
+// DropOwner marks the owner as gone for good. All live entries are tombstoned
+// (and broadcast to peers), the owner's ownerData is marked drained so further
+// writes are rejected, and the ownerData is removed from the store by the
+// reaper once its tombstones age out.
+//
+// Use when the owner has been deleted from the system (e.g., a router removal)
+// to bound long-term memory growth from churned owners. If a fresh write for
+// the same owner identifier arrives after the ownerData has been compacted,
+// a new non-drained ownerData is created normally.
+func (st *StateType[T]) DropOwner(owner string) {
+	st.sm.dropOwner(owner, OriginLocal)
 }
 
 // DeleteByOwnerBefore removes or tombstones entries belonging to the given

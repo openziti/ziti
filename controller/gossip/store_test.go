@@ -597,6 +597,114 @@ func TestDeleteByOwner(t *testing.T) {
 	assert.Equal(t, 2, ownerRemoves)
 }
 
+// DropOwner tombstones live entries, rejects further writes for that owner,
+// and the reaper eventually compacts the ownerData out of the store so it
+// doesn't accumulate when owners churn (e.g., routers being added/removed).
+func TestDropOwner(t *testing.T) {
+	store, mesh := newTestStore("peer1")
+	defer store.Stop()
+
+	listener := &mockListener{}
+	st := Register[string](store, StateTypeConfig[string]{
+		Name:         "test",
+		Encode:       encodeString,
+		Decode:       decodeString,
+		Tombstones:   true,
+		TombstoneTTL: 50 * time.Millisecond,
+		Listener:     listener,
+	})
+
+	require.NoError(t, st.Set("a", "owner1", "v1"))
+	require.NoError(t, st.Set("b", "owner1", "v2"))
+	require.NoError(t, st.Set("c", "owner2", "v3"))
+
+	mesh.clearSent()
+	st.DropOwner("owner1")
+
+	// Live entries for owner1 are now tombstoned and gone from public reads.
+	_, _, ok := st.GetForOwner("owner1", "a")
+	assert.False(t, ok)
+	_, _, ok = st.GetForOwner("owner1", "b")
+	assert.False(t, ok)
+	// Other owners are unaffected.
+	val, _, ok := st.GetForOwner("owner2", "c")
+	require.True(t, ok)
+	assert.Equal(t, "v3", val)
+
+	// Each tombstone was broadcast to peers.
+	assert.Len(t, mesh.getSent(), 2)
+
+	// Listener was notified of both removals.
+	removes := listener.getRemoves()
+	owner1Removes := 0
+	for _, r := range removes {
+		if r.owner == "owner1" {
+			owner1Removes++
+		}
+	}
+	assert.Equal(t, 2, owner1Removes)
+
+	// owner1 should still be in the cmap (tombstones not yet reaped).
+	sm := store.getStateMap("test")
+	_, exists := sm.owners.Get("owner1")
+	require.True(t, exists)
+
+	// Subsequent writes for owner1 are rejected.
+	require.NoError(t, st.Set("d", "owner1", "v4"))
+	_, _, ok = st.GetForOwner("owner1", "d")
+	assert.False(t, ok, "writes for a drained owner must be dropped")
+
+	// Age the tombstones past TTL and reap.
+	if od, exists := sm.owners.Get("owner1"); exists {
+		od.mu.Lock()
+		for _, e := range od.entries {
+			e.UpdatedAt = time.Now().Add(-time.Hour)
+		}
+		od.mu.Unlock()
+	}
+	sm.reapTombstones()
+
+	// owner1's ownerData should now be compacted out.
+	_, exists = sm.owners.Get("owner1")
+	assert.False(t, exists, "drained owner with no entries should be compacted out")
+
+	// A fresh write for owner1 succeeds — re-registration semantics.
+	require.NoError(t, st.Set("e", "owner1", "v5"))
+	val, _, ok = st.GetForOwner("owner1", "e")
+	require.True(t, ok)
+	assert.Equal(t, "v5", val)
+}
+
+// DropOwner on an unknown owner is a no-op but still marks the freshly-created
+// drained ownerData so an in-flight write loses cleanly. The reaper then
+// compacts the empty drained entry out.
+func TestDropOwner_UnknownOwner(t *testing.T) {
+	store, _ := newTestStore("peer1")
+	defer store.Stop()
+
+	st := Register[string](store, StateTypeConfig[string]{
+		Name:         "test",
+		Encode:       encodeString,
+		Decode:       decodeString,
+		Tombstones:   true,
+		TombstoneTTL: 50 * time.Millisecond,
+	})
+
+	st.DropOwner("ghost")
+
+	sm := store.getStateMap("test")
+	od, exists := sm.owners.Get("ghost")
+	require.True(t, exists, "DropOwner should create a drained marker even for unknown owners")
+	od.mu.RLock()
+	assert.True(t, od.drained)
+	assert.Empty(t, od.entries)
+	od.mu.RUnlock()
+
+	sm.reapTombstones()
+	_, exists = sm.owners.Get("ghost")
+	assert.False(t, exists, "empty drained marker should be compacted out")
+}
+
 func TestListenerNotifications(t *testing.T) {
 	store, _ := newTestStore()
 	defer store.Stop()

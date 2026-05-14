@@ -83,6 +83,9 @@ type NetworkConfig struct {
 		RerouteCap      uint32
 		MinCostDelta    uint32
 	}
+	HostMetrics struct {
+		Enabled bool
+	}
 }
 
 func DefaultNetworkConfig() *NetworkConfig {
@@ -330,6 +333,20 @@ func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) 
 			}
 		} else {
 			logrus.Errorf("invalid 'peerEventsPool' stanza")
+		}
+	}
+
+	if value, found := src["hostMetrics"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if v, found := submap["enabled"]; found {
+				if enabled, ok := v.(bool); ok {
+					options.HostMetrics.Enabled = enabled
+				} else {
+					return nil, errors.New("invalid value for 'hostMetrics.enabled', must be a boolean")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'hostMetrics' stanza")
 		}
 	}
 
