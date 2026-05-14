@@ -2,14 +2,13 @@
 
 ## The Problem
 
-Today, router configuration lives entirely in a local YAML file. If you want to change how a router behaves,
-you edit the file and restart (or in some cases, reload) the router. This is workable for a handful of routers,
-but it doesn't scale. It also means there's no central place to define "this is how routers in my network should
-behave." You end up with configuration drift, manual toil, and no good story for fleet-wide changes.
+Router configuration lives entirely in a local YAML file. To change behavior, you edit the file and
+restart (or sometimes reload) the router. That doesn't scale, and there's no central place to define
+"this is how routers in my network should behave." The result is configuration drift, manual toil,
+and no story for fleet-wide changes.
 
-What we want is the ability to manage router configuration from the controller. Almost everything should be
-manageable this way, with the exception of the controller endpoints, which are already handled by controller
-updates pushed to the router.
+The goal: manage router configuration from the controller. Everything except the controller endpoints
+themselves (which already come from controller-pushed updates).
 
 ## What Needs to Be Figured Out
 
@@ -20,24 +19,18 @@ updates pushed to the router.
 
 ## Splitting Up the Configuration
 
-A router's configuration today has several distinct subsystems:
+A router's configuration has several distinct subsystems:
 
 - **Link**: router-to-router link listeners and dialers
-- **Xgress bindings**: the points where traffic enters and exits the fabric (proxy, transport, edge, tunnel, etc.)
+- **Xgress bindings**: traffic ingress/egress points (proxy, transport, edge, tunnel, etc.)
 - **Edge**: SDK connection handling, session management
-- **Forwarder**: data plane tuning (worker pools, timeouts)
+- **Forwarder**: data plane tuning
 - **Metrics**: reporting intervals and queue sizes
 - **Health checks**: ctrl ping, link checks
 - **Transport**: TLS/DTLS configuration
 - **Miscellaneous**: profiling, plugins, connect events, interface discovery
 
-Not all of these make sense to manage the same way. Link configuration, for example, is its own concern because
-it governs how routers peer with each other. Xgress bindings are per-type because each xgress type (proxy,
-transport, edge, tunnel, etc.) has its own factory, its own options, and potentially its own schema.
-
-### Proposed Config Type Breakdown
-
-Each major subsystem gets its own config type:
+Not all of these belong under the same config type. Each major subsystem gets its own:
 
 | Config Type               | What It Covers                                              |
 |---------------------------|-------------------------------------------------------------|
@@ -48,252 +41,150 @@ Each major subsystem gets its own config type:
 | `router.transport`        | TLS/DTLS transport-level settings                           |
 | `router.xgress.<binding>` | Per-xgress-type configuration (one per binding type)        |
 
-The `router.xgress.<binding>` pattern deserves some explanation. Each xgress binding (proxy, transport,
-transport_udp, edge, tunnel, etc.) is backed by a factory that creates dialers and/or listeners. Different
-bindings have different options. Rather than trying to stuff all xgress config into one type, we let each
-binding define its own config type. A config named `router.xgress.proxy` would contain the options relevant
-to the proxy xgress factory.
+The `router.xgress.<binding>` pattern lets each xgress type (proxy, transport, transport_udp, edge,
+tunnel, etc.) define its own config type and schema. The router dispatches by stripping the
+`router.xgress.` prefix and looking up the binding in the xgress registry. Custom xgress
+implementations follow the same convention; no extra metadata is needed.
 
-The tunnel binding already works this way: its configuration is loaded entirely through xgress listener
-options, with no top-level config section. Edge currently has its own top-level `Edge` config in the router
-YAML, but we'd consolidate that into `router.xgress.edge` so that all xgress bindings follow the same
-pattern. This means edge configuration (SDK listeners, session management, etc.) lives alongside the other
-xgress options for that binding.
+The tunnel binding already works this way. Edge currently has its own top-level `Edge` config in the
+router YAML; we consolidate that into `router.xgress.edge` so all xgress bindings follow the same
+pattern.
 
 ### Config as a Feature Toggle
 
-One useful side-effect of this approach: the presence or absence of a config can drive whether a subsystem
-is enabled. If a router has a `router.xgress.tunnel` config, the tunneler is active. Remove it, and the
-tunneler shuts down. Same for `router.xgress.edge`. This gives operators a clean, declarative way to enable
-and disable router capabilities from the controller, and there's exactly one place to look to see whether
-a given binding is on or off.
+The presence or absence of a config drives whether a subsystem is enabled. A router with
+`router.xgress.tunnel` runs the tunneler. Remove the config and the tunneler shuts down. There's
+exactly one place to look to see whether a given binding is on or off.
 
 ## Storage
 
 ### Reusing the Config Type Infrastructure
 
-We already have a config type system: `ConfigType` defines a schema, `Config` holds an instance of that type's
-data, validated against the schema. Today this is used for service configs (intercept, host, etc.). We can
-reuse the same infrastructure for router configs.
-
-What's missing is a way to distinguish "this config type is meant for a service" from "this config type is
-meant for a router." We can fix that by adding a **target** field to `ConfigType`:
+The existing `ConfigType` system (used for service configs like intercept and host) is reused. The
+piece that was missing: distinguishing "this config type is meant for a service" from "this config
+type is meant for a router." We added a `Target` field to `ConfigType`:
 
 ```go
 type ConfigType struct {
     boltz.BaseExtEntity
     Name   string                 `json:"name"`
     Schema map[string]interface{} `json:"schema"`
-    Target string                 `json:"target"` // "service", "router", etc.
+    Target string                 `json:"target"` // "service" (default), "router"
 }
 ```
 
-Possible target values:
+The `Target` field is immutable after creation. UIs filter by target; the API enforces that you
+can't associate a tunneler intercept config with a router or a router link config with a service.
 
-- `service` (default, for backward compatibility): used by SDK identities, associated with services
-- `router`: consumed by routers, associated with routers
-
-This is helpful for UIs. A router management screen can query config types where `target = "router"` and
-only show those. A service config screen shows `target = "service"`. It also lets the API enforce that you
-don't accidentally associate a tunneler intercept config with a router, or a router link config with a service.
-
-All built-in router config types will have JSON Schema definitions so the controller can reject invalid
-config before it ever reaches a router.
+All built-in router config types have JSON Schema definitions; the controller rejects invalid
+config before it reaches a router.
 
 ### Associating Configs with Routers
 
-Today, services have a `Configs []string` field that holds config IDs. We'd add the same thing to the router
-model. The field lives on the base `Router` rather than only on `EdgeRouter`, so fabric, edge, and transit
-routers all share the same association mechanism:
+The base `Router` model gained a `Configs []string` field (matching `Service.Configs`). All router
+flavors share the association mechanism via their embedded `Router`.
 
-```go
-type Router struct {
-    // ... existing fields
-    Configs []string `json:"configs"` // Router config IDs
-}
-```
-
-Like services, a router can have at most one config per config type. This is enforced at the model layer
-on create and update.
-
-Validation for router configs is stricter than for service configs: each referenced config must resolve to
-an existing config type, and that type's `Target` must be `"router"`. The edge-service path tolerates a
-config whose config type can't be loaded; for routers we reject the association so an orphaned reference
-can't slip through. The validator also short-circuits when the `configs` field isn't part of the update
-field set, so unrelated updates (e.g. router-initiated control-channel listener updates) don't pay the
-cost of re-loading every config and config type.
-
-When a config is deleted, the config store walks every router that references it, rewrites the router's
-`Configs` slice, and re-`Update`s the router. This mirrors the existing service-cleanup loop and ensures
-any entity-update listeners see the change rather than relying solely on the boltz link collection
-auto-clearing the bucket.
+- One config per config type per router (same rule services follow).
+- Each referenced config must resolve to an existing config type with `Target = "router"`.
+  Stricter than services, which tolerate dangling config-type references.
+- The validator short-circuits when `Configs` isn't part of the update field set, so unrelated
+  router updates (e.g. control-channel listener updates from the router) don't pay the cost.
+- Config deletion walks every referencing router, rewrites `Configs`, and re-`Update`s the router
+  so entity-update listeners see the change. Mirrors the existing service-cleanup loop.
 
 ### Handling Arbitrary Xgress Types
 
-A question that comes up: what about custom xgress types that aren't defined on the controller? Third-party
-xgress implementations might need their own configuration, and the controller doesn't necessarily know about
-them in advance.
-
-The approach: anyone who needs a custom xgress config can create their own config type, set `target = "router"`,
-and follow the `router.xgress.<binding-name>` naming convention. The router uses the config type name to
-dispatch: it strips the `router.xgress.` prefix to get the binding name, then looks that up in the xgress
-registry. If the factory exists, it starts it up with the provided configuration. If not, it logs a warning
-and moves on. No additional metadata is needed on the config type itself.
+Custom xgress types create their own config type with `target = "router"` and the
+`router.xgress.<binding>` naming convention. The router strips the prefix and looks up the binding
+in the xgress registry. If the factory exists, it's started with the provided config. If not, a
+warning is logged.
 
 ### Versioning
 
-Config type names include a version suffix: `router.link.v1`, `router.xgress.edge.v1`, etc. The
-versioning rules are designed so that old routers and new configs can coexist gracefully:
+Config type names include a version suffix: `router.link.v1`, `router.xgress.edge.v1`. The rules
+let old routers and new configs coexist:
 
-1. **Additive only within a version.** New fields can be added to a config version at any time.
-   Older routers that don't know about the new fields will ignore them.
-2. **No removals or semantic changes within a version.** Fields are never removed, and their
-   meaning never changes. A field can be marked deprecated, but it continues to work as it
-   always did.
-3. **Breaking changes require a new version.** If we need to remove a field, change its meaning,
-   or restructure the config, we create a new version: `router.link.v1` becomes `router.link.v2`.
-4. **Routers select the highest version they understand.** A router knows which config versions it
-   supports. When it receives its config set, it looks for configs from highest version to lowest
-   and uses the first match. A v3 router with both `router.link.v1` and `router.link.v2` configs
-   associated will use v2.
-5. **Internally, the router uses a single config format.** Regardless of which version the config
-   came from, the router populates its internal config struct from the highest-version config it
-   understands. This is the same pattern we use today for host configs.
-6. **Forward-compatible field additions.** If something that was a single value needs to become a
-   list, we add a new field for the list. The router checks for the list field first and falls
-   back to the single-value field if not present. No version bump needed.
+1. **Additive within a version.** New fields can be added; older routers ignore them.
+2. **No removals or semantic changes within a version.** Fields can be deprecated but keep working.
+3. **Breaking changes require a new version.** `router.link.v1` becomes `router.link.v2`.
+4. **Routers select the highest version they understand.** A v3 router with both v1 and v2
+   associated uses v2.
+5. **Internally, the router uses a single config format.** It populates one internal struct from
+   the highest-version config it understands — same pattern as host configs.
 
-This approach gives operators a clean path for rolling upgrades. During a fleet upgrade, both
-`router.link.v1` and `router.link.v2` can be associated with the same router. Old routers pick
-v1, upgraded routers pick v2. Once the fleet is fully upgraded, v1 can be removed.
+During a rolling upgrade, both versions can be associated. Old routers pick v1, upgraded routers
+pick v2. Drop v1 once the fleet has caught up.
 
 ## Propagation
 
 ### Distributing Routers in the RDM
 
-Today the Router Data Model distributes identities, services, service policies, configs, config types,
-posture checks, public keys, and revocations. Routers themselves are not in the RDM. The controller
-communicates router peer state separately via `PeerStateChanges` messages.
+Routers are first-class entities in the RDM (`DataState.Router` message: id, name, fingerprint,
+configs). This gets us two things:
 
-A natural next step is to add routers as a first-class entity in the RDM. This gets us two things:
+1. **Fingerprint distribution** so routers can validate link peers against the controller's
+   authoritative set.
+2. **A delivery channel for router configs.** The same event/replay infrastructure that distributes
+   services and identities now also distributes router configs.
 
-1. **Router fingerprints for link validation.** If every router knows the fingerprints of other routers
-   via the RDM, it can validate the identity of peers when establishing links. Today link validation
-   relies on the certificate chain, but distributing fingerprints gives us an additional check that
-   the controller has explicitly authorized that router.
+### Per-Router Filtering
 
-2. **A vehicle for router config distribution.** Once routers are in the RDM, we can attach configs to
-   them and distribute those configs through the same event/replay infrastructure that already handles
-   services and identities.
+The motivation for filtering is **blast radius, not memory**. Back-of-envelope for 1000 routers /
+~10k identities / ~1k services / ~5k configs / ~2k policies puts the RDM at 100-200 MB. Memory
+isn't the bottleneck on modern hosts. We do want to avoid leaking per-router secrets (binding
+addresses, credentials, tuning) to every other router.
 
-The `DataState` protobuf would get a new `Router` message:
-
-```protobuf
-message DataState {
-    // ... existing fields
-
-    message Router {
-        string id = 1;
-        string name = 2;
-        string fingerprint = 3;
-        repeated string configs = 4;  // config IDs associated with this router
-    }
-
-    message Event {
-        // ... existing oneof options
-        Router router = <next_field_number>;
-    }
-}
-```
-
-### Selective Config Distribution
-
-The current RDM is a single shared `RouterDataModelSender` that broadcasts everything to every router.
-All routers get the same identities, services, policies, etc. For router configs, that's not ideal:
-a router's config may contain binding addresses, credentials, or tuning parameters that are only
-relevant to that specific router.
-
-The motivation for filtering is **blast radius, not memory**. A back-of-envelope estimate for a
-network with 1000 routers, ~10k identities, ~1k services, ~5k configs, and ~2k policies puts the
-in-memory RDM at roughly 100-200 MB per router after Go map/string/pointer overhead. That's not a
-concern on any modern host, and even an order of magnitude more entities still fits comfortably in
-single-digit GB. So we don't need disk-backed or tiered caching for the RDM. We do, however, want
-to avoid leaking per-router secrets to every other router.
-
-There are a few ways to approach the filtering:
-
-**Option A: Per-router filtering at send time.** The `RouterSender` (which wraps each router's connection
-to the shared RDM) could filter events before sending. When building a full `DataState` snapshot or
-replaying change sets, it would include only the `Router` and `Config` events relevant to that specific
-router. The shared `RouterDataModelSender` still stores everything, but each `RouterSender` acts as
-a filter. This keeps the single-RDM architecture intact while adding per-router scoping.
-
-**Option B: Separate per-router config channel.** Router configs could be sent outside the RDM entirely,
-as direct messages over the ctrl channel when a router connects or when its config changes. This is
-simpler but loses the replay/gap-detection guarantees of the RDM event cache.
-
-**Option C: Per-router RDM overlays.** Each router gets the shared RDM plus a small per-router overlay
-containing just its own router entity and configs. The overlay would have its own event index and replay
-cache. This is the most complex option but gives clean separation.
-
-Option A is the right starting point. We filter `Config` events per-router and broadcast everything
-else (identities, services, policies, router entities, etc.) as today. Filtering identities or
-services would buy us some memory but cost a lot more bookkeeping per RouterSender, and we just
-established memory isn't the bottleneck.
+`Config` events are filtered per-router by `RouterSender` at send time. Everything else (identities,
+services, policies, `Router` entities) broadcasts as before. The shared `RouterDataModelSender`
+stores everything; each `RouterSender` wraps a router's connection and filters as it sends.
 
 ### Change Notification Flow
 
-There are two distinct triggers that cause a `Config` event to flow to a router:
+Two distinct triggers cause a `Config` event to flow:
 
-1. **A router's `Configs` list changes.** When an operator associates or disassociates a config:
-   - Emit the `Router` event with the new `Configs` IDs.
-   - For any IDs newly added to that router's list, also emit the full `Config` entity to that
-     router (it may not have it yet).
-   - For any IDs newly removed from that router's list, do nothing extra on the wire. When the
-     receiving router processes the updated `Router` event for itself, it GCs router-target
-     `Config` entries that are no longer in its `Configs` list. Service-target configs are
-     untouched. This keeps the receiver's view aligned with its assignment without sending
-     synthetic remove events.
+1. **A router's `Configs` list changes.**
+   - Emit the `Router` event with the new IDs.
+   - For newly-added IDs, also emit the full `Config` entity to that router.
+   - For newly-removed IDs, nothing extra on the wire. The receiver GCs router-target Configs
+     synchronously when it sees its own shrunk `Router` event. Service-target configs are left
+     alone. This keeps the receiver aligned with its assignment without sending synthetic remove
+     events.
 
-2. **A config's data changes.** When an operator PATCHes a config:
-   - Emit the `Config` event to every router currently referencing it. The router entity didn't
-     change at all here.
+2. **A config's data changes.** Emit the `Config` event to every router currently referencing it.
 
-Router entities themselves (id, name, fingerprint, cost) are distributed to all routers, so every
-router can validate link peers.
+Router entities themselves (id, name, fingerprint, cost) broadcast to all routers so every router
+can validate link peers.
 
-On reconnect, the router sends its current RDM index up. If the controller's event cache can
-replay forward from there, it streams the deltas (with the same per-router config filtering
-applied). Only if the router is far enough behind that the event cache can't cover the gap does
-the controller fall back to a full filtered snapshot.
+On reconnect, the router sends its current RDM index. If the controller's event cache can replay
+forward from there, it streams the deltas (with per-router config filtering applied). Only if the
+router is too far behind does the controller fall back to a full filtered snapshot.
 
-The shared event cache contains all events, but each router only sees a subset. The index sequence
-will have gaps from the router's perspective, but this is already the case today: not every raft
-update produces an RDM event, so routers already tolerate index gaps. We may need to move some of
-the gap-handling logic into the `RouterSender` so it can track the previous index per router and
-set it correctly on filtered change sets, rather than relying on the receiver to reconcile.
+The shared event cache holds all events; each router only sees a subset, so its index sequence has
+gaps. Routers already tolerate index gaps today (not every raft update produces an RDM event), and
+`RouterSender` tracks the previous index per router so filtered change sets stitch correctly.
 
-Orphan handling: the receiver GCs router-target Configs synchronously when its own `Router`
-event arrives with a shrunk list, so orphans don't accumulate between full syncs. Service-target
-configs broadcast and are kept by every receiver. The earlier "leave orphans cached, prune on
-full sync" framing was simpler on the wire (no synthetic events) but left the receiver's view
-out of sync with assignment in a way that broke validation; the in-place GC retains the
-no-synthetic-events property while keeping the cache aligned.
+### Link Subsystem Change Notifications
+
+When the router's link subsystem changes (Apply / Remove on `router.link.v1`), the router publishes
+its new listener set back to the controller via `ctrl_pb.ContentType_UpdateLinkListenersType
+(1056)`. The controller's handler updates `Router.Listeners` and triggers
+`RouterMessaging.RouterListenersUpdated`, which reuses the existing `routerChanged` event path to
+fan a `PeerStateChange` out to other connected routers.
+
+Dialer changes don't propagate to peers (they only matter locally), but they trigger
+`xlinkRegistry.RescanForDialOpportunities()` on the local router — re-evaluating known peer listeners
+against the new local dialer set so newly-possible link matches get attempted.
 
 ## Applying Configuration on the Router
 
-This is where things get interesting. The router needs to:
-
-1. Receive config events from the controller.
-2. Determine which subsystem each config belongs to.
-3. Apply the configuration, potentially starting, stopping, or reconfiguring subsystems.
+The router needs to receive config events, route each to the right subsystem, and apply it —
+possibly starting, stopping, or reconfiguring subsystems live.
 
 ### Local Config Type Allow-list
 
-Not every router operator will want the controller to be able to enable arbitrary functionality. For
-example, a router deployed in a sensitive environment might need to guarantee that tunneling or edge
-functionality can never be turned on remotely. To support this, the router's local config file can
-specify which config types it will accept from the controller:
+Not every operator wants the controller to enable arbitrary functionality. A router in a sensitive
+environment might need to guarantee that tunneling or edge functionality can never be turned on
+remotely. The local config file specifies the allow-list:
 
 ```yaml
 managedConfig:
@@ -301,411 +192,176 @@ managedConfig:
     - router.link
     - router.forwarder
     - router.xgress.proxy
-    - router.xgress.transport
 ```
 
-The allow-list rules:
+- **Empty or absent** allow-list: controller-managed config is disabled. The router runs purely
+  from local config.
+- **`all`**: accept every config type from the controller.
+- **Explicit list**: only listed types are accepted.
 
-- If the allow-list is **empty or absent**, controller-managed config is **disabled entirely**. The
-  router operates purely from its local config file, same as today.
-- The special value `all` accepts every config type from the controller.
-- Otherwise, only the listed config types are accepted.
-
-This keeps the security boundary at the router. The controller can associate whatever configs it
-wants with a router, but the router has the final say on what it actually applies. An operator who
-doesn't want edge or tunnel functionality enabled remotely simply omits `router.xgress.edge` and
-`router.xgress.tunnel` from the allow-list. An operator who wants full controller management uses
-`all`. And existing routers with no `managedConfig` section continue to work exactly as they do
-today.
+The security boundary sits at the router. The controller can associate whatever configs it wants;
+the router has final say on what it applies.
 
 ### Precedence: Local Config Wins
 
-If a router has both local config and controller-managed config for the same subsystem, local config
-always wins. The router operator has final authority.
+If a router has both local and controller-managed config for the same subsystem, local always wins.
+Routers are often deployed on systems owned by someone other than the network operator (one entity
+runs the network and uses it to manage devices for their customers). The customer needs control
+over what the router is capable of. Controller-managed config fills in gaps where local config is
+silent; it doesn't override what the operator has explicitly set.
 
-This follows from the same principle as the allow-list. Routers are often deployed on systems owned
-by someone other than the network operator. It's common for one entity to run the network and use
-it to manage devices or software for their customers. The routers sit on customer systems, and the
-customer needs to control what the router is capable of and prevent capabilities from being enabled
-that don't make sense for their environment. Controller-managed config fills in gaps where local
-config is silent, it doesn't override what the operator has explicitly set.
+### Source Tracking and Selection
 
-### Config Application Strategy
+The router-side managed-config registry stores `availableData[source][version]` for each base
+type, where source is `SourceController` or `SourceLocal`. Reconciliation picks the effective
+config as:
 
-The router maintains a config handler registry, keyed by config type name (or pattern). When a config event
-arrives:
+- If `availableData[SourceLocal]` is non-empty: use `max(supportedVersions ∩ localKeys)`.
+- Else: use `max(supportedVersions ∩ controllerKeys)`.
 
-1. Check the config type against the local allow-list. If not allowed, skip it.
-2. Look up the handler for the config type.
-3. If found, pass the config data to the handler.
-4. The handler validates and applies the config, returning any errors.
+Local takes precedence at the **base type level**. If the operator set anything locally for
+`router.link`, controller versions are ignored for that base. Matches operator intent: someone who
+set v1 locally probably doesn't want the controller silently upgrading them to v2.
 
-For xgress configs specifically, the flow would be:
+Per-field merge — the richest interpretation of "fills in gaps where local config is silent" — is
+out of scope for now. Wait for operator demand.
 
-1. Router receives a `router.xgress.proxy` config.
-2. It checks the allow-list. If `router.xgress.proxy` is not allowed, the config is ignored.
-3. It recognizes the `router.xgress.*` pattern and looks up the `proxy` binding in the xgress registry.
-4. If the factory exists, it creates/reconfigures the listener and/or dialer with the new options.
-5. If the factory doesn't exist (custom binding not loaded), it logs a warning.
+### YAML → JSON Translation
+
+For each managed config type, the YAML loader needs a translator that maps the YAML section to the
+controller-equivalent JSON, so locally-loaded config flows through the same handlers as
+controller-loaded config. For `router.link.v1`: drop fields removed in the v1 schema (`costTags`,
+`split`), rename `dialer.bind` → `dialer.bindInterface`, default `binding` if absent. Per-type
+code, lives next to each handler. The registry itself is agnostic.
 
 ### Hot Reconfiguration
 
-For controller-managed config to work, every subsystem needs to handle config updates at runtime:
-accepting new config, tearing down and recreating if needed, or shutting down when config is removed.
-Once that machinery exists, there's no reason it should only work for configs arriving over the ctrl
-channel. The same handlers can process config from a local file reload.
+Every subsystem must handle config updates at runtime: accept new config, tear down and recreate
+when needed, shut down when config is removed. Once that machinery exists, it doesn't matter
+whether the trigger came from a ctrl event or a local file reload. `ziti agent router
+reload-config` can push parsed sections through the same handler registry.
 
-This means we get hot-reloading of the local config file as a natural side-effect of this work. A
-`ziti agent router reload-config` command can trigger a re-read of the local config file and push the
-parsed sections through the same config handler registry that processes controller-managed updates.
-No restart required.
-
-The general approach for config handlers:
+General approach:
 
 - **Additive changes** (new listener, new xgress binding): start the new thing.
 - **Removal** (config deleted or section removed): shut down the associated subsystem.
-- **Modification**: depends on the subsystem. Some can update in-place, some need a tear-down and
-  recreate cycle. The handler decides.
+- **Modification**: handler decides whether to update in-place or tear-down-and-recreate.
 
-### Startup Behavior
+### Reconciliation Strategy
 
-On startup, before the router had a local YAML config that drove initialization. With controller-managed
-config, the flow becomes:
+The link handler takes the simple route: on Apply, build the new listener / dialer set, close the
+old listeners, swap in the new state, then `Listen()` on the new listeners. No per-item diffing.
 
-1. Router starts with minimal local config (identity, controller endpoints).
-2. Router connects to the controller.
-3. Controller pushes the router's config set.
-4. Router applies configs and starts subsystems.
+This works without disturbing traffic because `xlink.Listener.Close()` only closes the listener's
+accept loop — already-accepted Xlinks survive. So the operator sees:
 
-There's a bootstrapping question here: the router needs its identity and controller endpoint to connect
-in the first place. Those stay in the local config. Everything else can come from the controller.
+- **Add a listener**: closes-and-rebuilds, but established links keep running on their original
+  listeners until they naturally close.
+- **Remove a listener**: same; established links on it stay up.
+- **Modify a listener** (advertise change, etc.): the new accept loop is bound with the new
+  config; old established links unaffected.
+- **No actual change**: the deep-equality check in `notifyChange` no-ops the post-apply notify, but
+  the listener rebuild still runs. Cheap enough that we don't optimize for it.
 
-In practice, most deployments will run in a hybrid mode: local config defines whatever the operator
-wants to control directly, and controller-managed config fills in the rest. Local config always takes
-precedence, so there's no conflict. Migration from local-only to controller-managed config is left to
-network operators. They generally have patterns specific to their environment and will know best which
-configs should be shared across routers and where they need per-router overrides. This can be scripted
-against the management API.
+Per-item diffing (a `ReconcileSet[K, V]` helper that fires add/update/remove callbacks) is a
+plausible refinement when we have multiple subsystems with item-level identity (xgress listeners,
+ctrl-channel listeners), but the link subsystem doesn't need it. Add it when a second consumer
+shows up and the simple-rebuild approach has actual cost there.
 
-## Consolidating Router Types
+### Config Application Strategy
 
-### Current State
+The router maintains a config handler registry keyed by config type. When a config event arrives:
 
-The controller has three router types in a hierarchy:
+1. Check the config type against the local allow-list. Skip if not allowed.
+2. Look up the handler.
+3. Apply through source-tracked selection (local-wins).
+4. Handler validates and applies; rollback runs on failure (below).
 
-- **Router** (base): name, fingerprint, cost, noTraversal, disabled, ctrlChanListeners, interfaces.
-- **Edge Router** (extends Router): adds roleAttributes, isVerified, certPem, isTunnelerEnabled,
-  appData, unverifiedCertPem, unverifiedFingerprint. Enrolled via `erott`. Participates in
-  EdgeRouterPolicy and ServiceEdgeRouterPolicy for access control.
-- **Transit Router** (extends Router): adds isVerified, isBase, unverifiedFingerprint,
-  unverifiedCertPem. Enrolled via `trott`. No role attributes, no policy participation.
-
-Edge Router and Transi tRouter are stored as child entities of Router in separate database buckets
-(`edge` and `transitRouter` respectively). They have separate API endpoints (`/edge-routers` and
-`/transit-routers`), separate managers, and separate enrollment methods.
-
-The `IsTunnelerEnabled` flag on Edge Router triggers auto-creation of a matching Identity
-(type="Router", same ID as the router) and a system Edge Router Policy that links the identity to
-the router. This gives the tunneler-enabled router an identity it can use to authenticate as a
-client and access services.
-
-The `IsBase` flag on Transit Router is inferred at load time when a transit router has no child
-bucket. It marks legacy routers that predate the transit router store and prevents updates.
-
-### What Each Type Actually Provides
-
-When you strip away the naming, the differences boil down to:
-
-- **Transit Router** = Router + enrollment mechanism. That's it. No role attributes, no policies, no
-  tunneling. It exists to give fabric-only routers a way to enroll.
-- **Edge Router** = Router + enrollment + role attributes + policy participation + optional tunneler
-  identity. The edge-specific parts are what let the router participate in the policy model and
-  optionally act as a tunneler.
-
-With controller-managed config, the distinction between "edge" and "transit" becomes less meaningful.
-Whether a router runs the edge subsystem is determined by whether it has a `router.xgress.edge`
-config. Whether it tunnels is determined by `router.xgress.tunnel`. The router type in the data
-model shouldn't need to dictate capabilities.
-
-### Collapsing to a Single Router Type
-
-We can fold Edge Router and Transit Router down into the base Router type. The base Router would
-absorb the fields it needs:
-
-```go
-type Router struct {
-    boltz.BaseExtEntity
-    Name                  string
-    Fingerprint           *string
-    Cost                  uint16
-    NoTraversal           bool
-    Disabled              bool
-    CtrlChanListeners     map[string][]string
-    Interfaces            []*Interface
-
-    // From EdgeRouter
-    RoleAttributes        []string
-    AppData               map[string]interface{}
-    Configs               []string               // new, for managed config
-
-    // From EdgeRouter/TransitRouter (enrollment)
-    IsVerified            bool
-    CertPem               *string
-    UnverifiedFingerprint *string
-    UnverifiedCertPem     *string
-}
-```
-
-A single enrollment method replaces `erott` and `trott`. The API surface collapses to `/routers`.
-The separate EdgeRouterPolicy and ServiceEdgeRouterPolicy types would reference routers directly
-(or we introduce unified router policy types).
-
-### The Identity Question
-
-Today only tunneler-enabled edge routers get an identity. With a unified router type, we have a
-choice:
-
-**Option A: Identity tied to tunnel config.** When a `router.xgress.tunnel` config is associated
-with a router, the system auto-creates the matching identity and system policy, same as the
-`IsTunnelerEnabled` constraint does today. When the config is removed, the identity and policy are
-cleaned up. This preserves the current behavior, just driven by config presence instead of a boolean
-flag.
-
-**Option B: Every router gets an identity.** If every router has an identity, it simplifies the
-model. Routers can always authenticate as themselves, appear in the identity list, and participate
-in policies uniformly. The tunneler just happens to be one consumer of that identity. This also
-opens the door for other use cases, for example, a router that needs to authenticate to external
-systems using its Ziti identity.
-
-Option B is cleaner long-term but has implications: every router creation would also create an
-identity, the system edge router policy would always exist, and existing transit routers would need
-identities created during migration. It also means the router identity exists even if the router
-never uses it, which is a small cost.
-
-### System Edge Router Policy
-
-Currently the system EdgeRouterPolicy is auto-created per tunneler-enabled router, linking the
-router's identity to the router itself so the tunneler can access services through its own router.
-
-With a unified model:
-
-- If we go with **Option A**, the policy is created/deleted when `router.xgress.tunnel` config is
-  added/removed. The trigger moves from the `IsTunnelerEnabled` db constraint to a config change
-  handler.
-- If we go with **Option B**, every router gets the system policy at creation time. The policy
-  exists whether or not the router is tunneling. This is simpler but means every router has a
-  policy entry even if it's not needed.
-
-### Migration
-
-Collapsing the types requires a database migration:
-
-1. Move EdgeRouter-specific fields (roleAttributes, appData, certPem, etc.) into the base Router
-   bucket.
-2. Move TransitRouter-specific fields (isVerified, unverifiedFingerprint, etc.) into the base
-   Router bucket.
-3. Remove the `edge` and `transitRouter` child buckets.
-4. Consolidate enrollment records to use a single method.
-5. If going with Option B, create identities and system policies for all existing routers that
-   don't already have them.
-
-The API migration is trickier. The `/edge-routers` and `/transit-routers` endpoints would need to
-be deprecated in favor of `/routers`. We could keep the old endpoints as aliases for a transition
-period.
+For `router.xgress.<binding>` types specifically, the handler looks up the binding in the xgress
+registry; if no factory is registered, the config is logged and ignored.
 
 ### Config Rollback
 
-When applying a config update, the router follows this sequence:
+On Apply, the registry holds the previously-applied data per handler. The sequence:
 
-1. Hold on to the previous config before applying the update.
-2. Try to apply the new config.
-3. If it succeeds, drop the previous config. Done.
-4. If it fails, generate an alert to the controller.
-5. Try to re-apply the previous config.
-6. If the rollback succeeds, done. The subsystem is back to its prior state.
-7. If the rollback also fails, generate another alert to the controller. At this point the
-   subsystem is in an unknown state. If the subsystem can be shut down (xgress bindings, link
-   listeners, etc.), shut it down and alert that it's now offline. For subsystems that can't
-   meaningfully be shut down, like the forwarder where config changes are just adjusting defaults,
-   the router has to leave it in whatever state it ended up in. In practice, those subsystems are
-   also the ones least likely to fail a config application.
+1. Try to apply the new config.
+2. Success → drop the previous data. Done.
+3. Failure → log; try to re-apply the previous data (rollback).
+4. Rollback success → subsystem is back to its prior state. Log the rollback so operators see the
+   alert pair (apply-failed, rolled-back).
+5. Rollback failure → subsystem in unknown state. If it can be shut down (xgress binding, link
+   listeners), shut down and log offline. For subsystems that can't meaningfully be shut down
+   (forwarder), leave it in whatever state it ended up.
 
-For first-time config application where there is no previous config to roll back to, a failure
-simply means the subsystem stays disabled and an alert is sent.
+For first-time application with no previous state, failure means the subsystem stays disabled and
+gets logged.
+
+### Auto-GC via `gcMode`
+
+`router.link.v1` accepts a top-level `gcMode` field:
+
+- `preserve` (default): never auto-act on stale links.
+- `orphaned`: close links that can no longer be re-established at all under the current config.
+- `changed`: orphaned's check, plus close links whose re-establishment would produce a different
+  link key (peer listener renamed).
+
+The semantic split is **viability vs identity**. "Orphaned" is functional: dialer-side, that means
+no `(dialer, remote listener)` pair with the recorded `(binding, protocol)` and overlapping groups
+exists. Binding gone, protocol gone, or groups no longer overlapping all count — they make
+re-dial impossible regardless of which named piece "went away" first. "Changed" adds an identity
+check on top: even if a compatible re-dial would work, the existing link is GC'd if its identity
+(`ListenerBinding` in the link key) would drift, so a fresh dial would create a new key rather
+than re-using the existing one.
+
+After every Apply that mutates listeners, dialers, or `gcMode`, the router walks its xlink
+registry, runs the side-specific staleness check (`CheckDialerSide` / `CheckListenerSide`), and
+closes stale entries. Operations are local and one-sided — the router acts on its own verdict
+rather than requiring peer agreement, because if the local side can no longer support the link,
+the peer was going to see it disconnect anyway. Each closure logs `linkId`, `linkKey`, `side`,
+`mode`, and `reason`.
+
+Operators who want a two-sided, controller-aggregated sweep use the `ziti ops verify stale-links`
+CLI (which fans CheckStaleLinks out to all routers and only GCs when both endpoints agree).
+
+### Registry Inspection
+
+The router-side managed-config registry exposes an inspect target for diagnostics — answering "why
+is this subsystem configured this way?":
+
+- Which handlers are registered (base, supported versions).
+- What data is available, by source and version (reported as byte counts, sufficient for "yes it's
+  present").
+- What's currently applied (source + version).
+- Recent alerts (parse failures, rollbacks, offline subsystems).
+
+Wired into the existing inspect framework: `ziti fabric inspect <router> managed-config` returns
+the registry view.
+
+### Startup Behavior
+
+1. Router starts with minimal local config (identity, controller endpoints).
+2. Router connects to the controller.
+3. Controller pushes the router's config set via RDM.
+4. Router applies configs and starts subsystems.
+
+Hybrid deployments are typical: local config controls what the operator wants to own directly, and
+managed config fills in the rest. Migration from local-only to controller-managed is left to
+operators — they have environment-specific patterns and will know which configs should be shared
+and where per-router overrides are needed. This is scriptable against the management API.
 
 ## Open Questions
 
-1. **Templates/personas**: Since routers reference configs by ID, a single config can already be
-   shared across multiple routers. What we don't have yet is a way to assign a set of configs to
-   a router in one operation. Something like a router template or persona, a named bundle of
-   config references, would let an operator say "this router is a standard edge router" and have
-   it pick up the full set of configs associated with that template. The policy/attribute approach
-   is unlikely to work well here because you could easily end up referencing multiple configs of
-   the same type, which is not allowed.
+1. **Templates / personas.** Routers reference configs by ID, so configs can already be shared.
+   What's missing is a way to assign a set of configs to a router in one operation — a named bundle
+   ("standard edge router"). Policy/attribute matching is unlikely to work here because it could
+   easily reference multiple configs of the same type, which we disallow.
 
-2. **Circuit disruption on config changes**: Some config changes require tearing down and recreating
-   a subsystem, which will disrupt any circuits using it. Changing `router.xgress.edge` config, for
-   example, could drop all active edge connections. We may want to quiesce the router before
-   applying disruptive changes, draining existing circuits before restarting the subsystem, and/or
-   warn the admin that the change will be disruptive. Alternatively, we could invest in making
-   circuits resilient to initiating and terminating routers going down, allowing circuits to be
-   rerouted through other routers. That's a larger piece of work but would make the system more
-   robust in general, not just for config changes.
+2. **Circuit disruption on config changes.** Some changes require tearing down a subsystem, which
+   drops circuits using it. Options: quiesce the router before disruptive changes (drain circuits
+   then restart), warn the admin, or invest in making circuits resilient to initiator/terminator
+   router restarts. The last is a larger piece of work but pays off broadly.
 
-3. **Config permissions**: Today, config and config type CRUD permissions are unified. Anyone who
-   can manage service configs can also manage router configs. We may want to separate these, since
-   router config changes affect network infrastructure and should potentially require a higher
-   privilege level than application-level service config changes. The `target` field on config
-   types gives us a natural boundary for splitting permissions.
-
-## Implementation Plan: MVP with `router.link.v1`
-
-The MVP targets a single config type, `router.link.v1`, to prove out the full pipeline end-to-end:
-config creation, storage, association with a router, propagation via the RDM, and application on
-the router. Once this works, adding more config types is incremental.
-
-### Phase 1: Controller-Side Config Infrastructure
-
-These steps have no dependencies on each other and can be worked in parallel.
-
-**1a. Add `target` field to ConfigType.**
-
-Add the `target` field to the `ConfigType` db entity and model. Default to `"service"` for
-backward compatibility. Add it to the REST API request/response models. Add filtering support
-so the API can query by target (e.g., `?target=router`).
-
-Files: `controller/db/config_type_store.go`, `controller/model/config_type_model.go`,
-`controller/model/config_type_manager.go`, REST route/model files, db migration.
-
-**1b. Add `configs` field to Router.**
-
-Add a `Configs []string` field to the base Router db entity and model. Add the same one-config-
-per-type validation that services have, plus a stricter requirement that each config's config
-type exists and has `Target = "router"`. Expose it through the REST API on router create/update.
-Add a router-cleanup loop to `configStoreImpl.DeleteById` mirroring the existing service loop.
-
-Files: `controller/db/router_store.go`, `controller/db/config_store.go`,
-`controller/model/router_model.go`, `controller/model/router_manager.go`, REST route/model
-files.
-
-**1c. Define the `router.link.v1` config type and schema.**
-
-Define the JSON Schema for `router.link.v1` covering listeners, dialers, and heartbeat config.
-This can be a migration that creates the built-in config type, similar to how `intercept-v1` and
-`host-v1` are created.
-
-Depends on: 1a (needs the `target` field to exist).
-
-### Phase 2: RDM Distribution
-
-**2a. Add Router to the DataState protobuf.**
-
-Add the `DataState.Router` message (id, name, fingerprint, configs) and add it as a variant in
-the `DataState.Event` oneof.
-
-Files: `common/pb/edge_ctrl_pb/edge_ctrl.proto`, regenerate protobuf.
-
-**2b. Populate routers in the `RouterDataModelSender`.**
-
-When the controller starts, load all routers into the sender. Register entity change listeners
-on the router store so creates, updates, and deletes produce RDM events.
-
-Files: `common/router_data_model_sender.go`, `controller/sync_strats/sync_instant.go`.
-
-**2c. Implement per-router config filtering in `RouterSender`.**
-
-When building a full `DataState` snapshot or replaying change sets, include `Router` events for
-all routers but filter `Config` events to only those associated with the receiving router. Track
-per-router previous index for correct gap handling.
-
-Depends on: 2a, 2b.
-
-Files: `controller/sync_strats/rtx.go`, `controller/sync_strats/sync_instant.go`.
-
-### Phase 3: Router-Side Config Handling
-
-**3a. Add the managed config allow-list to local config.**
-
-Parse the `managedConfig.allow` section from the router YAML config. Implement the allow-list
-logic (empty = disabled, `all` = accept everything, otherwise explicit list).
-
-Files: `router/env/config.go`.
-
-**3b. Add a config handler registry to the router.**
-
-Define a `ConfigHandler` interface that subsystems implement to receive config updates. The
-router maintains a registry keyed by config type name pattern. Include the rollback logic:
-hold previous config, try new, rollback on failure, alert on failure.
-
-Files: new file in `router/` or `router/env/`.
-
-**3c. Handle Router and Config events in the router-side RDM.**
-
-Extend the router's `RouterDataModel` to store `Router` entities. When a `Config` event arrives
-for a config associated with this router, check the allow-list and local config precedence, then
-dispatch to the config handler registry.
-
-Depends on: 2a (protobuf changes), 3a, 3b.
-
-Files: `common/router_data_model.go`, `router/state/dataState.go`,
-`router/state/dataStateChangeSetEvent.go`.
-
-### Phase 4: Link Subsystem Hot-Reconfiguration
-
-**4a. Make link listeners and dialers stoppable.**
-
-Today `startXlinkListeners` and `startXlinkDialers` are fire-and-forget at startup. Add the
-ability to stop/close existing link listeners and dialers, and track them so they can be replaced.
-
-Files: `router/router.go`, xlink factory/listener/dialer implementations.
-
-**4b. Implement the `router.link.v1` config handler.**
-
-Write the config handler that receives `router.link.v1` config data, parses it into the link
-listener/dialer/heartbeat config structures, and applies it. On update, tear down existing link
-listeners/dialers and recreate with the new config. On removal, shut down link subsystem.
-Respect local config precedence: if the local config file has a `link` section, ignore the
-managed config.
-
-Depends on: 3b (handler registry), 4a (stoppable links).
-
-Files: new file in `router/` for the link config handler.
-
-### Phase 5: Integration and Testing
-
-**5a. End-to-end test.**
-
-Test the full pipeline: create `router.link.v1` config type and config instance via API,
-associate with a router, verify the router receives it via RDM, verify link listeners/dialers
-are started with the managed config.
-
-**5b. Config update test.**
-
-Update the config, verify the router tears down old links and starts new ones. Verify rollback
-on invalid config. Verify alerts are sent on failure.
-
-**5c. Allow-list and precedence tests.**
-
-Verify that configs not on the allow-list are ignored. Verify that local config takes precedence
-over managed config.
-
-### Dependency Graph
-
-```
-1a ──┐
-     ├── 1c
-1b ──┤
-     │
-2a ──┼── 2b ── 2c
-     │
-3a ──┤
-3b ──┼── 3c (depends on 2a, 3a, 3b)
-     │
-4a ──┼── 4b (depends on 3b, 4a)
-     │
-     └── 5a, 5b, 5c (depend on all above)
-```
-
-The critical path runs through the protobuf changes (2a), RDM distribution (2b, 2c), router-side
-handling (3c), and link hot-reconfiguration (4a, 4b). The controller-side config infrastructure
-(Phase 1) and the router-side framework (3a, 3b) can proceed in parallel with the RDM work.
+3. **Config permissions.** Today config + config-type CRUD permissions are unified — anyone who
+   can manage service configs can manage router configs. Router config changes affect network
+   infrastructure and may warrant higher privilege than service config changes. The `Target` field
+   gives a natural split point.

@@ -118,10 +118,6 @@ func (self *linkState) updateStatus(status linkStatus) {
 	}
 }
 
-func (self *linkState) GetLinkKey() string {
-	return self.linkKey
-}
-
 func (self *linkState) GetLinkId() string {
 	return self.linkId
 }
@@ -136,6 +132,10 @@ func (self *linkState) GetAddress() string {
 
 func (self *linkState) GetLinkProtocol() string {
 	return self.listener.Protocol
+}
+
+func (self *linkState) GetListenerBinding() string {
+	return self.listener.LocalBinding
 }
 
 func (self *linkState) GetRouterVersion() string {

@@ -33,6 +33,7 @@ func NewVerifyCommand(out io.Writer, errOut io.Writer, initialContext context.Co
 
 	cmd.AddCommand(NewVerifyNetwork(out, errOut))
 	cmd.AddCommand(NewVerifyTraffic(out, errOut))
+	cmd.AddCommand(NewVerifyStaleLinksCmd(out, errOut))
 	cmd.AddCommand(ext_jwt_signer.NewVerifyExtJwtSignerCmd(out, errOut, initialContext))
 
 	return cmd

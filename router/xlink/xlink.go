@@ -63,6 +63,12 @@ type Registry interface {
 	// GetLinkKey returns the link key for the given link parameters
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
 
+	// GetDestinationListeners returns a snapshot of the most recent
+	// listener set advertised by each known destination router, keyed by
+	// router id. Used by stale-link checks to compare a link's recorded
+	// listener binding/groups against the destination's current state.
+	GetDestinationListeners() map[string][]*ctrl_pb.Listener
+
 	// RescanForDialOpportunities re-evaluates every known link destination
 	// against the *current* local dialer set, discovering matches that
 	// became possible after a local dialer change (e.g., a new dialer
@@ -101,13 +107,17 @@ type Acceptor interface {
 
 // A Dial contains the information need to dial another router
 type Dial interface {
-	GetLinkKey() string
 	GetLinkId() string
 	GetRouterId() string
 	GetAddress() string
 	GetLinkProtocol() string
 	GetRouterVersion() string
 	GetIteration() uint32
+	// GetListenerBinding returns the local binding of the remote
+	// listener this dial targets. Recorded on the xlink at dial time so
+	// stale-link checks can later look the listener up in the
+	// destination snapshot.
+	GetListenerBinding() string
 }
 
 type BackoffConfig interface {
@@ -144,6 +154,12 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	DialAddress() string
+	// LinkKey returns the structured identity of the link. The string
+	// form (used as the registry map key) is available via Key(); the
+	// struct form exposes individual components (dialerBinding,
+	// protocol, destId, listenerBinding) for stale-link checks and
+	// other code that needs to reason about specific parts of the key.
+	LinkKey() LinkKey
 	CloseOnce(f func())
 	IsClosed() bool
 	InspectLink() *inspect.LinkInspectDetail

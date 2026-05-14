@@ -271,13 +271,18 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 		pending = &pendingLink{
 			link: &splitImpl{
 				id:            linkMeta.linkId,
-				key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 				routerId:      linkMeta.routerId,
 				routerVersion: linkMeta.routerVersion,
 				linkProtocol:  self.GetLinkProtocol(),
 				dialAddress:   self.GetAdvertisement(),
-				iteration:     linkMeta.iteration,
-				dialed:        false,
+				linkKey: xlink.LinkKey{
+					DialerBinding:   linkMeta.dialerBinding,
+					Protocol:        self.GetLinkProtocol(),
+					DestId:          linkMeta.routerId,
+					ListenerBinding: self.config.bindInterface,
+				},
+				iteration: linkMeta.iteration,
+				dialed:    false,
 			},
 			eventTime: time.Now(),
 		}
@@ -315,13 +320,18 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
 	xli := &impl{
 		id:            linkMeta.linkId,
-		key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 		routerId:      linkMeta.routerId,
 		routerVersion: linkMeta.routerVersion,
 		linkProtocol:  self.GetLinkProtocol(),
 		dialAddress:   self.GetAdvertisement(),
-		iteration:     linkMeta.iteration,
-		dialed:        false,
+		linkKey: xlink.LinkKey{
+			DialerBinding:   linkMeta.dialerBinding,
+			Protocol:        self.GetLinkProtocol(),
+			DestId:          linkMeta.routerId,
+			ListenerBinding: self.config.bindInterface,
+		},
+		iteration: linkMeta.iteration,
+		dialed:    false,
 	}
 
 	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {

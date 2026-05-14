@@ -18,7 +18,6 @@ package link
 
 import (
 	"container/heap"
-	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -447,6 +446,20 @@ func (self *linkRegistryImpl) RescanForDialOpportunities() {
 	self.queueEvent(localDialersChangedEvent{})
 }
 
+// GetDestinationListeners implements xlink.Registry. Returns a copied
+// snapshot of the per-destination listener cache. Destinations with no
+// known listeners are omitted from the result.
+func (self *linkRegistryImpl) GetDestinationListeners() map[string][]*ctrl_pb.Listener {
+	evt := &getDestinationListenersEvent{
+		done: make(chan struct{}),
+	}
+	self.queueEvent(evt)
+	if result := evt.GetResults(5 * time.Second); result != nil {
+		return result
+	}
+	return map[string][]*ctrl_pb.Listener{}
+}
+
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
 	self.queueEvent(&removeLinkDest{
 		id: id,
@@ -677,15 +690,12 @@ func (self *linkRegistryImpl) Inspect(timeout time.Duration) *inspect.LinksInspe
 }
 
 func (self *linkRegistryImpl) GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string {
-	if dialerBinding == "" {
-		dialerBinding = "default"
-	}
-
-	if listenerBinding == "" {
-		listenerBinding = "default"
-	}
-
-	return fmt.Sprintf("%s->%s:%s->%s", dialerBinding, protocol, dest, listenerBinding)
+	return xlink.LinkKey{
+		DialerBinding:   dialerBinding,
+		Protocol:        protocol,
+		DestId:          dest,
+		ListenerBinding: listenerBinding,
+	}.String()
 }
 
 func (self *linkRegistryImpl) notifyControllersOfLinks() {

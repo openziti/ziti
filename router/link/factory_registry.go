@@ -57,9 +57,8 @@ type FactoryRegistry struct {
 }
 
 // ConfigurationChange describes which parts of the link configuration
-// changed during an Apply / Remove. Both flags may be true (e.g. on
-// Remove from a config that had both listeners and dialers); either may
-// be false to let consumers skip work they don't care about.
+// changed during an Apply / Remove. Any flag may be true; consumers
+// inspect them to decide what work to do.
 type ConfigurationChange struct {
 	// ListenersChanged is true when the listener set differs from the
 	// previous state (membership and/or any listener field that affects
@@ -70,6 +69,9 @@ type ConfigurationChange struct {
 	// binding. The effective local binding includes the single
 	// listener/single dialer default adoption rule.
 	DialersChanged bool
+	// GcModeChanged is true when the gcMode field transitioned. The
+	// handler should consult the current config for the new mode.
+	GcModeChanged bool
 }
 
 // ConfigurationChangeHandler is invoked asynchronously after a successful
@@ -198,11 +200,19 @@ func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
 	change := ConfigurationChange{
 		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
 		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+		GcModeChanged:    getGcMode(prev) != getGcMode(next),
 	}
-	if !change.ListenersChanged && !change.DialersChanged {
+	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged {
 		return
 	}
 	go handler(change)
+}
+
+func getGcMode(c *Config) string {
+	if c == nil {
+		return ""
+	}
+	return c.GcMode
 }
 
 func getListeners(c *Config) []ListenerConfig {
