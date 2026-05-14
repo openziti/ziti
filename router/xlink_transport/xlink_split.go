@@ -27,18 +27,23 @@ import (
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
 )
 
 type splitImpl struct {
 	id            string
-	key           string
 	payloadCh     channel.Channel
 	ackCh         channel.Channel
 	routerId      string
 	routerVersion string
 	linkProtocol  string
 	dialAddress   string
+	// linkKey is the structured identity of this link, captured at
+	// establishment. Key() returns its canonical string form (the
+	// registry map key); individual components are used by the
+	// stale-link check to compare against the current configuration.
+	linkKey xlink.LinkKey
 	closed        atomic.Bool
 	faultsSent    atomic.Bool
 	dialed        bool
@@ -57,7 +62,7 @@ func (self *splitImpl) Id() string {
 }
 
 func (self *splitImpl) Key() string {
-	return self.key
+	return self.linkKey.String()
 }
 
 func (self *splitImpl) Iteration() uint32 {
@@ -167,6 +172,10 @@ func (self *splitImpl) LinkProtocol() string {
 
 func (self *splitImpl) DialAddress() string {
 	return self.dialAddress
+}
+
+func (self *splitImpl) LinkKey() xlink.LinkKey {
+	return self.linkKey
 }
 
 func (self *splitImpl) CloseOnce(f func()) {

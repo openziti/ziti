@@ -18,6 +18,7 @@ package link
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // ConfigBaseType is the un-versioned config family this package owns.
@@ -36,6 +37,52 @@ type Config struct {
 	Heartbeats             *HeartbeatsConfig `json:"heartbeats,omitempty"`
 	PayloadSenderQueueSize int               `json:"payloadSenderQueueSize,omitempty"`
 	AckSenderQueueSize     int               `json:"ackSenderQueueSize,omitempty"`
+	// GcMode is the auto-GC policy for stale links: "preserve" (default,
+	// never act), "orphaned" (close links whose supporting
+	// listener/dialer is entirely gone), or "changed" (close links
+	// whose details have shifted). Empty string is treated as
+	// "preserve".
+	GcMode string `json:"gcMode,omitempty"`
+}
+
+// GcMode names the auto-GC policy applied by the router after each
+// successful link-config Apply. Mirrors the CLI `--mode` for
+// `ziti ops verify stale-links`, plus a `Preserve` value that means
+// "never act."
+type GcMode int
+
+const (
+	GcModePreserve GcMode = iota
+	GcModeOrphaned
+	GcModeChanged
+)
+
+func (m GcMode) String() string {
+	switch m {
+	case GcModeOrphaned:
+		return "orphaned"
+	case GcModeChanged:
+		return "changed"
+	default:
+		return "preserve"
+	}
+}
+
+// ParseGcMode normalizes the string form (as it appears in the JSON
+// config or local YAML) into the enum. Unknown values return
+// GcModePreserve and an error; the caller decides whether to fall back
+// or reject the config.
+func ParseGcMode(s string) (GcMode, error) {
+	switch s {
+	case "", "preserve":
+		return GcModePreserve, nil
+	case "orphaned":
+		return GcModeOrphaned, nil
+	case "changed":
+		return GcModeChanged, nil
+	default:
+		return GcModePreserve, fmt.Errorf("unknown gcMode %q (expected preserve|orphaned|changed)", s)
+	}
 }
 
 // ListenerConfig matches the schema's listener entry. Bind is the only

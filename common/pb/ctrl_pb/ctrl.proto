@@ -52,6 +52,8 @@ enum ContentType {
   AlertsType = 1054;
   RequestClusterMembers = 1055;
   UpdateLinkListenersType = 1056;
+  CheckStaleLinksRequestType = 1057;
+  CheckStaleLinksResponseType = 1058;
 }
 
 enum ControlHeaders {
@@ -267,6 +269,49 @@ message Listener {
 
 message Listeners {
   repeated Listener listeners = 1;
+}
+
+// StaleLinkMatchMode controls when an established link is considered
+// stale relative to the current local link configuration.
+//
+// Orphaned: the link's supporting listener or dialer is entirely absent
+//   from the current configuration. The mildest stale criterion.
+// Changed: any detail of the link's supporting listener/dialer differs
+//   from the current configuration (e.g., advertise address changed).
+//   The aggressive stale criterion.
+//
+// The same vocabulary is used by the controller-managed gcMode config
+// flag (planned), which adds a 'preserve' value to mean "never act."
+enum StaleLinkMatchMode {
+  StaleLinkMatchChanged = 0;
+  StaleLinkMatchOrphaned = 1;
+}
+
+message CheckStaleLinksRequest {
+  StaleLinkMatchMode mode = 1;
+}
+
+// StaleLinkSide identifies which side of a link the reporting router
+// represents. A link has two endpoints; each endpoint reports its own
+// side. The controller aggregates the two reports.
+enum StaleLinkSide {
+  StaleLinkSideDialer = 0;
+  StaleLinkSideListener = 1;
+}
+
+message LinkStaleReport {
+  string linkId = 1;
+  StaleLinkSide side = 2;
+  bool stale = 3;
+  // reason is human-readable; populated when stale is true.
+  string reason = 4;
+}
+
+message CheckStaleLinksResponse {
+  string routerId = 1;
+  bool success = 2;
+  string message = 3;
+  repeated LinkStaleReport reports = 4;
 }
 
 message CtrlEndpoint {

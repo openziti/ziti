@@ -64,6 +64,12 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 		Handler: validateLinksRequestHandler.HandleReceive,
 	})
 
+	validateStaleLinksRequestHandler := newValidateStaleLinksHandler(bindHandler.network)
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type:    validateStaleLinksRequestHandler.ContentType(),
+		Handler: validateStaleLinksRequestHandler.HandleReceive,
+	})
+
 	validateSdkTerminatorsRequestHandler := newValidateRouterSdkTerminatorsHandler(bindHandler.network)
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateSdkTerminatorsRequestHandler.ContentType(),

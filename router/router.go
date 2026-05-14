@@ -868,7 +868,8 @@ func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
 // to every connected controller so peer routers see the new state via
 // PeerStateChange. Dialer changes trigger a local rescan against known
 // peers, in case the new dialer set unlocks previously-unmatched
-// listeners.
+// listeners. If the active config has gcMode != preserve, also run an
+// auto-GC pass to close any links that just became stale.
 func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	if change.ListenersChanged {
 		self.publishLinkListeners()
@@ -876,6 +877,27 @@ func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	if change.DialersChanged {
 		self.xlinkRegistry.RescanForDialOpportunities()
 	}
+	self.runLinkGcIfConfigured()
+}
+
+// runLinkGcIfConfigured reads the current gcMode from the active link
+// config and, if non-preserve, walks the xlink registry closing any
+// stale entries. Safe to call on every subsystem-change notification:
+// preserve / no-config short-circuits before doing any work.
+func (self *Router) runLinkGcIfConfigured() {
+	cfg := self.linkSubsystem.GetConfig()
+	if cfg == nil {
+		return
+	}
+	mode, err := link.ParseGcMode(cfg.GcMode)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("auto-GC: ignoring invalid gcMode in active config")
+		return
+	}
+	if mode == link.GcModePreserve {
+		return
+	}
+	link.RunStaleLinkGc(self, mode)
 }
 
 // publishLinkListeners marshals the current listener set and sends an
@@ -914,6 +936,7 @@ func (self *Router) applyLocalLinkConfig() error {
 		Heartbeats:             self.config.Link.Heartbeats,
 		PayloadSenderQueueSize: self.config.Link.PayloadSenderQueueSize,
 		AckSenderQueueSize:     self.config.Link.AckSenderQueueSize,
+		GcMode:                 self.config.Link.GcMode,
 	})
 	if err != nil {
 		return fmt.Errorf("translate local link config: %w", err)
