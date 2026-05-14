@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"sync"
 
 	"github.com/gaissmai/extnetip"
@@ -34,6 +35,7 @@ var dnsPrefix netip.Prefix
 var dnsCurrentIp netip.Addr
 var dnsCurrentIpMtx sync.Mutex
 var dnsRecycledIps *list.List
+var dnsHostRefCount = map[string]int{}
 
 func SetDnsInterceptIpRange(cidr string) error {
 	prefix, err := netip.ParsePrefix(cidr)
@@ -65,12 +67,24 @@ func GetDnsInterceptIpRange() *net.IPNet {
 	}
 }
 
+// cleanUpFunc returns the per-service cleanup action registered when a hostname
+// is allocated in getDnsIp. The hostname mapping and CGNAT IP are reference
+// counted, so the resolver entry is only removed and the IP only recycled when
+// the last service using the hostname is cleaned up.
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
 	f := func() {
+		dnsCurrentIpMtx.Lock()
+		defer dnsCurrentIpMtx.Unlock()
+
+		count := dnsHostRefCount[hostname]
+		if count > 1 {
+			dnsHostRefCount[hostname] = count - 1
+			return
+		}
+		delete(dnsHostRefCount, hostname)
+
 		ip := resolver.RemoveHostname(hostname)
 		if ip != nil {
-			dnsCurrentIpMtx.Lock()
-			defer dnsCurrentIpMtx.Unlock()
 			addr, _ := netip.AddrFromSlice(ip)
 			dnsRecycledIps.PushBack(addr)
 		}
@@ -81,13 +95,25 @@ func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
 func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
 	dnsCurrentIpMtx.Lock()
 	defer dnsCurrentIpMtx.Unlock()
-	var ip netip.Addr
 
-	foundIP, found := resolver.LookupIP(host + ".")
-	if found {
+	// Canonicalize so the refcount map's view of "same hostname" matches the
+	// resolver's (resolver internally lowercases). Two services configured
+	// with the same hostname in different cases must share one allocation.
+	canonical := strings.ToLower(host)
+
+	// If the hostname already has an allocated IP, reuse it. Even though no new
+	// IP is allocated, we still must invoke addrCB so the interceptor installs
+	// its per-service iptables rule; otherwise the tproxy listener exists with
+	// no kernel rule pointing at it and the service is silently unreachable.
+	if foundIP, found := resolver.LookupIP(canonical + "."); found {
+		addr := &net.IPNet{IP: foundIP, Mask: net.CIDRMask(len(foundIP)*8, len(foundIP)*8)}
+		addrCB(addr, false)
+		dnsHostRefCount[canonical]++
+		svc.AddCleanupAction(cleanUpFunc(canonical, resolver))
 		return foundIP, nil
 	}
 
+	var ip netip.Addr
 	// look for returned IPs first
 	if dnsRecycledIps.Len() > 0 {
 		e := dnsRecycledIps.Front()
@@ -105,7 +131,8 @@ func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service,
 
 	addr := &net.IPNet{IP: ip.AsSlice(), Mask: net.CIDRMask(ip.BitLen(), ip.BitLen())}
 	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
-	svc.AddCleanupAction(cleanUpFunc(host, resolver))
+	dnsHostRefCount[canonical] = 1
+	svc.AddCleanupAction(cleanUpFunc(canonical, resolver))
 	return ip.AsSlice(), nil
 }
 
