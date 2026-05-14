@@ -35,6 +35,7 @@ type LocalYamlConfig struct {
 	Heartbeats             channel.HeartbeatOptions
 	PayloadSenderQueueSize int
 	AckSenderQueueSize     int
+	GcMode                 string
 }
 
 // ConfigFromLocalYaml converts the YAML-decoded router config slice into a
@@ -57,6 +58,7 @@ func ConfigFromLocalYaml(in LocalYamlConfig) (string, error) {
 	cfg := Config{
 		PayloadSenderQueueSize: in.PayloadSenderQueueSize,
 		AckSenderQueueSize:     in.AckSenderQueueSize,
+		GcMode:                 in.GcMode,
 	}
 
 	for i, raw := range in.Listeners {

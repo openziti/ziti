@@ -76,6 +76,14 @@ func (response *InspectResponse) GetContentType() int32 {
 	return int32(ContentType_InspectResponseType)
 }
 
+func (request *CheckStaleLinksRequest) GetContentType() int32 {
+	return int32(ContentType_CheckStaleLinksRequestType)
+}
+
+func (response *CheckStaleLinksResponse) GetContentType() int32 {
+	return int32(ContentType_CheckStaleLinksResponseType)
+}
+
 func (response *InspectResponse) AddValue(name, value string) {
 	newValue := &InspectResponse_InspectValue{
 		Name:  name,
