@@ -1311,13 +1311,13 @@ be removed.
     * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
     * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
 
-* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.90](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.90)
+* github.com/openziti/foundation/v2: [v2.0.72 -> v2.0.91](https://github.com/openziti/foundation/compare/v2.0.72...v2.0.91)
     * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add support for multi-bit set/get to AtomicBitSet
     * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
     * [Issue #455](https://github.com/openziti/foundation/issues/455) - Correctly close goroutine pool when external close is signaled
     * [Issue #452](https://github.com/openziti/foundation/issues/452) - Goroutine pool with a min worker count of 1 can drop to 0 workers due to race condition
 
-* github.com/openziti/identity: [v1.0.111 -> v1.0.128](https://github.com/openziti/identity/compare/v1.0.111...v1.0.128)
+* github.com/openziti/identity: [v1.0.111 -> v1.0.129](https://github.com/openziti/identity/compare/v1.0.111...v1.0.129)
     * [Issue #68](https://github.com/openziti/identity/issues/68) - Shutdown file watcher when stopping identity watcher
 
 * github.com/openziti/metrics: [v1.4.2 -> v1.4.5](https://github.com/openziti/metrics/compare/v1.4.2...v1.4.5)
@@ -1366,6 +1366,7 @@ be removed.
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
     * [Issue #3860](https://github.com/openziti/ziti/issues/3860) - Router data model index resets to 0 on controller restart
+    * [Issue #3857](https://github.com/openziti/ziti/issues/3857) - Router first-party cert check should include intermediates from the TLS peer chain
     * [Issue #3855](https://github.com/openziti/ziti/issues/3855) - Filter current api session certs list by current api session
     * [Issue #3838](https://github.com/openziti/ziti/issues/3838) - List controllers on management API has incorrect permissions check
     * [Issue #3837](https://github.com/openziti/ziti/issues/3837) - Create db snapshot with path has incorrect permissions check
@@ -1469,6 +1470,7 @@ be removed.
     * [Issue #3441](https://github.com/openziti/ziti/issues/3441) - Update router connection tracker to interrogate active connections
     * [Issue #3451](https://github.com/openziti/ziti/issues/3451) - ci - compare only stable releases when promoting
     * [Issue #3437](https://github.com/openziti/ziti/issues/3437) - SDK OIDC token updates to routers should return an error if invalid
+    * [Issue #3444](https://github.com/openziti/ziti/issues/3444) - Check api session types during OIDC token updates to avoid nil reference on mixed-auth identities
     * [Issue #3348](https://github.com/openziti/ziti/issues/3348) - Unable to clear/reset the "tags" property on an entity to an empty object
     * [Issue #3452](https://github.com/openziti/ziti/issues/3452) - `ziti agent cluster add` has bad behavior if the add address doesn't match the advertise address
     * [Issue #3410](https://github.com/openziti/ziti/issues/3410) - Consolidate fabric REST API code with edge management and edge client code
