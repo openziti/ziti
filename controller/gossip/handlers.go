@@ -136,14 +136,40 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 			return
 		}
 
-		// Build a set of entries the sender is missing or has stale versions of
+		// Build a set of entries the sender is missing or has stale versions of.
 		remoteVersions := make(map[string]uint64, len(digest.Entries))
 		for _, de := range digest.Entries {
 			remoteVersions[de.Key] = de.Version
 		}
 
+		// If the sender included per-owner hashes (OwnerDigests), we can
+		// short-circuit owners whose hash matches ours - they are known to be
+		// in sync without walking individual entries. Falls through to the
+		// legacy per-entry comparison for the rest, or for everyone if the
+		// sender did not include any owner hashes.
+		var ownerHashes map[string]uint64
+		if len(digest.OwnerDigests) > 0 {
+			ownerHashes = make(map[string]uint64, len(digest.OwnerDigests))
+			for _, od := range digest.OwnerDigests {
+				ownerHashes[od.Owner] = od.Hash
+			}
+		}
+
 		var needed []*gossip_pb.GossipEntry
-		sm.owners.IterCb(func(_ string, od *ownerData) {
+		var matched, diffed int64
+		sm.owners.IterCb(func(owner string, od *ownerData) {
+			if ownerHashes != nil {
+				if remoteHash, ok := ownerHashes[owner]; ok {
+					if sm.hashForOwner(owner) == remoteHash {
+						matched++
+						return
+					}
+					diffed++
+				}
+				// Owner not in sender's hash map: sender doesn't know about
+				// this owner. Fall through and send everything (entries map
+				// lookups will see !exists).
+			}
 			od.mu.RLock()
 			for key, e := range od.entries {
 				remoteVersion, exists := remoteVersions[key]
@@ -153,6 +179,8 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 			}
 			od.mu.RUnlock()
 		})
+		sm.markAntiEntropyOwnersMatched(matched)
+		sm.markAntiEntropyOwnersDiffed(diffed)
 
 		if len(needed) == 0 {
 			return

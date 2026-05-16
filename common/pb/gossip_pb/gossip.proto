@@ -30,9 +30,22 @@ message DigestEntry {
     uint64 version = 2;
 }
 
+// OwnerDigest carries a per-owner short-circuit hash. When present in a
+// GossipDigest, the receiver computes its own per-owner hash and skips any
+// owner whose hash matches the sender's - those owners are known to be in
+// sync without needing per-entry version comparison.
+message OwnerDigest {
+    string owner = 1;
+    uint64 hash = 2;
+}
+
 message GossipDigest {
     string store_type = 1;
     repeated DigestEntry entries = 2;
+    // owner_digests optionally carries per-owner hashes. When the receiver
+    // sees this field populated, it short-circuits matching owners and only
+    // walks entries for owners whose hash differs.
+    repeated OwnerDigest owner_digests = 3;
 }
 
 message GossipDigestResponse {

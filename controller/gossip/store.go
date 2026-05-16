@@ -264,10 +264,12 @@ type stateMap struct {
 // registered with the metrics.Registry directly (poll-time closures over
 // stateMap fields) and not held here.
 type stateMapMetrics struct {
-	deltaReceived      metrics.Meter
-	deltaApplied       metrics.Meter
-	deltaRejectedStale metrics.Meter
-	broadcastSent      metrics.Meter
+	deltaReceived         metrics.Meter
+	deltaApplied          metrics.Meter
+	deltaRejectedStale    metrics.Meter
+	broadcastSent         metrics.Meter
+	antiEntropyOwnersMatched metrics.Meter // owners short-circuited by hash on incoming digest
+	antiEntropyOwnersDiffed  metrics.Meter // owners that required per-entry comparison
 }
 
 // markDeltaReceived records n entries received from peers (direct broadcast
@@ -300,6 +302,22 @@ func (sm *stateMap) markBroadcastSent() {
 	}
 }
 
+// markAntiEntropyOwnersMatched records owners short-circuited by hash match
+// in an incoming digest.
+func (sm *stateMap) markAntiEntropyOwnersMatched(n int64) {
+	if sm.metrics != nil && n > 0 {
+		sm.metrics.antiEntropyOwnersMatched.Mark(n)
+	}
+}
+
+// markAntiEntropyOwnersDiffed records owners that required per-entry
+// comparison (hash mismatch, or sender did not include a hash for them).
+func (sm *stateMap) markAntiEntropyOwnersDiffed(n int64) {
+	if sm.metrics != nil && n > 0 {
+		sm.metrics.antiEntropyOwnersDiffed.Mark(n)
+	}
+}
+
 // registerMetrics wires up the meters and poll-time gauges for this stateMap
 // against the store's metrics registry. Safe to call with a nil registry.
 func (sm *stateMap) registerMetrics(reg metrics.Registry) {
@@ -308,10 +326,12 @@ func (sm *stateMap) registerMetrics(reg metrics.Registry) {
 	}
 	prefix := "gossip." + sm.name
 	sm.metrics = &stateMapMetrics{
-		deltaReceived:      reg.Meter(prefix + ".delta.received"),
-		deltaApplied:       reg.Meter(prefix + ".delta.applied"),
-		deltaRejectedStale: reg.Meter(prefix + ".delta.rejected_stale"),
-		broadcastSent:      reg.Meter(prefix + ".broadcast.sent"),
+		deltaReceived:            reg.Meter(prefix + ".delta.received"),
+		deltaApplied:             reg.Meter(prefix + ".delta.applied"),
+		deltaRejectedStale:       reg.Meter(prefix + ".delta.rejected_stale"),
+		broadcastSent:            reg.Meter(prefix + ".broadcast.sent"),
+		antiEntropyOwnersMatched: reg.Meter(prefix + ".anti_entropy.owners_matched"),
+		antiEntropyOwnersDiffed:  reg.Meter(prefix + ".anti_entropy.owners_diffed"),
 	}
 	reg.FuncGauge(prefix+".owners", func() int64 {
 		return int64(sm.owners.Count())
@@ -751,6 +771,28 @@ func (sm *stateMap) getDigest() []*gossip_pb.DigestEntry {
 		od.mu.RUnlock()
 	})
 	return digest
+}
+
+// getOwnerDigests returns per-owner FNV-64a hashes for every owner that has
+// any entries. Used to populate GossipDigest.OwnerDigests so the receiver
+// can short-circuit owners that already match without doing per-entry
+// version comparison.
+func (sm *stateMap) getOwnerDigests() []*gossip_pb.OwnerDigest {
+	// Collect owner identifiers first, then hash outside the cmap iteration
+	// so hashForOwner (which acquires its own owner.mu) doesn't nest with
+	// the cmap shard lock more than necessary.
+	var owners []string
+	sm.owners.IterCb(func(owner string, _ *ownerData) {
+		owners = append(owners, owner)
+	})
+	digests := make([]*gossip_pb.OwnerDigest, 0, len(owners))
+	for _, owner := range owners {
+		digests = append(digests, &gossip_pb.OwnerDigest{
+			Owner: owner,
+			Hash:  sm.hashForOwner(owner),
+		})
+	}
+	return digests
 }
 
 func (sm *stateMap) getDigestForOwner(owner string) []*gossip_pb.DigestEntry {

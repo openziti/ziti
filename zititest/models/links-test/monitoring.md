@@ -44,6 +44,8 @@ Each pool exposes:
 - `gossip.<type>.delta.applied` (meter) - entries that passed the version check
 - `gossip.<type>.delta.rejected_stale` (meter) - entries rejected (older version or drained owner)
 - `gossip.<type>.broadcast.sent` (meter) - broadcasts initiated locally
+- `gossip.<type>.anti_entropy.owners_matched` (meter) - owners short-circuited via owner-hash match on incoming digest
+- `gossip.<type>.anti_entropy.owners_diffed` (meter) - owners requiring per-entry comparison (hash mismatch)
 
 Today `<type>` is `links` and `canary`.
 
@@ -68,6 +70,8 @@ populated from `/proc`. Once enabled, the controller and each router emit:
 - `host.mem.total` / `used` / `available` (gauges, bytes)
 - `host.mem.used_percent` (gauge, float)
 - `host.disk.read_bytes` / `write_bytes` (gauges, cumulative)
+- `host.disk.available_bytes` (gauge, free bytes on `/`)
+- `host.disk.used_percent` (gauge, float)
 - `host.net.rx_bytes` / `tx_bytes` (gauges, cumulative)
 - `host.net.rx_drops` / `tx_drops` (gauges, cumulative)
 
@@ -135,7 +139,9 @@ We don't have a direct convergence-lag histogram yet. Approximations:
 | `host.cpu.percent`                      | > 80% sustained            | CPU pressure; cross-check `pool.*.work_timer` for which path is hot.          |
 | `host.load.1m`                          | > num_cpus sustained       | Run queue building up - process scheduling delays.                            |
 | `host.mem.used_percent`                 | > 80%                      | About to OOM. Cross-reference `gossip.*.owners` trend.                        |
-| `host.net.rx_drops` or `tx_drops`       | non-zero rate              | Genuine packet loss; gossip will recover via anti-entropy but slowly.         |
+| `host.disk.used_percent`                | > 85%                      | About to fill disk - controller will crash on next bolt write. See "log-volume runaway" pattern. |
+| `host.disk.available_bytes`             | falling fast (GB/min)      | Log or DB growth blew up; rate is what catches it before the absolute threshold does. |
+| `host.net.rx_drops` or `tx_drops`       | rising fast                | Kernel-level packet drops (NIC ring / socket buffer). TCP retransmits cover correctness, so this is a latency/load signal, not a correctness one. Worry about it if rates climb sharply or correlate with elevated `pool.*.work_timer` p99. |
 | `process.goroutines`                    | climbing over a run        | Goroutine leak somewhere - likely a channel or context not being closed.      |
 | SAR iowait (external)                   | > 20% sustained            | Disk contention; in-process metrics can't see this directly.                  |
 
@@ -161,6 +167,18 @@ A few patterns to look for that combine signals:
   count of live routers. Probably a router that disconnected without
   triggering `HandleRouterDelete`. Will compact eventually if `DropOwner`
   fires; otherwise grows unboundedly.
+
+- **The "log-volume runaway" pattern**: `host.disk.available_bytes` drops by
+  hundreds of MB per minute while `gossip.*` and `pool.*` look fine.
+  Symptom is rapid log rotation (many `*-<timestamp>.log` files under
+  `~/logs/`). Burned us on the first instrumented run: a wide-open
+  `metricFilter: .*` in the events config emitted per-link histograms for
+  every router every poll, filling the 6.8GB root disk in minutes. The
+  controller then could not write its bolt DB and crashed; restart left it
+  returning HTTP 500 on `/authenticate`. Fix: explicit metric allowlist in
+  the events config (see `configs/ctrl.yml.tmpl`), and never let the metric
+  stream include `link.*` / `router.*` / `service.*` series at full
+  cardinality.
 
 ## Adding new criteria
 

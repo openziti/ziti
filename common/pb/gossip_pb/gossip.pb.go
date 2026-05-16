@@ -277,17 +277,77 @@ func (x *DigestEntry) GetVersion() uint64 {
 	return 0
 }
 
-type GossipDigest struct {
+// OwnerDigest carries a per-owner short-circuit hash. When present in a
+// GossipDigest, the receiver computes its own per-owner hash and skips any
+// owner whose hash matches the sender's - those owners are known to be in
+// sync without needing per-entry version comparison.
+type OwnerDigest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	StoreType     string                 `protobuf:"bytes,1,opt,name=store_type,json=storeType,proto3" json:"store_type,omitempty"`
-	Entries       []*DigestEntry         `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
+	Owner         string                 `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Hash          uint64                 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OwnerDigest) Reset() {
+	*x = OwnerDigest{}
+	mi := &file_gossip_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OwnerDigest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OwnerDigest) ProtoMessage() {}
+
+func (x *OwnerDigest) ProtoReflect() protoreflect.Message {
+	mi := &file_gossip_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OwnerDigest.ProtoReflect.Descriptor instead.
+func (*OwnerDigest) Descriptor() ([]byte, []int) {
+	return file_gossip_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *OwnerDigest) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+func (x *OwnerDigest) GetHash() uint64 {
+	if x != nil {
+		return x.Hash
+	}
+	return 0
+}
+
+type GossipDigest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	StoreType string                 `protobuf:"bytes,1,opt,name=store_type,json=storeType,proto3" json:"store_type,omitempty"`
+	Entries   []*DigestEntry         `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
+	// owner_digests optionally carries per-owner hashes. When the receiver
+	// sees this field populated, it short-circuits matching owners and only
+	// walks entries for owners whose hash differs.
+	OwnerDigests  []*OwnerDigest `protobuf:"bytes,3,rep,name=owner_digests,json=ownerDigests,proto3" json:"owner_digests,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GossipDigest) Reset() {
 	*x = GossipDigest{}
-	mi := &file_gossip_proto_msgTypes[4]
+	mi := &file_gossip_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -299,7 +359,7 @@ func (x *GossipDigest) String() string {
 func (*GossipDigest) ProtoMessage() {}
 
 func (x *GossipDigest) ProtoReflect() protoreflect.Message {
-	mi := &file_gossip_proto_msgTypes[4]
+	mi := &file_gossip_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +372,7 @@ func (x *GossipDigest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GossipDigest.ProtoReflect.Descriptor instead.
 func (*GossipDigest) Descriptor() ([]byte, []int) {
-	return file_gossip_proto_rawDescGZIP(), []int{4}
+	return file_gossip_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GossipDigest) GetStoreType() string {
@@ -329,6 +389,13 @@ func (x *GossipDigest) GetEntries() []*DigestEntry {
 	return nil
 }
 
+func (x *GossipDigest) GetOwnerDigests() []*OwnerDigest {
+	if x != nil {
+		return x.OwnerDigests
+	}
+	return nil
+}
+
 type GossipDigestResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StoreType     string                 `protobuf:"bytes,1,opt,name=store_type,json=storeType,proto3" json:"store_type,omitempty"`
@@ -339,7 +406,7 @@ type GossipDigestResponse struct {
 
 func (x *GossipDigestResponse) Reset() {
 	*x = GossipDigestResponse{}
-	mi := &file_gossip_proto_msgTypes[5]
+	mi := &file_gossip_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -351,7 +418,7 @@ func (x *GossipDigestResponse) String() string {
 func (*GossipDigestResponse) ProtoMessage() {}
 
 func (x *GossipDigestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gossip_proto_msgTypes[5]
+	mi := &file_gossip_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -364,7 +431,7 @@ func (x *GossipDigestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GossipDigestResponse.ProtoReflect.Descriptor instead.
 func (*GossipDigestResponse) Descriptor() ([]byte, []int) {
-	return file_gossip_proto_rawDescGZIP(), []int{5}
+	return file_gossip_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GossipDigestResponse) GetStoreType() string {
@@ -402,7 +469,7 @@ type CanaryPayload struct {
 
 func (x *CanaryPayload) Reset() {
 	*x = CanaryPayload{}
-	mi := &file_gossip_proto_msgTypes[6]
+	mi := &file_gossip_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +481,7 @@ func (x *CanaryPayload) String() string {
 func (*CanaryPayload) ProtoMessage() {}
 
 func (x *CanaryPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_gossip_proto_msgTypes[6]
+	mi := &file_gossip_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +494,7 @@ func (x *CanaryPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanaryPayload.ProtoReflect.Descriptor instead.
 func (*CanaryPayload) Descriptor() ([]byte, []int) {
-	return file_gossip_proto_rawDescGZIP(), []int{6}
+	return file_gossip_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CanaryPayload) GetMaxSentVersions() map[string]uint64 {
@@ -467,7 +534,7 @@ type CanaryGossipValue struct {
 
 func (x *CanaryGossipValue) Reset() {
 	*x = CanaryGossipValue{}
-	mi := &file_gossip_proto_msgTypes[7]
+	mi := &file_gossip_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +546,7 @@ func (x *CanaryGossipValue) String() string {
 func (*CanaryGossipValue) ProtoMessage() {}
 
 func (x *CanaryGossipValue) ProtoReflect() protoreflect.Message {
-	mi := &file_gossip_proto_msgTypes[7]
+	mi := &file_gossip_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +559,7 @@ func (x *CanaryGossipValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanaryGossipValue.ProtoReflect.Descriptor instead.
 func (*CanaryGossipValue) Descriptor() ([]byte, []int) {
-	return file_gossip_proto_rawDescGZIP(), []int{7}
+	return file_gossip_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CanaryGossipValue) GetSeq() uint64 {
@@ -556,11 +623,15 @@ const file_gossip_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\tR\trequestId\"9\n" +
 	"\vDigestEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\x04R\aversion\"_\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\"7\n" +
+	"\vOwnerDigest\x12\x14\n" +
+	"\x05owner\x18\x01 \x01(\tR\x05owner\x12\x12\n" +
+	"\x04hash\x18\x02 \x01(\x04R\x04hash\"\x9c\x01\n" +
 	"\fGossipDigest\x12\x1d\n" +
 	"\n" +
 	"store_type\x18\x01 \x01(\tR\tstoreType\x120\n" +
-	"\aentries\x18\x02 \x03(\v2\x16.gossip_pb.DigestEntryR\aentries\"g\n" +
+	"\aentries\x18\x02 \x03(\v2\x16.gossip_pb.DigestEntryR\aentries\x12;\n" +
+	"\rowner_digests\x18\x03 \x03(\v2\x16.gossip_pb.OwnerDigestR\fownerDigests\"g\n" +
 	"\x14GossipDigestResponse\x12\x1d\n" +
 	"\n" +
 	"store_type\x18\x01 \x01(\tR\tstoreType\x120\n" +
@@ -606,38 +677,40 @@ func file_gossip_proto_rawDescGZIP() []byte {
 	return file_gossip_proto_rawDescData
 }
 
-var file_gossip_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_gossip_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_gossip_proto_goTypes = []any{
 	(*GossipEntry)(nil),          // 0: gossip_pb.GossipEntry
 	(*GossipDelta)(nil),          // 1: gossip_pb.GossipDelta
 	(*GossipAck)(nil),            // 2: gossip_pb.GossipAck
 	(*DigestEntry)(nil),          // 3: gossip_pb.DigestEntry
-	(*GossipDigest)(nil),         // 4: gossip_pb.GossipDigest
-	(*GossipDigestResponse)(nil), // 5: gossip_pb.GossipDigestResponse
-	(*CanaryPayload)(nil),        // 6: gossip_pb.CanaryPayload
-	(*CanaryGossipValue)(nil),    // 7: gossip_pb.CanaryGossipValue
-	nil,                          // 8: gossip_pb.CanaryPayload.MaxSentVersionsEntry
-	nil,                          // 9: gossip_pb.CanaryPayload.EntryHashesEntry
-	nil,                          // 10: gossip_pb.CanaryPayload.EntryCountsEntry
-	nil,                          // 11: gossip_pb.CanaryGossipValue.MaxSentVersionsEntry
-	nil,                          // 12: gossip_pb.CanaryGossipValue.EntryHashesEntry
-	nil,                          // 13: gossip_pb.CanaryGossipValue.EntryCountsEntry
+	(*OwnerDigest)(nil),          // 4: gossip_pb.OwnerDigest
+	(*GossipDigest)(nil),         // 5: gossip_pb.GossipDigest
+	(*GossipDigestResponse)(nil), // 6: gossip_pb.GossipDigestResponse
+	(*CanaryPayload)(nil),        // 7: gossip_pb.CanaryPayload
+	(*CanaryGossipValue)(nil),    // 8: gossip_pb.CanaryGossipValue
+	nil,                          // 9: gossip_pb.CanaryPayload.MaxSentVersionsEntry
+	nil,                          // 10: gossip_pb.CanaryPayload.EntryHashesEntry
+	nil,                          // 11: gossip_pb.CanaryPayload.EntryCountsEntry
+	nil,                          // 12: gossip_pb.CanaryGossipValue.MaxSentVersionsEntry
+	nil,                          // 13: gossip_pb.CanaryGossipValue.EntryHashesEntry
+	nil,                          // 14: gossip_pb.CanaryGossipValue.EntryCountsEntry
 }
 var file_gossip_proto_depIdxs = []int32{
 	0,  // 0: gossip_pb.GossipDelta.entries:type_name -> gossip_pb.GossipEntry
 	3,  // 1: gossip_pb.GossipDigest.entries:type_name -> gossip_pb.DigestEntry
-	0,  // 2: gossip_pb.GossipDigestResponse.entries:type_name -> gossip_pb.GossipEntry
-	8,  // 3: gossip_pb.CanaryPayload.max_sent_versions:type_name -> gossip_pb.CanaryPayload.MaxSentVersionsEntry
-	9,  // 4: gossip_pb.CanaryPayload.entry_hashes:type_name -> gossip_pb.CanaryPayload.EntryHashesEntry
-	10, // 5: gossip_pb.CanaryPayload.entry_counts:type_name -> gossip_pb.CanaryPayload.EntryCountsEntry
-	11, // 6: gossip_pb.CanaryGossipValue.max_sent_versions:type_name -> gossip_pb.CanaryGossipValue.MaxSentVersionsEntry
-	12, // 7: gossip_pb.CanaryGossipValue.entry_hashes:type_name -> gossip_pb.CanaryGossipValue.EntryHashesEntry
-	13, // 8: gossip_pb.CanaryGossipValue.entry_counts:type_name -> gossip_pb.CanaryGossipValue.EntryCountsEntry
-	9,  // [9:9] is the sub-list for method output_type
-	9,  // [9:9] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	4,  // 2: gossip_pb.GossipDigest.owner_digests:type_name -> gossip_pb.OwnerDigest
+	0,  // 3: gossip_pb.GossipDigestResponse.entries:type_name -> gossip_pb.GossipEntry
+	9,  // 4: gossip_pb.CanaryPayload.max_sent_versions:type_name -> gossip_pb.CanaryPayload.MaxSentVersionsEntry
+	10, // 5: gossip_pb.CanaryPayload.entry_hashes:type_name -> gossip_pb.CanaryPayload.EntryHashesEntry
+	11, // 6: gossip_pb.CanaryPayload.entry_counts:type_name -> gossip_pb.CanaryPayload.EntryCountsEntry
+	12, // 7: gossip_pb.CanaryGossipValue.max_sent_versions:type_name -> gossip_pb.CanaryGossipValue.MaxSentVersionsEntry
+	13, // 8: gossip_pb.CanaryGossipValue.entry_hashes:type_name -> gossip_pb.CanaryGossipValue.EntryHashesEntry
+	14, // 9: gossip_pb.CanaryGossipValue.entry_counts:type_name -> gossip_pb.CanaryGossipValue.EntryCountsEntry
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_gossip_proto_init() }
@@ -651,7 +724,7 @@ func file_gossip_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gossip_proto_rawDesc), len(file_gossip_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

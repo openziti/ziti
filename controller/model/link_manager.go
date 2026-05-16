@@ -312,6 +312,18 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 
 func (lt *linkTable) remove(link *Link) bool {
 	return lt.links.RemoveCb(link.Id, func(key string, v *Link, exists bool) bool {
-		return v != nil && v.Iteration == link.Iteration
+		match := v != nil && v.Iteration == link.Iteration
+		if exists && !match {
+			// Predicate mismatch is normally a safe race: a newer iteration
+			// arrived between the caller's Get and this RemoveCb. But it can
+			// also leave a phantom link in the table when the caller expected
+			// removal. Log so the next phantom-link incident has a trail.
+			pfxlog.Logger().
+				WithField("linkId", link.Id).
+				WithField("requestedIteration", link.Iteration).
+				WithField("currentIteration", v.Iteration).
+				Info("linkTable.remove: iteration mismatch, link not removed")
+		}
+		return match
 	})
 }

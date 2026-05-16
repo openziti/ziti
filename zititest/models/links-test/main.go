@@ -38,6 +38,7 @@ import (
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
@@ -96,6 +97,16 @@ var m = &model.Model{
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
 					host.InstanceType = "c5.xlarge"
+				}
+				// The default 6.8GB root volume fills under sustained metrics
+				// emission (long fablab runs rotate hundreds of metrics.log
+				// files). Bump controllers to 20GB so a multi-hour chaos run
+				// has headroom; routers keep the default.
+				host.InstanceResourceType = "ondemand_iops"
+				host.AWS.Volume = aws.EC2Volume{
+					Type:   "gp3",
+					SizeGB: 40,
+					IOPS:   1000,
 				}
 				return nil
 			})
@@ -270,7 +281,7 @@ var m = &model.Model{
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(
-			component.StopInParallelHostExclusive("*", 15),
+			component.StopInParallelHostExclusive("*", 1000),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
 		"login":    model.Bind(edge.Login("#ctrl1")),

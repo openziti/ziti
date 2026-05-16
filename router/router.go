@@ -342,7 +342,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	router.ctrls = env.NewNetworkControllers(router, &cfg.Ctrl.Heartbeats)
-	router.gossipClient = newGossipClient(cfg.Id.Token, router.ctrls)
+	router.gossipClient = newGossipClient(cfg.Id.Token, router.ctrls, metricsRegistry)
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)

@@ -45,6 +45,8 @@ import (
 //	host.mem.used_percent        - used / total as a percentage
 //	host.disk.read_bytes         - cumulative bytes read across all devices
 //	host.disk.write_bytes        - cumulative bytes written across all devices
+//	host.disk.available_bytes    - free space on the root filesystem
+//	host.disk.used_percent       - root filesystem usage as a percentage
 //	host.net.rx_bytes / tx_bytes - cumulative bytes across all interfaces
 //	host.net.rx_drops / tx_drops - cumulative packet drops across all interfaces
 //
@@ -118,6 +120,21 @@ func RegisterHostStats(reg metrics.Registry, cfg HostStatsConfig) {
 	})
 	reg.FuncGauge("host.disk.write_bytes", func() int64 {
 		return sumDiskCounter(func(s disk.IOCountersStat) uint64 { return s.WriteBytes })
+	})
+
+	// Filesystem usage on the root mount. Catches log-volume runaway,
+	// bolt-db growth, etc. before the disk fills and the controller crashes.
+	reg.FuncGauge("host.disk.available_bytes", func() int64 {
+		if u, err := disk.Usage("/"); err == nil {
+			return int64(u.Free)
+		}
+		return 0
+	})
+	reg.FuncGaugeFloat64("host.disk.used_percent", func() float64 {
+		if u, err := disk.Usage("/"); err == nil {
+			return u.UsedPercent
+		}
+		return 0
 	})
 
 	reg.FuncGauge("host.net.rx_bytes", func() int64 {

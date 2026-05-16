@@ -28,6 +28,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/gossip_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
@@ -86,19 +87,20 @@ func (m *maxSentVersions) getAll() map[string]uint64 {
 // a Lamport clock and generates GossipDelta messages for link state changes,
 // sending them to the subscription controller and any stale controllers.
 type gossipClient struct {
-	routerId       string
-	epoch          []byte // UUIDv7 generated on startup, identifies this router lifetime
-	ctrls          env.NetworkControllers
-	clock          atomic.Uint64
-	maxSent        maxSentVersions
-	linkIterator   func() <-chan xlink.Xlink // set after link registry is created
-	currentEntries cmap.ConcurrentMap[string, *gossip_pb.GossipEntry]
-	entryCount     atomic.Int64 // non-tombstone entry count, tracked incrementally
-	staleCtrlIds   atomic.Value // holds map[string]bool
-	entryHash      atomic.Pointer[uint64] // cached hash; nil = dirty
+	routerId         string
+	epoch            []byte // UUIDv7 generated on startup, identifies this router lifetime
+	ctrls            env.NetworkControllers
+	clock            atomic.Uint64
+	maxSent          maxSentVersions
+	linkIterator     func() <-chan xlink.Xlink // set after link registry is created
+	currentEntries   cmap.ConcurrentMap[string, *gossip_pb.GossipEntry]
+	entryCount       atomic.Int64 // non-tombstone entry count, tracked incrementally
+	staleCtrlIds     atomic.Value // holds map[string]bool
+	entryHash        atomic.Pointer[uint64] // cached hash; nil = dirty
+	staleSendEntries metrics.Meter          // entries duplicate-sent via sendToStaleControllers; nil-safe
 }
 
-func newGossipClient(routerId string, ctrls env.NetworkControllers) *gossipClient {
+func newGossipClient(routerId string, ctrls env.NetworkControllers, reg metrics.Registry) *gossipClient {
 	epoch := idgen.NewEpochBytes()
 	pfxlog.Logger().WithField("routerId", routerId).
 		WithField("epoch", idgen.FormatEpoch(epoch)).
@@ -111,6 +113,9 @@ func newGossipClient(routerId string, ctrls env.NetworkControllers) *gossipClien
 		currentEntries: cmap.New[*gossip_pb.GossipEntry](),
 	}
 	g.staleCtrlIds.Store(map[string]bool{})
+	if reg != nil {
+		g.staleSendEntries = reg.Meter("router.gossip.stale_send.entries")
+	}
 	return g
 }
 
@@ -300,6 +305,7 @@ func (g *gossipClient) sendToStaleControllers(subId string, entries []*gossip_pb
 	}
 
 	all := g.ctrls.GetAll()
+	sent := 0
 	for ctrlId := range stale {
 		if ctrlId == subId {
 			continue
@@ -308,7 +314,12 @@ func (g *gossipClient) sendToStaleControllers(subId string, entries []*gossip_pb
 		if !ok || !ctrl.IsConnected() {
 			continue
 		}
-		_ = g.sendDelta(ctrl.Channel(), entries)
+		if err := g.sendDelta(ctrl.Channel(), entries); err == nil {
+			sent += len(entries)
+		}
+	}
+	if sent > 0 && g.staleSendEntries != nil {
+		g.staleSendEntries.Mark(int64(sent))
 	}
 }
 
@@ -490,17 +501,19 @@ func (g *gossipClient) marshalLink(l xlink.Xlink) ([]byte, error) {
 // it sends a GossipDigestRequest to trigger catch-up. While stale, the
 // gossipClient dual-sends new entries to those controllers.
 type gossipRefresher struct {
-	client    *gossipClient
-	closeC    <-chan struct{}
-	previous  map[string]bool // previous stale set, for detecting transitions
-	lastSubId string         // previous subscription controller ID, for detecting changes
+	client     *gossipClient
+	closeC     <-chan struct{}
+	previous   map[string]bool      // previous stale set, for detecting transitions
+	staleSince map[string]time.Time // when each currently-stale ctrl entered the stale set
+	lastSubId  string               // previous subscription controller ID, for detecting changes
 }
 
 func newGossipRefresher(client *gossipClient, closeC <-chan struct{}) *gossipRefresher {
 	return &gossipRefresher{
-		client:   client,
-		closeC:   closeC,
-		previous: map[string]bool{},
+		client:     client,
+		closeC:     closeC,
+		previous:   map[string]bool{},
+		staleSince: map[string]time.Time{},
 	}
 }
 
@@ -575,9 +588,24 @@ func (r *gossipRefresher) check() {
 					WithField("delta", subSeq-ctrlSeq).
 					Info("controller canary is stale, requesting gossip digest exchange")
 
+				r.staleSince[ctrlId] = time.Now()
 				r.client.sendDigestRequest(ctrl.Channel())
 			}
 		}
+	}
+
+	// Log exit transitions so we can measure stale-episode duration from logs.
+	// Anything that was in previous but not in newStale recovered this cycle.
+	for ctrlId := range r.previous {
+		if newStale[ctrlId] {
+			continue
+		}
+		log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+		if since, ok := r.staleSince[ctrlId]; ok {
+			log = log.WithField("staleDurationMs", time.Since(since).Milliseconds())
+			delete(r.staleSince, ctrlId)
+		}
+		log.Info("controller canary recovered")
 	}
 
 	r.client.setStaleControllers(newStale)

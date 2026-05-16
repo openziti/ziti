@@ -257,7 +257,9 @@ func (l *linkGossipListener) EntryRemoved(key string, owner string, _ gossip.Cha
 	link.SetState(model.Failed)
 	l.network.NotifyLinkEvent(link, event.LinkFault)
 
-	log.Info("gossip: removing faulted link")
+	log.WithField("linkIteration", link.Iteration).
+		WithField("tombstoneIteration", iteration).
+		Info("gossip: removing faulted link")
 	l.network.Link.Remove(link)
 
 	if wasUsable {

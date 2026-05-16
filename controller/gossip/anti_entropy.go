@@ -46,9 +46,11 @@ func runAntiEntropy(sm *stateMap, store *Store) {
 			peerIdx++
 
 			digest := sm.getDigest()
+			ownerDigests := sm.getOwnerDigests()
 			pbDigest := &gossip_pb.GossipDigest{
-				StoreType: sm.name,
-				Entries:   digest,
+				StoreType:    sm.name,
+				Entries:      digest,
+				OwnerDigests: ownerDigests,
 			}
 			body, err := proto.Marshal(pbDigest)
 			if err != nil {

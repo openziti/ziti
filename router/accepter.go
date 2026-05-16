@@ -4,6 +4,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/sirupsen/logrus"
@@ -43,7 +44,9 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 	address := underlay.GetRemoteAddr().String()
 
-	bindHandler := channel.BindHandlers(
+	// WithSlowHandlerDiagnostic is temporary - see router/env/handler_diagnostic.go
+	// for removal criteria.
+	bindHandler := env.WithSlowHandlerDiagnostic(channel.BindHandlers(
 		channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
@@ -51,7 +54,7 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 			return self.router.ctrls.AcceptCtrlChannel(address, listenerCtrlChan, binding, underlay)
 		}),
 		self.router.ctrlBindhandler,
-	)
+	))
 
 	multiConfig := &channel.MultiChannelConfig{
 		LogicalName:     "ctrl/" + underlay.Id(),
