@@ -14,14 +14,14 @@ func InstallZitiEdgeTunnel(targetVersion, targetOS, targetArch, binDir string, v
 	if targetVersion != "" {
 		newVersion = semver.MustParse(strings.TrimPrefix(targetVersion, "v"))
 	} else {
-		v, err := GetLatestGitHubReleaseVersion(c.OpenZitiOrg, c.ZITI_EDGE_TUNNEL_GITHUB, verbose)
+		v, err := GetLatestGitHubReleaseVersion(c.OpenZitiOrg, c.ZitiEdgeTunnelGithub, verbose)
 		if err != nil {
 			return err
 		}
 		newVersion = v
 	}
 
-	fmt.Println("Attempting to install '" + c.ZITI_EDGE_TUNNEL + "' version: " + newVersion.String())
+	fmt.Println("Attempting to install '" + c.ZitiEdgeTunnel + "' version: " + newVersion.String())
 	return FindVersionAndInstallGitHubRelease(
-		c.OpenZitiOrg, c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, targetOS, targetArch, binDir, newVersion.String(), verbose)
+		c.OpenZitiOrg, c.ZitiEdgeTunnel, c.ZitiEdgeTunnelGithub, targetOS, targetArch, binDir, newVersion.String(), verbose)
 }
