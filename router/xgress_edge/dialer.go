@@ -133,6 +133,10 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
 	}
 
+	if meth, ok := circuitId.Data[uint32(edgeSdk.CryptoMethodHeader)]; ok {
+		dialRequest.Headers[edgeSdk.CryptoMethodHeader] = meth
+	}
+
 	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
 		dialRequest.Headers[edgeSdk.ConnectionMarkerHeader] = marker
 	}
@@ -231,6 +235,10 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
 	}
 
+	if meth, ok := circuitId.Data[uint32(edgeSdk.CryptoMethodHeader)]; ok {
+		dialRequest.Headers[edgeSdk.CryptoMethodHeader] = meth
+	}
+
 	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
 		dialRequest.Headers[edgeSdk.ConnectionMarkerHeader] = marker
 	}
@@ -326,6 +334,9 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 
 	if pk, ok := circuitId.Data[uint32(edgeSdk.PublicKeyHeader)]; ok {
 		dialRequest.Headers[edgeSdk.PublicKeyHeader] = pk
+	}
+	if meth, ok := circuitId.Data[uint32(edgeSdk.CryptoMethodHeader)]; ok {
+		dialRequest.Headers[edgeSdk.CryptoMethodHeader] = meth
 	}
 
 	if marker, ok := circuitId.Data[uint32(edgeSdk.ConnectionMarkerHeader)]; ok {
