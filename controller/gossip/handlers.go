@@ -155,14 +155,32 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 			}
 		}
 
+		// First pass: collect (owner, ownerData) pairs under the cmap iteration
+		// lock without calling anything that would re-enter cmap. Calling
+		// hashForOwnerFull inside the IterCb callback would re-acquire the
+		// shard RLock; under writer-priority RWMutex semantics, with a writer
+		// queued, that re-acquire deadlocks against the outer RLock.
+		type ownerEntry struct {
+			owner string
+			od    *ownerData
+		}
+		var ownersList []ownerEntry
+		sm.owners.IterCb(func(owner string, od *ownerData) {
+			ownersList = append(ownersList, ownerEntry{owner: owner, od: od})
+		})
+
 		var needed []*gossip_pb.GossipEntry
 		var matched, diffed int64
-		sm.owners.IterCb(func(owner string, od *ownerData) {
+		for _, oe := range ownersList {
 			if ownerHashes != nil {
-				if remoteHash, ok := ownerHashes[owner]; ok {
-					if sm.hashForOwner(owner) == remoteHash {
+				if remoteHash, ok := ownerHashes[oe.owner]; ok {
+					// hashForOwnerFull (not hashForOwner) is required here:
+					// the live-only hash matches across controllers that
+					// differ on tombstones, so anti-entropy would silently
+					// suppress tombstone divergence repair.
+					if sm.hashForOwnerFull(oe.owner) == remoteHash {
 						matched++
-						return
+						continue
 					}
 					diffed++
 				}
@@ -170,15 +188,15 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 				// this owner. Fall through and send everything (entries map
 				// lookups will see !exists).
 			}
-			od.mu.RLock()
-			for key, e := range od.entries {
+			oe.od.mu.RLock()
+			for key, e := range oe.od.entries {
 				remoteVersion, exists := remoteVersions[key]
 				if !exists || e.Version > remoteVersion {
 					needed = append(needed, e.toProto())
 				}
 			}
-			od.mu.RUnlock()
-		})
+			oe.od.mu.RUnlock()
+		}
 		sm.markAntiEntropyOwnersMatched(matched)
 		sm.markAntiEntropyOwnersDiffed(diffed)
 

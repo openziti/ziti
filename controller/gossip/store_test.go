@@ -19,6 +19,7 @@ package gossip
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -703,6 +704,143 @@ func TestDropOwner_UnknownOwner(t *testing.T) {
 	sm.reapTombstones()
 	_, exists = sm.owners.Get("ghost")
 	assert.False(t, exists, "empty drained marker should be compacted out")
+}
+
+// TestDropOwner_NoTombstones verifies that DropOwner on a tombstones=false
+// state map compacts the ownerData synchronously. The reaper does not run
+// for non-tombstone state maps, so leaving the ownerData drained-but-present
+// would leak it forever and reject all future writes for the same owner.
+func TestDropOwner_NoTombstones(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	st := Register[string](store, StateTypeConfig[string]{
+		Name:       "no_tombstones",
+		Encode:     encodeString,
+		Decode:     decodeString,
+		Tombstones: false,
+	})
+	sm := store.getStateMap("no_tombstones")
+
+	require.NoError(t, st.Set("k1", "owner1", "v1"))
+	require.NoError(t, st.Set("k2", "owner1", "v2"))
+	_, exists := sm.owners.Get("owner1")
+	require.True(t, exists)
+
+	st.DropOwner("owner1")
+
+	_, exists = sm.owners.Get("owner1")
+	assert.False(t, exists, "ownerData must be compacted synchronously for tombstones=false")
+
+	// A fresh write for the same owner should succeed and create a new
+	// non-drained ownerData.
+	require.NoError(t, st.Set("k3", "owner1", "v3"))
+	val, _, ok := st.GetForOwner("owner1", "k3")
+	require.True(t, ok)
+	assert.Equal(t, "v3", val)
+}
+
+// TestHashForOwnerFull_NoCmapReentryDeadlock guards against the deadlock
+// that the digest handler's owner-hash short-circuit ran into in production.
+//
+// The bad pattern: call sm.hashForOwnerFull(owner) from inside an
+// sm.owners.IterCb callback. IterCb holds the cmap shard RLock for the
+// duration of the iteration; hashForOwnerFull internally does
+// sm.getOwner -> cmap.Get which tries to RLock the same shard. Go's
+// sync.RWMutex is writer-priority: any concurrent Upsert that's queued
+// for WLock causes the recursive RLock attempt to wait, which never
+// completes because the outer RLock is still held by the same goroutine.
+//
+// The test reproduces the conditions: continuous writers + a routine
+// that does IterCb+hashForOwnerFull on the same stateMap. With the bug,
+// the routine never returns. With the fix in handlers.go (collect owners
+// first, evaluate hashes outside the iteration), it does.
+func TestHashForOwnerFull_NoCmapReentryDeadlock(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	st := newTestStateType(store, nil)
+	for i := 0; i < 50; i++ {
+		owner := fmt.Sprintf("owner%d", i)
+		require.NoError(t, st.Set(fmt.Sprintf("k%d", i), owner, "v"))
+	}
+	sm := store.getStateMap("test")
+
+	stop := make(chan struct{})
+	defer close(stop)
+	// Concurrent writers that contend the same shards via Upsert.
+	for w := 0; w < 4; w++ {
+		go func(w int) {
+			for i := 0; ; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				_ = st.Set(fmt.Sprintf("rk%d", i),
+					fmt.Sprintf("racewriter%d-%d", w, i%10), "v")
+			}
+		}(w)
+	}
+
+	// Mirror the digest handler's flow: collect owners under iteration,
+	// then call hashForOwnerFull outside. With the bug (hashForOwnerFull
+	// inside the IterCb callback) this loop would deadlock under writer
+	// pressure.
+	done := make(chan struct{})
+	go func() {
+		var owners []string
+		sm.owners.IterCb(func(owner string, _ *ownerData) {
+			owners = append(owners, owner)
+		})
+		for _, o := range owners {
+			_ = sm.hashForOwnerFull(o)
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("hashForOwnerFull pattern deadlocked - cmap re-entry under writer contention")
+	}
+}
+
+// TestHashForOwnerFull_DetectsTombstoneDivergence is the regression test for
+// the anti-entropy short-circuit bug. Two stateMaps with identical live
+// entries but different tombstone state must produce different full-hashes,
+// or anti-entropy would treat them as in sync and never converge the
+// tombstones.
+func TestHashForOwnerFull_DetectsTombstoneDivergence(t *testing.T) {
+	storeA, _ := newTestStore()
+	defer storeA.Stop()
+	storeB, _ := newTestStore()
+	defer storeB.Stop()
+
+	stA := newTestStateType(storeA, nil)
+	stB := newTestStateType(storeB, nil)
+
+	// Both stores have the same live entry.
+	require.NoError(t, stA.Set("live", "o1", "v"))
+	require.NoError(t, stB.Set("live", "o1", "v"))
+
+	// Both originally had "dead" too, then A tombstoned it. B never saw
+	// either the live "dead" or the tombstone.
+	require.NoError(t, stA.Set("dead", "o1", "v"))
+	stA.Delete("dead", "o1")
+
+	smA := storeA.getStateMap("test")
+	smB := storeB.getStateMap("test")
+
+	liveA := smA.hashForOwner("o1")
+	liveB := smB.hashForOwner("o1")
+	assert.Equal(t, liveA, liveB,
+		"live-only hashes must match (only live entries are equal); this is the bug surface")
+
+	fullA := smA.hashForOwnerFull("o1")
+	fullB := smB.hashForOwnerFull("o1")
+	assert.NotEqual(t, fullA, fullB,
+		"full hashes must differ when tombstone state differs; otherwise anti-entropy short-circuit suppresses tombstone divergence repair")
 }
 
 func TestListenerNotifications(t *testing.T) {

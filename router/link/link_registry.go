@@ -189,17 +189,32 @@ func (self *linkRegistryImpl) DebugForgetLink(linkId string) bool {
 
 func (self *linkRegistryImpl) LinkAccepted(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	// Side-effect events queued outside the registry lock: queueEvent does a
+	// bounded-channel send and blocks when the event loop is backlogged. Doing
+	// it while holding the lock caused concurrent LinkAccepted/DialSucceeded
+	// goroutines to pile up behind one back-pressured event channel send.
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
 func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
-func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
+// applyLinkLocked applies the incoming link. The caller must hold self.Lock().
+// Returns any events that should be queued after the lock is released; the
+// caller is responsible for invoking queueEvent on each one.
+func (self *linkRegistryImpl) applyLinkLocked(link xlink.Xlink) (xlink.Xlink, bool, []event) {
 	log := logrus.WithField("dest", link.DestinationId()).
 		WithField("linkProtocol", link.LinkProtocol()).
 		WithField("newLinkId", link.Id()).
@@ -208,8 +223,10 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 	if link.IsClosed() {
 		log.Info("link being registered, but is already closed, skipping registration")
-		return nil, false
+		return nil, false, nil
 	}
+
+	var pending []event
 
 	if existing, _ := self.GetLink(link.Key()); existing != nil {
 		log = log.WithField("currentLinkId", existing.Id()).
@@ -218,7 +235,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		if existing == link {
 			log.Warn("link was re-applied, should not happen, not making any changes")
 			debugz.DumpLocalStack()
-			return nil, true
+			return nil, true, nil
 		}
 
 		// If the id is the same, we want to throw away the older one, since the new one is a replacement.
@@ -242,7 +259,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 					}
 				})
 			}
-			return existing, false
+			return existing, false, nil
 		}
 
 		log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
@@ -250,8 +267,9 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		// Queue the fault through the event loop so the tombstone version is
 		// assigned after any pending live entry versions from the notification
 		// cycle. Sending directly from a goroutine races with the notification
-		// cycle's version stamping.
-		self.queueEvent(&addLinkFaultForReplacedLink{link: existing})
+		// cycle's version stamping. Returned via `pending` so the caller can
+		// queue it after releasing the registry lock.
+		pending = append(pending, &addLinkFaultForReplacedLink{link: existing})
 
 		// Close the link asynchronously to avoid blocking the registry.
 		closeTimeout := func() time.Duration {
@@ -271,11 +289,14 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkByIdMap[link.Id()] = link
 	self.linkMapLocks.Unlock()
 
-	self.updateLinkStateEstablished(link)
+	pending = append(pending, &updateLinkStatusForLink{
+		link:   link,
+		status: StatusEstablished,
+	})
 
 	log.Info("link registered")
 
-	return nil, true
+	return nil, true, pending
 }
 
 func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
@@ -636,7 +657,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 			// If a link was accepted from the other side while we were
 			// dialing, check if our dialed link would lose the duplicate
 			// detection comparison. If so, close it early to avoid the
-			// heavier applyLink duplicate path. If our link would win,
+			// heavier applyLinkLocked duplicate path. If our link would win,
 			// let it go through DialSucceeded to properly replace the
 			// accepted link.
 			if existing, _ := self.GetLink(state.linkKey); existing != nil && existing.Id() < link.Id() {

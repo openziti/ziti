@@ -375,16 +375,20 @@ func (sm *stateMap) registerMetrics(reg metrics.Registry) {
 // DropOwner is called (e.g., a router is deleted), drained is set under the
 // write lock after all live entries have been tombstoned. While drained,
 // applyEntryLocked rejects all writes and read methods return zero values.
-// Once tombstones have aged out via reapTombstones (so entries is empty), the
-// reaper removes the ownerData from sm.owners under the cmap shard write lock
-// with a check that re-validates drained && empty atomically. If a new write
-// for the same owner arrives after removal, a fresh non-drained ownerData is
-// created.
+// For tombstones=true state types, the ownerData waits for its tombstones to
+// age out via reapTombstones; the reaper then removes the ownerData from
+// sm.owners under the cmap shard write lock with a check that re-validates
+// drained && empty atomically. For tombstones=false state types there is no
+// reaper, so dropOwner compacts the ownerData synchronously after clearing
+// entries. In both cases, if a new write for the same owner arrives after
+// removal, a fresh non-drained ownerData is created.
 type ownerData struct {
 	mu            sync.RWMutex
 	entries       map[string]*entry // key -> entry, including tombstones
 	hash          uint64            // FNV-64a of sorted (key||version) over live entries
 	hashDirty     bool              // hash needs recomputation
+	fullHash      uint64            // FNV-64a over all entries including tombstones
+	fullHashDirty bool              // fullHash needs recomputation
 	maxVersion    uint64            // highest version ever observed for this owner
 	nonTombstones int64             // count of live (non-tombstone) entries
 	drained       bool              // dropOwner called; rejects writes and eligible for compaction
@@ -392,8 +396,9 @@ type ownerData struct {
 
 func newOwnerData() *ownerData {
 	return &ownerData{
-		entries:   map[string]*entry{},
-		hashDirty: true,
+		entries:       map[string]*entry{},
+		hashDirty:     true,
+		fullHashDirty: true,
 	}
 }
 
@@ -451,8 +456,8 @@ func (sm *stateMap) entryAt(owner, key string) (*entry, bool) {
 // owner.mu (already held by the caller). Returns (wasSet, isCreate). When
 // wasSet is false the version check rejected the incoming entry, the owner is
 // drained, or there was no change. Aggregates (maxVersion, nonTombstones,
-// hashDirty) are updated in-place. The caller is responsible for listener
-// notification and broadcast after releasing the lock.
+// hashDirty, fullHashDirty) are updated in-place. The caller is responsible
+// for listener notification and broadcast after releasing the lock.
 func (sm *stateMap) applyEntryLocked(od *ownerData, incoming *entry) (wasSet, isCreate bool) {
 	if od.drained {
 		return false, false
@@ -470,6 +475,9 @@ func (sm *stateMap) applyEntryLocked(od *ownerData, incoming *entry) (wasSet, is
 	if incoming.Version > od.maxVersion {
 		od.maxVersion = incoming.Version
 	}
+	// fullHash sees every entry change (live or tombstone) since it covers
+	// both. hashDirty only flips when the live set changes.
+	od.fullHashDirty = true
 	if incoming.Tombstone {
 		if wasLive {
 			od.nonTombstones--
@@ -609,6 +617,9 @@ func (sm *stateMap) delete(key, owner string, origin ChangeOrigin) {
 		existing, ok := od.entries[key]
 		delete(od.entries, key)
 		notify := ok && !existing.Tombstone
+		if ok {
+			od.fullHashDirty = true
+		}
 		if notify {
 			od.nonTombstones--
 			od.hashDirty = true
@@ -681,6 +692,7 @@ func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
 	}
 	if len(produced) > 0 {
 		od.hashDirty = true
+		od.fullHashDirty = true
 	}
 	od.mu.Unlock()
 
@@ -693,6 +705,23 @@ func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
 		if origin == OriginLocal && t.e != nil {
 			sm.broadcastDelta(t.e)
 		}
+	}
+
+	// For tombstones=false state types there's nothing to age out and the
+	// reaper does not run, so the ownerData would be drained forever and
+	// never compacted out of sm.owners. Compact it synchronously here. The
+	// RemoveCb predicate re-checks drained && empty under the owner lock so
+	// a racing write (which would have been rejected anyway thanks to
+	// drained=true) doesn't cause us to drop a fresh ownerData.
+	if !sm.config.tombstones {
+		sm.owners.RemoveCb(owner, func(_ string, od *ownerData, exists bool) bool {
+			if !exists {
+				return false
+			}
+			od.mu.Lock()
+			defer od.mu.Unlock()
+			return od.drained && len(od.entries) == 0
+		})
 	}
 }
 
@@ -773,14 +802,18 @@ func (sm *stateMap) getDigest() []*gossip_pb.DigestEntry {
 	return digest
 }
 
-// getOwnerDigests returns per-owner FNV-64a hashes for every owner that has
-// any entries. Used to populate GossipDigest.OwnerDigests so the receiver
-// can short-circuit owners that already match without doing per-entry
-// version comparison.
+// getOwnerDigests returns per-owner FNV-64a hashes (over live + tombstone
+// entries) for every owner that has any entries. Used to populate
+// GossipDigest.OwnerDigests so the receiver can short-circuit owners that
+// already match without doing per-entry version comparison.
+//
+// Uses hashForOwnerFull rather than the live-only hashForOwner so tombstone
+// divergence (e.g., one controller has a tombstone the other never saw) is
+// still detectable by anti-entropy.
 func (sm *stateMap) getOwnerDigests() []*gossip_pb.OwnerDigest {
 	// Collect owner identifiers first, then hash outside the cmap iteration
-	// so hashForOwner (which acquires its own owner.mu) doesn't nest with
-	// the cmap shard lock more than necessary.
+	// so hashForOwnerFull (which acquires its own owner.mu) doesn't nest
+	// with the cmap shard lock more than necessary.
 	var owners []string
 	sm.owners.IterCb(func(owner string, _ *ownerData) {
 		owners = append(owners, owner)
@@ -789,7 +822,7 @@ func (sm *stateMap) getOwnerDigests() []*gossip_pb.OwnerDigest {
 	for _, owner := range owners {
 		digests = append(digests, &gossip_pb.OwnerDigest{
 			Owner: owner,
-			Hash:  sm.hashForOwner(owner),
+			Hash:  sm.hashForOwnerFull(owner),
 		})
 	}
 	return digests
@@ -863,10 +896,18 @@ func (sm *stateMap) reapTombstones() {
 	var emptyDrained []string
 	sm.owners.IterCb(func(owner string, od *ownerData) {
 		od.mu.Lock()
+		reaped := 0
 		for key, e := range od.entries {
 			if e.Tombstone && e.UpdatedAt.Before(cutoff) {
 				delete(od.entries, key)
+				reaped++
 			}
+		}
+		// Reaping removes tombstones from od.entries, which changes the
+		// full-hash set (not the live-only hash — those are already
+		// excluded). Mark dirty so anti-entropy short-circuit recomputes.
+		if reaped > 0 {
+			od.fullHashDirty = true
 		}
 		if od.drained && len(od.entries) == 0 {
 			emptyDrained = append(emptyDrained, owner)
@@ -979,6 +1020,63 @@ func (sm *stateMap) hashForOwner(owner string) uint64 {
 	od.hash = h.Sum64()
 	od.hashDirty = false
 	return od.hash
+}
+
+// hashForOwnerFull returns a FNV-64a hash of the owner's entries including
+// tombstones. Used by anti-entropy's per-owner short-circuit. The live-only
+// hashForOwner is unsuitable there because two controllers can have matching
+// live entries while differing on tombstones, and the short-circuit would
+// suppress the divergence repair.
+//
+// Tombstone keys are mixed in with a sentinel byte so a key that exists as
+// live with version V hashes differently from the same key as tombstone with
+// version V.
+func (sm *stateMap) hashForOwnerFull(owner string) uint64 {
+	od := sm.getOwner(owner)
+	if od == nil {
+		return 0
+	}
+
+	od.mu.RLock()
+	if !od.fullHashDirty {
+		h := od.fullHash
+		od.mu.RUnlock()
+		return h
+	}
+	od.mu.RUnlock()
+
+	od.mu.Lock()
+	defer od.mu.Unlock()
+	if !od.fullHashDirty {
+		return od.fullHash
+	}
+
+	type entryKey struct {
+		key       string
+		version   uint64
+		tombstone bool
+	}
+	keys := make([]entryKey, 0, len(od.entries))
+	for k, e := range od.entries {
+		keys = append(keys, entryKey{key: k, version: e.Version, tombstone: e.Tombstone})
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i].key < keys[j].key })
+
+	h := fnv.New64a()
+	var buf [8]byte
+	for _, k := range keys {
+		_, _ = h.Write([]byte(k.key))
+		binary.LittleEndian.PutUint64(buf[:], k.version)
+		_, _ = h.Write(buf[:])
+		if k.tombstone {
+			_, _ = h.Write([]byte{1})
+		} else {
+			_, _ = h.Write([]byte{0})
+		}
+	}
+	od.fullHash = h.Sum64()
+	od.fullHashDirty = false
+	return od.fullHash
 }
 
 func entryFromProto(pb *gossip_pb.GossipEntry) *entry {
