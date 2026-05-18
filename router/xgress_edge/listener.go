@@ -57,6 +57,7 @@ import (
 
 var peerHeaderRequestMappings = map[uint32]uint32{
 	uint32(sdkedge.PublicKeyHeader):        uint32(sdkedge.PublicKeyHeader),
+	uint32(sdkedge.CryptoMethodHeader):     uint32(sdkedge.CryptoMethodHeader),
 	uint32(sdkedge.CallerIdHeader):         uint32(sdkedge.CallerIdHeader),
 	uint32(sdkedge.AppDataHeader):          uint32(sdkedge.AppDataHeader),
 	uint32(sdkedge.ConnectionMarkerHeader): uint32(sdkedge.ConnectionMarkerHeader),
