@@ -96,9 +96,14 @@ jobs:
       # Dual checkout: workflow-src/ holds the orchestrator script (may not
       # exist on older tags); release-src/ holds the Dockerfile + image
       # assets at the release commit.
+      # ref: on release events github.ref is the tag (would defeat the
+      # dual-checkout), so force the default branch. On workflow_dispatch
+      # use github.ref so a human can dispatch from a feature branch to
+      # test orchestrator changes.
       - name: Checkout Workflow Scripts (current branch)
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || github.ref }}
           path: workflow-src
 
       - name: Checkout Release Snapshot
