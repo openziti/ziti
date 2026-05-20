@@ -93,10 +93,19 @@ jobs:
       - name: Debug action
         uses: hmarr/debug-action@v3.0.0
 
-      - name: Checkout Workspace at Release Commit
+      # Dual checkout: workflow-src/ holds the orchestrator script (may not
+      # exist on older tags); release-src/ holds the Dockerfile + image
+      # assets at the release commit.
+      - name: Checkout Workflow Scripts (current branch)
+        uses: actions/checkout@v6
+        with:
+          path: workflow-src
+
+      - name: Checkout Release Snapshot
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.resolve-tag.outputs.sha }}
+          path: release-src
 
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@v4
@@ -112,33 +121,10 @@ jobs:
           username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
-      # Build & push the openziti/quickstart image for this release tag.
-      #
-      # The script (dist/scripts/release-quickstart-image.sh) handles all the
-      # actual work and is idempotent. Two notes on the :latest tag:
-      #
-      #   1. Default behaviour: the script queries GitHub for the release
-      #      marked as "Latest" and only moves the Docker :latest tag if THIS
-      #      release tag matches that. So a hotfix on an older minor will not
-      #      clobber :latest just because someone reran the workflow against
-      #      it.
-      #
-      #   2. Manual override: the workflow_dispatch input `force_latest`
-      #      (default: false) flips this. The shell snippet below translates
-      #      that boolean input into the local variable FORCE_LATEST_FLAG,
-      #      which is either empty or the literal string "--force-latest".
-      #      FORCE_LATEST_FLAG (the YAML-side variable) and --force-latest
-      #      (the script-side flag) are the same control surface -- the
-      #      variable's only job is to conditionally pass the flag through.
-      #      When set, the script skips the GitHub "Latest release" check and
-      #      always moves :latest to this tag. Use this only when you need to
-      #      override GitHub's idea of which release is current -- e.g. you
-      #      marked the wrong release as latest in the UI and need to fix it
-      #      without re-clicking through the GitHub release UI.
-      #
-      # On `release: published` triggers, github.event.inputs is empty, so
-      # FORCE_LATEST_FLAG stays empty, --force-latest is never passed, and
-      # behaviour falls through to case (1).
+      # By default the script moves :latest only if this tag is GitHub's
+      # "Latest release". The workflow_dispatch input `force_latest`
+      # translates to FORCE_LATEST_FLAG below, which conditionally passes
+      # --force-latest to bypass that check.
       - name: Build & Push Multi-Platform Quickstart Image
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -149,18 +135,23 @@ jobs:
           if [[ "${{ github.event.inputs.force_latest }}" == "true" ]]; then
             FORCE_LATEST_FLAG="--force-latest"
           fi
-          bash dist/scripts/release-quickstart-image.sh \
+          bash workflow-src/dist/scripts/release-quickstart-image.sh \
             --tag "${{ needs.resolve-tag.outputs.tag }}" \
             --image-repo "${ZITI_QUICKSTART_IMAGE}" \
+            --context-dir release-src/quickstart/docker/image \
             ${FORCE_LATEST_FLAG}
 
   release-quickstart-cloudfront:
     name: Deploy get.openziti.io CloudFront Function
     needs: resolve-tag
-    # CloudFront deploy only makes sense on the official upstream repo
+    # CloudFront deploy only makes sense on the official upstream repo --
+    # forks could push to their own DockerHub repo but cannot deploy to
+    # someone else's CloudFront distribution.
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-24.04
     steps:
+      # Single checkout at the release tag: python, routes.yml, and the
+      # Jinja template all come from the release snapshot.
       - name: Checkout Workspace at Release Commit
         uses: actions/checkout@v6
         with:
@@ -172,6 +163,9 @@ jobs:
           pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
           python --version
 
+      # GITHUB_SHA must be the resolved tag's commit, not github.sha
+      # (which on workflow_dispatch is the default branch HEAD). The
+      # python embeds it into routes.yml's templated raw-GitHub URLs.
       - name: Deploy CloudFront Function
         shell: bash
         env:
