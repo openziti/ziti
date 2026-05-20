@@ -1,72 +1,102 @@
 name: Release Quickstart Workflow
+# Publishes the openziti/quickstart Docker image and deploys the get.openziti.io
+# CloudFront function for a given release tag.
+#
+# Triggers:
+#   - release: published        (a GitHub release has been published, with its
+#                                assets already uploaded)
+#   - workflow_dispatch         (manual; required `release_tag` input)
+#
+# Both jobs are idempotent and independently re-runnable from the Actions UI.
 on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - main
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag (e.g., v1.2.3)'
+        description: 'Release tag to (re)publish, e.g. v1.6.7'
         required: true
         type: string
+      force_latest:
+        description: 'Force-move :latest to this tag even if GitHub does not mark this release as latest'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  release-quickstart:
+  resolve-tag:
+    name: Resolve Release Tag
+    # only run on the official upstream repo, or on a fork that overrides the
+    # quickstart image repo to a destination it can push to
+    if: github.repository_owner == 'openziti' || vars.ZITI_QUICKSTART_IMAGE != ''
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Resolve release tag and commit SHA
+        id: resolve
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.release_tag }}
+          RELEASE_TAG:  ${{ github.event.release.tag_name }}
+          GH_TOKEN:     ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -o errexit
+          set -o pipefail
+
+          if [[ -n "${DISPATCH_TAG:-}" ]]; then
+            TAG="${DISPATCH_TAG}"
+          elif [[ -n "${RELEASE_TAG:-}" ]]; then
+            TAG="${RELEASE_TAG}"
+          else
+            echo "ERROR: no release tag provided (neither dispatch input nor release event)" >&2
+            exit 1
+          fi
+
+          if ! [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: release tag '${TAG}' is not a release semver (expected vMAJOR.MINOR.PATCH)" >&2
+            exit 1
+          fi
+
+          # resolve the commit the tag points at; this is the snapshot we will
+          # check out for both jobs so the Dockerfile, routes.yml, and python
+          # deploy script all come from the released revision rather than main
+          SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" --jq '.object.sha')"
+          if [[ -z "${SHA}" || "${SHA}" == "null" ]]; then
+            echo "ERROR: failed to resolve commit SHA for tag '${TAG}'" >&2
+            exit 1
+          fi
+
+          # if the tag is annotated, dereference one level to the commit object
+          OBJ_TYPE="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${SHA}" --jq '.object.type' 2>/dev/null || echo "commit")"
+          if [[ "${OBJ_TYPE}" == "commit" ]]; then
+            SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${SHA}" --jq '.object.sha' 2>/dev/null || echo "${SHA}")"
+          fi
+
+          echo "tag=${TAG}" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" | tee -a "$GITHUB_OUTPUT"
+
+  release-quickstart-image:
+    # NOTE: the job display name "Release Quickstart Job" is referenced by name
+    # in .github/workflows/promote-downstreams.yml's `ignore-checks`. Don't
+    # rename without updating that file too.
     name: Release Quickstart Job
-    # this is only run on the official upstream repo when a PR is merged to the
-    # default branch "main" or a release tag is pushed or for the same
-    # conditions in a repo fork that overrides the container image repo to push
-    # to; merges to main trigger a quickstart release with a commit SHA suffix
-    # featuring the previous ziti binary release version, whereas release tag
-    # pushes trigger a quickstart release with the same tag name and the same
-    # ziti binary release version
-    if: (github.repository_owner == 'openziti' || vars.ZITI_QUICKSTART_IMAGE != '') && (
-        (startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-')) || (
-          github.event.pull_request.merged == true 
-          && contains(github.event.pull_request.labels.*.name, 'quickstartrelease')
-        ) || github.event_name == 'workflow_dispatch'
-      )
+    needs: resolve-tag
     runs-on: ubuntu-24.04
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
-      # use github.ref, not github.head_ref, because this workflow should only run on merged PRs in the target/base
-      # branch context, not the PR source branch
-      GITHUB_REF:            ${{ github.ref }}
-      # use github.sha, not github.pull_request.head.sha, because this workflow should only run on merged PRs in the
-      # target/base branch, not the PR source branch
-      GITHUB_SHA:            ${{ github.sha }}
     steps:
       - name: Debug action
         uses: hmarr/debug-action@v3.0.0
 
-      - name: Wait for other builds to complete
-        uses: lewagon/wait-on-check-action@v1.5.0
-        with:
-          ref: ${{ env.GITHUB_SHA }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          # seconds between polling the checks api for job statuses
-          wait-interval: 20
-          # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
-          running-workflow-name: Release Quickstart Job
-          # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: Fablab Smoketest,Fablab HA Smoketest,Publish Release Candidate Linux Packages,Publish Release Candidate Docker Images,POST Webhook,Parse Tag Regex
-
-      - name: Checkout Workspace
+      - name: Checkout Workspace at Release Commit
         uses: actions/checkout@v6
-
-      - name: Install Go
-        uses: ./.github/actions/setup-go
-
-      - name: Install Ziti CI
-        uses: openziti/ziti-ci@v1
+        with:
+          ref: ${{ needs.resolve-tag.outputs.sha }}
 
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@v4
@@ -74,129 +104,79 @@ jobs:
           platforms: amd64,arm64
 
       - name: Set Up Docker BuildKit
-        id: buildx
         uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
         uses: docker/login-action@v4
         with:
-          # it is preferable to obtain the username from a var so that
-          # recurrences of the same string are not masked in CI output
           username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
-      - name: Compute the Ziti Quickstart Version String
-        id: get_version
+      # Build & push the openziti/quickstart image for this release tag.
+      #
+      # The script (dist/scripts/release-quickstart-image.sh) handles all the
+      # actual work and is idempotent. Two notes on the :latest tag:
+      #
+      #   1. Default behaviour: the script queries GitHub for the release
+      #      marked as "Latest" and only moves the Docker :latest tag if THIS
+      #      release tag matches that. So a hotfix on an older minor will not
+      #      clobber :latest just because someone reran the workflow against
+      #      it.
+      #
+      #   2. Manual override: the workflow_dispatch input `force_latest`
+      #      (default: false) flips this. The shell snippet below translates
+      #      that boolean input into the local variable FORCE_LATEST_FLAG,
+      #      which is either empty or the literal string "--force-latest".
+      #      FORCE_LATEST_FLAG (the YAML-side variable) and --force-latest
+      #      (the script-side flag) are the same control surface -- the
+      #      variable's only job is to conditionally pass the flag through.
+      #      When set, the script skips the GitHub "Latest release" check and
+      #      always moves :latest to this tag. Use this only when you need to
+      #      override GitHub's idea of which release is current -- e.g. you
+      #      marked the wrong release as latest in the UI and need to fix it
+      #      without re-clicking through the GitHub release UI.
+      #
+      # On `release: published` triggers, github.event.inputs is empty, so
+      # FORCE_LATEST_FLAG stays empty, --force-latest is never passed, and
+      # behaviour falls through to case (1).
+      - name: Build & Push Multi-Platform Quickstart Image
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF_NAME: ${{ github.event.inputs.release_tag || github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
-          function validateSemver() {
-            if ! [[ "${1}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "ERROR: ${1} is not a release semver" >&2
-              return 1
-            fi
-          }
-
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # Set output parameters for release tags
-            QUICKSTART_VERSION="${GITHUB_REF_NAME}"
-
-          elif [[ "${GITHUB_REF_NAME}" =~ ^main$ ]]; then
-            # compute the latest release version to install in the quickstart image
-            QUICKSTART_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version ${ZITI_BASE_VERSION:+--base-version $ZITI_BASE_VERSION})"
-            validateSemver "${QUICKSTART_VERSION}"
-
-            # Append short SHA to identify quickstart docker images shipped on merge to main
-            QUICKSTART_VERSION="${QUICKSTART_VERSION}-$(git rev-parse --short ${GITHUB_SHA})"
-
-          else
-            echo "ERROR: Unexpected GITHUB_REF_NAME=${GITHUB_REF_NAME}" >&2
-            exit 1
+          FORCE_LATEST_FLAG=""
+          if [[ "${{ github.event.inputs.force_latest }}" == "true" ]]; then
+            FORCE_LATEST_FLAG="--force-latest"
           fi
+          bash dist/scripts/release-quickstart-image.sh \
+            --tag "${{ needs.resolve-tag.outputs.tag }}" \
+            --image-repo "${ZITI_QUICKSTART_IMAGE}" \
+            ${FORCE_LATEST_FLAG}
 
-          # configure the env var used by the quickstart's Dockerfile to
-          # download the correct version of ziti for the target architecture of
-          # each image build by trimming the hyphenated short sha suffix so that
-          # the preceding release version of the ziti executable is installed in
-          # the quickstart container image; ensure the QUICKSTART_VERSION
-          # (container image tag) does not have a leading 'v' and the
-          # ZITI_VERSION_OVERRIDE (GitHub tag ref) does have a leading 'v'
-
-          QUICKSTART_VERSION="${QUICKSTART_VERSION#v}"
-          echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
-          echo ZITI_VERSION_OVERRIDE=v${QUICKSTART_VERSION%-*} | tee -a $GITHUB_OUTPUT
-
-      - name: Check if Release is Highest Version
-        id: check_highest
-        if: startsWith(github.ref_name, 'v') || github.event.inputs.release_tag != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF_NAME: ${{ github.event.inputs.release_tag || github.ref_name }}
-        shell: bash
-        run: |
-          H_HIGHEST_VERSION=$(
-            gh release list --repo "${GITHUB_REPOSITORY}" \
-                            --limit 999 \
-                            --exclude-drafts \
-                            --exclude-pre-releases \
-                            --json tagName \
-                            --jq '.[].tagName' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V \
-            | tail -1
-          )
-          CURRENT_VERSION="${GITHUB_REF_NAME}"
-          
-          if [[ "$CURRENT_VERSION" == "$H_HIGHEST_VERSION" ]]; then
-            echo "highest=true" | tee -a $GITHUB_OUTPUT
-            echo "INFO: ${CURRENT_VERSION} is the highest release version"
-          else
-            echo "highest=false" | tee -a $GITHUB_OUTPUT
-            echo "INFO: ${CURRENT_VERSION} is not the highest release (highest is ${H_HIGHEST_VERSION})"
-            echo "INFO: Skipping quickstart release for hotfix"
-          fi
-
-      # container image tag :latest is published on merge to default branch "main" and on release tags
-      - name: Configure Quickstart Container
-        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
-        env:
-          IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
-          IMAGE_TAG:  ${{ steps.get_version.outputs.QUICKSTART_VERSION }}
-        id: tagprep_qs
-        shell: bash
-        run: |
-          DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          DOCKER_TAGS+=",${IMAGE_REPO}:latest"
-          echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
-
-      - name: Build & Push Multi-Platform Quickstart Container Image to Hub
-        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
-        uses: docker/build-push-action@v7
+  release-quickstart-cloudfront:
+    name: Deploy get.openziti.io CloudFront Function
+    needs: resolve-tag
+    # CloudFront deploy only makes sense on the official upstream repo
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Workspace at Release Commit
+        uses: actions/checkout@v6
         with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/quickstart/docker/image
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_qs.outputs.DOCKER_TAGS }}
-          build-args: |
-            ZITI_VERSION_OVERRIDE=${{ steps.get_version.outputs.ZITI_VERSION_OVERRIDE }}
-            GITHUB_REPO_OWNER=${{ github.repository_owner }}
-            GITHUB_REPO_NAME=${{ github.event.repository.name }}
-          push: true
+          ref: ${{ needs.resolve-tag.outputs.sha }}
 
       - name: Configure Python
-        if: steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main'
         shell: bash
         run: |
           pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
           python --version
-        
-      - name: Deploy the CloudFront Function for get.openziti.io
-        if: (github.repository_owner == 'openziti') && (steps.check_highest.outputs.highest == 'true' || github.ref_name == 'main')
+
+      - name: Deploy CloudFront Function
         shell: bash
-        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+          AWS_REGION:            ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+          GITHUB_SHA:            ${{ needs.resolve-tag.outputs.sha }}
+        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py

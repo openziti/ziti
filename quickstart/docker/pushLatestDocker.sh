@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+#
+# Local developer helper for building (and optionally pushing) the
+# openziti/quickstart Docker image. The canonical release path is the
+# `release-quickstart.yml` GitHub workflow, which calls
+# `dist/scripts/release-quickstart-image.sh`. Do not use this script to push
+# production tags -- it does not coordinate with GitHub's "Latest release" flag
+# and does not perform any idempotency checks against the registry.
+#
+# Typical local usage:
+#     ./pushLatestDocker.sh local           # build & load into local docker daemon
+#     ./pushLatestDocker.sh local mytag     # same, custom tag name
+#
 
 set -o errexit
 set -o nounset
