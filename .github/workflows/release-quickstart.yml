@@ -112,6 +112,33 @@ jobs:
           username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
+      # Build & push the openziti/quickstart image for this release tag.
+      #
+      # The script (dist/scripts/release-quickstart-image.sh) handles all the
+      # actual work and is idempotent. Two notes on the :latest tag:
+      #
+      #   1. Default behaviour: the script queries GitHub for the release
+      #      marked as "Latest" and only moves the Docker :latest tag if THIS
+      #      release tag matches that. So a hotfix on an older minor will not
+      #      clobber :latest just because someone reran the workflow against
+      #      it.
+      #
+      #   2. Manual override: the workflow_dispatch input `force_latest`
+      #      (default: false) flips this. The shell snippet below translates
+      #      that boolean input into the local variable FORCE_LATEST_FLAG,
+      #      which is either empty or the literal string "--force-latest".
+      #      FORCE_LATEST_FLAG (the YAML-side variable) and --force-latest
+      #      (the script-side flag) are the same control surface -- the
+      #      variable's only job is to conditionally pass the flag through.
+      #      When set, the script skips the GitHub "Latest release" check and
+      #      always moves :latest to this tag. Use this only when you need to
+      #      override GitHub's idea of which release is current -- e.g. you
+      #      marked the wrong release as latest in the UI and need to fix it
+      #      without re-clicking through the GitHub release UI.
+      #
+      # On `release: published` triggers, github.event.inputs is empty, so
+      # FORCE_LATEST_FLAG stays empty, --force-latest is never passed, and
+      # behaviour falls through to case (1).
       - name: Build & Push Multi-Platform Quickstart Image
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
