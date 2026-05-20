@@ -13,14 +13,31 @@ The enclosing project's GitHub releases are never updated and no Git tags are cr
 
 ### Release Process
 
-A quickstart release is created when either of the following conditions are met:
+A quickstart release is triggered automatically when a GitHub release of the enclosing project is
+**published** (i.e., the `release: published` event fires, after the release assets have been uploaded).
 
-1. OpenZiti, the enclosing project, is released by the OpenZiti team
-1. A pull request is merged into the trunk branch `main` with the label `quickstartrelease`
+The release-quickstart workflow can also be invoked manually from the GitHub Actions UI
+(`workflow_dispatch`) with an explicit release tag (e.g., `v1.6.7`). Use this when:
+
+- the automatic run failed for transient reasons and you want to rerun it, or
+- you need to republish the quickstart artifacts for an existing release without cutting a new one.
+
+Both jobs in the workflow are **idempotent and independently re-runnable**:
+
+- The Docker image push step checks the registry first and skips if `openziti/quickstart:vX.Y.Z`
+  already exists. The `:latest` tag is only moved when the input tag matches GitHub's "Latest release"
+  flag (or you pass `force_latest: true` on a manual run).
+- The CloudFront deploy is a re-publish each time; AWS handles repeated identical configurations
+  cleanly.
+
+If one job succeeds and the other fails, you can rerun the failed job alone from the Actions UI without
+redoing the work that already succeeded.
 
 ### Release Machinery
 
 The release process is encoded in [a GitHub workflow](../.github/workflows/release-quickstart.yml).
+The bulk of the Docker logic lives in [`dist/scripts/release-quickstart-image.sh`](../dist/scripts/release-quickstart-image.sh),
+which is runnable locally for testing.
 
 ### GitHub Raw Reverse Proxy
 
