@@ -40,10 +40,11 @@ link:
     - binding:          transport
       bind:             tls:0.0.0.0:10086
       advertise:        tls:127.0.0.1:10086
-    # Example of an additional link listener
+    # Example of an additional link listener (with an optional custom link type)
     # - binding:          transport
     #   bind:             tls:0.0.0.0:10087
     #   advertise:        tls:127.0.0.1:10087
+    #   type:             cellular
 
 # By having an 'edge' section defined, the ziti router will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge

@@ -32,10 +32,11 @@ link:
 {{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:{{ .Router.Edge.ListenerBindPort }}
 {{ if .Router.IsPrivate }}#{{ end }}      options:
 {{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
-{{ if .Router.IsPrivate }}#{{ end }}    # Example of an additional link listener
+{{ if .Router.IsPrivate }}#{{ end }}    # Example of an additional link listener (with an optional custom link type)
 {{ if .Router.IsPrivate }}#{{ end }}    # - binding:          transport
 {{ if .Router.IsPrivate }}#{{ end }}    #   bind:             tls:0.0.0.0:10086
 {{ if .Router.IsPrivate }}#{{ end }}    #   advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:10086
+{{ if .Router.IsPrivate }}#{{ end }}    #   type:             cellular
 
 {{ if .Router.IsFabric }}#{{ end }}listeners:
 # bindings of edge and tunnel requires an "edge" section below

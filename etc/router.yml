@@ -66,10 +66,11 @@ link:
     - binding:          transport
       bind:             tls:0.0.0.0:10086
       advertise:        tls:127.0.0.1:10086
-    # Example of an additional link listener
+    # Example of an additional link listener (with an optional custom link type)
     # - binding:          transport
     #   bind:             tls:0.0.0.0:10087
     #   advertise:        tls:127.0.0.1:10087
+    #   type:             cellular
 
 healthCheck:
   # Specifies the health check port. If not present, the health check will be disabled
