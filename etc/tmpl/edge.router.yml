@@ -40,9 +40,14 @@ link:
   dialers:
     - binding:          transport
   listeners:
+    # A router can listen for links on multiple ports or protocols by specifying multiple listeners.
     - binding:          transport
       bind:             tls:127.0.0.1:${LINK_LISTENER_PORT}
       advertise:        tls:127.0.0.1:${LINK_LISTENER_PORT}
+    # Example of an additional link listener
+    # - binding:          transport
+    #   bind:             tls:127.0.0.1:10086
+    #   advertise:        tls:127.0.0.1:10086
 
 
 # By having an 'edge' section defined, the ziti router will attempt to parse the edge configuration. Removing this
