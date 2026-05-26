@@ -19,6 +19,12 @@ single local node, and aligns the FSM-tracked member list and snapshot data so
 no stale peers leak through on restart. After it succeeds, restart the
 controller and add new peers normally with `ziti ops cluster add`.
 
+### End-to-End Encryption (e2ee) Improvements
+
+* Add support for negotiating e2ee scheme during Dial/Accept handshake
+* Allow hosting-side crypto material to be generated on per connection basis (instead of per terminator)
+
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
