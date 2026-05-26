@@ -19,7 +19,7 @@ package agentcli
 import (
 	"os"
 
-	"github.com/openziti/agent"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )

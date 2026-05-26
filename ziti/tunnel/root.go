@@ -28,8 +28,8 @@ import (
 	"github.com/openziti/ziti/v2/ziti/util"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/agent"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/tunnel"
 	"github.com/openziti/ziti/v2/tunnel/dns"

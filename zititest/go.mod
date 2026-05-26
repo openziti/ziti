@@ -13,18 +13,17 @@ replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
-	github.com/go-openapi/runtime v0.30.0
+	github.com/go-openapi/runtime v0.32.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.3.11
 	github.com/openziti/edge-api v0.31.0
 	github.com/openziti/fablab v0.6.16
-	github.com/openziti/foundation/v2 v2.0.91
-	github.com/openziti/identity v1.0.129
+	github.com/openziti/foundation/v2 v2.0.92
+	github.com/openziti/identity v1.0.130
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang v1.7.0
+	github.com/openziti/sdk-golang v1.8.0
 	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -34,7 +33,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
-	golang.org/x/net v0.54.0
+	golang.org/x/net v0.55.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -94,6 +93,7 @@ require (
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
@@ -166,7 +166,7 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/mattn/go-tty v0.0.8 // indirect
-	github.com/mdlayher/netlink v1.11.1 // indirect
+	github.com/mdlayher/netlink v1.11.2 // indirect
 	github.com/mdlayher/socket v0.6.0 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/michaelquigley/figlet v0.1.0 // indirect
@@ -208,6 +208,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.4 // indirect
 	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -237,12 +238,12 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect

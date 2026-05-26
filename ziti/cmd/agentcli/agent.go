@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentid"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller"
