@@ -534,8 +534,6 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7mt48=
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/onsi/gomega v1.13.0/go.mod h1:lRk9szgn8TxENtWd0Tp4c3wjlRfMTMH27I+3Je41yGY=
-github.com/openziti/agent v1.0.33 h1:W6LXs+dWIzg/V8KNJq501zUxFSjtDQTaBFdqOcUFCTg=
-github.com/openziti/agent v1.0.33/go.mod h1:pjQ9jSOl+9ZR/0Y9+wOwJhGekYwyai2uKB3YCd0nulI=
 github.com/openziti/channel/v4 v4.3.11 h1:ugezUhTEuSQnVFKUioN1gh6f+ZF4eBqx6mOrT5DrY5U=
 github.com/openziti/channel/v4 v4.3.11/go.mod h1:WZpOeuPliA7mJ3m7Pal8WdYu74eHMzkM/1Z9AMLmUAg=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
