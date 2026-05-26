@@ -19,10 +19,8 @@ package tunnel
 import (
 	"bufio"
 	"encoding/json"
-	"io"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -30,10 +28,9 @@ import (
 	"github.com/openziti/identity"
 	sdkInspect "github.com/openziti/sdk-golang/inspect"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/v2/common/agentid"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -71,21 +68,7 @@ func handleAgentDump(conn net.Conn) error {
 // HandleAgentAsyncOp handles channel-based agent operations for the tunnel, enabling commands
 // like inspect that use typed protobuf messages.
 func HandleAgentAsyncOp(conn net.Conn) error {
-	appIdBuf := []byte{0}
-	if _, err := io.ReadFull(conn, appIdBuf); err != nil {
-		return err
-	}
-	appId := appIdBuf[0]
-
-	if appId != agentid.AppIdAny && appId != AgentAppId {
-		return errors.New("invalid operation for tunnel")
-	}
-
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	listener := channel.NewExistingConnListener(&identity.TokenId{Token: "tunnel"}, conn, nil)
-	_, err := channel.NewChannel("agent", listener, channel.BindHandlerF(bindAgentChannel), options)
-	return err
+	return agent.HandleChannelConnection(conn, &identity.TokenId{Token: "tunnel"}, AgentAppId, channel.BindHandlerF(bindAgentChannel))
 }
 
 func bindAgentChannel(binding channel.Binding) error {
