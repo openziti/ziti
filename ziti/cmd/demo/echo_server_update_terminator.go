@@ -69,7 +69,7 @@ func (self *AgentEchoServerUpdateTerminatorAction) Run() error {
 		}
 	}
 
-	return agentcli.MakeAgentChannelRequest(addr, EchoServerAppId, self.makeRequest)
+	return agent.MakeChannelRequest(addr, EchoServerAppId, self.makeRequest)
 }
 
 func (self *AgentEchoServerUpdateTerminatorAction) makeRequest(ch channel.Channel) error {

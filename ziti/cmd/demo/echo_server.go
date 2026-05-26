@@ -295,26 +295,8 @@ func (self *echoServer) echo(connType string, conn io.ReadWriteCloser) {
 }
 
 func (self *echoServer) HandleCustomAgentAsyncOp(conn net.Conn) error {
-	logrus.Debug("received agent operation request")
-
-	appIdBuf := []byte{0}
-	_, err := io.ReadFull(conn, appIdBuf)
-	if err != nil {
-		return err
-	}
-	appId := appIdBuf[0]
-
-	if appId != EchoServerAppId {
-		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
-		return errors.New("invalid operation for controller")
-	}
-
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
 	tId := &identity.TokenId{Identity: self.zitiIdentity, Token: "echo-server"}
-	listener := channel.NewExistingConnListener(tId, conn, nil)
-	_, err = channel.NewChannel("agent", listener, channel.BindHandlerF(self.bindAgentChannel), options)
-	return err
+	return agent.HandleChannelConnection(conn, tId, EchoServerAppId, channel.BindHandlerF(self.bindAgentChannel))
 }
 
 func (self *echoServer) bindAgentChannel(binding channel.Binding) error {
