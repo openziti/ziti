@@ -1,15 +1,21 @@
 name: Promote Downstream Releases
 
-on: 
-  # may be triggered manually on a release tag that represents a prerelease to promote it to a release in the downstream package repositories and Docker Hub
+on:
+  # may be triggered manually to promote a release tag to stable in the downstream package repositories and Docker Hub.
+  # Dispatch from the tag itself, or from any branch and set the 'tag' input to the release tag to promote.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to promote, e.g. v2.0.0. Defaults to the ref the run was dispatched from; set this to promote a specific tag when dispatching from a branch.
+        required: false
+        type: string
   # GitHub release is marked stable, i.e., isPrerelease: false
   release:
     types: [released]  # this release event activity type excludes prereleases
 
-# cancel older, redundant runs of same workflow on same branch
+# cancel older, redundant runs of same workflow for the same tag (or dispatched ref)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -24,11 +30,14 @@ jobs:
       - name: Validate the Release Tag is a Stable Release Ref
         id: validate
         shell: bash
+        env:
+          # the 'tag' input when dispatched from a branch, otherwise the ref the run fired on (the tag)
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
+          if [[ "${PROMOTE_REF}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=${PROMOTE_REF#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
+            echo "${PROMOTE_REF} is not a semver stable release ref" >&2
             exit 1
           fi
 
@@ -55,14 +64,15 @@ jobs:
             | sort -V \
             | tail -1
           )
-          CURRENT_VERSION="${GITHUB_REF_NAME}"
-          
+          CURRENT_VERSION="${PROMOTE_REF}"
+
           if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
             echo "highest=true" | tee -a $GITHUB_OUTPUT
           else
             echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
         env:
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   promote_docker:
