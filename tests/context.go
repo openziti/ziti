@@ -984,7 +984,9 @@ func (ctx *TestContext) shutdownRouters() {
 
 // NewAdminCredentials returns OIDC-compatible UPDB credentials for the default admin user.
 func (ctx *TestContext) NewAdminCredentials() *edgeApis.UpdbCredentials {
-	return edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	creds := edgeApis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	creds.CaPool = ctx.ControllerCaPool()
+	return creds
 }
 
 // NewEdgeManagementApiWithToken returns a ManagementHelperClient pre-loaded with

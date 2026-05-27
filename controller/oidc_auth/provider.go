@@ -60,7 +60,6 @@ func createIssuerSpecificOidcProvider(ctx context.Context, issuer string, config
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		r := request.WithContext(context.WithValue(request.Context(), contextKeyHttpRequest, request))
 		r = request.WithContext(context.WithValue(r.Context(), contextKeyTokenState, &TokenState{}))
-		r = request.WithContext(op.ContextWithIssuer(r.Context(), issuerUrl))
 
 		oidcHandler.ServeHTTP(writer, r)
 	})
@@ -111,11 +110,17 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 
 }
 
-// newHttpRouter creates an OIDC HTTP router
+// newHttpRouter creates an OIDC HTTP router using the LegacyServer adapter. All OIDC
+// endpoint errors are routed through op.WriteError, which maps server_error to HTTP 500
+// and supports custom status codes via op.StatusError.
 func newHttpRouter(provider op.OpenIDProvider, config Config) (*mux.Router, error) {
 	if config.TokenSecret == "" {
 		return nil, errors.New("token secret must not be empty")
 	}
+
+	endpoints := *op.DefaultEndpoints
+	srv := newServer(provider, endpoints)
+	serverHandler := op.RegisterLegacyServer(srv, op.AuthorizeCallbackHandler(provider))
 
 	router := mux.NewRouter()
 
@@ -126,14 +131,14 @@ func newHttpRouter(provider op.OpenIDProvider, config Config) (*mux.Router, erro
 		}
 	})
 
-	loginRouter := newLogin(config.Storage, op.AuthCallbackURL(provider), op.NewIssuerInterceptor(provider.IssuerFromRequest))
+	loginRouter := newLogin(config.Storage, srv.AuthCallbackURL(), op.NewIssuerInterceptor(provider.IssuerFromRequest))
 
-	router.Handle("/oidc/"+WellKnownOidcConfiguration, http.StripPrefix("/oidc", provider))
-	router.Handle(WellKnownOidcConfiguration, provider)
+	router.Handle("/oidc/"+WellKnownOidcConfiguration, http.StripPrefix("/oidc", serverHandler))
+	router.Handle(WellKnownOidcConfiguration, serverHandler)
 
 	router.PathPrefix("/oidc/login").Handler(http.StripPrefix("/oidc/login", loginRouter.router))
 
-	router.PathPrefix("/oidc").Handler(http.StripPrefix("/oidc", provider))
+	router.PathPrefix("/oidc").Handler(http.StripPrefix("/oidc", serverHandler))
 
 	return router, nil
 }

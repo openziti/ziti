@@ -6,7 +6,61 @@
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v4.2.35 -> v4.3.11](https://github.com/openziti/channel/compare/v4.2.35...v4.3.11)
+    * [Issue #242](https://github.com/openziti/channel/issues/242) - Reconnecting channel shouldn't allow changing ids
+    * [Issue #235](https://github.com/openziti/channel/issues/235) - Bump allowed hello message headers size to 16k from 4k
+    * [Issue #228](https://github.com/openziti/channel/issues/228) - Ensure that Underlay never return nil on MultiChannel
+    * [Issue #226](https://github.com/openziti/channel/issues/226) - Allow specifying a minimum number of underlays for a channel, regardless of underlay type
+    * [Issue #225](https://github.com/openziti/channel/issues/225) - Add ChannelCreated to the UnderlayHandler API to allow handlers to be initialized with the channel before binding
+    * [Issue #224](https://github.com/openziti/channel/issues/224) - Update the underlay dispatcher to allow unknown underlay types to fall through to the default
+    * [Issue #222](https://github.com/openziti/channel/issues/222) - Allow injecting the underlay type into messages
+
+* github.com/openziti/edge-api: [v0.26.47 -> v0.27.5](https://github.com/openziti/edge-api/compare/v0.26.47...v0.27.5)
+    * [Issue #175](https://github.com/openziti/edge-api/issues/175) - ctrlChanListeners should have x-omit-empty: false attribute
+    * [Issue #170](https://github.com/openziti/edge-api/issues/170) - Add preferredLeader flag to controllers
+    * [Issue #167](https://github.com/openziti/edge-api/issues/167) - Add ctrlChanListeners to router types
+    * [Issue #164](https://github.com/openziti/edge-api/issues/164) - Add permissions list to identity
+
+* github.com/openziti/foundation/v2: [v2.0.77 -> v2.0.90](https://github.com/openziti/foundation/compare/v2.0.77...v2.0.90)
+    * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add support for multi-bit set/get to AtomicBitSet
+    * [Issue #464](https://github.com/openziti/foundation/issues/464) - Add support for -pre in versions
+
+* github.com/openziti/identity: [v1.0.116 -> v1.0.128](https://github.com/openziti/identity/compare/v1.0.116...v1.0.128)
+* github.com/openziti/metrics: [v1.4.3 -> v1.4.5](https://github.com/openziti/metrics/compare/v1.4.3...v1.4.5)
+    * [Issue #58](https://github.com/openziti/metrics/issues/58) - Add GaugeFloat64 support
+
+* github.com/openziti/sdk-golang: [v1.2.4-patch1 -> v1.6.0](https://github.com/openziti/sdk-golang/compare/v1.2.4-patch1...v1.6.0)
+    * [Issue #895](https://github.com/openziti/sdk-golang/issues/895) - Limit effect sudden rtt spikes can have on rtt moving average
+    * [Issue #902](https://github.com/openziti/sdk-golang/issues/902) - Inspect response message content types are mixed up
+    * [Issue #887](https://github.com/openziti/sdk-golang/issues/887) - Fix listener manager cleanup
+    * [Issue #886](https://github.com/openziti/sdk-golang/issues/886) - When controller is busy during service refresh, backoff and retry instead of falling back to full refresh
+    * [Issue #885](https://github.com/openziti/sdk-golang/issues/885) - Only compare relevant service fields when looking for changes
+    * [Issue #884](https://github.com/openziti/sdk-golang/issues/884) - Add deadline for bind establishment
+    * [Issue #883](https://github.com/openziti/sdk-golang/issues/883) - Router level listener can be left open if multi-listener closes during listener establishment
+    * [Issue #832](https://github.com/openziti/sdk-golang/issues/832) - Fuzz session refresh timers
+    * [Issue #879](https://github.com/openziti/sdk-golang/issues/879) - Return the connId in inspect response
+    * [Issue #878](https://github.com/openziti/sdk-golang/issues/878) - Fix responses from rx goroutines
+    * [Issue #874](https://github.com/openziti/sdk-golang/issues/874) - Add inspect support at the context level
+    * [Issue #871](https://github.com/openziti/sdk-golang/issues/871) - Make SDK better at sticking to MaxTerminator terminators
+    * [Issue #708](https://github.com/openziti/sdk-golang/issues/708) - Support for Go's built-in context in Dial methods
+    * [Issue #860](https://github.com/openziti/sdk-golang/issues/860) - Make the dialing identity's id and name available on dialed connections
+    * [Issue #857](https://github.com/openziti/sdk-golang/issues/857) - Use new error code and retry hints to correctly react to terminator errors
+    * [Issue #847](https://github.com/openziti/sdk-golang/issues/847) - Ensure the initial version check succeeds, to ensure we don't legacy sessions on ha or oidc-enabled controllers
+    * [Issue #824](https://github.com/openziti/sdk-golang/pull/824) - release notes and hard errors on no TOTP handler breaks partial auth events
+    * [Issue #818](https://github.com/openziti/sdk-golang/issues/818) - Full re-auth should not clear services list, as that breaks the on-change logic
+    * [Issue #817](https://github.com/openziti/sdk-golang/issues/817) - goroutines can get stuck when iterating over randomized HA controller list
+    * [Issue #736](https://github.com/openziti/sdk-golang/issues/736) - Migrate from github.com/mailru/easyjson
+    * [Issue #813](https://github.com/openziti/sdk-golang/issues/813) - SDK doesn't stop close listener when it detects that a service being hosted gets deleted
+    * [Issue #811](https://github.com/openziti/sdk-golang/issues/811) - Credentials are lost when explicitly set
+    * [Issue #807](https://github.com/openziti/sdk-golang/issues/807) - Don't send close from rxer to avoid blocking
+
+* github.com/openziti/secretstream: [v0.1.39 -> v0.1.49](https://github.com/openziti/secretstream/compare/v0.1.39...v0.1.49)
+* github.com/openziti/transport/v2: [v2.0.193 -> v2.0.215](https://github.com/openziti/transport/compare/v2.0.193...v2.0.215)
+    * [Issue #31](https://github.com/openziti/transport/issues/31) - ipv6 Transport Address Parsing
+    * [Issue #149](https://github.com/openziti/transport/issues/149) - Archive transwarp code
+
 * github.com/openziti/ziti: [v1.6.15 -> v1.6.16](https://github.com/openziti/ziti/compare/v1.6.15...v1.6.16)
+    * [Issue #3788](https://github.com/openziti/ziti/issues/3788) - OIDC Endpoints return 400 Bad Request instead of underlying error
     * [Issue #3781](https://github.com/openziti/ziti/issues/3781) - [Backport-1.6] ER/T half-close logic is incorrect
 
 
