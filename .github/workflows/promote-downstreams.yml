@@ -13,49 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  wait_for_release:
-    name: Wait for Release Builds to Succeed
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Debug action
-        uses: hmarr/debug-action@v3
-
-      - name: Wait for all checks on this rev
-        uses: lewagon/wait-on-check-action@v1.5.0
-        with:
-          ref: ${{ github.ref_name }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          # seconds between polling the checks api for job statuses
-          wait-interval: 30
-          # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
-          running-workflow-name: Wait for Release Builds to Succeed
-          # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job,Parse Tag Regex
-
-      - name: Git Checkout
-        if: failure()
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Diagnose Failed "Wait for Release Builds to Succeed"
-        if: failure()
-        shell: bash
-        run: |
-          set -o pipefail
-          set -o xtrace
-
-          COMMIT_SHA=$(git rev-parse ${GITHUB_REF_NAME}^{commit})
-          for STATUS in cancelled failure
-          do
-            gh run list --repo "${GITHUB_REPOSITORY}" --status "${STATUS}" --commit "${COMMIT_SHA}"
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
-    needs: wait_for_release
     name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
