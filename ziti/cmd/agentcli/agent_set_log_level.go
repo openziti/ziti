@@ -17,9 +17,11 @@
 package agentcli
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/pkg/errors"
@@ -69,6 +71,17 @@ func (self *AgentSetLogLevelAction) Run() error {
 
 	if !found {
 		return errors.Errorf("invalid log level %v", levelArg)
+	}
+
+	if self.HasAgentCapability(agent.AgentLoggingSlogLevels) {
+		return self.MakeChannelRequest(byte(AgentAppAny), func(ch channel.Channel) error {
+			msg, err := agent.SendSetLogLevelV2(ch, agent.LogLevel(level), self.timeout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(msg)
+			return nil
+		})
 	}
 
 	buf := []byte{byte(level)}
