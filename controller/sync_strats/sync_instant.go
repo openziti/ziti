@@ -1504,8 +1504,9 @@ func newConfigTypeById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.D
 
 func newConfigType(storeModel *db.ConfigType) *edge_ctrl_pb.DataState_ConfigType {
 	return &edge_ctrl_pb.DataState_ConfigType{
-		Id:   storeModel.Id,
-		Name: storeModel.Name,
+		Id:     storeModel.Id,
+		Name:   storeModel.Name,
+		Target: storeModel.Target,
 	}
 }
 

@@ -18,22 +18,40 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
 const (
 	FieldConfigTypeSchema = "schema"
+	FieldConfigTypeTarget = "target"
+
+	// ConfigTypeTargetService indicates a config type used for service configuration.
+	ConfigTypeTargetService = "service"
+	// ConfigTypeTargetRouter indicates a config type used for router configuration.
+	ConfigTypeTargetRouter = "router"
+	// ConfigTypeTargetOther indicates a config type used for purposes other than service or router configuration.
+	ConfigTypeTargetOther = "other"
 )
+
+// validConfigTypeTargets is the set of allowed values for ConfigType.Target.
+var validConfigTypeTargets = map[string]struct{}{
+	ConfigTypeTargetService: {},
+	ConfigTypeTargetRouter:  {},
+	ConfigTypeTargetOther:   {},
+}
 
 func newConfigType(name string) *ConfigType {
 	return &ConfigType{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
+		Target:        ConfigTypeTargetService,
 	}
 }
 
@@ -41,6 +59,7 @@ type ConfigType struct {
 	boltz.BaseExtEntity
 	Name   string                 `json:"name"`
 	Schema map[string]interface{} `json:"schema"`
+	Target string                 `json:"target"`
 }
 
 func (entity *ConfigType) GetName() string {
@@ -83,6 +102,7 @@ func (store *configTypeStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
 	store.AddSymbol(FieldConfigTypeSchema, ast.NodeTypeString)
+	store.AddSymbol(FieldConfigTypeTarget, ast.NodeTypeString)
 }
 
 func (store *configTypeStoreImpl) initializeLinked() {
@@ -100,6 +120,7 @@ func (store *configTypeStoreImpl) FillEntity(entity *ConfigType, bucket *boltz.T
 		entity.Schema = map[string]interface{}{}
 		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
 	}
+	entity.Target = bucket.GetStringOrError(FieldConfigTypeTarget)
 }
 
 func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
@@ -117,6 +138,24 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 		} else {
 			ctx.SetStringP(FieldConfigTypeSchema, nil)
 		}
+	}
+
+	if ctx.FieldChecker == nil || ctx.FieldChecker.IsUpdated(FieldConfigTypeTarget) {
+		if _, ok := validConfigTypeTargets[entity.Target]; !ok {
+			ctx.Bucket.SetError(errorz.NewFieldError(
+				fmt.Sprintf("invalid target %q, must be one of: service, router, other", entity.Target),
+				FieldConfigTypeTarget, entity.Target))
+			return
+		}
+		if !ctx.IsCreate {
+			if existing := ctx.Bucket.GetString(FieldConfigTypeTarget); existing != nil && *existing != entity.Target {
+				ctx.Bucket.SetError(errorz.NewFieldError(
+					"target is immutable and cannot be changed after creation",
+					FieldConfigTypeTarget, entity.Target))
+				return
+			}
+		}
+		ctx.SetString(FieldConfigTypeTarget, entity.Target)
 	}
 }
 

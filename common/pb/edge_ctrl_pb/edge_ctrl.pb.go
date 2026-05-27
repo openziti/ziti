@@ -3852,6 +3852,7 @@ type DataState_ConfigType struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Target        string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3896,6 +3897,13 @@ func (x *DataState_ConfigType) GetId() string {
 func (x *DataState_ConfigType) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *DataState_ConfigType) GetTarget() string {
+	if x != nil {
+		return x.Target
 	}
 	return ""
 }
@@ -5429,7 +5437,7 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.Cache.DataEntryR\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xe0#\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xf8#\n" +
 	"\tDataState\x12:\n" +
 	"\x06events\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.DataState.EventR\x06events\x12\x1a\n" +
 	"\bendIndex\x18\x02 \x01(\x04R\bendIndex\x12\x1e\n" +
@@ -5439,11 +5447,12 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x06caches\x18\x04 \x03(\v2(.ziti.edge_ctrl.pb.DataState.CachesEntryR\x06caches\x1aS\n" +
 	"\vCachesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
-	"\x05value\x18\x02 \x01(\v2\x18.ziti.edge_ctrl.pb.CacheR\x05value:\x028\x01\x1a0\n" +
+	"\x05value\x18\x02 \x01(\v2\x18.ziti.edge_ctrl.pb.CacheR\x05value:\x028\x01\x1aH\n" +
 	"\n" +
 	"ConfigType\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x1a`\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06target\x18\x03 \x01(\tR\x06target\x1a`\n" +
 	"\x06Config\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06typeId\x18\x02 \x01(\tR\x06typeId\x12\x12\n" +
