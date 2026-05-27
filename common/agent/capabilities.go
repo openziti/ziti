@@ -33,6 +33,11 @@ const (
 	AgentLoggingSlogLevels int = 1
 )
 
+// AgentCapabilitiesHeader is the channel-hello header carrying the agent
+// capability bitmask (the bytes of GetAgentCapabilitiesMask), in the
+// agent-reserved header band.
+const AgentCapabilitiesHeader int32 = 30102
+
 // agentCapabilityNames maps each agent capability bit to its canonical
 // hierarchical-dotted string name. It is the single source of truth tying the
 // bitmask encoding to the string-list encoding.
@@ -100,6 +105,23 @@ func AgentCapabilityBitFromString(s string) (bit int, ok bool) {
 		}
 	}
 	return 0, false
+}
+
+// AgentCapabilityName returns the canonical string name for an agent capability
+// bit, used client-side to check a bit constant against the AppInfoV2 string
+// list.
+func AgentCapabilityName(bit int) (string, bool) {
+	name, ok := agentCapabilityNames[bit]
+	return name, ok
+}
+
+// CapabilitiesFromHeaders decodes the agent capability bitmask from channel
+// hello headers, returning an empty mask if the header is absent.
+func CapabilitiesFromHeaders(headers map[int32][]byte) *big.Int {
+	if val, ok := headers[AgentCapabilitiesHeader]; ok {
+		return new(big.Int).SetBytes(val)
+	}
+	return new(big.Int)
 }
 
 // RegisterAppCapabilities adds application-defined capability strings to the

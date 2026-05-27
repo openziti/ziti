@@ -49,7 +49,10 @@ func HandleChannelConnection(conn net.Conn, id *identity.TokenId, appId byte, bi
 
 	options := channel.DefaultOptions()
 	options.ConnectTimeout = time.Second
-	listener := channel.NewExistingConnListener(id, conn, nil)
+	helloHeaders := map[int32][]byte{
+		AgentCapabilitiesHeader: GetAgentCapabilitiesMask().Bytes(),
+	}
+	listener := channel.NewExistingConnListener(id, conn, helloHeaders)
 	_, err := channel.NewChannel("agent", listener, bindHandler, options)
 	return err
 }

@@ -368,6 +368,22 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 		_, err = conn.Write(marshalled)
 		return false, err
 
+	case AppInfoV2:
+		result := AppInfoV2Response{
+			Type:              self.options.AppType,
+			Id:                self.options.AppId,
+			Alias:             self.options.AppAlias,
+			Version:           self.options.AppVersion,
+			AgentCapabilities: GetAgentCapabilityStringList(),
+			AppCapabilities:   getAppCapabilities(),
+		}
+		marshalled, err := json.Marshal(result)
+		if err != nil {
+			return false, err
+		}
+		_, err = conn.Write(marshalled)
+		return false, err
+
 	case SetLogLevel:
 		param, err := bufio.NewReader(conn).ReadByte()
 		if err != nil {
