@@ -24,7 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -49,7 +49,7 @@ const (
 func NewFsm(dataDir string, restartSelf bool, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:        decoders,
-		dbPath:          path.Join(dataDir, "ctrl-ha.db"),
+		dbPath:          filepath.Join(dataDir, "ctrl-ha.db"),
 		indexTracker:    indexTracker,
 		eventDispatcher: eventDispatcher,
 		restartSelf:     restartSelf,
@@ -120,6 +120,33 @@ func (self *BoltDbFsm) Init() error {
 
 func (self *BoltDbFsm) Close() error {
 	return self.db.Close()
+}
+
+// GetCachedServers returns the FSM-tracked cluster member list cached from
+// ctrl-ha.db. Unlike GetCurrentState it does not consult a live raft instance,
+// so it is safe to call from offline tooling (e.g. the recover CLI) and
+// returns nil if Init has not yet populated the cache.
+func (self *BoltDbFsm) GetCachedServers() *ServersWithIndex {
+	return self.currentState.Load()
+}
+
+// OverwriteServers replaces the FSM-tracked cluster member list in the
+// underlying bolt database with the supplied servers. Intended for offline
+// recovery (see ziti ops cluster recover): raft.RecoverCluster updates raft's
+// own configuration but does not touch this FSM-side cache, so without an
+// explicit overwrite the controller would keep advertising stale peers via
+// CtrlAddresses and accept their reconnects via IsPeerMember.
+func (self *BoltDbFsm) OverwriteServers(servers []raft.Server) error {
+	if err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
+		return self.storeServers(ctx.Tx(), servers)
+	}); err != nil {
+		return err
+	}
+	self.currentState.Store(&ServersWithIndex{
+		Servers: servers,
+		Index:   self.index,
+	})
+	return nil
 }
 
 func (self *BoltDbFsm) GetDb() boltz.Db {

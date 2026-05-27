@@ -29,6 +29,7 @@ import (
 	edgeSubCmd "github.com/openziti/ziti/v2/controller/subcmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/ascode/importer"
 	"github.com/openziti/ziti/v2/ziti/cmd/ops"
+	"github.com/openziti/ziti/v2/ziti/cmd/ops/cluster"
 	"github.com/openziti/ziti/v2/ziti/cmd/ops/database"
 	"github.com/openziti/ziti/v2/ziti/cmd/ops/verify"
 	ext_jwt_signer "github.com/openziti/ziti/v2/ziti/cmd/ops/verify/ext-jwt-signer"
@@ -236,7 +237,9 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	}
 
 	opsCommands.AddCommand(database.NewCmdDb(out, err))
-	opsCommands.AddCommand(fabric.NewClusterCmd(p))
+	clusterCmd := fabric.NewClusterCmd(p)
+	clusterCmd.AddCommand(cluster.NewCmdRecover(out, err))
+	opsCommands.AddCommand(clusterCmd)
 	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
@@ -410,7 +413,9 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	dbCmd.AddCommand(fabric.NewDbCheckIntegrityCmd(p))
 	dbCmd.AddCommand(fabric.NewDbCheckIntegrityStatusCmd(p))
 	opsCommands.AddCommand(dbCmd)
-	opsCommands.AddCommand(fabric.NewClusterCmd(p))
+	clusterCmd := fabric.NewClusterCmd(p)
+	clusterCmd.AddCommand(cluster.NewCmdRecover(out, err))
+	opsCommands.AddCommand(clusterCmd)
 
 	// Group utility tools under ops tools
 	toolsCmd := &cobra.Command{

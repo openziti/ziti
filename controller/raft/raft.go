@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"sync"
@@ -608,7 +608,7 @@ func (self *Controller) Init() error {
 	self.Configure(raftConfig, conf)
 
 	// Create the log store and stable store.
-	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
+	raftBoltFile := filepath.Join(raftConfig.DataDir, "raft.db")
 	var err error
 	self.raftStore, err = raftboltdb.NewBoltStore(raftBoltFile)
 	if err != nil {
@@ -641,20 +641,6 @@ func (self *Controller) Init() error {
 	}
 
 	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
-
-	if raftConfig.Recover {
-		err := raft.RecoverCluster(conf, self.Fsm, self.raftStore, self.raftStore, snapshotStore, raftTransport, raft.Configuration{
-			Servers: []raft.Server{
-				{ID: conf.LocalID, Address: localAddr},
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("failed to recover cluster (%w)", err)
-		}
-
-		logrus.Info("raft configuration reset to only include local node. exiting.")
-		os.Exit(0)
-	}
 
 	r, err := raft.NewRaft(conf, self.Fsm, self.raftStore, self.raftStore, snapshotStore, raftTransport)
 	if err != nil {
