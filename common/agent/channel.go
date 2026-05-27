@@ -40,11 +40,34 @@ func HandleChannelConnection(conn net.Conn, id *identity.TokenId, appId byte, bi
 		return errors.Errorf("invalid app id %v", got)
 	}
 
+	// When log-level callbacks are registered, bind the v2 log-level handlers
+	// on every agent channel alongside the application's own handlers.
+	bindHandler := bind
+	if cbs := getLogLevelCallbacks(); cbs != nil {
+		bindHandler = composeBindHandlers(bind, logLevelBindHandler(cbs))
+	}
+
 	options := channel.DefaultOptions()
 	options.ConnectTimeout = time.Second
 	listener := channel.NewExistingConnListener(id, conn, nil)
-	_, err := channel.NewChannel("agent", listener, bind, options)
+	_, err := channel.NewChannel("agent", listener, bindHandler, options)
 	return err
+}
+
+// composeBindHandlers returns a BindHandler that applies each of the given
+// handlers in order, skipping nil entries.
+func composeBindHandlers(handlers ...channel.BindHandler) channel.BindHandler {
+	return channel.BindHandlerF(func(binding channel.Binding) error {
+		for _, h := range handlers {
+			if h == nil {
+				continue
+			}
+			if err := binding.Bind(h); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // NewChannel wraps an established agent connection in a channel/v4 client

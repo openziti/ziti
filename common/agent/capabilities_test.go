@@ -31,6 +31,7 @@ func resetCaps() {
 	appCaps = nil
 	appCapsSeen = map[string]bool{}
 	capsFrozen = false
+	logLevelCallbacks = nil
 }
 
 func TestAgentCapabilitiesInactiveByDefault(t *testing.T) {
