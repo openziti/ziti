@@ -1,0 +1,138 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package agent
+
+import (
+	"math/big"
+	"sort"
+	"sync"
+)
+
+// Agent capabilities. Each is owned by common/agent and has a stable bit
+// position (used in the channel-hello bitmask) and a stable
+// hierarchical-dotted string name (used in AppInfoV2.agent_capabilities). The
+// two encodings stay in sync via agentCapabilityNames.
+const (
+	// AgentLoggingSlogLevels indicates the agent supports the channel-based v2
+	// log-level commands (SetLogLevelV2, SetChannelLogLevelV2,
+	// ClearChannelLogLevelV2), which carry string level names.
+	AgentLoggingSlogLevels int = 1
+)
+
+// agentCapabilityNames maps each agent capability bit to its canonical
+// hierarchical-dotted string name. It is the single source of truth tying the
+// bitmask encoding to the string-list encoding.
+var agentCapabilityNames = map[int]string{
+	AgentLoggingSlogLevels: "logging.slog-levels",
+}
+
+var (
+	capsMu      sync.Mutex
+	activeCaps  = map[int]bool{}    // agent caps whose handler is registered
+	appCaps     []string            // app-registered capability strings, in registration order
+	appCapsSeen = map[string]bool{} // dedup set for appCaps
+	capsFrozen  bool                // set once the agent listener starts
+)
+
+// markAgentCapabilityActive records that the handler backing an agent
+// capability has been registered, so the capability becomes advertised. It is
+// called by the registration entry points (e.g. RegisterLogLevelHandlers)
+// before the listener starts.
+func markAgentCapabilityActive(bit int) {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	activeCaps[bit] = true
+}
+
+// GetAgentCapabilitiesMask returns the bitmask form of the active agent
+// capabilities, for use in the channel hello.
+func GetAgentCapabilitiesMask() *big.Int {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	mask := &big.Int{}
+	for bit := range activeCaps {
+		mask.SetBit(mask, bit, 1)
+	}
+	return mask
+}
+
+// GetAgentCapabilityStringList returns the string-list form of the active agent
+// capabilities, for use in AppInfoV2.agent_capabilities. Order is deterministic
+// (sorted by bit position) so the JSON shape is stable.
+func GetAgentCapabilityStringList() []string {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	bits := make([]int, 0, len(activeCaps))
+	for bit := range activeCaps {
+		bits = append(bits, bit)
+	}
+	sort.Ints(bits)
+	names := make([]string, 0, len(bits))
+	for _, bit := range bits {
+		if name, ok := agentCapabilityNames[bit]; ok {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// AgentCapabilityBitFromString is the inverse of agentCapabilityNames, used
+// client-side to turn a name read from AppInfoV2 back into a bit. It consults
+// the full registry, not just the active set.
+func AgentCapabilityBitFromString(s string) (bit int, ok bool) {
+	for b, name := range agentCapabilityNames {
+		if name == s {
+			return b, true
+		}
+	}
+	return 0, false
+}
+
+// RegisterAppCapabilities adds application-defined capability strings to the
+// app_capabilities list emitted in AppInfoV2. The strings are passed through
+// uninterpreted and deduplicated. It must be called before the agent listener
+// starts; calling it afterward panics, because the advertised set must stay
+// consistent across every connection.
+func RegisterAppCapabilities(names ...string) {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	if capsFrozen {
+		panic("agent: RegisterAppCapabilities called after the agent listener started")
+	}
+	for _, name := range names {
+		if !appCapsSeen[name] {
+			appCapsSeen[name] = true
+			appCaps = append(appCaps, name)
+		}
+	}
+}
+
+// getAppCapabilities returns a copy of the registered app capability strings,
+// in registration order.
+func getAppCapabilities() []string {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	return append([]string(nil), appCaps...)
+}
+
+// freezeCapabilities locks the capability set so no further registration is
+// accepted. It is called when the agent listener starts.
+func freezeCapabilities() {
+	capsMu.Lock()
+	defer capsMu.Unlock()
+	capsFrozen = true
+}

@@ -161,6 +161,10 @@ func Listen(opts Options) error {
 		options: opts,
 	}
 
+	// Freeze the capability set; no further capability or handler registration
+	// is accepted once we start accepting connections.
+	freezeCapabilities()
+
 	go h.listen()
 	return nil
 }
