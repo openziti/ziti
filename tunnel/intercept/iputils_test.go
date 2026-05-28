@@ -21,13 +21,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/tunnel/dns"
 	"github.com/openziti/ziti/v2/tunnel/entities"
 	"github.com/stretchr/testify/require"
 )
 
-// fakeResolver is a minimal in-memory dns.Resolver for testing getDnsIp.
-// Only the methods getDnsIp actually exercises are implemented; the rest panic
-// so an accidental dependency on more behavior fails loudly.
+// fakeResolver is a minimal in-memory dns.Resolver. Only the methods the
+// tests exercise are implemented; the rest panic so an accidental dependency
+// on more behavior fails loudly. In tests this is wrapped with
+// dns.NewRefCountingResolver so the refcounting layer is exercised end to end.
 type fakeResolver struct {
 	names map[string]net.IP
 }
@@ -41,6 +44,11 @@ func (r *fakeResolver) LookupIP(name string) (net.IP, bool) {
 	return ip, ok
 }
 
+func (r *fakeResolver) AddHostname(hostname string, ip net.IP) error {
+	r.names[strings.ToLower(hostname)+"."] = ip
+	return nil
+}
+
 func (r *fakeResolver) RemoveHostname(hostname string) net.IP {
 	key := strings.ToLower(hostname) + "."
 	ip, ok := r.names[key]
@@ -51,11 +59,6 @@ func (r *fakeResolver) RemoveHostname(hostname string) net.IP {
 	return ip
 }
 
-func (r *fakeResolver) addHostnameForTest(hostname string, ip net.IP) {
-	r.names[strings.ToLower(hostname)+"."] = ip
-}
-
-func (r *fakeResolver) AddHostname(string, net.IP) error              { panic("unused") }
 func (r *fakeResolver) AddDomain(string, func(string) (net.IP, error)) error {
 	panic("unused")
 }
@@ -69,11 +72,18 @@ func (r *fakeResolver) Cleanup() error                { panic("unused") }
 func resetDnsState(t *testing.T) {
 	t.Helper()
 	require.NoError(t, SetDnsInterceptIpRange("100.64.0.1/10"))
-	dnsCurrentIpMtx.Lock()
-	defer dnsCurrentIpMtx.Unlock()
-	for k := range dnsHostRefCount {
-		delete(dnsHostRefCount, k)
-	}
+}
+
+// addInterceptHostname simulates getInterceptIP's full handling of a direct
+// hostname: it calls getDnsIp and then runs the same resolver.AddHostname call
+// the production path performs once getDnsIp returns. Keeping this in one
+// helper ensures every test exercises the same flow the bug fix targets.
+func addInterceptHostname(t *testing.T, host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) net.IP {
+	t.Helper()
+	ip, err := getDnsIp(host, addrCB, svc, resolver)
+	require.NoError(t, err)
+	require.NoError(t, resolver.AddHostname(host, ip))
+	return ip
 }
 
 // Test_GetDnsIp_SharedHostnameInstallsRule asserts that when two services share
@@ -84,7 +94,7 @@ func Test_GetDnsIp_SharedHostnameInstallsRule(t *testing.T) {
 	req := require.New(t)
 	resetDnsState(t)
 
-	resolver := newFakeResolver()
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
 	svcA := &entities.Service{}
 	svcB := &entities.Service{}
 
@@ -92,18 +102,11 @@ func Test_GetDnsIp_SharedHostnameInstallsRule(t *testing.T) {
 	cbA := func(ipNet *net.IPNet, _ bool) { callsA = append(callsA, ipNet) }
 	cbB := func(ipNet *net.IPNet, _ bool) { callsB = append(callsB, ipNet) }
 
-	ipA, err := getDnsIp("shared.example", cbA, svcA, resolver)
-	req.NoError(err)
+	ipA := addInterceptHostname(t, "shared.example", cbA, svcA, resolver)
 	req.Len(callsA, 1, "addrCB must fire for the first service")
 	req.True(ipA.Equal(callsA[0].IP), "addrCB receives the allocated IP")
 
-	// Simulate the side effect getInterceptIP performs after getDnsIp returns:
-	// register the hostname in the resolver. getDnsIp's LookupIP for the next
-	// caller depends on this.
-	resolver.addHostnameForTest("shared.example", ipA)
-
-	ipB, err := getDnsIp("shared.example", cbB, svcB, resolver)
-	req.NoError(err)
+	ipB := addInterceptHostname(t, "shared.example", cbB, svcB, resolver)
 	req.True(ipA.Equal(ipB), "second service must reuse the first service's IP")
 	req.Len(callsB, 1, "addrCB must fire for the second service so its iptables rule is installed")
 	req.True(ipB.Equal(callsB[0].IP), "addrCB for second service receives the shared IP")
@@ -116,17 +119,13 @@ func Test_GetDnsIp_RefCountedCleanup(t *testing.T) {
 	req := require.New(t)
 	resetDnsState(t)
 
-	resolver := newFakeResolver()
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
 	svcA := &entities.Service{}
 	svcB := &entities.Service{}
 	noopCB := func(*net.IPNet, bool) {}
 
-	ipA, err := getDnsIp("shared.example", noopCB, svcA, resolver)
-	req.NoError(err)
-	resolver.addHostnameForTest("shared.example", ipA)
-
-	_, err = getDnsIp("shared.example", noopCB, svcB, resolver)
-	req.NoError(err)
+	addInterceptHostname(t, "shared.example", noopCB, svcA, resolver)
+	addInterceptHostname(t, "shared.example", noopCB, svcB, resolver)
 
 	// Cleaning up the second service must not remove the hostname or recycle
 	// the IP -- the first service still depends on both.
@@ -143,23 +142,19 @@ func Test_GetDnsIp_RefCountedCleanup(t *testing.T) {
 }
 
 // Test_GetDnsIp_SharedHostnameDifferentCase asserts that two services whose
-// hostnames differ only in case share a single allocation and refcount entry,
-// matching the resolver's own case-insensitive view.
+// hostnames differ only in case share a single allocation, matching the
+// resolver's case-insensitive view.
 func Test_GetDnsIp_SharedHostnameDifferentCase(t *testing.T) {
 	req := require.New(t)
 	resetDnsState(t)
 
-	resolver := newFakeResolver()
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
 	svcA := &entities.Service{}
 	svcB := &entities.Service{}
 	noopCB := func(*net.IPNet, bool) {}
 
-	ipA, err := getDnsIp("Shared.Example", noopCB, svcA, resolver)
-	req.NoError(err)
-	resolver.addHostnameForTest("shared.example", ipA)
-
-	ipB, err := getDnsIp("shared.example", noopCB, svcB, resolver)
-	req.NoError(err)
+	ipA := addInterceptHostname(t, "Shared.Example", noopCB, svcA, resolver)
+	ipB := addInterceptHostname(t, "shared.example", noopCB, svcB, resolver)
 	req.True(ipA.Equal(ipB), "case variants must resolve to the same IP")
 
 	// First cleanup must not recycle: both services share the allocation.
@@ -173,27 +168,162 @@ func Test_GetDnsIp_SharedHostnameDifferentCase(t *testing.T) {
 
 // Test_GetDnsIp_CleanupOutOfOrder asserts that cleaning up the
 // first-registered service does not strand other services still using the
-// same hostname. Before refcounting, the first service's cleanUpFunc was the
+// same hostname. Before the fix, the first service's cleanUpFunc was the
 // only one registered for a shared hostname and would unconditionally remove
 // the resolver entry and recycle the IP.
 func Test_GetDnsIp_CleanupOutOfOrder(t *testing.T) {
 	req := require.New(t)
 	resetDnsState(t)
 
-	resolver := newFakeResolver()
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
 	svcA := &entities.Service{}
 	svcB := &entities.Service{}
 	noopCB := func(*net.IPNet, bool) {}
 
-	ipA, err := getDnsIp("shared.example", noopCB, svcA, resolver)
-	req.NoError(err)
-	resolver.addHostnameForTest("shared.example", ipA)
-
-	_, err = getDnsIp("shared.example", noopCB, svcB, resolver)
-	req.NoError(err)
+	addInterceptHostname(t, "shared.example", noopCB, svcA, resolver)
+	addInterceptHostname(t, "shared.example", noopCB, svcB, resolver)
 
 	svcA.RunCleanupActions()
 	_, found := resolver.LookupIP("shared.example.")
 	req.True(found, "hostname must remain when an earlier-registered service cleans up while others still use it")
 	req.Equal(0, dnsRecycledIps.Len(), "IP must not be recycled while another service uses it")
+}
+
+// Test_GetDnsIp_FromWildcardLambda asserts that getDnsIp works the same way
+// when invoked from the closure registered via resolver.AddDomain for a
+// wildcard intercept -- the lambda path getInterceptIP uses for hostnames
+// starting with '*'. The closure must allocate an IP, install the per-service
+// iptables rule via addrCB, and register a refcount-aware cleanup so reusing
+// the same name from another service shares the allocation.
+func Test_GetDnsIp_FromWildcardLambda(t *testing.T) {
+	req := require.New(t)
+	resetDnsState(t)
+
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
+	svcA := &entities.Service{}
+	svcB := &entities.Service{}
+
+	var callsA, callsB []*net.IPNet
+	cbA := func(ipNet *net.IPNet, _ bool) { callsA = append(callsA, ipNet) }
+	cbB := func(ipNet *net.IPNet, _ bool) { callsB = append(callsB, ipNet) }
+
+	// Mimic the closure getInterceptIP registers via resolver.AddDomain.
+	wildcardLambdaA := func(host string) (net.IP, error) {
+		return getDnsIp(host, cbA, svcA, resolver)
+	}
+
+	ipA, err := wildcardLambdaA("host.example")
+	req.NoError(err)
+	req.Len(callsA, 1, "wildcard lambda must invoke addrCB for the first service")
+	req.NoError(resolver.AddHostname("host.example", ipA))
+
+	// A second service joining the same hostname directly must reuse the
+	// allocation and still get its own addrCB call.
+	ipB := addInterceptHostname(t, "host.example", cbB, svcB, resolver)
+	req.True(ipA.Equal(ipB), "second service must reuse the allocation from the wildcard lambda")
+	req.Len(callsB, 1, "addrCB must fire so the joining service gets its iptables rule")
+
+	// First cleanup must not recycle while another service still holds the hostname.
+	svcA.RunCleanupActions()
+	req.Equal(0, dnsRecycledIps.Len(), "IP must not be recycled while another service uses it")
+	_, found := resolver.LookupIP("host.example.")
+	req.True(found, "hostname must remain while another service still uses it")
+
+	// Last cleanup releases the IP.
+	svcB.RunCleanupActions()
+	req.Equal(1, dnsRecycledIps.Len(), "IP must be recycled when the last service cleans up")
+}
+
+// recordingAddrCB collects the InterceptAddress values produced by
+// GetInterceptAddresses so tests can assert per-service expansion.
+type recordingAddrCB struct {
+	calls []*InterceptAddress
+}
+
+func (r *recordingAddrCB) Apply(a *InterceptAddress) { r.calls = append(r.calls, a) }
+
+// newSharedHostnameService builds a minimally populated entities.Service that
+// intercepts the given hostname on a single TCP port. Only the fields
+// GetInterceptAddresses actually reads are set.
+func newSharedHostnameService(name, hostname string, port uint16) *entities.Service {
+	svc := &entities.Service{}
+	svc.Name = &name
+	svc.InterceptV1Config = &entities.InterceptV1Config{
+		Addresses:  []string{hostname},
+		PortRanges: []*entities.PortRange{{Low: port, High: port}},
+	}
+	return svc
+}
+
+// Test_GetInterceptAddresses_SharedHostnameProducesRulePerService is the
+// integration-level guard for #3867. GetInterceptAddresses is the actual entry
+// point tproxy_linux.go calls per service; each Apply call eventually becomes
+// an iptables rule. Before the fix the second service's callback never fired,
+// so this test would observe zero InterceptAddress instances for svcB. It also
+// guards against future drift in getInterceptIP's wiring that bypasses our
+// finer-grained getDnsIp tests.
+func Test_GetInterceptAddresses_SharedHostnameProducesRulePerService(t *testing.T) {
+	req := require.New(t)
+	resetDnsState(t)
+
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
+	svcA := newSharedHostnameService("svcA", "shared.example", 80)
+	svcB := newSharedHostnameService("svcB", "shared.example", 80)
+
+	cbA := &recordingAddrCB{}
+	cbB := &recordingAddrCB{}
+
+	req.NoError(GetInterceptAddresses(svcA, []string{"tcp"}, resolver, cbA))
+	req.NoError(GetInterceptAddresses(svcB, []string{"tcp"}, resolver, cbB))
+
+	req.Len(cbA.calls, 1, "svcA must receive its InterceptAddress")
+	req.Len(cbB.calls, 1, "svcB must receive its InterceptAddress (the #3867 regression)")
+
+	req.True(cbA.calls[0].IpNet().IP.Equal(cbB.calls[0].IpNet().IP),
+		"both services must see the same allocated IP")
+	req.Equal(uint16(80), cbA.calls[0].LowPort())
+	req.Equal(uint16(80), cbB.calls[0].LowPort())
+	req.Equal("tcp", cbA.calls[0].Proto())
+	req.Equal("tcp", cbB.calls[0].Proto())
+}
+
+// Test_GetInterceptAddresses_SharedHostnameMultiPortProtocol checks that the
+// per-service expansion of protocols x port ranges still fires correctly for
+// the reuse path. With N services, M protocols, and K port ranges we expect
+// each service to produce M*K InterceptAddress instances, all sharing the
+// allocated IP.
+func Test_GetInterceptAddresses_SharedHostnameMultiPortProtocol(t *testing.T) {
+	req := require.New(t)
+	resetDnsState(t)
+
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
+
+	makeSvc := func(name string) *entities.Service {
+		n := name
+		return &entities.Service{
+			ServiceDetail: rest_model.ServiceDetail{
+				BaseEntity: rest_model.BaseEntity{},
+				Name:       &n,
+			},
+			InterceptV1Config: &entities.InterceptV1Config{
+				Addresses:  []string{"multi.example"},
+				PortRanges: []*entities.PortRange{{Low: 80, High: 80}, {Low: 443, High: 443}},
+			},
+		}
+	}
+
+	svcA, svcB := makeSvc("svcA"), makeSvc("svcB")
+	cbA, cbB := &recordingAddrCB{}, &recordingAddrCB{}
+	protocols := []string{"tcp", "udp"}
+
+	req.NoError(GetInterceptAddresses(svcA, protocols, resolver, cbA))
+	req.NoError(GetInterceptAddresses(svcB, protocols, resolver, cbB))
+
+	// 2 protocols x 2 port ranges = 4 InterceptAddress per service.
+	req.Len(cbA.calls, 4)
+	req.Len(cbB.calls, 4, "reuse path must still expand protocols x port ranges for the joining service")
+
+	for _, c := range cbB.calls {
+		req.True(cbA.calls[0].IpNet().IP.Equal(c.IpNet().IP), "svcB calls must all use the shared IP")
+	}
 }

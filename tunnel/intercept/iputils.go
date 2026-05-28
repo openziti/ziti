@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"strings"
 	"sync"
 
 	"github.com/gaissmai/extnetip"
@@ -35,7 +34,6 @@ var dnsPrefix netip.Prefix
 var dnsCurrentIp netip.Addr
 var dnsCurrentIpMtx sync.Mutex
 var dnsRecycledIps *list.List
-var dnsHostRefCount = map[string]int{}
 
 func SetDnsInterceptIpRange(cidr string) error {
 	prefix, err := netip.ParsePrefix(cidr)
@@ -68,49 +66,51 @@ func GetDnsInterceptIpRange() *net.IPNet {
 }
 
 // cleanUpFunc returns the per-service cleanup action registered when a hostname
-// is allocated in getDnsIp. The hostname mapping and CGNAT IP are reference
-// counted, so the resolver entry is only removed and the IP only recycled when
-// the last service using the hostname is cleaned up.
+// is intercepted. The wrapping RefCountingResolver only forwards
+// RemoveHostname to the underlying resolver on the last release, so this
+// cleanup recycles the CGNAT IP only when the returned IP is non-nil.
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
-	f := func() {
-		dnsCurrentIpMtx.Lock()
-		defer dnsCurrentIpMtx.Unlock()
-
-		count := dnsHostRefCount[hostname]
-		if count > 1 {
-			dnsHostRefCount[hostname] = count - 1
-			return
-		}
-		delete(dnsHostRefCount, hostname)
-
+	return func() {
 		ip := resolver.RemoveHostname(hostname)
 		if ip != nil {
+			dnsCurrentIpMtx.Lock()
+			defer dnsCurrentIpMtx.Unlock()
 			addr, _ := netip.AddrFromSlice(ip)
 			dnsRecycledIps.PushBack(addr)
 		}
 	}
-	return f
+}
+
+// hostMask returns a host-route mask (/32 or /128) for the given IP.
+func hostMask(ip net.IP) net.IPMask {
+	bits := len(ip) * 8
+	return net.CIDRMask(bits, bits)
 }
 
 func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
+	addr, cleanup, err := allocateDnsIp(host, resolver)
+	if err != nil {
+		return nil, err
+	}
+	// addrCB and AddCleanupAction must run outside dnsCurrentIpMtx: addrCB can
+	// touch interceptor state, and AddCleanupAction takes service.lock which
+	// is acquired in the reverse order by RunCleanupActions -> cleanUpFunc.
+	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
+	svc.AddCleanupAction(cleanup)
+	return addr.IP, nil
+}
+
+func allocateDnsIp(host string, resolver dns.Resolver) (*net.IPNet, func(), error) {
 	dnsCurrentIpMtx.Lock()
 	defer dnsCurrentIpMtx.Unlock()
 
-	// Canonicalize so the refcount map's view of "same hostname" matches the
-	// resolver's (resolver internally lowercases). Two services configured
-	// with the same hostname in different cases must share one allocation.
-	canonical := strings.ToLower(host)
-
 	// If the hostname already has an allocated IP, reuse it. Even though no new
-	// IP is allocated, we still must invoke addrCB so the interceptor installs
-	// its per-service iptables rule; otherwise the tproxy listener exists with
-	// no kernel rule pointing at it and the service is silently unreachable.
-	if foundIP, found := resolver.LookupIP(canonical + "."); found {
-		addr := &net.IPNet{IP: foundIP, Mask: net.CIDRMask(len(foundIP)*8, len(foundIP)*8)}
-		addrCB(addr, false)
-		dnsHostRefCount[canonical]++
-		svc.AddCleanupAction(cleanUpFunc(canonical, resolver))
-		return foundIP, nil
+	// IP is allocated, we still must invoke addrCB (in the caller) so the
+	// interceptor installs its per-service iptables rule; otherwise the tproxy
+	// listener exists with no kernel rule pointing at it and the service is
+	// silently unreachable.
+	if foundIP, found := resolver.LookupIP(host + "."); found {
+		return &net.IPNet{IP: foundIP, Mask: hostMask(foundIP)}, cleanUpFunc(host, resolver), nil
 	}
 
 	var ip netip.Addr
@@ -125,15 +125,12 @@ func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service,
 		if ip.IsValid() && dnsPrefix.Contains(ip) {
 			dnsCurrentIp = ip
 		} else {
-			return nil, fmt.Errorf("cannot allocate ip address: ip range exhausted")
+			return nil, nil, fmt.Errorf("cannot allocate ip address: ip range exhausted")
 		}
 	}
 
-	addr := &net.IPNet{IP: ip.AsSlice(), Mask: net.CIDRMask(ip.BitLen(), ip.BitLen())}
-	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
-	dnsHostRefCount[canonical] = 1
-	svc.AddCleanupAction(cleanUpFunc(canonical, resolver))
-	return ip.AsSlice(), nil
+	ipBytes := ip.AsSlice()
+	return &net.IPNet{IP: ipBytes, Mask: hostMask(ipBytes)}, cleanUpFunc(host, resolver), nil
 }
 
 func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(*net.IPNet, bool)) error {
@@ -162,6 +159,16 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 	if err != nil {
 		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
+	// Time-of-check / time-of-use gap: getDnsIp releases dnsCurrentIpMtx
+	// before this AddHostname publishes the hostname -> ip mapping. Two
+	// concurrent setups of the same hostname can both miss the resolver
+	// lookup, each allocate a distinct IP, and the second AddHostname is
+	// silently dropped by the underlying resolver -- leaving one service
+	// with iptables pointing at an IP nothing resolves to. Safe today
+	// because service updates are processed serially by svcpoll; if that
+	// ever changes (parallel service adds), close the window by reserving
+	// the hostname under dnsCurrentIpMtx (e.g. by moving AddHostname into
+	// getDnsIp or adding an in-flight allocation map).
 	if err = resolver.AddHostname(hostname, ip); err != nil {
 		logger.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
 	}
