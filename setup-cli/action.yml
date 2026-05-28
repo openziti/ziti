@@ -32,7 +32,7 @@ runs:
            ver=$(gh release list --limit 1 --repo openziti/ziti --json "tagName" --jq ".[0].tagName")
         else
            echo "computing specified[${ver}] version"
-           ver=$(gh release list --repo openziti/ziti --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
+           ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
         fi
         if [[ -z "$ver" ]]; then
            echo "::error ::Failed to find version matching ${{ inputs.version }}"
