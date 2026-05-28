@@ -7,8 +7,7 @@ inputs:
     description: |
       version of ziti CLI to download,
       use tag regex (like v1.6) or special values:
-      'stable' (default) means latest release, 
-      `latest` means most recent tagged release,
+      'stable' (default) means latest release (GitHub marked `latest`), 
       regex can be used to pick latest release matching the pattern,
       for example, `2.0.[0-9]+$` will match latest 2.0.x release ignoring any 2.0.x-pre* releases
 outputs:
@@ -27,9 +26,6 @@ runs:
         if [[ ${{ inputs.version }} == "stable" ]]; then
            echo "fetching stable version"
            ver=$(gh release view --repo openziti/ziti | awk '/^tag/{ print $2 }')
-        elif [[ ${{ inputs.version }} == "latest" ]]; then
-          echo "fetching latest releases version"
-           ver=$(gh release list --limit 1 --repo openziti/ziti --json "tagName" --jq ".[0].tagName")
         else
            echo "computing specified[${ver}] version"
            ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
