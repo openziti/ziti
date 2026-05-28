@@ -6,24 +6,37 @@ inputs:
     default: stable
     description: |
       version of ziti CLI to download,
-      use tag (like v1.6.7) or special values:
-      'stable' (default) means latest release, 
-      `latest` means most recent tagged release
+      use tag regex (like v1.6) or special values:
+      'stable' (default) means latest release (GitHub marked `latest`), 
+      regex can be used to pick latest release matching the pattern,
+      for example, `2.0.[0-9]+$` will match latest 2.0.x release ignoring any 2.0.x-pre* releases
+outputs:
+  version:
+    value: ${{ steps.version.outputs.ZITI_VERSION }}
+    description: version of ziti CLI that was downloaded
 
 runs:
   using: composite
   steps:
     - name: process version
       shell: bash
+      id: version
       run: |
         ver=${{ inputs.version }}
         if [[ ${{ inputs.version }} == "stable" ]]; then
+           echo "fetching stable version"
            ver=$(gh release view --repo openziti/ziti | awk '/^tag/{ print $2 }')
-        elif [[ ${{ inputs.version }} == "latest" ]]; then
-           ver=$(gh release list --limit 1 --repo openziti/ziti --json "tagName" --jq ".[0].tagName")
+        else
+           echo "computing specified[${ver}] version"
+           ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
+        fi
+        if [[ -z "$ver" ]]; then
+           echo "::error ::Failed to find version matching ${{ inputs.version }}"
+           exit 1
         fi
         echo "using version = $ver"
         echo "ZITI_VERSION=$ver" >> $GITHUB_ENV
+        echo "ZITI_VERSION=$ver" >> $GITHUB_OUTPUT
 
     - name: download ziti CLI
       shell: bash
