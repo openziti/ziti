@@ -42,6 +42,7 @@ jobs:
       ZITI_HOMEPAGE: "https://openziti.io"
       ZITI_VENDOR: "NetFoundry Inc."
       TARGETARCH: ${{ matrix.packager == 'deb' && matrix.arch.deb || matrix.arch.rpm }}
+      NFPM_ARCH: ${{ matrix.packager == 'deb' && 'all' || 'noarch' }}
       MINIMUM_SYSTEMD_VERSION: 232
       ZITI_DEB_TEST_REPO: ${{ vars.ZITI_DEB_TEST_REPO || 'zitipax-openziti-deb-test' }}
       ZITI_RPM_TEST_REPO: ${{ vars.ZITI_RPM_TEST_REPO || 'zitipax-openziti-rpm-test' }}
@@ -51,7 +52,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Linux Release Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
@@ -80,7 +81,7 @@ jobs:
         shell: bash
 
       - name: upload package artifact to build summary page
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.package_name }}-${{ matrix.arch.gox }}-${{ matrix.packager }}
           path: ./release/${{ matrix.package_name }}*.${{ matrix.packager }}

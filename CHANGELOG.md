@@ -1,3 +1,9 @@
+# Release 1.6.17
+
+## What's New
+
+* Package publishing fixes
+
 # Release 1.6.16
 
 ## What's New

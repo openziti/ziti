@@ -1,61 +1,26 @@
 name: Promote Downstream Releases
 
-on: 
-  # may be triggered manually on a release tag that represents a prerelease to promote it to a release in the downstream package repositories and Docker Hub
+on:
+  # may be triggered manually to promote a release tag to stable in the downstream package repositories and Docker Hub.
+  # Dispatch from the tag itself, or from any branch and set the 'tag' input to the release tag to promote.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to promote, e.g. v2.0.0. Defaults to the ref the run was dispatched from; set this to promote a specific tag when dispatching from a branch.
+        required: false
+        type: string
   # GitHub release is marked stable, i.e., isPrerelease: false
   release:
     types: [released]  # this release event activity type excludes prereleases
 
-# cancel older, redundant runs of same workflow on same branch
+# cancel older, redundant runs of same workflow for the same tag (or dispatched ref)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  wait_for_release:
-    name: Wait for Release Builds to Succeed
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Debug action
-        uses: hmarr/debug-action@v3
-
-      - name: Wait for all checks on this rev
-        uses: lewagon/wait-on-check-action@v1.4.1
-        with:
-          ref: ${{ github.ref_name }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          # seconds between polling the checks api for job statuses
-          wait-interval: 30
-          # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
-          running-workflow-name: Wait for Release Builds to Succeed
-          # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job,Parse Tag Regex
-
-      - name: Git Checkout
-        if: failure()
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Diagnose Failed "Wait for Release Builds to Succeed"
-        if: failure()
-        shell: bash
-        run: |
-          set -o pipefail
-          set -o xtrace
-
-          COMMIT_SHA=$(git rev-parse ${GITHUB_REF_NAME}^{commit})
-          for STATUS in cancelled failure
-          do
-            gh run list --repo "${GITHUB_REPOSITORY}" --status "${STATUS}" --commit "${COMMIT_SHA}"
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
-    needs: wait_for_release
     name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
@@ -65,11 +30,14 @@ jobs:
       - name: Validate the Release Tag is a Stable Release Ref
         id: validate
         shell: bash
+        env:
+          # the 'tag' input when dispatched from a branch, otherwise the ref the run fired on (the tag)
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
+          if [[ "${PROMOTE_REF}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=${PROMOTE_REF#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
+            echo "${PROMOTE_REF} is not a semver stable release ref" >&2
             exit 1
           fi
 
@@ -85,18 +53,32 @@ jobs:
           set -o pipefail
           set -o xtrace
           
-          HIGHEST_VERSION=$(git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
-          CURRENT_VERSION="${GITHUB_REF_NAME}"
-          
+          HIGHEST_VERSION=$(
+            gh release list --repo "${GITHUB_REPOSITORY}" \
+                            --limit 999 \
+                            --exclude-drafts \
+                            --exclude-pre-releases \
+                            --json tagName \
+                            --jq '.[].tagName' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1
+          )
+          CURRENT_VERSION="${PROMOTE_REF}"
+
           if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
             echo "highest=true" | tee -a $GITHUB_OUTPUT
           else
             echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
+        env:
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   promote_docker:
     name: Tag Container Image ${{ matrix.image.repo }}:latest
     needs: parse_version
+    if: needs.parse_version.outputs.highest == 'true'  # only promote the highest version as ":latest"
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
@@ -108,13 +90,12 @@ jobs:
           - repo: ${{ vars.ZITI_TUNNEL_IMAGE || 'docker.io/openziti/ziti-tunnel' }}
     steps:
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKER_HUB_API_USER || secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Tag Latest
-        if: needs.parse_version.outputs.highest == 'true'
         shell: bash
         run: >
           docker buildx imagetools create --tag
@@ -156,30 +137,48 @@ jobs:
       - name: Copy RPM from test repo to stable repo with jFrog CLI
         if: matrix.packager == 'rpm'
         shell: bash
-        run: >
-          jf rt copy
-          --recursive=false
-          --flat=true
-          --fail-no-op=true
-          ${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}-1.${{ matrix.arch.rpm }}.rpm
-          ${{ env.ZITI_RPM_PROD_REPO }}/redhat/${{ matrix.arch.rpm }}/
+        run: |
+          # meta packages produce noarch RPMs; binary packages use the target arch
+          META_PACKAGES=(openziti-controller openziti-router)
+          if [[ " ${META_PACKAGES[*]} " == *" ${{ matrix.package_name }} "* ]]; then
+            _rpm_arch="noarch"
+          else
+            _rpm_arch="${{ matrix.arch.rpm }}"
+          fi
+          jf rt copy \
+            --recursive=false \
+            --flat=true \
+            --fail-no-op=true \
+            "${{ env.ZITI_RPM_TEST_REPO }}/redhat/${{ matrix.arch.rpm }}/${{ matrix.package_name }}-${{ needs.parse_version.outputs.version }}-1.${_rpm_arch}.rpm" \
+            "${{ env.ZITI_RPM_PROD_REPO }}/redhat/${{ matrix.arch.rpm }}/"
 
       - name: Copy DEB from test repo to stable repo with jFrog CLI
         if: matrix.packager == 'deb'
         shell: bash
-        run: >
-          jf rt copy
-          --recursive=false
-          --flat=true
-          --fail-no-op=true
-          ${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/${{ matrix.package_name }}_${{ needs.parse_version.outputs.version }}_${{ matrix.arch.deb }}.deb
-          ${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/
+        run: |
+          # meta packages produce arch-independent (all) DEBs; binary packages use the target arch
+          META_PACKAGES=(openziti-controller openziti-router)
+          if [[ " ${META_PACKAGES[*]} " == *" ${{ matrix.package_name }} "* ]]; then
+            _deb_arch="all"
+          else
+            _deb_arch="${{ matrix.arch.deb }}"
+          fi
+          jf rt copy \
+            --recursive=false \
+            --flat=true \
+            --fail-no-op=true \
+            "${{ env.ZITI_DEB_TEST_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/${{ matrix.package_name }}_${{ needs.parse_version.outputs.version }}_${_deb_arch}.deb" \
+            "${{ env.ZITI_DEB_PROD_REPO }}/pool/${{ matrix.package_name }}/${{ matrix.arch.deb }}/"
 
   repository-dispatch:
-    if: github.repository_owner == 'openziti'
     needs:
       - parse_version
       - promote_docker
+    # run if promote_docker succeeded or was skipped (not highest version), but not if it failed or was cancelled
+    if: |
+      github.repository_owner == 'openziti'
+      && !cancelled()
+      && !failure()
     name: Repository Dispatch Event
     runs-on: ubuntu-24.04
     steps:
