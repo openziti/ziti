@@ -22,6 +22,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_cloudfront:
+        description: 'Force-deploy the get.openziti.io CloudFront function even if GitHub does not mark this release as latest'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +41,7 @@ jobs:
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
       sha: ${{ steps.resolve.outputs.sha }}
+      is_latest: ${{ steps.resolve.outputs.is_latest }}
     steps:
       - name: Resolve release tag and commit SHA
         id: resolve
@@ -79,6 +85,19 @@ jobs:
 
           echo "tag=${TAG}" | tee -a "$GITHUB_OUTPUT"
           echo "sha=${SHA}" | tee -a "$GITHUB_OUTPUT"
+
+          # Determine whether this tag is the repo's "Latest release" (the GitHub
+          # latest-release endpoint excludes prereleases and drafts). The
+          # CloudFront job gates on this so an older maintenance release does not
+          # re-point the shared get.openziti.io function.
+          LATEST_TAG="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq '.tagName' 2>/dev/null || true)"
+          if [[ "${TAG}" == "${LATEST_TAG}" ]]; then
+            echo "INFO: ${TAG} is GitHub's latest release."
+            echo "is_latest=true" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "INFO: GitHub's latest release is '${LATEST_TAG:-<unknown>}', not ${TAG}."
+            echo "is_latest=false" | tee -a "$GITHUB_OUTPUT"
+          fi
 
   release-quickstart-image:
     # NOTE: the job display name "Release Quickstart Job" is referenced by name
@@ -149,10 +168,15 @@ jobs:
   release-quickstart-cloudfront:
     name: Deploy get.openziti.io CloudFront Function
     needs: resolve-tag
-    # CloudFront deploy only makes sense on the official upstream repo --
-    # forks could push to their own DockerHub repo but cannot deploy to
-    # someone else's CloudFront distribution.
-    if: github.repository_owner == 'openziti'
+    # Gated on two conditions:
+    #   1. Official upstream repo only -- forks could push to their own DockerHub
+    #      repo but cannot deploy to someone else's CloudFront distribution.
+    #   2. This tag is GitHub's "Latest release" (or force_cloudfront was set on a
+    #      manual dispatch). get.openziti.io is a single shared function; only the
+    #      newest release should re-point it. Older maintenance releases skip.
+    if: >-
+      github.repository_owner == 'openziti'
+      && (needs.resolve-tag.outputs.is_latest == 'true' || github.event.inputs.force_cloudfront == 'true')
     runs-on: ubuntu-24.04
     steps:
       # Single checkout at the release tag: python, routes.yml, and the
