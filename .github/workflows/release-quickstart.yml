@@ -119,7 +119,7 @@ jobs:
           echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
           echo ZITI_VERSION_OVERRIDE=v${QUICKSTART_VERSION%-*} | tee -a $GITHUB_OUTPUT
 
-      # container image tag :latest is published on merge to default branch "main" and on release tags
+      # Maintenance branch: never tag :latest -- it belongs to the newest release line (v2.0.0+).
       - name: Configure Quickstart Container
         env:
           IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
@@ -128,7 +128,6 @@ jobs:
         shell: bash
         run: |
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          DOCKER_TAGS+=",${IMAGE_REPO}:latest"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Quickstart Container Image to Hub
