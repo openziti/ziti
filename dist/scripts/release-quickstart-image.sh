@@ -7,11 +7,13 @@
 #   - moves :latest only when this tag IS the GitHub "Latest release" (or when
 #     --force-latest is passed), AND :latest does not already point at the same
 #     digest as :vX.Y.Z
+#   - --skip-build skips the :vX.Y.Z build/push entirely and only (re)evaluates
+#     the :latest move; used when re-pointing :latest without rebuilding
 #
 # Designed to be safely re-runnable from CI or a developer laptop.
 #
 # Usage:
-#   release-quickstart-image.sh --tag vX.Y.Z [--image-repo R] [--force-latest] [--dry-run]
+#   release-quickstart-image.sh --tag vX.Y.Z [--image-repo R] [--force-latest] [--skip-build] [--dry-run]
 #
 # Required environment:
 #   - docker CLI with buildx + an active builder (workflow does this)
@@ -30,6 +32,7 @@ IMAGE_REPO="${ZITI_QUICKSTART_IMAGE:-docker.io/openziti/quickstart}"
 FORCE_LATEST="false"
 DRY_RUN="false"
 CONTEXT_DIR=""
+SKIP_BUILD="false"
 
 usage() {
     cat <<EOF
@@ -39,6 +42,7 @@ Options:
   --tag vX.Y.Z          Release tag to build the image for (required).
   --image-repo R        Image repo (default: \$ZITI_QUICKSTART_IMAGE or docker.io/openziti/quickstart).
   --force-latest        Move :latest to this tag even if GitHub does not mark this release as latest.
+  --skip-build          Skip building/pushing the :vX.Y.Z image; only (re)evaluate the :latest move.
   --dry-run             Print actions but do not build or push.
   --context-dir DIR     Path to the Docker build context (default: repo-relative quickstart/docker/image).
   -h, --help            Show this help.
@@ -50,6 +54,7 @@ while [[ $# -gt 0 ]]; do
         --tag)           TAG="$2"; shift 2 ;;
         --image-repo)    IMAGE_REPO="$2"; shift 2 ;;
         --force-latest)  FORCE_LATEST="true"; shift ;;
+        --skip-build)    SKIP_BUILD="true"; shift ;;
         --dry-run)       DRY_RUN="true"; shift ;;
         --context-dir)   CONTEXT_DIR="$2"; shift 2 ;;
         -h|--help)       usage; exit 0 ;;
@@ -73,7 +78,7 @@ if [[ -z "$CONTEXT_DIR" ]]; then
     CONTEXT_DIR="quickstart/docker/image"
 fi
 
-if [[ ! -d "$CONTEXT_DIR" ]]; then
+if [[ "$SKIP_BUILD" != "true" && ! -d "$CONTEXT_DIR" ]]; then
     echo "ERROR: build context dir not found: $CONTEXT_DIR" >&2
     exit 2
 fi
@@ -110,6 +115,7 @@ echo "  Image repo:      $IMAGE_REPO"
 echo "  Tagged ref:      $TAGGED_REF"
 echo "  Latest ref:      $LATEST_REF"
 echo "  Force :latest:   $FORCE_LATEST"
+echo "  Skip build:      $SKIP_BUILD"
 echo "  Build context:   $CONTEXT_DIR"
 echo "  Dry run:         $DRY_RUN"
 echo "============================================================"
@@ -120,7 +126,9 @@ echo ""
 echo "---- Step 1: build & push $TAGGED_REF -----------------------"
 echo ""
 
-if image_exists "$TAGGED_REF"; then
+if [[ "$SKIP_BUILD" == "true" ]]; then
+    echo "INFO: --skip-build set; not building or pushing $TAGGED_REF (expecting it to already exist)."
+elif image_exists "$TAGGED_REF"; then
     echo "INFO: $TAGGED_REF already exists in the registry; skipping build & push."
 else
     echo "INFO: $TAGGED_REF not found in the registry; building and pushing."
@@ -177,7 +185,7 @@ else
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "[dry-run] would have built $TAGGED_REF in step 1; skipping :latest digest compare."
         else
-            echo "ERROR: $TAGGED_REF has no digest after the build; aborting :latest move." >&2
+            echo "ERROR: $TAGGED_REF has no digest in the registry; cannot move :latest (was it built/pushed?)." >&2
             exit 1
         fi
     elif [[ "$TAGGED_DIGEST" == "$LATEST_DIGEST" ]]; then

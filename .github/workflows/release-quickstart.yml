@@ -3,14 +3,14 @@ name: Release Quickstart Workflow
 # CloudFront function for a given release tag.
 #
 # Triggers:
-#   - release: published        (a GitHub release has been published, with its
-#                                assets already uploaded)
+#   - release: published        (new release published -> build + push the versioned image, move :latest, deploy CloudFront)
+#   - release: edited           (e.g. "Latest release" moved -> re-point :latest and CloudFront only; the image is NOT rebuilt)
 #   - workflow_dispatch         (manual; required `release_tag` input)
 #
 # Both jobs are idempotent and independently re-runnable from the Actions UI.
 on:
   release:
-    types: [published]
+    types: [published, edited]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -42,6 +42,7 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       sha: ${{ steps.resolve.outputs.sha }}
       is_latest: ${{ steps.resolve.outputs.is_latest }}
+      eligible: ${{ steps.resolve.outputs.eligible }}
     steps:
       - name: Resolve release tag and commit SHA
         id: resolve
@@ -64,9 +65,12 @@ jobs:
           fi
 
           if ! [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: release tag '${TAG}' is not a release semver (expected vMAJOR.MINOR.PATCH)" >&2
-            exit 1
+            echo "INFO: '${TAG}' is not a release semver (prerelease/draft/other edit); skipping image + CloudFront."
+            echo "eligible=false" | tee -a "$GITHUB_OUTPUT"
+            echo "is_latest=false" | tee -a "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "eligible=true" | tee -a "$GITHUB_OUTPUT"
 
           # resolve the commit the tag points at; this is the snapshot we will
           # check out for both jobs so the Dockerfile, routes.yml, and python
@@ -105,6 +109,13 @@ jobs:
     # rename without updating that file too.
     name: Release Quickstart Job
     needs: resolve-tag
+    # eligible, AND (a manual dispatch, OR a publish, OR it's now the latest).
+    # A non-latest edit (e.g. a typo fix on an old release) skips the job entirely.
+    if: >-
+      needs.resolve-tag.outputs.eligible == 'true'
+      && (github.event_name != 'release'
+      || github.event.action == 'published'
+      || needs.resolve-tag.outputs.is_latest == 'true')
     runs-on: ubuntu-24.04
     env:
       ZITI_QUICKSTART_IMAGE: ${{ vars.ZITI_QUICKSTART_IMAGE || 'docker.io/openziti/quickstart' }}
@@ -132,6 +143,8 @@ jobs:
           path: release-src
 
       - name: Set Up QEMU
+        # only needed to build the multi-arch image; an edit just re-points :latest
+        if: ${{ !(github.event_name == 'release' && github.event.action == 'edited') }}
         uses: docker/setup-qemu-action@v4
         with:
           platforms: amd64,arm64
@@ -159,11 +172,18 @@ jobs:
           if [[ "${{ github.event.inputs.force_latest }}" == "true" ]]; then
             FORCE_LATEST_FLAG="--force-latest"
           fi
+          SKIP_BUILD_FLAG=""
+          if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "edited" ]]; then
+            # an edit (e.g. moving "Latest release") must not rebuild the image;
+            # only re-point :latest to the now-latest tag
+            SKIP_BUILD_FLAG="--skip-build"
+          fi
           bash workflow-src/dist/scripts/release-quickstart-image.sh \
             --tag "${{ needs.resolve-tag.outputs.tag }}" \
             --image-repo "${ZITI_QUICKSTART_IMAGE}" \
             --context-dir release-src/quickstart/docker/image \
-            ${FORCE_LATEST_FLAG}
+            ${FORCE_LATEST_FLAG} \
+            ${SKIP_BUILD_FLAG}
 
   release-quickstart-cloudfront:
     name: Deploy get.openziti.io CloudFront Function
@@ -176,6 +196,7 @@ jobs:
     #      newest release should re-point it. Older maintenance releases skip.
     if: >-
       github.repository_owner == 'openziti'
+      && needs.resolve-tag.outputs.eligible == 'true'
       && (needs.resolve-tag.outputs.is_latest == 'true' || github.event.inputs.force_cloudfront == 'true')
     runs-on: ubuntu-24.04
     steps:
