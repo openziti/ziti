@@ -51,6 +51,7 @@ import (
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/agent"
+	"github.com/openziti/ziti/v2/common/agentlog"
 	"github.com/openziti/ziti/v2/common/alert"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/config"
@@ -421,6 +422,10 @@ func (self *Router) RunCliAgent(agentAddr, appAlias string) {
 	options.CustomOps = map[byte]func(conn net.Conn) error{
 		agent.CustomOp:      self.HandleAgentOp,
 		agent.CustomOpAsync: self.HandleAgentAsyncOp,
+	}
+
+	if err := agent.RegisterLogLevelHandlers(agentlog.DefaultLogLevelCallbacks()); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to register agent log-level handlers")
 	}
 
 	if err := agent.Listen(options); err != nil {

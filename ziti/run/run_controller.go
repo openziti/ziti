@@ -32,6 +32,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/agent"
+	"github.com/openziti/ziti/v2/common/agentlog"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/controller/server"
@@ -150,6 +151,9 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 		}
 		options.CustomOps = map[byte]func(conn net.Conn) error{
 			agent.CustomOpAsync: self.fabricController.HandleCustomAgentAsyncOp,
+		}
+		if err := agent.RegisterLogLevelHandlers(agentlog.DefaultLogLevelCallbacks()); err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to register agent log-level handlers")
 		}
 		if err := agent.Listen(options); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")

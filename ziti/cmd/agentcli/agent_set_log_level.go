@@ -17,13 +17,12 @@
 package agentcli
 
 import (
+	"fmt"
 	"os"
-	"strings"
 
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -56,19 +55,20 @@ func NewSetLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentSetLogLevelAction) Run() error {
-	levelArg := self.Args[0]
-
-	var level logrus.Level
-	var found bool
-	for _, l := range logrus.AllLevels {
-		if strings.EqualFold(l.String(), levelArg) {
-			level = l
-			found = true
-		}
+	level, err := agent.ParseLogLevel(self.Args[0])
+	if err != nil {
+		return err
 	}
 
-	if !found {
-		return errors.Errorf("invalid log level %v", levelArg)
+	if self.HasAgentCapability(agent.CapabilityLoggingSlogLevels) {
+		return self.MakeChannelRequest(byte(AgentAppAny), func(ch channel.Channel) error {
+			msg, err := agent.SendSetLogLevelV2(ch, level, self.timeout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(msg)
+			return nil
+		})
 	}
 
 	buf := []byte{byte(level)}
