@@ -272,9 +272,11 @@ implement slog's `WithAttrs` / `WithGroup` ordering.
   returns a `boundHandler` wrapping self (so attrs land *inside*
   the group). `WithGroup` extends; `WithGroup("")` returns the
   receiver. `Enabled` delegates to parent.
-- The only `Enabled` that does real work is `AsyncHandler.Enabled`,
-  which reads `globalLevel.Level()` (or the registry-bound level
-  once Phase 5 lands).
+- No `Enabled` in this chain does level gating. `AsyncHandler.Enabled`
+  returns true; the real check lives upstream in Phase 5's
+  registry-bound `namedHandler.Enabled` (per-name override or live
+  global level), and logrus pre-filters bridged records by level
+  before the bridge fires.
 - `Handle` always returns `nil` from the chain wrappers and the
   root. Errors are not propagated synchronously because the
   actual `downstream.Handle` runs on the drain goroutine, after
