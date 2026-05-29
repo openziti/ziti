@@ -156,7 +156,7 @@ func (self *AgentOptions) fetchCaps() {
 }
 
 // HasAgentCapability reports whether the target advertises the agent capability
-// identified by the given bit (e.g. agent.AgentLoggingSlogLevels).
+// identified by the given bit (e.g. agent.CapabilityLoggingSlogLevels).
 func (self *AgentOptions) HasAgentCapability(bit int) bool {
 	self.fetchCaps()
 	name, ok := agent.AgentCapabilityName(bit)
