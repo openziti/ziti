@@ -162,6 +162,10 @@ func Listen(opts Options) error {
 		listener: listener,
 	}
 
+	// Freeze the capability set; no further capability or handler registration
+	// is accepted once we start accepting connections.
+	freezeCapabilities()
+
 	go h.listen()
 	return nil
 }
@@ -370,6 +374,22 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 		_, err = conn.Write(marshalled)
 		return false, err
 
+	case AppInfoV2:
+		result := AppInfoV2Response{
+			Type:              self.options.AppType,
+			Id:                self.options.AppId,
+			Alias:             self.options.AppAlias,
+			Version:           self.options.AppVersion,
+			AgentCapabilities: GetAgentCapabilityStringList(),
+			AppCapabilities:   getAppCapabilities(),
+		}
+		marshalled, err := json.Marshal(result)
+		if err != nil {
+			return false, err
+		}
+		_, err = conn.Write(marshalled)
+		return false, err
+
 	case SetLogLevel:
 		param, err := bufio.NewReader(conn).ReadByte()
 		if err != nil {
@@ -379,12 +399,21 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 			return false, errors.Errorf("invalid log level %v", param)
 		}
 
-		oldLevel := logrus.GetLevel()
-		newLevel := logrus.Level(param)
-		logrus.SetLevel(newLevel)
+		// The framed command carries a logrus.Level byte; the agent LogLevel
+		// enum is defined in the same order, so the byte maps directly.
+		if cbs := getLogLevelCallbacks(); cbs != nil {
+			level := LogLevel(param)
+			cbs.SetLogLevel(level)
+			pfxlog.Logger().Infof("log level set to %v", level)
+			_, _ = fmt.Fprintf(conn, "log level set to %v\n", level)
+		} else {
+			oldLevel := logrus.GetLevel()
+			newLevel := logrus.Level(param)
+			logrus.SetLevel(newLevel)
 
-		pfxlog.Logger().Infof("log level set to from %v to %v", oldLevel, newLevel)
-		_, _ = fmt.Fprintf(conn, "log level set from %v to %v\n", oldLevel, newLevel)
+			pfxlog.Logger().Infof("log level set to from %v to %v", oldLevel, newLevel)
+			_, _ = fmt.Fprintf(conn, "log level set from %v to %v\n", oldLevel, newLevel)
+		}
 
 	case SetChannelLogLevel:
 		reader := bufio.NewReader(conn)
@@ -402,20 +431,27 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 			return false, errors.Errorf("invalid log level %v", level)
 		}
 
-		var prevLevel string
-		newLevel := logrus.Level(level)
-		pfxlog.GlobalConfig(func(options *pfxlog.Options) *pfxlog.Options {
-			if val, found := options.ChannelLogLevelOverrides[channel]; found {
-				prevLevel = val.String()
-			} else {
-				prevLevel = "default"
-			}
-			options.SetChannelLogLevel(channel, newLevel)
-			return options
-		})
+		if cbs := getLogLevelCallbacks(); cbs != nil {
+			lvl := LogLevel(level)
+			cbs.SetChannelLogLevel(channel, lvl)
+			pfxlog.Logger().Infof("log level for channel %v set to %v", channel, lvl)
+			_, _ = fmt.Fprintf(conn, "log level for channel %v set to %v\n", channel, lvl)
+		} else {
+			var prevLevel string
+			newLevel := logrus.Level(level)
+			pfxlog.GlobalConfig(func(options *pfxlog.Options) *pfxlog.Options {
+				if val, found := options.ChannelLogLevelOverrides[channel]; found {
+					prevLevel = val.String()
+				} else {
+					prevLevel = "default"
+				}
+				options.SetChannelLogLevel(channel, newLevel)
+				return options
+			})
 
-		pfxlog.Logger().Infof("log level for channel %v set from %v to %v", channel, prevLevel, newLevel)
-		_, _ = fmt.Fprintf(conn, "log level for channel %v set from %v to %v\n", channel, prevLevel, newLevel)
+			pfxlog.Logger().Infof("log level for channel %v set from %v to %v", channel, prevLevel, newLevel)
+			_, _ = fmt.Fprintf(conn, "log level for channel %v set from %v to %v\n", channel, prevLevel, newLevel)
+		}
 
 	case ClearChannelLogLevel:
 		reader := bufio.NewReader(conn)
@@ -424,19 +460,25 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 			return false, err
 		}
 
-		var prevLevel string
-		pfxlog.GlobalConfig(func(options *pfxlog.Options) *pfxlog.Options {
-			if val, found := options.ChannelLogLevelOverrides[channel]; found {
-				prevLevel = val.String()
-			} else {
-				prevLevel = "default"
-			}
-			options.ClearChannelLogLevel(channel)
-			return options
-		})
+		if cbs := getLogLevelCallbacks(); cbs != nil {
+			cbs.ClearChannelLogLevel(channel)
+			pfxlog.Logger().Infof("log level for channel %v cleared", channel)
+			_, _ = fmt.Fprintf(conn, "log level for channel %v cleared\n", channel)
+		} else {
+			var prevLevel string
+			pfxlog.GlobalConfig(func(options *pfxlog.Options) *pfxlog.Options {
+				if val, found := options.ChannelLogLevelOverrides[channel]; found {
+					prevLevel = val.String()
+				} else {
+					prevLevel = "default"
+				}
+				options.ClearChannelLogLevel(channel)
+				return options
+			})
 
-		pfxlog.Logger().Infof("log level for channel %v cleared, was %v", channel, prevLevel)
-		_, _ = fmt.Fprintf(conn, "log level for channel %v cleared, was %v\n", channel, prevLevel)
+			pfxlog.Logger().Infof("log level for channel %v cleared, was %v", channel, prevLevel)
+			_, _ = fmt.Fprintf(conn, "log level for channel %v cleared, was %v\n", channel, prevLevel)
+		}
 
 	case HeapDump:
 		reader := bufio.NewReader(conn)
