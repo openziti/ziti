@@ -242,11 +242,11 @@ only writer; consumers only read.
 // in common/agent, e.g. common/agent/capabilities.go
 
 const (
-    // AgentLoggingSlogLevels indicates the agent supports the channel-
+    // CapabilityLoggingSlogLevels indicates the agent supports the channel-
     // based v2 log-level commands (SetLogLevelV2,
     // SetChannelLogLevelV2, ClearChannelLogLevelV2) which carry
     // slog-style string level names.
-    AgentLoggingSlogLevels int = 1
+    CapabilityLoggingSlogLevels int = 1
 )
 
 // agentCapabilityNames maps each agent bit to the canonical
@@ -254,7 +254,7 @@ const (
 // The two encodings (int bit position for channel hello bitmask,
 // string for AppInfo JSON) stay in sync via this single table.
 var agentCapabilityNames = map[int]string{
-    AgentLoggingSlogLevels: "logging.slog-levels",
+    CapabilityLoggingSlogLevels: "logging.slog-levels",
 }
 
 // GetAgentCapabilitiesMask returns the bitmask form, used in the
@@ -360,7 +360,7 @@ func (c *agentClient) HasAppCapability(name string) bool {
 
 Two checking methods, one per field. Callers pick the namespace
 their capability lives in - typically the agent-defined ones
-(like `agent.AgentLoggingSlogLevels`) go through
+(like `agent.CapabilityLoggingSlogLevels`) go through
 `HasAgentCapability`; application-defined ones go through
 `HasAppCapability`.
 
@@ -466,7 +466,7 @@ if c.HasAgentCapability("logging.slog-levels") {
 ```
 
 (`HasAgentCapability` takes either a name string or a bit; tests
-usually use the constant `agent.AgentLoggingSlogLevels` form.)
+usually use the constant `agent.CapabilityLoggingSlogLevels` form.)
 
 Legacy framed `set-log-level` / `set-channel-log-level` /
 `clear-channel-log-level` stay on the server forever. Old clients
@@ -515,7 +515,7 @@ A reasonable bar for "this branch is done":
    tunnel, demo) collapse into that one API; no copy remains.
    Wire shape for any existing channel command is unchanged.
 2. `common/agent` gains a capability registry: bit constant
-   `AgentLoggingSlogLevels`, the `agentCapabilityNames` table,
+   `CapabilityLoggingSlogLevels`, the `agentCapabilityNames` table,
    and the `GetAgentCapabilitiesMask`,
    `GetAgentCapabilityStringList`, `AgentCapabilityBitFromString`
    helpers. `common/agent` is the only writer of this registry.
