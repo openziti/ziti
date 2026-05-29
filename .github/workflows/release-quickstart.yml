@@ -119,7 +119,7 @@ jobs:
           echo QUICKSTART_VERSION="${QUICKSTART_VERSION}" | tee -a $GITHUB_OUTPUT
           echo ZITI_VERSION_OVERRIDE=v${QUICKSTART_VERSION%-*} | tee -a $GITHUB_OUTPUT
 
-      # container image tag :latest is published on merge to default branch "main" and on release tags
+      # Maintenance branch: never tag :latest -- it belongs to the newest release line (v2.0.0+).
       - name: Configure Quickstart Container
         env:
           IMAGE_REPO: ${{ env.ZITI_QUICKSTART_IMAGE }}
@@ -128,7 +128,6 @@ jobs:
         shell: bash
         run: |
           DOCKER_TAGS="${IMAGE_REPO}:${IMAGE_TAG}"
-          DOCKER_TAGS+=",${IMAGE_REPO}:latest"
           echo DOCKER_TAGS="${DOCKER_TAGS}" | tee -a $GITHUB_OUTPUT
 
       - name: Build & Push Multi-Platform Quickstart Container Image to Hub
@@ -143,18 +142,3 @@ jobs:
             GITHUB_REPO_OWNER=${{ github.repository_owner }}
             GITHUB_REPO_NAME=${{ github.event.repository.name }}
           push: true
-
-      - name: Configure Python
-        shell: bash
-        run: |
-          pip install --requirement ./dist/cloudfront/get.openziti.io/requirements.txt
-          python --version
-        
-      - name: Deploy the CloudFront Function for get.openziti.io
-        if: github.repository_owner == 'openziti'
-        shell: bash
-        run: python ./dist/cloudfront/get.openziti.io/deploy-cloudfront-function.py
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
