@@ -30,7 +30,7 @@ require (
 	github.com/go-openapi/errors v0.22.7
 	github.com/go-openapi/jsonpointer v0.23.1
 	github.com/go-openapi/loads v0.23.3
-	github.com/go-openapi/runtime v0.30.0
+	github.com/go-openapi/runtime v0.32.2
 	github.com/go-openapi/spec v0.22.4
 	github.com/go-openapi/strfmt v0.26.2
 	github.com/go-openapi/swag v0.26.0
