@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strings"
 	"time"
 
@@ -128,6 +129,48 @@ type AgentOptions struct {
 	appAlias    string
 	appAddr     string
 	timeout     time.Duration
+
+	agentCaps   []string
+	appCaps     []string
+	capsFetched bool
+}
+
+// fetchCaps lazily fetches the target's capability lists via AppInfoV2 and
+// caches them for the lifetime of this AgentOptions. A server that predates
+// AppInfoV2 (or any fetch error) leaves the lists empty, which yields legacy
+// behavior.
+func (self *AgentOptions) fetchCaps() {
+	if self.capsFetched {
+		return
+	}
+	self.capsFetched = true
+	_ = self.MakeRequest(agent.AppInfoV2, nil, func(conn net.Conn) error {
+		resp, ok, err := agent.ReadAppInfoV2Response(conn)
+		if err != nil || !ok {
+			return nil
+		}
+		self.agentCaps = resp.AgentCapabilities
+		self.appCaps = resp.AppCapabilities
+		return nil
+	})
+}
+
+// HasAgentCapability reports whether the target advertises the agent capability
+// identified by the given bit (e.g. agent.AgentLoggingSlogLevels).
+func (self *AgentOptions) HasAgentCapability(bit int) bool {
+	self.fetchCaps()
+	name, ok := agent.AgentCapabilityName(bit)
+	if !ok {
+		return false
+	}
+	return slices.Contains(self.agentCaps, name)
+}
+
+// HasAppCapability reports whether the target advertises the named application
+// capability.
+func (self *AgentOptions) HasAppCapability(name string) bool {
+	self.fetchCaps()
+	return slices.Contains(self.appCaps, name)
 }
 
 func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
