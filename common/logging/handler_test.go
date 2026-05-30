@@ -380,6 +380,36 @@ func TestSyncEmitSerializesWithDrain(t *testing.T) {
 	require.Equal(t, "sync", recs[1].Message)
 }
 
+// TestSyncEmitFlushesQueuedRecords proves SyncEmit drains the records already
+// sitting in the queue before writing its own record, so the buffered context
+// leading up to a fatal/panic survives a process exit that happens right after
+// the call. The drain goroutine is stopped first (Close, then drainDone) so the
+// flush runs in isolation with no concurrent consumer racing for the queue;
+// records are staged directly because Handle no-ops post-Close.
+func TestSyncEmitFlushesQueuedRecords(t *testing.T) {
+	rec := &recordingHandler{}
+	opts := DefaultOptions()
+	opts.QueueSize = 8
+	h, err := NewAsyncHandler(rec, opts)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Close())
+	<-h.drainDone
+	require.Equal(t, 0, rec.count(), "no records should have been written before staging")
+
+	h.queue <- queuedRecord{ctx: context.Background(), record: makeRecord(slog.LevelInfo, "q1")}
+	h.queue <- queuedRecord{ctx: context.Background(), record: makeRecord(slog.LevelWarn, "q2")}
+
+	require.NoError(t, h.SyncEmit(context.Background(), makeRecord(LevelFatal, "fatal")))
+
+	recs := rec.snapshot()
+	got := make([]string, len(recs))
+	for i, r := range recs {
+		got[i] = r.Message
+	}
+	require.Equal(t, []string{"q1", "q2", "fatal"}, got)
+}
+
 // TestAsyncHandlerCountsDrainErrors emits records into a handler that errors
 // on every call and verifies the drain counts the errors and survives. The
 // assertions run before Close so the close-flush summary doesn't perturb

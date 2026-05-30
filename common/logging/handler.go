@@ -156,16 +156,40 @@ func (h *AsyncHandler) Close() error {
 	return nil
 }
 
-// SyncEmit writes r through the downstream handler synchronously on the
-// caller's goroutine, bypassing the queue. It exists so that fatal/panic
-// records reach the downstream before the process exits. Contention with the
-// drain is negligible because SyncEmit is rare (only at fatal/panic) and the
-// drain holds downstreamMu only for the duration of a single
-// downstream.Handle call.
+// SyncEmit flushes the records currently queued, then writes r through the
+// downstream handler synchronously on the caller's goroutine. It exists so
+// that fatal/panic records reach the downstream before the process exits, and
+// flushing first means the buffered context leading up to the fatal/panic
+// (the very records an operator wants in a post-mortem) lands ahead of it
+// rather than being lost when the process exits out from under the drain.
+//
+// The flush is bounded and non-blocking, so a producer still enqueuing cannot
+// make it spin and the drain goroutine cannot deadlock it. A single record the
+// drain has already pulled but not yet written may still land after r; ordering
+// on the exit path is best-effort, not exact.
 func (h *AsyncHandler) SyncEmit(ctx context.Context, r slog.Record) error {
 	h.downstreamMu.Lock()
 	defer h.downstreamMu.Unlock()
+	h.flushQueuedLocked()
 	return h.downstream.Handle(ctx, r)
+}
+
+// flushQueuedLocked drains the records sitting in the queue through the
+// downstream handler. The caller must hold downstreamMu. It is bounded by the
+// queue capacity and stops at the first empty receive, so a producer still
+// enqueuing cannot make it spin, and the drain goroutine (which may be parked
+// on downstreamMu) cannot deadlock it. Records the concurrent drain pulls
+// first are written by the drain; the rest are written here, all under the
+// same mutex so no downstream.Handle calls interleave.
+func (h *AsyncHandler) flushQueuedLocked() {
+	for i := cap(h.queue); i > 0; i-- {
+		select {
+		case qr := <-h.queue:
+			h.handleLocked(qr.ctx, qr.record)
+		default:
+			return
+		}
+	}
 }
 
 // drain is the single goroutine that pulls records off the queue and calls
@@ -205,10 +229,16 @@ func (h *AsyncHandler) drain() {
 func (h *AsyncHandler) dispatch(ctx context.Context, r slog.Record) {
 	h.downstreamMu.Lock()
 	defer h.downstreamMu.Unlock()
+	h.handleLocked(ctx, r)
+}
+
+// handleLocked hands one record to the downstream handler, counting and
+// reporting a downstream error. The caller must hold downstreamMu. On error it
+// bumps drainErrors and writes once to os.Stderr, bypassing slog to avoid
+// recursion if the downstream handler is the thing failing.
+func (h *AsyncHandler) handleLocked(ctx context.Context, r slog.Record) {
 	if err := h.downstream.Handle(ctx, r); err != nil {
 		h.drainErrors.Add(1)
-		// Bypass slog to avoid recursion if the downstream handler is the
-		// thing failing.
 		fmt.Fprintf(os.Stderr, "logging: downstream handler error: %v\n", err)
 	}
 }
