@@ -18,6 +18,7 @@ limitations under the License.
 package cli_tests
 
 import (
+	"crypto/x509"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
 	"github.com/openziti/ziti/v2/ziti/util"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +49,7 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("same controller uses cached cert", s.testSameControllerUsesCache)
 	t.Run("switch controller file auth", s.testSwitchControllerFileAuth)
 	t.Run("file auth ignores cached server cert", s.testFileAuthIgnoresCachedServerCert)
+	t.Run("os-trusted server cert uses system store and clears cache", s.testTrustedServerCertUsesSystemStore)
 
 	// Edge Cases
 	t.Run("empty username", s.testEmptyUsername)
@@ -590,4 +593,70 @@ func (s *cliTestState) testFileAuthIgnoresCachedServerCert(t *testing.T) {
 	cachedCertData, err := os.ReadFile(cachedCertPath)
 	require.NoError(t, err, "cached cert file should still exist")
 	require.Equal(t, "INVALID JUNK CERT DATA", string(cachedCertData), "cached cert should remain corrupted after file-based auth succeeds")
+}
+
+// testTrustedServerCertUsesSystemStore exercises the "alt/public cert" path: when the OS already trusts the
+// controller's server cert (e.g. a LetsEncrypt cert), login must use system trust, persist an empty CaCert,
+// and remove any stale cached CA so subsequent commands also fall back to the system store.
+//
+// The harness controller is self-signed, so the real OS store never trusts it. We simulate OS trust by
+// substituting edge.SystemCertPool with a pool containing the controller CA (the same hook the probe and
+// GetCaPool consult). This is the only deterministic, cross-platform way to reach the trusted path here.
+func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
+	s.removeZitiDir(t)
+
+	// Phase 1: real system trust does NOT include the harness controller's self-signed CA, so this login
+	// takes the untrusted path and caches the server CA.
+	opts1 := s.controllerUnderTest.NewTestLoginOpts()
+	opts1.CaCert = ""
+	opts1.Yes = true
+	require.NoError(t, opts1.Run(), "untrusted-path login should succeed and cache the CA")
+	require.NotEmpty(t, opts1.ApiSession)
+	require.NotEmpty(t, opts1.CaCert, "untrusted path should cache and reference a CA file")
+
+	cachedCert := opts1.CaCert
+	_, statErr := os.Stat(cachedCert)
+	require.NoError(t, statErr, "cached CA file should exist after the untrusted-path login")
+
+	// Phase 2: substitute a trust pool containing the controller CA to simulate the OS trusting the server
+	// cert. The login should now use system trust, clear CaCert, and remove the stale cached CA.
+	caPEM, err := os.ReadFile(s.controllerUnderTest.AdminCaFile)
+	require.NoError(t, err, "read controller CA")
+	pool := x509.NewCertPool()
+	require.True(t, pool.AppendCertsFromPEM(caPEM), "controller CA should parse")
+
+	prev := edge.SystemCertPool
+	edge.SystemCertPool = func() (*x509.CertPool, error) { return pool, nil }
+	defer func() { edge.SystemCertPool = prev }()
+
+	opts2 := s.controllerUnderTest.NewTestLoginOpts()
+	opts2.Yes = true // also drives the cached-CA removal without an interactive prompt
+	require.NoError(t, opts2.Run(), "trusted-path login should succeed via system trust")
+	require.NotEmpty(t, opts2.ApiSession)
+	require.Empty(t, opts2.CaCert, "trusted path should clear CaCert so the identity uses system trust")
+
+	_, statErr = os.Stat(cachedCert)
+	require.True(t, os.IsNotExist(statErr), "trusted path should remove the stale cached CA at %s", cachedCert)
+
+	// Phase 3: still pointed at the (simulated) OS-trusted controller, but pass an explicit --ca that does
+	// NOT validate the server cert. Because --ca replaces (not augments) system trust, login must fail even
+	// though the OS would otherwise trust the server. AdminCertFile is a valid cert PEM but it's the admin's
+	// client leaf, not the CA that signed the server cert, so it cannot verify the server.
+	//
+	// The --ca flag is detected via o.Cmd.Flags().Changed("ca"), so a real cobra flag (marked changed) must
+	// be attached -- merely setting opts.CaCert would let the trusted-probe clear it and the login succeed.
+	wrongCa := s.controllerUnderTest.AdminCertFile
+	_, statErr = os.Stat(wrongCa)
+	require.NoError(t, statErr, "wrong-CA fixture should exist")
+
+	caCmd := &cobra.Command{Use: "login"}
+	caCmd.Flags().String("ca", "", "")
+	caCmd.Flags().Bool("read-only", false, "")
+	require.NoError(t, caCmd.Flags().Set("ca", wrongCa)) // marks --ca as explicitly provided
+
+	opts3 := s.controllerUnderTest.NewTestLoginOpts()
+	opts3.Cmd = caCmd
+	opts3.CaCert = wrongCa
+	opts3.Yes = true
+	require.Error(t, opts3.Run(), "login must fail when --ca cannot validate the server, even if the OS trusts it")
 }
