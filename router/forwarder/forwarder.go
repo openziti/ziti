@@ -17,22 +17,35 @@
 package forwarder
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/foundation/v2/uuidz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
-	"github.com/sirupsen/logrus"
 )
+
+// routeLog is the logger for the forwarder's circuit-routing and
+// payload/control-forwarding paths. Its channel name is
+// "router.forwarder.route"; operators adjust route visibility with
+// `ziti agent set-channel-log-level router.forwarder.route <level>`.
+//
+// The forward path is per-payload hot: every record on this channel runs
+// inside the data-plane critical section. The bridged-logrus and direct
+// slog channels both flow through the same AsyncHandler queue, so the
+// per-record cost is the same; level-gating is what keeps it cheap.
+var routeLog = logging.For("router.forwarder.route")
 
 // InvalidLinkDestinationError indicates a route referenced a link destination that does not exist.
 type InvalidLinkDestinationError struct {
@@ -90,7 +103,7 @@ func (forwarder *Forwarder) StartScanner(ctrls env.NetworkControllers) {
 	if scanner.interval > 0 {
 		go scanner.run()
 	} else {
-		logrus.Warnf("scanner disabled")
+		routeLog.Warn("scanner disabled")
 	}
 }
 
@@ -108,15 +121,15 @@ func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress
 }
 
 func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
-	log := pfxlog.Logger().WithField("circuitId", circuitId)
+	log := routeLog.With("circuitId", circuitId)
 	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
-				log.Debugf("unregistering destination [@/%v] for circuit", address)
+				log.Debug("unregistering destination for circuit", "address", address)
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Unrouted()
 			} else {
-				log.Debugf("no destinations found for [@/%v] for circuit", address)
+				log.Debug("no destinations found for address", "address", address)
 			}
 		}
 		forwarder.destinations.unlinkCircuit(circuitId)
@@ -159,11 +172,11 @@ func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 			// It's an ingress destination, which isn't established until after routing has completed
 		}
 		circuitFt.setForwardAddress(xgress.Address(forward.SrcAddress), xgress.Address(forward.DstAddress))
-		pfxlog.Logger().WithFields(logrus.Fields{
-			"circuitId":   circuitId,
-			"source":      forward.SrcAddress,
-			"destination": forward.DstAddress,
-		}).Debug("route added")
+		routeLog.Debug("route added",
+			"circuitId", circuitId,
+			"source", forward.SrcAddress,
+			"destination", forward.DstAddress,
+		)
 	}
 	forwarder.circuits.setForwardTable(circuitId, circuitFt)
 	return nil
@@ -173,7 +186,7 @@ func (forwarder *Forwarder) Unroute(circuitId string, now bool) {
 	if now {
 		forwarder.circuits.removeForwardTable(circuitId)
 		forwarder.EndCircuit(circuitId)
-		pfxlog.Logger().WithField("circuitId", circuitId).Info("circuit unrouted")
+		routeLog.Info("circuit unrouted", "circuitId", circuitId)
 	} else {
 		go forwarder.unrouteTimeout(circuitId, forwarder.Options.XgressCloseCheckInterval)
 	}
@@ -192,8 +205,6 @@ func (forwarder *Forwarder) RetransmitPayload(srcAddr xgress.Address, payload *x
 }
 
 func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgress.Payload, markActive bool, timeout time.Duration) error {
-	log := pfxlog.ContextLogger(string(srcAddr))
-
 	circuitId := payload.GetCircuitId()
 	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, markActive); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
@@ -207,7 +218,23 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 				if err := dst.SendPayload(payload, timeout, payloadType); err != nil {
 					return err
 				}
-				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
+				// Per-payload hot path: build the logger only if Debug is enabled, so
+				// the level check is the only cost when this channel is below Debug.
+				if routeLog.Enabled(context.Background(), slog.LevelDebug) {
+					attrs := []any{
+						"srcAddr", string(srcAddr),
+						"dstAddr", string(dstAddr),
+						"circuitId", circuitId,
+						"seq", payload.Sequence,
+						"origin", payload.GetOriginator(),
+					}
+					// Only present when the payload is being traced; lets operators
+					// correlate a single payload across hops.
+					if uuidVal, found := payload.Headers[xgress.HeaderKeyUUID]; found {
+						attrs = append(attrs, "uuid", uuidz.ToString(uuidVal))
+					}
+					routeLog.Debug("forwarded payload", attrs...)
+				}
 				return nil
 			} else {
 				return fmt.Errorf("cannot forward payload, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
@@ -221,8 +248,6 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 }
 
 func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error {
-	log := pfxlog.ContextLogger(string(srcAddr))
-
 	circuitId := acknowledgement.CircuitId
 	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId, true); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
@@ -230,7 +255,13 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 				if err := dst.SendAcknowledgement(acknowledgement); err != nil {
 					return err
 				}
-				log.Debugf("=> %s", string(dstAddr))
+				if routeLog.Enabled(context.Background(), slog.LevelDebug) {
+					routeLog.Debug("forwarded acknowledgement",
+						"srcAddr", string(srcAddr),
+						"dstAddr", string(dstAddr),
+						"circuitId", circuitId,
+					)
+				}
 				return nil
 
 			} else {
@@ -248,7 +279,7 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 
 func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgress.Control) error {
 	circuitId := control.CircuitId
-	log := pfxlog.ContextLogger(string(srcAddr)).WithField("circuitId", circuitId)
+	log := routeLog.With("srcAddr", string(srcAddr), "circuitId", circuitId)
 
 	var err error
 
@@ -263,7 +294,7 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 					}
 				}
 				err = dst.SendControl(control)
-				log.Debugf("=> %s", string(dstAddr))
+				log.Debug("forwarded control", "dstAddr", string(dstAddr))
 			} else {
 				err = fmt.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
 			}
@@ -279,10 +310,10 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 		resp.Headers.PutStringHeader(xgress.ControlError, err.Error())
 		if dst, found := forwarder.destinations.getDestination(srcAddr); found {
 			if fwdErr := dst.SendControl(resp); fwdErr != nil {
-				log.WithError(errors.Join(err, fwdErr)).Error("error sending trace error response")
+				log.Error("error sending trace error response", "error", errors.Join(err, fwdErr))
 			}
 		} else {
-			log.WithError(err).Error("unable to send trace error response as destination for source not found")
+			log.Error("unable to send trace error response as destination for source not found", "error", err)
 		}
 	}
 
@@ -300,7 +331,7 @@ func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId strin
 	if forwarder.faulter != nil {
 		forwarder.faulter.Report(circuitId, ctrlId)
 	} else {
-		logrus.Error("nil faulter, cannot accept forwarding fault report")
+		routeLog.Error("nil faulter, cannot accept forwarding fault report")
 	}
 }
 
@@ -312,7 +343,7 @@ func (forwarder *Forwarder) Debug() string {
 // for a circuit, it will be checked repeatedly, looking to see if the circuit has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
 func (forwarder *Forwarder) unrouteTimeout(circuitId string, interval time.Duration) {
-	log := pfxlog.ContextLogger("c/" + circuitId)
+	log := routeLog.With("circuitId", circuitId)
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 
