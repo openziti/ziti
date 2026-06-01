@@ -14,7 +14,6 @@
 	limitations under the License.
 */
 
-// Package agent contains signals used to communicate to the gops agents.
 package agent
 
 const (

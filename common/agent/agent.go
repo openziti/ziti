@@ -158,26 +158,32 @@ func Listen(opts Options) error {
 	}
 
 	h := &handler{
-		options: opts,
+		options:  opts,
+		listener: listener,
 	}
 
 	go h.listen()
 	return nil
 }
 
+// handler owns the listener for the lifetime of the listen goroutine. The
+// handler holds its own reference rather than reading the package-global
+// listener, so cleanup paths that nil out the global don't race with the
+// goroutine's Accept loop or its deferred Close.
 type handler struct {
-	options Options
+	options  Options
+	listener net.Listener
 }
 
 func (self *handler) listen() {
 	logger := pfxlog.Logger()
 	defer func() {
-		if err := listener.Close(); err != nil {
+		if err := self.listener.Close(); err != nil {
 			logger.WithError(err).Error("error closing gops listener")
 		}
 	}()
 	for {
-		if conn, err := listener.Accept(); err != nil {
+		if conn, err := self.listener.Accept(); err != nil {
 			logger.WithError(err).Error("error accepting gops connection, closing gops listener")
 			break
 		} else {
