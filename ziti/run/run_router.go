@@ -18,9 +18,11 @@ package run
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common/bindpoints"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/router"
 	"github.com/openziti/ziti/v2/router/env"
@@ -69,8 +71,10 @@ func (self *RouterAction) Run(cmd *cobra.Command, args []string) {
 
 	config, err := env.LoadConfig(args[0])
 	if err != nil {
-		startLogger.WithError(err).Error("error loading ziti router config")
-		panic(err)
+		logging.Fatal(cmd.Context(), "error loading ziti router config",
+			append(versionAttrs(),
+				slog.String("configFile", args[0]),
+				slog.String("error", err.Error()))...)
 	}
 
 	config.Edge.ForceExtendEnrollment = self.ForceCertificateExtension

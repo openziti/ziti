@@ -9,6 +9,7 @@
 * [Router Configs](#router-configs) - Allow routers to have a list of associated configs
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
+* [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 
 ## Cluster Quorum Recovery
 
@@ -196,10 +197,65 @@ across interfaces. Existing single-address configs are unchanged.
       - udp://192.168.10.1:53
 ```
 
+## Logging Now Uses slog with an Async Handler
+
+The controller, router, and `ziti tunnel` now log through Go's standard
+`log/slog` library behind a single asynchronous sink. By default the output is
+unchanged - the same human-readable format as before - so no configuration
+change is required. Existing `pfxlog`/`logrus` log statements continue to work;
+they are bridged into the new sink rather than rewritten, so the migration to
+slog is gradual and nothing is lost in the meantime.
+
+The motivation is performance under load. Previously every log call contended on
+a single process-wide formatter-plus-writer mutex, which could block many
+goroutines at once. Writing is now handed to a background goroutine, off the hot
+path of the code doing the logging.
+
+### Asynchronous writes and dropped records
+
+Because writes are buffered through a bounded queue, behavior under saturation
+is the one change worth knowing about:
+
+* Records at or above a configurable block threshold (default `warn`) block the
+  caller until there is room, so warnings, errors, and fatal messages are never
+  silently dropped.
+* Lower-priority records (`info`, `debug`, `trace`) are dropped when the queue is
+  full instead of blocking. Whenever drops occur, a summary line is emitted
+  periodically reporting how many records were dropped per level, so the loss is
+  always visible in the logs.
+
+Under normal load nothing is dropped; this only engages when log volume outruns
+the writer.
+
+### New CLI flags
+
+`ziti controller run`, `ziti router run`, and `ziti tunnel` gain three optional
+flags to tune the async sink. All have sensible defaults, so leaving them unset
+preserves current behavior:
+
+* `--log-queue-size` (default `4096`) - capacity of the async log queue.
+* `--log-block-threshold` (default `warn`) - lowest level that blocks rather than
+  dropping under saturation (`panic|fatal|error|warn|info|debug|trace`).
+* `--log-summary-interval` (default `5s`) - how often the dropped-record summary
+  line is emitted.
+
+The existing `--log-formatter` flag is unchanged: `pfxlog` (default), `json`
+(unchanged JSON shape), and `text` (logrus-style `key=value`).
+
+### Per-channel log levels are slog-only
+
+`ziti agent set-channel-log-level <name> <level>` now adjusts only code that has
+been migrated to the new slog loggers. Call sites still using `pfxlog.Logger()`
+or `pfxlog.ChannelLogger(...)` continue to follow the global level, so because
+most call sites are not yet migrated, per-channel overrides have limited reach
+today and expand as packages are converted. The global `ziti agent set-log-level
+<level>` still affects everything.
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.92](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.92)
-* github.com/openziti/identity: [v1.0.129 -> v1.0.130](https://github.com/openziti/identity/compare/v1.0.129...v1.0.130)
+* github.com/openziti/edge-api: [v0.31.0 -> v0.31.1](https://github.com/openziti/edge-api/compare/v0.31.0...v0.31.1)
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.95](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.95)
+* github.com/openziti/identity: [v1.0.129 -> v1.0.133](https://github.com/openziti/identity/compare/v1.0.129...v1.0.133)
 * github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.0](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.0)
     * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
     * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
@@ -207,13 +263,25 @@ across interfaces. Existing single-address configs are unchanged.
     * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
+* github.com/openziti/secretstream: [v0.1.49 -> v0.1.51](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.51)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #3910](https://github.com/openziti/ziti/issues/3910) - Install slog and route agent log-level callbacks through common/logging
+    * [Issue #3927](https://github.com/openziti/ziti/issues/3927) - Router does not enforce api-session or identity revocations on live connections; revoked OIDC sessions keep dialing/hosting until access-token expiry
+    * [Issue #3906](https://github.com/openziti/ziti/issues/3906) - Add named-logger registry, logrus bridge, and pfxlog-shape JSON
+    * [Issue #3904](https://github.com/openziti/ziti/issues/3904) - Add slog AsyncHandler in preparation for moving to slog for logging
+    * [Issue #3902](https://github.com/openziti/ziti/issues/3902) - Add agent IPC capability discovery and channel-based log-level commands
+    * [Issue #3894](https://github.com/openziti/ziti/issues/3894) - Consolidate duplicated agent channel-upgrade code into common/agent
+    * [Issue #3893](https://github.com/openziti/ziti/issues/3893) - Import openziti/agent library into common/agent
+    * [Issue #3952](https://github.com/openziti/ziti/issues/3952) - externalIdClaim on CA returns HTTP 500 with empty body for most matcher/parser combinations
+    * [Issue #3780](https://github.com/openziti/ziti/issues/3780) - Add configs field to routers
     * [Issue #1593](https://github.com/openziti/ziti/issues/1593) - Expanded attribute query support in management API; add policy attribute support and usage count
     * [Issue #3867](https://github.com/openziti/ziti/issues/3867) - Tunneler skips iptables rules for services sharing an intercept hostname
     * [Issue #3949](https://github.com/openziti/ziti/issues/3949) - DeleteById swallows errors when firing change events
     * [Issue #3945](https://github.com/openziti/ziti/issues/3945) - Increase certificate serial number namespace to 159 bits
     * [Issue #3942](https://github.com/openziti/ziti/issues/3942) - Prep for channel v5: bind handler invocation, send priorities
     * [Issue #3938](https://github.com/openziti/ziti/issues/3938) - Carry the link id in a link header instead of only in the channel identity token
+    * [Issue #3908](https://github.com/openziti/ziti/issues/3908) - Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
     * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - ziti login fails with oidc + wildcard certs
     * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - oidc auth fails with wildcard server-cert SANs
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
@@ -221,5 +289,3 @@ across interfaces. Existing single-address configs are unchanged.
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
     * [Issue #3972](https://github.com/openziti/ziti/issues/3972) - Support multiple LAN interfaces for tproxy mode
     * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode
-
-

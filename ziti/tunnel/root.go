@@ -17,6 +17,7 @@
 package tunnel
 
 import (
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/openziti/ziti/v2/ziti/util"
 
@@ -73,6 +75,7 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().BoolVar(&sdkFlowControl, "sdk-flow-control", true, "enables sdk flow control")
 	root.PersistentFlags().Uint8Var(&maxDefaultConnections, "default-connections", 2, "sets the desired number of default connections")
 	root.PersistentFlags().Uint8Var(&maxControlConnections, "control-connections", 1, "sets the desired number of control connections")
+	logging.AddFlags(root.PersistentFlags())
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
 	for _, cmdF := range hostSpecificCmds {
@@ -104,20 +107,20 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		println("err")
 	}
+	asyncOpts, err := logging.OptionsFromFlags(cmd.Flags())
+	if err != nil {
+		logrus.WithError(err).Fatal("invalid --log-* flags")
+	}
+	handler, err := logging.BuildHandlerForFormat(os.Stderr, asyncOpts, logFormatter)
+	if err != nil {
+		logrus.WithError(err).Fatal("unable to build log handler")
+	}
+	initialLevel := slog.LevelInfo
 	if verbose {
-		logrus.SetLevel(logrus.DebugLevel)
+		initialLevel = slog.LevelDebug
 	}
+	logging.Install(handler, initialLevel)
 
-	switch logFormatter {
-	case "pfxlog":
-		logrus.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().StartingToday()))
-	case "json":
-		logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
-	case "text":
-		logrus.SetFormatter(&logrus.TextFormatter{})
-	default:
-		// let logrus do its own thing
-	}
 	util.LogReleaseVersionCheck()
 }
 

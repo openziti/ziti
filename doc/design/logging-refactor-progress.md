@@ -25,6 +25,15 @@ gates each phase before the next can start.
 
 ### Phase 1 — Mirror df under openziti (insurance only)
 
+> **Superseded.** PR review of the foundation found behavior gaps in
+> dl's PrettyHandler that its options cannot reach (blank labels for
+> Fatal/Panic/Trace, color not actually gateable, color keyed on
+> stdout while we log to stderr). We replaced it with a hand-rolled
+> `logging.PrettyHandler` and removed the df dependency entirely; see
+> "Why we hand-roll the pretty handler" in
+> [logging-refactor.md](logging-refactor.md). The mirror can stay or
+> be archived; nothing depends on it.
+
 **Scope.** Create `github.com/openziti/df` as a pristine mirror of
 `github.com/michaelquigley/df`, including the `v1.0.0` tag and full
 history. ziti depends on **upstream df directly**; the mirror exists
