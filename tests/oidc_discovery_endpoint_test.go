@@ -1,10 +1,14 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_OidcDiscoveryEndpoints(t *testing.T) {
@@ -107,6 +111,64 @@ func Test_OidcDiscoveryEndpoints_DualServers(t *testing.T) {
 						"%q URL %q should start with issuer %q", key, url, issuer)
 				})
 			}
+		})
+	}
+}
+
+// Test_OidcDiscoveryEndpoints_WildcardIssuer models the LetsEncrypt/alt-cert scenario: the controller has an
+// ordinary primary server_cert plus an alt_server_certs entry whose only DNS SAN is a wildcard
+// (*.wildcard.test). OIDC issuers are derived from the SANs of ALL active server certs (including alt
+// certs), so the wildcard must become an issuer. The test verifies the OIDC discovery document served to a
+// concrete host under that wildcard advertises an issuer derived from the request host, not the literal
+// wildcard and not a 404. It is the end-to-end counterpart to controller/webapis.Test_getPossibleIssuers
+// (which proves the wildcard survives into the issuer list).
+//
+// The controller uses the WildcardOidcServer config set. See tests/testdata/configs/README.md
+// ("Regenerating the wildcard server cert") for how the alt (wildcard) fixture cert was generated.
+func Test_OidcDiscoveryEndpoints_WildcardIssuer(t *testing.T) {
+	ctx := NewTestContextWithConfigSet(t, WildcardOidcServer)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	const listenerAddr = "127.0.0.1:1281"
+
+	// *.wildcard.test does not resolve, so dial the loopback listener directly while still presenting a
+	// wildcard-covered Host (and SNI). The controller derives the issuer from this request host.
+	transport := ctx.NewTransport()
+	transport.DialContext = func(c context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: 30 * time.Second}).DialContext(c, network, listenerAddr)
+	}
+	client := ctx.NewHttpClient(transport)
+
+	// two distinct concrete hosts under the wildcard, to prove the issuer is derived per-request rather
+	// than a single static string
+	for _, host := range []string{"ctrl.wildcard.test:1281", "alt.wildcard.test:1281"} {
+		t.Run("issuer derived for "+host, func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			discoveryUrl := "https://" + host + "/oidc/.well-known/openid-configuration"
+			resp, err := client.Get(discoveryUrl)
+			ctx.Req.NoError(err)
+			defer func() { _ = resp.Body.Close() }()
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode)
+
+			body, err := io.ReadAll(resp.Body)
+			ctx.Req.NoError(err)
+
+			var discovery map[string]interface{}
+			ctx.Req.NoError(json.Unmarshal(body, &discovery))
+
+			issuer, ok := discovery["issuer"].(string)
+			ctx.Req.True(ok, "issuer should be a string")
+			ctx.Req.Equal("https://"+host+"/oidc", issuer,
+				"a wildcard-cert controller must derive the issuer from the request host, not a literal wildcard")
+
+			endpoints, ok := discovery["openziti_endpoints"].(map[string]interface{})
+			ctx.Req.True(ok, "openziti_endpoints should be a JSON object")
+			password, ok := endpoints["password"].(string)
+			ctx.Req.True(ok, "password endpoint should be a string")
+			ctx.Req.Equal(issuer+"/login/password", password,
+				"openziti endpoints should be built from the request-host-derived issuer")
 		})
 	}
 }

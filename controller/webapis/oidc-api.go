@@ -233,9 +233,9 @@ func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oid
 		}
 		curServerCert := curServerCertChain[0]
 		for _, dnsName := range curServerCert.DNSNames {
-			if strings.HasPrefix(dnsName, "*.") {
-				continue // wildcard DNS names produce unusable OIDC issuer URLs
-			}
+			// Certs with wildcard DNS SANs (e.g. "*.example.com") are valid and at request time
+			// issuer URL is built from the request's Host (e.g. https://foo.example.com/oidc)
+			// the literal "*" should never be used in an issuer URL (see isWildcardIssuer).
 			for _, port := range ports {
 				newIssuer := net.JoinHostPort(dnsName, port)
 				issuerMap[newIssuer] = struct{}{}
