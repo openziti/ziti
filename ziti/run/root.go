@@ -19,8 +19,10 @@ package run
 import (
 	"context"
 	"io"
+	"log/slog"
+	"os"
 
-	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/sirupsen/logrus"
@@ -43,23 +45,26 @@ func (self *Options) BindFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&self.CliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
 	cmd.PersistentFlags().StringVar(&self.CliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.PersistentFlags().StringVar(&self.CliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
+	logging.AddFlags(cmd.PersistentFlags())
 }
 
-func (self *Options) PreRun(_ *cobra.Command, _ []string) {
+func (self *Options) PreRun(cmd *cobra.Command, _ []string) {
+	// Install the slog handler chain before anything else can log: this wires
+	// logrus into the bridge and seeds the default Registry so the agent
+	// callbacks (registered later in Run) have a Registry to drive.
+	asyncOpts, err := logging.OptionsFromFlags(cmd.Flags())
+	if err != nil {
+		logrus.WithError(err).Fatal("invalid --log-* flags")
+	}
+	handler, err := logging.BuildHandlerForFormat(os.Stderr, asyncOpts, self.LogFormatter)
+	if err != nil {
+		logrus.WithError(err).Fatal("unable to build log handler")
+	}
+	initialLevel := slog.LevelInfo
 	if self.Verbose {
-		logrus.SetLevel(logrus.DebugLevel)
+		initialLevel = slog.LevelDebug
 	}
-
-	switch self.LogFormatter {
-	case "pfxlog":
-		pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
-	case "json":
-		pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
-	case "text":
-		pfxlog.SetFormatter(&logrus.TextFormatter{})
-	default:
-		// let logrus do its own thing
-	}
+	logging.Install(handler, initialLevel)
 
 	util.LogReleaseVersionCheck()
 }

@@ -23,6 +23,8 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+
+	"github.com/michaelquigley/df/dl"
 )
 
 // ReplaceAttr is the slog.HandlerOptions.ReplaceAttr callback that coerces
@@ -109,4 +111,51 @@ func BuildHandler(out io.Writer, opts AsyncOptions) (*AsyncHandler, error) {
 	})
 	flat := &sourceFlattener{parent: json}
 	return NewAsyncHandler(flat, opts)
+}
+
+// BuildPrettyHandler builds the async chain for ziti's pretty (pfxlog-shape)
+// output: a df/dl PrettyHandler over out, wrapped in an AsyncHandler. The
+// PrettyHandler resolves the caller frame from slog.Record.PC, so the bridge
+// must have ReportCaller enabled (which Install does) for legacy logrus call
+// sites to render their original file/func.
+//
+// prettyOpts defaults to dl.DefaultOptions() (color when stdout is a TTY) but
+// is always overridden to write to out so the caller controls the destination.
+// out defaults to os.Stderr.
+func BuildPrettyHandler(out io.Writer, opts AsyncOptions, prettyOpts *dl.Options) (*AsyncHandler, error) {
+	if out == nil {
+		out = os.Stderr
+	}
+	if prettyOpts == nil {
+		prettyOpts = dl.DefaultOptions()
+	}
+	prettyOpts.Output = out
+	prettyOpts.UseJSON = false
+	return NewAsyncHandler(dl.NewPrettyHandler(LevelTrace, prettyOpts), opts)
+}
+
+// Recognised values for the --log-formatter flag. "" is treated as
+// FormatPretty so unconfigured binaries match the pre-slog default look.
+const (
+	FormatPretty = "pfxlog"
+	FormatJSON   = "json"
+	FormatText   = "text"
+)
+
+// BuildHandlerForFormat picks the production handler chain by name. Unknown
+// or empty formats fall back to FormatPretty so ziti's default look-and-feel
+// matches the pre-slog binaries.
+func BuildHandlerForFormat(out io.Writer, opts AsyncOptions, format string) (*AsyncHandler, error) {
+	switch format {
+	case FormatJSON:
+		return BuildHandler(out, opts)
+	case FormatText:
+		prettyOpts := dl.DefaultOptions()
+		prettyOpts.UseColor = false
+		return BuildPrettyHandler(out, opts, prettyOpts)
+	case "", FormatPretty:
+		return BuildPrettyHandler(out, opts, nil)
+	default:
+		return nil, fmt.Errorf("logging: unknown formatter %q (want %q, %q, or %q)", format, FormatPretty, FormatJSON, FormatText)
+	}
 }

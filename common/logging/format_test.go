@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/michaelquigley/df/dl"
 	"github.com/stretchr/testify/require"
 )
 
@@ -151,4 +152,69 @@ func TestBuildHandlerEmitsCustomLevels(t *testing.T) {
 		levels = append(levels, m["level"].(string))
 	}
 	require.Equal(t, []string{"trace", "fatal", "panic"}, levels)
+}
+
+// TestBuildPrettyHandlerEmitsTextWithoutColor proves the pretty handler
+// produces text output (not JSON) and writes to the supplied io.Writer when
+// color is disabled.
+func TestBuildPrettyHandlerEmitsTextWithoutColor(t *testing.T) {
+	buf := &bytes.Buffer{}
+	opts := DefaultOptions()
+	opts.SummaryInterval = time.Hour
+	prettyOpts := dl.DefaultOptions()
+	prettyOpts.UseColor = false
+	h, err := BuildPrettyHandler(buf, opts, prettyOpts)
+	require.NoError(t, err)
+
+	slog.New(h).Info("hello", "k", "v")
+	require.NoError(t, h.Close())
+	<-h.drainDone
+
+	line := strings.TrimSpace(buf.String())
+	require.NotEmpty(t, line)
+	require.Contains(t, line, "INFO")
+	require.Contains(t, line, "hello")
+	require.Contains(t, line, `"k":"v"`)
+	require.False(t, json.Valid([]byte(line)), "pretty output must not be JSON")
+}
+
+// TestBuildHandlerForFormatSelectsLeaf covers the format-string switch: JSON
+// produces valid JSON; pfxlog and "" produce non-JSON pretty text; an
+// unrecognised format errors.
+func TestBuildHandlerForFormatSelectsLeaf(t *testing.T) {
+	cases := []struct {
+		name     string
+		format   string
+		wantJSON bool
+	}{
+		{"empty-defaults-to-pretty", "", false},
+		{"pfxlog-explicit", FormatPretty, false},
+		{"text", FormatText, false},
+		{"json", FormatJSON, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			opts := DefaultOptions()
+			opts.SummaryInterval = time.Hour
+			h, err := BuildHandlerForFormat(buf, opts, c.format)
+			require.NoError(t, err)
+			slog.New(h).Info("hello")
+			require.NoError(t, h.Close())
+			<-h.drainDone
+			line := strings.TrimSpace(buf.String())
+			require.NotEmpty(t, line)
+			if c.wantJSON {
+				require.True(t, json.Valid([]byte(line)), "format %q must produce JSON, got %q", c.format, line)
+			} else {
+				require.False(t, json.Valid([]byte(line)), "format %q must produce non-JSON, got %q", c.format, line)
+			}
+		})
+	}
+}
+
+func TestBuildHandlerForFormatRejectsUnknown(t *testing.T) {
+	_, err := BuildHandlerForFormat(nil, DefaultOptions(), "logfmt")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "logfmt")
 }
