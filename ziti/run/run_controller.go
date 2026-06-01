@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -33,6 +34,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentlog"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/controller/server"
@@ -68,6 +70,20 @@ func formatRootCause(err error) string {
 		return fmt.Sprintf("%v", err)
 	}
 	return fmt.Sprintf("%v (root cause: %v)", err, root)
+}
+
+// versionAttrs returns the build/version fields the controller and router
+// startup loggers carry, as slog attrs for the logging.Fatal hard-exit paths.
+// A fresh slice is returned on each call so callers can append safely.
+func versionAttrs() []slog.Attr {
+	return []slog.Attr{
+		slog.String("version", version.GetVersion()),
+		slog.String("go-version", version.GetGoVersion()),
+		slog.String("os", version.GetOS()),
+		slog.String("arch", version.GetArchitecture()),
+		slog.String("build-date", version.GetBuildDate()),
+		slog.String("revision", version.GetRevision()),
+	}
 }
 
 func NewRunControllerCmd() *cobra.Command {
@@ -115,8 +131,8 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 
 	ctrlConfig, err := config.LoadConfig(args[0])
 	if err != nil {
-		startLogger.WithError(err).Error("error starting ziti-controller")
-		os.Exit(1)
+		logging.Fatal(cmd.Context(), "error starting ziti-controller",
+			append(versionAttrs(), slog.String("error", err.Error()))...)
 	}
 
 	startLogger = startLogger.WithField("nodeId", ctrlConfig.Id.Token)
@@ -124,19 +140,21 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 
 	if self.fabricController, err = controller.NewController(ctrlConfig, version.GetCmdBuildInfo()); err != nil {
 		cause := formatRootCause(err)
-		startLogger.WithError(err).
-			WithField("cause", cause).
-			Errorf("unable to create fabric controller (cause: %s)", cause)
-		os.Exit(1)
+		logging.Fatal(cmd.Context(), "unable to create fabric controller",
+			append(versionAttrs(),
+				slog.String("nodeId", ctrlConfig.Id.Token),
+				slog.String("cause", cause),
+				slog.String("error", err.Error()))...)
 	}
 
 	self.edgeController, err = server.NewController(self.fabricController)
 	if err != nil {
 		cause := formatRootCause(err)
-		startLogger.WithError(err).
-			WithField("cause", cause).
-			Errorf("unable to create edge controller (cause: %s)", cause)
-		os.Exit(1)
+		logging.Fatal(cmd.Context(), "unable to create edge controller",
+			append(versionAttrs(),
+				slog.String("nodeId", ctrlConfig.Id.Token),
+				slog.String("cause", cause),
+				slog.String("error", err.Error()))...)
 	}
 
 	self.edgeController.Initialize()
@@ -165,10 +183,11 @@ func (self *ControllerAction) Run(cmd *cobra.Command, args []string) {
 	self.edgeController.Run()
 	if err := self.fabricController.Run(); err != nil {
 		cause := formatRootCause(err)
-		startLogger.WithError(err).
-			WithField("cause", cause).
-			Errorf("fabric controller exited with error (cause: %s)", cause)
-		os.Exit(1)
+		logging.Fatal(cmd.Context(), "fabric controller exited with error",
+			append(versionAttrs(),
+				slog.String("nodeId", ctrlConfig.Id.Token),
+				slog.String("cause", cause),
+				slog.String("error", err.Error()))...)
 	}
 }
 
