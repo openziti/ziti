@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/role_attributes"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
@@ -57,6 +58,41 @@ func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "posture-check", permissions.Read)
 		return ae.IsAllowed(r.listPostureCheckAttributes, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
+
+	ae.ManagementApi.RoleAttributesListIdentityRoleAttributeUsageHandler = role_attributes.ListIdentityRoleAttributeUsageHandlerFunc(func(params role_attributes.ListIdentityRoleAttributeUsageParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "identity", permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listRoleAttributeUsage(ae, rc, model.RoleAttributeKindIdentity, boolOrFalse(params.WithIds))
+		}, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
+	})
+
+	ae.ManagementApi.RoleAttributesListEdgeRouterRoleAttributeUsageHandler = role_attributes.ListEdgeRouterRoleAttributeUsageHandlerFunc(func(params role_attributes.ListEdgeRouterRoleAttributeUsageParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "router", permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listRoleAttributeUsage(ae, rc, model.RoleAttributeKindEdgeRouter, boolOrFalse(params.WithIds))
+		}, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
+	})
+
+	ae.ManagementApi.RoleAttributesListServiceRoleAttributeUsageHandler = role_attributes.ListServiceRoleAttributeUsageHandlerFunc(func(params role_attributes.ListServiceRoleAttributeUsageParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "service", permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listRoleAttributeUsage(ae, rc, model.RoleAttributeKindService, boolOrFalse(params.WithIds))
+		}, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
+	})
+
+	ae.ManagementApi.RoleAttributesListPostureCheckRoleAttributeUsageHandler = role_attributes.ListPostureCheckRoleAttributeUsageHandlerFunc(func(params role_attributes.ListPostureCheckRoleAttributeUsageParams, _ interface{}) middleware.Responder {
+		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "posture-check", permissions.Read)
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listRoleAttributeUsage(ae, rc, model.RoleAttributeKindPostureCheck, boolOrFalse(params.WithIds))
+		}, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
+	})
+}
+
+func boolOrFalse(p *bool) bool {
+	if p == nil {
+		return false
+	}
+	return *p
 }
 
 func (r *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
@@ -94,4 +130,39 @@ func (r *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, q
 
 type roleAttributeQueryable interface {
 	QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error)
+}
+
+func (r *RoleAttributesRouter) listRoleAttributeUsage(ae *env.AppEnv, rc *response.RequestContext, kind model.RoleAttributeKind, includeIds bool) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
+		results, qmd, err := model.QueryRoleAttributeUsage(ae, kind, queryOptions.Predicate, includeIds)
+		if err != nil {
+			return nil, err
+		}
+
+		list := make(rest_model.RoleAttributeUsageList, 0, len(results))
+		for _, result := range results {
+			attr := result.RoleAttribute
+			usage := make(map[string]rest_model.RoleAttributeSourceUsage, len(result.Usage))
+			for source, src := range result.Usage {
+				entry := rest_model.RoleAttributeSourceUsage{Count: &src.Count}
+				if includeIds {
+					// When the caller asked for ids, always emit a (possibly
+					// empty) array so a null in the response unambiguously
+					// means "ids were not requested".
+					if src.Ids == nil {
+						entry.Ids = []string{}
+					} else {
+						entry.Ids = src.Ids
+					}
+				}
+				usage[string(source)] = entry
+			}
+			list = append(list, &rest_model.RoleAttributeUsageDetail{
+				RoleAttribute: &attr,
+				Usage:         usage,
+			})
+		}
+
+		return NewQueryResult(list, qmd), nil
+	})
 }
