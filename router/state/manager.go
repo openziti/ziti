@@ -73,11 +73,36 @@ type ConnState struct {
 	PolicyType          edge_ctrl_pb.PolicyType
 }
 
+// DialCircuit is the minimal view of an active dial circuit needed to
+// re-evaluate access (e.g. on a posture change) and revoke it. It is
+// satisfied by both connId mux-sink dial conns and SDK-hosted xgress circuits.
+type DialCircuit interface {
+	GetServiceId() string
+	GetApiSessionToken() *ApiSessionToken
+	CloseForDialAccessLoss()
+}
+
+// BindTerminator is the minimal view of an active hosted terminator needed to
+// re-evaluate bind access (e.g. on a posture change) and revoke it.
+type BindTerminator interface {
+	GetServiceId() string
+	GetApiSessionToken() *ApiSessionToken
+	CloseForBindAccessLoss()
+}
+
 // ConnProvider is an interface used to abstract specific conn implementations from lower level packages
 // (such as xgress_edge) to avoid circular dependencies.
 type ConnProvider interface {
 	GetConnIdToSinks() map[uint32]edge.MsgSink[*ConnState]
 	CloseConn(connId uint32, reason string) error
+
+	// IterateDialCircuits invokes f for every active dial circuit on this
+	// connection — both connId mux-sink conns and SDK-hosted xgress circuits.
+	IterateDialCircuits(f func(DialCircuit))
+
+	// IterateBindTerminators invokes f for every hosted terminator on this
+	// connection.
+	IterateBindTerminators(f func(BindTerminator))
 }
 
 // ApiSessionTokenProvider abstracts access to API session tokens, enabling
@@ -363,27 +388,60 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 	channels := self.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
 
 	for _, ch := range channels {
-		edgeConn, connIdToSink := GetConnProviderAndSinksFromCh(ch)
+		// Posture data is per-api-session. An identity may have several concurrent
+		// api-sessions (e.g. multiple devices), and GetChannelsByIdentityId returns
+		// all of them — but only the session whose posture changed should be
+		// re-evaluated, since a posture failure on one device must not revoke
+		// another's circuits. Every circuit and terminator on a channel shares the
+		// channel's api-session, so make this check once per channel.
+		apiSessionToken := GetApiSessionTokenFromCh(ch)
+		if apiSessionToken == nil || apiSessionToken.Id != data.ApiSessionId {
+			continue
+		}
 
-		for connId, sink := range connIdToSink {
-			connState := sink.GetData()
+		edgeConn, _ := GetConnProviderAndSinksFromCh(ch)
+		if edgeConn == nil {
+			continue
+		}
 
-			if connState.ApiSessionToken == nil || connState.ApiSessionToken.Id != data.ApiSessionId {
-				continue
-			}
+		identityId := apiSessionToken.IdentityId
 
-			policy, err := posture.HasAccess(rdm, connState.ApiSessionToken.IdentityId, connState.ServiceSessionToken.ServiceId, data, connState.PolicyType)
-
-			var closeErr error
+		// Re-evaluate dial access (policy + posture) for every active dial
+		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
+		// Collect first, then close: CloseForDialAccessLoss mutates the circuit
+		// maps being iterated (mirrors handleDialAccessLost).
+		var dialToClose []DialCircuit
+		edgeConn.IterateDialCircuits(func(c DialCircuit) {
+			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), data, edge_ctrl_pb.PolicyType_DialPolicy)
 			if err != nil {
-				closeErr = edgeConn.CloseConn(connId, fmt.Sprintf("could not determine access, encountered error: %s", err))
-			} else if policy == nil {
-				closeErr = edgeConn.CloseConn(connId, "access revoked, not granting policies found")
+				pfxlog.Logger().WithError(err).WithField("serviceId", c.GetServiceId()).
+					Error("could not determine dial access on posture update; revoking")
 			}
+			if err != nil || policy == nil {
+				dialToClose = append(dialToClose, c)
+			}
+		})
+		for _, c := range dialToClose {
+			c.CloseForDialAccessLoss()
+		}
 
-			if closeErr != nil {
-				pfxlog.Logger().WithError(err).Error("error closing connection during access check")
+		// Re-evaluate bind access (policy + posture) for every hosted terminator
+		// on this connection. A posture change that fails a BindPolicy's posture
+		// requirements must revoke the host's terminators, same as a policy
+		// change does via handleBindAccessLost.
+		var bindToClose []BindTerminator
+		edgeConn.IterateBindTerminators(func(t BindTerminator) {
+			policy, err := posture.HasAccess(rdm, identityId, t.GetServiceId(), data, edge_ctrl_pb.PolicyType_BindPolicy)
+			if err != nil {
+				pfxlog.Logger().WithError(err).WithField("serviceId", t.GetServiceId()).
+					Error("could not determine bind access on posture update; revoking")
 			}
+			if err != nil || policy == nil {
+				bindToClose = append(bindToClose, t)
+			}
+		})
+		for _, t := range bindToClose {
+			t.CloseForBindAccessLoss()
 		}
 	}
 }
