@@ -464,6 +464,9 @@ func (sm *ManagerImpl) ParseJwt(jwtStr string) (*jwt.Token, *common.AccessClaims
 	}
 
 	if accessClaims.Type == common.TokenTypeAccess {
+		if !jwtToken.Valid {
+			return nil, nil, fmt.Errorf("provided a token that is not valid")
+		}
 		return jwtToken, accessClaims, nil
 	}
 
