@@ -246,18 +246,12 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		go func() {
 			log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
 
-			legacyCtl := self.useLegacyLinkMgmtForOldCtrl()
-
 			self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
 				// report link fault, then close link after allowing some time for circuits to be re-routed
 				fault := &ctrl_pb.Fault{
 					Id:        existing.Id(),
 					Subject:   ctrl_pb.FaultSubject_LinkDuplicate,
 					Iteration: existing.Iteration(),
-				}
-
-				if legacyCtl {
-					fault.Subject = ctrl_pb.FaultSubject_LinkFault
 				}
 
 				if err := protobufs.MarshalTyped(fault).WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
@@ -673,24 +667,12 @@ func (self *linkRegistryImpl) Inspect(timeout time.Duration) *inspect.LinksInspe
 	return result
 }
 
-func (self *linkRegistryImpl) useLegacyLinkMgmtForOldCtrl() bool {
-	legacyCtrl := false
-
-	for _, ctrl := range self.ctrls.GetAll() {
-		if ok, _ := ctrl.GetVersion().HasMinimumVersion("0.30.0"); !ok {
-			legacyCtrl = true
-		}
-	}
-	return legacyCtrl
-}
-
 func (self *linkRegistryImpl) GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string {
-	legacyCtrl := self.useLegacyLinkMgmtForOldCtrl()
-	if dialerBinding == "" || legacyCtrl {
+	if dialerBinding == "" {
 		dialerBinding = "default"
 	}
 
-	if listenerBinding == "" || legacyCtrl {
+	if listenerBinding == "" {
 		listenerBinding = "default"
 	}
 
