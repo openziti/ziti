@@ -33,8 +33,6 @@ import (
 	"github.com/openziti/ziti/v2/ziti/util"
 
 	"github.com/spf13/cobra"
-
-	"github.com/spf13/viper"
 )
 
 // PKICreateOptions the options for the create spring command
@@ -311,7 +309,10 @@ func (o *PKICreateOptions) ObtainPKIRequestTemplate(commonName string) *x509.Cer
 
 // ObtainKeyName returns the private key from the key-file
 func (o *PKICreateOptions) ObtainKeyName(pkiRoot string) (string, error) {
-	keyName := viper.GetString("key-name")
+	keyName := o.Flags.KeyName
+	if keyName == "" {
+		keyName = o.viper.GetString("key_name")
+	}
 	if keyName == "" {
 		var err error
 		files, err := os.ReadDir(pkiRoot)
