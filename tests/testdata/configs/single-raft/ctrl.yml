@@ -1,0 +1,61 @@
+v: 3
+
+# Single-node controller running in raft/cluster mode. Unlike the non-raft config sets (which use
+# `db:`), this enables raft via `cluster:`, so the controller registers itself in the Controller
+# store on leadership. Used to exercise the raft self-registration path for the enrollment
+# controller list. The dataDir is cleaned by StartServerRaft before each run.
+cluster:
+  dataDir: testdata/single-raft-data
+
+identity:
+  cert: testdata/pki/ctrl1/certs/client.chain.pem
+  server_cert: testdata/pki/ctrl1/certs/server.chain.pem
+  key: testdata/pki/ctrl1/keys/client.key
+  server_key: testdata/pki/ctrl1/keys/server.key
+  ca: testdata/pki/root/certs/root.cert
+
+trustDomain: ziti.test
+
+ctrl:
+  listener: tls:127.0.0.1:6262
+  options:
+    advertiseAddress: tls:127.0.0.1:6262
+
+mgmt:
+  listener: tls:127.0.0.1:10000
+
+terminator:
+  validators:
+    edge: edge
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: 127.0.0.1:1281
+  enrollment:
+    signingCert:
+      cert: testdata/pki/ctrl1/certs/ctrl1.chain.pem
+      key: testdata/pki/ctrl1/keys/ctrl1.key
+      ca: testdata/pki/root/certs/root.cert
+    edgeIdentity:
+      duration: 20m
+    edgeRouter:
+      duration: 60m
+
+
+web:
+  - name: client-management-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1281
+        address: 127.0.0.1:1281
+    options: {}
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+      - binding: edge-oidc
+        options:
+          redirectURIs:
+            - "http://localhost:*/auth/callback"
+            - "http://127.0.0.1:*/auth/callback"

@@ -15,10 +15,10 @@ v: 3
 # as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
 # 'ca' value is used to populate an internally Trusted CA pool.
 identity:
-  cert: testdata/router/001-client.cert.pem
-  server_cert: testdata/router/001-server.cert.pem
-  key: testdata/router/001.key.pem
-  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+  cert: testdata/pki/ctrl1/certs/001-client.chain.pem
+  server_cert: testdata/pki/ctrl1/certs/001-server.chain.pem
+  key: testdata/pki/ctrl1/keys/001.key
+  ca: testdata/pki/root/certs/root.cert
 
 ctrl:
   endpoint: tls:127.0.0.1:6262
