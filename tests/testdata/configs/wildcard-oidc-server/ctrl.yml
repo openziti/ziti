@@ -2,13 +2,8 @@ v: 3
 
 db: ${ZITI_TEST_DB}
 
-# Models a controller fronted by a wildcard (e.g. LetsEncrypt) certificate supplied via alt_server_certs.
-# The primary server_cert is an ordinary cert (SANs: localhost / loopback IPs), standing in for a
-# quickstart/host cert. The alt server cert's only SAN is the wildcard *.wildcard.test, standing in for the
-# LetsEncrypt cert. The edge-oidc API derives its OIDC issuers from the SANs of ALL active server certs
-# (identity.GetX509ActiveServerCertChains, which includes alt certs), so the wildcard becomes an issuer
-# served via a request-host-derived issuer URL. See controller/oidc_auth/provider.go (isWildcardIssuer /
-# IssuerFromHost) and controller/webapis/oidc-api.go (getPossibleIssuers).
+# Wildcard server cert (*.wildcard.test) via alt_server_certs. A wildcard SAN becomes an OIDC issuer only
+# for the edge-oidc 'allowedHostnames' it covers (here, ctrl.wildcard.test).
 identity:
   cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
   server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
@@ -57,6 +52,8 @@ web:
       - binding: edge-client
       - binding: edge-oidc
         options:
+          allowedHostnames:
+            - ctrl.wildcard.test
           redirectURIs:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"

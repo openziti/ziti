@@ -19,6 +19,7 @@ package webapis
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -26,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 
 	"github.com/openziti/xweb/v3"
@@ -114,7 +116,38 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	cert := serverCert[0].Leaf
 	key := serverCert[0].PrivateKey
 
-	issuers := getPossibleIssuers(serverConfig.Identity, serverConfig.BindPoints)
+	// allowedHostnames are operator-approved exact hostnames a wildcard server-cert SAN may be expanded
+	// to as OIDC issuers (see getPossibleIssuers). Parsed like redirectURIs below.
+	var allowedHostnames []string
+	if allowedVal, ok := options["allowedHostnames"]; ok {
+		list, ok := allowedVal.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("edge-oidc 'allowedHostnames' must be a list of hostnames, got %T", allowedVal)
+		}
+		for _, item := range list {
+			hostname, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("edge-oidc 'allowedHostnames' entries must be strings, got %T", item)
+			}
+			hostname = strings.TrimSpace(hostname)
+			if hostname == "" {
+				continue
+			}
+			if strings.Contains(hostname, "*") {
+				return nil, fmt.Errorf("edge-oidc 'allowedHostnames' entries must be exact hostnames, not patterns: %q", hostname)
+			}
+			// OIDC issuer comparison is case-sensitive (RFC 8414), so normalize to lower case to match how
+			// hostnames are presented and to avoid emitting a mixed-case iss claim that strict relying
+			// parties would reject. Warn loudly so the operator notices.
+			if lower := strings.ToLower(hostname); lower != hostname {
+				pfxlog.Logger().Warnf("edge-oidc allowedHostnames entry %q contains uppercase characters; normalizing to %q (OIDC issuer hostnames are case-sensitive per RFC 8414)", hostname, lower)
+				hostname = lower
+			}
+			allowedHostnames = append(allowedHostnames, hostname)
+		}
+	}
+
+	issuers := getPossibleIssuers(serverConfig.Identity, serverConfig.BindPoints, allowedHostnames)
 
 	oidcConfig := oidc_auth.NewConfig(issuers, cert, key)
 	oidcConfig.Identity = serverConfig.Identity
@@ -195,8 +228,12 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 
 // getPossibleIssuers inspects the API server's identity and bind points for addresses, SAN DNS, and SAN IP entries
 // that denote valid issuers. It returns a list of hostname:port combinations as a slice. It handles converting
-// :443 to explicit and implicit ports for clients that may silently remove :443
-func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oidc_auth.Issuer {
+// :443 to explicit and implicit ports for clients that may silently remove :443.
+//
+// A wildcard DNS SAN (e.g. "*.example.com") is never emitted as a literal issuer. Instead it is expanded only
+// to the operator-approved allowedHostnames it actually covers (per x509 wildcard matching), keeping the set
+// of valid OIDC issuers a closed, concrete list.
+func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint, allowedHostnames []string) []oidc_auth.Issuer {
 	const (
 		DefaultTlsPort = "443"
 	)
@@ -204,6 +241,7 @@ func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oid
 	// The expected issuer's list is a combination of the following:
 	// - all explicit expected bind point address ip or hostname and ports
 	// - the IP and DNS SANs from all server certs + the port from the bind point address
+	// - allowedHostnames covered by a wildcard DNS SAN + the port from the bind point address
 	issuerMap := map[string]struct{}{}
 	portMap := map[string]struct{}{}
 
@@ -227,33 +265,63 @@ func getPossibleIssuers(id identity.Identity, bindPoints []xweb.BindPoint) []oid
 		ports = append(ports, port)
 	}
 
+	// addHost adds host:port issuers for every configured port (plus the bare host for the default TLS port,
+	// for clients that silently drop :443).
+	addHost := func(host string) {
+		for _, port := range ports {
+			issuerMap[net.JoinHostPort(host, port)] = struct{}{}
+			if port == DefaultTlsPort {
+				issuerMap[host] = struct{}{}
+			}
+		}
+	}
+
+	matchedAllowed := map[string]bool{}
+	sawWildcard := false
+
 	for _, curServerCertChain := range id.GetX509ActiveServerCertChains() {
 		if len(curServerCertChain) == 0 {
 			continue
 		}
 		curServerCert := curServerCertChain[0]
+
 		for _, dnsName := range curServerCert.DNSNames {
-			// Certs with wildcard DNS SANs (e.g. "*.example.com") are valid and at request time
-			// issuer URL is built from the request's Host (e.g. https://foo.example.com/oidc)
-			// the literal "*" should never be used in an issuer URL (see isWildcardIssuer).
-			for _, port := range ports {
-				newIssuer := net.JoinHostPort(dnsName, port)
-				issuerMap[newIssuer] = struct{}{}
-				if port == DefaultTlsPort {
-					issuerMap[dnsName] = struct{}{}
+			if strings.HasPrefix(dnsName, "*.") {
+				// A wildcard SAN cannot be a usable issuer URL. Expand it only to allowedHostnames it
+				// actually covers; with no allowlist it contributes no issuers.
+				sawWildcard = true
+				matcher := &x509.Certificate{DNSNames: []string{dnsName}}
+				for _, allowed := range allowedHostnames {
+					if matcher.VerifyHostname(allowed) == nil {
+						addHost(allowed)
+						matchedAllowed[allowed] = true
+					}
+				}
+				continue
+			}
+
+			// Concrete SANs are always issuers; allowedHostnames only constrains wildcard expansion. The
+			// match below just records that this allowlist entry is covered by a SAN (suppressing the
+			// "not covered" warning below); it does not gate the concrete SAN.
+			addHost(dnsName)
+			for _, allowed := range allowedHostnames {
+				if strings.EqualFold(allowed, dnsName) {
+					matchedAllowed[allowed] = true
 				}
 			}
 		}
 
 		for _, ipAddr := range curServerCert.IPAddresses {
-			for _, port := range ports {
-				ipStr := ipAddr.String()
-				newIssuer := net.JoinHostPort(ipStr, port)
-				issuerMap[newIssuer] = struct{}{}
-				if port == DefaultTlsPort {
-					issuerMap[ipStr] = struct{}{}
-				}
-			}
+			addHost(ipAddr.String())
+		}
+	}
+
+	if sawWildcard && len(allowedHostnames) == 0 {
+		pfxlog.Logger().Warn("a server certificate has a wildcard DNS SAN but no edge-oidc 'allowedHostnames' are configured; the wildcard will not be used as an OIDC issuer")
+	}
+	for _, allowed := range allowedHostnames {
+		if !matchedAllowed[allowed] {
+			pfxlog.Logger().Warnf("edge-oidc allowedHostnames entry %q is not covered by any active server certificate SAN; ignoring", allowed)
 		}
 	}
 

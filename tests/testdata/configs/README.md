@@ -48,37 +48,8 @@ testdata/configs/
   OIDC discovery document returns endpoint URLs that reflect the port the client connected to.
 
 - **`wildcard-oidc-server`** (`WildcardOidcServer`) — Ordinary primary `server_cert` plus an
-  `alt_server_certs` entry whose only SAN is the wildcard `*.wildcard.test`. OIDC issuers come from the SANs
-  of all active server certs, so the wildcard becomes an issuer. Used by
-  `Test_OidcDiscoveryEndpoints_WildcardIssuer` to verify a concrete host under the wildcard gets a
-  request-host-derived issuer (not a literal-wildcard issuer, and not a 404). Cert regen: see below.
-
-## Regenerating the wildcard server cert
-
-`ctrl-server-wildcard.cert.pem` is the alt cert for `wildcard-oidc-server`. Its only DNS SAN is
-`*.wildcard.test` (no `localhost`/IP SANs, to avoid ambiguous-SNI conflicts with the primary cert). It reuses
-the existing controller key (`ctrl.key.pem`) and test intermediate CA, and expires in 2036. Regenerate from
-the repo root (drop `MSYS_NO_PATHCONV=1` outside Git Bash on Windows):
-
-```bash
-cat > /tmp/wildcard-san.cnf <<'EOF'
-[v3_req]
-basicConstraints=CA:FALSE
-keyUsage=digitalSignature,nonRepudiation,keyEncipherment
-extendedKeyUsage=serverAuth
-subjectAltName=DNS:*.wildcard.test
-EOF
-MSYS_NO_PATHCONV=1 openssl req -new \
-  -key tests/testdata/ca/intermediate/private/ctrl.key.pem \
-  -subj "/C=US/ST=North Carolina/L=Charlotte/O=NetFoundry/OU=Ziti Fabric/CN=ctrl" \
-  -out /tmp/wildcard.csr
-MSYS_NO_PATHCONV=1 openssl x509 -req -in /tmp/wildcard.csr \
-  -CA tests/testdata/ca/intermediate/certs/intermediate.cert.pem \
-  -CAkey tests/testdata/ca/intermediate/private/intermediate.key.decrypted.pem \
-  -CAserial /tmp/wildcard.srl -CAcreateserial \
-  -days 3650 -sha256 -extfile /tmp/wildcard-san.cnf -extensions v3_req \
-  -out tests/testdata/ca/intermediate/certs/ctrl-server-wildcard.cert.pem
-```
+  `alt_server_certs` entry whose only SAN is the wildcard `*.wildcard.test`, with the `edge-oidc` binding
+  setting `allowedHostnames: [ctrl.wildcard.test]`. Used by `Test_OidcDiscoveryEndpoints_WildcardIssuer`.
 
 ## Adding a New Config Set
 

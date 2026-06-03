@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
@@ -158,16 +157,7 @@ func newOidcProvider(_ context.Context, issuer string, oidcConfig Config) (op.Op
 		SupportedUILocales:       []language.Tag{language.English},
 	}
 
-	// A wildcard issuer (e.g. https://*.example.com/oidc) can't be a static URL; derive it from the
-	// request host. The dispatcher only routes here when the host matches the wildcard via Issuer.ValidFor.
-	var issuerSource func(bool) (op.IssuerFromRequest, error)
-	if strings.HasPrefix(issuer, "https://*.") {
-		issuerSource = op.IssuerFromHost("/oidc")
-	} else {
-		issuerSource = op.StaticIssuer(issuer)
-	}
-
-	handler, err := op.NewProvider(config, oidcConfig.Storage, issuerSource)
+	handler, err := op.NewProvider(config, oidcConfig.Storage, op.StaticIssuer(issuer))
 
 	if err != nil {
 		return nil, err
