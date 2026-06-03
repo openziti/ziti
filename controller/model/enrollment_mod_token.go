@@ -244,7 +244,7 @@ func (module *EnrollModuleToken) Process(ctx EnrollmentContext) (*EnrollmentResu
 			return nil, errorz.NewUnhandled(errors.New("could not create identity"))
 		}
 
-		content = &rest_model.Empty{}
+		content = &rest_model.EnrollmentCerts{}
 		textContent = []byte("")
 	}
 
