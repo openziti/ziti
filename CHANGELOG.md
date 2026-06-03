@@ -88,14 +88,15 @@ The CLI has been updated to support the new field:
 
 ## Wildcard OIDC Issuers
 
-Controllers can serve OIDC for hostnames covered by a wildcard server-certificate SAN. With 2.0 
-wildcard SANs were excluded from the set of valid OIDC issuers, so `/oidc/*` requests to a 
+Controllers can serve OIDC for hostnames covered by a wildcard server-certificate SAN. Prior to 2.1,
+wildcard SANs were excluded from the set of valid OIDC issuers, so `/oidc/*` requests to a
 wildcard-covered hostname returned `404`.
 
 Wildcard SANs cannot be used as a literal OIDC issuer (`https://*.example.com/oidc` is not a usable URL).
 Instead, the `edge-oidc` API binding now accepts an `allowedHostnames` option listing the exact hostnames
-(covered by the wildcard) that may be served as issuers and is required to be specified if using a 
-wildcard-covered issuer:
+(covered by the wildcard) that may be served as issuers. If omitted, the wildcard contributes no issuers
+and the controller logs a warning at startup; a malformed entry (a non-string value, or one containing a
+wildcard character) is a startup error:
 
 ```yaml
 web:
