@@ -77,16 +77,16 @@ type ConnState struct {
 // re-evaluate access (e.g. on a posture change) and revoke it. It is
 // satisfied by both connId mux-sink dial conns and SDK-hosted xgress circuits.
 type DialCircuit interface {
+	GetCircuitId() string
 	GetServiceId() string
-	GetApiSessionToken() *ApiSessionToken
 	CloseForDialAccessLoss()
 }
 
 // BindTerminator is the minimal view of an active hosted terminator needed to
 // re-evaluate bind access (e.g. on a posture change) and revoke it.
 type BindTerminator interface {
+	GetTerminatorId() string
 	GetServiceId() string
-	GetApiSessionToken() *ApiSessionToken
 	CloseForBindAccessLoss()
 }
 
@@ -413,11 +413,15 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		var dialToClose []DialCircuit
 		edgeConn.IterateDialCircuits(func(c DialCircuit) {
 			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), data, edge_ctrl_pb.PolicyType_DialPolicy)
-			if err != nil {
-				pfxlog.Logger().WithError(err).WithField("serviceId", c.GetServiceId()).
-					Error("could not determine dial access on posture update; revoking")
-			}
 			if err != nil || policy == nil {
+				// every HasAccess error is a definitive denial (entity removed,
+				// no granting policies, or failed posture checks), so log it as
+				// the revocation reason rather than as a failure
+				pfxlog.Logger().WithError(err).
+					WithField("identityId", identityId).
+					WithField("serviceId", c.GetServiceId()).
+					WithField("circuitId", c.GetCircuitId()).
+					Info("dial access lost on posture update, closing circuit")
 				dialToClose = append(dialToClose, c)
 			}
 		})
@@ -432,11 +436,12 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		var bindToClose []BindTerminator
 		edgeConn.IterateBindTerminators(func(t BindTerminator) {
 			policy, err := posture.HasAccess(rdm, identityId, t.GetServiceId(), data, edge_ctrl_pb.PolicyType_BindPolicy)
-			if err != nil {
-				pfxlog.Logger().WithError(err).WithField("serviceId", t.GetServiceId()).
-					Error("could not determine bind access on posture update; revoking")
-			}
 			if err != nil || policy == nil {
+				pfxlog.Logger().WithError(err).
+					WithField("identityId", identityId).
+					WithField("serviceId", t.GetServiceId()).
+					WithField("terminatorId", t.GetTerminatorId()).
+					Info("bind access lost on posture update, closing terminator")
 				bindToClose = append(bindToClose, t)
 			}
 		})

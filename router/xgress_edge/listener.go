@@ -445,7 +445,7 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 func (self *edgeClientConn) revalidatePostureAccess() {
 	stateManager := self.listener.factory.stateManager
 	apiSession := self.apiSessionToken
-	if apiSession == nil {
+	if apiSession == nil || apiSession.IsOidc() {
 		return
 	}
 
@@ -455,6 +455,14 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 	var dialToClose []edgeCircuit
 	self.IterateCircuits(func(c edgeCircuit) {
 		if policy, err := stateManager.HasAccess(apiSession.IdentityId, apiSession.Id, c.GetServiceId(), edge_ctrl_pb.PolicyType_DialPolicy); err != nil || policy == nil {
+			// every HasAccess error is a definitive denial (entity removed,
+			// no granting policies, or failed posture checks), so log it as
+			// the revocation reason rather than as a failure
+			pfxlog.Logger().WithError(err).
+				WithField("identityId", apiSession.IdentityId).
+				WithField("serviceId", c.GetServiceId()).
+				WithField("circuitId", c.GetCircuitId()).
+				Info("dial access lost on posture update, closing circuit")
 			dialToClose = append(dialToClose, c)
 		}
 	})
@@ -466,6 +474,11 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 	// snapshot, so closing while ranging it is safe).
 	for _, terminator := range self.GetHostedServicesRegistry().getTerminatorsForConn(self) {
 		if policy, err := stateManager.HasAccess(apiSession.IdentityId, apiSession.Id, terminator.GetServiceId(), edge_ctrl_pb.PolicyType_BindPolicy); err != nil || policy == nil {
+			pfxlog.Logger().WithError(err).
+				WithField("identityId", apiSession.IdentityId).
+				WithField("serviceId", terminator.GetServiceId()).
+				WithField("terminatorId", terminator.GetTerminatorId()).
+				Info("bind access lost on posture update, closing terminator")
 			terminator.CloseForBindAccessLoss()
 		}
 	}
@@ -569,6 +582,11 @@ func (self *edgeTerminator) GetServiceId() string {
 		return ""
 	}
 	return self.serviceSessionToken.ServiceId
+}
+
+// GetTerminatorId returns the terminator's id, implementing state.BindTerminator.
+func (self *edgeTerminator) GetTerminatorId() string {
+	return self.terminatorId
 }
 
 func (self *edgeTerminator) GetApiSessionToken() *state.ApiSessionToken {
