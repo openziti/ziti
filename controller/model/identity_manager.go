@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/inspect"
@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -80,6 +81,16 @@ func NewIdentityManager(env Env) *IdentityManager {
 	RegisterCommand(env, &CreateIdentityWithEnrollmentsCmd{}, &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{})
 	RegisterCommand(env, &CreateIdentityWithAuthenticatorsCmd{}, &edge_cmd_pb.CreateIdentityWithAuthenticatorsCmd{})
 	RegisterCommand(env, &UpdateServiceConfigsCmd{}, &edge_cmd_pb.UpdateServiceConfigsCmd{})
+
+	// Revoke a deleted or disabled identity's live OIDC sessions atomically with
+	// the identity change itself, so the revocation cannot be skipped. The db-level
+	// constraint is config-agnostic, so the revocation type and lifetime are
+	// supplied here.
+	env.GetStores().Identity.AddEntityConstraint(db.NewIdentityRevocationConstraint(
+		env.GetStores().Revocation,
+		common.RevocationTypeIdentity,
+		func() time.Duration { return env.GetConfig().Edge.Oidc.RefreshTokenDuration },
+	))
 
 	return manager
 }
@@ -607,6 +618,8 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration, 
 		return err
 	}
 
+	// Disabling sets DisabledAt, which the IdentityRevocationConstraint observes
+	// to revoke the identity's live OIDC sessions in the same transaction.
 	return self.GetEnv().GetManagers().ApiSession.DeleteByIdentityId(identityId, ctx)
 }
 
