@@ -73,13 +73,15 @@ type ConnState struct {
 	PolicyType          edge_ctrl_pb.PolicyType
 }
 
-// DialCircuit is the minimal view of an active dial circuit needed to
-// re-evaluate access (e.g. on a posture change) and revoke it. It is
-// satisfied by both connId mux-sink dial conns and SDK-hosted xgress circuits.
-type DialCircuit interface {
+// EdgeCircuit is the minimal view of an active circuit (dialing or serving)
+// needed to re-evaluate access (e.g. on a posture change) and revoke it. It is
+// satisfied by both connId mux-sink conns and SDK-hosted xgress circuits;
+// IsHostSide distinguishes the dialing side from the hosting (terminator) side.
+type EdgeCircuit interface {
 	GetCircuitId() string
 	GetServiceId() string
-	CloseForDialAccessLoss()
+	IsHostSide() bool
+	CloseForAccessLoss(reason string)
 }
 
 // BindTerminator is the minimal view of an active hosted terminator needed to
@@ -96,9 +98,10 @@ type ConnProvider interface {
 	GetConnIdToSinks() map[uint32]edge.MsgSink[*ConnState]
 	CloseConn(connId uint32, reason string) error
 
-	// IterateDialCircuits invokes f for every active dial circuit on this
-	// connection — both connId mux-sink conns and SDK-hosted xgress circuits.
-	IterateDialCircuits(f func(DialCircuit))
+	// IterateEdgeCircuits invokes f for every active circuit on this connection
+	// (dialing and serving) — both connId mux-sink conns and SDK-hosted xgress
+	// circuits.
+	IterateEdgeCircuits(f func(EdgeCircuit))
 
 	// IterateBindTerminators invokes f for every hosted terminator on this
 	// connection.
@@ -408,10 +411,15 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 
 		// Re-evaluate dial access (policy + posture) for every active dial
 		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
-		// Collect first, then close: CloseForDialAccessLoss mutates the circuit
+		// Collect first, then close: CloseForAccessLoss mutates the circuit
 		// maps being iterated (mirrors handleDialAccessLost).
-		var dialToClose []DialCircuit
-		edgeConn.IterateDialCircuits(func(c DialCircuit) {
+		var dialToClose []EdgeCircuit
+		edgeConn.IterateEdgeCircuits(func(c EdgeCircuit) {
+			// Serving-side circuits are governed by bind access, handled via the
+			// terminator re-evaluation below; only dial circuits are checked here.
+			if c.IsHostSide() {
+				return
+			}
 			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), data, edge_ctrl_pb.PolicyType_DialPolicy)
 			if err != nil || policy == nil {
 				// every HasAccess error is a definitive denial (entity removed,
@@ -426,7 +434,7 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 			}
 		})
 		for _, c := range dialToClose {
-			c.CloseForDialAccessLoss()
+			c.CloseForAccessLoss("dial access lost on posture update")
 		}
 
 		// Re-evaluate bind access (policy + posture) for every hosted terminator

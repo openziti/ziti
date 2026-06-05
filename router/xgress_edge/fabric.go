@@ -67,7 +67,7 @@ type edgeTerminator struct {
 	lastAttempt         time.Time
 	lock                sync.Mutex
 	rateLimitCallback   rate.RateLimitControl
-	failureCount atomic.Uint32
+	failureCount        atomic.Uint32
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -224,6 +224,17 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 		seq:        NewMsgQueue(4),
 	}
 
+	// Stamp the host-side conn with its service and api-session so access
+	// re-evaluation can identify it (serving originator + service id) and revoke
+	// it on bind-access loss. Unlike SetData, this does not mark the conn as a
+	// circuit initiator, so post-create dial access checks still skip it. This
+	// must happen before mux.Add makes the conn iterable, so a concurrent access
+	// re-evaluation never sees a host-side conn that looks like a dial circuit.
+	result.setHostSideData(&state.ConnState{
+		ServiceSessionToken: self.serviceSessionToken,
+		ApiSessionToken:     self.edgeClientConn.apiSessionToken,
+	})
+
 	if err := mux.Add(result); err != nil {
 		return nil, err
 	}
@@ -249,6 +260,7 @@ const (
 	FlagClosed                  = 0
 	FlagPostCreateAccessChecked = 1
 	FlagIsCircuitInitiator      = 2
+	FlagIsHostSide              = 3
 
 	FlagPostCreateAccessCheckedMask = 1 << FlagPostCreateAccessChecked
 	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
@@ -289,12 +301,29 @@ func (self *edgeXgressConn) GetData() *state.ConnState {
 	return self.data.Load()
 }
 
-func (self *edgeXgressConn) CloseForDialAccessLoss() {
-	self.close(true, "dial access lost")
+func (self *edgeXgressConn) CloseForAccessLoss(reason string) {
+	self.close(true, reason)
+}
+
+// IsHostSide reports whether this conn is the hosting (terminator) side of a
+// circuit, as opposed to the dialing (initiator) side. It is flag-based rather
+// than derived from the xgress so it's valid as soon as the conn is iterable
+// via the mux, before the xgress is attached.
+func (self *edgeXgressConn) IsHostSide() bool {
+	return self.flags.IsSet(FlagIsHostSide)
 }
 
 func (self *edgeXgressConn) SetData(data *state.ConnState) {
 	self.flags.Set(FlagIsCircuitInitiator, true)
+	self.data.Store(data)
+}
+
+// setHostSideData marks the conn as host-side and stores the serving-side
+// ConnState (service and api-session) without marking the conn as a circuit
+// initiator, so post-create dial access checks correctly skip it while access
+// re-evaluation can still resolve its service id.
+func (self *edgeXgressConn) setHostSideData(data *state.ConnState) {
+	self.flags.Set(FlagIsHostSide, true)
 	self.data.Store(data)
 }
 
@@ -341,7 +370,7 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
 		if hop == 1 {
 			// TODO: find a way to get terminator id for hopId
-			xgress.RespondToTraceRequest(channel.Headers(headers), "xgress/edge", "", responder)
+			xgress.RespondToTraceRequest(headers, "xgress/edge", "", responder)
 			return nil
 		}
 

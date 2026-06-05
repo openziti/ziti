@@ -445,15 +445,24 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 func (self *edgeClientConn) revalidatePostureAccess() {
 	stateManager := self.listener.factory.stateManager
 	apiSession := self.apiSessionToken
-	if apiSession == nil || apiSession.IsOidc() {
+	// Only OIDC sessions are enforced router-side against the RDM. Legacy
+	// sessions have their posture evaluated at the controller, which invalidates
+	// the session and pushes the removal to the router, so they need no
+	// router-side revalidation here.
+	if apiSession == nil || !apiSession.IsOidc() {
 		return
 	}
 
 	// Dial circuits — both connId mux-sink conns and SDK-hosted xgress circuits.
-	// Collect first, then close: CloseForDialAccessLoss mutates the maps
+	// Collect first, then close: CloseForAccessLoss mutates the maps
 	// IterateCircuits walks (mirrors handleDialAccessLost).
 	var dialToClose []edgeCircuit
 	self.IterateCircuits(func(c edgeCircuit) {
+		// Host-side circuits are governed by bind access, handled via the
+		// terminator re-evaluation below; only dial circuits are checked here.
+		if c.IsHostSide() {
+			return
+		}
 		if policy, err := stateManager.HasAccess(apiSession.IdentityId, apiSession.Id, c.GetServiceId(), edge_ctrl_pb.PolicyType_DialPolicy); err != nil || policy == nil {
 			// every HasAccess error is a definitive denial (entity removed,
 			// no granting policies, or failed posture checks), so log it as
@@ -467,7 +476,7 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 		}
 	})
 	for _, c := range dialToClose {
-		c.CloseForDialAccessLoss()
+		c.CloseForAccessLoss("dial access lost on posture update")
 	}
 
 	// Hosted bind terminators on this connection (getTerminatorsForConn returns a
@@ -525,14 +534,16 @@ func (self *edgeClientConn) handleDialAccessLost(service *common.IdentityService
 
 	var toClose []edgeCircuit
 	self.IterateCircuits(func(c edgeCircuit) {
-		if c.GetServiceId() == service.GetId() {
+		// Only dial circuits are governed by dial access; serving circuits for the
+		// same service are handled by handleBindAccessLost.
+		if !c.IsHostSide() && c.GetServiceId() == service.GetId() {
 			toClose = append(toClose, c)
 		}
 	})
 
 	for _, c := range toClose {
 		log.WithField("circuitId", c.GetCircuitId()).Info("closing circuit, dial access lost")
-		c.CloseForDialAccessLoss()
+		c.CloseForAccessLoss("dial access lost")
 	}
 }
 
@@ -540,7 +551,8 @@ type edgeCircuit interface {
 	GetCircuitId() string
 	GetServiceId() string
 	GetApiSessionToken() *state.ApiSessionToken
-	CloseForDialAccessLoss()
+	IsHostSide() bool
+	CloseForAccessLoss(reason string)
 	IsPostCreateAccessCheckNeeded() bool
 	SetPostCreateAccessCheckDone()
 }
@@ -559,11 +571,11 @@ func (self *edgeClientConn) IterateCircuits(f func(c edgeCircuit)) {
 	})
 }
 
-// IterateDialCircuits implements state.ConnProvider, exposing every active dial
-// circuit (mux-sink conns and SDK-hosted xgress circuits) to the posture
-// re-evaluation path. edgeCircuit's method set is a superset of
-// state.DialCircuit, so each circuit satisfies it directly.
-func (self *edgeClientConn) IterateDialCircuits(f func(state.DialCircuit)) {
+// IterateEdgeCircuits implements state.ConnProvider, exposing every active
+// circuit (dialing and serving; mux-sink conns and SDK-hosted xgress circuits)
+// to the posture re-evaluation path. edgeCircuit's method set is a superset of
+// state.EdgeCircuit, so each circuit satisfies it directly.
+func (self *edgeClientConn) IterateEdgeCircuits(f func(state.EdgeCircuit)) {
 	self.IterateCircuits(func(c edgeCircuit) {
 		f(c)
 	})
@@ -597,8 +609,10 @@ func (self *edgeTerminator) GetApiSessionToken() *state.ApiSessionToken {
 }
 
 // CloseForBindAccessLoss revokes a hosted terminator whose bind access was lost
-// (policy or posture): it notifies the SDK with an access-denied error and
-// tears the terminator down.
+// (policy or posture): it notifies the SDK with an access-denied error, tears the
+// terminator down, and closes the active circuits served through it. An identity
+// that should no longer be hosting must not keep serving, so its established
+// circuits are dropped promptly rather than left to drain.
 func (self *edgeTerminator) CloseForBindAccessLoss() {
 	registry := self.edgeClientConn.GetHostedServicesRegistry()
 	edgeErr := &EdgeError{
@@ -609,6 +623,22 @@ func (self *edgeTerminator) CloseForBindAccessLoss() {
 	reason := "bind access lost"
 	registry.ensureSdkCloseSent(self, reason, edgeErr)
 	self.close(registry, true, reason)
+
+	// Tear down the active circuits served through this terminator so they drop
+	// promptly rather than draining. They are found by iterating the conn's
+	// circuits for serving-side ones on this service (rather than tracked per
+	// terminator), which covers both mux-sink and SDK-xgress serving conns;
+	// closing each faults its circuit so the dialing side drops too.
+	serviceId := self.GetServiceId()
+	var toClose []edgeCircuit
+	self.edgeClientConn.IterateCircuits(func(c edgeCircuit) {
+		if c.IsHostSide() && c.GetServiceId() == serviceId {
+			toClose = append(toClose, c)
+		}
+	})
+	for _, c := range toClose {
+		c.CloseForAccessLoss(reason)
+	}
 }
 
 // getIdentityId safely retrieves the identity ID from the associated API session.
@@ -1716,8 +1746,14 @@ func (self *xgEdgeForwarder) GetApiSessionId() string {
 	return self.edgeClientConn.GetApiSessionToken().Id
 }
 
-func (self *xgEdgeForwarder) CloseForDialAccessLoss() {
+func (self *xgEdgeForwarder) CloseForAccessLoss(string) {
 	self.cleanupXgressCircuit(self)
+}
+
+// IsHostSide reports whether this forwarder is the hosting (terminator) side of
+// a circuit, as opposed to the dialing (initiator) side.
+func (self *xgEdgeForwarder) IsHostSide() bool {
+	return self.originator == xgress.Terminator
 }
 
 func (self *xgEdgeForwarder) IsPostCreateAccessCheckNeeded() bool {
