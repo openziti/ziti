@@ -22,14 +22,14 @@ type serviceEventHandler struct {
 }
 
 func (self *serviceEventHandler) addServiceUpdatedEvent(stores *stores, tx *bbolt.Tx, serviceId []byte) {
-	cursor := stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
+	cursor := stores.service.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
 
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
 	}
 
-	cursor = stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId, true)
+	cursor = stores.service.dialIdentitiesCollection.IterateLinks(tx, serviceId, true)
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
@@ -59,6 +59,7 @@ type roleAttributeChangeContext struct {
 	denormLinkCollection  boltz.RefCountedLinkCollection
 	changeHandler         func(fromId []byte, toId []byte, add bool)
 	denormChangeHandler   func(fromId, toId []byte, add bool)
+	entityFilter          func(tx *bbolt.Tx, entityId []byte) bool
 	errorz.ErrorHolder
 }
 
@@ -170,7 +171,7 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		}
 		if policyType == PolicyTypeDial {
 			if isServices {
-				ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
+				ctx.denormLinkCollection = store.stores.service.dialIdentitiesCollection
 				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 					ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
 				}
@@ -187,7 +188,7 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 				}
 			}
 		} else if isServices {
-			ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
+			ctx.denormLinkCollection = store.stores.service.bindIdentitiesCollection
 			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 				ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
 			}
@@ -240,7 +241,7 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	log.Tracef("roles: %v", roles)
 	log.Tracef("ids: %v", ids)
 
-	if err := validateEntityIds(ctx.tx(), ctx.linkCollection.GetLinkedSymbol().GetStore(), ctx.rolesSymbol.GetName(), ids); err != nil {
+	if err := validateEntityIds(ctx.tx(), ctx.linkCollection.GetLinkedSymbol().GetStore(), ctx.rolesSymbol.GetName(), ids, ctx.entityFilter); err != nil {
 		ctx.SetError(err)
 		return
 	}
@@ -248,16 +249,23 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	cursor := roleAttributesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
 	for ; cursor.IsValid(); cursor.Next() {
 		entityId := cursor.Current()
+		if ctx.entityFilter != nil && !ctx.entityFilter(ctx.tx(), entityId) {
+			continue
+		}
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx(), entityId)
 		match, didChange := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
 		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, didChange)
 	}
 }
 
-func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []string) error {
+// validateEntityIds returns a field error if any of the given explicit policy ids does not resolve
+// to a valid target entity. filter, when non-nil, is the same predicate used to scope policy
+// evaluation (e.g. isNotFabricOnly for service roles); an id that exists but is excluded by the
+// filter is rejected, since otherwise evaluation would silently drop it without linking.
+func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []string, filter func(tx *bbolt.Tx, entityId []byte) bool) error {
 	var invalid []string
 	for _, val := range ids {
-		if !store.IsEntityPresent(tx, val) {
+		if !store.IsEntityPresent(tx, val) || (filter != nil && !filter(tx, []byte(val))) {
 			invalid = append(invalid, val)
 		}
 	}

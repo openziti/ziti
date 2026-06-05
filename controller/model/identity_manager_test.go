@@ -52,7 +52,7 @@ func (ctx *TestContext) testIdentityConfigOverridesServiceDelete(t *testing.T) {
 	}, change.New())
 	ctx.NoError(err)
 
-	query, err := ast.Parse(ctx.GetStores().EdgeService, "true")
+	query, err := ast.Parse(ctx.GetStores().Service, "true")
 	ctx.NoError(err)
 
 	result, err := ctx.managers.EdgeService.PublicQueryForIdentity(identity, map[string]struct{}{"all": {}}, query)
@@ -109,7 +109,7 @@ func (ctx *TestContext) testIdentityConfigOverridesIdentityDelete(t *testing.T) 
 	}, change.New())
 	ctx.NoError(err)
 
-	query, err := ast.Parse(ctx.GetStores().EdgeService, "true")
+	query, err := ast.Parse(ctx.GetStores().Service, "true")
 	ctx.NoError(err)
 
 	result, err := ctx.managers.EdgeService.PublicQueryForIdentity(identity, map[string]struct{}{"all": {}}, query)

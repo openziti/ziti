@@ -224,7 +224,7 @@ func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId
 	var result bool
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
-		serviceEdgeRouters := self.env.GetStores().EdgeService.GetRefCountedLinkCollection(db.FieldEdgeRouters)
+		serviceEdgeRouters := self.env.GetStores().Service.GetRefCountedLinkCollection(db.FieldEdgeRouters)
 
 		identityCount := identityEdgeRouters.GetLinkCount(tx, []byte(identityId), []byte(edgeRouterId))
 		serviceCount := serviceEdgeRouters.GetLinkCount(tx, []byte(serviceId), []byte(edgeRouterId))
@@ -251,7 +251,7 @@ func (self *EdgeRouterManager) IsSharedEdgeRouterPresent(identityId, serviceId s
 	var result bool
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
-		serviceEdgeRouters := self.env.GetStores().EdgeService.GetRefCountedLinkCollection(db.FieldEdgeRouters)
+		serviceEdgeRouters := self.env.GetStores().Service.GetRefCountedLinkCollection(db.FieldEdgeRouters)
 
 		cursor := identityEdgeRouters.IterateLinks(tx, []byte(identityId), true)
 		for cursor.IsValid() {

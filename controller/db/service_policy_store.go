@@ -150,7 +150,7 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.symbolPostureCheckRoles = store.AddPublicSetSymbol(FieldPostureCheckRoles, ast.NodeTypeString)
 
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.service)
 	store.symbolPostureChecks = store.AddFkSetSymbol(EntityTypePostureChecks, store.stores.postureCheck)
 
 	store.MakeSymbolPublic(EntityTypeIdentities)
@@ -158,7 +158,7 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 }
 
 func (store *servicePolicyStoreImpl) initializeLinked() {
-	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolServicePolicies)
+	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.service.symbolServicePolicies)
 	store.identityCollection = store.AddLinkCollection(store.symbolIdentities, store.stores.identity.symbolServicePolicies)
 	store.postureCheckCollection = store.AddLinkCollection(store.symbolPostureChecks, store.stores.postureCheck.symbolServicePolicies)
 }
@@ -304,15 +304,18 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 		rolesSymbol:           store.symbolServiceRoles,
 		linkCollection:        store.serviceCollection,
 		relatedLinkCollection: store.identityCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		// TEMPORARY(fabric-edge-collapse): keeps fabric-only services out of edge service policies
+		// (both #all/role denorm and explicit @id); remove with the fabric/edge split.
+		entityFilter: store.stores.service.isNotFabricOnly,
+		ErrorHolder:  persistCtx.Bucket,
 	}
 	if policy.PolicyType == PolicyTypeDial {
-		ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
+		ctx.denormLinkCollection = store.stores.service.dialIdentitiesCollection
 		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
 		}
 	} else {
-		ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
+		ctx.denormLinkCollection = store.stores.service.bindIdentitiesCollection
 		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
 			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
 		}
@@ -322,7 +325,7 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService, add)
 	}
 
-	EvaluatePolicy(ctx, policy, store.stores.edgeService.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
@@ -404,7 +407,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContex
 		name:                   "service-policies/bind",
 		mutateCtx:              mutateCtx,
 		sourceStore:            store.stores.identity,
-		targetStore:            store.stores.edgeService,
+		targetStore:            store.stores.service,
 		policyStore:            store,
 		sourceCollection:       store.identityCollection,
 		targetCollection:       store.serviceCollection,
@@ -427,7 +430,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContex
 		name:                   "service-policies/dial",
 		mutateCtx:              mutateCtx,
 		sourceStore:            store.stores.identity,
-		targetStore:            store.stores.edgeService,
+		targetStore:            store.stores.service,
 		policyStore:            store,
 		sourceCollection:       store.identityCollection,
 		targetCollection:       store.serviceCollection,

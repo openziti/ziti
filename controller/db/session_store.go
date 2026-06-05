@@ -93,7 +93,7 @@ func (store *sessionStoreImpl) initializeLocal() {
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
-	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
+	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.service)
 	store.symbolServicePolicies = store.AddFkSetSymbol(FieldSessionServicePolicies, store.stores.servicePolicy)
 	sessionTypeSymbol := store.AddSymbol(FieldSessionType, ast.NodeTypeString)
 

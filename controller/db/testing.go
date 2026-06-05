@@ -1,15 +1,16 @@
 package db
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"github.com/pkg/errors"
@@ -87,18 +88,6 @@ func (ctx *TestContext) requireNewRouter() *Router {
 	return entity
 }
 
-func (ctx *TestContext) cleanupAll() {
-	_ = ctx.GetDb().Update(nil, func(changeCtx boltz.MutateContext) error {
-		for _, store := range ctx.stores.storeMap {
-			if err := store.DeleteWhere(changeCtx, `true limit none`); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 func (ctx *TestContext) newViewTestCtx(tx *bbolt.Tx) boltz.MutateContext {
 	return boltz.NewTxMutateContext(change.New().SetChangeAuthorType("test").GetContext(), tx)
 }
@@ -147,12 +136,10 @@ func (ctx *TestContext) RequireNewIdentity(name string, isAdmin bool) *Identity 
 	return identityEntity
 }
 
-func (ctx *TestContext) RequireNewService(name string) *EdgeService {
-	edgeService := &EdgeService{
-		Service: Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
-			Name:          name,
-		},
+func (ctx *TestContext) RequireNewService(name string) *Service {
+	edgeService := &Service{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          name,
 	}
 	boltztest.RequireCreate(ctx, edgeService)
 	return edgeService
@@ -172,30 +159,55 @@ func (ctx *TestContext) getRelatedIds(entity boltz.Entity, field string) []strin
 	return result
 }
 
+// CleanupAll resets the db to its post-migration state, deleting all test-created
+// entities and restoring migration-seeded data such as identity types, well-known
+// config types and the default auth policy.
 func (ctx *TestContext) CleanupAll() {
-	stores := []boltz.Store{
-		ctx.stores.Session,
-		ctx.stores.ApiSession,
-		ctx.stores.Service,
-		ctx.stores.EdgeService,
-		ctx.stores.Identity,
-		ctx.stores.EdgeRouter,
-		ctx.stores.Config,
-		ctx.stores.Identity,
-		ctx.stores.EdgeRouterPolicy,
-		ctx.stores.ServicePolicy,
-		ctx.stores.ServiceEdgeRouterPolicy,
-	}
-
-	_ = ctx.GetDb().Update(change.New().NewMutateContext(), func(mutateCtx boltz.MutateContext) error {
-		for _, store := range stores {
-			if err := store.DeleteWhere(mutateCtx, `true limit none`); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())
+	err := ctx.GetDb().Update(change.New().NewMutateContext(), func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
+		if tx.Bucket([]byte(RootBucket)) != nil {
+			if err := tx.DeleteBucket([]byte(RootBucket)); err != nil {
 				return err
 			}
 		}
-		return nil
+		root, err := tx.CreateBucketIfNotExists([]byte(RootBucket))
+		if err != nil {
+			return err
+		}
+
+		storeList := ctx.stores.getStoresForInit()
+		sort.Slice(storeList, func(i, j int) bool {
+			if storeList[i].IsChildStore() == storeList[j].IsChildStore() {
+				return storeList[i].GetEntityType() < storeList[j].GetEntityType()
+			}
+			return !storeList[i].IsChildStore()
+		})
+
+		errorHolder := &errorz.ErrorHolderImpl{}
+		for _, store := range storeList {
+			store.initializeIndexes(tx, errorHolder)
+		}
+		if errorHolder.HasError() {
+			return errorHolder.GetError()
+		}
+
+		// the db is fresh, so we can run the migration initialize step directly instead
+		// of going through the migration manager
+		migrations := &Migrations{stores: ctx.stores}
+		step := &boltz.MigrationStep{
+			Component: "edge",
+			Ctx:       mutateCtx,
+		}
+		version := migrations.initialize(step)
+		if step.HasError() {
+			return step.GetError()
+		}
+
+		versionsBucket := boltz.NewTypedBucket(nil, root).GetOrCreateBucket("versions")
+		versionsBucket.SetInt64(step.Component, int64(version), nil)
+		return versionsBucket.GetError()
 	})
+	ctx.NoError(err)
 }
 
 func (ctx *TestContext) getIdentityTypeId() string {

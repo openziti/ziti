@@ -38,7 +38,20 @@ func (entity *Service) GetName() string {
 }
 
 func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Service, error) {
-	return entity.toBoltEntityForCreate(tx, env)
+	// Since the edge/fabric service collapse, the edge fields (RoleAttributes, Configs,
+	// EncryptionRequired) and the IsFabricOnly discriminator share the service entity bucket with
+	// the fabric fields. Load the existing entity and overlay only the fabric-owned fields so a
+	// fabric update preserves the rest. Without this, a full PUT (nil field checker) would persist
+	// zero values for the edge fields and flip an existing edge service to fabric-only.
+	existing, err := env.GetStores().Service.LoadById(tx, entity.Id)
+	if err != nil {
+		return nil, err
+	}
+	existing.Name = entity.Name
+	existing.MaxIdleTime = entity.MaxIdleTime
+	existing.TerminatorStrategy = entity.TerminatorStrategy
+	existing.Tags = entity.Tags
+	return existing, nil
 }
 
 func (entity *Service) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Service, error) {
@@ -47,6 +60,12 @@ func (entity *Service) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Service, error
 		Name:               entity.Name,
 		MaxIdleTime:        entity.MaxIdleTime,
 		TerminatorStrategy: entity.TerminatorStrategy,
+		IsFabricOnly:       true,
+		// The fabric surface does not model encryptionRequired, so apply the secure default.
+		// The field is unreachable for fabric-only services today, but when fabric and edge
+		// services fully merge, fabric services should require encryption unless explicitly
+		// opted out.
+		EncryptionRequired: true,
 	}, nil
 }
 
