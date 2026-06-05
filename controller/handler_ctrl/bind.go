@@ -105,7 +105,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	xctrlDone := make(chan struct{})
 	for _, x := range self.xctrls {
-		if err := binding.Bind(x); err != nil {
+		if err := x.BindChannel(binding); err != nil {
 			return err
 		}
 		if err := x.Run(binding.GetChannel(), self.network.GetDb(), xctrlDone); err != nil {

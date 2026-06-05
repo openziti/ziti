@@ -1036,7 +1036,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		if bh == nil {
 			return errors.New("bindHandler not initialized, can't accept controller connection")
 		}
-		if err = binding.Bind(bh); err != nil {
+		if err = bh.BindChannel(binding); err != nil {
 			_ = ch.Close()
 			return errors.Wrapf(err, "error while binding channel from id '%v' or address '%v', closing connection", id, addr)
 		}

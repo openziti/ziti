@@ -133,7 +133,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	}
 
 	for _, x := range self.env.GetXrctrls() {
-		if err := binding.Bind(x); err != nil {
+		if err := x.BindChannel(binding); err != nil {
 			return err
 		}
 	}

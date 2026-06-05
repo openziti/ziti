@@ -58,7 +58,7 @@ func (self *Router) RegisterAgentOp(opId byte, f func(c *bufio.ReadWriter) error
 
 func (self *Router) bindAgentChannel(binding channel.Binding) error {
 	for _, bh := range self.agentBindHandlers {
-		if err := binding.Bind(bh); err != nil {
+		if err := bh.BindChannel(binding); err != nil {
 			return err
 		}
 	}
