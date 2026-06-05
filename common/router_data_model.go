@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -44,6 +45,18 @@ const (
 	IdentityAdded   byte = 1
 	IdentityUpdated byte = 2
 	IdentityDeleted byte = 4
+)
+
+// Revocation type values for DataState_Revocation.Type, distinguishing what the
+// revocation's Id identifies so the router can match it against the right token
+// attribute. They mirror rest_model.RevocationTypeEnum — the canonical taxonomy
+// used by the management revocation API and persisted on model.Revocation — so
+// router-side matching and every producer share one vocabulary. An empty type
+// is a legacy revocation with no router-side enforcement.
+const (
+	RevocationTypeApiSession = string(rest_model.RevocationTypeEnumAPISESSION) // "API_SESSION"; Id is an api-session id (z_asid)
+	RevocationTypeIdentity   = string(rest_model.RevocationTypeEnumIDENTITY)   // "IDENTITY"; Id is an identity id
+	RevocationTypeToken      = string(rest_model.RevocationTypeEnumJTI)        // "JTI"; Id is a token id (jti)
 )
 
 // RouterDataModelConfig contains the configuration values for a RouterDataModel
@@ -1406,6 +1419,33 @@ func (rdm *RouterDataModel) HandleRevocationEvent(event *edge_ctrl_pb.DataState_
 	} else {
 		rdm.Revocations.Set(model.Revocation.Id, model.Revocation)
 	}
+}
+
+// IsApiSessionRevoked reports whether the api-session with the given id has been
+// revoked (e.g. by OIDC end-session). The api-session id is a unique value, so
+// an api-session-typed revocation keyed by it unambiguously targets that
+// session.
+func (rdm *RouterDataModel) IsApiSessionRevoked(apiSessionId string) bool {
+	if revocation, found := rdm.Revocations.Get(apiSessionId); found {
+		return revocation.Type == RevocationTypeApiSession
+	}
+	return false
+}
+
+// IsIdentityRevoked reports whether a session for the given identity, issued at
+// issuedAt, has been revoked (e.g. by disabling/deleting the identity or an
+// identity-scoped revocation). The revocation carries an IssuedBefore cutoff so
+// only sessions that predate it are revoked; a session re-authenticated after
+// the cutoff survives the still-lingering revocation. A revocation with no
+// cutoff is treated as revoking all of the identity's sessions.
+func (rdm *RouterDataModel) IsIdentityRevoked(identityId string, issuedAt time.Time) bool {
+	if revocation, found := rdm.Revocations.Get(identityId); found && revocation.Type == RevocationTypeIdentity {
+		if revocation.IssuedBefore == nil {
+			return true
+		}
+		return issuedAt.Before(revocation.IssuedBefore.AsTime())
+	}
+	return false
 }
 
 func (rdm *RouterDataModel) HandleServicePolicyChange(index uint64, model *edge_ctrl_pb.DataState_ServicePolicyChange) {

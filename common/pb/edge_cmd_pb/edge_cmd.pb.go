@@ -2793,6 +2793,7 @@ type Revocation struct {
 	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expiresAt,proto3" json:"expiresAt,omitempty"`
 	Tags          map[string]*TagValue   `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	IssuedBefore  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issuedBefore,proto3" json:"issuedBefore,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2853,6 +2854,13 @@ func (x *Revocation) GetType() string {
 		return x.Type
 	}
 	return ""
+}
+
+func (x *Revocation) GetIssuedBefore() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedBefore
+	}
+	return nil
 }
 
 type DeleteRevocationsBatchCommand struct {
@@ -5176,13 +5184,14 @@ const file_edge_cmd_proto_rawDesc = "" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01B\t\n" +
-	"\asubtype\"\xfb\x01\n" +
+	"\asubtype\"\xbb\x02\n" +
 	"\n" +
 	"Revocation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
 	"\texpiresAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12:\n" +
 	"\x04tags\x18\x03 \x03(\v2&.ziti.edge_cmd.pb.Revocation.TagsEntryR\x04tags\x12\x12\n" +
-	"\x04type\x18\x04 \x01(\tR\x04type\x1aS\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12>\n" +
+	"\fissuedBefore\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\fissuedBefore\x1aS\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x05value\x18\x02 \x01(\v2\x1a.ziti.edge_cmd.pb.TagValueR\x05value:\x028\x01\"p\n" +
@@ -5442,52 +5451,53 @@ var file_edge_cmd_proto_depIdxs = []int32{
 	73,  // 58: ziti.edge_cmd.pb.PostureCheck.domains:type_name -> ziti.edge_cmd.pb.PostureCheck.Domains
 	82,  // 59: ziti.edge_cmd.pb.Revocation.expiresAt:type_name -> google.protobuf.Timestamp
 	75,  // 60: ziti.edge_cmd.pb.Revocation.tags:type_name -> ziti.edge_cmd.pb.Revocation.TagsEntry
-	1,   // 61: ziti.edge_cmd.pb.DeleteRevocationsBatchCommand.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	29,  // 62: ziti.edge_cmd.pb.CreateRevocationsBatchCommand.revocations:type_name -> ziti.edge_cmd.pb.Revocation
-	1,   // 63: ziti.edge_cmd.pb.CreateRevocationsBatchCommand.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	76,  // 64: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
-	77,  // 65: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
-	78,  // 66: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
-	79,  // 67: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
-	80,  // 68: ziti.edge_cmd.pb.TransitRouter.ctrlChanListeners:type_name -> ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntry
-	35,  // 69: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
-	21,  // 70: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
-	1,   // 71: ziti.edge_cmd.pb.CreateTransitRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	81,  // 72: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.serviceConfigs:type_name -> ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
-	1,   // 73: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
-	6,   // 74: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
-	82,  // 75: ziti.edge_cmd.pb.Authenticator.Cert.extendRequestedAt:type_name -> google.protobuf.Timestamp
-	3,   // 76: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	46,  // 77: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
-	47,  // 78: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
-	48,  // 79: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
-	3,   // 80: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 81: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 82: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 83: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 84: ziti.edge_cmd.pb.Controller.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	13,  // 85: ziti.edge_cmd.pb.Controller.ApiAddressesEntry.value:type_name -> ziti.edge_cmd.pb.ApiAddressList
-	3,   // 86: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	16,  // 87: ziti.edge_cmd.pb.EdgeRouter.CtrlChanListenersEntry.value:type_name -> ziti.edge_cmd.pb.CtrlChanListenerDetail
-	3,   // 88: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 89: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 90: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 91: ziti.edge_cmd.pb.Identity.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 92: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	69,  // 93: ziti.edge_cmd.pb.PostureCheck.OsList.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.Os
-	71,  // 94: ziti.edge_cmd.pb.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
-	3,   // 95: ziti.edge_cmd.pb.PostureCheck.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 96: ziti.edge_cmd.pb.Revocation.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 97: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 98: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 99: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	3,   // 100: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	16,  // 101: ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntry.value:type_name -> ziti.edge_cmd.pb.CtrlChanListenerDetail
-	102, // [102:102] is the sub-list for method output_type
-	102, // [102:102] is the sub-list for method input_type
-	102, // [102:102] is the sub-list for extension type_name
-	102, // [102:102] is the sub-list for extension extendee
-	0,   // [0:102] is the sub-list for field type_name
+	82,  // 61: ziti.edge_cmd.pb.Revocation.issuedBefore:type_name -> google.protobuf.Timestamp
+	1,   // 62: ziti.edge_cmd.pb.DeleteRevocationsBatchCommand.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	29,  // 63: ziti.edge_cmd.pb.CreateRevocationsBatchCommand.revocations:type_name -> ziti.edge_cmd.pb.Revocation
+	1,   // 64: ziti.edge_cmd.pb.CreateRevocationsBatchCommand.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	76,  // 65: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
+	77,  // 66: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
+	78,  // 67: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
+	79,  // 68: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
+	80,  // 69: ziti.edge_cmd.pb.TransitRouter.ctrlChanListeners:type_name -> ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntry
+	35,  // 70: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
+	21,  // 71: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
+	1,   // 72: ziti.edge_cmd.pb.CreateTransitRouterCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	81,  // 73: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.serviceConfigs:type_name -> ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ServiceConfig
+	1,   // 74: ziti.edge_cmd.pb.UpdateServiceConfigsCmd.ctx:type_name -> ziti.edge_cmd.pb.ChangeContext
+	6,   // 75: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
+	82,  // 76: ziti.edge_cmd.pb.Authenticator.Cert.extendRequestedAt:type_name -> google.protobuf.Timestamp
+	3,   // 77: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	46,  // 78: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
+	47,  // 79: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
+	48,  // 80: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
+	3,   // 81: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 82: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 83: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 84: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 85: ziti.edge_cmd.pb.Controller.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	13,  // 86: ziti.edge_cmd.pb.Controller.ApiAddressesEntry.value:type_name -> ziti.edge_cmd.pb.ApiAddressList
+	3,   // 87: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	16,  // 88: ziti.edge_cmd.pb.EdgeRouter.CtrlChanListenersEntry.value:type_name -> ziti.edge_cmd.pb.CtrlChanListenerDetail
+	3,   // 89: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 90: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 91: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 92: ziti.edge_cmd.pb.Identity.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 93: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	69,  // 94: ziti.edge_cmd.pb.PostureCheck.OsList.osList:type_name -> ziti.edge_cmd.pb.PostureCheck.Os
+	71,  // 95: ziti.edge_cmd.pb.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_cmd.pb.PostureCheck.Process
+	3,   // 96: ziti.edge_cmd.pb.PostureCheck.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 97: ziti.edge_cmd.pb.Revocation.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 98: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 99: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 100: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	3,   // 101: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	16,  // 102: ziti.edge_cmd.pb.TransitRouter.CtrlChanListenersEntry.value:type_name -> ziti.edge_cmd.pb.CtrlChanListenerDetail
+	103, // [103:103] is the sub-list for method output_type
+	103, // [103:103] is the sub-list for method input_type
+	103, // [103:103] is the sub-list for extension type_name
+	103, // [103:103] is the sub-list for extension extendee
+	0,   // [0:103] is the sub-list for field type_name
 }
 
 func init() { file_edge_cmd_proto_init() }

@@ -25,12 +25,12 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/revocation"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func init() {
@@ -122,7 +122,8 @@ func mapCreateRevocationToModel(ae *env.AppEnv, r *http.Request, create *rest_mo
 		}
 	}
 
-	expiresAt := time.Now().Add(ae.GetConfig().Edge.Oidc.RefreshTokenDuration)
+	now := time.Now()
+	expiresAt := now.Add(ae.GetConfig().Edge.Oidc.RefreshTokenDuration)
 
 	return &model.Revocation{
 		BaseEntity: models.BaseEntity{
@@ -131,5 +132,8 @@ func mapCreateRevocationToModel(ae *env.AppEnv, r *http.Request, create *rest_mo
 		},
 		ExpiresAt: expiresAt,
 		Type:      string(revocationType),
+		// IssuedBefore is the cutoff for IDENTITY revocations: sessions issued
+		// before now are revoked, while a later re-authentication survives.
+		IssuedBefore: now,
 	}, nil
 }

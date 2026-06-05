@@ -442,6 +442,7 @@ message Revocation {
   google.protobuf.Timestamp expiresAt = 2;
   map<string, TagValue> tags = 3;
   string type = 4;
+  google.protobuf.Timestamp issuedBefore = 5;
 }
 
 message DeleteRevocationsBatchCommand {
