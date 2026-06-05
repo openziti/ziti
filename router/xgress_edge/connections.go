@@ -257,7 +257,7 @@ func (self *connectionTracker) scanForCircuitsNeedingPolicyCheck() {
 				WithField("identityId", identityId).
 				WithField("circuitType", reflect.TypeOf(circuit).String())
 			log.WithError(err).Info("unable to verify service access, closing circuit")
-			circuit.CloseForDialAccessLoss()
+			circuit.CloseForAccessLoss("dial access lost")
 		} else {
 			circuit.SetPostCreateAccessCheckDone()
 		}
