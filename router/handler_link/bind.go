@@ -97,6 +97,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	log.Info("link destination support heartbeats")
 	cb := &heartbeatCallback{
+		linkId:           self.xlink.Id(),
 		latencyMetric:    latencyMetric,
 		queueTimeMetric:  queueTimeMetric,
 		ch:               binding.GetChannel(),
@@ -146,6 +147,7 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 }
 
 type heartbeatCallback struct {
+	linkId           string
 	latencyMetric    metrics.Histogram
 	queueTimeMetric  metrics.Histogram
 	lastResponse     int64
@@ -186,7 +188,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 }
 
 func (self *heartbeatCallback) checkQueueTime() {
-	log := pfxlog.Logger().WithField("linkId", self.ch.Id())
+	log := pfxlog.Logger().WithField("linkId", self.linkId)
 	if !self.latencySemaphore.TryAcquire() {
 		log.Warn("unable to check queue time, too many check already running")
 		return

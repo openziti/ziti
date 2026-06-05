@@ -93,7 +93,7 @@ func (self *listener) GetLocalBinding() string {
 func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
 	linkChannel := NewListenerLinkChannel(underlay, self.env.GetLinkPayloadSenderQueueSize(), self.env.GetLinkAckSenderQueueSize())
 	multiConfig := channel.MultiChannelConfig{
-		LogicalName:     "link/" + underlay.Id(),
+		LogicalName:     "link/" + resolveLinkId(underlay.Headers(), underlay.Id()),
 		Options:         self.config.options,
 		UnderlayHandler: linkChannel,
 		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
@@ -123,11 +123,13 @@ func (self *listener) handleUngroupedNewUnderlay(underlay channel.Underlay) erro
 }
 
 func (self *listener) BindChannel(binding channel.Binding) error {
+	headers := channel.Headers(binding.GetChannel().Underlay().Headers())
+	linkId := resolveLinkId(headers, binding.GetChannel().Id())
+
 	log := pfxlog.ChannelLogger("link", "linkListener").
 		WithField("linkProtocol", self.GetLinkProtocol()).
-		WithField("linkId", binding.GetChannel().Id())
+		WithField("linkId", linkId)
 
-	headers := channel.Headers(binding.GetChannel().Underlay().Headers())
 	var chanType channelType
 
 	routerId := ""
@@ -158,6 +160,7 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 	log.Info("binding link channel")
 
 	linkMeta := &linkMetadata{
+		linkId:        linkId,
 		routerId:      routerId,
 		routerVersion: routerVersion,
 		dialerBinding: dialerBinding,
@@ -239,7 +242,7 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 	} else {
 		pending = &pendingLink{
 			link: &splitImpl{
-				id:            binding.GetChannel().Id(),
+				id:            linkMeta.linkId,
 				key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 				routerId:      linkMeta.routerId,
 				routerVersion: linkMeta.routerVersion,
@@ -260,7 +263,7 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 				link.payloadCh = binding.GetChannel()
 				return nil
 			}
-			return errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
+			return errors.Errorf("got two payload channels for link %v", linkMeta.linkId)
 		}); err != nil {
 			return false, nil, err
 		}
@@ -270,7 +273,7 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 				link.ackCh = binding.GetChannel()
 				return nil
 			}
-			return errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
+			return errors.Errorf("got two ack channels for link %v", linkMeta.linkId)
 		}); err != nil {
 			return false, nil, err
 		}
@@ -283,7 +286,7 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 
 func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
 	xli := &impl{
-		id:            binding.GetChannel().Id(),
+		id:            linkMeta.linkId,
 		key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
 		routerId:      linkMeta.routerId,
 		routerVersion: linkMeta.routerVersion,
@@ -305,7 +308,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
 	if err := bindHandler.BindChannel(binding); err != nil {
-		return errors.Wrapf(err, "error binding channel for link [l/%v]", binding.GetChannel().Id())
+		return errors.Wrapf(err, "error binding channel for link [l/%v]", linkMeta.linkId)
 	}
 
 	log.Info("accepting link")
@@ -358,8 +361,22 @@ type pendingLink struct {
 }
 
 type linkMetadata struct {
+	linkId        string
 	routerId      string
 	routerVersion string
 	dialerBinding string
 	iteration     uint32
+}
+
+// resolveLinkId returns the link id for an incoming link connection. It prefers
+// the LinkHeaderLinkId header, falling back to the given id (the channel identity
+// token) when the header isn't present, as is the case for older routers. Dialing
+// routers currently send the link id as both; reading the header here is what will
+// allow the channel identity to become the dialing router's actual id in a future
+// release.
+func resolveLinkId(headers map[int32][]byte, fallbackId string) string {
+	if linkId, ok := channel.Headers(headers).GetStringHeader(LinkHeaderLinkId); ok && linkId != "" {
+		return linkId
+	}
+	return fallbackId
 }
