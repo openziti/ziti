@@ -631,7 +631,7 @@ func (self *edgeClientConn) CloseConn(connId uint32, reason string) error {
 	closeMsg := sdkedge.NewStateClosedMsg(connId, reason)
 	closeMsg.PutUint32Header(sdkedge.ConnIdHeader, connId)
 
-	err := closeMsg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err := closeMsg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		log.WithError(err).WithFields(sdkedge.GetLoggerFields(closeMsg)).Error("failed to send state closed message")
 		return err
@@ -1029,7 +1029,7 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	}
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
-	err = msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err = msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send bind success response")
 	}
@@ -1314,7 +1314,7 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 	}
 
 	// this needs to go on the data channel to ensure it gets there before data gets there or a state closed msg
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
@@ -1336,7 +1336,7 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 		}
 	}
 
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
@@ -1758,7 +1758,7 @@ func (self *xgEdgeForwarder) Unrouted() {
 	self.xgCircuits.Remove(self.circuitId)
 
 	msg := sdkedge.NewStateClosedMsg(self.connId, "xgress unrouted")
-	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
+	err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender())
 	if err != nil {
 		pfxlog.Logger().WithField("circuitId", self.circuitId).
 			WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state closed")

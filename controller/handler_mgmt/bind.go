@@ -108,7 +108,7 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts.Value() {
-		if err := binding.Bind(x); err != nil {
+		if err := x.BindChannel(binding); err != nil {
 			return err
 		}
 		if err := x.Run(binding.GetChannel(), xmgmtDone); err != nil {

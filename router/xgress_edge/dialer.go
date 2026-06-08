@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
 	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
@@ -179,7 +178,7 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		to = timeToDeadline
 	}
 	log.Info("sending dial request to sdk")
-	reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.GetControlSender())
+	reply, err := dialRequest.WithTimeout(to).SendForReply(terminator.GetControlSender())
 	if err != nil {
 		conn.close(false, err.Error())
 		x.Close()
@@ -282,7 +281,7 @@ func (dialer *dialer) dialSdkXgress(terminator *edgeTerminator, params xgress_ro
 		to = timeToDeadline
 	}
 	log.Info("sending dial request to sdk")
-	reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(terminator.GetControlSender())
+	reply, err := dialRequest.WithTimeout(to).SendForReply(terminator.GetControlSender())
 	if err != nil {
 		edgeForwarder.UnregisterRouting()
 		return nil, err
@@ -357,7 +356,7 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 	}
 
 	log.Debug("router not assigning connId for dial")
-	reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(terminator.GetControlSender())
+	reply, err := dialRequest.WithTimeout(5 * time.Second).SendForReply(terminator.GetControlSender())
 	if err != nil {
 		return nil, err
 	}

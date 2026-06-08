@@ -192,7 +192,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 
 	r.Control = ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	r.ConnectTime = time.Now()
-	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
+	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
 

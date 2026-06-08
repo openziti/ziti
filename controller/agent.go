@@ -45,7 +45,7 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRestoreFromDb), self.agentOpRestoreFromDb)
 
 	for _, bh := range self.agentBindHandlers {
-		if err := binding.Bind(bh); err != nil {
+		if err := bh.BindChannel(binding); err != nil {
 			return err
 		}
 	}
