@@ -403,12 +403,21 @@ func (o *LoginOptions) Run() error {
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
-	// Probe using only the OS trust store. If the controller's cert is publicly trusted (e.g. LetsEncrypt),
-	// no cached CA is needed: use system trust and drop any stale cached cert so all ziti commands fall
-	// back to it too. An explicit --ca is always honored.
+	// Probe with system trust only, reusing the configured transport so overlay-only hosts (e.g.
+	// mgmt.ziti) still resolve via its zitified DialContext. An explicit --ca is honored below.
 	systemRoots, _ := SystemCertPool()
-	systemTrustClient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: systemRoots}}}
-	isServerTrusted, err := util.IsServerTrusted(host, systemTrustClient)
+	probeClient := o.GetClient()
+	if t, ok := probeClient.Transport.(*http.Transport); ok && t != nil {
+		pt := t.Clone()
+		if pt.TLSClientConfig == nil {
+			pt.TLSClientConfig = &tls.Config{}
+		}
+		pt.TLSClientConfig.RootCAs = systemRoots
+		probeClient.Transport = pt
+	} else {
+		probeClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: systemRoots}}
+	}
+	isServerTrusted, err := util.IsServerTrusted(host, &probeClient)
 	if err != nil {
 		return err
 	}
@@ -646,29 +655,24 @@ func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
 	}
 }
 
-// SystemCertPool returns the OS trust-store roots. It backs both the "is this controller publicly trusted?"
-// probe and the default login trust pool (when no --ca/cached cert is set). It is a var so tests can
-// substitute a controlled pool; production always uses the real OS store.
+// SystemCertPool is a var so tests can substitute the OS trust source.
 var SystemCertPool = x509.SystemCertPool
 
 func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
-	// If a CA cert is configured (cached or via --ca), trust exactly that. Otherwise fall back to the OS
-	// trust store, which covers publicly-signed controller certs (e.g. LetsEncrypt).
+	caPool := x509.NewCertPool()
 	if o.CaCert != "" {
-		if rootPemData, err := os.ReadFile(o.CaCert); err == nil {
-			caPool := x509.NewCertPool()
+		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
+			rootPemData, err := os.ReadFile(o.CaCert)
+			if err != nil {
+				pfxlog.Logger().Warnf("error reading CA cert [%s]", o.CaCert)
+			}
 			caPool.AppendCertsFromPEM(rootPemData)
 			return caPool, nil
 		} else {
-			pfxlog.Logger().Warnf("could not read CA cert [%s], falling back to system trust: %v", o.CaCert, err)
+			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 		}
 	}
-
-	caPool, err := SystemCertPool()
-	if err != nil {
-		return nil, errors.Errorf("could not load system cert pool and no CA cert provided: %v", err)
-	}
-	return caPool, nil
+	return SystemCertPool()
 }
 
 func (o *LoginOptions) MergeUnsetFrom(cached LoginOptions) {
