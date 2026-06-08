@@ -79,17 +79,33 @@ func (so *SigningOpts) Apply(c *x509.Certificate) {
 	}
 }
 
+// SerialGenerator produces certificate serial numbers. Implementations must return a
+// positive integer that DER-encodes within RFC 5280's 20-octet serialNumber limit.
 type SerialGenerator interface {
-	Generate() *big.Int
+	Generate() (*big.Int, error)
 }
+
+// serialMax is 2^159 - 1, the largest positive integer that DER-encodes within the
+// 20-octet (160-bit, signed two's-complement) serialNumber limit of RFC 5280 §4.1.2.2.
+// The leading sign bit must stay 0 to remain positive, so 159 magnitude bits is the
+// ceiling that never needs a leading 0x00 pad octet.
+var serialMax = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 159), big.NewInt(1))
 
 type DefaultSerialGenerator struct{}
 
-func (DefaultSerialGenerator) Generate() *big.Int {
-	//@todo this need to be better, this does not include negative numbers for 20bit values, nor is this managed
-	r, _ := rand.Int(rand.Reader, big.NewInt(524287))
+// Generate returns a cryptographically random certificate serial number in the range
+// [1, 2^159 - 1]. The 159-bit width gives a vanishingly small collision probability and
+// provides entropy as defense-in-depth against chosen-prefix signature-hash collisions,
+// while staying within RFC 5280's 20-octet limit.
+func (DefaultSerialGenerator) Generate() (*big.Int, error) {
+	// rand.Int draws from [0, serialMax) = [0, 2^159 - 2]; shift to [1, 2^159 - 1] so
+	// the serial is strictly positive without ever exceeding the 20-octet ceiling.
+	n, err := rand.Int(rand.Reader, serialMax)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate certificate serial number: %w", err)
+	}
 
-	return r
+	return n.Add(n, big.NewInt(1)), nil
 }
 
 var _ Signer = &ServerSigner{}
@@ -125,13 +141,18 @@ func (s *ServerSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) 
 		return nil, fmt.Errorf("CSR signature validation failed: %s", err)
 	}
 
+	serialNumber, err := s.SerialGenerator.Generate()
+	if err != nil {
+		return nil, err
+	}
+
 	// create client certificate template
 	certTemplate := x509.Certificate{
 		Signature:          csr.Signature,
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,
 
-		SerialNumber: s.SerialGenerator.Generate(),
+		SerialNumber: serialNumber,
 		Issuer:       s.caCert.Subject,
 		Subject:      csr.Subject,
 		NotBefore:    time.Now().Add(-time.Minute),
@@ -187,6 +208,11 @@ func (s *ClientSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) 
 		return nil, fmt.Errorf("CSR signature validation failed: %s", err)
 	}
 
+	serialNumber, err := s.SerialGenerator.Generate()
+	if err != nil {
+		return nil, err
+	}
+
 	// create client certificate template
 	certTemplate := x509.Certificate{
 		Signature: csr.Signature,
@@ -194,7 +220,7 @@ func (s *ClientSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) 
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,
 
-		SerialNumber: s.SerialGenerator.Generate(),
+		SerialNumber: serialNumber,
 		Issuer:       s.caCert.Subject,
 		Subject:      csr.Subject,
 		NotBefore:    time.Now().Add(-time.Minute),
