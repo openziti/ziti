@@ -619,11 +619,8 @@ func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
 	pool := x509.NewCertPool()
 	require.True(t, pool.AppendCertsFromPEM(caPEM), "controller CA should parse")
 
-	prev := edge.SystemCertPool
-	edge.SystemCertPool = func() (*x509.CertPool, error) { return pool, nil }
-	defer func() { edge.SystemCertPool = prev }()
-
 	opts2 := s.controllerUnderTest.NewTestLoginOpts()
+	opts2.SetSystemCertPool(pool)
 	opts2.Yes = true
 	require.NoError(t, opts2.Run(), "trusted-path login should succeed via system trust")
 	require.NotEmpty(t, opts2.ApiSession)

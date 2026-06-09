@@ -75,6 +75,7 @@ type LoginOptions struct {
 	caPool     *x509.CertPool
 	cachedId   *util.RestClientEdgeIdentity
 	mgmtClient *edge_apis.ManagementApiClient
+	systemPool *x509.CertPool // used by tests only to emulate a cert being trusted by the OS trust store
 }
 
 func (options *LoginOptions) GetClient() http.Client {
@@ -405,7 +406,7 @@ func (o *LoginOptions) Run() error {
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	// Probe with system trust only, reusing the configured transport so overlay-only hosts (e.g.
 	// mgmt.ziti) still resolve via its zitified DialContext. An explicit --ca is honored below.
-	systemRoots, _ := SystemCertPool()
+	systemRoots, _ := o.systemCertPool()
 	probeClient := o.GetClient()
 	if t, ok := probeClient.Transport.(*http.Transport); ok && t != nil {
 		pt := t.Clone()
@@ -655,8 +656,14 @@ func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
 	}
 }
 
-// SystemCertPool is a var so tests can substitute the OS trust source.
-var SystemCertPool = x509.SystemCertPool
+// systemCertPool returns the configured trust-roots override (o.systemPool), or the OS trust store.
+func (o *LoginOptions) systemCertPool() (*x509.CertPool, error) {
+	if o.systemPool != nil {
+		pfxlog.Logger().Warn("system cert pool has been overridden. this should only happen in tests")
+		return o.systemPool, nil
+	}
+	return x509.SystemCertPool()
+}
 
 func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 	caPool := x509.NewCertPool()
@@ -672,7 +679,8 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 		}
 	}
-	return SystemCertPool()
+
+	return o.systemCertPool()
 }
 
 func (o *LoginOptions) MergeUnsetFrom(cached LoginOptions) {
