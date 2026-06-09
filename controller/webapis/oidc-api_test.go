@@ -143,9 +143,11 @@ func Test_getPossibleIssuers(t *testing.T) {
 			},
 		}
 
-		issuers := getPossibleIssuers(id, bindPoints)
+		// star.wildcard.io is the only allowed hostname; it is covered by the *.wildcard.io SAN and so
+		// becomes a valid issuer. Other hosts under the wildcard are not allow-listed and must not.
+		issuers := getPossibleIssuers(id, bindPoints, []string{"star.wildcard.io"})
 
-		req.Len(issuers, 18) // wildcard DNS SANs (*.wildcard.io) are excluded
+		req.Len(issuers, 21) // base 18 + star.wildcard.io:{1234,443} + bare star.wildcard.io
 
 		isValidIssuer := func(address string) error {
 			for _, issuer := range issuers {
@@ -169,10 +171,10 @@ func Test_getPossibleIssuers(t *testing.T) {
 		req.NoError(isValidIssuer("client3.netfoundry.io:443"))
 		req.NoError(isValidIssuer("client3.netfoundry.io"))
 
-		// wildcard DNS SANs are excluded from issuers since they produce unusable OIDC URLs
-		req.Error(isValidIssuer("star.wildcard.io:1234"))
-		req.Error(isValidIssuer("star.wildcard.io:443"))
-		req.Error(isValidIssuer("star.wildcard.io"))
+		// the allow-listed host under the wildcard SAN is a valid issuer
+		req.NoError(isValidIssuer("star.wildcard.io:1234"))
+		req.NoError(isValidIssuer("star.wildcard.io:443"))
+		req.NoError(isValidIssuer("star.wildcard.io"))
 
 		req.NoError(isValidIssuer("127.0.0.1:1234"))
 		req.NoError(isValidIssuer("127.0.0.1:443"))
@@ -191,12 +193,103 @@ func Test_getPossibleIssuers(t *testing.T) {
 		req.Error(isValidIssuer("10.8.0.1:555"))
 		req.Error(isValidIssuer("google.com"))
 
+		// a host covered by the wildcard SAN but NOT in allowedHostnames must not become an issuer
+		req.Error(isValidIssuer("other.wildcard.io:1234"))
+		req.Error(isValidIssuer("other.wildcard.io:443"))
+		req.Error(isValidIssuer("other.wildcard.io"))
+
+	})
+
+	bindPoints := []xweb.BindPoint{
+		&bindpoints.UnderlayBindPoint{Address: "test1.example.com:1234"},
+		&bindpoints.UnderlayBindPoint{Address: "test2.example.com:443"},
+	}
+
+	t.Run("wildcard SAN with no allowedHostnames yields no wildcard issuers", func(t *testing.T) {
+		req := require.New(t)
+		issuers := getPossibleIssuers(id, bindPoints, nil)
+		for _, issuer := range issuers {
+			req.Error(issuer.ValidFor("star.wildcard.io:1234"), "wildcard host must not be a valid issuer without an allowlist")
+		}
+	})
+
+	t.Run("allowedHostnames entry not covered by any SAN is ignored", func(t *testing.T) {
+		req := require.New(t)
+		// nocover.example.org is matched by neither *.wildcard.io nor any concrete SAN
+		issuers := getPossibleIssuers(id, bindPoints, []string{"nocover.example.org"})
+		for _, issuer := range issuers {
+			req.Error(issuer.ValidFor("nocover.example.org:1234"), "uncovered allowlist entry must not become an issuer")
+		}
+	})
+}
+
+// Test_NewOidcApiHandler_AllowedHostnames verifies that structurally invalid edge-oidc allowedHostnames
+// configuration is a hard error that fails controller startup (NewOidcApiHandler returns an error), rather
+// than being silently ignored.
+func Test_NewOidcApiHandler_AllowedHostnames(t *testing.T) {
+	id := newMinimalServerIdentity(t)
+	serverConfig := &xweb.ServerConfig{
+		Identity:   id,
+		BindPoints: []xweb.BindPoint{&bindpoints.UnderlayBindPoint{Address: "localhost:1280"}},
+	}
+
+	t.Run("non-list value is rejected", func(t *testing.T) {
+		_, err := NewOidcApiHandler(serverConfig, nil, map[interface{}]interface{}{"allowedHostnames": "ctrl.wildcard.io"})
+		require.Error(t, err)
+	})
+
+	t.Run("non-string entry is rejected", func(t *testing.T) {
+		_, err := NewOidcApiHandler(serverConfig, nil, map[interface{}]interface{}{"allowedHostnames": []interface{}{123}})
+		require.Error(t, err)
+	})
+
+	t.Run("wildcard entry is rejected", func(t *testing.T) {
+		_, err := NewOidcApiHandler(serverConfig, nil, map[interface{}]interface{}{"allowedHostnames": []interface{}{"*.wildcard.io"}})
+		require.Error(t, err)
 	})
 }
 
 // helpers
 
 var testSerial = int64(0)
+
+// newMinimalServerIdentity builds an identity with a single concrete server cert, enough for
+// NewOidcApiHandler to reach allowedHostnames parsing.
+func newMinimalServerIdentity(t *testing.T) identity.Identity {
+	req := require.New(t)
+
+	caKey, caTmpl := mkCaCert("Parent CA")
+	caDer, err := x509.CreateCertificate(rand.Reader, caTmpl, caTmpl, caKey.Public(), caKey)
+	req.NoError(err)
+
+	clientKey, clientCert := mkClientCert("client")
+	clientDer, err := x509.CreateCertificate(rand.Reader, clientCert, caTmpl, clientKey.Public(), caKey)
+	req.NoError(err)
+
+	serverKey, serverCert := mkServerCert("server", []string{"localhost"}, []net.IP{net.ParseIP("127.0.0.1")})
+	serverDer, err := x509.CreateCertificate(rand.Reader, serverCert, caTmpl, serverKey.Public(), caKey)
+	req.NoError(err)
+
+	certPem := func(der []byte) string {
+		return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+	}
+	keyPem := func(k crypto.Signer) string {
+		der, mErr := x509.MarshalECPrivateKey(k.(*ecdsa.PrivateKey))
+		req.NoError(mErr)
+		return string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}))
+	}
+
+	cfg := identity.Config{
+		Key:        "pem:" + keyPem(clientKey),
+		Cert:       "pem:" + certPem(clientDer) + certPem(caDer),
+		ServerKey:  "pem:" + keyPem(serverKey),
+		ServerCert: "pem:" + certPem(serverDer) + certPem(caDer),
+	}
+
+	id, err := identity.LoadIdentity(cfg)
+	req.NoError(err)
+	return id
+}
 
 func mkCaCert(cn string) (crypto.Signer, *x509.Certificate) {
 	testSerial++

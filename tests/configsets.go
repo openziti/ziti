@@ -52,3 +52,13 @@ var DualOidcServers = ConfigSet{
 	Name:       "dual-oidc-servers",
 	CtrlConfig: "testdata/configs/dual-oidc-servers/ctrl.yml",
 }
+
+// WildcardOidcServer is a controller-only config set that supplies a wildcard (*.wildcard.test) server
+// certificate via alt_server_certs alongside an ordinary primary server cert, modeling a controller fronted
+// by a wildcard (e.g. LetsEncrypt) certificate. Used to verify that the OIDC discovery document served to a
+// concrete host under the wildcard advertises an issuer derived from that request host, rather than a
+// literal-wildcard issuer or a 404.
+var WildcardOidcServer = ConfigSet{
+	Name:       "wildcard-oidc-server",
+	CtrlConfig: "testdata/configs/wildcard-oidc-server/ctrl.yml",
+}

@@ -1,10 +1,14 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_OidcDiscoveryEndpoints(t *testing.T) {
@@ -109,4 +113,67 @@ func Test_OidcDiscoveryEndpoints_DualServers(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_OidcDiscoveryEndpoints_WildcardIssuer models a controller whose server cert has a wildcard DNS SAN
+// (*.wildcard.test, here via alt_server_certs). A wildcard cannot be a literal issuer, so the controller
+// emits OIDC issuers only for the operator-approved edge-oidc 'allowedHostnames' the wildcard covers. The
+// test asserts an allow-listed host gets a concrete issuer and a non-allow-listed host under the same
+// wildcard is rejected with a 404. It is the end-to-end counterpart to
+// controller/webapis.Test_getPossibleIssuers. The WildcardOidcServer config set allow-lists
+// ctrl.wildcard.test only.
+func Test_OidcDiscoveryEndpoints_WildcardIssuer(t *testing.T) {
+	ctx := NewTestContextWithConfigSet(t, WildcardOidcServer)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	const listenerAddr = "127.0.0.1:1281"
+
+	// *.wildcard.test does not resolve, so dial the loopback listener directly while still presenting a
+	// wildcard-covered Host (and SNI). NewTransport sets InsecureSkipVerify, so this exercises OIDC
+	// issuer dispatch by request Host, not TLS-layer cert/SNI verification (the test certs are self-signed
+	// and the host doesn't resolve).
+	transport := ctx.NewTransport()
+	transport.DialContext = func(c context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: 30 * time.Second}).DialContext(c, network, listenerAddr)
+	}
+	client := ctx.NewHttpClient(transport)
+
+	discover := func(host string) (int, map[string]interface{}) {
+		resp, err := client.Get("https://" + host + "/oidc/.well-known/openid-configuration")
+		ctx.Req.NoError(err)
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusOK {
+			return resp.StatusCode, nil
+		}
+		body, err := io.ReadAll(resp.Body)
+		ctx.Req.NoError(err)
+		var discovery map[string]interface{}
+		ctx.Req.NoError(json.Unmarshal(body, &discovery))
+		return resp.StatusCode, discovery
+	}
+
+	t.Run("allow-listed host under the wildcard gets a concrete issuer", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		status, discovery := discover("ctrl.wildcard.test:1281")
+		ctx.Req.Equal(http.StatusOK, status)
+
+		issuer, ok := discovery["issuer"].(string)
+		ctx.Req.True(ok, "issuer should be a string")
+		ctx.Req.Equal("https://ctrl.wildcard.test:1281/oidc", issuer)
+
+		endpoints, ok := discovery["openziti_endpoints"].(map[string]interface{})
+		ctx.Req.True(ok, "openziti_endpoints should be a JSON object")
+		password, ok := endpoints["password"].(string)
+		ctx.Req.True(ok, "password endpoint should be a string")
+		ctx.Req.Equal(issuer+"/login/password", password)
+	})
+
+	t.Run("non-allow-listed host under the wildcard is rejected", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		status, _ := discover("alt.wildcard.test:1281")
+		ctx.Req.Equal(http.StatusNotFound, status)
+	})
 }

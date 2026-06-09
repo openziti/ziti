@@ -5,6 +5,7 @@
 * [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
+* [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
 
 ## Cluster Quorum Recovery
 
@@ -85,11 +86,39 @@ The CLI has been updated to support the new field:
 * `ziti edge create config-type` now accepts a `--target` flag
 * `ziti edge list config-types` now shows a `Target` column
 
+## Wildcard OIDC Issuers
+
+Controllers can serve OIDC for hostnames covered by a wildcard server-certificate SAN. Prior to 2.1,
+wildcard SANs were excluded from the set of valid OIDC issuers, so `/oidc/*` requests to a
+wildcard-covered hostname returned `404`.
+
+Wildcard SANs cannot be used as a literal OIDC issuer (`https://*.example.com/oidc` is not a usable URL).
+Instead, the `edge-oidc` API binding now accepts an `allowedHostnames` option listing the exact hostnames
+(covered by the wildcard) that may be served as issuers. If omitted, the wildcard contributes no issuers
+and the controller logs a warning at startup; a malformed entry (a non-string value, or one containing a
+wildcard character) is a startup error:
+
+```yaml
+web:
+  - name: client-management
+    apis:
+      - binding: edge-oidc
+        options:
+          allowedHostnames:
+            - ctrl.example.com
+```
+
+Each entry must be an exact hostname (no patterns) that an active server-certificate SAN actually covers;
+entries are matched against wildcard SANs using standard X.509 hostname rules. The resulting OIDC issuers
+are therefore concrete, fixed hostnames, so the set of valid `iss` values stays closed. Concrete
+(non-wildcard) SANs continue to be served as issuers automatically and do not need to be listed.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
+    * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - Fix OIDC auth failing for controllers using a wildcard server-cert SAN
 
 
