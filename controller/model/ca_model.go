@@ -22,13 +22,13 @@ import (
 	"net/url"
 
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/x509-claims/x509claims"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -90,10 +90,8 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Ca, error) {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
 
-	if entity.ExternalIdClaim != nil {
-		if entity.ExternalIdClaim.Matcher == db.ExternalIdClaimMatcherScheme && entity.ExternalIdClaim.Location != db.ExternalIdClaimLocSanUri {
-			return nil, apierror.NewBadRequestFieldError(*errorz.NewFieldError("scheme matcher can only be used with URI locations", "matcher", entity.ExternalIdClaim.Matcher))
-		}
+	if err := validateExternalIdClaim(entity.ExternalIdClaim); err != nil {
+		return nil, err
 	}
 
 	var fp string
@@ -175,6 +173,10 @@ func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
 
+	if err := validateExternalIdClaim(entity.ExternalIdClaim); err != nil {
+		return nil, err
+	}
+
 	boltEntity := &db.Ca{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
@@ -200,6 +202,36 @@ func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db
 	return boltEntity, nil
 }
 
+// validateExternalIdClaim rejects unsupported or incomplete externalIdClaim configurations
+// with a bad request error so they cannot be stored and later fail enrollment/authentication.
+// It exercises the same location/matcher/parser rules used to extract the claim, so any
+// configuration that would error at extraction time is rejected up front at CA create/update.
+func validateExternalIdClaim(claim *ExternalIdClaim) error {
+	if claim == nil {
+		return nil
+	}
+
+	if claim.Index < 0 {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("index must be greater than or equal to zero", "externalIdClaim.index", claim.Index))
+	}
+
+	var err error
+	switch claim.Location {
+	case db.ExternalIdClaimLocCommonName, db.ExternalIdClaimLocSanEmail:
+		_, err = getStringDefinition(claim)
+	case db.ExternalIdClaimLocSanUri:
+		_, err = getUriDefinition(claim)
+	default:
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError(fmt.Sprintf("unsupported location [%s]", claim.Location), "externalIdClaim.location", claim.Location))
+	}
+
+	if err != nil {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError(err.Error(), "externalIdClaim", claim))
+	}
+
+	return nil
+}
+
 // GetExternalId will attempt to retrieve a string claim from a x509 Certificate based on
 // location, matching, and parsing of various x509 Certificate fields.
 func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
@@ -214,38 +246,46 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 	switch entity.ExternalIdClaim.Location {
 	case db.ExternalIdClaimLocCommonName:
 		definition, err := getStringDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorCommonName{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorCommonName{}
 
 		provider.Definitions = append(provider.Definitions, definition)
 
 	case db.ExternalIdClaimLocSanUri:
 		definition, err := getUriDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorSanUri{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorSanUri{}
 
 		provider.Definitions = append(provider.Definitions, definition)
 	case db.ExternalIdClaimLocSanEmail:
 		definition, err := getStringDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorSanEmail{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorSanEmail{}
 
 		provider.Definitions = append(provider.Definitions, definition)
+	default:
+		return "", fmt.Errorf("unsupported location [%s]", entity.ExternalIdClaim.Location)
 	}
 
 	claims := provider.Claims(cert)
 
-	if int64(len(claims)) > entity.ExternalIdClaim.Index {
-		return claims[entity.ExternalIdClaim.Index], nil
+	if entity.ExternalIdClaim.Index < 0 || entity.ExternalIdClaim.Index >= int64(len(claims)) {
+		return "", errors.New("no claim found")
 	}
 
-	return "", errors.New("no claim found")
+	externalId := claims[entity.ExternalIdClaim.Index]
+
+	if externalId == "" {
+		return "", errors.New("claim resolved to an empty value")
+	}
+
+	return externalId, nil
 }
 
 // getUriDefinition returns an x509Claims.DefinitionLMP that will locate, match, and parse url.URL properties.

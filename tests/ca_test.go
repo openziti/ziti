@@ -751,3 +751,145 @@ func Test_CA(t *testing.T) {
 		})
 	})
 }
+
+// Test_CA_ExternalIdClaim_Validation asserts that unsupported or incomplete externalIdClaim
+// configurations are rejected with HTTP 400 at CA create and update time, rather than being
+// stored and later crashing enrollment/authentication with an HTTP 500 (see issue matrix).
+func Test_CA_ExternalIdClaim_Validation(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	invalidClaims := []struct {
+		name  string
+		claim *rest_model.ExternalIDClaim
+	}{
+		{
+			name: "san uri with prefix matcher",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherPREFIX),
+				MatcherCriteria: ToPtr("acme:tenant:"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+		{
+			name: "san uri with suffix matcher",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSUFFIX),
+				MatcherCriteria: ToPtr(":042"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+		{
+			name: "scheme matcher with empty criteria",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+		{
+			name: "prefix matcher with empty criteria",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherPREFIX),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+		{
+			name: "split parser with empty criteria",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserSPLIT),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+		{
+			name: "negative index",
+			claim: &rest_model.ExternalIDClaim{
+				Index:           ToPtr[int64](-1),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+			},
+		},
+	}
+
+	for _, tc := range invalidClaims {
+		t.Run("can not create a CA with "+tc.name, func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			_, _, caPEM := newTestCaCert()
+
+			caCreate := &rest_model.CaCreate{
+				CertPem:                   ToPtr(caPEM.String()),
+				ExternalIDClaim:           tc.claim,
+				IdentityRoles:             []string{},
+				IsAuthEnabled:             ToPtr(true),
+				IsAutoCaEnrollmentEnabled: ToPtr(true),
+				IsOttCaEnrollmentEnabled:  ToPtr(true),
+				Name:                      ToPtr(eid.New()),
+			}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).Post("/cas")
+			ctx.NoError(err)
+			ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		})
+	}
+
+	for _, tc := range invalidClaims {
+		t.Run("can not patch a CA to "+tc.name, func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			_, _, caPEM := newTestCaCert()
+
+			caCreate := &rest_model.CaCreate{
+				CertPem:                   ToPtr(caPEM.String()),
+				IdentityRoles:             []string{},
+				IsAuthEnabled:             ToPtr(true),
+				IsAutoCaEnrollmentEnabled: ToPtr(true),
+				IsOttCaEnrollmentEnabled:  ToPtr(true),
+				Name:                      ToPtr(eid.New()),
+			}
+
+			caCreateResult := &rest_model.CreateEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+			ctx.NoError(err)
+			ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+			caPatch := &rest_model.CaPatch{
+				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
+					Index:           tc.claim.Index,
+					Location:        tc.claim.Location,
+					Matcher:         tc.claim.Matcher,
+					MatcherCriteria: tc.claim.MatcherCriteria,
+					Parser:          tc.claim.Parser,
+					ParserCriteria:  tc.claim.ParserCriteria,
+				},
+			}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		})
+	}
+}
