@@ -100,16 +100,26 @@ func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service,
 	return addr.IP, nil
 }
 
+// allocateDnsIp returns the IP mapped to host, allocating one from the
+// intercept range if the hostname is unknown, and registers the hostname -> IP
+// mapping with the resolver. Lookup and registration both happen under
+// dnsCurrentIpMtx so concurrent allocations of the same hostname (e.g. a
+// wildcard-domain DNS query racing a service update) can't both miss the
+// lookup and allocate distinct IPs. Every call takes one reference on the
+// hostname (see dns.NewRefCountingResolver); the returned cleanup releases it.
 func allocateDnsIp(host string, resolver dns.Resolver) (*net.IPNet, func(), error) {
 	dnsCurrentIpMtx.Lock()
 	defer dnsCurrentIpMtx.Unlock()
 
-	// If the hostname already has an allocated IP, reuse it. Even though no new
-	// IP is allocated, we still must invoke addrCB (in the caller) so the
-	// interceptor installs its per-service iptables rule; otherwise the tproxy
-	// listener exists with no kernel rule pointing at it and the service is
-	// silently unreachable.
+	// If the hostname already has an allocated IP, reuse it, taking an
+	// additional reference. Even though no new IP is allocated, the caller
+	// still must invoke addrCB so the interceptor installs its per-service
+	// iptables rule; otherwise the tproxy listener exists with no kernel rule
+	// pointing at it and the service is silently unreachable.
 	if foundIP, found := resolver.LookupIP(host + "."); found {
+		if err := resolver.AddHostname(host, foundIP); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", host, foundIP)
+		}
 		return &net.IPNet{IP: foundIP, Mask: hostMask(foundIP)}, cleanUpFunc(host, resolver), nil
 	}
 
@@ -130,12 +140,13 @@ func allocateDnsIp(host string, resolver dns.Resolver) (*net.IPNet, func(), erro
 	}
 
 	ipBytes := ip.AsSlice()
+	if err := resolver.AddHostname(host, ipBytes); err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", host, ip)
+	}
 	return &net.IPNet{IP: ipBytes, Mask: hostMask(ipBytes)}, cleanUpFunc(host, resolver), nil
 }
 
 func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(*net.IPNet, bool)) error {
-	logger := pfxlog.Logger()
-
 	// handle wildcard domain - IPs will be allocated when matching hostnames are queried
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
@@ -154,23 +165,10 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 		return err
 	}
 
-	// handle hostnames
-	ip, err := getDnsIp(hostname, addrCB, svc, resolver)
-	if err != nil {
+	// handle hostnames. getDnsIp registers the hostname -> IP mapping with
+	// the resolver as part of allocation.
+	if _, err = getDnsIp(hostname, addrCB, svc, resolver); err != nil {
 		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
-	}
-	// Time-of-check / time-of-use gap: getDnsIp releases dnsCurrentIpMtx
-	// before this AddHostname publishes the hostname -> ip mapping. Two
-	// concurrent setups of the same hostname can both miss the resolver
-	// lookup, each allocate a distinct IP, and the second AddHostname is
-	// silently dropped by the underlying resolver -- leaving one service
-	// with iptables pointing at an IP nothing resolves to. Safe today
-	// because service updates are processed serially by svcpoll; if that
-	// ever changes (parallel service adds), close the window by reserving
-	// the hostname under dnsCurrentIpMtx (e.g. by moving AddHostname into
-	// getDnsIp or adding an in-flight allocation map).
-	if err = resolver.AddHostname(hostname, ip); err != nil {
-		logger.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
 	}
 
 	return nil

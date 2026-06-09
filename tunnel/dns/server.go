@@ -188,7 +188,11 @@ func (r *resolver) getAddress(name string) (net.IP, error) {
 				return nil, err
 			}
 			log.Debugf("assigned %v => %v", name, ip)
-			_ = r.AddHostname(name, ip) // this resolver impl never returns an error
+			// the getIP callback registers the hostname -> IP mapping (see
+			// Resolver.AddDomain), so later queries short-circuit via the
+			// LookupIP check above. Registering it here directly would bypass
+			// the refcounting layer wrapping this resolver and let a cleanup
+			// of one service remove a hostname other services still use.
 			return ip, err
 		}
 	}

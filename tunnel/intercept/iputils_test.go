@@ -74,15 +74,14 @@ func resetDnsState(t *testing.T) {
 	require.NoError(t, SetDnsInterceptIpRange("100.64.0.1/10"))
 }
 
-// addInterceptHostname simulates getInterceptIP's full handling of a direct
-// hostname: it calls getDnsIp and then runs the same resolver.AddHostname call
-// the production path performs once getDnsIp returns. Keeping this in one
-// helper ensures every test exercises the same flow the bug fix targets.
+// addInterceptHostname simulates getInterceptIP's handling of a direct
+// hostname by calling getDnsIp, which allocates (or reuses) the IP and
+// registers the hostname -> IP mapping with the resolver as part of
+// allocation.
 func addInterceptHostname(t *testing.T, host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) net.IP {
 	t.Helper()
 	ip, err := getDnsIp(host, addrCB, svc, resolver)
 	require.NoError(t, err)
-	require.NoError(t, resolver.AddHostname(host, ip))
 	return ip
 }
 
@@ -192,9 +191,13 @@ func Test_GetDnsIp_CleanupOutOfOrder(t *testing.T) {
 // Test_GetDnsIp_FromWildcardLambda asserts that getDnsIp works the same way
 // when invoked from the closure registered via resolver.AddDomain for a
 // wildcard intercept -- the lambda path getInterceptIP uses for hostnames
-// starting with '*'. The closure must allocate an IP, install the per-service
-// iptables rule via addrCB, and register a refcount-aware cleanup so reusing
-// the same name from another service shares the allocation.
+// starting with '*'. The closure must allocate an IP, register the hostname
+// through the refcounting layer, install the per-service iptables rule via
+// addrCB, and register a refcount-aware cleanup so reusing the same name from
+// another service shares the allocation. This also covers the
+// wildcard-then-literal overlap with the wildcard service removed first:
+// before allocation took a reference, the wildcard cleanup stole the literal
+// service's reference, removing the hostname while it was still intercepted.
 func Test_GetDnsIp_FromWildcardLambda(t *testing.T) {
 	req := require.New(t)
 	resetDnsState(t)
@@ -215,7 +218,6 @@ func Test_GetDnsIp_FromWildcardLambda(t *testing.T) {
 	ipA, err := wildcardLambdaA("host.example")
 	req.NoError(err)
 	req.Len(callsA, 1, "wildcard lambda must invoke addrCB for the first service")
-	req.NoError(resolver.AddHostname("host.example", ipA))
 
 	// A second service joining the same hostname directly must reuse the
 	// allocation and still get its own addrCB call.
@@ -232,6 +234,43 @@ func Test_GetDnsIp_FromWildcardLambda(t *testing.T) {
 	// Last cleanup releases the IP.
 	svcB.RunCleanupActions()
 	req.Equal(1, dnsRecycledIps.Len(), "IP must be recycled when the last service cleans up")
+}
+
+// Test_GetDnsIp_WildcardThenLiteral_RemoveLiteralFirst covers the other
+// removal order for overlapping wildcard and literal intercepts: a hostname
+// (test.example.com) is first allocated through a wildcard domain's callback
+// (*.example.com), then a service intercepting the literal hostname joins.
+// Removing the literal service must not remove the resolver entry or recycle
+// the IP while the wildcard service's iptables rule still points at it.
+// Before the fix the wildcard allocation held no reference, so the literal
+// service's cleanup tore down the shared entry and recycled the IP.
+func Test_GetDnsIp_WildcardThenLiteral_RemoveLiteralFirst(t *testing.T) {
+	req := require.New(t)
+	resetDnsState(t)
+
+	resolver := dns.NewRefCountingResolver(newFakeResolver())
+	wildcardSvc := &entities.Service{}
+	literalSvc := &entities.Service{}
+	noopCB := func(*net.IPNet, bool) {}
+
+	// wildcard path: a DNS query for test.example.com matches *.example.com
+	// and the domain callback allocates and registers the hostname
+	wildcardIP, err := getDnsIp("test.example.com", noopCB, wildcardSvc, resolver)
+	req.NoError(err)
+
+	// literal path: a service intercepting test.example.com directly joins
+	literalIP := addInterceptHostname(t, "test.example.com", noopCB, literalSvc, resolver)
+	req.True(wildcardIP.Equal(literalIP), "literal service must reuse the wildcard allocation")
+
+	literalSvc.RunCleanupActions()
+	_, found := resolver.LookupIP("test.example.com.")
+	req.True(found, "hostname must remain while the wildcard service still uses it")
+	req.Equal(0, dnsRecycledIps.Len(), "IP must not be recycled while the wildcard service uses it")
+
+	wildcardSvc.RunCleanupActions()
+	_, found = resolver.LookupIP("test.example.com.")
+	req.False(found, "hostname must be removed when the last user cleans up")
+	req.Equal(1, dnsRecycledIps.Len(), "IP must be recycled when the last user cleans up")
 }
 
 // recordingAddrCB collects the InterceptAddress values produced by

@@ -65,9 +65,9 @@ func (self *RefCountingResolver) RemoveHostname(s string) net.IP {
 		return nil
 	}
 
-	// count <= 1 covers both the last reference and hostnames never added
-	// through this layer (e.g. wildcard-domain hostnames, which are added
-	// directly on the wrapped resolver but cleaned up through this one)
+	// count <= 1 covers both the last reference and, defensively, hostnames
+	// never added through this layer (e.g. when the wrapped AddHostname
+	// failed, so the count was never incremented)
 	delete(self.names, key)
 	return self.wrapped.RemoveHostname(s)
 }
