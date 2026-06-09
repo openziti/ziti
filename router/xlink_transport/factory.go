@@ -30,16 +30,29 @@ import (
 
 type channelType byte
 
+// The link headers are sent in the channel hello message, whose header map is
+// shared with the channel library's own headers (channel.ConnectionIdHeader = 0,
+// channel.TypeHeader = 7, channel.IdHeader = 8, channel.IsGroupedHeader = 9, etc).
+// The grouped underlay dial path overlays channel.TypeHeader and friends onto the
+// dial headers, so new link headers must not reuse the channel library's key range.
+// LinkHeaderLinkId starts at 100 to stay clear of it.
 const (
-	LinkHeaderConnId                    = 0
-	LinkHeaderType                      = 1
-	LinkHeaderRouterId                  = 2
-	LinkHeaderRouterVersion             = 3
-	LinkHeaderBinding                   = 4
-	LinkHeaderIteration                 = 5
-	LinkDialedRouterId                  = 6
-	PayloadChannel          channelType = 1
-	AckChannel              channelType = 2
+	LinkHeaderConnId        = 0
+	LinkHeaderType          = 1
+	LinkHeaderRouterId      = 2
+	LinkHeaderRouterVersion = 3
+	LinkHeaderBinding       = 4
+	LinkHeaderIteration     = 5
+	LinkDialedRouterId      = 6
+
+	// LinkHeaderLinkId carries the link id explicitly. Dialing routers currently
+	// also present the link id as the channel identity token; this header is what
+	// will allow the channel identity to become the dialing router's actual id in
+	// a future release. Readers should prefer it over the channel id when present.
+	LinkHeaderLinkId = 100
+
+	PayloadChannel channelType = 1
+	AckChannel     channelType = 2
 )
 
 func (self channelType) String() string {

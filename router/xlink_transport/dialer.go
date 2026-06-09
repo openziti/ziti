@@ -134,6 +134,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
 		LinkDialedRouterId:      []byte(dial.GetRouterId()),
+		LinkHeaderLinkId:        []byte(linkId.Token),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
@@ -197,6 +198,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
 		LinkDialedRouterId:      []byte(dial.GetRouterId()),
+		LinkHeaderLinkId:        []byte(linkId.Token),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
@@ -245,6 +247,7 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 		LinkHeaderBinding:       []byte(self.GetBinding()),
 		LinkDialedRouterId:      []byte(dial.GetRouterId()),
+		LinkHeaderLinkId:        []byte(linkId.Token),
 	}
 	headers.PutUint32Header(LinkHeaderIteration, dial.GetIteration())
 
