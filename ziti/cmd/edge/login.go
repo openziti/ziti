@@ -75,6 +75,7 @@ type LoginOptions struct {
 	caPool     *x509.CertPool
 	cachedId   *util.RestClientEdgeIdentity
 	mgmtClient *edge_apis.ManagementApiClient
+	systemPool *x509.CertPool // used by tests only to emulate a cert being trusted by the OS trust store
 }
 
 func (options *LoginOptions) GetClient() http.Client {
@@ -403,13 +404,45 @@ func (o *LoginOptions) Run() error {
 }
 
 func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
-	httpClient := o.GetClient()
-	isServerTrusted, err := util.IsServerTrusted(host, &httpClient)
+	// Probe with system trust only, reusing the configured transport so overlay-only hosts (e.g.
+	// mgmt.ziti) still resolve via its zitified DialContext. An explicit --ca is honored below.
+	systemRoots, _ := o.systemCertPool()
+	probeClient := o.GetClient()
+	if t, ok := probeClient.Transport.(*http.Transport); ok && t != nil {
+		pt := t.Clone()
+		if pt.TLSClientConfig == nil {
+			pt.TLSClientConfig = &tls.Config{}
+		}
+		pt.TLSClientConfig.RootCAs = systemRoots
+		probeClient.Transport = pt
+	} else {
+		probeClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: systemRoots}}
+	}
+	isServerTrusted, err := util.IsServerTrusted(host, &probeClient)
 	if err != nil {
 		return err
 	}
 
+	explicitCa := o.Cmd != nil && o.Cmd.Flags().Changed("ca")
+
+	if isServerTrusted && !explicitCa {
+		o.CaCert = ""
+		if _, certFile, _ := util.ReadCert(ctrlUrl); certFile != "" {
+			remove, askErr := o.askYesNo(fmt.Sprintf("Server certificate is trusted by the OS. Remove now-unused cached CA %v? [Y/N]: ", certFile))
+			if askErr != nil {
+				return askErr
+			}
+			if remove {
+				if rmErr := os.Remove(certFile); rmErr == nil {
+					o.Printf("Removed cached CA %v\n", certFile)
+				}
+			}
+		}
+		return nil
+	}
+
 	if !isServerTrusted && o.CaCert == "" {
+		httpClient := o.GetClient()
 		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
@@ -623,6 +656,15 @@ func TryCachedCredsLogin(out io.Writer, eout io.Writer) (LoginOptions, error) {
 	}
 }
 
+// systemCertPool returns the configured trust-roots override (o.systemPool), or the OS trust store.
+func (o *LoginOptions) systemCertPool() (*x509.CertPool, error) {
+	if o.systemPool != nil {
+		pfxlog.Logger().Warn("system cert pool has been overridden. this should only happen in tests")
+		return o.systemPool, nil
+	}
+	return x509.SystemCertPool()
+}
+
 func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 	caPool := x509.NewCertPool()
 	if o.CaCert != "" {
@@ -632,11 +674,13 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 				pfxlog.Logger().Warnf("error reading CA cert [%s]", o.CaCert)
 			}
 			caPool.AppendCertsFromPEM(rootPemData)
+			return caPool, nil
 		} else {
 			pfxlog.Logger().Warnf("CA cert not found [%s]", o.CaCert)
 		}
 	}
-	return caPool, nil
+
+	return o.systemCertPool()
 }
 
 func (o *LoginOptions) MergeUnsetFrom(cached LoginOptions) {

@@ -18,6 +18,7 @@ limitations under the License.
 package cli_tests
 
 import (
+	"crypto/x509"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
 	"github.com/openziti/ziti/v2/ziti/util"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +49,7 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("same controller uses cached cert", s.testSameControllerUsesCache)
 	t.Run("switch controller file auth", s.testSwitchControllerFileAuth)
 	t.Run("file auth ignores cached server cert", s.testFileAuthIgnoresCachedServerCert)
+	t.Run("os-trusted server cert uses system store and clears cache", s.testTrustedServerCertUsesSystemStore)
 
 	// Edge Cases
 	t.Run("empty username", s.testEmptyUsername)
@@ -590,4 +593,55 @@ func (s *cliTestState) testFileAuthIgnoresCachedServerCert(t *testing.T) {
 	cachedCertData, err := os.ReadFile(cachedCertPath)
 	require.NoError(t, err, "cached cert file should still exist")
 	require.Equal(t, "INVALID JUNK CERT DATA", string(cachedCertData), "cached cert should remain corrupted after file-based auth succeeds")
+}
+
+func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
+	if s.controllerUnderTest.NetworkDialingIdFile != "" {
+		t.Skip("OS-trusted server cert path only applies to a direct controller connection, not over a ziti overlay")
+	}
+
+	s.removeZitiDir(t)
+
+	opts1 := s.controllerUnderTest.NewTestLoginOpts()
+	opts1.CaCert = ""
+	opts1.Yes = true
+	require.NoError(t, opts1.Run(), "untrusted-path login should succeed and cache the CA")
+	require.NotEmpty(t, opts1.ApiSession)
+	require.NotEmpty(t, opts1.CaCert, "untrusted path should cache and reference a CA file")
+
+	cachedCert := opts1.CaCert
+	_, statErr := os.Stat(cachedCert)
+	require.NoError(t, statErr, "cached CA file should exist after the untrusted-path login")
+
+	// simulate the OS trusting the server cert (the harness controller is self-signed)
+	caPEM, err := os.ReadFile(s.controllerUnderTest.AdminCaFile)
+	require.NoError(t, err, "read controller CA")
+	pool := x509.NewCertPool()
+	require.True(t, pool.AppendCertsFromPEM(caPEM), "controller CA should parse")
+
+	opts2 := s.controllerUnderTest.NewTestLoginOpts()
+	opts2.SetSystemCertPool(pool)
+	opts2.Yes = true
+	require.NoError(t, opts2.Run(), "trusted-path login should succeed via system trust")
+	require.NotEmpty(t, opts2.ApiSession)
+	require.Empty(t, opts2.CaCert, "trusted path should clear CaCert so the identity uses system trust")
+
+	_, statErr = os.Stat(cachedCert)
+	require.True(t, os.IsNotExist(statErr), "trusted path should remove the stale cached CA at %s", cachedCert)
+
+	// an explicit --ca that can't verify the server must fail despite OS trust. --ca is detected via
+	// Cmd.Flags().Changed, so a real cobra flag is required; setting opts.CaCert alone lets the probe clear it.
+	wrongCa := filepath.Join(t.TempDir(), "wrong-ca.pem")
+	require.NoError(t, os.WriteFile(wrongCa, []byte("not a certificate"), 0600))
+
+	caCmd := &cobra.Command{Use: "login"}
+	caCmd.Flags().String("ca", "", "")
+	caCmd.Flags().Bool("read-only", false, "")
+	require.NoError(t, caCmd.Flags().Set("ca", wrongCa))
+
+	opts3 := s.controllerUnderTest.NewTestLoginOpts()
+	opts3.Cmd = caCmd
+	opts3.CaCert = wrongCa
+	opts3.Yes = true
+	require.Error(t, opts3.Run(), "login must fail when --ca cannot validate the server, even if the OS trusts it")
 }
