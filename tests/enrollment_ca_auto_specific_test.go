@@ -30,6 +30,67 @@ import (
 	"github.com/openziti/ziti/v2/common/eid"
 )
 
+// Test_EnrollmentCaAuto_EmptyExternalIdClaim verifies that a validly-configured externalIdClaim
+// that resolves to an empty string for a given certificate fails enrollment cleanly rather than
+// silently enrolling the identity via a certificate fingerprint with no externalId.
+func Test_EnrollmentCaAuto_EmptyExternalIdClaim(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.testContextChanged(t)
+
+	commonName := "empty-claim-" + eid.New()
+
+	testCa := newTestCa()
+	// PREFIX trimming the entire common name leaves an empty claim. The configuration is valid
+	// (COMMON_NAME supports PREFIX), but the extracted externalId is empty for this certificate.
+	testCa.externalIdClaim = &externalIdClaim{
+		location:        rest_model.ExternalIDClaimLocationCOMMONNAME,
+		matcher:         rest_model.ExternalIDClaimMatcherPREFIX,
+		matcherCriteria: commonName,
+		parser:          rest_model.ExternalIDClaimParserNONE,
+		parserCriteria:  "",
+		index:           0,
+	}
+	testCa.identityNameFormat = "[requestedName]"
+
+	testCaId := ctx.AdminManagementSession.requireCreateEntity(testCa)
+	ctx.Req.NotEmpty(testCaId)
+
+	caContainer := ctx.AdminManagementSession.requireQuery("cas/" + testCaId)
+	token := caContainer.Path("data.verificationToken").Data().(string)
+	ctx.Req.NotEmpty(token)
+
+	verifyCert, _, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, token)
+	ctx.Req.NoError(err)
+
+	verifyPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: verifyCert.Raw})
+
+	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + testCaId + "/verify")
+	ctx.Req.NoError(err)
+	standardJsonResponseTests(resp, http.StatusOK, t)
+
+	clientCert, clientKey, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, commonName)
+	ctx.Req.NoError(err)
+
+	restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
+	transport.TLSClientConfig.Certificates = []tls.Certificate{
+		{
+			Certificate: [][]byte{clientCert.Raw},
+			PrivateKey:  clientKey,
+		},
+	}
+
+	enrollResp, err := restClient.R().
+		SetHeader("content-type", "application/json").
+		Post("enroll?method=ca")
+	ctx.Req.NoError(err)
+
+	ctx.Req.Equal(http.StatusBadRequest, enrollResp.StatusCode(), string(enrollResp.Body()))
+}
+
 // Test_EnrollmetnCaAutoSpecific uses the ca specific enrollment endpoint rather than the generic enroll endpoint.
 func Test_EnrollmetnCaAutoSpecific(t *testing.T) {
 	ctx := NewTestContext(t)
