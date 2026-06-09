@@ -1,19 +1,28 @@
 package dns
 
 import (
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"net"
+	"strings"
+	"sync"
 )
 
+// NewRefCountingResolver wraps resolver so the underlying hostname is only
+// removed once the last caller releases it. Successive AddHostname calls for
+// the same hostname bump a reference count; RemoveHostname decrements it and
+// only forwards to the wrapped resolver when the count reaches zero.
 func NewRefCountingResolver(resolver Resolver) Resolver {
 	return &RefCountingResolver{
-		names:   cmap.New[int](),
+		names:   map[string]int{},
 		wrapped: resolver,
 	}
 }
 
+// RefCountingResolver reference counts AddHostname/RemoveHostname calls per
+// hostname. The lock is held across the wrapped resolver calls so the count
+// and the wrapped resolver's state can't diverge under concurrent use.
 type RefCountingResolver struct {
-	names   cmap.ConcurrentMap[string, int]
+	lock    sync.Mutex
+	names   map[string]int
 	wrapped Resolver
 }
 
@@ -34,31 +43,33 @@ func (self *RefCountingResolver) RemoveDomain(name string) {
 }
 
 func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	err := self.wrapped.AddHostname(s, ip)
-	if err != nil {
-		self.names.Upsert(s, 1, func(exist bool, valueInMap int, newValue int) int {
-			if exist {
-				return valueInMap + 1
-			}
-			return 1
-		})
+	if err == nil {
+		// canonicalize so different-case spellings of the same hostname share
+		// one count, matching the wrapped resolver's case-insensitive view
+		self.names[strings.ToLower(s)]++
 	}
 	return err
 }
 
 func (self *RefCountingResolver) RemoveHostname(s string) net.IP {
-	val := self.names.Upsert(s, 1, func(exist bool, valueInMap int, newValue int) int {
-		if exist {
-			return valueInMap - 1
-		}
-		return 0
-	})
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
-	if val == 0 {
-		self.names.Remove(s)
-		return self.wrapped.RemoveHostname(s)
+	key := strings.ToLower(s)
+	if count := self.names[key]; count > 1 {
+		self.names[key] = count - 1
+		return nil
 	}
-	return nil
+
+	// count <= 1 covers both the last reference and, defensively, hostnames
+	// never added through this layer (e.g. when the wrapped AddHostname
+	// failed, so the count was never incremented)
+	delete(self.names, key)
+	return self.wrapped.RemoveHostname(s)
 }
 
 func (self *RefCountingResolver) Cleanup() error {
