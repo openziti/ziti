@@ -18,8 +18,13 @@ package dns
 
 import "net"
 
+// Resolver maps hostnames to intercept IPs for the tunneler's internal DNS.
 type Resolver interface {
 	AddHostname(string, net.IP) error
+	// AddDomain registers a wildcard domain (e.g. *.ziti). The callback is
+	// invoked to produce an IP for each previously unknown hostname matching
+	// the domain, and must register the resulting hostname -> IP mapping via
+	// AddHostname; the resolver does not register it implicitly.
 	AddDomain(string, func(string) (net.IP, error)) error
 	Lookup(net.IP) (string, error)
 	LookupIP(string) (net.IP, bool)
