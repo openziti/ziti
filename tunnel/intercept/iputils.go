@@ -64,8 +64,12 @@ func GetDnsInterceptIpRange() *net.IPNet {
 	}
 }
 
+// cleanUpFunc returns the per-service cleanup action registered when a hostname
+// is intercepted. The wrapping RefCountingResolver only forwards
+// RemoveHostname to the underlying resolver on the last release, so this
+// cleanup recycles the CGNAT IP only when the returned IP is non-nil.
 func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
-	f := func() {
+	return func() {
 		ip := resolver.RemoveHostname(hostname)
 		if ip != nil {
 			dnsCurrentIpMtx.Lock()
@@ -74,19 +78,51 @@ func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
 			dnsRecycledIps.PushBack(addr)
 		}
 	}
-	return f
+}
+
+// hostMask returns a host-route mask (/32 or /128) for the given IP.
+func hostMask(ip net.IP) net.IPMask {
+	bits := len(ip) * 8
+	return net.CIDRMask(bits, bits)
 }
 
 func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service, resolver dns.Resolver) (net.IP, error) {
+	addr, cleanup, err := allocateDnsIp(host, resolver)
+	if err != nil {
+		return nil, err
+	}
+	// addrCB and AddCleanupAction must run outside dnsCurrentIpMtx: addrCB can
+	// touch interceptor state, and AddCleanupAction takes service.lock which
+	// is acquired in the reverse order by RunCleanupActions -> cleanUpFunc.
+	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
+	svc.AddCleanupAction(cleanup)
+	return addr.IP, nil
+}
+
+// allocateDnsIp returns the IP mapped to host, allocating one from the
+// intercept range if the hostname is unknown, and registers the hostname -> IP
+// mapping with the resolver. Lookup and registration both happen under
+// dnsCurrentIpMtx so concurrent allocations of the same hostname (e.g. a
+// wildcard-domain DNS query racing a service update) can't both miss the
+// lookup and allocate distinct IPs. Every call takes one reference on the
+// hostname (see dns.NewRefCountingResolver); the returned cleanup releases it.
+func allocateDnsIp(host string, resolver dns.Resolver) (*net.IPNet, func(), error) {
 	dnsCurrentIpMtx.Lock()
 	defer dnsCurrentIpMtx.Unlock()
-	var ip netip.Addr
 
-	foundIP, found := resolver.LookupIP(host + ".")
-	if found {
-		return foundIP, nil
+	// If the hostname already has an allocated IP, reuse it, taking an
+	// additional reference. Even though no new IP is allocated, the caller
+	// still must invoke addrCB so the interceptor installs its per-service
+	// iptables rule; otherwise the tproxy listener exists with no kernel rule
+	// pointing at it and the service is silently unreachable.
+	if foundIP, found := resolver.LookupIP(host + "."); found {
+		if err := resolver.AddHostname(host, foundIP); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", host, foundIP)
+		}
+		return &net.IPNet{IP: foundIP, Mask: hostMask(foundIP)}, cleanUpFunc(host, resolver), nil
 	}
 
+	var ip netip.Addr
 	// look for returned IPs first
 	if dnsRecycledIps.Len() > 0 {
 		e := dnsRecycledIps.Front()
@@ -98,19 +134,18 @@ func getDnsIp(host string, addrCB func(*net.IPNet, bool), svc *entities.Service,
 		if ip.IsValid() && dnsPrefix.Contains(ip) {
 			dnsCurrentIp = ip
 		} else {
-			return nil, fmt.Errorf("cannot allocate ip address: ip range exhausted")
+			return nil, nil, fmt.Errorf("cannot allocate ip address: ip range exhausted")
 		}
 	}
 
-	addr := &net.IPNet{IP: ip.AsSlice(), Mask: net.CIDRMask(ip.BitLen(), ip.BitLen())}
-	addrCB(addr, false) // no route is needed because the dns cidr was added to "lo" at startup
-	svc.AddCleanupAction(cleanUpFunc(host, resolver))
-	return ip.AsSlice(), nil
+	ipBytes := ip.AsSlice()
+	if err := resolver.AddHostname(host, ipBytes); err != nil {
+		pfxlog.Logger().WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", host, ip)
+	}
+	return &net.IPNet{IP: ipBytes, Mask: hostMask(ipBytes)}, cleanUpFunc(host, resolver), nil
 }
 
 func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(*net.IPNet, bool)) error {
-	logger := pfxlog.Logger()
-
 	// handle wildcard domain - IPs will be allocated when matching hostnames are queried
 	if hostname[0] == '*' {
 		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
@@ -129,13 +164,10 @@ func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolve
 		return err
 	}
 
-	// handle hostnames
-	ip, err := getDnsIp(hostname, addrCB, svc, resolver)
-	if err != nil {
+	// handle hostnames. getDnsIp registers the hostname -> IP mapping with
+	// the resolver as part of allocation.
+	if _, err = getDnsIp(hostname, addrCB, svc, resolver); err != nil {
 		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
-	}
-	if err = resolver.AddHostname(hostname, ip); err != nil {
-		logger.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
 	}
 
 	return nil
