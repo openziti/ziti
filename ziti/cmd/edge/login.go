@@ -671,7 +671,7 @@ func (o *LoginOptions) GetCaPool() (*x509.CertPool, error) {
 		if _, cacertErr := os.Stat(o.CaCert); cacertErr == nil {
 			rootPemData, err := os.ReadFile(o.CaCert)
 			if err != nil {
-				pfxlog.Logger().Warnf("error reading CA cert [%s]", o.CaCert)
+				return nil, fmt.Errorf("reading CA cert %q: %w", o.CaCert, err)
 			}
 			caPool.AppendCertsFromPEM(rootPemData)
 			return caPool, nil
