@@ -21,6 +21,9 @@ release/
 
 # ai agents
 .claude
+.mercurius/
+mercurius.yaml
+.mcp.json
 
 # goland
 .idea
