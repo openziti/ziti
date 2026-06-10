@@ -5,20 +5,28 @@ inputs:
     required: false
     default: stable
     description: |
-      version of ziti CLI to download,
-      use tag regex (like v1.6) or special values:
-      'stable' (default) means latest release (GitHub marked `latest`), 
-      regex can be used to pick latest release matching the pattern,
-      for example, `2.0.[0-9]+$` will match latest 2.0.x release ignoring any 2.0.x-pre* releases
+      which released ziti CLI to download, one of:
+        - 'stable' (default): the release GitHub marks `latest`
+        - 'active-lts': latest release on the active LTS line (lts-versions.json)
+        - 'maint-lts': latest release on the maintenance LTS line (lts-versions.json)
+        - a tag or tag-regex (like 'v1.6' or '2.0.[0-9]+$'): latest release matching it
+      ignored when 'ref' is set.
+  ref:
+    required: false
+    default: ""
+    description: |
+      branch, tag, or commit of openziti/ziti to build the CLI from source
+      instead of downloading a release. overrides 'version' when set.
 outputs:
   version:
-    value: ${{ steps.version.outputs.ZITI_VERSION }}
-    description: version of ziti CLI that was downloaded
+    value: ${{ steps.version.outputs.ZITI_VERSION || steps.build.outputs.ZITI_VERSION }}
+    description: version of ziti CLI that was downloaded or built
 
 runs:
   using: composite
   steps:
     - name: process version
+      if: inputs.ref == ''
       shell: bash
       id: version
       run: |
@@ -26,6 +34,16 @@ runs:
         if [[ ${{ inputs.version }} == "stable" ]]; then
            echo "fetching stable version"
            ver=$(gh release view --repo openziti/ziti | awk '/^tag/{ print $2 }')
+        elif [[ ${{ inputs.version }} == "active-lts" || ${{ inputs.version }} == "maint-lts" ]]; then
+           key=active; [[ ${{ inputs.version }} == "maint-lts" ]] && key=maintenance
+           echo "resolving ${{ inputs.version }} from lts-versions.json"
+           minor=$(gh api repos/openziti/ziti/contents/lts-versions.json -H "Accept: application/vnd.github.raw" | jq -r ".${key} // empty")
+           if [[ -z "$minor" ]]; then
+              echo "::error ::No ${key} entry in lts-versions.json"
+              exit 1
+           fi
+           echo "${{ inputs.version }} is ${minor}, fetching its latest release"
+           ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,isPrerelease,publishedAt" --jq 'sort_by(.publishedAt) | .[] | select(.isPrerelease==false) | .tagName' | grep -E "^v${minor}\." | tail -1)
         else
            echo "computing specified[${ver}] version"
            ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
@@ -39,6 +57,7 @@ runs:
         echo "ZITI_VERSION=$ver" >> $GITHUB_OUTPUT
 
     - name: download ziti CLI
+      if: inputs.ref == ''
       shell: bash
       run: |
         os=${{ runner.os }}
@@ -60,6 +79,7 @@ runs:
         gh release download ${ZITI_VERSION} --repo openziti/ziti --pattern "ziti-${os}-${arch}-*" --output ziti.bundle
 
     - name: extract ziti CLI and add to PATH
+      if: inputs.ref == ''
       shell: bash
       run: |
         cd '${{ runner.temp }}'
@@ -72,4 +92,37 @@ runs:
         fi
         ./ziti-cli/bin/ziti version
         echo "${{ runner.temp }}/ziti-cli/bin" >> $GITHUB_PATH
-           
+
+    - name: checkout ziti source
+      if: inputs.ref != ''
+      uses: actions/checkout@v6
+      with:
+        repository: openziti/ziti
+        ref: ${{ inputs.ref }}
+        path: ziti-src
+        fetch-depth: 0
+
+    - name: set up go
+      if: inputs.ref != ''
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ziti-src/go.mod
+
+    - name: install ziti-ci
+      if: inputs.ref != ''
+      uses: openziti/ziti-ci@v1
+
+    - name: build ziti from source and add to PATH
+      if: inputs.ref != ''
+      id: build
+      shell: bash
+      run: |
+        ext=""; [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
+        bindir='${{ runner.temp }}/ziti-cli/bin'
+        mkdir -p "$bindir"
+        cd ziti-src
+        export CGO_ENABLED=1
+        go build -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -o "$bindir/ziti$ext" ./ziti
+        "$bindir/ziti$ext" version
+        echo "ZITI_VERSION=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> "$GITHUB_OUTPUT"
+        echo "$bindir" >> $GITHUB_PATH
