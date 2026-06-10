@@ -22,12 +22,12 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 	}
 
 	osTypeFailure := &OneInListError[Str]{
-		GivenValues: []Str{Str(data.Os.Os.Type)},
+		GivenValues: []Str{Str(data.Os.Os.GetType())},
 	}
 
 	var foundOs *edge_ctrl_pb.DataState_PostureCheck_Os = nil
 	for _, os := range m.OsList {
-		if !strings.EqualFold(strings.ToLower(os.OsType), strings.ToLower(data.Os.Os.Type)) {
+		if !strings.EqualFold(strings.ToLower(os.OsType), strings.ToLower(data.Os.Os.GetType())) {
 			osTypeFailure.ValidValues = append(osTypeFailure.ValidValues, Str(os.OsType))
 		} else {
 			foundOs = os
@@ -43,7 +43,7 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 		}
 	}
 
-	dataVer, err := semver.Make(data.Os.Os.Version)
+	dataVer, err := semver.Make(data.Os.Os.GetVersion())
 
 	if err != nil {
 		return &CheckError{
@@ -54,7 +54,7 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 	}
 
 	osVersionFailure := &OneInListError[Str]{
-		GivenValues: []Str{Str(data.Os.Os.Version)},
+		GivenValues: []Str{Str(data.Os.Os.GetVersion())},
 	}
 
 	for _, version := range foundOs.OsVersions {
