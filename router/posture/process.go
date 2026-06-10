@@ -36,18 +36,14 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	if cache.ProcessList == nil {
-		cache.ProcessList = &edge_client_pb.PostureResponse_ProcessList{}
-	}
-
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		cacheProcesses[process.Path] = process
 	}
 
 	osType := ""
 
-	if cache.Os != nil && cache.Os.Os != nil {
-		osType = cache.Os.Os.Type
+	if cache.Os != nil {
+		osType = cache.Os.Os.GetType()
 	}
 
 	allInListError := &AllInListError[*edge_ctrl_pb.DataState_PostureCheck_Process]{}
@@ -79,7 +75,7 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 
 	if len(allInListError.FailedValues) > 0 {
-		for _, process := range cache.ProcessList.Processes {
+		for _, process := range cache.ProcessList.GetProcesses() {
 			allInListError.GivenValues = append(allInListError.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
 				OsType:       osType,
 				Path:         process.Path,
@@ -108,11 +104,7 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	if cache.ProcessList == nil {
-		cache.ProcessList = &edge_client_pb.PostureResponse_ProcessList{}
-	}
-
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		cacheProcesses[process.Path] = process
 	}
 
@@ -120,8 +112,8 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 
 	osType := ""
 
-	if cache.Os != nil && cache.Os.Os != nil {
-		osType = cache.Os.Os.Type
+	if cache.Os != nil {
+		osType = cache.Os.Os.GetType()
 	}
 
 	for _, process := range p.Processes {
@@ -136,7 +128,7 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 		}
 	}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		anyInList.GivenValues = append(anyInList.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
 			OsType:       osType,
 			Path:         process.Path,
