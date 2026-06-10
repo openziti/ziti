@@ -36,8 +36,14 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		cacheProcesses[process.Path] = process
+	}
+
+	osType := ""
+
+	if cache.Os != nil {
+		osType = cache.Os.Os.GetType()
 	}
 
 	allInListError := &AllInListError[*edge_ctrl_pb.DataState_PostureCheck_Process]{}
@@ -61,7 +67,7 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 			}
 		}
 
-		failedValue := p.compareProcesses(cache.Os.Os.Type, cacheProcess, process)
+		failedValue := p.compareProcesses(osType, cacheProcess, process)
 
 		if failedValue != nil {
 			allInListError.FailedValues = append(allInListError.FailedValues, *failedValue)
@@ -69,9 +75,9 @@ func (p *ProcessCheck) requireAll(cache *Cache) *CheckError {
 	}
 
 	if len(allInListError.FailedValues) > 0 {
-		for _, process := range cache.ProcessList.Processes {
+		for _, process := range cache.ProcessList.GetProcesses() {
 			allInListError.GivenValues = append(allInListError.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
-				OsType:       cache.Os.Os.Type,
+				OsType:       osType,
 				Path:         process.Path,
 				Hashes:       []string{process.Hash},
 				Fingerprints: process.SignerFingerprints,
@@ -98,16 +104,22 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 	}
 	cacheProcesses := map[string]*edge_client_pb.PostureResponse_Process{}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		cacheProcesses[process.Path] = process
 	}
 
 	anyInList := &AnyInListError[*edge_ctrl_pb.DataState_PostureCheck_Process]{}
 
+	osType := ""
+
+	if cache.Os != nil {
+		osType = cache.Os.Os.GetType()
+	}
+
 	for _, process := range p.Processes {
 		cacheProcess := cacheProcesses[process.Path]
 
-		failedValue := p.compareProcesses(cache.Os.Os.Type, cacheProcess, process)
+		failedValue := p.compareProcesses(osType, cacheProcess, process)
 
 		if failedValue != nil {
 			anyInList.FailedValues = append(anyInList.FailedValues, *failedValue)
@@ -116,9 +128,9 @@ func (p *ProcessCheck) requireOne(cache *Cache) *CheckError {
 		}
 	}
 
-	for _, process := range cache.ProcessList.Processes {
+	for _, process := range cache.ProcessList.GetProcesses() {
 		anyInList.GivenValues = append(anyInList.GivenValues, &edge_ctrl_pb.DataState_PostureCheck_Process{
-			OsType:       cache.Os.Os.Type,
+			OsType:       osType,
 			Path:         process.Path,
 			Hashes:       []string{process.Hash},
 			Fingerprints: process.SignerFingerprints,
