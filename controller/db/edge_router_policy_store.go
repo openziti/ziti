@@ -44,6 +44,8 @@ var _ EdgeRouterPolicyStore = (*edgeRouterPolicyStoreImpl)(nil)
 type EdgeRouterPolicyStore interface {
 	NameIndexed
 	Store[*EdgeRouterPolicy]
+	GetIdentityRoleAttributesIndex() boltz.SetReadIndex
+	GetEdgeRouterRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newEdgeRouterPolicyStore(stores *stores) *edgeRouterPolicyStoreImpl {
@@ -63,12 +65,27 @@ type edgeRouterPolicyStoreImpl struct {
 	symbolIdentities      boltz.EntitySetSymbol
 	symbolEdgeRouters     boltz.EntitySetSymbol
 
+	indexIdentityRoleAttributes   boltz.SetReadIndex
+	indexEdgeRouterRoleAttributes boltz.SetReadIndex
+
 	identityCollection   boltz.LinkCollection
 	edgeRouterCollection boltz.LinkCollection
 }
 
 func (store *edgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
+}
+
+// GetIdentityRoleAttributesIndex returns the derived set index of identity
+// role-attribute references declared on edge-router policies.
+func (store *edgeRouterPolicyStoreImpl) GetIdentityRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexIdentityRoleAttributes
+}
+
+// GetEdgeRouterRoleAttributesIndex returns the derived set index of edge
+// router role-attribute references declared on edge-router policies.
+func (store *edgeRouterPolicyStoreImpl) GetEdgeRouterRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexEdgeRouterRoleAttributes
 }
 
 func (store *edgeRouterPolicyStoreImpl) initializeLocal() {
@@ -80,6 +97,9 @@ func (store *edgeRouterPolicyStoreImpl) initializeLocal() {
 	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeRouters, store.stores.edgeRouter)
+
+	store.indexIdentityRoleAttributes = store.AddSetIndexWithTransform(store.symbolIdentityRoles, roleAttributeOnlyTransform)
+	store.indexEdgeRouterRoleAttributes = store.AddSetIndexWithTransform(store.symbolEdgeRouterRoles, roleAttributeOnlyTransform)
 
 	store.AddConstraint(boltz.NewSystemEntityEnforcementConstraint(store))
 }

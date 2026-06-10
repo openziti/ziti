@@ -25,6 +25,11 @@ release/
 mercurius.yaml
 .mcp.json
 
+# mercurius review tooling
+.mcp.json
+.mercurius/
+mercurius.yaml
+
 # goland
 .idea
 github_deploy_key

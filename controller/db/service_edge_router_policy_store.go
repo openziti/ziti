@@ -44,6 +44,8 @@ var _ ServiceEdgeRouterPolicyStore = (*serviceEdgeRouterPolicyStoreImpl)(nil)
 type ServiceEdgeRouterPolicyStore interface {
 	NameIndexed
 	Store[*ServiceEdgeRouterPolicy]
+	GetServiceRoleAttributesIndex() boltz.SetReadIndex
+	GetEdgeRouterRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newServiceEdgeRouterPolicyStore(stores *stores) *serviceEdgeRouterPolicyStoreImpl {
@@ -63,12 +65,27 @@ type serviceEdgeRouterPolicyStoreImpl struct {
 	symbolServices        boltz.EntitySetSymbol
 	symbolEdgeRouters     boltz.EntitySetSymbol
 
+	indexServiceRoleAttributes    boltz.SetReadIndex
+	indexEdgeRouterRoleAttributes boltz.SetReadIndex
+
 	serviceCollection    boltz.LinkCollection
 	edgeRouterCollection boltz.LinkCollection
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
+}
+
+// GetServiceRoleAttributesIndex returns the derived set index of service
+// role-attribute references declared on service-edge-router policies.
+func (store *serviceEdgeRouterPolicyStoreImpl) GetServiceRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexServiceRoleAttributes
+}
+
+// GetEdgeRouterRoleAttributesIndex returns the derived set index of edge
+// router role-attribute references declared on service-edge-router policies.
+func (store *serviceEdgeRouterPolicyStoreImpl) GetEdgeRouterRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexEdgeRouterRoleAttributes
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) NewEntity() *ServiceEdgeRouterPolicy {
@@ -84,6 +101,9 @@ func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
 	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeRouters, store.stores.edgeRouter)
+
+	store.indexServiceRoleAttributes = store.AddSetIndexWithTransform(store.symbolServiceRoles, roleAttributeOnlyTransform)
+	store.indexEdgeRouterRoleAttributes = store.AddSetIndexWithTransform(store.symbolEdgeRouterRoles, roleAttributeOnlyTransform)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) initializeLinked() {

@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 45
+	CurrentDbVersion = 46
 	FieldVersion     = "version"
 )
 
@@ -211,6 +211,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 45 {
 		m.setConfigTypeTargets(step)
+	}
+
+	if step.CurrentVersion < 46 {
+		m.backfillPolicyRoleAttributeIndexes(step)
 	}
 
 	// current version
