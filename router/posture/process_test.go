@@ -28,11 +28,7 @@ func newProcessCheck(semantic string) *ProcessCheck {
 	}
 }
 
-// Regression for the discourse #5881 panic (router crash on dial). The router evaluated a process posture
-// check while the client had reported a running process but NO OS posture data, so InstanceData.Os was nil.
-// The failure-report loop dereferenced data.Os.Os.Type and nil-panicked. The check must instead fail
-// cleanly. The process is reported at the SAME path the check requires, so evaluation reaches the
-// OS-mismatch / report-building code rather than short-circuiting on a missing process.
+// Process reported at the required path but no OS posture: OS state is nil. Must fail cleanly, not panic.
 func TestProcessCheck_ProcessReportedButNilOs_DoesNotPanic(t *testing.T) {
 	for _, semantic := range []string{db.SemanticAnyOf, db.SemanticAllOf} {
 		t.Run(semantic, func(t *testing.T) {
@@ -62,8 +58,7 @@ func TestProcessCheck_ProcessReportedButNilOs_DoesNotPanic(t *testing.T) {
 	}
 }
 
-// Empty posture state (neither process list nor OS reported) must also fail cleanly, exercising the
-// nil ProcessList / nil Os guards at the top of the evaluators.
+// No posture data at all: nil ProcessList and nil OS state. Must fail cleanly, not panic.
 func TestProcessCheck_NoPostureData_DoesNotPanic(t *testing.T) {
 	for _, semantic := range []string{db.SemanticAnyOf, db.SemanticAllOf} {
 		t.Run(semantic, func(t *testing.T) {
@@ -78,7 +73,7 @@ func TestProcessCheck_NoPostureData_DoesNotPanic(t *testing.T) {
 	}
 }
 
-// A nil InstanceData (no instance at all) must fail cleanly with NilStateError.
+// Nil InstanceData must fail with NilStateError, not panic.
 func TestProcessCheck_NilInstanceData(t *testing.T) {
 	for _, semantic := range []string{db.SemanticAnyOf, db.SemanticAllOf} {
 		check := newProcessCheck(semantic)
