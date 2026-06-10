@@ -8,6 +8,7 @@ inputs:
       version of ziti CLI to download,
       use tag regex (like v1.6) or special values:
       'stable' (default) means latest release (GitHub marked `latest`),
+      'active-lts' / 'maint-lts' resolve the latest release on the LTS line named in the repo's lts-versions.json,
       'main' builds the CLI from the openziti/ziti main branch instead of downloading a release,
       regex can be used to pick latest release matching the pattern,
       for example, `2.0.[0-9]+$` will match latest 2.0.x release ignoring any 2.0.x-pre* releases
@@ -28,6 +29,16 @@ runs:
         if [[ ${{ inputs.version }} == "stable" ]]; then
            echo "fetching stable version"
            ver=$(gh release view --repo openziti/ziti | awk '/^tag/{ print $2 }')
+        elif [[ ${{ inputs.version }} == "active-lts" || ${{ inputs.version }} == "maint-lts" ]]; then
+           key=active; [[ ${{ inputs.version }} == "maint-lts" ]] && key=maintenance
+           echo "resolving ${{ inputs.version }} from lts-versions.json"
+           minor=$(gh api repos/openziti/ziti/contents/lts-versions.json -H "Accept: application/vnd.github.raw" | jq -r ".${key} // empty")
+           if [[ -z "$minor" ]]; then
+              echo "::error ::No ${key} entry in lts-versions.json"
+              exit 1
+           fi
+           echo "${{ inputs.version }} is ${minor}, fetching its latest release"
+           ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,isPrerelease,publishedAt" --jq 'sort_by(.publishedAt) | .[] | select(.isPrerelease==false) | .tagName' | grep -E "^v${minor}\." | tail -1)
         else
            echo "computing specified[${ver}] version"
            ver=$(gh release list --repo openziti/ziti --limit 200 --json "tagName,publishedAt" --jq "sort_by(.publishedAt) | .[].tagName" | grep -E "^${ver}" | tail -1)
