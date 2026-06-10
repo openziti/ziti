@@ -445,7 +445,7 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 
 	for _, changeFlow := range changeFlows {
 		if err = changeFlow.fireEvents(); err != nil {
-			return nil
+			return err
 		}
 	}
 
