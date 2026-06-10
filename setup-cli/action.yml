@@ -7,18 +7,20 @@ inputs:
     description: |
       version of ziti CLI to download,
       use tag regex (like v1.6) or special values:
-      'stable' (default) means latest release (GitHub marked `latest`), 
+      'stable' (default) means latest release (GitHub marked `latest`),
+      'main' builds the CLI from the openziti/ziti main branch instead of downloading a release,
       regex can be used to pick latest release matching the pattern,
       for example, `2.0.[0-9]+$` will match latest 2.0.x release ignoring any 2.0.x-pre* releases
 outputs:
   version:
-    value: ${{ steps.version.outputs.ZITI_VERSION }}
-    description: version of ziti CLI that was downloaded
+    value: ${{ steps.version.outputs.ZITI_VERSION || steps.build.outputs.ZITI_VERSION }}
+    description: version of ziti CLI that was downloaded or built
 
 runs:
   using: composite
   steps:
     - name: process version
+      if: inputs.version != 'main'
       shell: bash
       id: version
       run: |
@@ -39,6 +41,7 @@ runs:
         echo "ZITI_VERSION=$ver" >> $GITHUB_OUTPUT
 
     - name: download ziti CLI
+      if: inputs.version != 'main'
       shell: bash
       run: |
         os=${{ runner.os }}
@@ -60,6 +63,7 @@ runs:
         gh release download ${ZITI_VERSION} --repo openziti/ziti --pattern "ziti-${os}-${arch}-*" --output ziti.bundle
 
     - name: extract ziti CLI and add to PATH
+      if: inputs.version != 'main'
       shell: bash
       run: |
         cd '${{ runner.temp }}'
@@ -72,4 +76,37 @@ runs:
         fi
         ./ziti-cli/bin/ziti version
         echo "${{ runner.temp }}/ziti-cli/bin" >> $GITHUB_PATH
-           
+
+    - name: checkout ziti main
+      if: inputs.version == 'main'
+      uses: actions/checkout@v6
+      with:
+        repository: openziti/ziti
+        ref: main
+        path: ziti-main-src
+        fetch-depth: 0
+
+    - name: set up go
+      if: inputs.version == 'main'
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ziti-main-src/go.mod
+
+    - name: install ziti-ci
+      if: inputs.version == 'main'
+      uses: openziti/ziti-ci@v1
+
+    - name: build ziti from main and add to PATH
+      if: inputs.version == 'main'
+      id: build
+      shell: bash
+      run: |
+        ext=""; [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
+        bindir='${{ runner.temp }}/ziti-cli/bin'
+        mkdir -p "$bindir"
+        cd ziti-main-src
+        export CGO_ENABLED=1
+        go build -ldflags "$($(go env GOPATH)/bin/ziti-ci -q go-build-flags -n)" -o "$bindir/ziti$ext" ./ziti
+        "$bindir/ziti$ext" version
+        echo "ZITI_VERSION=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> "$GITHUB_OUTPUT"
+        echo "$bindir" >> $GITHUB_PATH
