@@ -1,3 +1,14 @@
+# Release 2.0.1
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2:
+    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
+
 # Release 2.0.0
 
 ## What's New
