@@ -1,3 +1,14 @@
+# Release 2.0.1
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2:
+    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
+
 # Release 2.0.0
 
 ## What's New
@@ -1396,7 +1407,6 @@ be removed.
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti/v2: [v1.6.8 -> v2.0.0](https://github.com/openziti/ziti/compare/v1.6.8...v2.0.0)
-    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
     * [Issue #3860](https://github.com/openziti/ziti/issues/3860) - Router data model index resets to 0 on controller restart
     * [Issue #3857](https://github.com/openziti/ziti/issues/3857) - Router first-party cert check should include intermediates from the TLS peer chain
     * [Issue #3855](https://github.com/openziti/ziti/issues/3855) - Filter current api session certs list by current api session
