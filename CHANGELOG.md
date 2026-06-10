@@ -120,5 +120,6 @@ are therefore concrete, fixed hostnames, so the set of valid `iss` values stays 
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
     * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - Fix OIDC auth failing for controllers using a wildcard server-cert SAN
+    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
 
 
