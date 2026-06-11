@@ -7,6 +7,7 @@
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
 * [Router Configs](#router-configs) - Allow routers to have a list of associated configs
+* [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 
 ## Cluster Quorum Recovery
 
@@ -140,6 +141,37 @@ The CLI has been updated to support the new field:
 * `ziti fabric create router` accepts `--config <id>` (repeatable)
 * `ziti fabric update router` accepts `--config <id>` to replace the router's config list
 
+## Multiple LAN Interfaces for tproxy
+
+The `lanIf` option in `xgress_edge_tunnel` tproxy configs now accepts either a
+single string (as before) or a YAML list of interface names. For each intercepted
+service address the router inserts one iptables `ACCEPT` rule per configured
+interface. Existing single-interface configs are unchanged.
+
+```yaml
+# single interface (unchanged)
+- binding: tunnel
+  options:
+    mode: tproxy
+    lanIf: enp0s5
+
+# multiple interfaces
+- binding: tunnel
+  options:
+    mode: tproxy
+    lanIf:
+      - enp0s5
+      - enp0s6
+```
+
+The CLI `--lanIf` flag also accepts a comma-separated list or repeated flags:
+
+```bash
+ziti tunnel tproxy --lanIf enp0s5,enp0s6
+# or
+ziti tunnel tproxy --lanIf enp0s5 --lanIf enp0s6
+```
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.92](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.92)
@@ -163,5 +195,6 @@ The CLI has been updated to support the new field:
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
+    * [Issue #3972](https://github.com/openziti/ziti/issues/3972) - Support multiple LAN interfaces for tproxy mode
 
 
