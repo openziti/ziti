@@ -165,7 +165,7 @@ type Options struct {
 	dnsSvcIpRange    string
 	dnsUpstreams     []string
 	dnsUnanswerable  string
-	lanIf            string
+	lanIf            []string
 	services         []string
 	udpIdleTimeout   time.Duration
 	udpCheckInterval time.Duration
@@ -268,10 +268,19 @@ func (options *Options) load(data xgress.OptionsData) error {
 		}
 
 		if value, found := data["lanIf"]; found {
-			if strVal, ok := value.(string); ok {
-				options.lanIf = strVal
-			} else {
-				return errors.Errorf(`invalid value '%v' for lanIf, must be a string value`, value)
+			switch v := value.(type) {
+			case string:
+				options.lanIf = []string{v}
+			case []interface{}:
+				for _, item := range v {
+					strVal, ok := item.(string)
+					if !ok {
+						return errors.Errorf(`invalid value '%v' for lanIf, must be a string or list of strings`, item)
+					}
+					options.lanIf = append(options.lanIf, strVal)
+				}
+			default:
+				return errors.Errorf(`invalid value '%v' for lanIf, must be a string or list of strings`, value)
 			}
 		}
 

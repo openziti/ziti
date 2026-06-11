@@ -50,7 +50,7 @@ type InterceptAddress struct {
 	highPort      uint16
 	protocol      string
 	TproxySpec    []string
-	AcceptSpec    []string
+	AcceptSpecs   [][]string
 }
 
 func (addr *InterceptAddress) Proto() string {
@@ -78,8 +78,8 @@ func (addr *InterceptAddress) Contains(ip net.IP, port uint16) bool {
 }
 
 func (addr *InterceptAddress) String() string {
-	return fmt.Sprintf("cidr: %v, cidrAddr: %p, lowPort: %v, highPort: %v, protocol: %v, tproxySpec: %v, acceptSpec: %v",
-		addr.cidr, addr.cidr, addr.lowPort, addr.highPort, addr.protocol, addr.TproxySpec, addr.AcceptSpec)
+	return fmt.Sprintf("cidr: %v, cidrAddr: %p, lowPort: %v, highPort: %v, protocol: %v, tproxySpec: %v, acceptSpecs: %v",
+		addr.cidr, addr.cidr, addr.lowPort, addr.highPort, addr.protocol, addr.TproxySpec, addr.AcceptSpecs)
 }
 
 type InterceptAddrCB interface {
