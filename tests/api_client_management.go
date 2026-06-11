@@ -12,6 +12,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
 	managementAuthenticator "github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	managementConfig "github.com/openziti/edge-api/rest_management_api_client/config"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
@@ -99,6 +100,43 @@ func (helper *ManagementHelperClient) CreateIdentity(name string, isAdmin bool, 
 	}
 
 	resp, err := helper.API.Identity.CreateIdentity(newIdentityParams, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateConfigType creates a config type with a generated name and the given target.
+func (helper *ManagementHelperClient) CreateConfigType(target *string) (*rest_model.CreateLocation, error) {
+	params := &managementConfig.CreateConfigTypeParams{
+		ConfigType: &rest_model.ConfigTypeCreate{
+			Name:   ToPtr(eid.New()),
+			Target: target,
+		},
+	}
+
+	resp, err := helper.API.Config.CreateConfigType(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateConfig creates a config with a generated name for the given config type.
+func (helper *ManagementHelperClient) CreateConfig(configTypeId string, data interface{}) (*rest_model.CreateLocation, error) {
+	params := &managementConfig.CreateConfigParams{
+		Config: &rest_model.ConfigCreate{
+			Name:         ToPtr(eid.New()),
+			ConfigTypeID: &configTypeId,
+			Data:         data,
+		},
+	}
+
+	resp, err := helper.API.Config.CreateConfig(params, nil)
 
 	if err != nil {
 		return nil, rest_util.WrapErr(err)

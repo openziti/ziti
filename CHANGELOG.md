@@ -6,6 +6,7 @@
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
+* [Router Configs](#router-configs) - Allow routers to have a list of associated configs
 
 ## Cluster Quorum Recovery
 
@@ -113,13 +114,54 @@ entries are matched against wildcard SANs using standard X.509 hostname rules. T
 are therefore concrete, fixed hostnames, so the set of valid `iss` values stays closed. Concrete
 (non-wildcard) SANs continue to be served as issuers automatically and do not need to be listed.
 
+## Router Configs
+
+Routers (edge, transit, and fabric) now have a `configs` field that holds a list of config IDs the
+router should use. This is the second step toward controller-managed router configuration: routers
+can now be associated with configs in the same way services already can.
+
+Validation rules:
+
+* Every config referenced by a router must use a config type with `target = "router"`. Configs
+  with `target = "service"` (or anything else) are rejected.
+* A router may reference at most one config per config type. Attempting to attach two configs of
+  the same type is rejected with a duplicate-config error naming both configs.
+* Deleting a config automatically removes it from the `configs` list of any router that referenced
+  it, so dangling references are not possible.
+
+The `configs` field is exposed on router create, update, patch, and detail responses across the
+edge, transit, and fabric router REST APIs.
+
+The CLI has been updated to support the new field:
+
+* `ziti edge create edge-router` accepts `--config <id>` (repeatable)
+* `ziti edge create transit-router` accepts `--config <id>` (repeatable)
+* `ziti edge update edge-router` accepts `--config <id>` to replace the router's config list
+* `ziti fabric create router` accepts `--config <id>` (repeatable)
+* `ziti fabric update router` accepts `--config <id>` to replace the router's config list
+
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.92](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.92)
+* github.com/openziti/identity: [v1.0.129 -> v1.0.130](https://github.com/openziti/identity/compare/v1.0.129...v1.0.130)
+* github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.0](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.0)
+    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
+    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
+    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
+    * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
+
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #1593](https://github.com/openziti/ziti/issues/1593) - Expanded attribute query support in management API; add policy attribute support and usage count
+    * [Issue #3867](https://github.com/openziti/ziti/issues/3867) - Tunneler skips iptables rules for services sharing an intercept hostname
+    * [Issue #3949](https://github.com/openziti/ziti/issues/3949) - DeleteById swallows errors when firing change events
+    * [Issue #3945](https://github.com/openziti/ziti/issues/3945) - Increase certificate serial number namespace to 159 bits
+    * [Issue #3942](https://github.com/openziti/ziti/issues/3942) - Prep for channel v5: bind handler invocation, send priorities
+    * [Issue #3938](https://github.com/openziti/ziti/issues/3938) - Carry the link id in a link header instead of only in the channel identity token
+    * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - ziti login fails with oidc + wildcard certs
+    * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - oidc auth fails with wildcard server-cert SANs
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
-    * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - Fix OIDC auth failing for controllers using a wildcard server-cert SAN
-    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
 
 

@@ -44,6 +44,9 @@ import (
 // swagger:model routerPatch
 type RouterPatch struct {
 
+	// configs
+	Configs []string `json:"configs"`
+
 	// cost
 	// Maximum: 65535
 	// Minimum: 0

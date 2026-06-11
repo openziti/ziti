@@ -2125,6 +2125,12 @@ func init() {
         "noTraversal"
       ],
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -2178,6 +2184,12 @@ func init() {
             "disabled"
           ],
           "properties": {
+            "configs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "connected": {
               "type": "boolean"
             },
@@ -2249,6 +2261,12 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -2293,6 +2311,12 @@ func init() {
         "noTraversal"
       ],
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -7976,6 +8000,12 @@ func init() {
         "noTraversal"
       ],
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -8030,6 +8060,12 @@ func init() {
             "disabled"
           ],
           "properties": {
+            "configs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "connected": {
               "type": "boolean"
             },
@@ -8102,6 +8138,12 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -8147,6 +8189,12 @@ func init() {
         "noTraversal"
       ],
       "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,

@@ -46,6 +46,9 @@ import (
 type RouterDetail struct {
 	BaseEntity
 
+	// configs
+	Configs []string `json:"configs"`
+
 	// connected
 	// Required: true
 	Connected *bool `json:"connected"`
@@ -96,6 +99,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		Configs []string `json:"configs"`
+
 		Connected *bool `json:"connected"`
 
 		Cost *int64 `json:"cost"`
@@ -119,6 +124,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.Configs = dataAO1.Configs
 
 	m.Connected = dataAO1.Connected
 
@@ -153,6 +160,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		Configs []string `json:"configs"`
+
 		Connected *bool `json:"connected"`
 
 		Cost *int64 `json:"cost"`
@@ -173,6 +182,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
+
+	dataAO1.Configs = m.Configs
 
 	dataAO1.Connected = m.Connected
 

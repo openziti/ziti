@@ -23,6 +23,7 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRoute
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -39,6 +40,7 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -55,6 +57,7 @@ func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *mo
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
 		Disabled:          BoolOrDefault(router.Disabled),
 		CtrlChanListeners: router.CtrlChanListeners,
+		Configs:           router.Configs,
 	}
 
 	return ret
@@ -79,6 +82,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 		NoTraversal:           &router.NoTraversal,
 		Disabled:              &router.Disabled,
 		CtrlChanListeners:     router.CtrlChanListeners,
+		Configs:               router.Configs,
 	}
 
 	if !router.IsBase && !router.IsVerified {
