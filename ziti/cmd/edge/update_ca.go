@@ -43,7 +43,8 @@ type updateCaOptions struct {
 	identityAttributes []string
 	identityNameFormat string
 
-	externalIDClaim rest_model.ExternalIDClaimPatch
+	externalIDClaim      rest_model.ExternalIDClaimPatch
+	clearExternalIDClaim bool
 }
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
@@ -117,6 +118,7 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.externalIDClaim.MatcherCriteria, "matcher-criteria", "x", "", "criteria used with the given matcher")
 	cmd.Flags().StringVarP(options.externalIDClaim.Parser, "parser", "p", "", "the parser to use on found external ids")
 	cmd.Flags().StringVarP(options.externalIDClaim.ParserCriteria, "parser-criteria", "z", "", "criteria used with the given parser")
+	cmd.Flags().BoolVar(&options.clearExternalIDClaim, "clear-external-id-claim", false, "remove the externalIdClaim configuration from the CA")
 
 	options.AddCommonFlags(cmd)
 	return cmd
@@ -172,35 +174,45 @@ func runUpdateCa(options updateCaOptions) error {
 		changed = true
 	}
 
-	ca.ExternalIDClaim = &rest_model.ExternalIDClaimPatch{}
-	if options.Cmd.Flag("location").Changed {
-		ca.ExternalIDClaim.Location = options.externalIDClaim.Location
-		changed = true
-	}
+	claimChanged := options.Cmd.Flag("location").Changed ||
+		options.Cmd.Flag("index").Changed ||
+		options.Cmd.Flag("matcher").Changed ||
+		options.Cmd.Flag("matcher-criteria").Changed ||
+		options.Cmd.Flag("parser").Changed ||
+		options.Cmd.Flag("parser-criteria").Changed
 
-	if options.Cmd.Flag("index").Changed {
-		ca.ExternalIDClaim.Index = options.externalIDClaim.Index
+	if options.clearExternalIDClaim {
+		if claimChanged {
+			return errors.New("--clear-external-id-claim cannot be combined with externalIdClaim field flags")
+		}
+		// Omit externalIdClaim entirely so the server removes the stored claim (delete-on-nil).
+		ca.ExternalIDClaim = nil
 		changed = true
-	}
-
-	if options.Cmd.Flag("matcher").Changed {
-		ca.ExternalIDClaim.Matcher = options.externalIDClaim.Matcher
-		changed = true
-	}
-
-	if options.Cmd.Flag("matcher-criteria").Changed {
-		ca.ExternalIDClaim.MatcherCriteria = options.externalIDClaim.MatcherCriteria
-		changed = true
-	}
-
-	if options.Cmd.Flag("parser").Changed {
-		ca.ExternalIDClaim.Parser = options.externalIDClaim.Parser
-		changed = true
-	}
-
-	if options.Cmd.Flag("parser-criteria").Changed {
-		ca.ExternalIDClaim.ParserCriteria = options.externalIDClaim.ParserCriteria
-		changed = true
+	} else {
+		// Always send an (empty) object so an unrelated update preserves the stored claim rather
+		// than clearing it; supplied subfields are merged server-side.
+		ca.ExternalIDClaim = &rest_model.ExternalIDClaimPatch{}
+		if options.Cmd.Flag("location").Changed {
+			ca.ExternalIDClaim.Location = options.externalIDClaim.Location
+		}
+		if options.Cmd.Flag("index").Changed {
+			ca.ExternalIDClaim.Index = options.externalIDClaim.Index
+		}
+		if options.Cmd.Flag("matcher").Changed {
+			ca.ExternalIDClaim.Matcher = options.externalIDClaim.Matcher
+		}
+		if options.Cmd.Flag("matcher-criteria").Changed {
+			ca.ExternalIDClaim.MatcherCriteria = options.externalIDClaim.MatcherCriteria
+		}
+		if options.Cmd.Flag("parser").Changed {
+			ca.ExternalIDClaim.Parser = options.externalIDClaim.Parser
+		}
+		if options.Cmd.Flag("parser-criteria").Changed {
+			ca.ExternalIDClaim.ParserCriteria = options.externalIDClaim.ParserCriteria
+		}
+		if claimChanged {
+			changed = true
+		}
 	}
 
 	if options.TagsProvided() {

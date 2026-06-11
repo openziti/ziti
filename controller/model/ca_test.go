@@ -151,6 +151,18 @@ func Test_Ca_GetExternalId(t *testing.T) {
 		req.NoError(err)
 		req.Equal(commonName, result)
 	})
+
+	t.Run("treats a claim with an empty location as no claim", func(t *testing.T) {
+		req := require.New(t)
+		// An externalIdClaim with no location is unconfigured (e.g. the empty bucket left by an
+		// older CLI's empty {} patch). It must read as "no claim" -> fall back to fingerprint,
+		// not error, so existing CAs keep enrolling after upgrade.
+		ca := caWith(&ExternalIdClaim{})
+		result, err, panicked := getExternalIdNoPanic(ca, newCert(t))
+		req.False(panicked)
+		req.NoError(err)
+		req.Empty(result)
+	})
 }
 
 func Test_IdentityNameFormatter(t *testing.T) {
