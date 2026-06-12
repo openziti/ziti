@@ -19,8 +19,10 @@ package handler_edge_ctrl
 import (
 	"errors"
 
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/apierror"
 )
 
 type controllerError interface {
@@ -46,7 +48,23 @@ func internalError(err error) controllerError {
 	if errors.As(err, &ctrlErr) {
 		return ctrlErr
 	}
+	// A "cluster has no leader" condition is transient: it happens when a model update is
+	// attempted before raft leadership is established (notably during controller startup, when
+	// a router tries to create its tunnel terminator before the controller wins the election).
+	// Classify it as busy (RetryTooBusy -> FailedBusy) so callers like terminator establishment
+	// back off and retry instead of giving up, which would otherwise strand the service.
+	if isClusterNoLeaderErr(err) {
+		return busyError(err)
+	}
 	return internalErrorWrapper{error: err}
+}
+
+func isClusterNoLeaderErr(err error) bool {
+	var apiErr *errorz.ApiError
+	if errors.As(err, &apiErr) {
+		return apiErr.AppCode == apierror.ClusterHasNoLeaderCode
+	}
+	return false
 }
 
 func nonRetriableError(err error) controllerError {

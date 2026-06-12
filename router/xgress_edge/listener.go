@@ -1470,16 +1470,36 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Me
 	}
 }
 
+// router→controller message carrying raw PostureResponses so the controller can update its
+// posture state. Not in the proto enum, both sides use these constants directly.
+const contentTypePostureResponsesForward = int32(20507)
+const hdrPostureIdentityId = int32(2001)
+const hdrPostureApiSessionId = int32(2002)
+
 func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch channel.Channel) {
 	if msg.ContentType == int32(edge_client_pb.ContentType_PostureResponseType) {
 		postureResponses := &edge_client_pb.PostureResponses{}
 
 		if err := proto.Unmarshal(msg.Body, postureResponses); err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to unmarshal posture responses")
+			return
 		}
 
 		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 
+		// in HA the posture only reaches the router, so forward it on or the controller reports
+		// isPassing=false forever.
+		apiSessionToken := state.GetApiSessionTokenFromCh(ch)
+		if apiSessionToken != nil && apiSessionToken.IdentityId != "" {
+			forwardMsg := channel.NewMessage(contentTypePostureResponsesForward, msg.Body)
+			forwardMsg.Headers[hdrPostureIdentityId] = []byte(apiSessionToken.IdentityId)
+			forwardMsg.Headers[hdrPostureApiSessionId] = []byte(apiSessionToken.Id)
+			if ctrlCh := self.listener.factory.env.GetNetworkControllers().AnyValidCtrlChannel(); ctrlCh != nil {
+				if err := ctrlCh.Send(forwardMsg); err != nil {
+					pfxlog.Logger().WithError(err).Error("failed to forward posture responses to controller")
+				}
+			}
+		}
 	}
 }
 

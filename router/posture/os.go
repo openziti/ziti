@@ -43,6 +43,11 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 		}
 	}
 
+	// type matched, no version constraint: any version passes (matches the controller's check).
+	if len(foundOs.OsVersions) == 0 {
+		return nil
+	}
+
 	dataVer, err := semver.Make(data.Os.Os.GetVersion())
 
 	if err != nil {

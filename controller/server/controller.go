@@ -125,6 +125,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 		handler_edge_ctrl.NewUpdateTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewListTunnelServicesHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewPostureResponsesForwardHandler(c.AppEnv),
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
