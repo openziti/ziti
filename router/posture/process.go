@@ -174,18 +174,30 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		return result
 	}
 
-	if len(valid.Hashes) > 0 && !stringz.Contains(valid.Hashes, given.Hash) {
-		result.Reason = fmt.Errorf("hash is not valid, given %s, expected one of: %v", given.Hash, valid.Hashes)
+	// an empty hash is not a real constraint (a check with no hash arrives as []string{""}),
+	// so only the non-empty entries count.
+	validHashes := make([]string, 0, len(valid.Hashes))
+	for _, h := range valid.Hashes {
+		if h != "" {
+			validHashes = append(validHashes, h)
+		}
+	}
+
+	if len(validHashes) > 0 && !stringz.Contains(validHashes, given.Hash) {
+		result.Reason = fmt.Errorf("hash is not valid, given %s, expected one of: %v", given.Hash, validHashes)
 		return result
 	}
 
-	if len(valid.Fingerprints) > 0 {
-		validPrints := map[string]struct{}{}
-
-		for _, validPrint := range valid.Fingerprints {
+	// an empty fingerprint is not a real constraint (a single PROCESS check with no signer
+	// arrives as []string{""}), so only the non-empty entries count.
+	validPrints := map[string]struct{}{}
+	for _, validPrint := range valid.Fingerprints {
+		if validPrint != "" {
 			validPrints[validPrint] = struct{}{}
 		}
+	}
 
+	if len(validPrints) > 0 {
 		validPrintFound := false
 		for _, givenPrint := range given.SignerFingerprints {
 			if _, ok := validPrints[givenPrint]; ok {
@@ -195,7 +207,7 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		}
 
 		if !validPrintFound {
-			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Hashes)
+			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Fingerprints)
 			return result
 		}
 	}
