@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -237,6 +238,7 @@ var m = &model.Model{
 				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
+				defer ctrls.Close()
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
@@ -251,6 +253,7 @@ var m = &model.Model{
 				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
+				defer ctrls.Close()
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
@@ -265,6 +268,7 @@ var m = &model.Model{
 				if err := ctrls.Init(run, "#ctrl1"); err != nil {
 					return err
 				}
+				defer ctrls.Close()
 
 				var tasks []parallel.LabeledTask
 				for range 100 {
@@ -272,6 +276,72 @@ var m = &model.Model{
 					tasks = append(tasks, task)
 				}
 				return parallel.ExecuteLabeled(tasks, 2, nil)
+			}))
+
+			// Router-target config setup: create a router-target config type, a
+			// pool of router configs, and associate two configs with each edge
+			// router. Exercises Phase 1b (Configs field on Router) and Phase 2c
+			// (per-router config filtering in the RouterSender).
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				ctrls := &models.CtrlClients{}
+				if err := ctrls.Init(run, "#ctrl1"); err != nil {
+					return err
+				}
+				defer ctrls.Close()
+				ctrl := ctrls.GetCtrl("ctrl1")
+
+				// Create several router-target config types so each router can be
+				// associated with multiple configs (the API allows only one config
+				// of a given type per router).
+				const routerConfigTypeCount = 5
+				const routerConfigsPerType = 4
+				const configsPerRouter = 2
+
+				configTypeIds := make([]string, 0, routerConfigTypeCount)
+				for range routerConfigTypeCount {
+					id, err := createRouterTargetConfigType(ctrl)
+					if err != nil {
+						return fmt.Errorf("failed to create router-target config type: %w", err)
+					}
+					configTypeIds = append(configTypeIds, id)
+				}
+
+				var createTasks []parallel.LabeledTask
+				for _, typeId := range configTypeIds {
+					for range routerConfigsPerType {
+						createTasks = append(createTasks, createNewRouterConfig(ctrl, typeId))
+					}
+				}
+				if err := parallel.ExecuteLabeled(createTasks, 4, nil); err != nil {
+					return fmt.Errorf("failed to create router configs: %w", err)
+				}
+
+				buckets := make([]routerConfigBucket, 0, len(configTypeIds))
+				for _, typeId := range configTypeIds {
+					configs, err := models.ListConfigs(ctrl, fmt.Sprintf(`type="%s" limit none`, typeId), 30*time.Second)
+					if err != nil {
+						return fmt.Errorf("failed to list router configs: %w", err)
+					}
+					ids := make([]string, 0, len(configs))
+					for _, c := range configs {
+						ids = append(ids, *c.ID)
+					}
+					buckets = append(buckets, routerConfigBucket{typeId: typeId, configIds: ids})
+				}
+
+				routers, err := models.ListEdgeRouters(ctrl, "limit none", 30*time.Second)
+				if err != nil {
+					return fmt.Errorf("failed to list edge routers: %w", err)
+				}
+
+				var assocTasks []parallel.LabeledTask
+				for _, r := range routers {
+					rId := *r.ID
+					assocTasks = append(assocTasks, parallel.TaskWithLabel("associate.router-configs", "associate router configs", func() error {
+						return associateRouterConfigs(ctrl, rId, buckets, configsPerRouter)
+					}))
+				}
+				return parallel.ExecuteLabeled(assocTasks, 4, nil)
 			}))
 
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))

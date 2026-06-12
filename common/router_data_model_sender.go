@@ -24,9 +24,14 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
+
+// ConfigTypeTargetRouter is the Target value on ConfigType for router-managed configs.
+// Mirrored here to avoid a controller→common import dependency.
+const ConfigTypeTargetRouter = "router"
 
 // RouterDataModelSenderConfig contains the configuration values for a RouterDataModelSender
 type RouterDataModelSenderConfig struct {
@@ -63,6 +68,7 @@ type RouterDataModelSender struct {
 	Configs          cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Config]       `json:"configs"`
 	Identities       cmap.ConcurrentMap[string, *SenderIdentity]                      `json:"identities"`
 	Services         cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Service]      `json:"services"`
+	Routers          cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Router]       `json:"routers"`
 	ServicePolicies  cmap.ConcurrentMap[string, *SenderServicePolicy]                 `json:"servicePolicies"`
 	PostureChecks    cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PostureCheck] `json:"postureChecks"`
 	PublicKeys       cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]    `json:"publicKeys"`
@@ -85,6 +91,7 @@ func NewRouterDataModelSender(timelineSrc TimelineIdSource, logSize uint64, list
 		Configs:            cmap.New[*edge_ctrl_pb.DataState_Config](),
 		Identities:         cmap.New[*SenderIdentity](),
 		Services:           cmap.New[*edge_ctrl_pb.DataState_Service](),
+		Routers:            cmap.New[*edge_ctrl_pb.DataState_Router](),
 		ServicePolicies:    cmap.New[*SenderServicePolicy](),
 		PostureChecks:      cmap.New[*edge_ctrl_pb.DataState_PostureCheck](),
 		PublicKeys:         cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
@@ -172,6 +179,8 @@ func (rdm *RouterDataModelSender) Handle(event *edge_ctrl_pb.DataState_Event) {
 		rdm.HandleRevocationEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicyChange:
 		rdm.HandleServicePolicyChange(typedModel.ServicePolicyChange)
+	case *edge_ctrl_pb.DataState_Event_Router:
+		rdm.HandleRouterEvent(event, typedModel)
 	}
 }
 
@@ -233,6 +242,16 @@ func (rdm *RouterDataModelSender) HandleConfigEvent(event *edge_ctrl_pb.DataStat
 		rdm.Configs.Remove(model.Config.Id)
 	} else {
 		rdm.Configs.Set(model.Config.Id, model.Config)
+	}
+}
+
+// HandleRouterEvent applies the delta event to the router data model. It is not restricted by index calculations.
+// Generally meant for bulk loading of data during startup.
+func (rdm *RouterDataModelSender) HandleRouterEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Router) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Routers.Remove(model.Router.Id)
+	} else {
+		rdm.Routers.Set(model.Router.Id, model.Router)
 	}
 }
 
@@ -406,6 +425,115 @@ func (rdm *RouterDataModelSender) GetDataState() *edge_ctrl_pb.DataState {
 	return result
 }
 
+// GetDataStateForRouter returns a full snapshot scoped to the given router:
+// router-target configs the router isn't associated with are filtered out.
+// All other entity types (services, identities, policies, router-entity events,
+// service-target configs, etc.) flow unchanged. Used by both the rtx full-sync
+// path and the controller-side validation handler.
+func (rdm *RouterDataModelSender) GetDataStateForRouter(routerId string) *edge_ctrl_pb.DataState {
+	state := rdm.GetDataState()
+	if state == nil {
+		return nil
+	}
+	if filtered, changed := rdm.FilterEventsForRouter(routerId, state.Events, false); changed {
+		state.Events = filtered
+	}
+	return state
+}
+
+// FilterEventsForRouter returns the events to deliver to the given router. Config
+// events whose ConfigType targets routers flow only when the router's Configs list
+// contains them; service-target configs and all other event types pass through.
+//
+// When synthesizeMissing is true (delta path) and the routerId's own Router event
+// flows, emit synthetic Config events for every config currently in the router's
+// Configs list. The receiver may not have those Config entities cached yet.
+//
+// For full-sync (synthesizeMissing = false) the snapshot already includes every
+// relevant Config event globally, so synthesis is unnecessary.
+//
+// The returned changed flag is true when the result differs from the input. When
+// false, the caller can reuse the original slice and skip rebuilding the
+// enclosing change set.
+func (rdm *RouterDataModelSender) FilterEventsForRouter(routerId string, events []*edge_ctrl_pb.DataState_Event, synthesizeMissing bool) ([]*edge_ctrl_pb.DataState_Event, bool) {
+	if len(events) == 0 {
+		return events, false
+	}
+
+	var routerConfigs map[string]struct{}
+	var configsCached bool
+	isConfigForRouter := func(configId string) bool {
+		if !configsCached {
+			if cached, ok := rdm.Routers.Get(routerId); ok {
+				routerConfigs = stringz.SliceToSet(cached.Configs)
+			}
+			configsCached = true
+		}
+		_, ok := routerConfigs[configId]
+		return ok
+	}
+
+	// Only configs whose type targets routers are filtered per-router. Service
+	// (and any other non-router-target) configs broadcast unchanged. Defensively
+	// treat a missing config-type lookup as non-router-target.
+	isRouterTargetConfig := func(typeId string) bool {
+		if t, ok := rdm.ConfigTypes.Get(typeId); ok {
+			return t.Target == ConfigTypeTargetRouter
+		}
+		return false
+	}
+
+	// Fast path: scan once to see whether any event needs filtering or synthesis.
+	needsRebuild := false
+	for _, e := range events {
+		switch m := e.Model.(type) {
+		case *edge_ctrl_pb.DataState_Event_Config:
+			if isRouterTargetConfig(m.Config.TypeId) && !isConfigForRouter(m.Config.Id) {
+				needsRebuild = true
+			}
+		case *edge_ctrl_pb.DataState_Event_Router:
+			if synthesizeMissing && m.Router.Id == routerId && e.Action != edge_ctrl_pb.DataState_Delete && len(m.Router.Configs) > 0 {
+				needsRebuild = true
+			}
+		}
+		if needsRebuild {
+			break
+		}
+	}
+
+	if !needsRebuild {
+		return events, false
+	}
+
+	out := make([]*edge_ctrl_pb.DataState_Event, 0, len(events))
+	for _, e := range events {
+		switch m := e.Model.(type) {
+		case *edge_ctrl_pb.DataState_Event_Config:
+			if !isRouterTargetConfig(m.Config.TypeId) || isConfigForRouter(m.Config.Id) {
+				out = append(out, e)
+			}
+		case *edge_ctrl_pb.DataState_Event_Router:
+			if synthesizeMissing && m.Router.Id == routerId && e.Action != edge_ctrl_pb.DataState_Delete {
+				for _, cfgId := range m.Router.Configs {
+					if cfg, ok := rdm.Configs.Get(cfgId); ok {
+						out = append(out, &edge_ctrl_pb.DataState_Event{
+							Action:      edge_ctrl_pb.DataState_Create,
+							IsSynthetic: true,
+							Model: &edge_ctrl_pb.DataState_Event_Config{
+								Config: cfg,
+							},
+						})
+					}
+				}
+			}
+			out = append(out, e)
+		default:
+			out = append(out, e)
+		}
+	}
+	return out, true
+}
+
 func (rdm *RouterDataModelSender) getDataStateAlreadyLocked(index uint64) *edge_ctrl_pb.DataState {
 	var events []*edge_ctrl_pb.DataState_Event
 
@@ -459,6 +587,16 @@ func (rdm *RouterDataModelSender) getDataStateAlreadyLocked(index uint64) *edge_
 			Action: edge_ctrl_pb.DataState_Create,
 			Model: &edge_ctrl_pb.DataState_Event_Service{
 				Service: v,
+			},
+		}
+		events = append(events, newEvent)
+	})
+
+	rdm.Routers.IterCb(func(key string, v *edge_ctrl_pb.DataState_Router) {
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model: &edge_ctrl_pb.DataState_Event_Router{
+				Router: v,
 			},
 		}
 		events = append(events, newEvent)
@@ -568,6 +706,7 @@ func (rdm *RouterDataModelSender) GetEntityCounts() map[string]uint32 {
 		"configs":            uint32(rdm.Configs.Count()),
 		"identities":         uint32(rdm.Identities.Count()),
 		"services":           uint32(rdm.Services.Count()),
+		"routers":            uint32(rdm.Routers.Count()),
 		"service-policies":   uint32(rdm.ServicePolicies.Count()),
 		"posture-checks":     uint32(rdm.PostureChecks.Count()),
 		"public-keys":        uint32(rdm.PublicKeys.Count()),

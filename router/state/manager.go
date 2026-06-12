@@ -462,6 +462,14 @@ type ManagerImpl struct {
 	connectionTracker ConnectionTracker
 }
 
+// routerId returns the local router's token, or "" if the env doesn't yet know one.
+func (self *ManagerImpl) routerId() string {
+	if id := self.env.GetRouterId(); id != nil {
+		return id.Token
+	}
+	return ""
+}
+
 func (self *ManagerImpl) ParseTotpToken(jwtStr string) (*common.TotpClaims, error) {
 	totpClaims := &common.TotpClaims{}
 	token, err := jwt.ParseWithClaims(jwtStr, totpClaims, self.pubKeyLookup)
@@ -737,7 +745,7 @@ func (self *ManagerImpl) StartRouterModelSave(filePath string, duration time.Dur
 // LoadRouterModel initializes the router data model from a saved file,
 // falling back to an empty model if the file doesn't exist.
 func (self *ManagerImpl) LoadRouterModel(filePath string) {
-	model, err := common.NewReceiverRouterDataModelFromFile(filePath, self.env.GetCloseNotify())
+	model, err := common.NewReceiverRouterDataModelFromFile(self.routerId(), filePath, self.env.GetCloseNotify())
 
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -745,7 +753,7 @@ func (self *ManagerImpl) LoadRouterModel(filePath string) {
 		} else {
 			pfxlog.Logger().Infof("router data model file does not exist [%s]", filePath)
 		}
-		model = common.NewReceiverRouterDataModel(self.env.GetCloseNotify())
+		model = common.NewReceiverRouterDataModel(self.routerId(), self.env.GetCloseNotify())
 	} else {
 		index := model.CurrentIndex()
 		pfxlog.Logger().WithField("path", filePath).WithField("index", index).Info("loaded router model from file")

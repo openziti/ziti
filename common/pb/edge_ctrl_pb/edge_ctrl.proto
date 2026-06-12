@@ -202,6 +202,14 @@ message DataState {
     repeated string configs = 4;
   }
 
+  message Router {
+    string id = 1;
+    string name = 2;
+    string fingerprint = 3;
+    repeated string configs = 4;
+    bool disabled = 5;
+  }
+
   message ServicePolicy {
     string id = 1;
     string name = 2;
@@ -243,6 +251,7 @@ message DataState {
       ServicePolicyChange servicePolicyChange = 16;
       ConfigType configType = 17;
       Config config = 18;
+      Router router = 19;
     }
   }
 

@@ -667,7 +667,7 @@ func (x DataState_PublicKey_Usage) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DataState_PublicKey_Usage.Descriptor instead.
 func (DataState_PublicKey_Usage) EnumDescriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 11, 0}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 0}
 }
 
 type DataState_PublicKey_Format int32
@@ -713,7 +713,7 @@ func (x DataState_PublicKey_Format) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DataState_PublicKey_Format.Descriptor instead.
 func (DataState_PublicKey_Format) EnumDescriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 11, 1}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 1}
 }
 
 type ServerHello struct {
@@ -4196,6 +4196,82 @@ func (x *DataState_Service) GetConfigs() []string {
 	return nil
 }
 
+type DataState_Router struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Fingerprint   string                 `protobuf:"bytes,3,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
+	Configs       []string               `protobuf:"bytes,4,rep,name=configs,proto3" json:"configs,omitempty"`
+	Disabled      bool                   `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DataState_Router) Reset() {
+	*x = DataState_Router{}
+	mi := &file_edge_ctrl_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DataState_Router) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataState_Router) ProtoMessage() {}
+
+func (x *DataState_Router) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_ctrl_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DataState_Router.ProtoReflect.Descriptor instead.
+func (*DataState_Router) Descriptor() ([]byte, []int) {
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 6}
+}
+
+func (x *DataState_Router) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DataState_Router) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DataState_Router) GetFingerprint() string {
+	if x != nil {
+		return x.Fingerprint
+	}
+	return ""
+}
+
+func (x *DataState_Router) GetConfigs() []string {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
+func (x *DataState_Router) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
 type DataState_ServicePolicy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -4207,7 +4283,7 @@ type DataState_ServicePolicy struct {
 
 func (x *DataState_ServicePolicy) Reset() {
 	*x = DataState_ServicePolicy{}
-	mi := &file_edge_ctrl_proto_msgTypes[56]
+	mi := &file_edge_ctrl_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4219,7 +4295,7 @@ func (x *DataState_ServicePolicy) String() string {
 func (*DataState_ServicePolicy) ProtoMessage() {}
 
 func (x *DataState_ServicePolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[56]
+	mi := &file_edge_ctrl_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4232,7 +4308,7 @@ func (x *DataState_ServicePolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_ServicePolicy.ProtoReflect.Descriptor instead.
 func (*DataState_ServicePolicy) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 6}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 7}
 }
 
 func (x *DataState_ServicePolicy) GetId() string {
@@ -4266,7 +4342,7 @@ type DataState_Revocation struct {
 
 func (x *DataState_Revocation) Reset() {
 	*x = DataState_Revocation{}
-	mi := &file_edge_ctrl_proto_msgTypes[57]
+	mi := &file_edge_ctrl_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4278,7 +4354,7 @@ func (x *DataState_Revocation) String() string {
 func (*DataState_Revocation) ProtoMessage() {}
 
 func (x *DataState_Revocation) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[57]
+	mi := &file_edge_ctrl_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4291,7 +4367,7 @@ func (x *DataState_Revocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_Revocation.ProtoReflect.Descriptor instead.
 func (*DataState_Revocation) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 7}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 8}
 }
 
 func (x *DataState_Revocation) GetId() string {
@@ -4320,7 +4396,7 @@ type DataState_ServicePolicyChange struct {
 
 func (x *DataState_ServicePolicyChange) Reset() {
 	*x = DataState_ServicePolicyChange{}
-	mi := &file_edge_ctrl_proto_msgTypes[58]
+	mi := &file_edge_ctrl_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4332,7 +4408,7 @@ func (x *DataState_ServicePolicyChange) String() string {
 func (*DataState_ServicePolicyChange) ProtoMessage() {}
 
 func (x *DataState_ServicePolicyChange) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[58]
+	mi := &file_edge_ctrl_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4345,7 +4421,7 @@ func (x *DataState_ServicePolicyChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_ServicePolicyChange.ProtoReflect.Descriptor instead.
 func (*DataState_ServicePolicyChange) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 8}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 9}
 }
 
 func (x *DataState_ServicePolicyChange) GetPolicyId() string {
@@ -4389,7 +4465,7 @@ type DataState_ChangeSet struct {
 
 func (x *DataState_ChangeSet) Reset() {
 	*x = DataState_ChangeSet{}
-	mi := &file_edge_ctrl_proto_msgTypes[59]
+	mi := &file_edge_ctrl_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4401,7 +4477,7 @@ func (x *DataState_ChangeSet) String() string {
 func (*DataState_ChangeSet) ProtoMessage() {}
 
 func (x *DataState_ChangeSet) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[59]
+	mi := &file_edge_ctrl_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4414,7 +4490,7 @@ func (x *DataState_ChangeSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_ChangeSet.ProtoReflect.Descriptor instead.
 func (*DataState_ChangeSet) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 9}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 10}
 }
 
 func (x *DataState_ChangeSet) GetIndex() uint64 {
@@ -4468,6 +4544,7 @@ type DataState_Event struct {
 	//	*DataState_Event_ServicePolicyChange
 	//	*DataState_Event_ConfigType
 	//	*DataState_Event_Config
+	//	*DataState_Event_Router
 	Model         isDataState_Event_Model `protobuf_oneof:"Model"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4475,7 +4552,7 @@ type DataState_Event struct {
 
 func (x *DataState_Event) Reset() {
 	*x = DataState_Event{}
-	mi := &file_edge_ctrl_proto_msgTypes[60]
+	mi := &file_edge_ctrl_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4487,7 +4564,7 @@ func (x *DataState_Event) String() string {
 func (*DataState_Event) ProtoMessage() {}
 
 func (x *DataState_Event) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[60]
+	mi := &file_edge_ctrl_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4500,7 +4577,7 @@ func (x *DataState_Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_Event.ProtoReflect.Descriptor instead.
 func (*DataState_Event) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 10}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 11}
 }
 
 func (x *DataState_Event) GetAction() DataState_Action {
@@ -4605,6 +4682,15 @@ func (x *DataState_Event) GetConfig() *DataState_Config {
 	return nil
 }
 
+func (x *DataState_Event) GetRouter() *DataState_Router {
+	if x != nil {
+		if x, ok := x.Model.(*DataState_Event_Router); ok {
+			return x.Router
+		}
+	}
+	return nil
+}
+
 type isDataState_Event_Model interface {
 	isDataState_Event_Model()
 }
@@ -4645,6 +4731,10 @@ type DataState_Event_Config struct {
 	Config *DataState_Config `protobuf:"bytes,18,opt,name=config,proto3,oneof"`
 }
 
+type DataState_Event_Router struct {
+	Router *DataState_Router `protobuf:"bytes,19,opt,name=router,proto3,oneof"`
+}
+
 func (*DataState_Event_Identity) isDataState_Event_Model() {}
 
 func (*DataState_Event_Service) isDataState_Event_Model() {}
@@ -4663,6 +4753,8 @@ func (*DataState_Event_ConfigType) isDataState_Event_Model() {}
 
 func (*DataState_Event_Config) isDataState_Event_Model() {}
 
+func (*DataState_Event_Router) isDataState_Event_Model() {}
+
 type DataState_PublicKey struct {
 	state         protoimpl.MessageState      `protogen:"open.v1"`
 	Data          []byte                      `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`                                                              //public key
@@ -4675,7 +4767,7 @@ type DataState_PublicKey struct {
 
 func (x *DataState_PublicKey) Reset() {
 	*x = DataState_PublicKey{}
-	mi := &file_edge_ctrl_proto_msgTypes[61]
+	mi := &file_edge_ctrl_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4687,7 +4779,7 @@ func (x *DataState_PublicKey) String() string {
 func (*DataState_PublicKey) ProtoMessage() {}
 
 func (x *DataState_PublicKey) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[61]
+	mi := &file_edge_ctrl_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4700,7 +4792,7 @@ func (x *DataState_PublicKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PublicKey.ProtoReflect.Descriptor instead.
 func (*DataState_PublicKey) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 11}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12}
 }
 
 func (x *DataState_PublicKey) GetData() []byte {
@@ -4751,7 +4843,7 @@ type DataState_PostureCheck struct {
 
 func (x *DataState_PostureCheck) Reset() {
 	*x = DataState_PostureCheck{}
-	mi := &file_edge_ctrl_proto_msgTypes[62]
+	mi := &file_edge_ctrl_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4763,7 +4855,7 @@ func (x *DataState_PostureCheck) String() string {
 func (*DataState_PostureCheck) ProtoMessage() {}
 
 func (x *DataState_PostureCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[62]
+	mi := &file_edge_ctrl_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4776,7 +4868,7 @@ func (x *DataState_PostureCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13}
 }
 
 func (x *DataState_PostureCheck) GetId() string {
@@ -4910,7 +5002,7 @@ type DataState_PostureCheck_Mac struct {
 
 func (x *DataState_PostureCheck_Mac) Reset() {
 	*x = DataState_PostureCheck_Mac{}
-	mi := &file_edge_ctrl_proto_msgTypes[67]
+	mi := &file_edge_ctrl_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4922,7 +5014,7 @@ func (x *DataState_PostureCheck_Mac) String() string {
 func (*DataState_PostureCheck_Mac) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_Mac) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[67]
+	mi := &file_edge_ctrl_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4935,7 +5027,7 @@ func (x *DataState_PostureCheck_Mac) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_Mac.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_Mac) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 0}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 0}
 }
 
 func (x *DataState_PostureCheck_Mac) GetMacAddresses() []string {
@@ -4957,7 +5049,7 @@ type DataState_PostureCheck_Mfa struct {
 
 func (x *DataState_PostureCheck_Mfa) Reset() {
 	*x = DataState_PostureCheck_Mfa{}
-	mi := &file_edge_ctrl_proto_msgTypes[68]
+	mi := &file_edge_ctrl_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4969,7 +5061,7 @@ func (x *DataState_PostureCheck_Mfa) String() string {
 func (*DataState_PostureCheck_Mfa) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_Mfa) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[68]
+	mi := &file_edge_ctrl_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4982,7 +5074,7 @@ func (x *DataState_PostureCheck_Mfa) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_Mfa.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_Mfa) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 1}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 1}
 }
 
 func (x *DataState_PostureCheck_Mfa) GetTimeoutSeconds() int64 {
@@ -5023,7 +5115,7 @@ type DataState_PostureCheck_Os struct {
 
 func (x *DataState_PostureCheck_Os) Reset() {
 	*x = DataState_PostureCheck_Os{}
-	mi := &file_edge_ctrl_proto_msgTypes[69]
+	mi := &file_edge_ctrl_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5035,7 +5127,7 @@ func (x *DataState_PostureCheck_Os) String() string {
 func (*DataState_PostureCheck_Os) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_Os) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[69]
+	mi := &file_edge_ctrl_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5048,7 +5140,7 @@ func (x *DataState_PostureCheck_Os) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_Os.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_Os) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 2}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 2}
 }
 
 func (x *DataState_PostureCheck_Os) GetOsType() string {
@@ -5074,7 +5166,7 @@ type DataState_PostureCheck_OsList struct {
 
 func (x *DataState_PostureCheck_OsList) Reset() {
 	*x = DataState_PostureCheck_OsList{}
-	mi := &file_edge_ctrl_proto_msgTypes[70]
+	mi := &file_edge_ctrl_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5086,7 +5178,7 @@ func (x *DataState_PostureCheck_OsList) String() string {
 func (*DataState_PostureCheck_OsList) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_OsList) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[70]
+	mi := &file_edge_ctrl_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5099,7 +5191,7 @@ func (x *DataState_PostureCheck_OsList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_OsList.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_OsList) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 3}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 3}
 }
 
 func (x *DataState_PostureCheck_OsList) GetOsList() []*DataState_PostureCheck_Os {
@@ -5121,7 +5213,7 @@ type DataState_PostureCheck_Process struct {
 
 func (x *DataState_PostureCheck_Process) Reset() {
 	*x = DataState_PostureCheck_Process{}
-	mi := &file_edge_ctrl_proto_msgTypes[71]
+	mi := &file_edge_ctrl_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5133,7 +5225,7 @@ func (x *DataState_PostureCheck_Process) String() string {
 func (*DataState_PostureCheck_Process) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_Process) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[71]
+	mi := &file_edge_ctrl_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5146,7 +5238,7 @@ func (x *DataState_PostureCheck_Process) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_Process.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_Process) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 4}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 4}
 }
 
 func (x *DataState_PostureCheck_Process) GetOsType() string {
@@ -5187,7 +5279,7 @@ type DataState_PostureCheck_ProcessMulti struct {
 
 func (x *DataState_PostureCheck_ProcessMulti) Reset() {
 	*x = DataState_PostureCheck_ProcessMulti{}
-	mi := &file_edge_ctrl_proto_msgTypes[72]
+	mi := &file_edge_ctrl_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5199,7 +5291,7 @@ func (x *DataState_PostureCheck_ProcessMulti) String() string {
 func (*DataState_PostureCheck_ProcessMulti) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_ProcessMulti) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[72]
+	mi := &file_edge_ctrl_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5212,7 +5304,7 @@ func (x *DataState_PostureCheck_ProcessMulti) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use DataState_PostureCheck_ProcessMulti.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_ProcessMulti) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 5}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 5}
 }
 
 func (x *DataState_PostureCheck_ProcessMulti) GetSemantic() string {
@@ -5238,7 +5330,7 @@ type DataState_PostureCheck_Domains struct {
 
 func (x *DataState_PostureCheck_Domains) Reset() {
 	*x = DataState_PostureCheck_Domains{}
-	mi := &file_edge_ctrl_proto_msgTypes[73]
+	mi := &file_edge_ctrl_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5250,7 +5342,7 @@ func (x *DataState_PostureCheck_Domains) String() string {
 func (*DataState_PostureCheck_Domains) ProtoMessage() {}
 
 func (x *DataState_PostureCheck_Domains) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[73]
+	mi := &file_edge_ctrl_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5263,7 +5355,7 @@ func (x *DataState_PostureCheck_Domains) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataState_PostureCheck_Domains.ProtoReflect.Descriptor instead.
 func (*DataState_PostureCheck_Domains) Descriptor() ([]byte, []int) {
-	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 12, 6}
+	return file_edge_ctrl_proto_rawDescGZIP(), []int{6, 13, 6}
 }
 
 func (x *DataState_PostureCheck_Domains) GetDomains() []string {
@@ -5284,7 +5376,7 @@ type ConnectEvents_ConnectDetails struct {
 
 func (x *ConnectEvents_ConnectDetails) Reset() {
 	*x = ConnectEvents_ConnectDetails{}
-	mi := &file_edge_ctrl_proto_msgTypes[88]
+	mi := &file_edge_ctrl_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5296,7 +5388,7 @@ func (x *ConnectEvents_ConnectDetails) String() string {
 func (*ConnectEvents_ConnectDetails) ProtoMessage() {}
 
 func (x *ConnectEvents_ConnectDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[88]
+	mi := &file_edge_ctrl_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5344,7 +5436,7 @@ type ConnectEvents_IdentityConnectEvents struct {
 
 func (x *ConnectEvents_IdentityConnectEvents) Reset() {
 	*x = ConnectEvents_IdentityConnectEvents{}
-	mi := &file_edge_ctrl_proto_msgTypes[89]
+	mi := &file_edge_ctrl_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5356,7 +5448,7 @@ func (x *ConnectEvents_IdentityConnectEvents) String() string {
 func (*ConnectEvents_IdentityConnectEvents) ProtoMessage() {}
 
 func (x *ConnectEvents_IdentityConnectEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_ctrl_proto_msgTypes[89]
+	mi := &file_edge_ctrl_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5437,7 +5529,7 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.Cache.DataEntryR\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xf8#\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xbe%\n" +
 	"\tDataState\x12:\n" +
 	"\x06events\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.DataState.EventR\x06events\x12\x1a\n" +
 	"\bendIndex\x18\x02 \x01(\x04R\bendIndex\x12\x1e\n" +
@@ -5486,7 +5578,13 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
 	"\x12encryptionRequired\x18\x03 \x01(\bR\x12encryptionRequired\x12\x18\n" +
-	"\aconfigs\x18\x04 \x03(\tR\aconfigs\x1ar\n" +
+	"\aconfigs\x18\x04 \x03(\tR\aconfigs\x1a\x84\x01\n" +
+	"\x06Router\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vfingerprint\x18\x03 \x01(\tR\vfingerprint\x12\x18\n" +
+	"\aconfigs\x18\x04 \x03(\tR\aconfigs\x12\x1a\n" +
+	"\bdisabled\x18\x05 \x01(\bR\bdisabled\x1ar\n" +
 	"\rServicePolicy\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12=\n" +
@@ -5507,7 +5605,7 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\visSynthetic\x18\x02 \x01(\bR\visSynthetic\x12<\n" +
 	"\achanges\x18\x03 \x03(\v2\".ziti.edge_ctrl.pb.DataState.EventR\achanges\x12 \n" +
 	"\vtimestampId\x18\x04 \x01(\tR\vtimestampId\x12$\n" +
-	"\rpreviousIndex\x18\x05 \x01(\x04R\rpreviousIndex\x1a\x9e\x06\n" +
+	"\rpreviousIndex\x18\x05 \x01(\x04R\rpreviousIndex\x1a\xdd\x06\n" +
 	"\x05Event\x12;\n" +
 	"\x06action\x18\x01 \x01(\x0e2#.ziti.edge_ctrl.pb.DataState.ActionR\x06action\x12 \n" +
 	"\visSynthetic\x18\x03 \x01(\bR\visSynthetic\x12C\n" +
@@ -5524,7 +5622,8 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\n" +
 	"configType\x18\x11 \x01(\v2'.ziti.edge_ctrl.pb.DataState.ConfigTypeH\x00R\n" +
 	"configType\x12=\n" +
-	"\x06config\x18\x12 \x01(\v2#.ziti.edge_ctrl.pb.DataState.ConfigH\x00R\x06configB\a\n" +
+	"\x06config\x18\x12 \x01(\v2#.ziti.edge_ctrl.pb.DataState.ConfigH\x00R\x06config\x12=\n" +
+	"\x06router\x18\x13 \x01(\v2#.ziti.edge_ctrl.pb.DataState.RouterH\x00R\x06routerB\a\n" +
 	"\x05Model\x1a\xa6\x02\n" +
 	"\tPublicKey\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x10\n" +
@@ -5986,7 +6085,7 @@ func file_edge_ctrl_proto_rawDescGZIP() []byte {
 }
 
 var file_edge_ctrl_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_edge_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
+var file_edge_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 93)
 var file_edge_ctrl_proto_goTypes = []any{
 	(ContentType)(0),                            // 0: ziti.edge_ctrl.pb.ContentType
 	(SessionType)(0),                            // 1: ziti.edge_ctrl.pb.SessionType
@@ -6055,43 +6154,44 @@ var file_edge_ctrl_proto_goTypes = []any{
 	(*DataState_ServiceConfigs)(nil),            // 64: ziti.edge_ctrl.pb.DataState.ServiceConfigs
 	(*DataState_Identity)(nil),                  // 65: ziti.edge_ctrl.pb.DataState.Identity
 	(*DataState_Service)(nil),                   // 66: ziti.edge_ctrl.pb.DataState.Service
-	(*DataState_ServicePolicy)(nil),             // 67: ziti.edge_ctrl.pb.DataState.ServicePolicy
-	(*DataState_Revocation)(nil),                // 68: ziti.edge_ctrl.pb.DataState.Revocation
-	(*DataState_ServicePolicyChange)(nil),       // 69: ziti.edge_ctrl.pb.DataState.ServicePolicyChange
-	(*DataState_ChangeSet)(nil),                 // 70: ziti.edge_ctrl.pb.DataState.ChangeSet
-	(*DataState_Event)(nil),                     // 71: ziti.edge_ctrl.pb.DataState.Event
-	(*DataState_PublicKey)(nil),                 // 72: ziti.edge_ctrl.pb.DataState.PublicKey
-	(*DataState_PostureCheck)(nil),              // 73: ziti.edge_ctrl.pb.DataState.PostureCheck
-	nil,                                         // 74: ziti.edge_ctrl.pb.DataState.ServiceConfigs.ConfigsEntry
-	nil,                                         // 75: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry
-	nil,                                         // 76: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingCostsEntry
-	nil,                                         // 77: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry
-	(*DataState_PostureCheck_Mac)(nil),          // 78: ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
-	(*DataState_PostureCheck_Mfa)(nil),          // 79: ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
-	(*DataState_PostureCheck_Os)(nil),           // 80: ziti.edge_ctrl.pb.DataState.PostureCheck.Os
-	(*DataState_PostureCheck_OsList)(nil),       // 81: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
-	(*DataState_PostureCheck_Process)(nil),      // 82: ziti.edge_ctrl.pb.DataState.PostureCheck.Process
-	(*DataState_PostureCheck_ProcessMulti)(nil), // 83: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
-	(*DataState_PostureCheck_Domains)(nil),      // 84: ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
-	nil,                                         // 85: ziti.edge_ctrl.pb.CreateCircuitRequest.PeerDataEntry
-	nil,                                         // 86: ziti.edge_ctrl.pb.CreateCircuitResponse.PeerDataEntry
-	nil,                                         // 87: ziti.edge_ctrl.pb.CreateCircuitResponse.TagsEntry
-	nil,                                         // 88: ziti.edge_ctrl.pb.CreateTerminatorV2Request.PeerDataEntry
-	nil,                                         // 89: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry
-	nil,                                         // 90: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServiceCostsEntry
-	nil,                                         // 91: ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.PeerDataEntry
-	nil,                                         // 92: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.PeerDataEntry
-	nil,                                         // 93: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.TagsEntry
-	nil,                                         // 94: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.PeerDataEntry
-	nil,                                         // 95: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.PeerDataEntry
-	nil,                                         // 96: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.TagsEntry
-	nil,                                         // 97: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.PeerDataEntry
-	nil,                                         // 98: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.PeerDataEntry
-	(*ConnectEvents_ConnectDetails)(nil),        // 99: ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
-	(*ConnectEvents_IdentityConnectEvents)(nil), // 100: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents
-	nil,                           // 101: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.OrigEntityCountsEntry
-	nil,                           // 102: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.CopyEntityCountsEntry
-	(*timestamppb.Timestamp)(nil), // 103: google.protobuf.Timestamp
+	(*DataState_Router)(nil),                    // 67: ziti.edge_ctrl.pb.DataState.Router
+	(*DataState_ServicePolicy)(nil),             // 68: ziti.edge_ctrl.pb.DataState.ServicePolicy
+	(*DataState_Revocation)(nil),                // 69: ziti.edge_ctrl.pb.DataState.Revocation
+	(*DataState_ServicePolicyChange)(nil),       // 70: ziti.edge_ctrl.pb.DataState.ServicePolicyChange
+	(*DataState_ChangeSet)(nil),                 // 71: ziti.edge_ctrl.pb.DataState.ChangeSet
+	(*DataState_Event)(nil),                     // 72: ziti.edge_ctrl.pb.DataState.Event
+	(*DataState_PublicKey)(nil),                 // 73: ziti.edge_ctrl.pb.DataState.PublicKey
+	(*DataState_PostureCheck)(nil),              // 74: ziti.edge_ctrl.pb.DataState.PostureCheck
+	nil,                                         // 75: ziti.edge_ctrl.pb.DataState.ServiceConfigs.ConfigsEntry
+	nil,                                         // 76: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry
+	nil,                                         // 77: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingCostsEntry
+	nil,                                         // 78: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry
+	(*DataState_PostureCheck_Mac)(nil),          // 79: ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
+	(*DataState_PostureCheck_Mfa)(nil),          // 80: ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
+	(*DataState_PostureCheck_Os)(nil),           // 81: ziti.edge_ctrl.pb.DataState.PostureCheck.Os
+	(*DataState_PostureCheck_OsList)(nil),       // 82: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
+	(*DataState_PostureCheck_Process)(nil),      // 83: ziti.edge_ctrl.pb.DataState.PostureCheck.Process
+	(*DataState_PostureCheck_ProcessMulti)(nil), // 84: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
+	(*DataState_PostureCheck_Domains)(nil),      // 85: ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
+	nil,                                         // 86: ziti.edge_ctrl.pb.CreateCircuitRequest.PeerDataEntry
+	nil,                                         // 87: ziti.edge_ctrl.pb.CreateCircuitResponse.PeerDataEntry
+	nil,                                         // 88: ziti.edge_ctrl.pb.CreateCircuitResponse.TagsEntry
+	nil,                                         // 89: ziti.edge_ctrl.pb.CreateTerminatorV2Request.PeerDataEntry
+	nil,                                         // 90: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry
+	nil,                                         // 91: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServiceCostsEntry
+	nil,                                         // 92: ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.PeerDataEntry
+	nil,                                         // 93: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.PeerDataEntry
+	nil,                                         // 94: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.TagsEntry
+	nil,                                         // 95: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.PeerDataEntry
+	nil,                                         // 96: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.PeerDataEntry
+	nil,                                         // 97: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.TagsEntry
+	nil,                                         // 98: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.PeerDataEntry
+	nil,                                         // 99: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.PeerDataEntry
+	(*ConnectEvents_ConnectDetails)(nil),        // 100: ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
+	(*ConnectEvents_IdentityConnectEvents)(nil), // 101: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents
+	nil,                           // 102: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.OrigEntityCountsEntry
+	nil,                           // 103: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.CopyEntityCountsEntry
+	(*timestamppb.Timestamp)(nil), // 104: google.protobuf.Timestamp
 }
 var file_edge_ctrl_proto_depIdxs = []int32{
 	57,  // 0: ziti.edge_ctrl.pb.ServerHello.data:type_name -> ziti.edge_ctrl.pb.ServerHello.DataEntry
@@ -6101,83 +6201,84 @@ var file_edge_ctrl_proto_depIdxs = []int32{
 	59,  // 4: ziti.edge_ctrl.pb.ClientHello.data:type_name -> ziti.edge_ctrl.pb.ClientHello.DataEntry
 	13,  // 5: ziti.edge_ctrl.pb.ClientHello.listeners:type_name -> ziti.edge_ctrl.pb.Listener
 	60,  // 6: ziti.edge_ctrl.pb.Cache.data:type_name -> ziti.edge_ctrl.pb.Cache.DataEntry
-	71,  // 7: ziti.edge_ctrl.pb.DataState.events:type_name -> ziti.edge_ctrl.pb.DataState.Event
+	72,  // 7: ziti.edge_ctrl.pb.DataState.events:type_name -> ziti.edge_ctrl.pb.DataState.Event
 	61,  // 8: ziti.edge_ctrl.pb.DataState.caches:type_name -> ziti.edge_ctrl.pb.DataState.CachesEntry
 	18,  // 9: ziti.edge_ctrl.pb.ApiSessionAdded.apiSessions:type_name -> ziti.edge_ctrl.pb.ApiSession
 	18,  // 10: ziti.edge_ctrl.pb.ApiSessionUpdated.apiSessions:type_name -> ziti.edge_ctrl.pb.ApiSession
-	85,  // 11: ziti.edge_ctrl.pb.CreateCircuitRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitRequest.PeerDataEntry
-	86,  // 12: ziti.edge_ctrl.pb.CreateCircuitResponse.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitResponse.PeerDataEntry
-	87,  // 13: ziti.edge_ctrl.pb.CreateCircuitResponse.tags:type_name -> ziti.edge_ctrl.pb.CreateCircuitResponse.TagsEntry
-	88,  // 14: ziti.edge_ctrl.pb.CreateTerminatorV2Request.peerData:type_name -> ziti.edge_ctrl.pb.CreateTerminatorV2Request.PeerDataEntry
+	86,  // 11: ziti.edge_ctrl.pb.CreateCircuitRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitRequest.PeerDataEntry
+	87,  // 12: ziti.edge_ctrl.pb.CreateCircuitResponse.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitResponse.PeerDataEntry
+	88,  // 13: ziti.edge_ctrl.pb.CreateCircuitResponse.tags:type_name -> ziti.edge_ctrl.pb.CreateCircuitResponse.TagsEntry
+	89,  // 14: ziti.edge_ctrl.pb.CreateTerminatorV2Request.peerData:type_name -> ziti.edge_ctrl.pb.CreateTerminatorV2Request.PeerDataEntry
 	6,   // 15: ziti.edge_ctrl.pb.CreateTerminatorV2Request.precedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
 	7,   // 16: ziti.edge_ctrl.pb.CreateTerminatorV2Response.result:type_name -> ziti.edge_ctrl.pb.CreateTerminatorResult
 	6,   // 17: ziti.edge_ctrl.pb.UpdateTerminatorRequest.precedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
 	33,  // 18: ziti.edge_ctrl.pb.CreateApiSessionRequest.envInfo:type_name -> ziti.edge_ctrl.pb.EnvInfo
 	34,  // 19: ziti.edge_ctrl.pb.CreateApiSessionRequest.sdkInfo:type_name -> ziti.edge_ctrl.pb.SdkInfo
 	6,   // 20: ziti.edge_ctrl.pb.CreateApiSessionResponse.defaultHostingPrecedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	89,  // 21: ziti.edge_ctrl.pb.CreateApiSessionResponse.servicePrecedences:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry
-	90,  // 22: ziti.edge_ctrl.pb.CreateApiSessionResponse.serviceCosts:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse.ServiceCostsEntry
-	91,  // 23: ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.PeerDataEntry
+	90,  // 21: ziti.edge_ctrl.pb.CreateApiSessionResponse.servicePrecedences:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry
+	91,  // 22: ziti.edge_ctrl.pb.CreateApiSessionResponse.serviceCosts:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse.ServiceCostsEntry
+	92,  // 23: ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceRequest.PeerDataEntry
 	36,  // 24: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.apiSession:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse
 	38,  // 25: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.session:type_name -> ziti.edge_ctrl.pb.CreateSessionResponse
-	92,  // 26: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.PeerDataEntry
-	93,  // 27: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.tags:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.TagsEntry
-	94,  // 28: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.PeerDataEntry
-	95,  // 29: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.PeerDataEntry
-	96,  // 30: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.tags:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.TagsEntry
+	93,  // 26: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.peerData:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.PeerDataEntry
+	94,  // 27: ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.tags:type_name -> ziti.edge_ctrl.pb.CreateCircuitForServiceResponse.TagsEntry
+	95,  // 28: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Request.PeerDataEntry
+	96,  // 29: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.PeerDataEntry
+	97,  // 30: ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.tags:type_name -> ziti.edge_ctrl.pb.CreateTunnelCircuitV2Response.TagsEntry
 	43,  // 31: ziti.edge_ctrl.pb.ServicesList.services:type_name -> ziti.edge_ctrl.pb.TunnelService
-	97,  // 32: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.PeerDataEntry
+	98,  // 32: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.PeerDataEntry
 	6,   // 33: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequest.precedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
 	36,  // 34: ziti.edge_ctrl.pb.CreateTunnelTerminatorResponse.apiSession:type_name -> ziti.edge_ctrl.pb.CreateApiSessionResponse
 	38,  // 35: ziti.edge_ctrl.pb.CreateTunnelTerminatorResponse.session:type_name -> ziti.edge_ctrl.pb.CreateSessionResponse
-	98,  // 36: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.PeerDataEntry
+	99,  // 36: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.peerData:type_name -> ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.PeerDataEntry
 	6,   // 37: ziti.edge_ctrl.pb.CreateTunnelTerminatorRequestV2.precedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
 	7,   // 38: ziti.edge_ctrl.pb.CreateTunnelTerminatorResponseV2.result:type_name -> ziti.edge_ctrl.pb.CreateTerminatorResult
 	6,   // 39: ziti.edge_ctrl.pb.UpdateTunnelTerminatorRequest.precedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	100, // 40: ziti.edge_ctrl.pb.ConnectEvents.events:type_name -> ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents
+	101, // 40: ziti.edge_ctrl.pb.ConnectEvents.events:type_name -> ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents
 	17,  // 41: ziti.edge_ctrl.pb.RouterDataModelValidateRequest.state:type_name -> ziti.edge_ctrl.pb.DataState
-	101, // 42: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.origEntityCounts:type_name -> ziti.edge_ctrl.pb.RouterDataModelValidateResponse.OrigEntityCountsEntry
-	102, // 43: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.copyEntityCounts:type_name -> ziti.edge_ctrl.pb.RouterDataModelValidateResponse.CopyEntityCountsEntry
+	102, // 42: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.origEntityCounts:type_name -> ziti.edge_ctrl.pb.RouterDataModelValidateResponse.OrigEntityCountsEntry
+	103, // 43: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.copyEntityCounts:type_name -> ziti.edge_ctrl.pb.RouterDataModelValidateResponse.CopyEntityCountsEntry
 	54,  // 44: ziti.edge_ctrl.pb.RouterDataModelValidateResponse.diffs:type_name -> ziti.edge_ctrl.pb.RouterDataModelDiff
 	16,  // 45: ziti.edge_ctrl.pb.DataState.CachesEntry.value:type_name -> ziti.edge_ctrl.pb.Cache
-	74,  // 46: ziti.edge_ctrl.pb.DataState.ServiceConfigs.configs:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs.ConfigsEntry
+	75,  // 46: ziti.edge_ctrl.pb.DataState.ServiceConfigs.configs:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs.ConfigsEntry
 	6,   // 47: ziti.edge_ctrl.pb.DataState.Identity.defaultHostingPrecedence:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	75,  // 48: ziti.edge_ctrl.pb.DataState.Identity.serviceHostingPrecedences:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry
-	76,  // 49: ziti.edge_ctrl.pb.DataState.Identity.serviceHostingCosts:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingCostsEntry
-	77,  // 50: ziti.edge_ctrl.pb.DataState.Identity.serviceConfigs:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry
+	76,  // 48: ziti.edge_ctrl.pb.DataState.Identity.serviceHostingPrecedences:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry
+	77,  // 49: ziti.edge_ctrl.pb.DataState.Identity.serviceHostingCosts:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingCostsEntry
+	78,  // 50: ziti.edge_ctrl.pb.DataState.Identity.serviceConfigs:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry
 	4,   // 51: ziti.edge_ctrl.pb.DataState.ServicePolicy.policyType:type_name -> ziti.edge_ctrl.pb.PolicyType
-	103, // 52: ziti.edge_ctrl.pb.DataState.Revocation.ExpiresAt:type_name -> google.protobuf.Timestamp
+	104, // 52: ziti.edge_ctrl.pb.DataState.Revocation.ExpiresAt:type_name -> google.protobuf.Timestamp
 	5,   // 53: ziti.edge_ctrl.pb.DataState.ServicePolicyChange.relatedEntityType:type_name -> ziti.edge_ctrl.pb.ServicePolicyRelatedEntityType
-	71,  // 54: ziti.edge_ctrl.pb.DataState.ChangeSet.changes:type_name -> ziti.edge_ctrl.pb.DataState.Event
+	72,  // 54: ziti.edge_ctrl.pb.DataState.ChangeSet.changes:type_name -> ziti.edge_ctrl.pb.DataState.Event
 	8,   // 55: ziti.edge_ctrl.pb.DataState.Event.action:type_name -> ziti.edge_ctrl.pb.DataState.Action
 	65,  // 56: ziti.edge_ctrl.pb.DataState.Event.identity:type_name -> ziti.edge_ctrl.pb.DataState.Identity
 	66,  // 57: ziti.edge_ctrl.pb.DataState.Event.service:type_name -> ziti.edge_ctrl.pb.DataState.Service
-	67,  // 58: ziti.edge_ctrl.pb.DataState.Event.servicePolicy:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicy
-	73,  // 59: ziti.edge_ctrl.pb.DataState.Event.postureCheck:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck
-	72,  // 60: ziti.edge_ctrl.pb.DataState.Event.publicKey:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey
-	68,  // 61: ziti.edge_ctrl.pb.DataState.Event.revocation:type_name -> ziti.edge_ctrl.pb.DataState.Revocation
-	69,  // 62: ziti.edge_ctrl.pb.DataState.Event.servicePolicyChange:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicyChange
+	68,  // 58: ziti.edge_ctrl.pb.DataState.Event.servicePolicy:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicy
+	74,  // 59: ziti.edge_ctrl.pb.DataState.Event.postureCheck:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck
+	73,  // 60: ziti.edge_ctrl.pb.DataState.Event.publicKey:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey
+	69,  // 61: ziti.edge_ctrl.pb.DataState.Event.revocation:type_name -> ziti.edge_ctrl.pb.DataState.Revocation
+	70,  // 62: ziti.edge_ctrl.pb.DataState.Event.servicePolicyChange:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicyChange
 	62,  // 63: ziti.edge_ctrl.pb.DataState.Event.configType:type_name -> ziti.edge_ctrl.pb.DataState.ConfigType
 	63,  // 64: ziti.edge_ctrl.pb.DataState.Event.config:type_name -> ziti.edge_ctrl.pb.DataState.Config
-	9,   // 65: ziti.edge_ctrl.pb.DataState.PublicKey.usages:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Usage
-	10,  // 66: ziti.edge_ctrl.pb.DataState.PublicKey.format:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Format
-	78,  // 67: ziti.edge_ctrl.pb.DataState.PostureCheck.mac:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
-	79,  // 68: ziti.edge_ctrl.pb.DataState.PostureCheck.mfa:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
-	81,  // 69: ziti.edge_ctrl.pb.DataState.PostureCheck.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
-	82,  // 70: ziti.edge_ctrl.pb.DataState.PostureCheck.process:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
-	83,  // 71: ziti.edge_ctrl.pb.DataState.PostureCheck.processMulti:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
-	84,  // 72: ziti.edge_ctrl.pb.DataState.PostureCheck.domains:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
-	6,   // 73: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	64,  // 74: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry.value:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs
-	80,  // 75: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Os
-	82,  // 76: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
-	6,   // 77: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	99,  // 78: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents.connectTimes:type_name -> ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
-	79,  // [79:79] is the sub-list for method output_type
-	79,  // [79:79] is the sub-list for method input_type
-	79,  // [79:79] is the sub-list for extension type_name
-	79,  // [79:79] is the sub-list for extension extendee
-	0,   // [0:79] is the sub-list for field type_name
+	67,  // 65: ziti.edge_ctrl.pb.DataState.Event.router:type_name -> ziti.edge_ctrl.pb.DataState.Router
+	9,   // 66: ziti.edge_ctrl.pb.DataState.PublicKey.usages:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Usage
+	10,  // 67: ziti.edge_ctrl.pb.DataState.PublicKey.format:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Format
+	79,  // 68: ziti.edge_ctrl.pb.DataState.PostureCheck.mac:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
+	80,  // 69: ziti.edge_ctrl.pb.DataState.PostureCheck.mfa:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
+	82,  // 70: ziti.edge_ctrl.pb.DataState.PostureCheck.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
+	83,  // 71: ziti.edge_ctrl.pb.DataState.PostureCheck.process:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
+	84,  // 72: ziti.edge_ctrl.pb.DataState.PostureCheck.processMulti:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
+	85,  // 73: ziti.edge_ctrl.pb.DataState.PostureCheck.domains:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
+	6,   // 74: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
+	64,  // 75: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry.value:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs
+	81,  // 76: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Os
+	83,  // 77: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
+	6,   // 78: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
+	100, // 79: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents.connectTimes:type_name -> ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
+	80,  // [80:80] is the sub-list for method output_type
+	80,  // [80:80] is the sub-list for method input_type
+	80,  // [80:80] is the sub-list for extension type_name
+	80,  // [80:80] is the sub-list for extension extendee
+	0,   // [0:80] is the sub-list for field type_name
 }
 
 func init() { file_edge_ctrl_proto_init() }
@@ -6185,7 +6286,7 @@ func file_edge_ctrl_proto_init() {
 	if File_edge_ctrl_proto != nil {
 		return
 	}
-	file_edge_ctrl_proto_msgTypes[60].OneofWrappers = []any{
+	file_edge_ctrl_proto_msgTypes[61].OneofWrappers = []any{
 		(*DataState_Event_Identity)(nil),
 		(*DataState_Event_Service)(nil),
 		(*DataState_Event_ServicePolicy)(nil),
@@ -6195,8 +6296,9 @@ func file_edge_ctrl_proto_init() {
 		(*DataState_Event_ServicePolicyChange)(nil),
 		(*DataState_Event_ConfigType)(nil),
 		(*DataState_Event_Config)(nil),
+		(*DataState_Event_Router)(nil),
 	}
-	file_edge_ctrl_proto_msgTypes[62].OneofWrappers = []any{
+	file_edge_ctrl_proto_msgTypes[63].OneofWrappers = []any{
 		(*DataState_PostureCheck_Mac_)(nil),
 		(*DataState_PostureCheck_Mfa_)(nil),
 		(*DataState_PostureCheck_OsList_)(nil),
@@ -6210,7 +6312,7 @@ func file_edge_ctrl_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_edge_ctrl_proto_rawDesc), len(file_edge_ctrl_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   92,
+			NumMessages:   93,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

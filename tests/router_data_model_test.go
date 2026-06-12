@@ -560,7 +560,7 @@ func Test_RouterDataModel_DataModelReplacement(t *testing.T) {
 
 	fmt.Println("replacing data model")
 	dataState := router.GetRouterDataModel().GetDataState()
-	updatedRouterDataModel := common.NewReceiverRouterDataModelFromDataState(dataState, router.GetCloseNotify())
+	updatedRouterDataModel := common.NewReceiverRouterDataModelFromDataState("", dataState, router.GetCloseNotify())
 	router.GetStateManager().SetRouterDataModel(updatedRouterDataModel, false)
 
 	// time.Sleep(2 * time.Minute)
