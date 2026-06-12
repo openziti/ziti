@@ -22,13 +22,13 @@ import (
 	"net/url"
 
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/x509-claims/x509claims"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -90,10 +90,8 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Ca, error) {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
 
-	if entity.ExternalIdClaim != nil {
-		if entity.ExternalIdClaim.Matcher == db.ExternalIdClaimMatcherScheme && entity.ExternalIdClaim.Location != db.ExternalIdClaimLocSanUri {
-			return nil, apierror.NewBadRequestFieldError(*errorz.NewFieldError("scheme matcher can only be used with URI locations", "matcher", entity.ExternalIdClaim.Matcher))
-		}
+	if err := validateExternalIdClaim(entity.ExternalIdClaim); err != nil {
+		return nil, err
 	}
 
 	var fp string
@@ -170,9 +168,18 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*db.Ca, error) {
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db.Ca, error) {
+func (entity *Ca) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*db.Ca, error) {
 	if entity.IdentityNameFormat == "" {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
+	}
+
+	claim, err := entity.effectiveExternalIdClaim(tx, env, checker)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateExternalIdClaim(claim); err != nil {
+		return nil, err
 	}
 
 	boltEntity := &db.Ca{
@@ -200,10 +207,118 @@ func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*db
 	return boltEntity, nil
 }
 
+// caExternalIdClaimFields are the persisted externalIdClaim subfields, used to detect which
+// subfields a partial update touches.
+var caExternalIdClaimFields = []string{
+	db.FieldCaExternalIdClaimLocation,
+	db.FieldCaExternalIdClaimMatcher,
+	db.FieldCaExternalIdClaimMatcherCriteria,
+	db.FieldCaExternalIdClaimParser,
+	db.FieldCaExternalIdClaimParserCriteria,
+	db.FieldCaExternalIdClaimIndex,
+}
+
+// effectiveExternalIdClaim returns the externalIdClaim to validate for an update so validation
+// matches what will be stored. A nil checker is a full replace, so the request claim stands as-is.
+// For a patch only the subfields named in the checker change: if none touch the claim it is left
+// unchanged (nil, validation skipped), otherwise the supplied subfields are overlaid onto the stored
+// claim and the merged result is validated. Subfield gating mirrors PersistEntity exactly.
+func (entity *Ca) effectiveExternalIdClaim(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*ExternalIdClaim, error) {
+	// No claim supplied: the update either clears the claim or leaves it untouched. Nothing to validate.
+	if entity.ExternalIdClaim == nil {
+		return nil, nil
+	}
+
+	// Full replace (nil checker): validate the supplied claim as-is.
+	if checker == nil {
+		return entity.ExternalIdClaim, nil
+	}
+
+	// Partial update: if no claim subfield is being set, the stored claim is unchanged (the empty {}
+	// object older CLIs send on every update). Skip validation rather than treating it as incomplete.
+	touched := false
+	for _, field := range caExternalIdClaimFields {
+		if checker.IsUpdated(field) {
+			touched = true
+			break
+		}
+	}
+	if !touched {
+		return nil, nil
+	}
+
+	// Overlay the supplied subfields onto the stored claim so the merged result is what gets validated.
+	merged := &ExternalIdClaim{}
+	if existing, err := env.GetStores().Ca.LoadById(tx, entity.Id); err != nil {
+		return nil, err
+	} else if existing != nil && existing.ExternalIdClaim != nil {
+		merged.Location = existing.ExternalIdClaim.Location
+		merged.Matcher = existing.ExternalIdClaim.Matcher
+		merged.MatcherCriteria = existing.ExternalIdClaim.MatcherCriteria
+		merged.Parser = existing.ExternalIdClaim.Parser
+		merged.ParserCriteria = existing.ExternalIdClaim.ParserCriteria
+		merged.Index = existing.ExternalIdClaim.Index
+	}
+
+	if checker.IsUpdated(db.FieldCaExternalIdClaimLocation) {
+		merged.Location = entity.ExternalIdClaim.Location
+	}
+	if checker.IsUpdated(db.FieldCaExternalIdClaimMatcher) {
+		merged.Matcher = entity.ExternalIdClaim.Matcher
+	}
+	if checker.IsUpdated(db.FieldCaExternalIdClaimMatcherCriteria) {
+		merged.MatcherCriteria = entity.ExternalIdClaim.MatcherCriteria
+	}
+	if checker.IsUpdated(db.FieldCaExternalIdClaimParser) {
+		merged.Parser = entity.ExternalIdClaim.Parser
+	}
+	if checker.IsUpdated(db.FieldCaExternalIdClaimParserCriteria) {
+		merged.ParserCriteria = entity.ExternalIdClaim.ParserCriteria
+	}
+	if checker.IsUpdated(db.FieldCaExternalIdClaimIndex) {
+		merged.Index = entity.ExternalIdClaim.Index
+	}
+
+	return merged, nil
+}
+
+// validateExternalIdClaim rejects unsupported or incomplete externalIdClaim configurations
+// with a bad request error so they cannot be stored and later fail enrollment/authentication.
+// It exercises the same location/matcher/parser rules used to extract the claim, so any
+// configuration that would error at extraction time is rejected up front at CA create/update.
+func validateExternalIdClaim(claim *ExternalIdClaim) error {
+	if claim == nil {
+		return nil
+	}
+
+	if claim.Index < 0 {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("index must be greater than or equal to zero", "externalIdClaim.index", claim.Index))
+	}
+
+	var err error
+	switch claim.Location {
+	case db.ExternalIdClaimLocCommonName, db.ExternalIdClaimLocSanEmail:
+		_, err = getStringDefinition(claim)
+	case db.ExternalIdClaimLocSanUri:
+		_, err = getUriDefinition(claim)
+	default:
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError(fmt.Sprintf("unsupported location [%s]", claim.Location), "externalIdClaim.location", claim.Location))
+	}
+
+	if err != nil {
+		value := fmt.Sprintf("location=%s matcher=%s parser=%s", claim.Location, claim.Matcher, claim.Parser)
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError(err.Error(), "externalIdClaim", value))
+	}
+
+	return nil
+}
+
 // GetExternalId will attempt to retrieve a string claim from a x509 Certificate based on
 // location, matching, and parsing of various x509 Certificate fields.
 func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
-	if entity.ExternalIdClaim == nil {
+	// A claim with no location is unconfigured (e.g. the empty bucket an older CLI's empty {} patch
+	// leaves behind). Treat it as no claim so enrollment falls back to a certificate fingerprint.
+	if entity.ExternalIdClaim == nil || entity.ExternalIdClaim.Location == "" {
 		return "", nil
 	}
 
@@ -214,38 +329,46 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 	switch entity.ExternalIdClaim.Location {
 	case db.ExternalIdClaimLocCommonName:
 		definition, err := getStringDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorCommonName{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorCommonName{}
 
 		provider.Definitions = append(provider.Definitions, definition)
 
 	case db.ExternalIdClaimLocSanUri:
 		definition, err := getUriDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorSanUri{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorSanUri{}
 
 		provider.Definitions = append(provider.Definitions, definition)
 	case db.ExternalIdClaimLocSanEmail:
 		definition, err := getStringDefinition(entity.ExternalIdClaim)
-		definition.Locator = &x509claims.LocatorSanEmail{}
 		if err != nil {
 			return "", err
 		}
+		definition.Locator = &x509claims.LocatorSanEmail{}
 
 		provider.Definitions = append(provider.Definitions, definition)
+	default:
+		return "", fmt.Errorf("unsupported location [%s]", entity.ExternalIdClaim.Location)
 	}
 
 	claims := provider.Claims(cert)
 
-	if int64(len(claims)) > entity.ExternalIdClaim.Index {
-		return claims[entity.ExternalIdClaim.Index], nil
+	if entity.ExternalIdClaim.Index < 0 || entity.ExternalIdClaim.Index >= int64(len(claims)) {
+		return "", errors.New("no claim found")
 	}
 
-	return "", errors.New("no claim found")
+	externalId := claims[entity.ExternalIdClaim.Index]
+
+	if externalId == "" {
+		return "", errors.New("claim resolved to an empty value")
+	}
+
+	return externalId, nil
 }
 
 // getUriDefinition returns an x509Claims.DefinitionLMP that will locate, match, and parse url.URL properties.
