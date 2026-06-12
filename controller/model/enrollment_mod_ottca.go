@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -161,7 +162,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 	return &EnrollmentResult{
 		Identity:      identity,
 		Authenticator: newAuthenticator,
-		Content:       map[string]interface{}{},
+		Content:       &rest_model.EnrollmentResponse{},
 		TextContent:   []byte(""),
 		Status:        200,
 	}, nil

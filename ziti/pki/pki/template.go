@@ -43,7 +43,9 @@ func defaultTemplate(genReq *Request, publicKey crypto.PublicKey) error {
 	}
 	genReq.Template.SerialNumber = sn
 
-	genReq.Template.NotBefore = time.Now().Add(-time.Minute)
+	if genReq.Template.NotBefore.IsZero() {
+		genReq.Template.NotBefore = time.Now().Add(-time.Minute)
+	}
 	return nil
 }
 

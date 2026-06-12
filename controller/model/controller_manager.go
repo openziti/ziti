@@ -23,7 +23,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -31,6 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -80,7 +80,9 @@ func (self *ControllerManager) Read(id string) (*Controller, error) {
 
 // ReadAll returns all controllers from the database. If no controllers exist (single-controller
 // non-HA mode), it returns a synthetic controller representing the running instance so that
-// token verification via kid lookup works without special-case fallback paths.
+// token verification via kid lookup works without special-case fallback paths. This runs during
+// startup (token issuer cache load), so it must stay startup-safe; for the client-facing list with
+// API addresses, use ReadAllForClient at request time.
 func (self *ControllerManager) ReadAll() ([]*Controller, error) {
 	result, err := self.BaseList("true limit none")
 	if err != nil {
@@ -101,9 +103,12 @@ func (self *ControllerManager) ReadAll() ([]*Controller, error) {
 	return []*Controller{selfController}, nil
 }
 
-// buildSelfController constructs a Controller model representing the running instance by
-// reading the root TLS JWT signer certificate. It is only called in single-controller
-// (non-HA) deployments where no controller records exist in the database.
+// buildSelfController constructs a minimal Controller model representing the running instance from
+// the root TLS JWT signer certificate. It is only called in single-controller (non-HA) deployments
+// where no controller records exist in the database. It must stay free of dependencies that are not
+// ready during controller startup: the token issuer cache calls ReadAll while loading, before xweb
+// is initialized, so this must NOT read API addresses (see ReadAllForClient for the request-time,
+// address-populated variant).
 func (self *ControllerManager) buildSelfController() (*Controller, error) {
 	signer := self.env.GetRootTlsJwtSigner()
 	if signer == nil || signer.TlsCerts == nil || len(signer.TlsCerts.Certificate) == 0 {
@@ -124,6 +129,43 @@ func (self *ControllerManager) buildSelfController() (*Controller, error) {
 		Fingerprint: nfpem.FingerprintFromCertificate(cert),
 		IsOnline:    true,
 	}, nil
+}
+
+// ReadAllForClient returns the controllers to advertise to clients, e.g. in enrollment responses.
+// It behaves like ReadAll, but in single-controller (non-HA) mode the synthetic self additionally
+// carries the running controller's real id and its API addresses from the live xweb configuration,
+// so the enrolling client receives connectable endpoints (matching what an HA controller would have
+// stored for itself). It MUST be called only at request time: it reads GetApiAddresses, which blocks
+// until xweb is initialized and would deadlock if called during controller startup.
+func (self *ControllerManager) ReadAllForClient() ([]*Controller, error) {
+	result, err := self.BaseList("true limit none")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Entities) > 0 {
+		return result.Entities, nil
+	}
+
+	selfController, err := self.buildSelfController()
+	if err != nil {
+		return nil, fmt.Errorf("no controllers in database and could not build self controller: %w", err)
+	}
+
+	selfController.Id = self.env.GetId()
+
+	selfController.ApiAddresses = map[string][]ApiAddress{}
+	envApiAddresses, _ := self.env.GetApiAddresses()
+	for apiKey, instances := range envApiAddresses {
+		for _, instance := range instances {
+			selfController.ApiAddresses[apiKey] = append(selfController.ApiAddresses[apiKey], ApiAddress{
+				Url:     instance.Url,
+				Version: instance.Version,
+			})
+		}
+	}
+
+	return []*Controller{selfController}, nil
 }
 
 func (self *ControllerManager) ReadByName(name string) (*Controller, error) {
@@ -411,15 +453,15 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 		ApiAddresses:      apiAddressesFromPeer(peer),
 	}
 	disconnectFields := fields.UpdatedFieldsMap{
-		db.FieldControllerIsOnline:           struct{}{},
-		db.FieldControllerCertPem:            struct{}{},
-		db.FieldControllerFingerprint:        struct{}{},
-		db.FieldControllerCtrlAddress:        struct{}{},
-		db.FieldControllerApiAddresses:       struct{}{},
-		db.FieldControllerApiAddressUrl:      struct{}{},
-		db.FieldControllerApiAddressVersion:  struct{}{},
-		db.FieldControllerIsPreferredLeader:  struct{}{},
-		db.FieldName:                         struct{}{},
+		db.FieldControllerIsOnline:          struct{}{},
+		db.FieldControllerCertPem:           struct{}{},
+		db.FieldControllerFingerprint:       struct{}{},
+		db.FieldControllerCtrlAddress:       struct{}{},
+		db.FieldControllerApiAddresses:      struct{}{},
+		db.FieldControllerApiAddressUrl:     struct{}{},
+		db.FieldControllerApiAddressVersion: struct{}{},
+		db.FieldControllerIsPreferredLeader: struct{}{},
+		db.FieldName:                        struct{}{},
 	}
 
 	changeCtx := change.New()

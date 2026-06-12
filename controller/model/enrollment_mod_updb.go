@@ -21,6 +21,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
@@ -110,8 +111,8 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	return &EnrollmentResult{
 		Identity:      identity,
 		Authenticator: newAuthenticator,
-		Content: map[string]interface{}{
-			"username": *enrollment.Username,
+		Content: &rest_model.EnrollmentResponseUpdb{
+			Username: *enrollment.Username,
 		},
 		Status: 200,
 	}, nil

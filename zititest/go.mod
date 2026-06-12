@@ -19,7 +19,7 @@ require (
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
 	github.com/openziti/channel/v4 v4.3.11
-	github.com/openziti/edge-api v0.31.1
+	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/fablab v0.6.16
 	github.com/openziti/foundation/v2 v2.0.95
 	github.com/openziti/identity v1.0.133
