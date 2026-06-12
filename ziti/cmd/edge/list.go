@@ -1296,6 +1296,21 @@ func outputPostureChecks(options *api.Options, children []*gabs.Container, pagin
 				for _, os := range osDetails.OperatingSystems {
 					osType := string(*os.Type)
 
+					if len(os.Versions) == 0 {
+						// an OS with no version constraint still needs a row, otherwise the whole
+						// check renders nothing and looks like it is missing from the list.
+						outTable.AppendRow(table.Row{
+							id,
+							name,
+							typeStr,
+							roleAttributes,
+							osType,
+							"",
+							"",
+						}, rowConfigAutoMerge)
+						continue
+					}
+
 					for _, version := range os.Versions {
 						outTable.AppendRow(table.Row{
 							id,
