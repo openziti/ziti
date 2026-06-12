@@ -411,9 +411,10 @@ type DataStateConfigType = edge_ctrl_pb.DataState_ConfigType
 // ConfigType represents a configuration type that defines the schema or category for configuration data.
 // Config instances reference a ConfigType to indicate what kind of configuration they contain.
 type ConfigType struct {
-	Id    string
-	Name  string
-	index uint64
+	Id     string
+	Name   string
+	Target string
+	index  uint64
 }
 
 func (self *ConfigType) GetId() string {
@@ -422,13 +423,14 @@ func (self *ConfigType) GetId() string {
 
 func (self *ConfigType) ToProtobuf() *edge_ctrl_pb.DataState_ConfigType {
 	return &edge_ctrl_pb.DataState_ConfigType{
-		Id:   self.Id,
-		Name: self.Name,
+		Id:     self.Id,
+		Name:   self.Name,
+		Target: self.Target,
 	}
 }
 
 func (self *ConfigType) Equals(other *ConfigType) bool {
-	return self.Name == other.Name
+	return self.Name == other.Name && self.Target == other.Target
 }
 
 type DataStateConfig = edge_ctrl_pb.DataState_Config
@@ -574,6 +576,7 @@ type RouterDataModel struct {
 	Configs          cmap.ConcurrentMap[string, *Config]                            `json:"configs"`
 	Identities       cmap.ConcurrentMap[string, *Identity]                          `json:"identities"`
 	Services         cmap.ConcurrentMap[string, *Service]                           `json:"services"`
+	Routers          cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_Router]     `json:"routers"`
 	ServicePolicies  cmap.ConcurrentMap[string, *ServicePolicy]                     `json:"servicePolicies"`
 	PostureChecks    cmap.ConcurrentMap[string, *PostureCheck]                      `json:"postureChecks"`
 	PublicKeys       cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]  `json:"publicKeys"`
@@ -599,34 +602,53 @@ type RouterDataModel struct {
 	// underlying datastore
 	timelineId string
 
+	// selfRouterId, when non-empty, is the ID of the local router. Used by
+	// HandleRouterEvent on the receiver side to GC router-target Config orphans
+	// when the local Router entity's Configs list shrinks. Set at construction
+	// time. Empty for non-receiver views (controller-side, validate parsing).
+	selfRouterId string
+
 	lock  sync.Mutex
 	index uint64
 }
 
-// NewBareRouterDataModel creates a new RouterDataModel that is expected to have no buffers, listeners or subscriptions
-func NewBareRouterDataModel() *RouterDataModel {
+// SelfRouterId returns the locally-set router ID, or "" if not set (e.g. on the
+// controller-side RDM).
+func (rdm *RouterDataModel) SelfRouterId() string {
+	return rdm.selfRouterId
+}
+
+// NewBareRouterDataModel creates a new RouterDataModel with no buffers, listeners or subscriptions.
+// Pass the local router ID to enable receiver-side GC of router-target Config orphans on
+// self-Router updates; pass "" for non-receiver views (controller-side construction or
+// validate-snapshot parsing where the local "self" is irrelevant).
+func NewBareRouterDataModel(routerId string) *RouterDataModel {
 	return &RouterDataModel{
 		ConfigTypes:       cmap.New[*ConfigType](),
 		Configs:           cmap.New[*Config](),
 		Identities:        cmap.New[*Identity](),
 		Services:          cmap.New[*Service](),
+		Routers:           cmap.New[*edge_ctrl_pb.DataState_Router](),
 		ServicePolicies:   cmap.New[*ServicePolicy](),
 		PostureChecks:     cmap.New[*PostureCheck](),
 		PublicKeys:        cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
 		Revocations:       cmap.New[*edge_ctrl_pb.DataState_Revocation](),
 		terminatorIdCache: cmap.New[string](),
 		subscriptions:     cmap.New[*IdentitySubscription](),
+		selfRouterId:      routerId,
 	}
 }
 
 // NewReceiverRouterDataModel creates a new RouterDataModel that does not store events. listenerBufferSize affects the
-// buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModel(closeNotify <-chan struct{}) *RouterDataModel {
+// buffer size of channels returned to listeners of the data model. routerId is the local router's ID and enables
+// receiver-side GC of router-target Config orphans on self-Router updates.
+func NewReceiverRouterDataModel(routerId string, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
 		ConfigTypes:              cmap.New[*ConfigType](),
 		Configs:                  cmap.New[*Config](),
 		Identities:               cmap.New[*Identity](),
 		Services:                 cmap.New[*Service](),
+		Routers:                  cmap.New[*edge_ctrl_pb.DataState_Router](),
 		ServicePolicies:          cmap.New[*ServicePolicy](),
 		PostureChecks:            cmap.New[*PostureCheck](),
 		PublicKeys:               cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
@@ -639,19 +661,21 @@ func NewReceiverRouterDataModel(closeNotify <-chan struct{}) *RouterDataModel {
 		closeNotify:              closeNotify,
 		stopNotify:               make(chan struct{}),
 		terminatorIdCache:        cmap.New[string](),
+		selfRouterId:             routerId,
 	}
 	go result.processSubscriberEvents()
 	return result
 }
 
 // NewReceiverRouterDataModelFromDataState creates a new RouterDataModel that does not store events. listenerBufferSize affects the
-// buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, closeNotify <-chan struct{}) *RouterDataModel {
+// buffer size of channels returned to listeners of the data model. routerId is the local router's ID.
+func NewReceiverRouterDataModelFromDataState(routerId string, dataState *edge_ctrl_pb.DataState, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
 		ConfigTypes:              cmap.New[*ConfigType](),
 		Configs:                  cmap.New[*Config](),
 		Identities:               cmap.New[*Identity](),
 		Services:                 cmap.New[*Service](),
+		Routers:                  cmap.New[*edge_ctrl_pb.DataState_Router](),
 		ServicePolicies:          cmap.New[*ServicePolicy](),
 		PostureChecks:            cmap.New[*PostureCheck](),
 		PublicKeys:               cmap.New[*edge_ctrl_pb.DataState_PublicKey](),
@@ -665,6 +689,7 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 		stopNotify:               make(chan struct{}),
 		timelineId:               dataState.TimelineId,
 		terminatorIdCache:        cmap.New[string](),
+		selfRouterId:             routerId,
 	}
 
 	if tIdCache, ok := dataState.Caches[edge_ctrl_pb.CacheType_TerminatorIds.String()]; ok && tIdCache != nil && tIdCache.Data != nil {
@@ -686,13 +711,14 @@ func NewReceiverRouterDataModelFromDataState(dataState *edge_ctrl_pb.DataState, 
 }
 
 // NewReceiverRouterDataModelFromExisting creates a new RouterDataModel that does not store events. listenerBufferSize affects the
-// buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, closeNotify <-chan struct{}) *RouterDataModel {
+// buffer size of channels returned to listeners of the data model. routerId is the local router's ID.
+func NewReceiverRouterDataModelFromExisting(routerId string, existing *RouterDataModel, closeNotify <-chan struct{}) *RouterDataModel {
 	result := &RouterDataModel{
 		ConfigTypes:              existing.ConfigTypes,
 		Configs:                  existing.Configs,
 		Identities:               existing.Identities,
 		Services:                 existing.Services,
+		Routers:                  existing.Routers,
 		ServicePolicies:          existing.ServicePolicies,
 		PostureChecks:            existing.PostureChecks,
 		PublicKeys:               existing.PublicKeys,
@@ -707,6 +733,7 @@ func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, closeNoti
 		stopNotify:               make(chan struct{}),
 		timelineId:               existing.timelineId,
 		terminatorIdCache:        existing.terminatorIdCache,
+		selfRouterId:             routerId,
 	}
 	currentIndex := existing.CurrentIndex()
 	result.SetCurrentIndex(currentIndex)
@@ -716,7 +743,8 @@ func NewReceiverRouterDataModelFromExisting(existing *RouterDataModel, closeNoti
 
 // NewReceiverRouterDataModelFromFile creates a new RouterDataModel that does not store events and is initialized from
 // a file backup. listenerBufferSize affects the buffer size of channels returned to listeners of the data model.
-func NewReceiverRouterDataModelFromFile(path string, closeNotify <-chan struct{}) (*RouterDataModel, error) {
+// routerId is the local router's ID.
+func NewReceiverRouterDataModelFromFile(routerId string, path string, closeNotify <-chan struct{}) (*RouterDataModel, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -739,7 +767,7 @@ func NewReceiverRouterDataModelFromFile(path string, closeNotify <-chan struct{}
 		return nil, err
 	}
 
-	rdm := NewReceiverRouterDataModelFromDataState(state, closeNotify)
+	rdm := NewReceiverRouterDataModelFromDataState(routerId, state, closeNotify)
 	rdm.lastSaveIndex = &state.EndIndex
 
 	return rdm, nil
@@ -860,24 +888,29 @@ func (rdm *RouterDataModel) Store(event *edge_ctrl_pb.DataState_ChangeSet, onSuc
 		return nil
 	}
 
-	if rdm.index > 0 && rdm.index >= event.Index {
-		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", rdm.index, event.Index, rdm)
+	// All accesses to rdm.index go through atomic ops so that lock-free readers
+	// (CurrentIndex) observe the value written here. The lock still serializes
+	// the read-modify-write so two writers can't both pass the gap check.
+	currentIndex := atomic.LoadUint64(&rdm.index)
+
+	if currentIndex > 0 && currentIndex >= event.Index {
+		return fmt.Errorf("out of order event detected, currentIndex: %d, receivedIndex: %d, type :%T", currentIndex, event.Index, rdm)
 	}
 
 	// Gap detection via previousIndex chain.
 	// PreviousIndex == 0 means: backwards-compatible controller (didn't set it), or first event ever.
-	if event.PreviousIndex > 0 && rdm.index > 0 && event.PreviousIndex != rdm.index {
+	if event.PreviousIndex > 0 && currentIndex > 0 && event.PreviousIndex != currentIndex {
 		return &GapDetectedError{
-			CurrentIndex:  rdm.index,
+			CurrentIndex:  currentIndex,
 			PreviousIndex: event.PreviousIndex,
 			ReceivedIndex: event.Index,
 		}
 	}
 
-	rdm.index = event.Index
+	atomic.StoreUint64(&rdm.index, event.Index)
 
 	if onSuccess != nil {
-		onSuccess(rdm.index, event)
+		onSuccess(event.Index, event)
 	}
 
 	return nil
@@ -903,6 +936,55 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 		rdm.HandleRevocationEvent(event, typedModel)
 	case *edge_ctrl_pb.DataState_Event_ServicePolicyChange:
 		rdm.HandleServicePolicyChange(index, typedModel.ServicePolicyChange)
+	case *edge_ctrl_pb.DataState_Event_Router:
+		rdm.HandleRouterEvent(event, typedModel)
+	}
+}
+
+// HandleRouterEvent applies a Router create/update/delete delta to the RDM cache.
+// On the receiver side, when the event is for the local router (selfRouterId)
+// and the action is not Delete, also GC any router-target configs in
+// rdm.Configs whose IDs are no longer referenced by the new Router.Configs
+// list. This keeps the receiver's Configs map aligned with the assignment
+// without requiring the controller to send synthetic remove events.
+//
+// Why diff against the previously-cached Router rather than scanning Configs:
+// the sender (see RouterDataModelSender.FilterEventsForRouter) emits a
+// synthetic Config event for every entry in the new Router.Configs list
+// immediately before the Router event itself. So when this handler runs the
+// configs the new list references are already in rdm.Configs — the only
+// thing to GC is whatever was in the *previous* Configs list but isn't in
+// the new one. That set is the diff against the previously-cached Router,
+// no full Configs walk needed. Every entry in prev.Configs is by definition
+// a router-target config (the controller enforces target=router on Router.
+// Configs), so we don't have to re-check the ConfigType either.
+func (rdm *RouterDataModel) HandleRouterEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Router) {
+	if event.Action == edge_ctrl_pb.DataState_Delete {
+		rdm.Routers.Remove(model.Router.Id)
+		return
+	}
+
+	prev, _ := rdm.Routers.Get(model.Router.Id)
+	rdm.Routers.Set(model.Router.Id, model.Router)
+
+	selfId := rdm.SelfRouterId()
+	if selfId == "" || model.Router.Id != selfId || prev == nil {
+		return
+	}
+
+	keep := make(map[string]struct{}, len(model.Router.Configs))
+	for _, id := range model.Router.Configs {
+		keep[id] = struct{}{}
+	}
+
+	for _, oldId := range prev.Configs {
+		if _, retained := keep[oldId]; retained {
+			continue
+		}
+		if !rdm.Configs.Has(oldId) {
+			continue
+		}
+		rdm.Configs.Remove(oldId)
 	}
 }
 
@@ -1185,9 +1267,10 @@ func (rdm *RouterDataModel) HandleConfigTypeEvent(index uint64, event *edge_ctrl
 		rdm.ConfigTypes.Remove(model.ConfigType.Id)
 	} else {
 		rdm.ConfigTypes.Set(model.ConfigType.Id, &ConfigType{
-			Id:    model.ConfigType.Id,
-			Name:  model.ConfigType.Name,
-			index: index,
+			Id:     model.ConfigType.Id,
+			Name:   model.ConfigType.Name,
+			Target: model.ConfigType.Target,
+			index:  index,
 		})
 
 		rdm.Configs.IterCb(func(configId string, config *Config) {
@@ -1650,6 +1733,16 @@ func (rdm *RouterDataModel) getDataStateAlreadyLocked(index uint64) *edge_ctrl_p
 			Action: edge_ctrl_pb.DataState_Create,
 			Model: &edge_ctrl_pb.DataState_Event_Service{
 				Service: v.ToProtobuf(),
+			},
+		}
+		events = append(events, newEvent)
+	})
+
+	rdm.Routers.IterCb(func(key string, v *edge_ctrl_pb.DataState_Router) {
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model: &edge_ctrl_pb.DataState_Event_Router{
+				Router: v,
 			},
 		}
 		events = append(events, newEvent)
@@ -2168,6 +2261,7 @@ func (rdm *RouterDataModel) GetEntityCounts() map[string]uint32 {
 		"configs":            uint32(rdm.Configs.Count()),
 		"identities":         uint32(rdm.Identities.Count()),
 		"Services":           uint32(rdm.Services.Count()),
+		"routers":            uint32(rdm.Routers.Count()),
 		"service-policies":   uint32(rdm.ServicePolicies.Count()),
 		"posture-checks":     uint32(rdm.PostureChecks.Count()),
 		"public-keys":        uint32(rdm.PublicKeys.Count()),
@@ -2301,7 +2395,7 @@ func (rdm *RouterDataModel) NotifyServiceOfConfigChange(serviceId string, index 
 	})
 }
 
-func (rdm *RouterDataModel) NotifyIdentityChange(identityId string, index uint64) {
+func (rdm *RouterDataModel) NotifyIdentityChange(identityId string, _ uint64) {
 	rdm.withIdentity(identityId, func(identity *Identity) {
 		identity.NotifyServiceChange(rdm)
 	})
@@ -2422,6 +2516,7 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 	diffType("config", rdm.Configs, o.Configs, sink, Config{}, DataStateConfig{})
 	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{}, serviceAccess{})
 	diffType("service", rdm.Services, o.Services, sink, Service{}, DataStateService{})
+	diffType("router", rdm.Routers, o.Routers, sink, edge_ctrl_pb.DataState_Router{})
 	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink, ServicePolicy{}, DataStateServicePolicy{})
 	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink,
 		PostureCheck{}, DataStatePostureCheck{},
@@ -2640,6 +2735,19 @@ func (rdm *RouterDataModel) ToMap() map[string]interface{} {
 		}
 	})
 	result["services"] = services
+
+	// Export routers
+	routers := make(map[string]interface{})
+	rdm.Routers.IterCb(func(key string, v *edge_ctrl_pb.DataState_Router) {
+		routers[key] = map[string]interface{}{
+			"id":          v.Id,
+			"name":        v.Name,
+			"fingerprint": v.Fingerprint,
+			"configs":     v.Configs,
+			"disabled":    v.Disabled,
+		}
+	})
+	result["routers"] = routers
 
 	// Export service policies
 	servicePolicies := make(map[string]interface{})

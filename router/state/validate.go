@@ -37,7 +37,10 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 	}
 
 	newState := request.State
-	model := common.NewBareRouterDataModel()
+	// The "model" here represents the controller's expected state (decoded from
+	// the validate request), not the local receiver's state. selfRouterId is
+	// irrelevant for this view.
+	model := common.NewBareRouterDataModel("")
 	model.WhileLocked(func(u uint64) {
 		for _, event := range newState.Events {
 			model.Handle(newState.EndIndex, event)
@@ -65,7 +68,11 @@ func (self *ValidateDataStateRequestHandler) HandleReceive(msg *channel.Message,
 	current.Validate(model, reportedF)
 
 	if len(response.Diffs) > 0 && request.Fix {
-		model = common.NewReceiverRouterDataModelFromExisting(model, self.state.GetEnv().GetCloseNotify())
+		routerId := ""
+		if id := self.env.GetRouterId(); id != nil {
+			routerId = id.Token
+		}
+		model = common.NewReceiverRouterDataModelFromExisting(routerId, model, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, true)
 	}
 

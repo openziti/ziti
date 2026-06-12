@@ -231,8 +231,27 @@ func (rtx *RouterSender) handleModelChange() {
 		}
 
 		for _, curEvent := range events {
+			// Always forward the change set, even when the filter removes every
+			// entry. Sending an empty change set advances the receiver's index
+			// without altering any entities, which keeps the PreviousIndex chain
+			// intact without per-router bookkeeping. The alternative (skipping
+			// filter-empty change sets and rewriting PreviousIndex on the next
+			// non-empty one) is racy under subscription churn and produced gap
+			// detection storms.
+			toSend := curEvent
+			filtered, changed := rtx.filterEventsForRouter(curEvent.Changes, true)
+			if changed {
+				toSend = &edge_ctrl_pb.DataState_ChangeSet{
+					Index:         curEvent.Index,
+					PreviousIndex: curEvent.PreviousIndex,
+					IsSynthetic:   curEvent.IsSynthetic,
+					TimestampId:   curEvent.TimestampId,
+					Changes:       filtered,
+				}
+			}
+
 			var msg *channel.Message
-			if msg, err = rtx.marshal(curEvent); err == nil {
+			if msg, err = rtx.marshal(toSend); err == nil {
 				err = rtx.Router.Control.GetDefaultSender().Send(msg)
 			}
 
@@ -267,8 +286,8 @@ func (rtx *RouterSender) handleModelChange() {
 	}
 
 	if fullSync {
-		//full sync
-		dataState := rtx.routerDataModel.GetDataState()
+		//full sync — already filtered per-router (router-target configs only)
+		dataState := rtx.routerDataModel.GetDataStateForRouter(rtx.Router.Id)
 
 		if dataState == nil {
 			return
@@ -287,6 +306,12 @@ func (rtx *RouterSender) handleModelChange() {
 			logger.Infof("router synced data model to index %d with on timeline: %s", rtx.currentIndex, rtx.timelineId)
 		}
 	}
+}
+
+// filterEventsForRouter delegates to the shared RouterDataModelSender filter.
+// See RouterDataModelSender.FilterEventsForRouter for behavior.
+func (rtx *RouterSender) filterEventsForRouter(events []*edge_ctrl_pb.DataState_Event, synthesizeMissing bool) ([]*edge_ctrl_pb.DataState_Event, bool) {
+	return rtx.routerDataModel.FilterEventsForRouter(rtx.Router.Id, events, synthesizeMissing)
 }
 
 func (rtx *RouterSender) marshal(message protobufs.TypedMessage) (*channel.Message, error) {

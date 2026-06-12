@@ -566,6 +566,18 @@ func DeleteEdgeRouter(clients *zitirest.Clients, id string, timeout time.Duratio
 	return err
 }
 
+// PatchEdgeRouter applies a partial update to an edge router.
+func PatchEdgeRouter(clients *zitirest.Clients, id string, entity *rest_model.EdgeRouterPatch, timeout time.Duration) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
+	defer cancelF()
+	_, err := clients.Edge.EdgeRouter.PatchEdgeRouter(&edge_router.PatchEdgeRouterParams{
+		Context:    ctx,
+		ID:         id,
+		EdgeRouter: entity,
+	}, nil)
+	return err
+}
+
 func ListEdgeRouters(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.EdgeRouterDetail, error) {
 	ctx, cancelF := context.WithTimeout(context.Background(), timeout)
 	defer cancelF()

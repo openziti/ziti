@@ -35,8 +35,6 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/build"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -45,6 +43,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -213,6 +213,18 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		deleteHandler: strategy.ServiceDelete,
 	}
 	strategy.ae.GetStores().EdgeService.AddEntityConstraint(serviceHandler)
+
+	// router create/delete/update. Subscribed on the base Router store so we catch
+	// changes regardless of whether the operator went through the edge-router,
+	// transit-router, or fabric-router API surface; child stores delegate persistence
+	// to the parent store and trigger its constraints.
+	routerHandler := &constraintToIndexedEvents[*db.Router]{
+		indexProvider: strategy.indexProvider,
+		createHandler: strategy.RouterCreate,
+		updateHandler: strategy.RouterUpdate,
+		deleteHandler: strategy.RouterDelete,
+	}
+	strategy.ae.GetStores().Router.AddEntityConstraint(routerHandler)
 
 	//ca create/delete/update
 	caHandler := &constraintToIndexedEvents[*db.Ca]{
@@ -1002,6 +1014,10 @@ func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModelSender) err
 			return err
 		}
 
+		if err := strategy.BuildRouters(index, tx, rdm); err != nil {
+			return err
+		}
+
 		if err := strategy.BuildServicePolicies(tx, rdm); err != nil {
 			return err
 		}
@@ -1097,6 +1113,22 @@ func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.Rout
 		result = diffVals("service", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("service", t.Id, "encryption required", t.EncryptionRequired, v.EncryptionRequired, result)
 		result = diffJson("service", t.Id, "configs", t.Configs, v.Configs, result)
+		return result
+	})
+}
+
+// ValidateRouters compares the controller's Router store against the routers cached in the RDM.
+func (strategy *InstantStrategy) ValidateRouters(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Router, rdm.Routers, func(t *db.Router, v *edge_ctrl_pb.DataState_Router) []error {
+		var result []error
+		result = diffVals("router", t.Id, "name", t.Name, v.Name, result)
+		fingerprint := ""
+		if t.Fingerprint != nil {
+			fingerprint = *t.Fingerprint
+		}
+		result = diffVals("router", t.Id, "fingerprint", fingerprint, v.Fingerprint, result)
+		result = diffVals("router", t.Id, "disabled", t.Disabled, v.Disabled, result)
+		result = diffJson("router", t.Id, "configs", t.Configs, v.Configs, result)
 		return result
 	})
 }
@@ -1260,7 +1292,7 @@ func diffSets(entityType, id, field string, a, b map[string]struct{}, result []e
 	return result
 }
 
-func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store db.Store[T], m cmap.ConcurrentMap[string, V], checkF func(T, V) []error) []error {
+func ValidateType[T boltz.ExtEntity, V any](tx *bbolt.Tx, store boltz.EntityStore[T], m cmap.ConcurrentMap[string, V], checkF func(T, V) []error) []error {
 	var result []error
 	entities := common.CloneMap(m)
 	for cursor := store.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
@@ -1328,6 +1360,27 @@ func (strategy *InstantStrategy) BuildIdentities(index uint64, tx *bbolt.Tx, rdm
 		rdm.HandleIdentityEvent(newEvent, newModel)
 	}
 
+	return nil
+}
+
+// BuildRouters loads every router from the DB and dispatches a Create event for each into the RDM.
+// Called during initial RDM population on controller startup.
+func (strategy *InstantStrategy) BuildRouters(index uint64, tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
+	for cursor := strategy.ae.GetStores().Router.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		currentId := string(cursor.Current())
+
+		router, err := newRouterById(tx, strategy.ae, currentId)
+		if err != nil {
+			return err
+		}
+
+		newModel := &edge_ctrl_pb.DataState_Event_Router{Router: router}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  newModel,
+		}
+		rdm.HandleRouterEvent(newEvent, newModel)
+	}
 	return nil
 }
 
@@ -1406,6 +1459,10 @@ func (strategy *InstantStrategy) ValidateAll(rdm *common.RouterDataModelSender) 
 		}
 
 		if errs := strategy.ValidateServicePolicies(tx, rdm); len(errs) != 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateRouters(tx, rdm); len(errs) != 0 {
 			result = append(result, errs...)
 		}
 
@@ -1550,6 +1607,30 @@ func newService(storeModel *db.EdgeService) *edge_ctrl_pb.DataState_Service {
 		Name:               storeModel.Name,
 		EncryptionRequired: storeModel.EncryptionRequired,
 		Configs:            storeModel.Configs,
+	}
+}
+
+func newRouterById(tx *bbolt.Tx, ae *env.AppEnv, id string) (*edge_ctrl_pb.DataState_Router, error) {
+	storeModel, err := ae.GetStores().Router.LoadById(tx, id)
+	if err != nil {
+		return nil, err
+	}
+	return newRouter(storeModel), nil
+}
+
+// newRouter projects a db.Router into the protobuf DataState_Router shape that flows through the RDM.
+// Fingerprint is flattened from *string to "" for un-enrolled routers.
+func newRouter(r *db.Router) *edge_ctrl_pb.DataState_Router {
+	fingerprint := ""
+	if r.Fingerprint != nil {
+		fingerprint = *r.Fingerprint
+	}
+	return &edge_ctrl_pb.DataState_Router{
+		Id:          r.Id,
+		Name:        r.Name,
+		Fingerprint: fingerprint,
+		Configs:     r.Configs,
+		Disabled:    r.Disabled,
 	}
 }
 
@@ -1732,6 +1813,21 @@ func (strategy *InstantStrategy) ServiceDelete(index uint64, service *db.EdgeSer
 	strategy.handleService(index, edge_ctrl_pb.DataState_Delete, service)
 }
 
+// RouterCreate emits a Create router event into the RDM change set.
+func (strategy *InstantStrategy) RouterCreate(index uint64, router *db.Router) {
+	strategy.handleRouter(index, edge_ctrl_pb.DataState_Create, router)
+}
+
+// RouterUpdate emits an Update router event into the RDM change set.
+func (strategy *InstantStrategy) RouterUpdate(index uint64, router *db.Router) {
+	strategy.handleRouter(index, edge_ctrl_pb.DataState_Update, router)
+}
+
+// RouterDelete emits a Delete router event into the RDM change set.
+func (strategy *InstantStrategy) RouterDelete(index uint64, router *db.Router) {
+	strategy.handleRouter(index, edge_ctrl_pb.DataState_Delete, router)
+}
+
 func (strategy *InstantStrategy) handleConfigType(index uint64, action edge_ctrl_pb.DataState_Action, entity *db.ConfigType) {
 	configType := newConfigType(entity)
 
@@ -1755,6 +1851,15 @@ func (strategy *InstantStrategy) handleConfig(index uint64, action edge_ctrl_pb.
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_Config{
 			Config: config,
+		},
+	})
+}
+
+func (strategy *InstantStrategy) handleRouter(index uint64, action edge_ctrl_pb.DataState_Action, router *db.Router) {
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Router{
+			Router: newRouter(router),
 		},
 	})
 }

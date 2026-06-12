@@ -132,13 +132,13 @@ func (handler *validateRouterDataModelHandler) ValidateRouterDataModel(req *mgmt
 			}()
 		}
 
-		var dataState *edge_ctrl_pb.DataState
 		for _, router := range result.Entities {
 			connectedRouter := handler.appEnv.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
 			if connectedRouter != nil {
-				if dataState == nil {
-					dataState = handler.appEnv.Broker.GetRouterDataModel().GetDataState()
-				}
+				// Each router gets a per-router-filtered snapshot: router-target
+				// configs not associated with this router are excluded, matching
+				// what the rtx filter delivers in normal operation.
+				dataState := handler.appEnv.Broker.GetRouterDataModel().GetDataStateForRouter(router.Id)
 				sem.Acquire()
 				go func() {
 					defer sem.Release()
