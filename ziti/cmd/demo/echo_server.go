@@ -28,12 +28,12 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -295,26 +295,8 @@ func (self *echoServer) echo(connType string, conn io.ReadWriteCloser) {
 }
 
 func (self *echoServer) HandleCustomAgentAsyncOp(conn net.Conn) error {
-	logrus.Debug("received agent operation request")
-
-	appIdBuf := []byte{0}
-	_, err := io.ReadFull(conn, appIdBuf)
-	if err != nil {
-		return err
-	}
-	appId := appIdBuf[0]
-
-	if appId != EchoServerAppId {
-		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
-		return errors.New("invalid operation for controller")
-	}
-
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
 	tId := &identity.TokenId{Identity: self.zitiIdentity, Token: "echo-server"}
-	listener := channel.NewExistingConnListener(tId, conn, nil)
-	_, err = channel.NewChannel("agent", listener, channel.BindHandlerF(self.bindAgentChannel), options)
-	return err
+	return agent.HandleChannelConnection(conn, tId, EchoServerAppId, channel.BindHandlerF(self.bindAgentChannel))
 }
 
 func (self *echoServer) bindAgentChannel(binding channel.Binding) error {

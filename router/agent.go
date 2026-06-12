@@ -4,14 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/ziti/v2/common/agentid"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
@@ -66,25 +65,7 @@ func (self *Router) bindAgentChannel(binding channel.Binding) error {
 }
 
 func (self *Router) HandleAgentAsyncOp(conn net.Conn) error {
-	logrus.Debug("received agent operation request")
-
-	appIdBuf := []byte{0}
-	_, err := io.ReadFull(conn, appIdBuf)
-	if err != nil {
-		return err
-	}
-	appId := appIdBuf[0]
-
-	if appId != agentid.AppIdAny && appId != AgentAppId {
-		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
-		return errors.New("invalid operation for router")
-	}
-
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	listener := channel.NewExistingConnListener(self.config.Id, conn, nil)
-	_, err = channel.NewChannel("agent", listener, channel.BindHandlerF(self.bindAgentChannel), options)
-	return err
+	return agent.HandleChannelConnection(conn, self.config.Id, AgentAppId, channel.BindHandlerF(self.bindAgentChannel))
 }
 
 func (self *Router) agentOpForgetLink(m *channel.Message, ch channel.Channel) {

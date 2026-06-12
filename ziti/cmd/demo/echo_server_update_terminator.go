@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/pkg/errors"
@@ -69,7 +69,7 @@ func (self *AgentEchoServerUpdateTerminatorAction) Run() error {
 		}
 	}
 
-	return agentcli.MakeAgentChannelRequest(addr, EchoServerAppId, self.makeRequest)
+	return agent.MakeChannelRequest(addr, EchoServerAppId, self.makeRequest)
 }
 
 func (self *AgentEchoServerUpdateTerminatorAction) makeRequest(ch channel.Channel) error {

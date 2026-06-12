@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentid"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller"
@@ -189,7 +188,7 @@ func (self *AgentOptions) GetProcess() (*agent.Process, error) {
 }
 
 func (self *AgentOptions) MakeChannelRequest(appId byte, f func(ch channel.Channel) error) error {
-	return self.MakeRequest(agent.CustomOpAsync, []byte{appId}, connToChannelMapper(f))
+	return self.MakeRequest(agent.CustomOpAsync, []byte{appId}, agent.ConnToChannel(f))
 }
 
 func (self *AgentOptions) MakeRequest(signal byte, params []byte, f func(c net.Conn) error) error {
@@ -262,26 +261,5 @@ func (self *AgentOptions) RunWithTimeout(f func() error) error {
 		return err
 	case <-time.After(self.timeout):
 		return errors.New("operation timed out")
-	}
-}
-
-func NewAgentChannel(conn net.Conn) (channel.Channel, error) {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	return channel.NewChannel("agent", dialer, nil, options)
-}
-
-func MakeAgentChannelRequest(addr string, appId byte, f func(ch channel.Channel) error) error {
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{appId}, connToChannelMapper(f))
-}
-
-func connToChannelMapper(f func(ch channel.Channel) error) func(conn net.Conn) error {
-	return func(conn net.Conn) error {
-		ch, err := NewAgentChannel(conn)
-		if err != nil {
-			return err
-		}
-		return f(ch)
 	}
 }
