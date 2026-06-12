@@ -69,4 +69,8 @@ const (
 
 	// CustomOpAsync reserved for application specific operations which execute async
 	CustomOpAsync = byte(0x15)
+
+	// AppInfoV2 returns application identity plus the agent and app capability
+	// lists. It is a net-new command; the legacy AppInfo (0xa) is unchanged.
+	AppInfoV2 = byte(0x16)
 )

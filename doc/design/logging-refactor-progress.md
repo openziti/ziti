@@ -92,7 +92,7 @@ design.
   These start importing `channel/v4` + `identity`, which are already
   root-module deps, so there is no `go.mod` or Go-version change.
   Existing channel commands unchanged on the wire.
-- **Capability registry:** bit constant `AgentLoggingSlogLevels`,
+- **Capability registry:** bit constant `CapabilityLoggingSlogLevels`,
   `agentCapabilityNames` table, `GetAgentCapabilitiesMask`,
   `GetAgentCapabilityStringList`, `AgentCapabilityBitFromString`.
   `common/agent` is the only writer.

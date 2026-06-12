@@ -19,8 +19,10 @@ package agentcli
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"os"
 
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/spf13/cobra"
@@ -61,6 +63,20 @@ func (self *AgentClearChannelLogLevelAction) Run() error {
 		channelArg = self.Args[0]
 	} else {
 		channelArg = self.Args[1]
+	}
+
+	// The one-arg form targets via the standard flags and can use the v2
+	// channel command when available. The two-arg positional-address form
+	// stays on the framed command.
+	if len(self.Args) == 1 && self.HasAgentCapability(agent.CapabilityLoggingSlogLevels) {
+		return self.MakeChannelRequest(byte(AgentAppAny), func(ch channel.Channel) error {
+			msg, err := agent.SendClearChannelLogLevelV2(ch, channelArg, self.timeout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(msg)
+			return nil
+		})
 	}
 
 	lenBuf := make([]byte, 8)
