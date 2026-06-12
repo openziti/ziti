@@ -78,7 +78,11 @@ func (self *DataStateHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 			WithField("identityToPolicyAssociations", identityToPolicyCount).
 			Info("received full router data model state")
 
-		model := common.NewReceiverRouterDataModelFromDataState(newState, self.state.GetEnv().GetCloseNotify())
+		routerId := ""
+		if id := self.state.GetEnv().GetRouterId(); id != nil {
+			routerId = id.Token
+		}
+		model := common.NewReceiverRouterDataModelFromDataState(routerId, newState, self.state.GetEnv().GetCloseNotify())
 		self.state.SetRouterDataModel(model, false)
 
 		logger.WithField("index", newState.EndIndex).Info("finished processing full router data model state")

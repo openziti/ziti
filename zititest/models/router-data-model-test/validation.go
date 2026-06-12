@@ -53,6 +53,7 @@ func sowChaos(run model.Run) error {
 	if err := ctrls.Init(run, ".ctrl"); err != nil {
 		return err
 	}
+	defer ctrls.Close()
 
 	var err error
 
@@ -206,6 +207,12 @@ type taskGenerationContext struct {
 	configs     []*rest_model.ConfigDetail
 	services    []*rest_model.ServiceDetail
 
+	// router-target subset, populated by loadEntities by splitting on configType.Target
+	routerConfigTypes  []*rest_model.ConfigTypeDetail
+	routerConfigs      []*rest_model.ConfigDetail
+	routers            []*rest_model.EdgeRouterDetail
+	routerConfigsDeleted map[string]struct{}
+
 	configTypesDeleted map[string]struct{}
 	configsDeleted     map[string]struct{}
 	servicesDeleted    map[string]struct{}
@@ -219,17 +226,48 @@ type taskGenerationContext struct {
 }
 
 func (self *taskGenerationContext) loadEntities() {
-	self.configTypes, self.err = models.ListConfigTypes(self.ctrls.GetRandomCtrl(), `not (name contains ".v1" or id = "host.v2") limit none`, 15*time.Second)
-	if self.err != nil {
+	allConfigTypes, err := models.ListConfigTypes(self.ctrls.GetRandomCtrl(), `not (name contains ".v1" or id = "host.v2") limit none`, 15*time.Second)
+	if err != nil {
+		self.err = err
 		return
+	}
+	// Split into service-target (the existing chaos pool) and router-target.
+	// Configs picked for service updates must be service-target, so keep the two pools distinct.
+	routerTargetTypes := map[string]struct{}{}
+	for _, ct := range allConfigTypes {
+		if ct.Target != nil && *ct.Target == "router" {
+			self.routerConfigTypes = append(self.routerConfigTypes, ct)
+			routerTargetTypes[*ct.ID] = struct{}{}
+		} else {
+			self.configTypes = append(self.configTypes, ct)
+		}
 	}
 	chaos.Randomize(self.configTypes)
+	chaos.Randomize(self.routerConfigTypes)
 
-	self.configs, self.err = models.ListConfigs(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
-	if self.err != nil {
+	allConfigs, err := models.ListConfigs(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
+	if err != nil {
+		self.err = err
 		return
 	}
+	for _, c := range allConfigs {
+		if c.ConfigTypeID != nil {
+			if _, isRouterTarget := routerTargetTypes[*c.ConfigTypeID]; isRouterTarget {
+				self.routerConfigs = append(self.routerConfigs, c)
+				continue
+			}
+		}
+		self.configs = append(self.configs, c)
+	}
 	chaos.Randomize(self.configs)
+	chaos.Randomize(self.routerConfigs)
+
+	self.routers, err = models.ListEdgeRouters(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
+	if err != nil {
+		self.err = err
+		return
+	}
+	chaos.Randomize(self.routers)
 
 	self.services, self.err = models.ListServices(self.ctrls.GetRandomCtrl(), "limit none", 15*time.Second)
 	if self.err != nil {
@@ -413,6 +451,82 @@ func (self *taskGenerationContext) generateServiceTasks() {
 	}
 }
 
+// generateRouterConfigTasks exercises the dynamic paths of Phase 1b/2c on
+// router-target configs and on router→config associations:
+//   - modify a router-config's data (PATCH) — covers both configs currently
+//     associated with at least one router (delivery via filter) and configs
+//     with no current associations (filtered out for everyone).
+//   - delete a router-config — covers the cleanup loop in
+//     configStore.DeleteById that strips the deleted ID from each referencing
+//     router's Configs slice.
+//   - re-shuffle a router's Configs list — picks a new random subset (which
+//     may be empty), exercising both add (synthesis on the rtx delta path)
+//     and remove (orphan-leave-cached behavior).
+//   - top up the router-config pool so re-shuffle has variety.
+func (self *taskGenerationContext) generateRouterConfigTasks() {
+	if self.err != nil {
+		return
+	}
+	if len(self.routerConfigTypes) == 0 {
+		return
+	}
+
+	// modify a handful of router-configs
+	for i := 0; i < min(5, len(self.routerConfigs)); i++ {
+		entity := self.routerConfigs[i]
+		entityId := *entity.ID
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.router-config", fmt.Sprintf("modify router config %s", entityId), func() error {
+			entity.Data = map[string]interface{}{
+				"k":     uuid.NewString(),
+				"epoch": time.Now().UnixNano(),
+			}
+			return models.UpdateConfigFromDetail(self.ctrls.GetRandomCtrl(), entity, 15*time.Second)
+		}))
+	}
+
+	// delete one router-config every other iteration (only when we have plenty)
+	if scenarioCounter%2 == 0 && len(self.routerConfigs) > 5 {
+		entityId := *self.routerConfigs[len(self.routerConfigs)-1].ID
+		self.routerConfigsDeleted[entityId] = struct{}{}
+		self.lastTasks = append(self.lastTasks, parallel.TaskWithLabel("delete.router-config", fmt.Sprintf("delete router config %s", entityId), func() error {
+			return models.DeleteConfig(self.ctrls.GetRandomCtrl(), entityId, 15*time.Second)
+		}))
+	}
+
+	// keep the pool topped up for re-shuffle variety, rotating across all
+	// router-target config types so re-shuffle has multiple distinct types to
+	// pick from (the API forbids two configs of the same type per router).
+	createCount := 20 - (len(self.routerConfigs) - len(self.routerConfigsDeleted))
+	for i := 0; i < createCount; i++ {
+		typeId := *self.routerConfigTypes[i%len(self.routerConfigTypes)].ID
+		self.tasks = append(self.tasks, createNewRouterConfig(self.ctrls.GetRandomCtrl(), typeId))
+	}
+
+	// group surviving router configs by type so re-shuffle can honor the
+	// one-config-per-type rule.
+	buckets := groupRouterConfigsByType(self.routerConfigs, self.routerConfigsDeleted)
+
+	// re-shuffle each router's Configs. Some routers go to empty (size 0) every
+	// few iterations; otherwise pick 1-3 configs from distinct types.
+	for i, r := range self.routers {
+		routerId := *r.ID
+		// rotate the "empty" assignment through routers across iterations
+		emptyAssignment := (scenarioCounter+i)%4 == 0
+
+		// Use an explicit empty slice (not nil) so JSON marshals as `"configs": []`.
+		// `null` is dropped by the controller's PATCH field parser, producing a
+		// "no fields updated" 500.
+		newConfigs := []string{}
+		if !emptyAssignment {
+			newConfigs = pickRouterConfigsDistinctTypes(buckets, rand.Intn(3)+1)
+		}
+		self.tasks = append(self.tasks, parallel.TaskWithLabel("modify.router-configs", fmt.Sprintf("re-shuffle router %s configs (%d)", routerId, len(newConfigs)), func() error {
+			patch := &rest_model.EdgeRouterPatch{Configs: newConfigs}
+			return models.PatchEdgeRouter(self.ctrls.GetRandomCtrl(), routerId, patch, 15*time.Second)
+		}))
+	}
+}
+
 func (self *taskGenerationContext) getResults() ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
 	if self.err != nil {
 		return nil, nil, self.err
@@ -425,16 +539,18 @@ func (self *taskGenerationContext) getResults() ([]parallel.LabeledTask, []paral
 
 func getServiceAndConfigChaosTasks(_ model.Run, ctrls *models.CtrlClients) ([]parallel.LabeledTask, []parallel.LabeledTask, error) {
 	ctx := &taskGenerationContext{
-		ctrls:              ctrls,
-		configTypesDeleted: map[string]struct{}{},
-		configsDeleted:     map[string]struct{}{},
-		servicesDeleted:    map[string]struct{}{},
+		ctrls:                ctrls,
+		configTypesDeleted:   map[string]struct{}{},
+		configsDeleted:       map[string]struct{}{},
+		servicesDeleted:      map[string]struct{}{},
+		routerConfigsDeleted: map[string]struct{}{},
 	}
 
 	ctx.loadEntities()
 	ctx.generateConfigTypeTasks()
 	ctx.generateConfigTasks()
 	ctx.generateServiceTasks()
+	ctx.generateRouterConfigTasks()
 
 	return ctx.getResults()
 }
@@ -774,6 +890,111 @@ func createNewIdentity(ctrl *zitirest.Clients) parallel.LabeledTask {
 		_, err := models.CreateIdentity(ctrl, svc, 15*time.Second)
 		return err
 	})
+}
+
+// createRouterTargetConfigType creates a single router-target config type
+// with a permissive schema and returns its ID. Distinct from the parallel
+// task helpers because callers need the resulting ID to associate later.
+func createRouterTargetConfigType(ctrl *zitirest.Clients) (string, error) {
+	target := "router"
+	name := newId()
+	entity := &rest_model.ConfigTypeCreate{
+		Name:   name,
+		Target: &target,
+		Schema: map[string]interface{}{
+			"$id":  "https://edge.openziti.org/schemas/router-test.config.json",
+			"type": "object",
+		},
+	}
+	if err := models.CreateConfigType(ctrl, entity, 15*time.Second); err != nil {
+		return "", err
+	}
+	list, err := models.ListConfigTypes(ctrl, fmt.Sprintf(`name="%s"`, *name), 15*time.Second)
+	if err != nil {
+		return "", err
+	}
+	if len(list) == 0 {
+		return "", fmt.Errorf("router-target config type %q not found after create", *name)
+	}
+	return *list[0].ID, nil
+}
+
+func createNewRouterConfig(ctrl *zitirest.Clients, configTypeId string) parallel.LabeledTask {
+	return parallel.TaskWithLabel("create.router-config", "create new router config", func() error {
+		entity := &rest_model.ConfigCreate{
+			Name:         newId(),
+			ConfigTypeID: &configTypeId,
+			Data: map[string]interface{}{
+				"k": uuid.NewString(),
+			},
+		}
+		return models.CreateConfig(ctrl, entity, 15*time.Second)
+	})
+}
+
+// routerConfigBucket groups router configs by their config-type id. The edge
+// router API rejects PATCHes with two configs of the same type, so picking
+// configs for a router has to start from these buckets.
+type routerConfigBucket struct {
+	typeId    string
+	configIds []string
+}
+
+// groupRouterConfigsByType buckets the given router configs by their config
+// type, skipping any IDs in `deleted`. Buckets with no surviving configs are
+// omitted from the result.
+func groupRouterConfigsByType(configs []*rest_model.ConfigDetail, deleted map[string]struct{}) []routerConfigBucket {
+	byType := map[string][]string{}
+	for _, c := range configs {
+		if c.ID == nil || c.ConfigTypeID == nil {
+			continue
+		}
+		if _, gone := deleted[*c.ID]; gone {
+			continue
+		}
+		byType[*c.ConfigTypeID] = append(byType[*c.ConfigTypeID], *c.ID)
+	}
+	buckets := make([]routerConfigBucket, 0, len(byType))
+	for typeId, ids := range byType {
+		buckets = append(buckets, routerConfigBucket{typeId: typeId, configIds: ids})
+	}
+	return buckets
+}
+
+// pickRouterConfigsDistinctTypes returns up to n config IDs drawn from
+// distinct buckets (i.e. distinct config types), each chosen at random within
+// its bucket. Returns a non-nil empty slice when there are no non-empty
+// buckets so callers can pass the result directly into a PATCH body without
+// the JSON marshaling to `null` (which the controller's patch-field parser
+// drops, producing a "no fields updated" error).
+func pickRouterConfigsDistinctTypes(buckets []routerConfigBucket, n int) []string {
+	out := make([]string, 0, n)
+	if n <= 0 || len(buckets) == 0 {
+		return out
+	}
+	perm := rand.Perm(len(buckets))
+	for _, idx := range perm {
+		if len(out) >= n {
+			break
+		}
+		bucket := buckets[idx]
+		if len(bucket.configIds) == 0 {
+			continue
+		}
+		out = append(out, bucket.configIds[rand.Intn(len(bucket.configIds))])
+	}
+	return out
+}
+
+// associateRouterConfigs picks up to `perRouter` router configs (each from a
+// distinct config type, since the API allows only one config per type per
+// router) and PATCHes the given edge router so its Configs field references
+// them.
+func associateRouterConfigs(ctrl *zitirest.Clients, edgeRouterId string, buckets []routerConfigBucket, perRouter int) error {
+	patch := &rest_model.EdgeRouterPatch{
+		Configs: pickRouterConfigsDistinctTypes(buckets, perRouter),
+	}
+	return models.PatchEdgeRouter(ctrl, edgeRouterId, patch, 15*time.Second)
 }
 
 func createNewServicePolicy(ctrl *zitirest.Clients) parallel.LabeledTask {

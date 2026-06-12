@@ -247,20 +247,24 @@ There are two distinct triggers that cause a `Config` event to flow to a router:
 
 1. **A router's `Configs` list changes.** When an operator associates or disassociates a config:
    - Emit the `Router` event with the new `Configs` IDs.
-   - For any IDs newly added to that router's list, also emit the full `Config` entity to that
-     router (it may not have it yet).
-   - For any IDs newly removed from that router's list, do nothing extra. The receiving router
-     reads its own `Router` entity in the RDM, sees the config is no longer in its list, and stops
-     applying it. The orphaned `Config` entity stays cached on the receiver until the next full
-     sync prunes it. Skipping the explicit-remove event keeps the protocol simpler at the cost of
-     a small amount of dead weight in the receiver's cache, which we consider acceptable.
+   - Whenever that router's own `Router` event flows (on any create or update, not just the initial
+     association), also emit the full `Config` entity for *every* config currently in its `Configs`
+     list. These are sent as synthetic `Config` `Create` events; the receiver caches and dedupes, so
+     re-sending the whole list is simpler than tracking which IDs are newly added and costs nothing
+     the receiver can't absorb. (Full syncs skip this synthesis: the snapshot already carries every
+     relevant `Config` globally.)
+   - For any IDs newly removed from that router's list, do nothing extra on the wire. When the
+     receiving router processes the updated `Router` event for itself, it GCs router-target
+     `Config` entries that are no longer in its `Configs` list. Service-target configs are
+     untouched. This keeps the receiver's view aligned with its assignment without sending
+     synthetic remove events.
 
 2. **A config's data changes.** When an operator PATCHes a config:
    - Emit the `Config` event to every router currently referencing it. The router entity didn't
      change at all here.
 
-Router entities themselves (id, name, fingerprint, cost) are distributed to all routers, so every
-router can validate link peers.
+Router entities themselves (id, name, fingerprint, configs, disabled) are distributed to all
+routers, so every router can validate link peers.
 
 On reconnect, the router sends its current RDM index up. If the controller's event cache can
 replay forward from there, it streams the deltas (with the same per-router config filtering
@@ -269,15 +273,19 @@ the controller fall back to a full filtered snapshot.
 
 The shared event cache contains all events, but each router only sees a subset. The index sequence
 will have gaps from the router's perspective, but this is already the case today: not every raft
-update produces an RDM event, so routers already tolerate index gaps. We may need to move some of
-the gap-handling logic into the `RouterSender` so it can track the previous index per router and
-set it correctly on filtered change sets, rather than relying on the receiver to reconcile.
+update produces an RDM event, so routers already tolerate index gaps. The `RouterSender` keeps the
+`PreviousIndex` chain intact by forwarding every change set, even when per-router filtering removes
+every entry: an empty change set advances the receiver's index without touching any entities, so no
+per-router index bookkeeping is needed. The alternative considered here, having the sender track the
+previous index per router and rewrite it on filtered change sets, proved racy under subscription
+churn and produced gap-detection storms, so it was not adopted.
 
-Orphaned `Config` entities — those that the receiver still has cached after a router-side
-disassociation — get pruned on the (rare) full-sync path. Between full syncs, they sit in the
-RDM cache as dead weight. We've judged that acceptable: the router doesn't apply them (it derives
-its applied set from its own `Router.Configs` list), and they cost a small amount of memory until
-the next full sync.
+Orphan handling: the receiver GCs router-target Configs synchronously when its own `Router`
+event arrives with a shrunk list, so orphans don't accumulate between full syncs. Service-target
+configs broadcast and are kept by every receiver. The earlier "leave orphans cached, prune on
+full sync" framing was simpler on the wire (no synthetic events) but left the receiver's view
+out of sync with assignment in a way that broke validation; the in-place GC retains the
+no-synthetic-events property while keeping the cache aligned.
 
 ## Applying Configuration on the Router
 
