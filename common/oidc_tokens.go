@@ -64,6 +64,20 @@ const (
 	ServiceSessionTypeDial = "Dial"
 )
 
+// MaxTokenDuration returns the longest of the refresh, access, and id token
+// durations. It is the cutoff a revocation must outlive to be sure no token it
+// targets can still be valid.
+func MaxTokenDuration(refreshToken, accessToken, idToken time.Duration) time.Duration {
+	maxDuration := refreshToken
+	if accessToken > maxDuration {
+		maxDuration = accessToken
+	}
+	if idToken > maxDuration {
+		maxDuration = idToken
+	}
+	return maxDuration
+}
+
 type CustomClaims struct {
 	ApiSessionId            string              `json:"z_asid,omitempty"`
 	ExternalId              string              `json:"z_eid,omitempty"`

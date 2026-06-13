@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -54,6 +54,20 @@ func (self *RevocationManager) ApplyUpdate(_ *command.UpdateEntityCommand[*Revoc
 
 func (self *RevocationManager) Create(entity *Revocation, ctx *change.Context) error {
 	return DispatchCreate[*Revocation](self, entity, ctx)
+}
+
+// CreateOrReplace creates the revocation, first removing any existing revocation
+// with the same id. Identity- and api-session-scoped revocations are keyed by
+// the identity/session id, so a repeat (e.g. re-disabling an identity, or a
+// second logout) would otherwise collide with the lingering prior entry;
+// replacing it refreshes the ExpiresAt and IssuedBefore cutoff.
+func (self *RevocationManager) CreateOrReplace(entity *Revocation, ctx *change.Context) error {
+	if existing, _ := self.Read(entity.Id); existing != nil {
+		if err := self.Delete(entity.Id, ctx); err != nil {
+			return err
+		}
+	}
+	return self.Create(entity, ctx)
 }
 
 func (self *RevocationManager) ApplyCreate(cmd *command.CreateEntityCommand[*Revocation], ctx boltz.MutateContext) error {
@@ -120,6 +134,9 @@ func (self *RevocationManager) Marshall(entity *Revocation) ([]byte, error) {
 		Tags:      tags,
 		Type:      entity.Type,
 	}
+	if !entity.IssuedBefore.IsZero() {
+		msg.IssuedBefore = timePtrToPb(&entity.IssuedBefore)
+	}
 
 	return proto.Marshal(msg)
 }
@@ -134,14 +151,18 @@ func (self *RevocationManager) Unmarshall(bytes []byte) (*Revocation, error) {
 		return nil, fmt.Errorf("revocation msg for id '%v' has nil ExpiresAt", msg.Id)
 	}
 
-	return &Revocation{
+	revocation := &Revocation{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		ExpiresAt: *pbTimeToTimePtr(msg.ExpiresAt),
 		Type:      msg.Type,
-	}, nil
+	}
+	if msg.IssuedBefore != nil {
+		revocation.IssuedBefore = msg.IssuedBefore.AsTime()
+	}
+	return revocation, nil
 }
 
 // DeleteBatch dispatches a batched delete of revocation IDs through raft as a
@@ -252,11 +273,16 @@ func (self *CreateRevocationsBatchCommand) Encode() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		pbRevocations = append(pbRevocations, &edge_cmd_pb.Revocation{
+		pbRev := &edge_cmd_pb.Revocation{
 			Id:        rev.Id,
 			ExpiresAt: timePtrToPb(&rev.ExpiresAt),
 			Tags:      tags,
-		})
+			Type:      rev.Type,
+		}
+		if !rev.IssuedBefore.IsZero() {
+			pbRev.IssuedBefore = timePtrToPb(&rev.IssuedBefore)
+		}
+		pbRevocations = append(pbRevocations, pbRev)
 	}
 	return cmd_pb.EncodeProtobuf(&edge_cmd_pb.CreateRevocationsBatchCommand{
 		Revocations: pbRevocations,
@@ -277,6 +303,10 @@ func (self *CreateRevocationsBatchCommand) Decode(env Env, msg *edge_cmd_pb.Crea
 				Tags: edge_cmd_pb.DecodeTags(pbRev.Tags),
 			},
 			ExpiresAt: *pbTimeToTimePtr(pbRev.ExpiresAt),
+			Type:      pbRev.Type,
+		}
+		if pbRev.IssuedBefore != nil {
+			rev.IssuedBefore = pbRev.IssuedBefore.AsTime()
 		}
 		self.Revocations = append(self.Revocations, rev)
 	}

@@ -34,6 +34,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/pkg/errors"
 )
@@ -126,6 +127,13 @@ type Oidc struct {
 	// RevocationEnforcerFrequency is how often the controller purges expired
 	// revocation records from the database.
 	RevocationEnforcerFrequency time.Duration
+}
+
+// MaxTokenDuration returns the longest of the configured refresh, access, and id
+// token durations. Revocations are set to expire after this so they outlive any
+// token they target.
+func (o *Oidc) MaxTokenDuration() time.Duration {
+	return common.MaxTokenDuration(o.RefreshTokenDuration, o.AccessTokenDuration, o.IdTokenDuration)
 }
 
 type EdgeConfig struct {

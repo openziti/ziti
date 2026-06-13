@@ -898,7 +898,44 @@ func (s *HybridStorage) TokenRequestByRefreshToken(_ context.Context, refreshTok
 // TerminateSession implements the op.Storage interface
 func (s *HybridStorage) TerminateSession(_ context.Context, identityId string, clientID string) error {
 	now := time.Now()
-	return s.saveRevocation(NewRevocation(identityId, now.Add(s.config.MaxTokenDuration())))
+	revocation := NewRevocation(identityId, now.Add(s.config.MaxTokenDuration()))
+	revocation.Type = common.RevocationTypeIdentity
+	revocation.IssuedBefore = now
+	return s.saveOrReplaceRevocation(revocation)
+}
+
+var _ op.CanTerminateSessionFromRequest = (*HybridStorage)(nil)
+
+// TerminateSessionFromRequest implements op.CanTerminateSessionFromRequest. The
+// op framework prefers it over TerminateSession when present. It revokes the
+// specific api-session being terminated, identified by the z_asid claim in the
+// end-session request's id_token_hint, so revocation is precise to this session
+// (a re-authentication gets a fresh z_asid and is unaffected). When the hint
+// carries no api-session id, it falls back to the identity-scoped revocation.
+func (s *HybridStorage) TerminateSessionFromRequest(_ context.Context, endSessionRequest *op.EndSessionRequest) (string, error) {
+	now := time.Now()
+	expiresAt := now.Add(s.config.MaxTokenDuration())
+
+	if claims := endSessionRequest.IDTokenHintClaims; claims != nil {
+		if apiSessionId, ok := claims.Claims[common.CustomClaimApiSessionId].(string); ok && apiSessionId != "" {
+			revocation := NewRevocation(apiSessionId, expiresAt)
+			revocation.Type = common.RevocationTypeApiSession
+			if err := s.saveOrReplaceRevocation(revocation); err != nil {
+				return "", oidc.ErrServerError()
+			}
+			return endSessionRequest.RedirectURI, nil
+		}
+	}
+
+	if endSessionRequest.UserID != "" {
+		revocation := NewRevocation(endSessionRequest.UserID, expiresAt)
+		revocation.Type = common.RevocationTypeIdentity
+		revocation.IssuedBefore = now
+		if err := s.saveOrReplaceRevocation(revocation); err != nil {
+			return "", oidc.ErrServerError()
+		}
+	}
+	return endSessionRequest.RedirectURI, nil
 }
 
 // GetRefreshTokenInfo implements the op.Storage interface
@@ -920,6 +957,7 @@ func (s *HybridStorage) RevokeToken(_ context.Context, tokenIDOrToken string, _ 
 			return nil //not a valid token ignore
 		}
 		revocation := NewRevocation(claims.JWTID, claims.Expiration.AsTime())
+		revocation.Type = common.RevocationTypeToken
 		if err := s.saveRevocation(revocation); err != nil {
 			return oidc.ErrServerError()
 		}
@@ -928,6 +966,7 @@ func (s *HybridStorage) RevokeToken(_ context.Context, tokenIDOrToken string, _ 
 	}
 
 	revocation := NewRevocation(tokenIDOrToken, time.Now().Add(s.config.MaxTokenDuration()))
+	revocation.Type = common.RevocationTypeToken
 	if err := s.saveRevocation(revocation); err != nil {
 		return oidc.ErrServerError()
 	}
@@ -1137,6 +1176,14 @@ func (s *HybridStorage) saveRevocation(revocation *model.Revocation) error {
 	return s.env.GetManagers().Revocation.Create(revocation, change.New())
 }
 
+// saveOrReplaceRevocation persists a revocation that is keyed by a reusable id
+// (an identity or api-session id, as opposed to a unique token jti), replacing
+// any lingering prior entry so a repeat logout/termination refreshes its cutoff
+// rather than colliding.
+func (s *HybridStorage) saveOrReplaceRevocation(revocation *model.Revocation) error {
+	return s.env.GetManagers().Revocation.CreateOrReplace(revocation, change.New())
+}
+
 func (s *HybridStorage) renewRefreshToken(currentRefreshToken string, accessClaims *common.AccessClaims) (string, *common.RefreshClaims, error) {
 	_, refreshClaims, err := s.parseRefreshToken(currentRefreshToken)
 
@@ -1148,7 +1195,9 @@ func (s *HybridStorage) renewRefreshToken(currentRefreshToken string, accessClai
 	// about to expire anyway; otherwise queue it for batched creation.
 	expiresAt := refreshClaims.Expiration.AsTime()
 	if s.config.RevocationMinTokenLifetime == 0 || time.Until(expiresAt) > s.config.RevocationMinTokenLifetime {
-		s.batcher.Add(NewRevocation(refreshClaims.JWTID, expiresAt))
+		revocation := NewRevocation(refreshClaims.JWTID, expiresAt)
+		revocation.Type = common.RevocationTypeToken
+		s.batcher.Add(revocation)
 	}
 
 	// Use the access claims' CustomClaims so that any updates from CSR signing

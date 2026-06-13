@@ -1571,6 +1571,7 @@ func (sm *ManagerImpl) startConnectionVerification(resolution time.Duration) {
 // This only inspections connections backed by JWTs. It will end connections that have no inspectable API Session.
 func (sm *ManagerImpl) CheckConnections() {
 	connections := sm.connectionTracker.GetChannels()
+	rdm := sm.routerDataModel.Load()
 
 	now := time.Now()
 	for _, channels := range connections {
@@ -1590,6 +1591,12 @@ func (sm *ManagerImpl) CheckConnections() {
 					continue
 				}
 
+				// Revoked api-session (e.g. OIDC end-session): close the channel.
+				if rdm != nil && rdm.IsApiSessionRevoked(apiSession.Id) {
+					_ = ch.Close()
+					continue
+				}
+
 				if apiSession.Type == ApiSessionTokenJwt {
 					if apiSession.Claims == nil {
 						_ = ch.Close()
@@ -1599,6 +1606,14 @@ func (sm *ManagerImpl) CheckConnections() {
 					exp := apiSession.Claims.Expiration
 
 					if exp.AsTime().Before(now) {
+						_ = ch.Close()
+						continue
+					}
+
+					// Revoked identity (e.g. disabled/deleted identity, or an
+					// identity-scoped revocation): close sessions issued before
+					// the revocation's cutoff.
+					if rdm != nil && rdm.IsIdentityRevoked(apiSession.IdentityId, apiSession.Claims.IssuedAt.AsTime()) {
 						_ = ch.Close()
 						continue
 					}
