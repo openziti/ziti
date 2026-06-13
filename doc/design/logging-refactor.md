@@ -80,7 +80,7 @@ For this branch specifically:
                                                             ▼
                                             ┌─ JSONHandler + ReplaceAttr → stderr (prod)
                                             │
-                                            └─ dl.PrettyHandler          → stderr (dev/console)
+                                            └─ logging.PrettyHandler     → stderr (dev/console)
 ```
 
 - **API contract:** vanilla slog at every call site (including code
@@ -126,53 +126,44 @@ call site and across our package boundary. Reasons:
   ecosystem shift. If slog is the long-term winner (it appears so),
   call sites do not need to migrate again.
 
-We write most handler pieces ourselves (async wrapper, JSON-shape
-coercion, named-logger registry, override map). The one component we
-borrow is `dl.NewPrettyHandler` for dev/console output — see the next
-section for why.
+We write all handler pieces ourselves: async wrapper, JSON-shape
+coercion, named-logger registry, override map, and the pretty
+console handler.
 
-### What we adopt from df/dl, and what we do not
+### Why we hand-roll the pretty handler (and don't use df/dl)
 
 `df/dl` is a slog-based logging package by the same author as
-pfxlog (upstream: `github.com/michaelquigley/df`). We depend on
-upstream `github.com/michaelquigley/df` directly and keep an
-`openziti/df` mirror purely as insurance (see stability story
-below). Reading the source carefully, dl breaks down into three
-things, with very different value to us:
+pfxlog (upstream: `github.com/michaelquigley/df`), and its
+`PrettyHandler` is a direct port of pfxlog's pretty formatter. An
+earlier revision of this branch used it for console output, with an
+`openziti/df` mirror as a stability fallback. We dropped it after
+review found behavior gaps that `dl.Options` cannot reach:
 
-- **PrettyHandler** (dev/console output). A direct port of pfxlog's
-  pretty handler. Color-aware, timestamp-formatting, channel-aware.
-  This is the only piece of dl we adopt — it gives us the dev-time
-  console experience pfxlog users already know, without us
-  re-implementing it.
+- The level switch in dl's `Handle` covers only the four standard
+  slog levels; our custom Fatal, Panic, and Trace levels render a
+  blank label. A post-Install `logrus.Fatal` losing its FATAL marker
+  in operator logs was the blocking finding.
+- Color sequences for the timestamp/function/fields segments are
+  written unconditionally; `UseColor=false` only suppresses the
+  resets, and `DefaultOptions()` bakes color into the level labels
+  at construction time. The "text" (no color) format is therefore
+  unachievable through options.
+- Terminal detection stats `os.Stdout` while ziti logs to stderr,
+  and df's defaults differ from pfxlog's (`StartTimestamp` is
+  process start rather than start-of-day, no `TrimPrefix`).
 
-  Stability story: df is now tagged 1.0, so SemVer applies. Any
-  incompatible API change requires a `/v2` module path bump and we
-  pull it in at our leisure (i.e., never inadvertently). On top of
-  that, we keep an `openziti/df` mirror as a fallback: a pristine,
-  byte-identical copy of upstream that keeps the same module path
-  (`github.com/michaelquigley/df`). We use upstream directly day to
-  day. If upstream ever breaks backwards compatibility or
-  disappears, we pin the mirror with a one-line
-  `replace github.com/michaelquigley/df => github.com/openziti/df`
-  in go.mod, with no source or import-path changes. The
-  PrettyHandler surface is also small enough that we could replace
-  it with a hand-rolled pretty handler in an afternoon if all of
-  these safety nets ever fail.
-- **JSON handler**. Worth knowing: dl's JSON path is *just*
-  `slog.NewJSONHandler` with no `ReplaceAttr`. It produces stdlib
-  slog JSON shape (uppercase level, nested `source` object), not
-  pfxlog-compatible JSON. So dl gives us nothing here; we write our
-  own JSON shape coercion either way (see "Format compatibility").
-- **Channel registry, `dl.Info`/`dl.ChannelLog()` top-level helpers**.
-  Useful surface for callers that want dl's specific API. We do not
-  adopt this. Call sites use vanilla slog (`slog.Info`,
-  `logger.With(...)`, `logging.For(name)`) so the API contract at the
-  call-site is the standard library. Future replacement of dl with
-  hand-rolled handlers does not touch any call site.
+`logging.PrettyHandler` (`common/logging/pretty.go`) replaces it:
+the same pfxlog output shape, all seven level labels, color fully
+gated and keyed on the actual output writer (with `PFXLOG_USE_COLOR`
+still honored), `_channels`/`_context` rendering, record-time
+timestamps, and a correct `WithAttrs`. It is ~150 lines, the size
+the design always assumed a hand-rolled replacement would be.
 
-The net: dl is an implementation detail of one of our handlers, not
-the foundation. Call sites do not know dl exists.
+Worth knowing about dl for context: its JSON path is *just*
+`slog.NewJSONHandler` with no `ReplaceAttr` (stdlib shape, not
+pfxlog-compatible), and its channel registry / `dl.Info` helpers
+are a non-standard API surface we never wanted at call sites. So
+nothing else in dl was load-bearing for us.
 
 ## Coexistence with pfxlog/logrus
 

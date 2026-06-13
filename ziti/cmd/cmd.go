@@ -611,6 +611,14 @@ func NewControllerCmd() *cobra.Command {
 		Use:   "controller",
 		Short: "Ziti Controller",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// The run subcommand installs the slog logging chain in its own
+			// PreRun (ziti/run), which supersedes this legacy pfxlog/logrus
+			// setup and would overwrite it. Skip the block for run so it isn't
+			// dead, conflicting work; sibling subcommands still rely on it.
+			if cmd.Name() == "run" {
+				return
+			}
+
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
 			}
@@ -660,6 +668,14 @@ func NewRouterCmd() *cobra.Command {
 		Use:   "router",
 		Short: "Ziti Router",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// The run subcommand installs the slog logging chain in its own
+			// PreRun (ziti/run), which supersedes this legacy pfxlog/logrus
+			// setup and would overwrite it. Skip the block for run so it isn't
+			// dead, conflicting work; sibling subcommands still rely on it.
+			if cmd.Name() == "run" {
+				return
+			}
+
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
 			}

@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"runtime"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -141,6 +144,28 @@ func SyncEmit(ctx context.Context, r slog.Record) error {
 		return ah.SyncEmit(ctx, r)
 	}
 	return root.Handle(ctx, r)
+}
+
+// osExit is os.Exit, indirected so tests can exercise Fatal without
+// terminating the test process.
+var osExit = os.Exit
+
+// Fatal writes msg at LevelFatal and then exits the process with status 1. It
+// is the slog-world equivalent of logrus.Fatal, which slog does not provide
+// (slog has only Debug/Info/Warn/Error and never exits the process itself).
+//
+// The record is emitted durably through SyncEmit, so it flushes any queued
+// records and writes synchronously before the exit, and it bypasses level
+// gating so a fatal is never filtered out. Hard-exit paths call this instead
+// of logging an Error and then calling os.Exit or panic: those drop the record
+// because the async queue never drains before the process is gone.
+func Fatal(ctx context.Context, msg string, attrs ...slog.Attr) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip runtime.Callers + this frame
+	r := slog.NewRecord(time.Now(), LevelFatal, msg, pcs[0])
+	r.AddAttrs(attrs...)
+	_ = SyncEmit(ctx, r)
+	osExit(1)
 }
 
 // logrusToSlog maps a logrus.Level to its canonical slog.Level. logrus
