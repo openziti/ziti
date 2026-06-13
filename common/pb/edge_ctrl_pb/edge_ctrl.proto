@@ -211,6 +211,14 @@ message DataState {
   message Revocation {
     string id = 1;
     google.protobuf.Timestamp ExpiresAt = 2;
+    // type distinguishes what id identifies, using rest_model.RevocationTypeEnum
+    // values: an api-session ("API_SESSION"), an identity ("IDENTITY"), or a
+    // token/jti ("JTI"). Empty for legacy revocations.
+    string type = 3;
+    // issuedBefore is the cutoff for IDENTITY revocations: only sessions issued
+    // (iat) before this time are revoked, so a session re-authenticated after
+    // the cutoff survives the still-lingering revocation. Ignored for other types.
+    google.protobuf.Timestamp issuedBefore = 4;
   }
 
   message ServicePolicyChange {

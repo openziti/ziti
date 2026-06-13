@@ -4257,9 +4257,17 @@ func (x *DataState_ServicePolicy) GetPolicyType() PolicyType {
 }
 
 type DataState_Revocation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=ExpiresAt,proto3" json:"ExpiresAt,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=ExpiresAt,proto3" json:"ExpiresAt,omitempty"`
+	// type distinguishes what id identifies, using rest_model.RevocationTypeEnum
+	// values: an api-session ("API_SESSION"), an identity ("IDENTITY"), or a
+	// token/jti ("JTI"). Empty for legacy revocations.
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	// issuedBefore is the cutoff for IDENTITY revocations: only sessions issued
+	// (iat) before this time are revoked, so a session re-authenticated after
+	// the cutoff survives the still-lingering revocation. Ignored for other types.
+	IssuedBefore  *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=issuedBefore,proto3" json:"issuedBefore,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4304,6 +4312,20 @@ func (x *DataState_Revocation) GetId() string {
 func (x *DataState_Revocation) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *DataState_Revocation) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *DataState_Revocation) GetIssuedBefore() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedBefore
 	}
 	return nil
 }
@@ -5437,7 +5459,7 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.Cache.DataEntryR\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xf8#\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xcd$\n" +
 	"\tDataState\x12:\n" +
 	"\x06events\x18\x01 \x03(\v2\".ziti.edge_ctrl.pb.DataState.EventR\x06events\x12\x1a\n" +
 	"\bendIndex\x18\x02 \x01(\x04R\bendIndex\x12\x1e\n" +
@@ -5492,11 +5514,13 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12=\n" +
 	"\n" +
 	"policyType\x18\x03 \x01(\x0e2\x1d.ziti.edge_ctrl.pb.PolicyTypeR\n" +
-	"policyType\x1aV\n" +
+	"policyType\x1a\xaa\x01\n" +
 	"\n" +
 	"Revocation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
-	"\tExpiresAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tExpiresAt\x1a\xd0\x01\n" +
+	"\tExpiresAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tExpiresAt\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\tR\x04type\x12>\n" +
+	"\fissuedBefore\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fissuedBefore\x1a\xd0\x01\n" +
 	"\x13ServicePolicyChange\x12\x1a\n" +
 	"\bpolicyId\x18\x01 \x01(\tR\bpolicyId\x12*\n" +
 	"\x10relatedEntityIds\x18\x02 \x03(\tR\x10relatedEntityIds\x12_\n" +
@@ -6147,37 +6171,38 @@ var file_edge_ctrl_proto_depIdxs = []int32{
 	77,  // 50: ziti.edge_ctrl.pb.DataState.Identity.serviceConfigs:type_name -> ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry
 	4,   // 51: ziti.edge_ctrl.pb.DataState.ServicePolicy.policyType:type_name -> ziti.edge_ctrl.pb.PolicyType
 	103, // 52: ziti.edge_ctrl.pb.DataState.Revocation.ExpiresAt:type_name -> google.protobuf.Timestamp
-	5,   // 53: ziti.edge_ctrl.pb.DataState.ServicePolicyChange.relatedEntityType:type_name -> ziti.edge_ctrl.pb.ServicePolicyRelatedEntityType
-	71,  // 54: ziti.edge_ctrl.pb.DataState.ChangeSet.changes:type_name -> ziti.edge_ctrl.pb.DataState.Event
-	8,   // 55: ziti.edge_ctrl.pb.DataState.Event.action:type_name -> ziti.edge_ctrl.pb.DataState.Action
-	65,  // 56: ziti.edge_ctrl.pb.DataState.Event.identity:type_name -> ziti.edge_ctrl.pb.DataState.Identity
-	66,  // 57: ziti.edge_ctrl.pb.DataState.Event.service:type_name -> ziti.edge_ctrl.pb.DataState.Service
-	67,  // 58: ziti.edge_ctrl.pb.DataState.Event.servicePolicy:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicy
-	73,  // 59: ziti.edge_ctrl.pb.DataState.Event.postureCheck:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck
-	72,  // 60: ziti.edge_ctrl.pb.DataState.Event.publicKey:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey
-	68,  // 61: ziti.edge_ctrl.pb.DataState.Event.revocation:type_name -> ziti.edge_ctrl.pb.DataState.Revocation
-	69,  // 62: ziti.edge_ctrl.pb.DataState.Event.servicePolicyChange:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicyChange
-	62,  // 63: ziti.edge_ctrl.pb.DataState.Event.configType:type_name -> ziti.edge_ctrl.pb.DataState.ConfigType
-	63,  // 64: ziti.edge_ctrl.pb.DataState.Event.config:type_name -> ziti.edge_ctrl.pb.DataState.Config
-	9,   // 65: ziti.edge_ctrl.pb.DataState.PublicKey.usages:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Usage
-	10,  // 66: ziti.edge_ctrl.pb.DataState.PublicKey.format:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Format
-	78,  // 67: ziti.edge_ctrl.pb.DataState.PostureCheck.mac:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
-	79,  // 68: ziti.edge_ctrl.pb.DataState.PostureCheck.mfa:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
-	81,  // 69: ziti.edge_ctrl.pb.DataState.PostureCheck.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
-	82,  // 70: ziti.edge_ctrl.pb.DataState.PostureCheck.process:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
-	83,  // 71: ziti.edge_ctrl.pb.DataState.PostureCheck.processMulti:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
-	84,  // 72: ziti.edge_ctrl.pb.DataState.PostureCheck.domains:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
-	6,   // 73: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	64,  // 74: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry.value:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs
-	80,  // 75: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Os
-	82,  // 76: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
-	6,   // 77: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
-	99,  // 78: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents.connectTimes:type_name -> ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
-	79,  // [79:79] is the sub-list for method output_type
-	79,  // [79:79] is the sub-list for method input_type
-	79,  // [79:79] is the sub-list for extension type_name
-	79,  // [79:79] is the sub-list for extension extendee
-	0,   // [0:79] is the sub-list for field type_name
+	103, // 53: ziti.edge_ctrl.pb.DataState.Revocation.issuedBefore:type_name -> google.protobuf.Timestamp
+	5,   // 54: ziti.edge_ctrl.pb.DataState.ServicePolicyChange.relatedEntityType:type_name -> ziti.edge_ctrl.pb.ServicePolicyRelatedEntityType
+	71,  // 55: ziti.edge_ctrl.pb.DataState.ChangeSet.changes:type_name -> ziti.edge_ctrl.pb.DataState.Event
+	8,   // 56: ziti.edge_ctrl.pb.DataState.Event.action:type_name -> ziti.edge_ctrl.pb.DataState.Action
+	65,  // 57: ziti.edge_ctrl.pb.DataState.Event.identity:type_name -> ziti.edge_ctrl.pb.DataState.Identity
+	66,  // 58: ziti.edge_ctrl.pb.DataState.Event.service:type_name -> ziti.edge_ctrl.pb.DataState.Service
+	67,  // 59: ziti.edge_ctrl.pb.DataState.Event.servicePolicy:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicy
+	73,  // 60: ziti.edge_ctrl.pb.DataState.Event.postureCheck:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck
+	72,  // 61: ziti.edge_ctrl.pb.DataState.Event.publicKey:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey
+	68,  // 62: ziti.edge_ctrl.pb.DataState.Event.revocation:type_name -> ziti.edge_ctrl.pb.DataState.Revocation
+	69,  // 63: ziti.edge_ctrl.pb.DataState.Event.servicePolicyChange:type_name -> ziti.edge_ctrl.pb.DataState.ServicePolicyChange
+	62,  // 64: ziti.edge_ctrl.pb.DataState.Event.configType:type_name -> ziti.edge_ctrl.pb.DataState.ConfigType
+	63,  // 65: ziti.edge_ctrl.pb.DataState.Event.config:type_name -> ziti.edge_ctrl.pb.DataState.Config
+	9,   // 66: ziti.edge_ctrl.pb.DataState.PublicKey.usages:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Usage
+	10,  // 67: ziti.edge_ctrl.pb.DataState.PublicKey.format:type_name -> ziti.edge_ctrl.pb.DataState.PublicKey.Format
+	78,  // 68: ziti.edge_ctrl.pb.DataState.PostureCheck.mac:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mac
+	79,  // 69: ziti.edge_ctrl.pb.DataState.PostureCheck.mfa:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Mfa
+	81,  // 70: ziti.edge_ctrl.pb.DataState.PostureCheck.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.OsList
+	82,  // 71: ziti.edge_ctrl.pb.DataState.PostureCheck.process:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
+	83,  // 72: ziti.edge_ctrl.pb.DataState.PostureCheck.processMulti:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti
+	84,  // 73: ziti.edge_ctrl.pb.DataState.PostureCheck.domains:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Domains
+	6,   // 74: ziti.edge_ctrl.pb.DataState.Identity.ServiceHostingPrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
+	64,  // 75: ziti.edge_ctrl.pb.DataState.Identity.ServiceConfigsEntry.value:type_name -> ziti.edge_ctrl.pb.DataState.ServiceConfigs
+	80,  // 76: ziti.edge_ctrl.pb.DataState.PostureCheck.OsList.osList:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Os
+	82,  // 77: ziti.edge_ctrl.pb.DataState.PostureCheck.ProcessMulti.processes:type_name -> ziti.edge_ctrl.pb.DataState.PostureCheck.Process
+	6,   // 78: ziti.edge_ctrl.pb.CreateApiSessionResponse.ServicePrecedencesEntry.value:type_name -> ziti.edge_ctrl.pb.TerminatorPrecedence
+	99,  // 79: ziti.edge_ctrl.pb.ConnectEvents.IdentityConnectEvents.connectTimes:type_name -> ziti.edge_ctrl.pb.ConnectEvents.ConnectDetails
+	80,  // [80:80] is the sub-list for method output_type
+	80,  // [80:80] is the sub-list for method input_type
+	80,  // [80:80] is the sub-list for extension type_name
+	80,  // [80:80] is the sub-list for extension extendee
+	0,   // [0:80] is the sub-list for field type_name
 }
 
 func init() { file_edge_ctrl_proto_init() }

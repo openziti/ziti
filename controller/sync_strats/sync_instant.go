@@ -35,8 +35,6 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/build"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -45,6 +43,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/handler_edge_ctrl"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -1865,12 +1865,18 @@ func (strategy *InstantStrategy) sendDataStateChangeSet(rtx *RouterSender, state
 }
 
 func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl_pb.DataState_Action, revocation *db.Revocation) {
+	var issuedBefore *timestamppb.Timestamp
+	if !revocation.IssuedBefore.IsZero() {
+		issuedBefore = timestamppb.New(revocation.IssuedBefore)
+	}
 	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
 		Action: action,
 		Model: &edge_ctrl_pb.DataState_Event_Revocation{
 			Revocation: &edge_ctrl_pb.DataState_Revocation{
-				Id:        revocation.Id,
-				ExpiresAt: timestamppb.New(revocation.ExpiresAt),
+				Id:           revocation.Id,
+				ExpiresAt:    timestamppb.New(revocation.ExpiresAt),
+				Type:         revocation.Type,
+				IssuedBefore: issuedBefore,
 			},
 		},
 	})

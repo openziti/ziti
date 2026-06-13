@@ -132,7 +132,10 @@ func (ctx *TestContext) testIdentityConfigOverridesIdentityDelete(t *testing.T) 
 	ctx.NoError(err)
 
 	boltztest.ValidateDeleted(ctx, service.Id)
-	boltztest.ValidateDeleted(ctx, identity.Id)
+	// Deleting an identity creates an identity-scoped revocation keyed by the
+	// identity id (to revoke its live OIDC sessions), which legitimately remains
+	// under the revocations bucket, so exclude that path from the scan.
+	boltztest.ValidateDeleted(ctx, identity.Id, "/"+db.RootBucket+"/"+db.EntityTypeRevocations)
 	boltztest.ValidateDeleted(ctx, cfg1.Id)
 	boltztest.ValidateDeleted(ctx, cfg2.Id)
 }
