@@ -1007,6 +1007,19 @@ func (self *hostedServiceRegistry) getTerminatorsForService(serviceId string) []
 	return result
 }
 
+// getTerminatorsForConn returns a snapshot of the terminators hosted on the
+// given connection. Used to scope a posture re-evaluation to one identity's
+// API session rather than to every host of a service.
+func (self *hostedServiceRegistry) getTerminatorsForConn(conn *edgeClientConn) []*edgeTerminator {
+	var result []*edgeTerminator
+	self.terminators.IterCb(func(key string, v *edgeTerminator) {
+		if v.edgeClientConn == conn {
+			result = append(result, v)
+		}
+	})
+	return result
+}
+
 type inspectTerminatorsEvent struct {
 	result atomic.Pointer[[]*inspect.SdkTerminatorInspectDetail]
 	done   chan struct{}
