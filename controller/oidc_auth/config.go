@@ -63,14 +63,7 @@ func NewConfig(issuers []Issuer, cert *x509.Certificate, key crypto.PrivateKey) 
 // MaxTokenDuration returns the maximum token lifetime currently configured
 func (c *Config) MaxTokenDuration() time.Duration {
 	if c.maxTokenDuration == nil {
-		curMaxDur := c.RefreshTokenDuration
-
-		for _, duration := range []time.Duration{c.AccessTokenDuration, c.IdTokenDuration} {
-			if duration > curMaxDur {
-				curMaxDur = duration
-			}
-		}
-
+		curMaxDur := common.MaxTokenDuration(c.RefreshTokenDuration, c.AccessTokenDuration, c.IdTokenDuration)
 		c.maxTokenDuration = &curMaxDur
 	}
 
