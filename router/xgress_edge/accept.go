@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/latency"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/latency"
 	"github.com/openziti/metrics"
 	sdkEdge "github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/cert"

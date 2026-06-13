@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"

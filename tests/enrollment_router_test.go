@@ -36,7 +36,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/transport/v2"
 

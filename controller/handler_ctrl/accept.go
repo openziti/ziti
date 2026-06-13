@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"

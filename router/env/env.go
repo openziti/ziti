@@ -19,7 +19,7 @@ package env
 import (
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"

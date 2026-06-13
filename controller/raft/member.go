@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/controller/apierror"
 
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 
 	"github.com/hashicorp/raft"

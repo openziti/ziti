@@ -25,8 +25,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"

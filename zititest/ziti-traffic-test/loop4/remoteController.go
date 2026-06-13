@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/sdk-golang/ziti"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"

@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"

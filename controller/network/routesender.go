@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"

@@ -3,7 +3,7 @@ package testutil
 import (
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/pkg/errors"
 )
 

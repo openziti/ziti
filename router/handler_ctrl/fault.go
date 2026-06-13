@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"google.golang.org/protobuf/proto"

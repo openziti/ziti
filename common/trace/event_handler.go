@@ -17,7 +17,7 @@
 package trace
 
 import (
-	"github.com/openziti/channel/v4/trace/pb"
+	"github.com/openziti/channel/v5/trace/pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 )
 

@@ -26,7 +26,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"

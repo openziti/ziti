@@ -29,7 +29,7 @@ import (
 
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"

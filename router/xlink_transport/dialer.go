@@ -22,8 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"

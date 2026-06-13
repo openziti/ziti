@@ -17,7 +17,7 @@
 package handler_mgmt
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/controller/env"

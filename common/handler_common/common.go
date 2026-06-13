@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 )
 

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"

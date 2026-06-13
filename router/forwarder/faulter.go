@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"

@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	transporttls "github.com/openziti/transport/v2/tls"

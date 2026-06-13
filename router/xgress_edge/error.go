@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	sdk "github.com/openziti/sdk-golang/ziti/edge"
 )
 

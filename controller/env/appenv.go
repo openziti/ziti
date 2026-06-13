@@ -37,7 +37,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	clientServer "github.com/openziti/edge-api/rest_client_api_server"
 	clientOperations "github.com/openziti/edge-api/rest_client_api_server/operations"
 	managementServer "github.com/openziti/edge-api/rest_management_api_server"

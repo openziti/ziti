@@ -31,7 +31,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"

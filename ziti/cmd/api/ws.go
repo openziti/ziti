@@ -25,8 +25,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/ziti/util"

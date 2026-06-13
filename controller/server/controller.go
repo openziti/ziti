@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"

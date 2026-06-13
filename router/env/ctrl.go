@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 )
 
 type NetworkController interface {

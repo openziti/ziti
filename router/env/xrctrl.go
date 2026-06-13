@@ -17,7 +17,7 @@
 package env
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/config"
 )
 
