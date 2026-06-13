@@ -19,16 +19,17 @@ package model
 import (
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
 type Revocation struct {
 	models.BaseEntity
-	ExpiresAt time.Time
-	Type      string
+	ExpiresAt    time.Time
+	Type         string
+	IssuedBefore time.Time
 }
 
 func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Revocation, error) {
@@ -39,6 +40,7 @@ func (entity *Revocation) fillFrom(_ Env, _ *bbolt.Tx, boltRevocation *db.Revoca
 	entity.FillCommon(boltRevocation)
 	entity.ExpiresAt = boltRevocation.ExpiresAt
 	entity.Type = boltRevocation.Type
+	entity.IssuedBefore = boltRevocation.IssuedBefore
 
 	return nil
 }
@@ -48,6 +50,7 @@ func (entity *Revocation) toBoltEntityForCreate(*bbolt.Tx, Env) (*db.Revocation,
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		ExpiresAt:     entity.ExpiresAt,
 		Type:          entity.Type,
+		IssuedBefore:  entity.IssuedBefore,
 	}
 
 	return boltEntity, nil
