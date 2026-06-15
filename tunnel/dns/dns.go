@@ -20,7 +20,7 @@ package dns
 
 // these functions are only implemented when OS=linux
 
-func NewDnsServer(addr string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
+func NewDnsServer(addrs []string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
 	return nil, nil
 }
 

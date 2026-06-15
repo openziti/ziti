@@ -152,7 +152,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
 	upstreams, _ := cmd.Flags().GetStringSlice(dnsUpstreamFlag)
 	unansweredDisposition, _ := cmd.Flags().GetString(dnsUnanswerableFlag)
-	resolver, err := dns.NewResolver(resolverConfig, upstreams, unansweredDisposition)
+	resolver, err := dns.NewResolver([]string{resolverConfig}, upstreams, unansweredDisposition)
 	if err != nil {
 		log.WithError(err).Fatal("failed to start DNS resolver")
 	}
