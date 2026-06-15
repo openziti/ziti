@@ -391,7 +391,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 
 	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
 
-	multiChannelConfig := &channel.MultiChannelConfig{
+	multiChannelConfig := &channel.Config{
 		LogicalName:     fmt.Sprintf("ctrl/%s", underlay.Id()),
 		Options:         config.Ctrl.Options,
 		UnderlayHandler: dialCtrlChan,
@@ -399,7 +399,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		Underlay:        underlay,
 	}
 
-	if _, err = channel.NewMultiChannel(multiChannelConfig); err != nil {
+	if _, err = channel.NewChannel(multiChannelConfig); err != nil {
 		if closeErr := underlay.Close(); closeErr != nil {
 			pfxlog.Logger().WithError(closeErr).Error("unable to close underlay")
 		}

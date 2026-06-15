@@ -499,7 +499,7 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 
-	multiConfig := &channel.MultiChannelConfig{
+	multiConfig := &channel.Config{
 		LogicalName:     "ctrl/" + underlay.Id(),
 		Options:         self.ctrlAccepter.options,
 		UnderlayHandler: listenerCtrlChan,
@@ -514,7 +514,7 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 		Underlay: underlay,
 	}
 
-	if _, err = channel.NewMultiChannel(multiConfig); err != nil {
+	if _, err = channel.NewChannel(multiConfig); err != nil {
 		if closeErr := underlay.Close(); closeErr != nil {
 			log.WithError(closeErr).Error("error closing underlay after multi channel creation failure")
 		}

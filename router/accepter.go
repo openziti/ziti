@@ -36,7 +36,7 @@ type ctrlChannelAcceptor struct {
 	options *channel.Options
 }
 
-func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	log := pfxlog.Logger().WithField("ctrlId", underlay.Id())
 	log.Info("accepting inbound ctrl channel connection")
 
@@ -53,7 +53,7 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 		self.router.ctrlBindhandler,
 	)
 
-	multiConfig := &channel.MultiChannelConfig{
+	multiConfig := &channel.Config{
 		LogicalName:     "ctrl/" + underlay.Id(),
 		Options:         self.options,
 		UnderlayHandler: listenerCtrlChan,
@@ -61,7 +61,7 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 		Underlay:        underlay,
 	}
 
-	mc, err := channel.NewMultiChannel(multiConfig)
+	mc, err := channel.NewChannel(multiConfig)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting ctrl channel %v with multi-underlay", underlay.Label())
 		return nil, err

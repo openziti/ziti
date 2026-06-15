@@ -90,9 +90,9 @@ func (self *listener) GetLocalBinding() string {
 	return self.config.bindInterface
 }
 
-func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	linkChannel := NewListenerLinkChannel(underlay, self.env.GetLinkPayloadSenderQueueSize(), self.env.GetLinkAckSenderQueueSize())
-	multiConfig := channel.MultiChannelConfig{
+	multiConfig := channel.Config{
 		LogicalName:     "link/" + resolveLinkId(underlay.Headers(), underlay.Id()),
 		Options:         self.config.options,
 		UnderlayHandler: linkChannel,
@@ -104,7 +104,7 @@ func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 		}),
 		Underlay: underlay,
 	}
-	mc, err := channel.NewMultiChannel(&multiConfig)
+	mc, err := channel.NewChannel(&multiConfig)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting link channel %v with mult-underlay", underlay.Label())
@@ -296,7 +296,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 		dialed:        false,
 	}
 
-	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
+	if mc, ok := binding.GetChannel().(channel.Channel); ok {
 		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
 			xli.ch = linkChan
 		}

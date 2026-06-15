@@ -298,14 +298,14 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 			},
 		}
 		var dialLinkChannel = NewDialLinkChannel(dialLinkChangeConfig)
-		multiChannelConfig := &channel.MultiChannelConfig{
+		multiChannelConfig := &channel.Config{
 			LogicalName:     fmt.Sprintf("l/%s", underlay.Id()),
 			Options:         self.config.options,
 			UnderlayHandler: dialLinkChannel,
 			BindHandler:     bindHandler,
 			Underlay:        underlay,
 		}
-		_, err = channel.NewMultiChannel(multiChannelConfig)
+		_, err = channel.NewChannel(multiChannelConfig)
 	} else {
 		_, err = channel.NewSingleChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
 	}
@@ -364,7 +364,7 @@ type dialBindHandler struct {
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
-	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
+	if mc, ok := binding.GetChannel().(channel.Channel); ok {
 		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
 			self.link.ch = linkChan
 		}

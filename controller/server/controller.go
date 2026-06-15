@@ -104,7 +104,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.ContentT
 	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
-	ctrlCh := ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	ctrlCh := ch.(channel.Channel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 
 	result := []channel.ContentTypeReceiver{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),

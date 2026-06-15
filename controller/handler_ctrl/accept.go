@@ -73,13 +73,13 @@ func (self *multiListenerAcceptor) AcceptUnderlay(underlay channel.Underlay) err
 
 // HandleGroupedUnderlay handles incoming grouped connections from routers that support
 // multi-underlay control channels. It creates a MultiChannel with ListenerCtrlChannel.
-func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	if _, hasSecret := underlay.Headers()[channel.GroupSecretHeader]; !hasSecret {
 		underlay.Headers()[channel.GroupSecretHeader] = []byte(uuid.NewString())
 	}
 
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
-	multiConfig := channel.MultiChannelConfig{
+	multiConfig := channel.Config{
 		LogicalName:     "ctrl/" + underlay.Id(),
 		Options:         self.options,
 		UnderlayHandler: listenerCtrlChan,
@@ -91,7 +91,7 @@ func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, close
 		}),
 		Underlay: underlay,
 	}
-	mc, err := channel.NewMultiChannel(&multiConfig)
+	mc, err := channel.NewChannel(&multiConfig)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting ctrl channel %v with multi-underlay", underlay.Label())
 		return nil, err
@@ -190,7 +190,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	r.Control = ch.(channel.Channel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 	r.ConnectTime = time.Now()
 	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")

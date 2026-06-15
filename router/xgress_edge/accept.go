@@ -52,7 +52,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	fpg := cert.NewFingerprintGenerator()
 
 	var sdkChannel sdkEdge.SdkChannel
-	if multiChannel, ok := binding.GetChannel().(channel.MultiChannel); ok {
+	if multiChannel, ok := binding.GetChannel().(channel.Channel); ok {
 		sdkChannel = multiChannel.GetUnderlayHandler().(sdkEdge.SdkChannel)
 	} else {
 		sdkChannel = sdkEdge.NewSingleSdkChannel(binding.GetChannel())
@@ -257,9 +257,9 @@ func (self *Acceptor) Run() {
 	}
 }
 
-func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	sdkChannel := NewListenerSdkChannel()
-	multiConfig := channel.MultiChannelConfig{
+	multiConfig := channel.Config{
 		LogicalName:     "edge",
 		Options:         self.options,
 		UnderlayHandler: sdkChannel,
@@ -271,7 +271,7 @@ func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 		}),
 		Underlay: underlay,
 	}
-	mc, err := channel.NewMultiChannel(&multiConfig)
+	mc, err := channel.NewChannel(&multiConfig)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with mult-underlay", underlay.Label())
@@ -308,11 +308,11 @@ type ListenerSdkChannel struct {
 	constraints channel.UnderlayConstraints
 }
 
-func (self *ListenerSdkChannel) Start(channel channel.MultiChannel) {
+func (self *ListenerSdkChannel) Start(channel channel.Channel) {
 	self.constraints.CheckStateValid(channel, true)
 }
 
-func (self *ListenerSdkChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
+func (self *ListenerSdkChannel) HandleUnderlayClose(ch channel.Channel, underlay channel.Underlay) {
 	pfxlog.Logger().
 		WithField("id", ch.Label()).
 		WithField("underlays", ch.GetUnderlayCountsByType()).

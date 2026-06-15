@@ -30,18 +30,18 @@ func TestDialCtrlChannel_StaysOpenAt0UnderlaysAndRedials(t *testing.T) {
 	listenerAddr := "tcp:127.0.0.1:40001"
 	id := &identity.TokenId{Token: "test-controller"}
 
-	var acceptedChannels []channel.MultiChannel
+	var acceptedChannels []channel.Channel
 	var acceptedLock sync.Mutex
 	acceptCount := atomic.Int32{}
 
 	// Create multi-listener for controller side
 	multiListener := channel.NewMultiListener(
-		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 			// This handles grouped underlays - first connection with IsFirstGroupConnection=true
 			acceptCount.Add(1)
 
 			listenerChannel := NewListenerCtrlChannel()
-			multiConfig := &channel.MultiChannelConfig{
+			multiConfig := &channel.Config{
 				LogicalName:     "ctrl/" + underlay.ConnectionId(),
 				Options:         channel.DefaultOptions(),
 				UnderlayHandler: listenerChannel,
@@ -54,7 +54,7 @@ func TestDialCtrlChannel_StaysOpenAt0UnderlaysAndRedials(t *testing.T) {
 				}),
 			}
 
-			multiCh, err := channel.NewMultiChannel(multiConfig)
+			multiCh, err := channel.NewChannel(multiConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -120,14 +120,14 @@ func TestDialCtrlChannel_StaysOpenAt0UnderlaysAndRedials(t *testing.T) {
 	})
 
 	// Create and initialize multi-channel on router side
-	multiConfig := &channel.MultiChannelConfig{
+	multiConfig := &channel.Config{
 		LogicalName:     "ctrl/router-test",
 		Options:         channel.DefaultOptions(),
 		UnderlayHandler: dialChannel,
 		Underlay:        initialUnderlay,
 	}
 
-	multiCh, err := channel.NewMultiChannel(multiConfig)
+	multiCh, err := channel.NewChannel(multiConfig)
 	req.NoError(err)
 	req.NotNil(multiCh)
 
@@ -183,13 +183,13 @@ func TestListenerCtrlChannel_ClosesAt0Underlays(t *testing.T) {
 	listenerAddr := "tcp:127.0.0.1:40002"
 	id := &identity.TokenId{Token: "test-controller"}
 
-	var controllerChannel channel.MultiChannel
+	var controllerChannel channel.Channel
 	var channelLock sync.Mutex
 
 	multiListener := channel.NewMultiListener(
-		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 			listenerChannel := NewListenerCtrlChannel()
-			multiConfig := &channel.MultiChannelConfig{
+			multiConfig := &channel.Config{
 				LogicalName:     "ctrl/" + underlay.ConnectionId(),
 				Options:         channel.DefaultOptions(),
 				UnderlayHandler: listenerChannel,
@@ -202,7 +202,7 @@ func TestListenerCtrlChannel_ClosesAt0Underlays(t *testing.T) {
 				}),
 			}
 
-			multiCh, err := channel.NewMultiChannel(multiConfig)
+			multiCh, err := channel.NewChannel(multiConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -247,7 +247,7 @@ func TestListenerCtrlChannel_ClosesAt0Underlays(t *testing.T) {
 	req.NoError(err)
 
 	// Wait for connection to be accepted
-	var ctrlCh channel.MultiChannel
+	var ctrlCh channel.Channel
 	req.Eventually(func() bool {
 		channelLock.Lock()
 		ctrlCh = controllerChannel
@@ -277,11 +277,11 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 	listenerAddr := "tcp:127.0.0.1:40003"
 	id := &identity.TokenId{Token: "test-controller"}
 
-	var acceptedChannel channel.MultiChannel
+	var acceptedChannel channel.Channel
 	var acceptedChannelLock sync.Mutex
 
 	multiListener := channel.NewMultiListener(
-		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 			// Check if this is for an existing channel
 			acceptedChannelLock.Lock()
 			if acceptedChannel != nil && !acceptedChannel.IsClosed() {
@@ -294,7 +294,7 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 			// Create new channel for first connection
 			listenerChannel := NewListenerCtrlChannel()
 
-			multiConfig := &channel.MultiChannelConfig{
+			multiConfig := &channel.Config{
 				LogicalName:     "ctrl/" + underlay.ConnectionId(),
 				Options:         channel.DefaultOptions(),
 				UnderlayHandler: listenerChannel,
@@ -307,7 +307,7 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 				}),
 			}
 
-			multiCh, err := channel.NewMultiChannel(multiConfig)
+			multiCh, err := channel.NewChannel(multiConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -365,18 +365,18 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 	})
 
 	// Create and initialize multi-channel
-	multiConfig := &channel.MultiChannelConfig{
+	multiConfig := &channel.Config{
 		LogicalName:     "ctrl/router-priorities",
 		Options:         channel.DefaultOptions(),
 		UnderlayHandler: dialChannel,
 		Underlay:        initialUnderlay,
 	}
 
-	multiCh, err := channel.NewMultiChannel(multiConfig)
+	multiCh, err := channel.NewChannel(multiConfig)
 	req.NoError(err)
 
 	// Wait for all underlays to be established
-	var serverCh channel.MultiChannel
+	var serverCh channel.Channel
 	req.Eventually(func() bool {
 		acceptedChannelLock.Lock()
 		serverCh = acceptedChannel
@@ -415,16 +415,16 @@ func TestListenerCtrlChannel_AcceptsReconnectionAsNew(t *testing.T) {
 	listenerAddr := "tcp:127.0.0.1:40004"
 	id := &identity.TokenId{Token: "test-controller"}
 
-	var acceptedChannels []channel.MultiChannel
+	var acceptedChannels []channel.Channel
 	var acceptedLock sync.Mutex
 	acceptCount := atomic.Int32{}
 
 	multiListener := channel.NewMultiListener(
-		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 			acceptCount.Add(1)
 
 			listenerChannel := NewListenerCtrlChannel()
-			multiConfig := &channel.MultiChannelConfig{
+			multiConfig := &channel.Config{
 				LogicalName:     "ctrl/" + underlay.ConnectionId(),
 				Options:         channel.DefaultOptions(),
 				UnderlayHandler: listenerChannel,
@@ -437,7 +437,7 @@ func TestListenerCtrlChannel_AcceptsReconnectionAsNew(t *testing.T) {
 				}),
 			}
 
-			multiCh, err := channel.NewMultiChannel(multiConfig)
+			multiCh, err := channel.NewChannel(multiConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -535,9 +535,9 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 
 	// Controller side: accept connections and echo messages back
 	multiListener := channel.NewMultiListener(
-		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 			listenerChannel := NewListenerCtrlChannel()
-			multiConfig := &channel.MultiChannelConfig{
+			multiConfig := &channel.Config{
 				LogicalName:     "ctrl/" + underlay.ConnectionId(),
 				Options:         channel.DefaultOptions(),
 				UnderlayHandler: listenerChannel,
@@ -554,7 +554,7 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 					return nil
 				}),
 			}
-			return channel.NewMultiChannel(multiConfig)
+			return channel.NewChannel(multiConfig)
 		},
 		func(underlay channel.Underlay) error {
 			return fmt.Errorf("ungrouped connections not supported")
@@ -595,14 +595,14 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 		UnderlayChangeCallback:  func(ch *DialCtrlChannel, oldCount, newCount uint32) {},
 	}).(*DialCtrlChannel)
 
-	multiConfig := &channel.MultiChannelConfig{
+	multiConfig := &channel.Config{
 		LogicalName:     "ctrl/router-reconnect",
 		Options:         channel.DefaultOptions(),
 		UnderlayHandler: dialChannel,
 		Underlay:        initialUnderlay,
 	}
 
-	multiCh, err := channel.NewMultiChannel(multiConfig)
+	multiCh, err := channel.NewChannel(multiConfig)
 	req.NoError(err)
 	defer func() { _ = multiCh.Close() }()
 
