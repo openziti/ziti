@@ -38,14 +38,14 @@ func NewTProxyCmd() *cobra.Command {
 		RunE:    runTProxy,
 		PostRun: rootPostRun,
 	}
-	runTProxyCmd.PersistentFlags().String("lanIf", "", "if specified, INPUT rules for intercepted service addresses are assigned to this interface ")
+	runTProxyCmd.PersistentFlags().StringSlice("lanIf", nil, "if specified, INPUT rules for intercepted service addresses are assigned to these interfaces (comma-separated or repeated flag)")
 	runTProxyCmd.PersistentFlags().String("diverter", "", "if specified, use external tproxy configuration utility instead of internal iptables implementation")
 	return runTProxyCmd
 }
 
 func runTProxy(cmd *cobra.Command, _ []string) error {
 	var err error
-	lanIf, err := cmd.Flags().GetString("lanIf")
+	lanIf, err := cmd.Flags().GetStringSlice("lanIf")
 	if err != nil {
 		return err
 	}
