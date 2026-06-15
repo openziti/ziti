@@ -7,6 +7,7 @@
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
 * [Router Configs](#router-configs) - Allow routers to have a list of associated configs
+* [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 
 ## Cluster Quorum Recovery
 
@@ -140,6 +141,29 @@ The CLI has been updated to support the new field:
 * `ziti fabric create router` accepts `--config <id>` (repeatable)
 * `ziti fabric update router` accepts `--config <id>` to replace the router's config list
 
+## Multiple Resolver Addresses for tproxy
+
+The `resolver` option in `xgress_edge_tunnel` tproxy configs now accepts either a
+single string (as before) or a YAML list of `udp://` addresses. A single shared
+resolver instance handles all listeners so hostname→IP mappings remain consistent
+across interfaces. Existing single-address configs are unchanged.
+
+```yaml
+# single address (unchanged)
+- binding: tunnel
+  options:
+    mode: tproxy
+    resolver: udp://172.18.102.70:53
+
+# multiple addresses
+- binding: tunnel
+  options:
+    mode: tproxy
+    resolver:
+      - udp://172.18.102.70:53
+      - udp://192.168.10.1:53
+```
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.92](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.92)
@@ -163,5 +187,6 @@ The CLI has been updated to support the new field:
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
+    * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode
 
 
