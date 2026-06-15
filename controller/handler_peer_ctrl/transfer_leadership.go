@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newTransferLeadershipHandler(controller *raft.Controller) channel.TypedReceiveHandler {
+func newTransferLeadershipHandler(controller *raft.Controller) channel.ContentTypeReceiver {
 	return &transferLeadershipHandler{
 		controller: controller,
 	}

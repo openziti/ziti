@@ -124,7 +124,7 @@ type Router struct {
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
 	alertReporter       *alert.Reporter
-	inspectHandler      channel.TypedReceiveHandler
+	inspectHandler      channel.ContentTypeReceiver
 }
 
 func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
@@ -240,7 +240,7 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
-func (self *Router) GetInspectHandler() channel.TypedReceiveHandler {
+func (self *Router) GetInspectHandler() channel.ContentTypeReceiver {
 	return self.inspectHandler
 }
 

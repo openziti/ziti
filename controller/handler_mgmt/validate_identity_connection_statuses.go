@@ -42,7 +42,7 @@ type validateIdentityConnectionStatusesHandler struct {
 	appEnv *env.AppEnv
 }
 
-func newValidateIdentityConnectionStatusesHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
+func newValidateIdentityConnectionStatusesHandler(appEnv *env.AppEnv) channel.ContentTypeReceiver {
 	return &validateIdentityConnectionStatusesHandler{appEnv: appEnv}
 }
 

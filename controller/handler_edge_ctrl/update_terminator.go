@@ -31,7 +31,7 @@ type updateTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewUpdateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewUpdateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &updateTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

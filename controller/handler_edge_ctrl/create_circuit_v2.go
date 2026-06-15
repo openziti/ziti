@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 )
 
-func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,

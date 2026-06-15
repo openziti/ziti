@@ -65,7 +65,7 @@ type RouterEnv interface {
 	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
 	UpdateLeader(leaderId string)
 	GetXgressListeners() []xgress_router.Listener
-	GetInspectHandler() channel.TypedReceiveHandler
+	GetInspectHandler() channel.ContentTypeReceiver
 }
 
 type Alerter interface {

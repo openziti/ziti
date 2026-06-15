@@ -77,7 +77,7 @@ type RouterSyncStrategy interface {
 type RouterConnectionHandler interface {
 	RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router)
 	RouterDisconnected(router *model.Router)
-	GetReceiveHandlers() []channel.TypedReceiveHandler
+	GetReceiveHandlers() []channel.ContentTypeReceiver
 }
 
 // RouterSynchronizerEventHandler is responsible for keeping Edge Routers up to date on API Sessions

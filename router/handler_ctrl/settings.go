@@ -64,7 +64,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newSettingsHandler(env env.RouterEnv) channel.ContentTypeReceiver {
 	return &settingsHandler{
 		env: env,
 	}

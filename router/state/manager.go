@@ -1593,16 +1593,16 @@ func (self *ManagerImpl) LoadConfig(_ map[interface{}]interface{}) error {
 // establishing the router's ability to receive session updates, data model changes,
 // and other control plane messages essential for distributed operation.
 func (self *ManagerImpl) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(NewHelloHandler(self, self.env.GetConfig().Edge.EdgeListeners))
-	binding.AddTypedReceiveHandler(NewExtendEnrollmentCertsHandler(self.env))
+	channel.AddReceiveHandlers(binding, NewHelloHandler(self, self.env.GetConfig().Edge.EdgeListeners))
+	channel.AddReceiveHandlers(binding, NewExtendEnrollmentCertsHandler(self.env))
 
-	binding.AddTypedReceiveHandler(NewSessionRemovedHandler(self))
-	binding.AddTypedReceiveHandler(NewApiSessionAddedHandler(self, binding))
-	binding.AddTypedReceiveHandler(NewApiSessionRemovedHandler(self))
-	binding.AddTypedReceiveHandler(NewApiSessionUpdatedHandler(self))
-	binding.AddTypedReceiveHandler(NewDataStateHandler(self))
-	binding.AddTypedReceiveHandler(NewDataStateEventHandler(self))
-	binding.AddTypedReceiveHandler(NewValidateDataStateRequestHandler(self, self.env))
+	channel.AddReceiveHandlers(binding, NewSessionRemovedHandler(self))
+	channel.AddReceiveHandlers(binding, NewApiSessionAddedHandler(self, binding))
+	channel.AddReceiveHandlers(binding, NewApiSessionRemovedHandler(self))
+	channel.AddReceiveHandlers(binding, NewApiSessionUpdatedHandler(self))
+	channel.AddReceiveHandlers(binding, NewDataStateHandler(self))
+	channel.AddReceiveHandlers(binding, NewDataStateEventHandler(self))
+	channel.AddReceiveHandlers(binding, NewValidateDataStateRequestHandler(self, self.env))
 	return nil
 }
 

@@ -41,68 +41,68 @@ func NewBindHandler(env *env.AppEnv, network *network.Network, xmgmts *concurren
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	inspectRequestHandler := newInspectHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    inspectRequestHandler.ContentType(),
 		Handler: inspectRequestHandler.HandleReceive,
 	})
 
 	validateCircuitsRequestHandler := newValidateCircuitsHandler(bindHandler.env)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateCircuitsRequestHandler.ContentType(),
 		Handler: validateCircuitsRequestHandler.HandleReceive,
 	})
 
 	validateTerminatorsRequestHandler := newValidateTerminatorsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateTerminatorsRequestHandler.ContentType(),
 		Handler: validateTerminatorsRequestHandler.HandleReceive,
 	})
 
 	validateLinksRequestHandler := newValidateRouterLinksHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateLinksRequestHandler.ContentType(),
 		Handler: validateLinksRequestHandler.HandleReceive,
 	})
 
 	validateSdkTerminatorsRequestHandler := newValidateRouterSdkTerminatorsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateSdkTerminatorsRequestHandler.ContentType(),
 		Handler: validateSdkTerminatorsRequestHandler.HandleReceive,
 	})
 
 	validateIdentityConnectionStatusesRequestHandler := newValidateIdentityConnectionStatusesHandler(bindHandler.env)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateIdentityConnectionStatusesRequestHandler.ContentType(),
 		Handler: validateIdentityConnectionStatusesRequestHandler.HandleReceive,
 	})
 
 	validateRouterDataModelRequestHandler := newValidateRouterDataModelHandler(bindHandler.env)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateRouterDataModelRequestHandler.ContentType(),
 		Handler: validateRouterDataModelRequestHandler.HandleReceive,
 	})
 
 	validateErtTerminatorsRequestHandler := newValidateRouterErtTerminatorsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateErtTerminatorsRequestHandler.ContentType(),
 		Handler: validateErtTerminatorsRequestHandler.HandleReceive,
 	})
 
 	validateControllerDialersRequestHandler := newValidateControllerDialersHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateControllerDialersRequestHandler.ContentType(),
 		Handler: validateControllerDialersRequestHandler.HandleReceive,
 	})
 
 	tracesHandler := newStreamTracesHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(tracesHandler)
+	channel.AddReceiveHandlers(binding, tracesHandler)
 	binding.AddCloseHandler(tracesHandler)
 
 	eventsHandler := newStreamEventsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(eventsHandler)
+	channel.AddReceiveHandlers(binding, eventsHandler)
 	binding.AddCloseHandler(eventsHandler)
 
-	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
+	channel.AddReceiveHandlers(binding, newTogglePipeTracesHandler(bindHandler.network))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController()))
 

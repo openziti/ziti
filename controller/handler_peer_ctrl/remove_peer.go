@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newRemovePeerHandler(controller *raft.Controller) channel.TypedReceiveHandler {
+func newRemovePeerHandler(controller *raft.Controller) channel.ContentTypeReceiver {
 	return &removePeerHandler{
 		controller: controller,
 	}

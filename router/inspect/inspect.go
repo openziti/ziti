@@ -39,7 +39,7 @@ type Handler struct {
 	fwd *forwarder.Forwarder
 }
 
-func NewInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) channel.TypedReceiveHandler {
+func NewInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) channel.ContentTypeReceiver {
 	return &Handler{
 		env: env,
 		fwd: fwd,

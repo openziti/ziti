@@ -26,7 +26,7 @@ import (
 
 type receiveHandler struct{}
 
-func newReceiveHandler() channel.TypedReceiveHandler {
+func newReceiveHandler() channel.ContentTypeReceiver {
 	return &receiveHandler{}
 }
 

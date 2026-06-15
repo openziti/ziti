@@ -73,7 +73,7 @@ func (factory *Factory) Enabled() bool {
 }
 
 func (factory *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
 	})

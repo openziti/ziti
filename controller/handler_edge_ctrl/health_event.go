@@ -34,7 +34,7 @@ type healthEventHandler struct {
 	serviceHealthCheckFailedCounter metrics.IntervalCounter
 }
 
-func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	serviceEventMetrics := appEnv.GetHostController().GetNetwork().GetServiceEventsMetricsRegistry()
 	return &healthEventHandler{
 		baseRequestHandler: baseRequestHandler{

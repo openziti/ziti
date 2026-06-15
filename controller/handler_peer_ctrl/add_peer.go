@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newAddPeerHandler(controller *raft.Controller) channel.TypedReceiveHandler {
+func newAddPeerHandler(controller *raft.Controller) channel.ContentTypeReceiver {
 	return &addPeerHandler{
 		controller: controller,
 	}

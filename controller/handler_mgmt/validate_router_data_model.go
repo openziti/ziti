@@ -36,7 +36,7 @@ type validateRouterDataModelHandler struct {
 	appEnv *env.AppEnv
 }
 
-func newValidateRouterDataModelHandler(appEnv *env.AppEnv) channel.TypedReceiveHandler {
+func newValidateRouterDataModelHandler(appEnv *env.AppEnv) channel.ContentTypeReceiver {
 	return &validateRouterDataModelHandler{appEnv: appEnv}
 }
 

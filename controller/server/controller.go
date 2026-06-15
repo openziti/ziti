@@ -100,13 +100,13 @@ func NewController(host env.HostController) (*Controller, error) {
 	return c, nil
 }
 
-func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedReceiveHandler {
+func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.ContentTypeReceiver {
 	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
 	ctrlCh := ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
 
-	result := []channel.TypedReceiveHandler{
+	result := []channel.ContentTypeReceiver{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateCircuitV2Handler(c.AppEnv, ch),
@@ -324,7 +324,7 @@ func (c *subctrl) Enabled() bool {
 
 func (c *subctrl) BindChannel(binding channel.Binding) error {
 	for _, h := range c.parent.GetCtrlHandlers(binding) {
-		binding.AddTypedReceiveHandler(h)
+		channel.AddReceiveHandlers(binding, h)
 	}
 	return nil
 }

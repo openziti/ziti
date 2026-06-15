@@ -40,7 +40,7 @@ type createTerminatorV2Handler struct {
 	baseRequestHandler
 }
 
-func NewCreateTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &createTerminatorV2Handler{
 		baseRequestHandler{
 			ch:     ch,

@@ -30,7 +30,7 @@ func (self *Router) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
 
 func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 	self.agentBindHandlers = append(self.agentBindHandlers, channel.BindHandlerF(func(binding channel.Binding) error {
-		binding.AddTypedReceiveHandler(self.inspectHandler)
+		channel.AddReceiveHandlers(binding, self.inspectHandler)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), self.agentOpDumpForwarderTables)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), self.agentOpsDumpLinks)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesceRequestType), self.agentOpQuiesceRouter)

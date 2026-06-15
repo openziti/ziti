@@ -30,7 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func newCommandHandler(controller *raft.Controller) channel.TypedReceiveHandler {
+func newCommandHandler(controller *raft.Controller) channel.ContentTypeReceiver {
 	poolConfig := goroutines.PoolConfig{
 		QueueSize:   1, // The actual work queue is now external to the pool
 		MinWorkers:  0,

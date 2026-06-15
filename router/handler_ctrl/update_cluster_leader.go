@@ -47,7 +47,7 @@ func (handler *updateClusterLeaderHandler) HandleReceive(msg *channel.Message, c
 	}
 }
 
-func newUpdateClusterLeaderHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newUpdateClusterLeaderHandler(env env.RouterEnv) channel.ContentTypeReceiver {
 	result := &updateClusterLeaderHandler{
 		env: env,
 	}

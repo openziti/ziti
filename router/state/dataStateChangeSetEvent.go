@@ -15,7 +15,7 @@ type dataStateChangeSetHandler struct {
 	state Manager
 }
 
-func NewDataStateEventHandler(state Manager) channel.TypedReceiveHandler {
+func NewDataStateEventHandler(state Manager) channel.ContentTypeReceiver {
 	return &dataStateChangeSetHandler{
 		state: state,
 	}

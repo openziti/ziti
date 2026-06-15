@@ -30,7 +30,7 @@ type createCircuitForServiceHandler struct {
 	*TunnelState
 }
 
-func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
+func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ContentTypeReceiver {
 	return &createCircuitForServiceHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

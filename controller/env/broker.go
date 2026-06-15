@@ -128,7 +128,7 @@ func (broker *Broker) AcceptClusterEvent(clusterEvent *event.ClusterEvent) {
 	}
 }
 
-func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
+func (broker *Broker) GetReceiveHandlers() []channel.ContentTypeReceiver {
 	return broker.routerSyncStrategy.GetReceiveHandlers()
 }
 

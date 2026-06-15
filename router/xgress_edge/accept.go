@@ -71,56 +71,56 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 
 	log.Debug("peer fingerprints ", conn.fingerprints)
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeConnect,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processConnect(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processBind(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeUnbind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processUnbind(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeUpdateBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processUpdateBind(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeHealthEvent,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processHealthEvent(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypePostureResponse,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processPostureResponse(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeUpdateToken,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processTokenUpdate(m, ch)
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeConnInspectResponse,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.handleConnInspectResponse(m)
@@ -132,7 +132,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRoute, conn.processTraceRoute)
 
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
-	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
+	channel.AddReceiveHandlers(binding, &latency.LatencyHandler{})
 
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgPayload, conn.handleXgPayload)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)

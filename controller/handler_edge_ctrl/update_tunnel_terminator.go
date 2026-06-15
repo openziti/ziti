@@ -30,7 +30,7 @@ type updateTunnelTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewUpdateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewUpdateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &updateTunnelTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

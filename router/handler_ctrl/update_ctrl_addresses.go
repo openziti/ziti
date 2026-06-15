@@ -140,7 +140,7 @@ func (handler *updateCtrlAddressesHandler) requestCtrlListFromLeader() {
 	}
 }
 
-func newUpdateCtrlAddressesHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newUpdateCtrlAddressesHandler(env env.RouterEnv) channel.ContentTypeReceiver {
 	result := &updateCtrlAddressesHandler{
 		env: env,
 	}

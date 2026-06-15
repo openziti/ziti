@@ -39,7 +39,7 @@ type createTunnelTerminatorV2Handler struct {
 	*TunnelState
 }
 
-func NewCreateTunnelTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateTunnelTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &createTunnelTerminatorV2Handler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 	}

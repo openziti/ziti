@@ -29,7 +29,7 @@ type validateSessionsHandler struct {
 	baseRequestHandler
 }
 
-func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &validateSessionsHandler{
 		baseRequestHandler{
 			ch:     ch,

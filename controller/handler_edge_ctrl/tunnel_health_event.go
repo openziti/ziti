@@ -32,7 +32,7 @@ type tunnelHealthEventHandler struct {
 	serviceHealthCheckFailedCounter metrics.IntervalCounter
 }
 
-func NewTunnelHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewTunnelHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	serviceEventMetrics := appEnv.GetHostController().GetNetwork().GetServiceEventsMetricsRegistry()
 	return &tunnelHealthEventHandler{
 		baseRequestHandler: baseRequestHandler{

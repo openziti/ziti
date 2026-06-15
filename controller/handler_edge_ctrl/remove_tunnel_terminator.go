@@ -28,7 +28,7 @@ type removeTunnelTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &removeTunnelTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

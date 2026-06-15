@@ -28,7 +28,7 @@ type createTunnelCircuitV2Handler struct {
 	baseRequestHandler
 }
 
-func NewCreateTunnelCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateTunnelCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &createTunnelCircuitV2Handler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 	}

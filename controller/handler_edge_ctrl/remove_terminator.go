@@ -30,7 +30,7 @@ type removeTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &removeTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

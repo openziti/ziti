@@ -694,7 +694,7 @@ func (ch *simpleTestChannel) AddReceiveHandler(int32, channel.ReceiveHandler) {
 func (ch *simpleTestChannel) AddReceiveHandlerF(int32, channel.ReceiveHandlerF) {
 }
 
-func (ch *simpleTestChannel) AddTypedReceiveHandler(channel.TypedReceiveHandler) {
+func (ch *simpleTestChannel) AddTypedReceiveHandler(channel.ContentTypeReceiver) {
 }
 
 func (ch *simpleTestChannel) AddErrorHandler(channel.ErrorHandler) {

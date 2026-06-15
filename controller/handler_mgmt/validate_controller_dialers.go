@@ -32,7 +32,7 @@ type validateControllerDialersHandler struct {
 	network *network.Network
 }
 
-func newValidateControllerDialersHandler(network *network.Network) channel.TypedReceiveHandler {
+func newValidateControllerDialersHandler(network *network.Network) channel.ContentTypeReceiver {
 	return &validateControllerDialersHandler{network: network}
 }
 

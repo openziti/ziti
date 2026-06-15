@@ -60,7 +60,7 @@ func (example *example) Enabled() bool {
 }
 
 func (example *example) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(newReceiveHandler())
+	channel.AddReceiveHandlers(binding, newReceiveHandler())
 	return nil
 }
 
