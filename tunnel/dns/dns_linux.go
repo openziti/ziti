@@ -70,33 +70,33 @@ func NewDnsServer(addrs []string, upstreams []string, unanswered unansweredDispo
 		log.Infof("configured upstream DNS server: %s over %s", upstreamURL.Host, upstreamURL.Scheme)
 	}
 
+	startedCh := make(chan struct{}, len(addrs))
 	errChan := make(chan error, len(addrs))
+
 	for _, addr := range addrs {
 		s := &dns.Server{
 			Addr:    addr,
 			Net:     "udp",
 			Handler: r,
+			NotifyStartedFunc: func() {
+				log.Infof("dns server running at %s", addr)
+				startedCh <- struct{}{}
+			},
 		}
 		r.servers = append(r.servers, s)
 		go func() {
-			errChan <- s.ListenAndServe()
+			if err := s.ListenAndServe(); err != nil {
+				errChan <- err
+			}
 		}()
 	}
 
-	deadline := time.After(2 * time.Second)
-	started := 0
-	for started < len(addrs) {
+	for range addrs {
 		select {
+		case <-startedCh:
+			// server confirmed ready
 		case err := <-errChan:
-			if err != nil {
-				return nil, fmt.Errorf("dns server failed to start: %w", err)
-			}
-			return nil, fmt.Errorf("dns server stopped prematurely")
-		case <-deadline:
-			for _, s := range r.servers {
-				log.Infof("dns server running at %s", s.Addr)
-			}
-			started = len(addrs) // all assumed running after timeout
+			return nil, fmt.Errorf("dns server failed to start: %w", err)
 		}
 	}
 
