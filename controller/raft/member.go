@@ -121,7 +121,14 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 
 	peerId, peerAddr, err := self.Mesh.GetPeerInfo(req.Addr, 15*time.Second)
 	if err != nil {
-		return err
+		// GetPeerInfo reuses an already-established connection if one exists, so reaching
+		// this point means the joining node is neither connected nor dialable from here.
+		// A node with no inbound ports open (e.g. behind a firewall) cannot be dialed by
+		// the leader, and must instead initiate the join itself so the leader can reuse the
+		// inbound connection. Surface that guidance rather than an opaque dial timeout.
+		return errors.Wrapf(err, "unable to reach peer at '%s' to add it to the cluster; "+
+			"if this node has no inbound ports open (e.g. behind a firewall), run the join from the "+
+			"joining node instead ('ziti agent cluster add -i <joining-node> <joining-node-advertise-addr>')", req.Addr)
 	}
 
 	r := self.GetRaft()
