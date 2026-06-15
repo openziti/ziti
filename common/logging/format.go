@@ -114,3 +114,65 @@ func BuildHandler(out io.Writer, opts AsyncOptions) (*AsyncHandler, error) {
 	flat := &sourceFlattener{parent: json}
 	return NewAsyncHandler(flat, opts)
 }
+
+// BuildTextHandler constructs the async chain for plain key=value text output:
+// a slog TextHandler over out (lowercased canonical level names via
+// ReplaceAttr, flat file/func via sourceFlattener), wrapped in an AsyncHandler.
+// This is what --log-formatter=text selects, matching the pre-slog
+// logrus.TextFormatter shape (level=info msg=...) rather than the colored,
+// positional pretty output.
+//
+// out defaults to os.Stderr when nil.
+func BuildTextHandler(out io.Writer, opts AsyncOptions) (*AsyncHandler, error) {
+	if out == nil {
+		out = os.Stderr
+	}
+	text := slog.NewTextHandler(out, &slog.HandlerOptions{
+		AddSource:   false,
+		Level:       LevelTrace,
+		ReplaceAttr: ReplaceAttr,
+	})
+	flat := &sourceFlattener{parent: text}
+	return NewAsyncHandler(flat, opts)
+}
+
+// BuildPrettyHandler builds the async chain for ziti's pretty (pfxlog-shape)
+// output: a PrettyHandler over out, wrapped in an AsyncHandler. The
+// PrettyHandler resolves the caller frame from slog.Record.PC, so the bridge
+// must have ReportCaller enabled (which Install does) for legacy logrus call
+// sites to render their original file/func.
+//
+// prettyOpts defaults to DefaultPrettyOptions(): pfxlog-compatible labels,
+// "github.com/openziti/" trimmed from function names, relative time since the
+// start of today, and color off unless PFXLOG_USE_COLOR opts in. out defaults
+// to os.Stderr.
+func BuildPrettyHandler(out io.Writer, opts AsyncOptions, prettyOpts *PrettyOptions) (*AsyncHandler, error) {
+	if out == nil {
+		out = os.Stderr
+	}
+	return NewAsyncHandler(NewPrettyHandler(out, prettyOpts), opts)
+}
+
+// Recognised values for the --log-formatter flag. "" is treated as
+// FormatPretty so unconfigured binaries match the pre-slog default look.
+const (
+	FormatPretty = "pfxlog"
+	FormatJSON   = "json"
+	FormatText   = "text"
+)
+
+// BuildHandlerForFormat picks the production handler chain by name. Unknown
+// or empty formats fall back to FormatPretty so ziti's default look-and-feel
+// matches the pre-slog binaries.
+func BuildHandlerForFormat(out io.Writer, opts AsyncOptions, format string) (*AsyncHandler, error) {
+	switch format {
+	case FormatJSON:
+		return BuildHandler(out, opts)
+	case FormatText:
+		return BuildTextHandler(out, opts)
+	case "", FormatPretty:
+		return BuildPrettyHandler(out, opts, nil)
+	default:
+		return nil, fmt.Errorf("logging: unknown formatter %q (want %q, %q, or %q)", format, FormatPretty, FormatJSON, FormatText)
+	}
+}

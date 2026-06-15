@@ -152,3 +152,97 @@ func TestBuildHandlerEmitsCustomLevels(t *testing.T) {
 	}
 	require.Equal(t, []string{"trace", "fatal", "panic"}, levels)
 }
+
+// TestBuildPrettyHandlerEmitsTextWithoutColor proves the pretty handler
+// produces text output (not JSON) and writes to the supplied io.Writer when
+// color is disabled.
+func TestBuildPrettyHandlerEmitsTextWithoutColor(t *testing.T) {
+	buf := &bytes.Buffer{}
+	opts := DefaultOptions()
+	opts.SummaryInterval = time.Hour
+	prettyOpts := DefaultPrettyOptions()
+	prettyOpts.UseColor = false
+	h, err := BuildPrettyHandler(buf, opts, prettyOpts)
+	require.NoError(t, err)
+
+	slog.New(h).Info("hello", "k", "v")
+	require.NoError(t, h.Close())
+	<-h.drainDone
+
+	line := strings.TrimSpace(buf.String())
+	require.NotEmpty(t, line)
+	require.Contains(t, line, "INFO")
+	require.Contains(t, line, "hello")
+	require.Contains(t, line, "k=[v]")
+	require.False(t, json.Valid([]byte(line)), "pretty output must not be JSON")
+}
+
+// TestBuildHandlerForFormatSelectsLeaf covers the format-string switch and
+// asserts each format's distinct output shape, not just JSON-vs-not: pfxlog and
+// "" produce the positional pretty output (uppercase level label, no key=value
+// level); text produces logrus-style key=value (level=info msg=...); json
+// produces JSON. Distinguishing text from pretty is the point - both are
+// non-JSON, so a not-JSON check alone would miss a text/pretty regression.
+func TestBuildHandlerForFormatSelectsLeaf(t *testing.T) {
+	cases := []struct {
+		name        string
+		format      string
+		mustContain []string
+		mustNotHave []string
+	}{
+		{"empty-defaults-to-pretty", "", []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
+		{"pfxlog-explicit", FormatPretty, []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
+		{"text", FormatText, []string{"level=info", "msg=hello"}, []string{"INFO", `"msg"`}},
+		{"json", FormatJSON, []string{`"level":"info"`, `"msg":"hello"`}, []string{"level=info"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			opts := DefaultOptions()
+			opts.SummaryInterval = time.Hour
+			h, err := BuildHandlerForFormat(buf, opts, c.format)
+			require.NoError(t, err)
+			slog.New(h).Info("hello")
+			require.NoError(t, h.Close())
+			<-h.drainDone
+			line := strings.TrimSpace(buf.String())
+			require.NotEmpty(t, line)
+			for _, s := range c.mustContain {
+				require.Contains(t, line, s, "format %q output %q", c.format, line)
+			}
+			for _, s := range c.mustNotHave {
+				require.NotContains(t, line, s, "format %q output %q", c.format, line)
+			}
+		})
+	}
+}
+
+// TestBuildTextHandlerEmitsKeyValue proves --log-formatter=text produces plain
+// logrus-style key=value output (level=info msg=...), not the pretty handler's
+// positional/uppercase shape. This is the compatibility guard for the text
+// format, which previously mapped to logrus.TextFormatter.
+func TestBuildTextHandlerEmitsKeyValue(t *testing.T) {
+	buf := &bytes.Buffer{}
+	opts := DefaultOptions()
+	opts.SummaryInterval = time.Hour
+	h, err := BuildTextHandler(buf, opts)
+	require.NoError(t, err)
+
+	slog.New(h).Info("hello", "k", "v")
+	require.NoError(t, h.Close())
+	<-h.drainDone
+
+	line := strings.TrimSpace(buf.String())
+	require.NotEmpty(t, line)
+	require.Contains(t, line, "level=info", "level must be the lowercased canonical name")
+	require.Contains(t, line, "msg=hello")
+	require.Contains(t, line, "k=v")
+	require.NotContains(t, line, "INFO", "text output must not use the pretty handler's uppercase label")
+	require.False(t, json.Valid([]byte(line)), "text output must not be JSON")
+}
+
+func TestBuildHandlerForFormatRejectsUnknown(t *testing.T) {
+	_, err := BuildHandlerForFormat(nil, DefaultOptions(), "logfmt")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "logfmt")
+}

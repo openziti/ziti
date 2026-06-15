@@ -304,6 +304,45 @@ func TestBridgeEndToEndResolvesRealCaller(t *testing.T) {
 	require.NotContains(t, fn, "sirupsen/logrus", "caller must not resolve to a logrus frame")
 }
 
+// TestFatalEmitsDurablyAndExits proves Fatal writes its record synchronously
+// (present before any Close, so it survives a process exit), carries the
+// attrs, and calls osExit(1). The global level is set above Fatal to also
+// prove Fatal bypasses level gating, matching logrus.Fatal.
+func TestFatalEmitsDurablyAndExits(t *testing.T) {
+	resetDefaultForTest()
+	rec := &recordingHandler{}
+	async, err := NewAsyncHandler(rec, DefaultOptions())
+	require.NoError(t, err)
+	Configure(async)
+	SetGlobalLevel(LevelPanic) // above Fatal: a gated path would drop it
+
+	var gotCode int
+	var exited bool
+	prev := osExit
+	osExit = func(code int) { gotCode = code; exited = true }
+	defer func() { osExit = prev }()
+
+	Fatal(context.Background(), "boom", slog.String("k", "v"))
+
+	require.True(t, exited, "Fatal must call osExit")
+	require.Equal(t, 1, gotCode)
+	require.Equal(t, 1, rec.count(), "record must be written synchronously, not left in the queue")
+
+	got := rec.snapshot()[0]
+	require.Equal(t, LevelFatal, got.Level)
+	require.Equal(t, "boom", got.Message)
+	require.NotZero(t, got.PC, "Fatal should capture the caller PC")
+	attrs := map[string]string{}
+	got.Attrs(func(a slog.Attr) bool {
+		attrs[a.Key] = a.Value.String()
+		return true
+	})
+	require.Equal(t, "v", attrs["k"])
+
+	require.NoError(t, async.Close())
+	<-async.drainDone
+}
+
 // TestInstallToIsIdempotent proves repeated InstallTo on the same logger
 // doesn't stack multiple slogBridge hooks. The quickstart hits this path by
 // running the controller and router from a single process, each calling
