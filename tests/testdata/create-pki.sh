@@ -33,6 +33,11 @@ ziti pki create server --pki-root "$PKI_ROOT" --ca-name ctrl1 --dns localhost --
 # Controller 1: client cert
 ziti pki create client --pki-root "$PKI_ROOT" --ca-name ctrl1 --client-name ctrl1 --spiffe-id 'controller/ctrl1'
 
+# Controller 1: wildcard alt server cert (only SAN is *.wildcard.test). Used by the
+# wildcard-oidc-server config set / Test_OidcDiscoveryEndpoints_WildcardIssuer to exercise
+# OIDC issuer derivation from a wildcard server-cert SAN.
+ziti pki create server --pki-root "$PKI_ROOT" --ca-name ctrl1 --server-file ctrl1-wildcard --server-name ctrl1-wildcard --dns '*.wildcard.test'
+
 # Controller 2: intermediate (signing) cert
 ziti pki create intermediate --pki-root "$PKI_ROOT" --ca-name root --intermediate-file ctrl2 --intermediate-name 'Controller Two Signing Cert' --not-before "$INTERMEDIATE_NOT_BEFORE"
 
