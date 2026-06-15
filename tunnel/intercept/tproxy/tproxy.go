@@ -19,7 +19,7 @@ package tproxy
 import "time"
 
 type Config struct {
-	LanIf            string
+	LanIf            []string
 	Diverter         string
 	UDPIdleTimeout   time.Duration
 	UDPCheckInterval time.Duration

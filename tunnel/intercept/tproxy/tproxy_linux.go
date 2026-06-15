@@ -100,7 +100,7 @@ func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
 		log.Infof("udpCheckInterval is less than 1s, using default value of %s", DefaultUdpCheckInterval.String())
 	}
 
-	log.Infof("tproxy config: lanIf            =  [%s]", self.lanIf)
+	log.Infof("tproxy config: lanIf            =  %v", self.lanIf)
 	log.Infof("tproxy config: diverter         =  [%s]", self.diverter)
 	log.Infof("tproxy config: udpIdleTimeout   =  [%s]", self.udpIdleTimeout.String())
 	log.Infof("tproxy config: udpCheckInterval =  [%s]", self.udpCheckInterval.String())
@@ -133,10 +133,11 @@ func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
 		return nil, err
 	}
 
-	if self.lanIf != "" {
-		_, err := net.InterfaceByName(self.lanIf)
-		if err != nil {
-			return nil, fmt.Errorf("invalid lanIf '%s'", self.lanIf)
+	if len(self.lanIf) > 0 {
+		for _, iface := range self.lanIf {
+			if _, err := net.InterfaceByName(iface); err != nil {
+				return nil, fmt.Errorf("invalid lanIf '%s'", iface)
+			}
 		}
 		err = self.addIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
 		if err != nil {
@@ -158,7 +159,7 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 }
 
 type interceptor struct {
-	lanIf            string
+	lanIf            []string
 	diverter         string // external tproxy configuration utility. use internal iptables implementation if not specified.
 	udpIdleTimeout   time.Duration
 	udpCheckInterval time.Duration
@@ -214,7 +215,7 @@ func (self *interceptor) cleanupChains() {
 	}
 	if self.serviceProxies.IsEmpty() {
 		deleteIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain)
-		if self.lanIf != "" {
+		if len(self.lanIf) > 0 {
 			deleteIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
 		}
 	}
@@ -580,19 +581,20 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 			return errors.Wrap(err, "failed to insert rule")
 		}
 
-		if self.interceptor.lanIf != "" {
-			interceptAddr.AcceptSpec = []string{
-				"-i", self.interceptor.lanIf,
+		for _, iface := range self.interceptor.lanIf {
+			acceptSpec := []string{
+				"-i", iface,
 				"-m", "comment", "--comment", *service.Name,
 				"-d", ipNet.String(),
 				"-p", interceptAddr.Proto(),
 				"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
 				"-j", "ACCEPT",
 			}
-			pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, interceptAddr.AcceptSpec)
-			if err := self.interceptor.ipt.Insert(filterTable, dstChain, 1, interceptAddr.AcceptSpec...); err != nil {
+			pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, acceptSpec)
+			if err := self.interceptor.ipt.Insert(filterTable, dstChain, 1, acceptSpec...); err != nil {
 				return errors.Wrap(err, "failed to insert rule")
 			}
+			interceptAddr.AcceptSpecs = append(interceptAddr.AcceptSpecs, acceptSpec)
 		}
 	}
 
@@ -688,10 +690,9 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 				errorList = append(errorList, err)
 				log.WithError(err).Errorf("failed to remove iptables rule for service %s", *self.service.Name)
 			}
-			if self.interceptor.lanIf != "" {
-				pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, addr.TproxySpec)
-				err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
-				if err != nil {
+			for _, acceptSpec := range addr.AcceptSpecs {
+				pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, acceptSpec)
+				if err = self.interceptor.ipt.Delete(filterTable, dstChain, acceptSpec...); err != nil {
 					errorList = append(errorList, err)
 					log.WithError(err).Errorf("failed to remove iptables rule for service %s", *self.service.Name)
 				}
