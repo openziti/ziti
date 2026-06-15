@@ -161,7 +161,7 @@ type Options struct {
 	*xgress.Options
 	mode             string
 	svcPollRate      time.Duration
-	resolver         string
+	resolver         []string
 	dnsSvcIpRange    string
 	dnsUpstreams     []string
 	dnsUnanswerable  string
@@ -174,7 +174,7 @@ type Options struct {
 func (options *Options) load(data xgress.OptionsData) error {
 	options.mode = DefaultMode
 	options.svcPollRate = DefaultServicePollRate
-	options.resolver = DefaultDnsResolver
+	options.resolver = []string{DefaultDnsResolver}
 	options.dnsSvcIpRange = DefaultDnsServiceIpRange
 	options.dnsUnanswerable = DefaultDnsUnanswerable
 
@@ -200,10 +200,19 @@ func (options *Options) load(data xgress.OptionsData) error {
 		}
 
 		if value, found := data["resolver"]; found {
-			if strVal, ok := value.(string); ok {
-				options.resolver = strVal
-			} else {
-				return errors.Errorf("invalid value '%v' for resolver, must be string value", value)
+			switch v := value.(type) {
+			case string:
+				options.resolver = []string{v}
+			case []interface{}:
+				for _, item := range v {
+					strVal, ok := item.(string)
+					if !ok {
+						return errors.Errorf("invalid value '%v' for resolver, must be a string or list of strings", item)
+					}
+					options.resolver = append(options.resolver, strVal)
+				}
+			default:
+				return errors.Errorf("invalid value '%v' for resolver, must be a string or list of strings", value)
 			}
 		}
 

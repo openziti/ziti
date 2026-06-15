@@ -51,7 +51,7 @@ type upstream struct {
 }
 
 type resolver struct {
-	server     *dns.Server
+	servers    []*dns.Server
 	names      map[string]net.IP
 	ips        map[string]string
 	namesMtx   sync.Mutex
@@ -77,15 +77,16 @@ func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
 // and an unanswered-query disposition. An empty upstreams slice disables upstream
 // forwarding. When multiple upstreams are provided, queries are fanned out in
 // parallel and the first NOERROR response wins (see queryUpstreams).
-func NewResolver(config string, upstreams []string, unansweredConfig string) (Resolver, error) {
+func NewResolver(configs []string, upstreams []string, unansweredConfig string) (Resolver, error) {
 	flushDnsCaches()
-	if config == "" {
+	if len(configs) == 0 || (len(configs) == 1 && configs[0] == "") {
 		return nil, nil
 	}
 
-	resolverURL, err := url.Parse(config)
+	// Parse unanswered disposition and scheme from the first entry.
+	firstURL, err := url.Parse(configs[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", config, err)
+		return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", configs[0], err)
 	}
 
 	unanswered := unansweredRefused
@@ -94,8 +95,8 @@ func NewResolver(config string, upstreams []string, unansweredConfig string) (Re
 		if err != nil {
 			return nil, err
 		}
-	} else if resolverURL.RawQuery != "" {
-		values := resolverURL.Query()
+	} else if firstURL.RawQuery != "" {
+		values := firstURL.Query()
 		if raw := strings.TrimSpace(values.Get("response")); raw != "" {
 			unanswered, err = parseUnansweredDisposition(raw)
 			if err != nil {
@@ -116,18 +117,32 @@ func NewResolver(config string, upstreams []string, unansweredConfig string) (Re
 		}
 	}
 
-	switch resolverURL.Scheme {
+	switch firstURL.Scheme {
 	case "", "file":
-		return NewRefCountingResolver(NewHostFile(resolverURL.Path)), nil
+		if len(configs) > 1 {
+			return nil, fmt.Errorf("file:// resolver does not support multiple addresses")
+		}
+		return NewRefCountingResolver(NewHostFile(firstURL.Path)), nil
 	case "udp":
-		dnsResolver, err := NewDnsServer(resolverURL.Host, upstreams, unanswered)
+		addrs := make([]string, 0, len(configs))
+		for _, c := range configs {
+			u, err := url.Parse(c)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", c, err)
+			}
+			if u.Scheme != "udp" {
+				return nil, fmt.Errorf("all resolver addresses must use the same scheme; '%s' differs from 'udp'", c)
+			}
+			addrs = append(addrs, u.Host)
+		}
+		dnsResolver, err := NewDnsServer(addrs, upstreams, unanswered)
 		if err != nil {
 			return nil, err
 		}
 		return NewRefCountingResolver(dnsResolver), nil
 	}
 
-	return nil, fmt.Errorf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", config)
+	return nil, fmt.Errorf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", configs[0])
 }
 
 func (r *resolver) testSystemResolver() error {
@@ -447,5 +462,11 @@ func (r *resolver) RemoveHostname(hostname string) net.IP {
 
 func (r *resolver) Cleanup() error {
 	log.Debug("shutting down")
-	return r.server.Shutdown()
+	var lastErr error
+	for _, s := range r.servers {
+		if err := s.Shutdown(); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
 }

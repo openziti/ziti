@@ -30,22 +30,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// NewDnsServer starts a local DNS server on addr and configures zero or more
-// upstream DNS servers for recursive forwarding. Each upstream is a URL of
-// the form udp://host:port or tcp://host:port. When multiple upstreams are
-// provided, queries are fanned out in parallel; see resolver.queryUpstreams
-// for winner-selection semantics.
-func NewDnsServer(addr string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
+// NewDnsServer starts one local DNS server per address in addrs and configures
+// zero or more upstream DNS servers for recursive forwarding. All listeners
+// share a single resolver instance so hostname mappings are consistent across
+// addresses. Each upstream is a URL of the form udp://host:port or
+// tcp://host:port. When multiple upstreams are provided, queries are fanned
+// out in parallel; see resolver.queryUpstreams for winner-selection semantics.
+func NewDnsServer(addrs []string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
 	log.Infof("starting dns server...")
-	s := &dns.Server{
-		Addr: addr,
-		Net:  "udp",
-	}
 
-	names := make(map[string]net.IP)
 	r := &resolver{
-		server:     s,
-		names:      names,
+		names:      make(map[string]net.IP),
 		ips:        make(map[string]string),
 		namesMtx:   sync.Mutex{},
 		domains:    make(map[string]*domainEntry),
@@ -74,22 +69,35 @@ func NewDnsServer(addr string, upstreams []string, unanswered unansweredDisposit
 		})
 		log.Infof("configured upstream DNS server: %s over %s", upstreamURL.Host, upstreamURL.Scheme)
 	}
-	s.Handler = r
 
-	errChan := make(chan error)
-	go func() {
-		errChan <- s.ListenAndServe()
-	}()
+	startedCh := make(chan struct{}, len(addrs))
+	errChan := make(chan error, len(addrs))
 
-	select {
-	case err := <-errChan:
-		if err != nil {
-			return nil, fmt.Errorf("dns server failed to start: %w", err)
-		} else {
-			return nil, fmt.Errorf("dns server stopped prematurely")
+	for _, addr := range addrs {
+		s := &dns.Server{
+			Addr:    addr,
+			Net:     "udp",
+			Handler: r,
+			NotifyStartedFunc: func() {
+				log.Infof("dns server running at %s", addr)
+				startedCh <- struct{}{}
+			},
 		}
-	case <-time.After(2 * time.Second):
-		log.Infof("dns server running at %s", s.Addr)
+		r.servers = append(r.servers, s)
+		go func() {
+			if err := s.ListenAndServe(); err != nil {
+				errChan <- err
+			}
+		}()
+	}
+
+	for range addrs {
+		select {
+		case <-startedCh:
+			// server confirmed ready
+		case err := <-errChan:
+			return nil, fmt.Errorf("dns server failed to start: %w", err)
+		}
 	}
 
 	const resolverConfigHelp = "ziti-tunnel runs an internal DNS server which must be first in the host's\n" +
@@ -98,9 +106,8 @@ func NewDnsServer(addr string, upstreams []string, unanswered unansweredDisposit
 		"\n" +
 		"    prepend domain-name-servers %s;\n\n"
 
-	err := r.testSystemResolver()
-	if err != nil {
-		log.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
+	if err := r.testSystemResolver(); err != nil {
+		log.Errorf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addrs[0])
 	}
 
 	return r, nil
