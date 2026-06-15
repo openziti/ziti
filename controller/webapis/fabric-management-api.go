@@ -166,7 +166,7 @@ func (self *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWrit
 	id := &identity.TokenId{Token: "mgmt"}
 	underlayFactory := websockets.NewUnderlayFactory(id, conn, certs)
 
-	_, err = channel.NewChannel("mgmt", underlayFactory, self.bindHandler, nil)
+	_, err = channel.NewSingleChannel("mgmt", underlayFactory, self.bindHandler, nil)
 	if err != nil {
 		log.WithError(err).Error("unable to create channel over websocket")
 		return

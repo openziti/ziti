@@ -20,7 +20,7 @@ func AcceptControl(id string, uf channel.UnderlayFactory, assertions *require.As
 	}
 
 	timeoutUF := NewTimeoutUnderlayFactory(uf, 2*time.Second)
-	ch, err := channel.NewChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
+	ch, err := channel.NewSingleChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
 	assertions.NoError(err)
 	return ch, msgc
 }

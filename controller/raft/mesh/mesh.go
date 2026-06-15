@@ -645,7 +645,7 @@ func (self *impl) DialPeer(address string, timeout time.Duration, stripSigningCe
 		return self.PeerConnected(peer, true)
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != nil {
+	if _, err = channel.NewSingleChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != nil {
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
 	}
 
@@ -752,7 +752,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		return markerErr
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != markerErr {
+	if _, err = channel.NewSingleChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != markerErr {
 		return "", "", errors.Wrapf(err, "unable to dial %v", address)
 	}
 
@@ -1105,7 +1105,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		return self.PeerConnected(peer, false)
 	})
 
-	_, err := channel.NewChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())
+	_, err := channel.NewSingleChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())
 	if err != nil {
 		return err
 	}

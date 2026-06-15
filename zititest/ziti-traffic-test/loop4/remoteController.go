@@ -105,7 +105,7 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 	options := channel.DefaultOptions()
 
 	var ch channel.Channel
-	ch, err = channel.NewChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
+	ch, err = channel.NewSingleChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
 	if err != nil {
 		return fmt.Errorf("unable to establish connection from sim (%w)", err)
 	}

@@ -173,7 +173,7 @@ func TestLinkIdHeaderPreferredOverChannelId(t *testing.T) {
 	results := make(chan acceptResult, 1)
 
 	acceptF := func(underlay channel.Underlay) {
-		_, err := channel.NewChannelWithUnderlay("test-listen", underlay, channel.BindHandlerF(func(binding channel.Binding) error {
+		_, err := channel.NewSingleChannelWithUnderlay("test-listen", underlay, channel.BindHandlerF(func(binding channel.Binding) error {
 			ch := binding.GetChannel()
 			result := acceptResult{
 				channelId: ch.Id(),
@@ -218,7 +218,7 @@ func TestLinkIdHeaderPreferredOverChannelId(t *testing.T) {
 	underlay, err := dialer.CreateWithHeaders(5*time.Second, firstDialHeaders)
 	req.NoError(err)
 
-	ch, err := channel.NewChannelWithUnderlay("test-dial", underlay, channel.BindHandlerF(func(channel.Binding) error {
+	ch, err := channel.NewSingleChannelWithUnderlay("test-dial", underlay, channel.BindHandlerF(func(channel.Binding) error {
 		return nil
 	}), channel.DefaultOptions())
 	req.NoError(err)

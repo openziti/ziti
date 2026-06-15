@@ -115,7 +115,7 @@ func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 }
 
 func (self *listener) handleUngroupedNewUnderlay(underlay channel.Underlay) error {
-	if _, err := channel.NewChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
+	if _, err := channel.NewSingleChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
 		logrus.WithError(err).Error("error creating link channel")
 		return err
 	}

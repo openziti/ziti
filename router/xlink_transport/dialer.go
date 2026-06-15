@@ -165,7 +165,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		},
 	}
 
-	payloadCh, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options)
+	payloadCh, err := channel.NewSingleChannel("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
@@ -175,7 +175,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	headers.PutByteHeader(LinkHeaderType, byte(AckChannel))
 	ackDialer := channel.NewClassicDialer(channelDialerConfig)
 
-	_, err = channel.NewChannel("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options)
+	_, err = channel.NewSingleChannel("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options)
 	if err != nil {
 		_ = payloadCh.Close()
 		return nil, errors.Wrapf(err, "error dialing ack channel for [l/%s]", linkId.Token)
@@ -225,7 +225,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		},
 	}
 
-	_, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options)
+	_, err := channel.NewSingleChannel("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
 	}
@@ -307,7 +307,7 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		}
 		_, err = channel.NewMultiChannel(multiChannelConfig)
 	} else {
-		_, err = channel.NewChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
+		_, err = channel.NewSingleChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
 	}
 
 	if err != nil {

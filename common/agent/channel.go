@@ -53,7 +53,7 @@ func HandleChannelConnection(conn net.Conn, id *identity.TokenId, appId byte, bi
 		CapabilitiesHeader: GetAgentCapabilitiesMask().Bytes(),
 	}
 	listener := channel.NewExistingConnListener(id, conn, helloHeaders)
-	_, err := channel.NewChannel("agent", listener, bindHandler, options)
+	_, err := channel.NewSingleChannel("agent", listener, bindHandler, options)
 	return err
 }
 
@@ -79,7 +79,7 @@ func NewChannel(conn net.Conn) (channel.Channel, error) {
 	options := channel.DefaultOptions()
 	options.ConnectTimeout = time.Second
 	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	return channel.NewChannel("agent", dialer, nil, options)
+	return channel.NewSingleChannel("agent", dialer, nil, options)
 }
 
 // ConnToChannel adapts a channel-consuming function to a conn-consuming one by

@@ -90,7 +90,7 @@ func Test_Throughput(t *testing.T) {
 
 	options := channel.DefaultOptions()
 	options.OutQueueSize = 64
-	ch, err := channel.NewChannel("test", underlayFactory, nil, options)
+	ch, err := channel.NewSingleChannel("test", underlayFactory, nil, options)
 	assert.NoError(t, err)
 
 	registry := metrics.NewRegistry("test", nil)

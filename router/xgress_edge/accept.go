@@ -282,7 +282,7 @@ func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 }
 
 func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
-	_, err := channel.NewChannelWithUnderlay("edge", underlay, self, self.options)
+	_, err := channel.NewSingleChannelWithUnderlay("edge", underlay, self, self.options)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting edge channel %v with underlay", underlay.Label())

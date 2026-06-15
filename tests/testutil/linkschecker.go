@@ -173,7 +173,7 @@ func StartLinkTest(checker *LinkStateChecker, id string, uf channel.UnderlayFact
 	}
 
 	timeoutUF := NewTimeoutUnderlayFactory(uf, 2*time.Second)
-	ch, err := channel.NewChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
+	ch, err := channel.NewSingleChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
 	assertions.NoError(err)
 	return ch
 }
