@@ -106,6 +106,34 @@ makePrivateKey() {
   fi
 }
 
+# addSans appends a comma-delimited address list to the _dns_sans / _ip_sans accumulators in the
+# caller's scope, classifying each entry as IP or DNS and skipping empties and duplicates.
+addSans() {
+  local _addr IFS=','
+  for _addr in ${1:-}; do
+    _addr="${_addr// /}"
+    [[ -z "${_addr}" ]] && continue
+    if [[ "${_addr}" == *:* || "${_addr}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      # colon => IPv6 (hostnames never contain one); otherwise dotted-quad IPv4
+      [[ ",${_ip_sans}," == *",${_addr},"* ]] || _ip_sans+=",${_addr}"
+    else
+      [[ ",${_dns_sans}," == *",${_addr},"* ]] || _dns_sans+=",${_addr}"
+    fi
+  done
+}
+
+# collectLeafSans seeds localhost + loopback then adds every advertised address that drives the
+# generated config, plus ZITI_CTRL_ADDITIONAL_SANS for addresses present only in a hand-edited config.
+# Sets _dns_sans and _ip_sans.
+collectLeafSans() {
+  _dns_sans="localhost"
+  _ip_sans="127.0.0.1,::1"
+  addSans "${ZITI_CTRL_ADVERTISED_ADDRESS:-}"          # ctrl (router-facing) listener
+  addSans "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-}"     # edge/client API address
+  addSans "${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS:-}" # management/web bindpoint address
+  addSans "${ZITI_CTRL_ADDITIONAL_SANS:-}"             # names only in a hand-edited config.yml
+}
+
 issueLeafCerts() {
   #
   # Issue server and client leaf certificates from the intermediate CA.
@@ -132,13 +160,8 @@ issueLeafCerts() {
   # server cert
   ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI_ROOT}/${ZITI_INTERMEDIATE_FILE}/certs/${ZITI_SERVER_FILE}.chain.pem"
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
-    local _dns_sans="localhost"
-    local _ip_sans="127.0.0.1,::1"
-    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.?){4} ]]; then
-      _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
-    else
-      _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
-    fi
+    local _dns_sans _ip_sans
+    collectLeafSans
     local -a _server_cmd=(ziti pki create server
       --pki-root "${ZITI_PKI_ROOT}"
       --ca-name "${ZITI_INTERMEDIATE_FILE}"
@@ -774,13 +797,8 @@ installCertRenewalTimer() {
   local _cert_name="${ZITI_CLUSTER_NODE_NAME:-${ZITI_NETWORK_NAME}}"
 
   # Compute SANs exactly as issueLeafCerts() does
-  local _dns_sans="localhost"
-  local _ip_sans="127.0.0.1,::1"
-  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.?){4} ]]; then
-    _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
-  else
-    _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
-  fi
+  local _dns_sans _ip_sans
+  collectLeafSans
 
   # Build the server cert renewal command (fully resolved, no variables)
   local _renew_server="/usr/bin/ziti pki create server"
