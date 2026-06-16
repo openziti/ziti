@@ -134,6 +134,17 @@ jobs:
           path: release/
           retention-days: 5
 
+  zet-integration-tests:
+    name: ZET Integration Tests
+    if: contains(github.ref_name, '-pre') || contains(github.ref_name, '-rc')
+    needs: [ linux-build, mac-os-build, windows-build ]
+    uses: openziti/ziti-tunnel-sdk-c/.github/workflows/integration-tests.yml@main
+    with:
+      ziti-artifact: release-${{ github.run_id }}
+      tests-repo: openziti/ziti-tunnel-sdk-c
+      zetA-version: v1.17.0
+      label: ${{ github.ref_name }}
+
   publish:
     name: Publish Binaries
     # !cancelled() overrides default behavior, allowing this job to proceed if needed jobs failed, unless "if"
@@ -143,9 +154,10 @@ jobs:
       && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
       && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
       && (needs.linux-build.result == 'success')
+      && (needs.zet-integration-tests.result == 'success' || needs.zet-integration-tests.result == 'skipped')
       }}
     # ensure required job outcomes are specified in "if" expression
-    needs: [ linux-build, mac-os-build, windows-build ]
+    needs: [ linux-build, mac-os-build, windows-build, zet-integration-tests ]
     permissions:
       contents: write  # need write to create the release
       id-token: write  # need write to get OIDC token for generating attestations
