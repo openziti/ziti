@@ -130,7 +130,6 @@ collectLeafSans() {
   _ip_sans="127.0.0.1,::1"
   addSans "${ZITI_CTRL_ADVERTISED_ADDRESS:-}"          # ctrl (router-facing) listener
   addSans "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-}"     # edge/client API address
-  addSans "${ZITI_CTRL_EDGE_ALT_ADVERTISED_ADDRESS:-}" # management/web bindpoint address
   addSans "${ZITI_CTRL_ADDITIONAL_SANS:-}"             # names only in a hand-edited config.yml
 }
 
