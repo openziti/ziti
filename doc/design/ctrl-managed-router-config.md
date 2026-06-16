@@ -103,16 +103,30 @@ config before it ever reaches a router.
 ### Associating Configs with Routers
 
 Today, services have a `Configs []string` field that holds config IDs. We'd add the same thing to the router
-model:
+model. The field lives on the base `Router` rather than only on `EdgeRouter`, so fabric, edge, and transit
+routers all share the same association mechanism:
 
 ```go
-type EdgeRouter struct {
+type Router struct {
     // ... existing fields
     Configs []string `json:"configs"` // Router config IDs
 }
 ```
 
-Like services, a router can have at most one config per config type. This is enforced at the store level.
+Like services, a router can have at most one config per config type. This is enforced at the model layer
+on create and update.
+
+Validation for router configs is stricter than for service configs: each referenced config must resolve to
+an existing config type, and that type's `Target` must be `"router"`. The edge-service path tolerates a
+config whose config type can't be loaded; for routers we reject the association so an orphaned reference
+can't slip through. The validator also short-circuits when the `configs` field isn't part of the update
+field set, so unrelated updates (e.g. router-initiated control-channel listener updates) don't pay the
+cost of re-loading every config and config type.
+
+When a config is deleted, the config store walks every router that references it, rewrites the router's
+`Configs` slice, and re-`Update`s the router. This mirrors the existing service-cleanup loop and ensures
+any entity-update listeners see the change rather than relying solely on the boltz link collection
+auto-clearing the bucket.
 
 ### Handling Arbitrary Xgress Types
 
@@ -199,8 +213,14 @@ All routers get the same identities, services, policies, etc. For router configs
 a router's config may contain binding addresses, credentials, or tuning parameters that are only
 relevant to that specific router.
 
-It would be interesting if we could distribute router configs only to the routers they apply to. There
-are a few ways to approach this:
+The motivation for filtering is **blast radius, not memory**. A back-of-envelope estimate for a
+network with 1000 routers, ~10k identities, ~1k services, ~5k configs, and ~2k policies puts the
+in-memory RDM at roughly 100-200 MB per router after Go map/string/pointer overhead. That's not a
+concern on any modern host, and even an order of magnitude more entities still fits comfortably in
+single-digit GB. So we don't need disk-backed or tiered caching for the RDM. We do, however, want
+to avoid leaking per-router secrets to every other router.
+
+There are a few ways to approach the filtering:
 
 **Option A: Per-router filtering at send time.** The `RouterSender` (which wraps each router's connection
 to the shared RDM) could filter events before sending. When building a full `DataState` snapshot or
@@ -216,28 +236,48 @@ simpler but loses the replay/gap-detection guarantees of the RDM event cache.
 containing just its own router entity and configs. The overlay would have its own event index and replay
 cache. This is the most complex option but gives clean separation.
 
-Option A is probably the right starting point. The filtering is straightforward: when building the
-`DataState` or replaying events, include `Router` events for all routers (everyone needs fingerprints for
-link validation), but include `Config` events only when the config is associated with the receiving router.
-The `RouterSender` already has access to the router's ID, so the filter is just a membership check on the
-config's associated router set.
+Option A is the right starting point. We filter `Config` events per-router and broadcast everything
+else (identities, services, policies, router entities, etc.) as today. Filtering identities or
+services would buy us some memory but cost a lot more bookkeeping per RouterSender, and we just
+established memory isn't the bottleneck.
 
 ### Change Notification Flow
 
-1. Operator creates/updates/deletes a config associated with a router.
-2. Controller generates a `DataState.Event` with the config change at the next index.
-3. When broadcasting to connected routers, the `RouterSender` checks whether each config event is
-   relevant to its router. If so, it includes it. If not, it skips it.
-4. For full syncs on connect, the `RouterSender` builds a filtered `DataState` snapshot that includes
-   only configs associated with that router.
-5. Router entities themselves (id, name, fingerprint, cost) are distributed to all routers, so every
-   router can validate link peers.
+There are two distinct triggers that cause a `Config` event to flow to a router:
 
-This means the shared event cache contains all events, but each router only sees a subset. The index
-sequence will have gaps from the router's perspective, but this is already the case today: not every
-raft update produces an RDM event, so routers already tolerate index gaps. We may need to move some
-of the gap-handling logic into the `RouterSender` so it can track the previous index per router and
+1. **A router's `Configs` list changes.** When an operator associates or disassociates a config:
+   - Emit the `Router` event with the new `Configs` IDs.
+   - For any IDs newly added to that router's list, also emit the full `Config` entity to that
+     router (it may not have it yet).
+   - For any IDs newly removed from that router's list, do nothing extra. The receiving router
+     reads its own `Router` entity in the RDM, sees the config is no longer in its list, and stops
+     applying it. The orphaned `Config` entity stays cached on the receiver until the next full
+     sync prunes it. Skipping the explicit-remove event keeps the protocol simpler at the cost of
+     a small amount of dead weight in the receiver's cache, which we consider acceptable.
+
+2. **A config's data changes.** When an operator PATCHes a config:
+   - Emit the `Config` event to every router currently referencing it. The router entity didn't
+     change at all here.
+
+Router entities themselves (id, name, fingerprint, cost) are distributed to all routers, so every
+router can validate link peers.
+
+On reconnect, the router sends its current RDM index up. If the controller's event cache can
+replay forward from there, it streams the deltas (with the same per-router config filtering
+applied). Only if the router is far enough behind that the event cache can't cover the gap does
+the controller fall back to a full filtered snapshot.
+
+The shared event cache contains all events, but each router only sees a subset. The index sequence
+will have gaps from the router's perspective, but this is already the case today: not every raft
+update produces an RDM event, so routers already tolerate index gaps. We may need to move some of
+the gap-handling logic into the `RouterSender` so it can track the previous index per router and
 set it correctly on filtered change sets, rather than relying on the receiver to reconcile.
+
+Orphaned `Config` entities — those that the receiver still has cached after a router-side
+disassociation — get pruned on the (rare) full-sync path. Between full syncs, they sit in the
+RDM cache as dead weight. We've judged that acceptable: the router doesn't apply them (it derives
+its applied set from its own `Router.Configs` list), and they cost a small amount of memory until
+the next full sync.
 
 ## Applying Configuration on the Router
 
@@ -539,10 +579,13 @@ Files: `controller/db/config_type_store.go`, `controller/model/config_type_model
 **1b. Add `configs` field to Router.**
 
 Add a `Configs []string` field to the base Router db entity and model. Add the same one-config-
-per-type validation that services have. Expose it through the REST API on router create/update.
+per-type validation that services have, plus a stricter requirement that each config's config
+type exists and has `Target = "router"`. Expose it through the REST API on router create/update.
+Add a router-cleanup loop to `configStoreImpl.DeleteById` mirroring the existing service loop.
 
-Files: `controller/db/router_store.go`, `controller/model/router_model.go`,
-`controller/model/router_manager.go`, REST route/model files, db migration.
+Files: `controller/db/router_store.go`, `controller/db/config_store.go`,
+`controller/model/router_model.go`, `controller/model/router_manager.go`, REST route/model
+files.
 
 **1c. Define the `router.link.v1` config type and schema.**
 

@@ -21,8 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
+	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 )
 
@@ -79,6 +80,174 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 
 	boltztest.RequireDelete(ctx, config)
 	boltztest.RequireDelete(ctx, configType)
+}
+
+func Test_RouterLinkV1Builtin(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+	ctx.Init()
+
+	var stored *ConfigType
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		var loadErr error
+		stored, loadErr = ctx.stores.ConfigType.LoadOneByName(tx, RouterLinkV1TypeId)
+		return loadErr
+	})
+	ctx.NoError(err)
+	ctx.NotNil(stored, "router.link.v1 must be registered as a built-in")
+	ctx.Equal(RouterLinkV1TypeId, stored.Id)
+	ctx.Equal(RouterLinkV1TypeId, stored.Name)
+	ctx.Equal(ConfigTypeTargetRouter, stored.Target)
+
+	// Compile the schema. migration_initialize.go writes config types directly via the
+	// store, bypassing the model-level GetCompiledSchema check, so a malformed $ref or
+	// oneOf would only blow up at first config-create. Compile here to catch it eagerly.
+	schema, err := gojsonschema.NewSchemaLoader().Compile(gojsonschema.NewGoLoader(stored.Schema))
+	ctx.NoError(err)
+	ctx.NotNil(schema)
+
+	validate := func(payload map[string]interface{}) *gojsonschema.Result {
+		result, err := schema.Validate(gojsonschema.NewGoLoader(payload))
+		ctx.NoError(err)
+		return result
+	}
+
+	t.Run("valid payload", func(t *testing.T) {
+		ctx.NextTest(t)
+		result := validate(map[string]interface{}{
+			"listeners": []interface{}{
+				map[string]interface{}{
+					"binding":   "transport",
+					"bind":      "tls:0.0.0.0:6262",
+					"advertise": "tls:public.example:6262",
+					"groups":    []interface{}{"default"},
+					"options": map[string]interface{}{
+						"outQueueSize":   16,
+						"connectTimeout": "5s",
+					},
+				},
+			},
+			"dialers": []interface{}{
+				map[string]interface{}{
+					"binding":              "transport",
+					"maxDefaultConnections": 4,
+					"healthyDialBackoff": map[string]interface{}{
+						"retryBackoffFactor": 2,
+						"minRetryInterval":   "1s",
+						"maxRetryInterval":   "1m",
+					},
+				},
+			},
+			"heartbeats": map[string]interface{}{
+				"sendInterval": "10s",
+			},
+			"payloadSenderQueueSize": 256,
+			"ackSenderQueueSize":     128,
+			"gcMode":                 "orphaned",
+		})
+		ctx.True(result.Valid(), "expected payload to validate, errors: %v", result.Errors())
+	})
+
+	t.Run("binding optional on listener and dialer", func(t *testing.T) {
+		ctx.NextTest(t)
+		result := validate(map[string]interface{}{
+			"listeners": []interface{}{
+				map[string]interface{}{"bind": "tls:0.0.0.0:6262"},
+			},
+			"dialers": []interface{}{
+				map[string]interface{}{},
+			},
+		})
+		ctx.True(result.Valid(), "expected binding-less payload to validate, errors: %v", result.Errors())
+	})
+
+	durationPayload := func(d interface{}) map[string]interface{} {
+		return map[string]interface{}{
+			"listeners": []interface{}{
+				map[string]interface{}{
+					"bind":    "tls:0.0.0.0:6262",
+					"options": map[string]interface{}{"connectTimeout": d},
+				},
+			},
+		}
+	}
+
+	t.Run("duration formats", func(t *testing.T) {
+		ctx.NextTest(t)
+		// these mirror what time.ParseDuration accepts
+		for _, d := range []string{"1h", "1h30m", "1.5h", "300ms", "500us", "10s", "1m", "200ns"} {
+			result := validate(durationPayload(d))
+			ctx.True(result.Valid(), "expected duration %q to validate, errors: %v", d, result.Errors())
+		}
+		for _, d := range []string{"", "1", "30", "1h30", "1 m", "1x", "h", "1hh"} {
+			result := validate(durationPayload(d))
+			ctx.False(result.Valid(), "expected duration %q to be rejected", d)
+		}
+	})
+
+	rejects := []struct {
+		name    string
+		payload map[string]interface{}
+	}{
+		{
+			name:    "extra top-level key",
+			payload: map[string]interface{}{"bogus": true},
+		},
+		{
+			name: "listener missing bind",
+			payload: map[string]interface{}{
+				"listeners": []interface{}{map[string]interface{}{"binding": "transport"}},
+			},
+		},
+		{
+			name: "maxDefaultConnections out of range",
+			payload: map[string]interface{}{
+				"dialers": []interface{}{
+					map[string]interface{}{"maxDefaultConnections": 0},
+				},
+			},
+		},
+		{
+			name: "retryBackoffFactor below minimum",
+			payload: map[string]interface{}{
+				"dialers": []interface{}{
+					map[string]interface{}{
+						"healthyDialBackoff": map[string]interface{}{"retryBackoffFactor": 0.5},
+					},
+				},
+			},
+		},
+		{
+			name: "groups wrong type",
+			payload: map[string]interface{}{
+				"listeners": []interface{}{
+					map[string]interface{}{"bind": "tls:0.0.0.0:6262", "groups": 42},
+				},
+			},
+		},
+		{
+			name: "channelOptions.maxQueuedConnects below minimum",
+			payload: map[string]interface{}{
+				"listeners": []interface{}{
+					map[string]interface{}{
+						"bind":    "tls:0.0.0.0:6262",
+						"options": map[string]interface{}{"maxQueuedConnects": 0},
+					},
+				},
+			},
+		},
+		{
+			name:    "gcMode not in enum",
+			payload: map[string]interface{}{"gcMode": "aggressive"},
+		},
+	}
+	for _, tc := range rejects {
+		t.Run("rejects: "+tc.name, func(t *testing.T) {
+			ctx.NextTest(t)
+			result := validate(tc.payload)
+			ctx.False(result.Valid(), "expected payload to be rejected")
+		})
+	}
 }
 
 func (ctx *TestContext) testConfigTypeTargetImmutability(*testing.T) {
