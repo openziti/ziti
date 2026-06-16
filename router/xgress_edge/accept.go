@@ -52,11 +52,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	fpg := cert.NewFingerprintGenerator()
 
 	var sdkChannel sdkEdge.SdkChannel
-	if multiChannel, ok := binding.GetChannel().(channel.Channel); ok {
-		sdkChannel = multiChannel.GetUnderlayHandler().(sdkEdge.SdkChannel)
+	if sdkChan, ok := binding.GetChannel().GetSenders().(sdkEdge.SdkChannel); ok {
+		sdkChannel = sdkChan
 	} else {
 		sdkChannel = sdkEdge.NewSingleSdkChannel(binding.GetChannel())
 	}
+	sdkChannel.InitChannel(binding.GetChannel())
 
 	conn := &edgeClientConn{
 		msgMux:       sdkEdge.NewChannelConnMapMux[*state.ConnState](nil),
@@ -132,7 +133,7 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRoute, conn.processTraceRoute)
 
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeTraceRouteResponse, conn.msgMux.HandleReceive)
-	channel.AddReceiveHandlers(binding, &latency.LatencyHandler{})
+	binding.AddReceiveHandler(channel.ContentTypeLatencyType, &latency.LatencyHandler{})
 
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgPayload, conn.handleXgPayload)
 	binding.AddReceiveHandlerF(sdkEdge.ContentTypeXgAcknowledgement, conn.handleXgAcknowledgement)
@@ -260,16 +261,19 @@ func (self *Acceptor) Run() {
 func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	sdkChannel := NewListenerSdkChannel()
 	multiConfig := channel.Config{
-		LogicalName:     "edge",
-		Options:         self.options,
-		UnderlayHandler: sdkChannel,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+		LogicalName: "edge",
+		Options:     self.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
 			}))
 			return self.BindChannel(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                sdkChannel,
+		MessageSourceProvider:  sdkChannel,
+		Constraints:            sdkChannel.GetConstraints(),
+		UnderlayEventListeners: []channel.UnderlayEventListener{sdkChannel},
 	}
 	mc, err := channel.NewChannel(&multiConfig)
 
@@ -292,32 +296,27 @@ func (self *Acceptor) handleUngroupedUnderlay(underlay channel.Underlay) error {
 	return nil
 }
 
-func NewListenerSdkChannel() sdkEdge.UnderlayHandlerSdkChannel {
-	result := &ListenerSdkChannel{
-		BaseSdkChannel: *sdkEdge.NewBaseSdkChannel(),
+// NewListenerSdkChannel creates the listen-side grouped edge channel. It dials nothing;
+// the default underlay's Min: 1 closes the channel if the required underlay is lost, while
+// the control underlay is optional. The embedded BaseSdkChannel handles message routing and
+// the control-available tracking via its UnderlayEventListener methods.
+func NewListenerSdkChannel() *ListenerSdkChannel {
+	return &ListenerSdkChannel{
+		BaseSdkChannel: sdkEdge.NewBaseSdkChannel(),
+		constraints: map[string]channel.UnderlayConstraint{
+			sdkEdge.ChannelTypeDefault: {Desired: 1, Min: 1},
+			sdkEdge.ChannelTypeControl: {Desired: 1, Min: 0},
+		},
 	}
-
-	result.constraints.AddConstraint(sdkEdge.ChannelTypeDefault, 1, 1)
-	result.constraints.AddConstraint(sdkEdge.ChannelTypeControl, 1, 0)
-
-	return result
 }
 
 type ListenerSdkChannel struct {
-	sdkEdge.BaseSdkChannel
-	constraints channel.UnderlayConstraints
+	*sdkEdge.BaseSdkChannel
+	constraints map[string]channel.UnderlayConstraint
 }
 
-func (self *ListenerSdkChannel) Start(channel channel.Channel) {
-	self.constraints.CheckStateValid(channel, true)
-}
-
-func (self *ListenerSdkChannel) HandleUnderlayClose(ch channel.Channel, underlay channel.Underlay) {
-	pfxlog.Logger().
-		WithField("id", ch.Label()).
-		WithField("underlays", ch.GetUnderlayCountsByType()).
-		WithField("underlayType", channel.GetUnderlayType(underlay)).
-		Info("underlay closed")
-	self.UpdateCtrlChannelAvailable(ch)
-	self.constraints.CheckStateValid(ch, true)
+// GetConstraints returns the per-underlay-type constraints. With no dial policy these only
+// drive the close-when-below-Min check, not dialing.
+func (self *ListenerSdkChannel) GetConstraints() map[string]channel.UnderlayConstraint {
+	return self.constraints
 }

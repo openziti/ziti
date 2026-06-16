@@ -93,16 +93,19 @@ func (self *listener) GetLocalBinding() string {
 func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	linkChannel := NewListenerLinkChannel(underlay, self.env.GetLinkPayloadSenderQueueSize(), self.env.GetLinkAckSenderQueueSize())
 	multiConfig := channel.Config{
-		LogicalName:     "link/" + resolveLinkId(underlay.Headers(), underlay.Id()),
-		Options:         self.config.options,
-		UnderlayHandler: linkChannel,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+		LogicalName: "link/" + resolveLinkId(underlay.Headers(), underlay.Id()),
+		Options:     self.config.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
 			}))
 			return self.BindChannel(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                linkChannel,
+		MessageSourceProvider:  linkChannel,
+		Constraints:            linkChannel.GetConstraints(),
+		UnderlayEventListeners: []channel.UnderlayEventListener{linkChannel},
 	}
 	mc, err := channel.NewChannel(&multiConfig)
 
@@ -296,15 +299,18 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 		dialed:        false,
 	}
 
-	if mc, ok := binding.GetChannel().(channel.Channel); ok {
-		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
-			xli.ch = linkChan
-		}
+	if linkChan, ok := binding.GetChannel().GetSenders().(LinkChannel); ok {
+		xli.ch = linkChan
 	}
 
 	if xli.ch == nil {
 		xli.ch = NewSingleLinkChannel(binding.GetChannel())
 	}
+
+	// Record the channel before the link is registered: LinkAccepted -> applyLink calls
+	// link.IsClosed(), which dereferences GetChannel(). UnderlayAdded fires after this bind
+	// handler, so without InitChannel here GetChannel() would still be nil.
+	xli.ch.InitChannel(binding.GetChannel())
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
 	if err := bindHandler.BindChannel(binding); err != nil {

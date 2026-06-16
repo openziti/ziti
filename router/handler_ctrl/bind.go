@@ -106,7 +106,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		return fmt.Errorf("controller %s does not support JWT format legacy sessions", binding.GetChannel().Id())
 	}
 
-	ctrlCh := binding.GetChannel().(channel.Channel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	ctrlCh := binding.GetChannel().GetSenders().(ctrlchan.CtrlChannel)
 	channel.AddReceiveHandlers(binding, newPeerStateChangeHandler(self.env))
 	channel.AddReceiveHandlers(binding, newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
 	channel.AddReceiveHandlers(binding, newValidateTerminatorsHandler(self.env))

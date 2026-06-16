@@ -239,3 +239,64 @@ func TestLinkIdHeaderPreferredOverChannelId(t *testing.T) {
 		req.Fail("timed out waiting for link connection")
 	}
 }
+
+// TestDialLinkChannelDialPolicyPreservesLinkId verifies that underlays dialed by the
+// link's channel.DialPolicy (not just the first underlay ziti dials by hand) present the
+// link id as their identity token. The v5 decomposition moves additional-underlay dialing
+// into the library behind the DialPolicy; this locks in that the policy wraps the dialer
+// carrying the cloned link-id identity, so link-id-as-channel-id holds for every underlay.
+func TestDialLinkChannelDialPolicyPreservesLinkId(t *testing.T) {
+	transport.AddAddressParser(transporttls.AddressParser{})
+	req := require.New(t)
+
+	pki := newTestPki(t)
+	listenerId := pki.newIdentity(t, "listening-router")
+	dialingRouterId := pki.newIdentity(t, "dialing-router")
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	req.NoError(err)
+	port := l.Addr().(*net.TCPAddr).Port
+	req.NoError(l.Close())
+
+	addr, err := transport.ParseAddress(fmt.Sprintf("tls:127.0.0.1:%d", port))
+	req.NoError(err)
+
+	// capture the identity token each accepted underlay presents (= hello id token)
+	acceptedIds := make(chan string, 4)
+	acceptF := func(underlay channel.Underlay) {
+		acceptedIds <- underlay.Id()
+	}
+	listener, err := channel.NewClassicListenerF(listenerId, addr,
+		channel.ListenerConfig{ConnectOptions: channel.DefaultConnectOptions()}, acceptF)
+	req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	const linkId = "the-link-id"
+	// the xlink dialer presents the link id as its identity token, keeping the router's cert
+	dialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity: dialingRouterId.ShallowCloneWithNewToken(linkId),
+		Endpoint: addr,
+	})
+
+	dialLinkChannel := NewDialLinkChannel(DialLinkChannelConfig{
+		Dialer:             dialer,
+		MaxDefaultChannels: 2,
+		MaxAckChannel:      1,
+	})
+
+	// dial an underlay through the link's DialPolicy, as the channel does to fill constraints
+	u, err := dialLinkChannel.GetDialPolicy().Dial(ChannelTypeDefault, "conn-1", []byte("test-group-secret"), true, 5*time.Second, nil)
+	req.NoError(err)
+	defer func() { _ = u.Close() }()
+
+	// dial side: the underlay's peer id is the listening router
+	req.Equal("listening-router", u.Id())
+
+	// listen side: the underlay the policy dialed presents the link id, not the router id
+	select {
+	case acceptedId := <-acceptedIds:
+		req.Equal(linkId, acceptedId, "underlay dialed by the link dial policy must present the link id")
+	case <-time.After(5 * time.Second):
+		req.Fail("timed out waiting for the dialed underlay")
+	}
+}

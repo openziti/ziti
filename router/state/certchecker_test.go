@@ -624,6 +624,10 @@ func (s simpleTestUnderlay) IsClosed() bool {
 	return false
 }
 
+func (s simpleTestUnderlay) CreatedAt() time.Time {
+	return time.Time{}
+}
+
 func (s simpleTestUnderlay) Headers() map[int32][]byte {
 	v, err := versions.StdVersionEncDec.Encode(&versions.VersionInfo{
 		Version:   "0.0.0",
@@ -668,6 +672,14 @@ func (ch *simpleTestChannel) GetUnderlays() []channel.Underlay {
 	return []channel.Underlay{simpleTestUnderlay{}}
 }
 
+func (ch *simpleTestChannel) AcceptUnderlay(channel.Underlay) error {
+	return nil
+}
+
+func (ch *simpleTestChannel) GetSenders() channel.Senders {
+	return nil
+}
+
 func (ch *simpleTestChannel) GetUnderlayCountsByType() map[string]int {
 	return map[string]int{
 		"single": 1,
@@ -694,7 +706,10 @@ func (ch *simpleTestChannel) AddReceiveHandler(int32, channel.ReceiveHandler) {
 func (ch *simpleTestChannel) AddReceiveHandlerF(int32, channel.ReceiveHandlerF) {
 }
 
-func (ch *simpleTestChannel) AddTypedReceiveHandler(channel.ContentTypeReceiver) {
+func (ch *simpleTestChannel) AddMsgReceiveHandler(int32, channel.MsgReceiveHandler) {
+}
+
+func (ch *simpleTestChannel) AddMsgReceiveHandlerF(int32, channel.MsgReceiveHandlerF) {
 }
 
 func (ch *simpleTestChannel) AddErrorHandler(channel.ErrorHandler) {

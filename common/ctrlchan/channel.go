@@ -1,13 +1,13 @@
 // Package ctrlchan provides multi-underlay control channel support for router-controller communication.
 //
-// This package implements a priority-based messaging system over channel.MultiChannel, allowing
-// control plane traffic to be distributed across multiple TCP connections (underlays) with
-// different priority levels. This enables separation of time-sensitive control messages from
+// This package implements a priority-based messaging system over channel/v5's unified Channel,
+// allowing control plane traffic to be distributed across multiple TCP connections (underlays)
+// with different priority levels. This enables separation of time-sensitive control messages from
 // bulk traffic like metrics.
 //
 // # Architecture
 //
-// A control channel uses channel.MultiChannel to manage multiple underlays:
+// A control channel uses a multi-underlay channel.Channel to manage multiple underlays:
 //   - Default underlay: Carries normal control traffic (terminators, metrics, etc.)
 //   - High-priority underlay: Reserved for time-sensitive messages (heartbeats, routing, circuit requests)
 //   - Low-priority underlay: For bulk/background traffic (inspections, file-transfers)
@@ -26,25 +26,28 @@
 //	    MaxLowPriorityChannels:  0,
 //	    UnderlayChangeCallback:  changeCallback,
 //	})
+//	cfg := channel.Config{
+//	    Senders:                dialCtrlChan,
+//	    MessageSourceProvider:  dialCtrlChan,
+//	    DialPolicy:             dialCtrlChan.GetDialPolicy(),
+//	    Constraints:            dialCtrlChan.GetConstraints(),
+//	    UnderlayEventListeners: []channel.UnderlayEventListener{dialCtrlChan},
+//	    ...
+//	}
 //
 // Controller side (listening):
 //
 //	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
-//
-// Both implementations satisfy CtrlChannelUnderlayHandler which combines CtrlChannel
-// (for sending messages) with channel.UnderlayHandler (for MultiChannel integration).
 package ctrlchan
 
 import (
-	"fmt"
 	"io"
-	"sync"
+
 	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/foundation/v2/concurrenz"
 )
 
 // Channel type constants identify the priority level of each underlay connection.
@@ -76,16 +79,17 @@ func NewBaseCtrlChannel() *BaseCtrlChannel {
 }
 
 // BaseCtrlChannel provides the core priority-based message routing for control channels.
-// It maintains separate message queues for each priority level and routes messages
-// to the appropriate underlay based on type.
+// It implements the channel/v5 Senders and MessageSourceProvider interfaces, maintaining
+// separate message queues for each priority level and routing messages to the appropriate
+// underlay based on type.
 //
 // Message flow:
 //   - Callers send via GetDefaultSender(), GetHighPrioritySender(), or GetLowPrioritySender()
 //   - Each underlay calls GetMessageSource() to get its message retrieval function
 //   - The retrieval function pulls from the appropriate queue(s) based on underlay type
 type BaseCtrlChannel struct {
-	ch channel.MultiChannel
 	channel.SenderContext
+	ch                 channel.Channel
 	highPrioritySender channel.Sender
 	defaultSender      channel.Sender
 	lowPrioritySender  channel.Sender
@@ -97,16 +101,24 @@ type BaseCtrlChannel struct {
 	hasHighPriorityChan atomic.Bool
 }
 
-func (self *BaseCtrlChannel) ChannelCreated(ch channel.MultiChannel) {
+// InitChannel records the channel. It must be called from the bind handler, which runs on
+// the construction goroutine before the channel is published, so a plain field is safe: the
+// reference is invariant and set before any reader. The router relies on this because Add()
+// registers the channel (firing ControllerAdded listeners that dereference Channel()) from
+// within the bind handler, before UnderlayAdded fires - the C3 ordering hazard.
+func (self *BaseCtrlChannel) InitChannel(ch channel.Channel) {
 	self.ch = ch
 }
 
 func (self *BaseCtrlChannel) Close() error {
-	return self.ch.Close()
+	if self.ch != nil {
+		return self.ch.Close()
+	}
+	return nil
 }
 
 func (self *BaseCtrlChannel) IsClosed() bool {
-	return self.ch.IsClosed()
+	return self.ch == nil || self.ch.IsClosed()
 }
 
 func (self *BaseCtrlChannel) GetChannel() channel.Channel {
@@ -179,17 +191,19 @@ func (self *BaseCtrlChannel) GetLowPriorityMsg(notifier *channel.CloseNotifier) 
 	}
 }
 
-func (self *BaseCtrlChannel) GetMessageSource(underlay channel.Underlay) channel.MessageSourceF {
-	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
+// GetMessageSource implements channel.MessageSourceProvider, returning the message
+// retrieval function for the given underlay type.
+func (self *BaseCtrlChannel) GetMessageSource(underlayType string) channel.MessageSourceF {
+	if underlayType == ChannelTypeHighPriority {
 		return self.GetHighPriorityMsg
 	}
-	if channel.GetUnderlayType(underlay) == ChannelTypeLowPriority {
+	if underlayType == ChannelTypeLowPriority {
 		return self.GetLowPriorityMsg
 	}
 	return self.GetNextMsgDefault
 }
 
-func (self *BaseCtrlChannel) HandleTxFailed(_ channel.Underlay, _ channel.Sendable) bool {
+func (self *BaseCtrlChannel) HandleTxFailed(_ string, _ channel.Sendable) bool {
 	// control channel senders know how to handle send failures. If we retry under the hood,
 	// we introduce the possibility of unexpected ordering changes. Some subsystems, like
 	// link management depend on in order delivery of messages
@@ -219,34 +233,40 @@ type DialCtrlChannelConfig struct {
 }
 
 // NewDialCtrlChannel creates a control channel handler for the dialing side (router).
-// The handler manages underlay constraints and automatically re-establishes connections
-// when underlays are lost.
-func NewDialCtrlChannel(config DialCtrlChannelConfig) CtrlChannelUnderlayHandler {
+// It supplies a channel.DialPolicy and declarative constraints; the channel actively
+// re-establishes underlays when they are lost. The underlays all use Min: 0, so the
+// channel survives dropping to zero underlays and re-dials with a fresh group iteration.
+func NewDialCtrlChannel(config DialCtrlChannelConfig) *DialCtrlChannel {
 	result := &DialCtrlChannel{
-		BaseCtrlChannel: *NewBaseCtrlChannel(),
-		dialer:          config.Dialer,
+		BaseCtrlChannel: NewBaseCtrlChannel(),
 		changeCallback:  config.UnderlayChangeCallback,
 		startupDelay:    config.StartupDelay,
+		constraints: map[string]channel.UnderlayConstraint{
+			ChannelTypeDefault:      {Desired: config.MaxDefaultChannels, Min: 0},
+			ChannelTypeHighPriority: {Desired: config.MaxHighPriorityChannels, Min: 0},
+			ChannelTypeLowPriority:  {Desired: config.MaxLowPriorityChannels, Min: 0},
+		},
 	}
 
-	// Router side allows underlay count to drop to 0 while keeping channel open
-	// The constraints will actively attempt to re-establish connections
-	result.constraints.AddConstraint(ChannelTypeDefault, config.MaxDefaultChannels, 0)
-	result.constraints.AddConstraint(ChannelTypeHighPriority, config.MaxHighPriorityChannels, 0)
-	result.constraints.AddConstraint(ChannelTypeLowPriority, config.MaxLowPriorityChannels, 0)
+	// The control channel prioritizes prompt reconnection. MinDialInterval paces redials
+	// (the flap protection the v4 lastDial throttle provided), and dial *failures* still
+	// accrue exponential backoff for an unreachable controller. But short-lived-connection
+	// detection is disabled (MinStableDuration = 0): a clean close - controller restart,
+	// deploy, transient blip - must reconnect right away rather than being treated as a flap
+	// and backed off, which would add control-plane downtime. (#252 made short-lived
+	// detection apply to reconnect-from-zero dials, which for the survive-to-zero ctrl
+	// channel is exactly the reconnect path we want to keep fast.)
+	backoffConfig := channel.DefaultBackoffConfig
+	backoffConfig.MinDialInterval = time.Second
+	backoffConfig.MinStableDuration = 0
+	result.dialPolicy = channel.NewBackoffDialPolicyWithConfig(config.Dialer, backoffConfig)
 
 	return result
 }
 
-// CtrlChannelUnderlayHandler combines CtrlChannel with channel.UnderlayHandler.
-// Implementations handle both message routing and underlay lifecycle management.
-type CtrlChannelUnderlayHandler interface {
-	CtrlChannel
-	channel.UnderlayHandler
-}
-
 // CtrlChannel provides access to priority-based message senders for control traffic.
 type CtrlChannel interface {
+	InitChannel(ch channel.Channel)
 	PeerId() string
 	GetChannel() channel.Channel
 	GetDefaultSender() channel.Sender
@@ -257,31 +277,32 @@ type CtrlChannel interface {
 	IsClosed() bool
 }
 
-// DialCtrlChannel implements CtrlChannelUnderlayHandler for the dialing side (router).
-// It manages underlay constraints, automatically re-establishes lost connections,
-// and notifies callers of connectivity changes via the callback.
+// DialCtrlChannel implements CtrlChannel for the dialing side (router). The channel's
+// DialPolicy maintains the desired underlay counts; this type tracks connectivity and
+// notifies callers of changes via the callback.
 type DialCtrlChannel struct {
-	BaseCtrlChannel
-	dialer         channel.DialUnderlayFactory
-	constraints    channel.UnderlayConstraints
+	*BaseCtrlChannel
+	dialPolicy     channel.DialPolicy
+	constraints    map[string]channel.UnderlayConstraint
 	changeCallback func(ch *DialCtrlChannel, oldCount, newCount uint32)
 	startupDelay   time.Duration
 
-	lock          sync.Mutex
-	iteration     atomic.Uint32
-	lastDial      time.Time
-	lastClose     concurrenz.AtomicValue[time.Time]
 	underlayCount atomic.Uint32
 }
 
-func (self *DialCtrlChannel) Start(channel channel.MultiChannel) {
-	if self.startupDelay == 0 {
-		self.constraints.Apply(channel, self)
-	} else {
-		time.AfterFunc(self.startupDelay, func() {
-			self.constraints.Apply(channel, self)
-		})
-	}
+// GetDialPolicy returns the channel.DialPolicy used to (re)establish underlays.
+func (self *DialCtrlChannel) GetDialPolicy() channel.DialPolicy {
+	return self.dialPolicy
+}
+
+// GetConstraints returns the per-underlay-type constraints for the channel.
+func (self *DialCtrlChannel) GetConstraints() map[string]channel.UnderlayConstraint {
+	return self.constraints
+}
+
+// GetStartupDelay returns the delay before the channel begins dialing additional underlays.
+func (self *DialCtrlChannel) GetStartupDelay() time.Duration {
+	return self.startupDelay
 }
 
 // IsConnected returns true if the dial-side ctrl channel has at least one active underlay.
@@ -289,7 +310,19 @@ func (self *DialCtrlChannel) IsConnected() bool {
 	return self.underlayCount.Load() != 0
 }
 
-func (self *DialCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
+// UnderlayAdded implements channel.UnderlayEventListener.
+func (self *DialCtrlChannel) UnderlayAdded(ch channel.Channel, underlay channel.Underlay) {
+	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
+		self.hasHighPriorityChan.Store(true)
+	}
+
+	newCount := totalUnderlays(ch)
+	oldCount := self.underlayCount.Swap(newCount)
+	self.changeCallback(self, oldCount, newCount)
+}
+
+// UnderlayRemoved implements channel.UnderlayEventListener.
+func (self *DialCtrlChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
 	pfxlog.Logger().
 		WithField("id", ch.Label()).
 		WithField("underlays", ch.GetUnderlayCountsByType()).
@@ -297,112 +330,39 @@ func (self *DialCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, underl
 		WithField("channelClosed", ch.IsClosed()).
 		Info("underlay closed")
 
-	// Track if all underlays are gone so we know to treat next connection as first
-	totalUnderlays := uint32(0)
-	underlayCounts := ch.GetUnderlayCountsByType()
-	if underlayCounts[ChannelTypeHighPriority] == 0 {
+	if ch.GetUnderlayCountsByType()[ChannelTypeHighPriority] == 0 {
 		self.hasHighPriorityChan.Store(false)
 	}
 
-	for _, count := range underlayCounts {
-		totalUnderlays += uint32(count)
-	}
-	oldCount := self.underlayCount.Swap(totalUnderlays)
-
-	self.changeCallback(self, oldCount, totalUnderlays)
-
-	self.lastClose.Store(time.Now())
-	self.constraints.Apply(ch, self)
-}
-
-func (self *DialCtrlChannel) HandleUnderlayAccepted(ch channel.MultiChannel, underlay channel.Underlay) {
-	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
-		self.hasHighPriorityChan.Store(true)
-	}
-
-	totalUnderlays := uint32(0)
-	for _, count := range ch.GetUnderlayCountsByType() {
-		totalUnderlays += uint32(count)
-	}
-	oldCount := self.underlayCount.Swap(totalUnderlays)
-
-	self.changeCallback(self, oldCount, totalUnderlays)
-}
-
-func (self *DialCtrlChannel) DialFailed(ch channel.MultiChannel, _ string, attempt int) {
-	delay := 2 * time.Duration(attempt) * time.Second
-	if delay > time.Minute {
-		delay = time.Minute
-	}
-	time.Sleep(delay)
-
-	// if the constraints are no longer valid after sleeping, close the channel
-	self.constraints.CheckStateValid(ch, true)
-}
-
-func (self *DialCtrlChannel) CreateGroupedUnderlay(groupId string, groupSecret []byte, underlayType string, timeout time.Duration) (channel.Underlay, error) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	defer func() { self.lastDial = time.Now() }()
-
-	if time.Since(self.lastDial) < time.Second {
-		time.Sleep(time.Second - time.Since(self.lastDial))
-	}
-
-	if time.Since(self.lastClose.Load()) < time.Second {
-		time.Sleep(time.Second - time.Since(self.lastClose.Load()))
-	}
-
-	newIteration := self.underlayCount.Load() == 0
-	iteration := self.iteration.Load()
-	if newIteration {
-		iteration = self.iteration.Add(1)
-	}
-	iterGroupId := groupId
-	if self.iteration.Load() > 0 {
-		iterGroupId = fmt.Sprintf("%s-%d", groupId, iteration)
-	}
-	headers := channel.Headers{
-		channel.TypeHeader:         []byte(underlayType),
-		channel.ConnectionIdHeader: []byte(iterGroupId),
-		channel.GroupSecretHeader:  groupSecret,
-		channel.IsGroupedHeader:    {1},
-	}
-
-	// If we've never had underlays or lost all of them, mark this as first connection
-	if newIteration {
-		headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
-	}
-
-	return self.dialer.CreateWithHeaders(timeout, headers)
+	newCount := totalUnderlays(ch)
+	oldCount := self.underlayCount.Swap(newCount)
+	self.changeCallback(self, oldCount, newCount)
 }
 
 // NewListenerCtrlChannel creates a control channel handler for the listening side (controller).
-// The controller side requires at least one default underlay to remain connected.
-func NewListenerCtrlChannel() CtrlChannelUnderlayHandler {
-	result := &ListenerCtrlChannel{
-		BaseCtrlChannel: *NewBaseCtrlChannel(),
+// It dials no underlays; with no constraints and no dial policy the channel closes when its
+// last underlay is lost, which is the desired controller-side behavior.
+func NewListenerCtrlChannel() *ListenerCtrlChannel {
+	return &ListenerCtrlChannel{
+		BaseCtrlChannel: NewBaseCtrlChannel(),
 	}
-
-	result.constraints.SetMinTotal(1)
-
-	return result
 }
 
-// ListenerCtrlChannel implements CtrlChannelUnderlayHandler for the listening side (controller).
-// Unlike DialCtrlChannel, it requires at least one underlay to remain connected and will
-// close the channel if all underlays are lost.
+// ListenerCtrlChannel implements CtrlChannel for the listening side (controller). Unlike
+// DialCtrlChannel it does not dial; the channel closes if all underlays are lost.
 type ListenerCtrlChannel struct {
-	BaseCtrlChannel
-	constraints channel.UnderlayConstraints
+	*BaseCtrlChannel
 }
 
-func (self *ListenerCtrlChannel) Start(channel channel.MultiChannel) {
-	self.constraints.CheckStateValid(channel, true)
+// UnderlayAdded implements channel.UnderlayEventListener.
+func (self *ListenerCtrlChannel) UnderlayAdded(ch channel.Channel, underlay channel.Underlay) {
+	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
+		self.hasHighPriorityChan.Store(true)
+	}
 }
 
-func (self *ListenerCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
+// UnderlayRemoved implements channel.UnderlayEventListener.
+func (self *ListenerCtrlChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
 	pfxlog.Logger().
 		WithField("id", ch.Label()).
 		WithField("underlays", ch.GetUnderlayCountsByType()).
@@ -412,18 +372,19 @@ func (self *ListenerCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, un
 	if ch.GetUnderlayCountsByType()[ChannelTypeHighPriority] == 0 {
 		self.hasHighPriorityChan.Store(false)
 	}
-
-	self.constraints.CheckStateValid(ch, true)
-}
-
-func (self *ListenerCtrlChannel) HandleUnderlayAccepted(_ channel.MultiChannel, underlay channel.Underlay) {
-	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
-		self.hasHighPriorityChan.Store(true)
-	}
 }
 
 // IsConnected returns true if the listener-side ctrl channel has not been closed.
 func (self *ListenerCtrlChannel) IsConnected() bool {
-	// when the listener underlay becomes disconnected, it closed
+	// when the listener loses its last underlay, the channel is closed
 	return !self.IsClosed()
+}
+
+// totalUnderlays sums the underlay counts across all types.
+func totalUnderlays(ch channel.Channel) uint32 {
+	total := uint32(0)
+	for _, count := range ch.GetUnderlayCountsByType() {
+		total += uint32(count)
+	}
+	return total
 }

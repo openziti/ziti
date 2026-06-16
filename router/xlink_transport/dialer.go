@@ -299,11 +299,16 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		}
 		var dialLinkChannel = NewDialLinkChannel(dialLinkChangeConfig)
 		multiChannelConfig := &channel.Config{
-			LogicalName:     fmt.Sprintf("l/%s", underlay.Id()),
-			Options:         self.config.options,
-			UnderlayHandler: dialLinkChannel,
-			BindHandler:     bindHandler,
-			Underlay:        underlay,
+			LogicalName:            fmt.Sprintf("l/%s", underlay.Id()),
+			Options:                self.config.options,
+			Underlay:               underlay,
+			Binder:                 channel.MakeBinder(bindHandler),
+			Senders:                dialLinkChannel,
+			MessageSourceProvider:  dialLinkChannel,
+			DialPolicy:             dialLinkChannel.GetDialPolicy(),
+			Constraints:            dialLinkChannel.GetConstraints(),
+			ConstraintStartupDelay: dialLinkChannel.GetStartupDelay(),
+			UnderlayEventListeners: []channel.UnderlayEventListener{dialLinkChannel},
 		}
 		_, err = channel.NewChannel(multiChannelConfig)
 	} else {
@@ -364,15 +369,15 @@ type dialBindHandler struct {
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
-	if mc, ok := binding.GetChannel().(channel.Channel); ok {
-		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
-			self.link.ch = linkChan
-		}
+	if linkChan, ok := binding.GetChannel().GetSenders().(LinkChannel); ok {
+		self.link.ch = linkChan
 	}
 
 	if self.link.ch == nil {
 		self.link.ch = NewSingleLinkChannel(binding.GetChannel())
 	}
+
+	self.link.ch.InitChannel(binding.GetChannel())
 
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 	return bindHandler.BindChannel(binding)

@@ -80,16 +80,18 @@ func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, close
 
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 	multiConfig := channel.Config{
-		LogicalName:     "ctrl/" + underlay.Id(),
-		Options:         self.options,
-		UnderlayHandler: listenerCtrlChan,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+		LogicalName: "ctrl/" + underlay.Id(),
+		Options:     self.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
 			}))
 			return self.Bind(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                listenerCtrlChan,
+		MessageSourceProvider:  listenerCtrlChan,
+		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
 	}
 	mc, err := channel.NewChannel(&multiConfig)
 	if err != nil {
@@ -190,7 +192,12 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch.(channel.Channel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	r.Control = ch.GetSenders().(ctrlchan.CtrlChannel)
+	// Record the channel before the downstream bind handlers run: GetCtrlHandlers builds
+	// handlers (e.g. NewConnectEventsHandler) that dereference the ctrl channel's Channel().
+	// UnderlayAdded fires after this bind handler, so without InitChannel here those derefs
+	// would hit a nil channel.
+	r.Control.InitChannel(ch)
 	r.ConnectTime = time.Now()
 	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")

@@ -24,7 +24,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	runner2 "github.com/openziti/ziti/v2/common/runner"
@@ -34,6 +33,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/internal/policy"
 	_ "github.com/openziti/ziti/v2/controller/internal/routes"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	sync2 "github.com/openziti/ziti/v2/controller/sync_strats"
 )
 
@@ -104,7 +104,7 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.ContentT
 	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
-	ctrlCh := ch.(channel.Channel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	ctrlCh := ch.GetSenders().(ctrlchan.CtrlChannel)
 
 	result := []channel.ContentTypeReceiver{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),

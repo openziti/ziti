@@ -65,7 +65,7 @@ func composeBindHandlers(handlers ...channel.BindHandler) channel.BindHandler {
 			if h == nil {
 				continue
 			}
-			if err := binding.Bind(h); err != nil {
+			if err := h.BindChannel(binding); err != nil {
 				return err
 			}
 		}

@@ -369,6 +369,11 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
 
+		// Record the channel before Add(), which fires ControllerAdded listeners that
+		// dereference Channel(). UnderlayAdded fires after the bind handler, so relying on
+		// it alone would leave Channel() nil during that notification.
+		dialCtrlChan.InitChannel(binding.GetChannel())
+
 		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
 			return err
 		}
@@ -392,11 +397,16 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
 
 	multiChannelConfig := &channel.Config{
-		LogicalName:     fmt.Sprintf("ctrl/%s", underlay.Id()),
-		Options:         config.Ctrl.Options,
-		UnderlayHandler: dialCtrlChan,
-		BindHandler:     combinedBindHandler,
-		Underlay:        underlay,
+		LogicalName:            fmt.Sprintf("ctrl/%s", underlay.Id()),
+		Options:                config.Ctrl.Options,
+		Underlay:               underlay,
+		Binder:                 channel.MakeBinder(combinedBindHandler),
+		Senders:                dialCtrlChan,
+		MessageSourceProvider:  dialCtrlChan,
+		DialPolicy:             dialCtrlChan.GetDialPolicy(),
+		Constraints:            dialCtrlChan.GetConstraints(),
+		ConstraintStartupDelay: dialCtrlChan.GetStartupDelay(),
+		UnderlayEventListeners: []channel.UnderlayEventListener{dialCtrlChan},
 	}
 
 	if _, err = channel.NewChannel(multiChannelConfig); err != nil {
@@ -462,6 +472,9 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	id := binding.GetChannel().Id()
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+
+	// Record the channel before Add() fires ControllerAdded listeners (see the dial path).
+	ctrlCh.InitChannel(binding.GetChannel())
 
 	if err := self.Add(address, ctrlCh, binding.GetChannel(), underlay); err != nil {
 		return err

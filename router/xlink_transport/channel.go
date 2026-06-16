@@ -35,9 +35,12 @@ func NewBaseLinkChannel(underlay channel.Underlay, payloadSenderQueueSize, ackSe
 	return result
 }
 
+// BaseLinkChannel implements the channel/v5 Senders, MessageSourceProvider and
+// UnderlayEventListener interfaces for a grouped link channel, routing ack messages
+// onto the ack underlay and payload messages onto the default underlay.
 type BaseLinkChannel struct {
-	ch channel.MultiChannel
 	channel.SenderContext
+	ch            channel.Channel
 	ackSender     channel.Sender
 	defaultSender channel.Sender
 
@@ -47,7 +50,12 @@ type BaseLinkChannel struct {
 	connIteration  atomic.Uint32
 }
 
-func (self *BaseLinkChannel) ChannelCreated(ch channel.MultiChannel) {
+// InitChannel records the channel. It must be called from the bind handler, which runs on
+// the construction goroutine before the channel is published, so a plain field is safe: the
+// reference is invariant and set before any reader. The listener relies on this because it
+// registers the link (LinkAccepted -> applyLink -> link.IsClosed() -> GetChannel()) while
+// still inside NewChannel, before UnderlayAdded fires - the C3 hazard.
+func (self *BaseLinkChannel) InitChannel(ch channel.Channel) {
 	self.ch = ch
 }
 
@@ -91,14 +99,15 @@ func (self *BaseLinkChannel) GetNextAckMsg(notifier *channel.CloseNotifier) (cha
 	}
 }
 
-func (self *BaseLinkChannel) GetMessageSource(underlay channel.Underlay) channel.MessageSourceF {
-	if channel.GetUnderlayType(underlay) == ChannelTypeAck {
+// GetMessageSource implements channel.MessageSourceProvider.
+func (self *BaseLinkChannel) GetMessageSource(underlayType string) channel.MessageSourceF {
+	if underlayType == ChannelTypeAck {
 		return self.GetNextAckMsg
 	}
 	return self.GetNextMsgDefault
 }
 
-func (self *BaseLinkChannel) HandleTxFailed(_ channel.Underlay, sendable channel.Sendable) bool {
+func (self *BaseLinkChannel) HandleTxFailed(_ string, sendable channel.Sendable) bool {
 	select {
 	case self.retryMsgChan <- sendable:
 		return true
@@ -113,13 +122,25 @@ func (self *BaseLinkChannel) GetConnStateIteration() uint32 {
 	return self.connIteration.Load()
 }
 
-func (self *BaseLinkChannel) HandleUnderlayAccepted(ch channel.MultiChannel, underlay channel.Underlay) {
+// UnderlayAdded implements channel.UnderlayEventListener. Each added underlay bumps the
+// connection-state iteration so link-state tracking can detect topology changes.
+func (self *BaseLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.Underlay) {
 	pfxlog.Logger().
 		WithField("id", ch.Label()).
 		WithField("underlays", ch.GetUnderlayCountsByType()).
 		WithField("underlayType", channel.GetUnderlayType(underlay)).
 		Info("underlay added")
 	self.connIteration.Add(1)
+}
+
+// UnderlayRemoved implements channel.UnderlayEventListener.
+func (self *BaseLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
+	pfxlog.Logger().
+		WithField("id", ch.Label()).
+		WithField("underlays", ch.GetUnderlayCountsByType()).
+		WithField("underlayType", channel.GetUnderlayType(underlay)).
+		WithField("channelClosed", ch.IsClosed()).
+		Info("underlay closed")
 }
 
 type DialLinkChannelConfig struct {
@@ -133,27 +154,31 @@ type DialLinkChannelConfig struct {
 	UnderlayChangeCallback func(ch *DialLinkChannel)
 }
 
-func NewDialLinkChannel(config DialLinkChannelConfig) UnderlayHandlerLinkChannel {
+// NewDialLinkChannel creates the dial-side grouped link channel. The supplied Dialer
+// already carries the cloned link-id identity (ShallowCloneWithNewToken), so wrapping it
+// in a channel.BackoffDialPolicy preserves the link-id-as-channel-id behavior for every
+// underlay the policy dials. The default underlay keeps Min: 1, so losing it closes the
+// channel (the data path then fails over) rather than recovering from zero.
+func NewDialLinkChannel(config DialLinkChannelConfig) *DialLinkChannel {
 	result := &DialLinkChannel{
-		BaseLinkChannel: *NewBaseLinkChannel(config.Underlay, config.PayloadSenderQueueSize, config.AckSenderQueueSize),
-		dialer:          config.Dialer,
+		BaseLinkChannel: NewBaseLinkChannel(config.Underlay, config.PayloadSenderQueueSize, config.AckSenderQueueSize),
 		changeCallback:  config.UnderlayChangeCallback,
 		syncRequired:    map[string]struct{}{},
 		startupDelay:    config.StartupDelay,
+		// links target multiple underlays via consecutive successful dials and want fast
+		// bring-up, so no MinDialInterval floor.
+		dialPolicy: channel.NewBackoffDialPolicy(config.Dialer),
+		constraints: map[string]channel.UnderlayConstraint{
+			ChannelTypeDefault: {Desired: config.MaxDefaultChannels, Min: 1},
+			ChannelTypeAck:     {Desired: config.MaxAckChannel, Min: 0},
+		},
 	}
-
-	result.constraints.AddConstraint(ChannelTypeDefault, config.MaxDefaultChannels, 1)
-	result.constraints.AddConstraint(ChannelTypeAck, config.MaxAckChannel, 0)
 
 	return result
 }
 
-type UnderlayHandlerLinkChannel interface {
-	LinkChannel
-	channel.UnderlayHandler
-}
-
 type LinkChannel interface {
+	InitChannel(ch channel.Channel)
 	GetChannel() channel.Channel
 	GetDefaultSender() channel.Sender
 	GetAckSender() channel.Sender
@@ -168,15 +193,30 @@ type StateTrackingLinkChannel interface {
 }
 
 type DialLinkChannel struct {
-	BaseLinkChannel
-	dialer         channel.DialUnderlayFactory
-	constraints    channel.UnderlayConstraints
+	*BaseLinkChannel
+	dialPolicy     channel.DialPolicy
+	constraints    map[string]channel.UnderlayConstraint
 	changeCallback func(ch *DialLinkChannel)
 	startupDelay   time.Duration
 
 	syncLock       sync.Mutex
 	syncRequired   map[string]struct{}
 	currentStateId string
+}
+
+// GetDialPolicy returns the channel.DialPolicy used to (re)establish underlays.
+func (self *DialLinkChannel) GetDialPolicy() channel.DialPolicy {
+	return self.dialPolicy
+}
+
+// GetConstraints returns the per-underlay-type constraints for the channel.
+func (self *DialLinkChannel) GetConstraints() map[string]channel.UnderlayConstraint {
+	return self.constraints
+}
+
+// GetStartupDelay returns the delay before the channel begins dialing additional underlays.
+func (self *DialLinkChannel) GetStartupDelay() time.Duration {
+	return self.startupDelay
 }
 
 func (self *DialLinkChannel) MarkLinkStateSynced(ctrlId string) {
@@ -220,81 +260,42 @@ func (self *DialLinkChannel) LinkConnectionsChanged(ctrls env.NetworkControllers
 	return self.currentStateId, first
 }
 
-func (self *DialLinkChannel) Start(channel channel.MultiChannel) {
-	if self.startupDelay == 0 {
-		self.constraints.Apply(channel, self)
-	} else {
-		time.AfterFunc(self.startupDelay, func() {
-			self.constraints.Apply(channel, self)
-		})
-	}
+// UnderlayAdded implements channel.UnderlayEventListener.
+func (self *DialLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.Underlay) {
+	self.BaseLinkChannel.UnderlayAdded(ch, underlay)
+	self.changeCallback(self)
 }
 
-func (self *DialLinkChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
-	pfxlog.Logger().
-		WithField("id", ch.Label()).
-		WithField("underlays", ch.GetUnderlayCountsByType()).
-		WithField("underlayType", channel.GetUnderlayType(underlay)).
-		WithField("channelClosed", ch.IsClosed()).
-		Info("underlay closed")
-
+// UnderlayRemoved implements channel.UnderlayEventListener.
+func (self *DialLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
+	self.BaseLinkChannel.UnderlayRemoved(ch, underlay)
 	self.connIteration.Add(1)
 	self.changeCallback(self)
-	self.constraints.Apply(ch, self)
 }
 
-func (self *DialLinkChannel) HandleUnderlayAccepted(ch channel.MultiChannel, underlay channel.Underlay) {
-	self.BaseLinkChannel.HandleUnderlayAccepted(ch, underlay)
-	self.changeCallback(self)
-}
-
-func (self *DialLinkChannel) DialFailed(ch channel.MultiChannel, _ string, attempt int) {
-	delay := 2 * time.Duration(attempt) * time.Second
-	if delay > time.Minute {
-		delay = time.Minute
-	}
-	time.Sleep(delay)
-
-	// if the constraints are no longer valid after sleeping, close the channel
-	self.constraints.CheckStateValid(ch, true)
-}
-
-func (self *DialLinkChannel) CreateGroupedUnderlay(groupId string, groupSecret []byte, underlayType string, timeout time.Duration) (channel.Underlay, error) {
-	return self.dialer.CreateWithHeaders(timeout, map[int32][]byte{
-		channel.TypeHeader:         []byte(underlayType),
-		channel.ConnectionIdHeader: []byte(groupId),
-		channel.GroupSecretHeader:  groupSecret,
-		channel.IsGroupedHeader:    {1},
-	})
-}
-
-func NewListenerLinkChannel(underlay channel.Underlay, payloadSenderQueueSize, ackSenderQueueSize int) UnderlayHandlerLinkChannel {
+// NewListenerLinkChannel creates the listen-side grouped link channel. It dials nothing;
+// the default underlay's Min: 1 closes the channel if the required underlay is lost.
+func NewListenerLinkChannel(underlay channel.Underlay, payloadSenderQueueSize, ackSenderQueueSize int) *ListenerLinkChannel {
 	result := &ListenerLinkChannel{
-		BaseLinkChannel: *NewBaseLinkChannel(underlay, payloadSenderQueueSize, ackSenderQueueSize),
+		BaseLinkChannel: NewBaseLinkChannel(underlay, payloadSenderQueueSize, ackSenderQueueSize),
+		constraints: map[string]channel.UnderlayConstraint{
+			ChannelTypeDefault: {Desired: 1, Min: 1},
+			ChannelTypeAck:     {Desired: 1, Min: 0},
+		},
 	}
-
-	result.constraints.AddConstraint(ChannelTypeDefault, 1, 1)
-	result.constraints.AddConstraint(ChannelTypeAck, 1, 0)
 
 	return result
 }
 
 type ListenerLinkChannel struct {
-	BaseLinkChannel
-	constraints channel.UnderlayConstraints
+	*BaseLinkChannel
+	constraints map[string]channel.UnderlayConstraint
 }
 
-func (self *ListenerLinkChannel) Start(channel channel.MultiChannel) {
-	self.constraints.CheckStateValid(channel, true)
-}
-
-func (self *ListenerLinkChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
-	pfxlog.Logger().
-		WithField("id", ch.Label()).
-		WithField("underlays", ch.GetUnderlayCountsByType()).
-		WithField("underlayType", channel.GetUnderlayType(underlay)).
-		Info("underlay closed")
-	self.constraints.CheckStateValid(ch, true)
+// GetConstraints returns the per-underlay-type constraints for the channel. The listener
+// has no dial policy, so these only drive the close-when-below-Min check, not dialing.
+func (self *ListenerLinkChannel) GetConstraints() map[string]channel.UnderlayConstraint {
+	return self.constraints
 }
 
 func (self *ListenerLinkChannel) MarkLinkStateSynced(string) {
@@ -311,7 +312,8 @@ type SingleLinkChannel struct {
 	ch channel.Channel
 }
 
-func (self *SingleLinkChannel) InitChannel(channel.MultiChannel) {
+func (self *SingleLinkChannel) InitChannel(ch channel.Channel) {
+	self.ch = ch
 }
 
 func (self *SingleLinkChannel) GetChannel() channel.Channel {

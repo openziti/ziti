@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
@@ -40,6 +41,13 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 	log := pfxlog.Logger().WithField("ctrlId", underlay.Id())
 	log.Info("accepting inbound ctrl channel connection")
 
+	// Ungrouped underlays (e.g. older/mixed-version peers) reach here via the ungrouped
+	// fallback and carry no group secret, which channel.NewChannel requires. Generate one,
+	// mirroring the controller-side accept path.
+	if _, hasSecret := underlay.Headers()[channel.GroupSecretHeader]; !hasSecret {
+		underlay.Headers()[channel.GroupSecretHeader] = []byte(uuid.NewString())
+	}
+
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 	address := underlay.GetRemoteAddr().String()
 
@@ -54,11 +62,13 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 	)
 
 	multiConfig := &channel.Config{
-		LogicalName:     "ctrl/" + underlay.Id(),
-		Options:         self.options,
-		UnderlayHandler: listenerCtrlChan,
-		BindHandler:     bindHandler,
-		Underlay:        underlay,
+		LogicalName:            "ctrl/" + underlay.Id(),
+		Options:                self.options,
+		Underlay:               underlay,
+		Binder:                 channel.MakeBinder(bindHandler),
+		Senders:                listenerCtrlChan,
+		MessageSourceProvider:  listenerCtrlChan,
+		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
 	}
 
 	mc, err := channel.NewChannel(multiConfig)

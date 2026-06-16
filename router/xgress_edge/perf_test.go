@@ -289,6 +289,14 @@ func (ch *NoopTestChannel) GetUnderlays() []channel.Underlay {
 	panic("implement me")
 }
 
+func (ch *NoopTestChannel) AcceptUnderlay(channel.Underlay) error {
+	panic("implement me")
+}
+
+func (ch *NoopTestChannel) GetSenders() channel.Senders {
+	panic("implement me")
+}
+
 func (ch *NoopTestChannel) GetUnderlayCountsByType() map[string]int {
 	panic("implement me")
 }

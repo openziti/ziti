@@ -500,18 +500,20 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 
 	multiConfig := &channel.Config{
-		LogicalName:     "ctrl/" + underlay.Id(),
-		Options:         self.ctrlAccepter.options,
-		UnderlayHandler: listenerCtrlChan,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+		LogicalName: "ctrl/" + underlay.Id(),
+		Options:     self.ctrlAccepter.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				time.AfterFunc(time.Second, func() {
 					self.queueEvent(&routerDisconnectedEvent{routerId: routerId})
 				})
 			}))
 			return self.ctrlAccepter.Bind(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                listenerCtrlChan,
+		MessageSourceProvider:  listenerCtrlChan,
+		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
 	}
 
 	if _, err = channel.NewChannel(multiConfig); err != nil {

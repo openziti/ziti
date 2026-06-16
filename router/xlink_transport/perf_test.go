@@ -57,6 +57,10 @@ func (t testUnderlay) Headers() map[int32][]byte {
 	return nil
 }
 
+func (t testUnderlay) CreatedAt() time.Time {
+	return time.Time{}
+}
+
 func (t testUnderlay) SetWriteTimeout(time.Duration) error {
 	return nil
 }
