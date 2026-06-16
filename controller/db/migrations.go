@@ -213,9 +213,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.setConfigTypeTargets(step)               // migration 45
 		m.backfillPolicyRoleAttributeIndexes(step) // migration 46
 		m.collapseEdgeServices(step)               // migration 47
-	}
-
-	if step.CurrentVersion < 47 {
 		m.createOrUpdateConfigType(step, routerLinkV1ConfigType)
 	}
 

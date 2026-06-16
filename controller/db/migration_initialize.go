@@ -712,7 +712,7 @@ var routerLinkV1ConfigType = &ConfigType{
 		"definitions": map[string]interface{}{
 			"duration": map[string]interface{}{
 				"type":    "string",
-				"pattern": "^[0-9]+(h|m|s|ms)$",
+				"pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
 			},
 			"groups": map[string]interface{}{
 				"oneOf": []interface{}{
@@ -870,6 +870,12 @@ var routerLinkV1ConfigType = &ConfigType{
 			"ackSenderQueueSize": map[string]interface{}{
 				"type":    "integer",
 				"minimum": 1,
+			},
+			"gcMode": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"preserve", "orphaned", "changed"},
+				"default":     "preserve",
+				"description": "Auto-GC policy for stale links. 'preserve' (default) never acts; 'orphaned' closes links whose supporting listener/dialer is entirely gone; 'changed' closes links whose listener/dialer details have changed (binding, advertise, groups).",
 			},
 		},
 	},

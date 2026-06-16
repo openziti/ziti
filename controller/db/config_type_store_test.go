@@ -143,6 +143,7 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 			},
 			"payloadSenderQueueSize": 256,
 			"ackSenderQueueSize":     128,
+			"gcMode":                 "orphaned",
 		})
 		ctx.True(result.Valid(), "expected payload to validate, errors: %v", result.Errors())
 	})
@@ -158,6 +159,30 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 			},
 		})
 		ctx.True(result.Valid(), "expected binding-less payload to validate, errors: %v", result.Errors())
+	})
+
+	durationPayload := func(d interface{}) map[string]interface{} {
+		return map[string]interface{}{
+			"listeners": []interface{}{
+				map[string]interface{}{
+					"bind":    "tls:0.0.0.0:6262",
+					"options": map[string]interface{}{"connectTimeout": d},
+				},
+			},
+		}
+	}
+
+	t.Run("duration formats", func(t *testing.T) {
+		ctx.NextTest(t)
+		// these mirror what time.ParseDuration accepts
+		for _, d := range []string{"1h", "1h30m", "1.5h", "300ms", "500us", "10s", "1m", "200ns"} {
+			result := validate(durationPayload(d))
+			ctx.True(result.Valid(), "expected duration %q to validate, errors: %v", d, result.Errors())
+		}
+		for _, d := range []string{"", "1", "30", "1h30", "1 m", "1x", "h", "1hh"} {
+			result := validate(durationPayload(d))
+			ctx.False(result.Valid(), "expected duration %q to be rejected", d)
+		}
 	})
 
 	rejects := []struct {
@@ -211,9 +236,12 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "gcMode not in enum",
+			payload: map[string]interface{}{"gcMode": "aggressive"},
+		},
 	}
 	for _, tc := range rejects {
-		tc := tc
 		t.Run("rejects: "+tc.name, func(t *testing.T) {
 			ctx.NextTest(t)
 			result := validate(tc.payload)
