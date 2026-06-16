@@ -99,7 +99,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.service)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeRouters, store.stores.edgeRouter)
 
 	store.indexServiceRoleAttributes = store.AddSetIndexWithTransform(store.symbolServiceRoles, roleAttributeOnlyTransform)
@@ -108,7 +108,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
 
 func (store *serviceEdgeRouterPolicyStoreImpl) initializeLinked() {
 	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServiceEdgeRouterPolicies)
-	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolServiceEdgeRouterPolicies)
+	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.service.symbolServiceEdgeRouterPolicies)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) FillEntity(entity *ServiceEdgeRouterPolicy, bucket *boltz.TypedBucket) {
@@ -177,10 +177,11 @@ func (store *serviceEdgeRouterPolicyStoreImpl) serviceRolesUpdated(persistCtx *b
 		rolesSymbol:           store.symbolServiceRoles,
 		linkCollection:        store.serviceCollection,
 		relatedLinkCollection: store.edgeRouterCollection,
-		denormLinkCollection:  store.stores.edgeService.edgeRoutersCollection,
+		denormLinkCollection:  store.stores.service.edgeRoutersCollection,
+		entityFilter:          store.stores.service.isNotFabricOnly,
 		ErrorHolder:           persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.edgeService.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -201,12 +202,12 @@ func (store *serviceEdgeRouterPolicyStoreImpl) CheckIntegrity(mutateCtx boltz.Mu
 	ctx := &denormCheckCtx{
 		name:                   "service-edge-router-policies",
 		mutateCtx:              mutateCtx,
-		sourceStore:            store.stores.edgeService,
+		sourceStore:            store.stores.service,
 		targetStore:            store.stores.edgeRouter,
 		policyStore:            store,
 		sourceCollection:       store.serviceCollection,
 		targetCollection:       store.edgeRouterCollection,
-		targetDenormCollection: store.stores.edgeService.edgeRoutersCollection,
+		targetDenormCollection: store.stores.service.edgeRoutersCollection,
 		errorSink:              errorSink,
 		repair:                 fix,
 	}

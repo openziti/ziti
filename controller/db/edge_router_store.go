@@ -146,7 +146,7 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.service)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
@@ -156,7 +156,7 @@ func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouters)
 
 	store.identitiesCollection = store.AddRefCountedLinkCollection(store.symbolIdentities, store.stores.identity.symbolEdgeRouters)
-	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
+	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.service.symbolEdgeRouters)
 
 	store.AddConstraint(&routerIdentityConstraint{
 		stores:                store.stores,

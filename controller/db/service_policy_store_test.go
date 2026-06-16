@@ -146,7 +146,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireCreate(ctx, policy)
-	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.validateServicePolicyServices([]*Service{service}, []*ServicePolicy{policy})
 
 	policy.ServiceRoles = append(policy.ServiceRoles, entityRef(invalidId))
 	err = boltztest.Update(ctx, policy)
@@ -193,7 +193,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireUpdate(ctx, policy)
-	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.validateServicePolicyServices([]*Service{service}, []*ServicePolicy{policy})
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
 	ctx.Equal(0, len(policy.ServiceRoles), "service id should have been removed from service roles")
@@ -203,13 +203,13 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	boltztest.RequireUpdate(ctx, policy)
-	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.validateServicePolicyServices([]*Service{service}, []*ServicePolicy{policy})
 
 	service.Name = eid.New()
 	boltztest.RequireUpdate(ctx, service)
 	boltztest.RequireReload(ctx, policy)
 	ctx.True(stringz.Contains(policy.ServiceRoles, entityRef(service.Id)))
-	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.validateServicePolicyServices([]*Service{service}, []*ServicePolicy{policy})
 
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
@@ -221,7 +221,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 
 	policy.ServiceRoles = []string{roleRef("test")}
 	boltztest.RequireUpdate(ctx, policy)
-	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.validateServicePolicyServices([]*Service{service}, []*ServicePolicy{policy})
 
 	boltztest.RequireDelete(ctx, service)
 	boltztest.RequireReload(ctx, policy)
@@ -253,7 +253,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 		identities = append(identities, identity)
 	}
 
-	services := make([]*EdgeService, 0, 5)
+	services := make([]*Service, 0, 5)
 	for i := 0; i < 5; i++ {
 		service := newEdgeService(eid.New())
 		boltztest.RequireCreate(ctx, service)
@@ -406,7 +406,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	ctx.validateServicePolicies(identities, services, policies)
 }
 
-func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []string, identities []*Identity, services []*EdgeService, oncreate bool) []*ServicePolicy {
+func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []string, identities []*Identity, services []*Service, oncreate bool) []*ServicePolicy {
 	var policies []*ServicePolicy
 	for i := 0; i < 9; i++ {
 		policy := newServicePolicy(eid.New())
@@ -458,7 +458,7 @@ func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []stri
 	return policies
 }
 
-func (ctx *TestContext) validateServicePolicies(identities []*Identity, services []*EdgeService, policies []*ServicePolicy) {
+func (ctx *TestContext) validateServicePolicies(identities []*Identity, services []*Service, policies []*ServicePolicy) {
 	ctx.validateServicePolicyIdentities(identities, policies)
 	ctx.validateServicePolicyServices(services, policies)
 	ctx.validateServicePolicyDenormalization()
@@ -486,7 +486,7 @@ func (ctx *TestContext) validateServicePolicyIdentities(identities []*Identity, 
 	}
 }
 
-func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, policies []*ServicePolicy) {
+func (ctx *TestContext) validateServicePolicyServices(services []*Service, policies []*ServicePolicy) {
 	for _, policy := range policies {
 		count := 0
 		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)

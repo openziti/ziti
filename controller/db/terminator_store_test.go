@@ -47,7 +47,7 @@ func Test_TerminatorStore(t *testing.T) {
 
 func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	terminator := &Terminator{
 		Binding: uuid.New().String(),
@@ -142,7 +142,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 
 func (ctx *TestContext) testCreateTerminators(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	e := ctx.createTestTerminators()
 
@@ -172,7 +172,7 @@ func (ctx *TestContext) testCreateTerminators(t *testing.T) {
 
 func (ctx *TestContext) testLoadQueryTerminators(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	e := ctx.createTestTerminators()
 
@@ -217,7 +217,7 @@ func (ctx *TestContext) testLoadQueryTerminators(t *testing.T) {
 
 func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	e := ctx.createTestTerminators()
 
@@ -240,7 +240,7 @@ func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 
 func (ctx *TestContext) testDeleteTerminators(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	e := ctx.createTestTerminators()
 

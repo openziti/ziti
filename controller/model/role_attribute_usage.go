@@ -92,7 +92,7 @@ func sourcesFor(env Env, kind RoleAttributeKind) []roleAttributeSource {
 		}
 	case RoleAttributeKindService:
 		return []roleAttributeSource{
-			{RoleAttributeSourceServices, stores.EdgeService.GetRoleAttributesIndex()},
+			{RoleAttributeSourceServices, stores.Service.GetRoleAttributesIndex()},
 			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetServiceRoleAttributesIndex()},
 			{RoleAttributeSourceServiceEdgeRouterPolicies, stores.ServiceEdgeRouterPolicy.GetServiceRoleAttributesIndex()},
 		}

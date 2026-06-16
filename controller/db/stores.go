@@ -28,9 +28,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/change"
 	"go.etcd.io/bbolt"
 	"go4.org/sort"
 )
@@ -111,7 +111,6 @@ type Stores struct {
 	Controller              ControllerStore
 	EdgeRouter              EdgeRouterStore
 	EdgeRouterPolicy        EdgeRouterPolicyStore
-	EdgeService             EdgeServiceStore
 	Identity                IdentityStore
 	IdentityType            IdentityTypeStore
 	Index                   boltz.Store
@@ -212,7 +211,6 @@ type stores struct {
 	controller              *controllerStoreImpl
 	edgeRouter              *edgeRouterStoreImpl
 	edgeRouterPolicy        *edgeRouterPolicyStoreImpl
-	edgeService             *edgeServiceStoreImpl
 	externalJwtSigner       *externalJwtSignerStoreImpl
 	identity                *identityStoreImpl
 	identityType            *IdentityTypeStoreImpl
@@ -268,7 +266,6 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Cer
 	internalStores.controller = newControllerStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
-	internalStores.edgeService = newEdgeServiceStore(internalStores)
 	internalStores.externalJwtSigner = newExternalJwtSignerStore(internalStores)
 	internalStores.transitRouter = newTransitRouterStore(internalStores)
 	internalStores.identity = newIdentityStore(internalStores)
@@ -299,7 +296,6 @@ func InitStores(db boltz.Db, rateLimiter rate.RateLimiter, signingCert *x509.Cer
 		Controller:              internalStores.controller,
 		EdgeRouter:              internalStores.edgeRouter,
 		EdgeRouterPolicy:        internalStores.edgeRouterPolicy,
-		EdgeService:             internalStores.edgeService,
 		ExternalJwtSigner:       internalStores.externalJwtSigner,
 		TransitRouter:           internalStores.transitRouter,
 		Identity:                internalStores.identity,

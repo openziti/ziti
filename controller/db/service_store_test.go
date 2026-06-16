@@ -22,9 +22,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -36,14 +38,47 @@ func Test_ServiceStore(t *testing.T) {
 
 	t.Run("test create invalid api services", ctx.testCreateInvalidServices)
 	t.Run("test create service", ctx.testCreateServices)
+	t.Run("test fabric-only services", ctx.testFabricOnlyServices)
 	t.Run("test load/query services", ctx.testLoadQueryServices)
+	t.Run("test load/query services by policy", ctx.testLoadQueryServicesByPolicy)
 	t.Run("test update services", ctx.testUpdateServices)
 	t.Run("test delete services", ctx.testDeleteServices)
+	t.Run("test delete services with sessions", ctx.testDeleteServicesWithSessions)
+}
+
+func (ctx *TestContext) testFabricOnlyServices(t *testing.T) {
+	ctx.NextTest(t)
+	ctx.CleanupAll()
+
+	// Fabric and edge services share a single store. A fabric-only service
+	// (IsFabricOnly=true) should be filterable via the isFabricOnly field.
+	fabricService := &Service{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		IsFabricOnly:  true,
+	}
+
+	boltztest.RequireCreate(ctx, fabricService)
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		ctx.True(ctx.stores.Service.IsEntityPresent(tx, fabricService.GetId()))
+
+		_, count, err := ctx.stores.Service.QueryIds(tx, "true")
+		ctx.NoError(err)
+		ctx.Equal(int64(1), count)
+
+		ids, count, err := ctx.stores.Service.QueryIds(tx, "isFabricOnly = true")
+		ctx.NoError(err)
+		ctx.Equal(int64(1), count)
+		ctx.Equal(fabricService.Id, ids[0])
+
+		return nil
+	})
+	ctx.NoError(err)
 }
 
 func (ctx *TestContext) testCreateInvalidServices(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	service := &Service{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
@@ -67,7 +102,7 @@ func (ctx *TestContext) testCreateInvalidServices(t *testing.T) {
 
 func (ctx *TestContext) testCreateServices(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	service := &Service{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
@@ -115,7 +150,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 
 func (ctx *TestContext) testLoadQueryServices(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createServiceTestEntities()
 
@@ -155,7 +190,7 @@ func (ctx *TestContext) testLoadQueryServices(t *testing.T) {
 
 func (ctx *TestContext) testUpdateServices(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
@@ -194,8 +229,84 @@ func (ctx *TestContext) testUpdateServices(t *testing.T) {
 func (ctx *TestContext) testDeleteServices(t *testing.T) {
 	ctx.NextTest(t)
 
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
 	boltztest.RequireDelete(ctx, entities.service1)
 	boltztest.RequireDelete(ctx, entities.service2)
+}
+
+type serviceSessionTestEntities struct {
+	servicePolicy *ServicePolicy
+	identity1     *Identity
+	apiSession1   *ApiSession
+	service1      *Service
+	service2      *Service
+	session1      *Session
+	session2      *Session
+}
+
+func (ctx *TestContext) createServiceSessionTestEntities() *serviceSessionTestEntities {
+	identity1 := ctx.RequireNewIdentity("admin1", true)
+
+	apiSession1 := NewApiSession(identity1.Id)
+
+	role := eid.New()
+
+	boltztest.RequireCreate(ctx, apiSession1)
+	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss(roleRef(role)))
+
+	service1 := &Service{
+		BaseExtEntity:  boltz.BaseExtEntity{Id: eid.New()},
+		Name:           eid.New(),
+		RoleAttributes: []string{role},
+	}
+
+	boltztest.RequireCreate(ctx, service1)
+	service2 := ctx.RequireNewService(eid.New())
+
+	session1 := NewSession(apiSession1.Id, service1.Id)
+	boltztest.RequireCreate(ctx, session1)
+
+	session2 := NewSession(apiSession1.Id, service2.Id)
+	boltztest.RequireCreate(ctx, session2)
+
+	return &serviceSessionTestEntities{
+		servicePolicy: servicePolicy,
+		identity1:     identity1,
+		apiSession1:   apiSession1,
+		service1:      service1,
+		service2:      service2,
+		session1:      session1,
+		session2:      session2,
+	}
+}
+
+func (ctx *TestContext) testLoadQueryServicesByPolicy(t *testing.T) {
+	ctx.NextTest(t)
+	ctx.CleanupAll()
+
+	entities := ctx.createServiceSessionTestEntities()
+
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		service, err := ctx.stores.Service.LoadById(tx, entities.service1.Id)
+		ctx.NoError(err)
+		ctx.NotNil(service)
+		ctx.EqualValues(entities.service1.Id, service.Id)
+
+		query := fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, entities.servicePolicy.Id)
+		ids, _, err := ctx.stores.Service.QueryIds(tx, query)
+		ctx.NoError(err)
+		ctx.True(stringz.Contains(ids, entities.service1.Id))
+
+		return nil
+	})
+	ctx.NoError(err)
+}
+
+func (ctx *TestContext) testDeleteServicesWithSessions(t *testing.T) {
+	ctx.NextTest(t)
+	ctx.CleanupAll()
+	entities := ctx.createServiceSessionTestEntities()
+	boltztest.RequireDelete(ctx, entities.service1, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.service2, apiSessionsSessionsIdxPath)
 }

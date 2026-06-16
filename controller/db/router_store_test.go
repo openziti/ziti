@@ -44,7 +44,7 @@ func Test_RouterStore(t *testing.T) {
 
 func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	router := &Router{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
@@ -63,7 +63,7 @@ func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
 
 func (ctx *TestContext) testCreateRouters(t *testing.T) {
 	ctx.NextTest(t)
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	router := &Router{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
@@ -108,7 +108,7 @@ func (ctx *TestContext) createRouterTestEntities() *routerTestEntities {
 
 func (ctx *TestContext) testLoadQueryRouters(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createRouterTestEntities()
 
@@ -136,7 +136,7 @@ func (ctx *TestContext) testLoadQueryRouters(t *testing.T) {
 
 func (ctx *TestContext) testUpdateRouters(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createRouterTestEntities()
 	earlier := time.Now()
@@ -175,7 +175,7 @@ func (ctx *TestContext) testUpdateRouters(t *testing.T) {
 
 func (ctx *TestContext) testDeleteRouters(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createRouterTestEntities()
 	boltztest.RequireDelete(ctx, entities.router1)
 	boltztest.RequireDelete(ctx, entities.router2)
