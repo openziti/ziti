@@ -73,7 +73,7 @@ func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 	cmd.Flags().StringSliceVar(&options.bootstrapCtrlChanListeners, "bootstrap-ctrl-chan-listener", nil, "Bootstrap control channel listener address and optional groups. The router will update this automatically once connected. (e.g. 'tls:1.2.3.4:6262=group1,group2')")
-	cmd.Flags().StringSliceVar(&options.configs, "config", nil, "Config IDs to associate with this edge router")
+	cmd.Flags().StringSliceVar(&options.configs, "config", nil, "Config ids or names to associate with this edge router")
 
 	options.AddCommonFlags(cmd)
 
@@ -135,7 +135,11 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("config") {
-		api.SetJSONValue(entityData, o.configs, "configs")
+		configs, err := mapNamesToIDs("configs", o.Options, false, o.configs...)
+		if err != nil {
+			return err
+		}
+		api.SetJSONValue(entityData, configs, "configs")
 		change = true
 	}
 

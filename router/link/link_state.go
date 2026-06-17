@@ -59,6 +59,12 @@ type linkDest struct {
 	healthy     bool
 	unhealthyAt time.Time
 	linkMap     map[string]*linkState
+
+	// listeners caches the most recent listener set advertised by this
+	// destination router. Stored so we can re-evaluate matches when the
+	// LOCAL dialer set changes (in addition to the existing path that
+	// re-evaluates on peer listener changes via UpdateLinkDest).
+	listeners []*ctrl_pb.Listener
 }
 
 func (self *linkDest) update(update *linkDestUpdate) {

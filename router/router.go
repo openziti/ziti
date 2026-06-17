@@ -96,10 +96,8 @@ type Router struct {
 	faulter             *forwarder.Faulter
 	forwarder           *forwarder.Forwarder
 	xrctrls             []env.Xrctrl
-	xlinkFactories      map[string]xlink.Factory
-	xlinkListeners      []xlink.Listener
+	linkSubsystem       *link.FactoryRegistry
 	ctrlListeners       []io.Closer
-	xlinkDialers        []xlink.Dialer
 	xlinkRegistry       xlink.Registry
 	xgressListeners     []xgress_router.Listener
 	linkDialerPool      goroutines.Pool
@@ -155,7 +153,11 @@ func (self *Router) GetDialerCfg() map[string]xgress.OptionsData {
 }
 
 func (self *Router) GetXlinkDialers() []xlink.Dialer {
-	return self.xlinkDialers
+	return self.linkSubsystem.Dialers()
+}
+
+func (self *Router) GetXlinkListeners() []xlink.Listener {
+	return self.linkSubsystem.Listeners()
 }
 
 func (self *Router) GetXrctrls() []env.Xrctrl {
@@ -265,17 +267,7 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		channel.HelloVersionHeader: routerVersion,
 	}
 
-	listeners := &ctrl_pb.Listeners{}
-	for _, listener := range self.xlinkListeners {
-		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address:      listener.GetAdvertisement(),
-			Protocol:     listener.GetLinkProtocol(),
-			CostTags:     listener.GetLinkCostTags(),
-			Groups:       listener.GetGroups(),
-			LocalBinding: listener.GetLocalBinding(),
-		})
-	}
-
+	listeners := self.currentLinkListeners()
 	if len(listeners.Listeners) > 0 {
 		buf, err := proto.Marshal(listeners)
 		if err != nil {
@@ -347,7 +339,9 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
-	router.configRegistry = managedconfig.NewRegistry(nil)
+	router.configRegistry = managedconfig.NewRegistry(newManagedConfigAlertCallback(router.alertReporter))
+	router.linkSubsystem = link.NewFactoryRegistry(cfg.Id)
+	router.linkSubsystem.SetConfigurationChangeHandler(router.onLinkSubsystemChanged)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
@@ -371,6 +365,21 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	return router
+}
+
+// newManagedConfigAlertCallback returns a managedconfig.AlertCallback that
+// forwards registry-level alerts (failed apply, failed rollback, failed
+// remove) to the given Alerter, which batches them as ctrl_pb.Alert
+// events for the controller. baseType is attached as a related entity so
+// controller-side consumers can filter alerts by config family.
+func newManagedConfigAlertCallback(reporter env.Alerter) managedconfig.AlertCallback {
+	return func(baseType, detail string) {
+		reporter.ReportError(
+			fmt.Sprintf("managed config [%s]: %s", baseType, detail),
+			nil,
+			map[string]string{"configBaseType": baseType},
+		)
+	}
 }
 
 func (self *Router) GetAlerter() env.Alerter {
@@ -499,10 +508,35 @@ func (self *Router) Start() error {
 	// Initialize xgress registry
 	self.xgRegistry.Initialize(self)
 
-	// Start network listeners and dialers
-	self.startXlinkDialers()
-	self.startXlinkListeners()
-	self.setDefaultDialerBindings()
+	// Managed-config delivery rides the RDM. Trigger RDM subscription
+	// when the operator has opted in via the allow-list. Edge routers
+	// separately mark RDM required via the edge xgress factory, so for
+	// edge-enabled routers this is typically a no-op.
+	if len(self.config.ManagedConfig.Allow) > 0 {
+		self.MarkRouterDataModelRequired()
+	}
+
+	// Register the link subsystem as a managed-config handler. This must
+	// happen before Seal. After Seal we translate any local YAML link
+	// config and feed it via ApplyLocal — strict local-wins ensures the
+	// controller cannot override locally-set link config.
+	if err := self.configRegistry.Register(self.linkSubsystem); err != nil {
+		return fmt.Errorf("register link subsystem as config handler: %w", err)
+	}
+
+	// Seal the managed-config registry. All subsystem handler registration
+	// must be complete before this point; subsequent ApplyController /
+	// RemoveController calls from RDM events will route to registered
+	// handlers.
+	self.configRegistry.Seal()
+
+	// If local YAML has any link config, translate to JSON and apply it
+	// synchronously so listeners are up (or startup fails) before the
+	// control plane starts.
+	if err := self.applyLocalLinkConfig(); err != nil {
+		return err
+	}
+
 	self.startXgressListeners()
 
 	// Start web services
@@ -510,13 +544,9 @@ func (self *Router) Start() error {
 		go web.Run()
 	}
 
-	// Seal the managed-config registry. All subsystem handler registration
-	// must be complete before this point; subsequent ApplyController /
-	// RemoveController calls from RDM events will route to registered
-	// handlers. Wire the router-side subscriber into the state manager so
-	// Config events arriving from the controller dispatch through the
-	// allow-list and into the registry.
-	self.configRegistry.Seal()
+	// Wire the router-side subscriber into the state manager so Config
+	// events arriving from the controller dispatch through the allow-list
+	// and into the registry.
 	self.stateManager.SetRouterConfigSubscriber(state.NewRouterConfigSubscriber(self))
 
 	// Start control plane (must be last)
@@ -548,7 +578,7 @@ func (self *Router) Shutdown() error {
 		// already spawned.
 		self.configRegistry.Close()
 
-		for _, xlinkListener := range self.xlinkListeners {
+		for _, xlinkListener := range self.linkSubsystem.Listeners() {
 			if err := xlinkListener.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -721,7 +751,6 @@ func (self *Router) NotifyCertsUpdated() {
 }
 
 func (self *Router) registerComponents() error {
-	self.xlinkFactories = make(map[string]xlink.Factory)
 	acceptor := newXlinkAccepter(self.forwarder)
 	xlinkChAccepter := handler_link.NewBindHandlerFactory(
 		self.ctrls,
@@ -737,7 +766,9 @@ func (self *Router) registerComponents() error {
 	}
 	linkTransportConfig[transport.KeyCachedProxyConfiguration] = self.config.Proxy
 
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(acceptor, xlinkChAccepter, linkTransportConfig, self)
+	if err := self.linkSubsystem.Register("transport", xlink_transport.NewFactory(acceptor, xlinkChAccepter, linkTransportConfig, self)); err != nil {
+		return fmt.Errorf("register transport xlink factory: %w", err)
+	}
 
 	self.xgRegistry.Register(xgress_proxy.BindingName, xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
 	self.xgRegistry.Register(xgress_proxy_udp.BindingName, xgress_proxy_udp.NewFactory(self.ctrls))
@@ -816,56 +847,90 @@ func (self *Router) registerPlugins() error {
 	return nil
 }
 
-func (self *Router) startXlinkDialers() {
-	for _, lmap := range self.config.Link.Dialers {
-		binding := "transport"
-		if bindingVal, ok := lmap["binding"]; ok {
-			bindingName := fmt.Sprintf("%v", bindingVal)
-			if len(bindingName) > 0 {
-				binding = bindingName
-			}
-		}
+// currentLinkListeners builds a ctrl_pb.Listeners snapshot from the
+// linkSubsystem's current listener slice. Shared between Hello-time
+// header packing and the post-Apply publish path so both wire shapes
+// stay aligned.
+func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
+	listeners := &ctrl_pb.Listeners{}
+	for _, listener := range self.linkSubsystem.Listeners() {
+		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
+			Address:      listener.GetAdvertisement(),
+			Protocol:     listener.GetLinkProtocol(),
+			CostTags:     listener.GetLinkCostTags(),
+			Groups:       listener.GetGroups(),
+			LocalBinding: listener.GetLocalBinding(),
+		})
+	}
+	return listeners
+}
 
-		if factory, found := self.xlinkFactories[binding]; found {
-			dialer, err := factory.CreateDialer(self.config.Id, lmap)
-			if err != nil {
-				logrus.Fatalf("error creating Xlink dialer (%v)", err)
-			}
-			self.xlinkDialers = append(self.xlinkDialers, dialer)
-			logrus.Infof("started Xlink dialer with binding [%s]", binding)
-		}
+// onLinkSubsystemChanged is invoked after every Apply/Remove that
+// actually mutates the link subsystem. Listener changes get republished
+// to every connected controller so peer routers see the new state via
+// PeerStateChange. Dialer changes trigger a local rescan against known
+// peers, in case the new dialer set unlocks previously-unmatched
+// listeners.
+func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
+	if change.ListenersChanged {
+		self.publishLinkListeners()
+	}
+	if change.DialersChanged {
+		self.xlinkRegistry.RescanForDialOpportunities()
 	}
 }
 
-func (self *Router) startXlinkListeners() {
-	for _, lmap := range self.config.Link.Listeners {
-		binding := "transport"
-		if bindingVal, ok := lmap["binding"]; ok {
-			bindingName := fmt.Sprintf("%v", bindingVal)
-			if len(bindingName) > 0 {
-				binding = bindingName
-			}
-		}
-
-		if factory, found := self.xlinkFactories[binding]; found {
-			lmap[transport.KeyProtocol] = "ziti-link"
-			listener, err := factory.CreateListener(self.config.Id, lmap)
-			if err != nil {
-				logrus.Fatalf("error creating Xlink listener (%v)", err)
-			}
-			if err := listener.Listen(); err != nil {
-				logrus.Fatalf("error listening on Xlink (%v)", err)
-			}
-			self.xlinkListeners = append(self.xlinkListeners, listener)
-			logrus.Infof("started Xlink listener with binding [%s] advertising [%s]", binding, listener.GetAdvertisement())
-		}
+// publishLinkListeners marshals the current listener set and sends an
+// UpdateLinkListeners message to every connected controller. The
+// controller's handler updates Router.Listeners + triggers peer
+// redistribution. Hello continues to carry the initial snapshot at
+// connect time; this message handles mid-session changes.
+func (self *Router) publishLinkListeners() {
+	listeners := self.currentLinkListeners()
+	buf, err := proto.Marshal(listeners)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to marshal Listeners for UpdateLinkListeners")
+		return
 	}
+	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+		// Build a fresh message per controller: sending mutates message state,
+		// so a single shared message can't be sent to multiple channels safely.
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateLinkListenersType), buf)
+		if err := ch.Send(msg); err != nil {
+			pfxlog.Logger().WithError(err).WithField("ctrlId", ctrlId).
+				Warn("failed to send UpdateLinkListeners to controller")
+		}
+	})
 }
 
-func (self *Router) setDefaultDialerBindings() {
-	if len(self.xlinkDialers) == 1 && len(self.xlinkListeners) == 1 && self.xlinkDialers[0].GetBinding() == "" {
-		self.xlinkDialers[0].AdoptBinding(self.xlinkListeners[0])
+// applyLocalLinkConfig translates the router's local YAML link config into
+// the router.link.v1 JSON shape and feeds it to the managedconfig registry
+// as a local-source apply. Returns immediately if no local link config is
+// set (in which case any controller-supplied router.link.v1 config will be
+// accepted instead). Applies synchronously so a reconcile failure (e.g. a bad
+// bind address) surfaces as a startup error rather than just a log line.
+func (self *Router) applyLocalLinkConfig() error {
+	js, err := link.ConfigFromLocalYaml(link.LocalYamlConfig{
+		Listeners:              self.config.Link.Listeners,
+		Dialers:                self.config.Link.Dialers,
+		Heartbeats:             self.config.Link.Heartbeats,
+		PayloadSenderQueueSize: self.config.Link.PayloadSenderQueueSize,
+		AckSenderQueueSize:     self.config.Link.AckSenderQueueSize,
+	})
+	if err != nil {
+		return fmt.Errorf("translate local link config: %w", err)
 	}
+	if js == "" {
+		return nil
+	}
+	// Apply synchronously so an invalid local link config (bad bind address,
+	// port already in use, unknown binding, listener start failure) fails
+	// startup, matching the pre-managed-config behavior, instead of being
+	// applied asynchronously and only logged.
+	if err := self.configRegistry.ApplyLocalSync(link.ConfigTypeV1, js); err != nil {
+		return fmt.Errorf("apply local link config: %w", err)
+	}
+	return nil
 }
 
 func (self *Router) startXgressListeners() {

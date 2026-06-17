@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,17 +33,28 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type Listener interface {
-	AdvertiseAddress() string
-	Protocol() string
-	Groups() []string
-}
-
 type Router struct {
 	models.BaseEntity
-	Name              string
-	Fingerprint       *string
-	Listeners         []*ctrl_pb.Listener
+	Name        string
+	Fingerprint *string
+	// Listeners is the router's currently-advertised link listener set.
+	// Hello carries the initial snapshot; UpdateLinkListeners pushes
+	// mid-session changes from the router. Protected by mu — callers
+	// should use SetLinkListeners / GetLinkListeners rather than direct
+	// field access. The field is left exported for backward compat
+	// with code that hasn't been migrated.
+	Listeners []*ctrl_pb.Listener
+
+	// mu protects the in-memory mutable fields of a connected Router —
+	// fields that the router pushes updates for mid-session and that
+	// other goroutines read concurrently. Today this is just Listeners
+	// (via UpdateLinkListeners). When other field-updating messages are
+	// added (e.g., a future per-router CtrlChan listener update path),
+	// they should serialize on this same mutex via dedicated
+	// accessors. Per-field locks are avoided to keep the locking story
+	// simple; contention is irrelevant at this scale.
+	mu sync.RWMutex
+
 	Control           ctrlchan.CtrlChannel
 	Connected         atomic.Bool
 	ConnectTime       time.Time
@@ -146,7 +158,9 @@ func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error 
 	return nil
 }
 
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
+func (entity *Router) addLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
+	entity.mu.Lock()
+	defer entity.mu.Unlock()
 	entity.Listeners = append(entity.Listeners, &ctrl_pb.Listener{
 		Address:  addr,
 		Protocol: linkProtocol,
@@ -155,8 +169,23 @@ func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []
 	})
 }
 
+// SetLinkListeners atomically replaces the router's link listener slice.
+// Callers do not mutate the previous slice — readers may still hold and
+// iterate it safely after a Set.
 func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
+	entity.mu.Lock()
+	defer entity.mu.Unlock()
 	entity.Listeners = listeners
+}
+
+// GetLinkListeners returns the current link listener slice under a read
+// lock. The returned slice is the live header — safe to iterate because
+// SetLinkListeners always replaces the whole slice rather than mutating
+// it in place — but callers should not modify it.
+func (entity *Router) GetLinkListeners() []*ctrl_pb.Listener {
+	entity.mu.RLock()
+	defer entity.mu.RUnlock()
+	return entity.Listeners
 }
 
 func (entity *Router) HasCapability(capability capabilities.RouterCapability) bool {
