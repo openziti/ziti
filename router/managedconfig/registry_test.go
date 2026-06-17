@@ -339,6 +339,32 @@ func Test_Apply_FirstFailure_TriggersRemove(t *testing.T) {
 	req.NotEmpty(alerts.all())
 }
 
+func Test_ApplyLocalSync_SurfacesApplyError(t *testing.T) {
+	req := require.New(t)
+	h := &fakeHandler{base: "router.link", versions: []int{1}, applyErrs: []error{errors.New("bad bind address")}}
+	r, alerts := newSealedRegistry(t, h)
+
+	err := r.ApplyLocalSync("router.link.v1", `{}`)
+	req.Error(err, "ApplyLocalSync must surface the handler Apply failure to the caller")
+	req.ErrorContains(err, "bad bind address")
+
+	// failed apply still triggers the rollback contract (Remove) and an alert
+	applies, removes := h.snapshot()
+	req.Len(applies, 1)
+	req.Equal(1, removes)
+	req.Equal(0, r.AppliedVersion("router.link.v1"))
+	req.NotEmpty(alerts.all())
+}
+
+func Test_ApplyLocalSync_Succeeds(t *testing.T) {
+	req := require.New(t)
+	h := &fakeHandler{base: "router.link", versions: []int{1}}
+	r, _ := newSealedRegistry(t, h)
+
+	req.NoError(r.ApplyLocalSync("router.link.v1", `{"k":"a"}`))
+	req.Equal(1, r.AppliedVersion("router.link.v1"))
+}
+
 func Test_Apply_UpdateFailure_RollbackSucceeds(t *testing.T) {
 	req := require.New(t)
 	h := &fakeHandler{

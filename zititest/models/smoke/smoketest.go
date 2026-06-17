@@ -193,7 +193,7 @@ var Model = &model.Model{
 				"router-east-2": {
 					Components: model.Components{
 						"router-east-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "ctrl-managed-link"}},
 							Type: &zitilab.RouterType{
 								Debug:   true,
 								Version: ZitiRouterVersion,
@@ -242,7 +242,7 @@ var Model = &model.Model{
 				"router-west": {
 					Components: model.Components{
 						"router-west": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host", "ctrl-managed-link"}},
 							Type: &zitilab.RouterType{
 								Debug:   true,
 								Version: ZitiRouterVersion,
