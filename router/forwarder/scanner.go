@@ -20,12 +20,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/sirupsen/logrus"
 )
+
+// scanLog is the logger for the idle-circuit scanner. Its channel name is
+// "router.forwarder.scan"; operators can turn scan output up or down with
+// `ziti agent set-channel-log-level router.forwarder.scan <level>`.
+//
+// Scanner volume is high under load (every interval emits one record per
+// scan plus one per idle circuit), so it sits in its own channel to be
+// silenceable without losing the forward and fault channels.
+var scanLog = logging.For("router.forwarder.scan")
 
 type Scanner struct {
 	ctrls       env.NetworkControllers
@@ -50,8 +58,8 @@ func (self *Scanner) setCircuitTable(circuits *circuitTable) {
 }
 
 func (self *Scanner) run() {
-	logrus.Info("started")
-	defer logrus.Warn("exited")
+	scanLog.Info("started")
+	defer scanLog.Warn("exited")
 
 	for {
 		select {
@@ -66,7 +74,7 @@ func (self *Scanner) run() {
 
 func (self *Scanner) scan() {
 	circuits := self.circuits.circuits.Items()
-	logrus.Debugf("scanning [%d] circuits", len(circuits))
+	scanLog.Debug("scanning circuits", "count", len(circuits))
 
 	now := time.Now().UnixMilli()
 	idleCircuits := map[string]map[string]int64{}
@@ -79,18 +87,19 @@ func (self *Scanner) scan() {
 				idleCircuits[ft.ctrlId] = ctrlMap
 			}
 			ctrlMap[circuitId] = int64(idleTime)
-			logrus.WithField("circuitId", circuitId).
-				WithField("ctrlId", ft.ctrlId).
-				WithField("idleTime", idleTime).
-				WithField("idleThreshold", self.timeout).
-				Warn("circuit exceeds idle threshold")
+			scanLog.Warn("circuit exceeds idle threshold",
+				"circuitId", circuitId,
+				"ctrlId", ft.ctrlId,
+				"idleTime", idleTime,
+				"idleThreshold", self.timeout,
+			)
 		}
 	}
 
 	for ctrlId, idleCircuitMap := range idleCircuits {
 		if len(idleCircuitMap) > 0 {
-			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitMap))
+			log := scanLog.With("ctrlId", ctrlId)
+			log.Debug("found idle circuits, confirming with controller", "count", len(idleCircuitMap))
 
 			if ctrl := self.ctrls.GetChannel(ctrlId); ctrl != nil {
 				confirm := &ctrl_pb.CircuitConfirmation{IdleTimes: idleCircuitMap}
@@ -98,12 +107,12 @@ func (self *Scanner) scan() {
 					confirm.CircuitIds = append(confirm.CircuitIds, circuitId)
 				}
 				if err := protobufs.MarshalTyped(confirm).Send(ctrl); err == nil {
-					log.WithField("circuitCount", len(idleCircuitMap)).Warnf("sent confirmation for circuits")
+					log.Warn("sent confirmation for circuits", "circuitCount", len(idleCircuitMap))
 				} else {
-					log.WithError(err).Error("error sending confirmation request")
+					log.Error("error sending confirmation request", "error", err)
 				}
 			} else {
-				log.Errorf("no ctrl channel, cannot request circuit confirmations")
+				log.Error("no ctrl channel, cannot request circuit confirmations")
 			}
 		}
 	}
