@@ -40,6 +40,7 @@ func NewInspectCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-messaging", "gets information about pending router peer updates and terminator validations"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-data-model", "gets information about the router data model"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-data-model-index", "gets current index of the router data model"))
+	cmd.AddCommand(action.newInspectSubCmd(p, inspectCommon.RouterConfigRegistryKey, "gets the router's managed-config registry state (handlers, controller/local versions, applied state)"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "data-model-index", "gets current index of the controller data model"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "router-controllers", "gets information about the state of a router's connections to its controllers"))
 	cmd.AddCommand(action.newInspectSubCmd(p, "terminator-costs", "gets information about terminator dynamic costs"))
