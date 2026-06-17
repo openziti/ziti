@@ -137,7 +137,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			return errors.New("no version info header, not accepting router connection")
 		}
 
-		r.Listeners = nil
+		r.SetLinkListeners(nil)
 		headers := ch.Underlay().Headers()
 
 		// Determine header locations based on router capabilities. 2.0+ routers

@@ -438,6 +438,15 @@ func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy 
 	self.queueEvent(updateEvent)
 }
 
+// RescanForDialOpportunities implements xlink.Registry. Queues a
+// localDialersChangedEvent which re-evaluates every known healthy
+// destination's cached listener set against the current local dialer
+// set. Discovers matches that became possible after a local dialer
+// change.
+func (self *linkRegistryImpl) RescanForDialOpportunities() {
+	self.queueEvent(localDialersChangedEvent{})
+}
+
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
 	self.queueEvent(&removeLinkDest{
 		id: id,

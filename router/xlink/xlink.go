@@ -62,6 +62,15 @@ type Registry interface {
 
 	// GetLinkKey returns the link key for the given link parameters
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
+
+	// RescanForDialOpportunities re-evaluates every known link destination
+	// against the *current* local dialer set, discovering matches that
+	// became possible after a local dialer change (e.g., a new dialer
+	// binding registered, a dialer's groups expanded). Without this,
+	// changes to local dialers only take effect when peers' listener
+	// state changes (via UpdateLinkDest), because that's the only path
+	// that re-evaluates matches today.
+	RescanForDialOpportunities()
 }
 
 type Forwarder interface {
