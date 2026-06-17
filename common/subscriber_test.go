@@ -219,7 +219,7 @@ func (self *subscriberTest) initializeRouterDataModel() {
 
 func TestSubscriberCorrectness(t *testing.T) {
 	closeNotify := make(chan struct{})
-	rdm := NewReceiverRouterDataModel(closeNotify)
+	rdm := NewReceiverRouterDataModel("test-router", closeNotify)
 
 	options := agent.Options{
 		AppId:      "subscriber-test",
@@ -314,7 +314,7 @@ func TestSubscriberCorrectness(t *testing.T) {
 
 func TestSubscriberScale(t *testing.T) {
 	closeNotify := make(chan struct{})
-	rdm := NewReceiverRouterDataModel(closeNotify)
+	rdm := NewReceiverRouterDataModel("test-router", closeNotify)
 
 	options := agent.Options{
 		AppId:      "subscriber-test",
