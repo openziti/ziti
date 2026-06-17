@@ -727,13 +727,16 @@ var routerLinkV1ConfigType = &ConfigType{
 				"type":                 "object",
 				"additionalProperties": false,
 				"properties": map[string]interface{}{
+					// Zero is valid for both: each sizes a buffered channel, and
+					// zero requests an unbuffered one. Only maxOutstandingConnects
+					// needs a positive floor, since it becomes a worker count.
 					"outQueueSize": map[string]interface{}{
 						"type":    "integer",
-						"minimum": 1,
+						"minimum": 0,
 					},
 					"maxQueuedConnects": map[string]interface{}{
 						"type":    "integer",
-						"minimum": 1,
+						"minimum": 0,
 						"maximum": 5000,
 					},
 					"maxOutstandingConnects": map[string]interface{}{
