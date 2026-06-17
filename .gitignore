@@ -19,6 +19,12 @@ release/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# ai agents
+.claude
+.mercurius/
+mercurius.yaml
+.mcp.json
+
 # goland
 .idea
 github_deploy_key
