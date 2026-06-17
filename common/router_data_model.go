@@ -626,6 +626,11 @@ type RouterDataModel struct {
 	// time. Empty for non-receiver views (controller-side, validate parsing).
 	selfRouterId string
 
+	// routerConfigSubscriber receives notifications for Config events whose
+	// ConfigType.Target is "router". Set via SetRouterConfigSubscriber after
+	// construction; a nil-pointer Load means no dispatch.
+	routerConfigSubscriber atomic.Pointer[RouterConfigEventSubscriber]
+
 	lock  sync.Mutex
 	index uint64
 }
@@ -1003,10 +1008,16 @@ func (rdm *RouterDataModel) HandleRouterEvent(event *edge_ctrl_pb.DataState_Even
 		if _, retained := keep[oldId]; retained {
 			continue
 		}
-		if !rdm.Configs.Has(oldId) {
+		cfg, ok := rdm.Configs.Get(oldId)
+		if !ok {
 			continue
 		}
 		rdm.Configs.Remove(oldId)
+		// Dispatch the remove so the managed-config subscriber tears
+		// down the listener / dialer for this config. Without this,
+		// removing a Config from a router's Configs list would silently
+		// leave the router-side listener bound.
+		rdm.dispatchRouterConfigRemove(cfg.TypeId)
 	}
 }
 
@@ -1334,8 +1345,10 @@ func (rdm *RouterDataModel) HandleConfigTypeEvent(index uint64, event *edge_ctrl
 // during startup.
 func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Config) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
+		var removedTypeId string
 		rdm.Configs.RemoveCb(model.Config.Id, func(key string, v *Config, exists bool) bool {
 			if v != nil {
+				removedTypeId = v.TypeId
 				v.services.IterCb(func(serviceId string, _ struct{}) {
 					rdm.NotifyServiceOfConfigChange(serviceId, index)
 				})
@@ -1357,7 +1370,11 @@ func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.
 			}
 			return exists
 		})
+		if removedTypeId != "" {
+			rdm.dispatchRouterConfigRemove(removedTypeId)
+		}
 	} else {
+		changed := false
 		rdm.Configs.Upsert(model.Config.Id, nil, func(exist bool, valueInMap *Config, newValue *Config) *Config {
 			result := &Config{
 				Id:         model.Config.Id,
@@ -1375,6 +1392,7 @@ func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.
 			}
 
 			if !result.Equals(valueInMap) {
+				changed = true
 				result.services.IterCb(func(serviceId string, _ struct{}) {
 					rdm.NotifyServiceOfConfigChange(serviceId, index)
 				})
@@ -1388,7 +1406,62 @@ func (rdm *RouterDataModel) HandleConfigEvent(index uint64, event *edge_ctrl_pb.
 
 			return result
 		})
+		if changed {
+			rdm.dispatchRouterConfigApply(model.Config.TypeId, model.Config.DataJson)
+		}
 	}
+}
+
+// SetRouterConfigSubscriber registers (or clears, when s is nil) the subscriber
+// that receives router-target Config events. Subsequent HandleConfigEvent calls
+// dispatch through s. Replaces any previous subscriber. This sets only the
+// hook; bootstrap and diff-on-resync are handled by the state manager that
+// owns the subscriber lifecycle.
+func (rdm *RouterDataModel) SetRouterConfigSubscriber(s RouterConfigEventSubscriber) {
+	if s == nil {
+		rdm.routerConfigSubscriber.Store(nil)
+		return
+	}
+	rdm.routerConfigSubscriber.Store(&s)
+}
+
+// RouterConfigSubscriber returns the currently-registered subscriber, or nil.
+func (rdm *RouterDataModel) RouterConfigSubscriber() RouterConfigEventSubscriber {
+	if p := rdm.routerConfigSubscriber.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// dispatchRouterConfigApply notifies the subscriber if the typeId resolves to
+// a router-target ConfigType. No-op when no subscriber is set or the type
+// isn't router-target.
+func (rdm *RouterDataModel) dispatchRouterConfigApply(typeId, data string) {
+	sub := rdm.RouterConfigSubscriber()
+	if sub == nil {
+		return
+	}
+	ct, ok := rdm.ConfigTypes.Get(typeId)
+	if !ok || ct == nil || ct.Target != ConfigTypeTargetRouter {
+		return
+	}
+	sub.OnRouterConfigApplied(ct.Name, data)
+}
+
+// dispatchRouterConfigRemove notifies the subscriber if the typeId resolves to
+// a router-target ConfigType. ConfigType records outlive the Config records
+// that reference them, so the lookup succeeds even after the Config has been
+// removed.
+func (rdm *RouterDataModel) dispatchRouterConfigRemove(typeId string) {
+	sub := rdm.RouterConfigSubscriber()
+	if sub == nil {
+		return
+	}
+	ct, ok := rdm.ConfigTypes.Get(typeId)
+	if !ok || ct == nil || ct.Target != ConfigTypeTargetRouter {
+		return
+	}
+	sub.OnRouterConfigRemoved(ct.Name)
 }
 
 func (rdm *RouterDataModel) applyUpdateServicePolicyEvent(index uint64, model *edge_ctrl_pb.DataState_Event_ServicePolicy) {

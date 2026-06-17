@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/servermetrics"
+	"github.com/openziti/ziti/v2/router/managedconfig"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
@@ -49,6 +50,7 @@ type RouterEnv interface {
 	GetVersionInfo() versions.VersionProvider
 	GetRouterDataModel() *common.RouterDataModel
 	WithRouterDataModel(f func(*common.RouterDataModel) error) error
+	GetRouterConfigRegistry() *managedconfig.Registry
 	GetConnectEventsConfig() *ConnectEventsConfig
 	IsRouterDataModelRequired() bool
 	MarkRouterDataModelRequired()

@@ -151,9 +151,9 @@ type Config struct {
 		Listeners             []*CtrlListenerConfig
 	}
 	Link struct {
-		Listeners          []map[interface{}]interface{}
-		Dialers            []map[interface{}]interface{}
-		Heartbeats         channel.HeartbeatOptions
+		Listeners              []map[interface{}]interface{}
+		Dialers                []map[interface{}]interface{}
+		Heartbeats             channel.HeartbeatOptions
 		PayloadSenderQueueSize int
 		AckSenderQueueSize     int
 	}
@@ -184,6 +184,7 @@ type Config struct {
 	Plugins        []string
 	Edge           *EdgeConfig
 	IfaceDiscovery InterfaceDiscoveryConfig
+	ManagedConfig  ManagedConfigOptions
 	Src            map[interface{}]interface{}
 	path           string
 }
@@ -1010,6 +1011,10 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 				}
 			}
 		}
+	}
+
+	if err = LoadManagedConfigFromMap(cfgmap, &cfg.ManagedConfig); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil

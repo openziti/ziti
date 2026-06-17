@@ -69,6 +69,7 @@ import (
 	"github.com/openziti/ziti/v2/router/inspect"
 	"github.com/openziti/ziti/v2/router/interfaces"
 	"github.com/openziti/ziti/v2/router/link"
+	"github.com/openziti/ziti/v2/router/managedconfig"
 	routerMetrics "github.com/openziti/ziti/v2/router/metrics"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_edge"
@@ -123,6 +124,7 @@ type Router struct {
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
 	alertReporter       *alert.Reporter
+	configRegistry      *managedconfig.Registry
 	inspectHandler      channel.ContentTypeReceiver
 }
 
@@ -212,6 +214,11 @@ func (self *Router) GetStateManager() state.Manager {
 
 func (self *Router) GetRouterDataModel() *common.RouterDataModel {
 	return self.stateManager.RouterDataModel()
+}
+
+// GetRouterConfigRegistry returns the controller-managed config registry.
+func (self *Router) GetRouterConfigRegistry() *managedconfig.Registry {
+	return self.configRegistry
 }
 
 // WithRouterDataModel passes the current router data model into the provide function
@@ -337,6 +344,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
+	router.configRegistry = managedconfig.NewRegistry(nil)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
@@ -499,6 +507,15 @@ func (self *Router) Start() error {
 		go web.Run()
 	}
 
+	// Seal the managed-config registry. All subsystem handler registration
+	// must be complete before this point; subsequent ApplyController /
+	// RemoveController calls from RDM events will route to registered
+	// handlers. Wire the router-side subscriber into the state manager so
+	// Config events arriving from the controller dispatch through the
+	// allow-list and into the registry.
+	self.configRegistry.Seal()
+	self.stateManager.SetRouterConfigSubscriber(state.NewRouterConfigSubscriber(self))
+
 	// Start control plane (must be last)
 	if err := self.startControlPlane(); err != nil {
 		return err
@@ -521,6 +538,12 @@ func (self *Router) Shutdown() error {
 				errs = append(errs, err)
 			}
 		}
+
+		// Drain in-flight managed-config reconciles before tearing down the
+		// subsystems their handlers manage. ctrls.Close above has already
+		// stopped new Config events from arriving, so this only blocks on work
+		// already spawned.
+		self.configRegistry.Close()
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
