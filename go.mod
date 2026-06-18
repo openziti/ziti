@@ -63,7 +63,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v5 v5.0.10
+	github.com/openziti/channel/v5 v5.0.11
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/foundation/v2 v2.0.95
