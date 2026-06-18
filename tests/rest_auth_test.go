@@ -17,7 +17,7 @@ func Test_TestAuthWithCertFromDifferentChain(t *testing.T) {
 	badId, err := idlib.LoadClientIdentity(
 		"./testdata/invalid_client_cert/client.cert",
 		"./testdata/invalid_client_cert/client.key",
-		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+		"./testdata/pki/root/certs/root.cert")
 	ctx.Req.NoError(err)
 
 	client := ctx.NewRestClient(badId)
@@ -34,7 +34,7 @@ func Test_ListServicesWithValidCert(t *testing.T) {
 	id, err := idlib.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
-		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+		"./testdata/pki/root/certs/root.cert")
 	ctx.Req.NoError(err)
 
 	client := ctx.NewRestClient(id)

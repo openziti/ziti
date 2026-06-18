@@ -34,6 +34,13 @@ func (m *ManagerHelpers) CreateAuthPolicy(policy *model.AuthPolicy) error {
 	return m.ctx.EdgeController.AppEnv.Managers.AuthPolicy.Create(policy, nil)
 }
 
+// CreateController seeds a controller entity in the cluster store. Non-HA test controllers do not
+// register themselves, so this is how a test populates the controller list returned by listControllers
+// and enrollment responses.
+func (m *ManagerHelpers) CreateController(controller *model.Controller) error {
+	return m.ctx.EdgeController.AppEnv.Managers.Controller.Create(controller, nil)
+}
+
 // CreateIdentity creates an identity via the manager. The identity's Id field is populated on success.
 func (m *ManagerHelpers) CreateIdentity(identity *model.Identity) error {
 	return m.ctx.EdgeController.AppEnv.Managers.Identity.Create(identity, nil)
