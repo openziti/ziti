@@ -6,8 +6,11 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti/v2:
-    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
+* github.com/openziti/ziti/v2: [v2.0.0 -> v2.0.1](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
+    * [Issue #3928](https://github.com/openziti/ziti/issues/3928) - [Backport-2.0] Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
+    * [Issue #3958](https://github.com/openziti/ziti/issues/3958) - [Backport-2.0] Tunneler skips iptables rules for services sharing an intercept hostname
+    * [Issue #3959](https://github.com/openziti/ziti/issues/3959) - [Backport-2.0] Refcount wildcard-allocated intercept hostnames
+
 
 # Release 2.0.0
 
