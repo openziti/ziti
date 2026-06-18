@@ -75,7 +75,7 @@ require (
 	github.com/openziti/secretstream v0.1.51
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/x509-claims v1.0.3
-	github.com/openziti/xweb/v3 v3.0.4
+	github.com/openziti/xweb/v3 v3.0.5-0.20260618140905-54cc19903f1c
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rabbitmq/amqp091-go v1.11.0
