@@ -65,13 +65,13 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v4 v4.3.11
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.31.1
+	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/foundation/v2 v2.0.95
 	github.com/openziti/identity v1.0.133
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.90
-	github.com/openziti/sdk-golang v1.8.0
+	github.com/openziti/sdk-golang v1.9.0
 	github.com/openziti/secretstream v0.1.51
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/x509-claims v1.0.3
@@ -169,6 +169,7 @@ require (
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
+	github.com/openziti/channel/v5 v5.0.10 // indirect
 	github.com/openziti/go-term-markdown v1.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
