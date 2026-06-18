@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -73,7 +74,7 @@ type listener struct {
 	factory          *Factory
 	options          *Options
 	bindHandler      xgress.BindHandler
-	underlayListener channel.UnderlayListener
+	underlayListener io.Closer
 	headers          map[int32][]byte
 
 	droppedMsgMeter      metrics.Meter
@@ -365,13 +366,13 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
 	}
 
-	listener.underlayListener = channel.NewClassicListener(listener.id, addr, listenerConfig)
+	accepter := NewAcceptor(listener)
 
-	if err := listener.underlayListener.Listen(); err != nil {
+	underlayListener, err := channel.NewClassicListenerWithAcceptor(listener.id, addr, listenerConfig, accepter.multiListener)
+	if err != nil {
 		return err
 	}
-	accepter := NewAcceptor(listener, listener.underlayListener)
-	go accepter.Run()
+	listener.underlayListener = underlayListener
 
 	return nil
 }

@@ -17,7 +17,6 @@
 package xgress_edge
 
 import (
-	"errors"
 	"math"
 	"sync/atomic"
 	"time"
@@ -33,7 +32,6 @@ import (
 )
 
 type Acceptor struct {
-	uListener           channel.UnderlayListener
 	listener            *listener
 	options             *channel.Options
 	sessionBindHandler  *sessionConnectionHandler
@@ -210,7 +208,7 @@ func (d DebugPeekHandler) Tx(m *channel.Message, _ channel.Channel) {
 func (d DebugPeekHandler) Close(_ channel.Channel) {
 }
 
-func NewAcceptor(listener *listener, uListener channel.UnderlayListener) *Acceptor {
+func NewAcceptor(listener *listener) *Acceptor {
 	sessionHandler := newSessionConnectHandler(listener.factory.stateManager, listener.options, listener.factory.metricsRegistry)
 
 	optionsWithBind := listener.options.channelOptions
@@ -220,7 +218,6 @@ func NewAcceptor(listener *listener, uListener channel.UnderlayListener) *Accept
 
 	result := &Acceptor{
 		listener:            listener,
-		uListener:           uListener,
 		options:             optionsWithBind,
 		sessionBindHandler:  sessionHandler,
 		connStateTracker:    listener.factory.connectionTracker,
@@ -236,26 +233,6 @@ func NewAcceptor(listener *listener, uListener channel.UnderlayListener) *Accept
 	})
 
 	return result
-}
-
-func (self *Acceptor) Run() {
-	log := pfxlog.Logger()
-	log.Info("starting")
-	defer log.Warn("exiting")
-
-	for {
-		underlay, err := self.uListener.Create(self.options.ConnectTimeout)
-		if err != nil {
-			log.Errorf("error accepting (%v)", err)
-			if errors.Is(err, channel.ListenerClosedError) {
-				return
-			}
-		}
-
-		if underlay != nil {
-			go self.multiListener.AcceptUnderlay(underlay)
-		}
-	}
 }
 
 func (self *Acceptor) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {

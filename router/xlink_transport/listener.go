@@ -58,7 +58,7 @@ func (self *listener) Listen() error {
 	acceptor := channel.NewMultiListener(self.handleGroupedUnderlay, self.handleUngroupedNewUnderlay)
 
 	var err error
-	if self.listener, err = channel.NewClassicListenerF(self.id, self.config.bind, config, acceptor.AcceptUnderlay); err != nil {
+	if self.listener, err = channel.NewClassicListenerWithAcceptor(self.id, self.config.bind, config, acceptor); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
 

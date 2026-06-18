@@ -54,21 +54,12 @@ func NewCtrlAccepter(network *network.Network,
 	}
 }
 
-// NewMultiListener returns an acceptor that handles both grouped (multi-underlay) and
-// ungrouped (single underlay) connections from routers.
-func (self *CtrlAccepter) NewMultiListener() channel.UnderlayAcceptor {
-	multiListener := channel.NewMultiListener(self.HandleGroupedUnderlay, self.AcceptUnderlay)
-	return &multiListenerAcceptor{multiListener: multiListener}
-}
-
-// multiListenerAcceptor wraps MultiListener to implement UnderlayAcceptor
-type multiListenerAcceptor struct {
-	multiListener *channel.MultiListener
-}
-
-func (self *multiListenerAcceptor) AcceptUnderlay(underlay channel.Underlay) error {
-	self.multiListener.AcceptUnderlay(underlay)
-	return nil
+// NewMultiListener returns a HelloAcceptor that handles both grouped (multi-underlay) and
+// ungrouped (single underlay) connections from routers. As a HelloAcceptor it defers the
+// hello acknowledgement until the group is registered, closing the race where a second
+// underlay for the same group could arrive before the group was known.
+func (self *CtrlAccepter) NewMultiListener() channel.HelloAcceptor {
+	return channel.NewMultiListener(self.HandleGroupedUnderlay, self.AcceptUnderlay)
 }
 
 // HandleGroupedUnderlay handles incoming grouped connections from routers that support

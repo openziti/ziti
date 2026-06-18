@@ -939,7 +939,7 @@ func (self *Router) startCtrlListeners() error {
 
 		multiListener := channel.NewMultiListener(ctrlAcceptor.HandleGroupedUnderlay, ctrlAcceptor.AcceptUnderlay)
 
-		listener, err := channel.NewClassicListenerF(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener.AcceptUnderlay)
+		listener, err := channel.NewClassicListenerWithAcceptor(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener)
 		if err != nil {
 			return fmt.Errorf("error starting ctrl channel listener on %s (%w)", listenerCfg.Bind.String(), err)
 		}

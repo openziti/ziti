@@ -80,7 +80,7 @@ func TestDialCtrlChannel_StaysOpenAt0UnderlaysAndRedials(t *testing.T) {
 	bindAddr, err := transport.ParseAddress(listenerAddr)
 	req.NoError(err)
 
-	listener, err := channel.NewClassicListenerF(id, bindAddr, listenerConfig, multiListener.AcceptUnderlay)
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
 	req.NoError(err)
 	req.NotNil(listener)
 
@@ -233,7 +233,7 @@ func TestListenerCtrlChannel_ClosesAt0Underlays(t *testing.T) {
 	bindAddr, err := transport.ParseAddress(listenerAddr)
 	req.NoError(err)
 
-	listener, err := channel.NewClassicListenerF(id, bindAddr, listenerConfig, multiListener.AcceptUnderlay)
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
 	req.NoError(err)
 	actualAddr := bindAddr
 	defer func() { _ = listener.Close() }()
@@ -340,7 +340,7 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 	bindAddr, err := transport.ParseAddress(listenerAddr)
 	req.NoError(err)
 
-	listener, err := channel.NewClassicListenerF(id, bindAddr, listenerConfig, multiListener.AcceptUnderlay)
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
 	req.NoError(err)
 	actualAddr := bindAddr
 	defer func() { _ = listener.Close() }()
@@ -476,7 +476,7 @@ func TestListenerCtrlChannel_AcceptsReconnectionAsNew(t *testing.T) {
 	bindAddr, err := transport.ParseAddress(listenerAddr)
 	req.NoError(err)
 
-	listener, err := channel.NewClassicListenerF(id, bindAddr, listenerConfig, multiListener.AcceptUnderlay)
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
 	req.NoError(err)
 	actualAddr := bindAddr
 	defer func() { _ = listener.Close() }()
@@ -586,7 +586,7 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 	bindAddr, err := transport.ParseAddress(listenerAddr)
 	req.NoError(err)
 
-	listener, err := channel.NewClassicListenerF(id, bindAddr, listenerConfig, multiListener.AcceptUnderlay)
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
 	req.NoError(err)
 	defer func() { _ = listener.Close() }()
 
