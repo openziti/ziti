@@ -164,19 +164,12 @@ func (self *edgeTerminator) inspect() (*edge.InspectResult, error) {
 		return result, fmt.Errorf("unable to check status with sdk client: (%w)", err)
 	}
 
-	result, err := edge.UnmarshalInspectResult(resp)
-	if err != nil {
-		// this is likely a programming error. We need to log this but assume that the terminator is ok
-		// retries likely won't help
-		pfxlog.Logger().WithError(err).Error("unable to unmarshal inspect response from sdk client")
-		return &edge.InspectResult{
-			ConnId: self.MsgChannel.Id(),
-			Type:   edge.ConnTypeBind,
-			Detail: "inspect unmarshall error",
-		}, nil
-	}
-
-	return result, nil
+	// Parse leniently rather than via edge.UnmarshalInspectResult, which checks the content type.
+	// See inspectRequestSendable in hosted.go: sdk-golang v1.1.0 - v1.5.3 reply with content type
+	// InspectResponse (60805) instead of ConnInspectResponse (60799). SendForReply correlates the
+	// reply by sequence regardless of content type, so we just need to read the headers/body.
+	// Revert to edge.UnmarshalInspectResult once sdk-golang < v1.5.4 is out of support.
+	return unmarshalInspectResultLenient(resp), nil
 }
 
 func (self *edgeTerminator) fixInvalid(registry *hostedServiceRegistry) (bool, error) {
