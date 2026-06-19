@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/openziti/ziti/v2/ziti/util"
@@ -81,6 +82,13 @@ func (self *Options) PreRun(cmd *cobra.Command, _ []string) {
 		initialLevel = slog.LevelDebug
 	}
 	logging.Install(handler, initialLevel)
+
+	// Route channel's lifecycle logging through the slog registry, named by
+	// the channel's logical name (ctrl, link, agent, ...). This makes the
+	// channel type visible in output and lets operators tune verbosity per
+	// channel type via `ziti agent set-channel-log-level <name> <level>`,
+	// independently of the global level.
+	channel.LoggerFor = logging.For
 
 	util.LogReleaseVersionCheck()
 }

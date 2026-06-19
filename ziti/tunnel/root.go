@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/util"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentlog"
@@ -120,6 +121,12 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 		initialLevel = slog.LevelDebug
 	}
 	logging.Install(handler, initialLevel)
+
+	// Route channel's lifecycle logging through the slog registry, named by
+	// the channel's logical name, so the channel type is visible in output and
+	// operators can tune verbosity per channel type independently of the
+	// global level.
+	channel.LoggerFor = logging.For
 
 	util.LogReleaseVersionCheck()
 }
