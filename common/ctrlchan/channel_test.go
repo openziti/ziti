@@ -47,6 +47,8 @@ func TestDialCtrlChannel_StaysOpenAt0UnderlaysAndRedials(t *testing.T) {
 				Senders:                listenerChannel,
 				MessageSourceProvider:  listenerChannel,
 				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
 				Underlay:               underlay,
 				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 					binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -201,6 +203,8 @@ func TestListenerCtrlChannel_ClosesAt0Underlays(t *testing.T) {
 				Senders:                listenerChannel,
 				MessageSourceProvider:  listenerChannel,
 				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
 				Underlay:               underlay,
 				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 					binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -308,6 +312,8 @@ func TestDialCtrlChannel_AllPriorityLevels(t *testing.T) {
 				Senders:                listenerChannel,
 				MessageSourceProvider:  listenerChannel,
 				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
 				Underlay:               underlay,
 				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 					binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -444,6 +450,8 @@ func TestListenerCtrlChannel_AcceptsReconnectionAsNew(t *testing.T) {
 				Senders:                listenerChannel,
 				MessageSourceProvider:  listenerChannel,
 				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
 				Underlay:               underlay,
 				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 					binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
@@ -559,6 +567,8 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 				Senders:                listenerChannel,
 				MessageSourceProvider:  listenerChannel,
 				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
 				Underlay:               underlay,
 				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 					binding.AddReceiveHandlerF(echoContentType, func(m *channel.Message, ch channel.Channel) {
