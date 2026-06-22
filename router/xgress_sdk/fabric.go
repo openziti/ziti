@@ -80,6 +80,8 @@ func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventTy
 	}
 }
 
+func (self *fabricImpl) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+
 func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, oldService, newService *common.IdentityService, eventType common.ServiceEventType) {
 	self.updateIdentityState(state)
 

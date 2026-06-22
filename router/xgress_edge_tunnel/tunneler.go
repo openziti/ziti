@@ -169,6 +169,8 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 	}
 }
 
+func (self *tunneler) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+
 func (self *tunneler) NotifyServiceChange(state *common.IdentityState, _, service *common.IdentityService, eventType common.ServiceEventType) {
 	pfxlog.Logger().Infof("service changed for %s. service %s was %s", state.Identity.Name, service.Service.Name, eventType)
 	tunSvc := self.mapRdmServiceToRest(service)

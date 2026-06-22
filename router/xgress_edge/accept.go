@@ -120,6 +120,20 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	})
 
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeSubscribeToServiceUpdates,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processSubscribeToServiceUpdates(m, ch)
+		},
+	})
+
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeResyncPostureState,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processResyncPostureState(m, ch)
+		},
+	})
+
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeConnInspectResponse,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.handleConnInspectResponse(m)

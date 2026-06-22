@@ -46,6 +46,7 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/posture"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/router/xgress_router"
@@ -54,6 +55,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var peerHeaderRequestMappings = map[uint32]uint32{
@@ -382,6 +384,20 @@ func (listener *listener) Binding() string {
 }
 
 func (listener *listener) Close() error {
+	// Close accepted client connections so connected SDKs observe the disconnect immediately
+	// (their channel close handler fires), rather than waiting for a heartbeat timeout. Collect the
+	// channels first, then close them outside the tracker's per-identity lock to avoid re-entrancy
+	// when each close drives markDisconnected.
+	if tracker := listener.factory.connectionTracker; tracker != nil {
+		var channels []channel.Channel
+		tracker.iterateClientConns(func(conn *edgeClientConn) {
+			channels = append(channels, conn.ch.GetChannel())
+		})
+		for _, ch := range channels {
+			_ = ch.Close()
+		}
+	}
+
 	return listener.underlayListener.Close()
 }
 
@@ -404,6 +420,18 @@ type edgeClientConn struct {
 		sync.Mutex
 		enabled      atomic.Bool
 		lastRequired concurrenz.AtomicValue[time.Time]
+	}
+
+	postureSeq atomic.Uint64
+
+	// svcSubscription tracks the per-connection service push subscription state.
+	svcSubscription struct {
+		sync.Mutex
+		active    bool
+		lastIndex int64
+		// pending accumulates service changes during a scan pass (serviceId -> op).
+		// Using a map deduplicates multiple events for the same service in one pass.
+		pending map[string]edge_client_pb.Op
 	}
 }
 
@@ -513,6 +541,37 @@ func (self *edgeClientConn) NotifyServiceChange(_ *common.IdentityState, previou
 	if dialLost {
 		self.handleDialAccessLost(service)
 	}
+
+	// Buffer service change for the SDK push subscription.
+	op, ok := serviceEventToOp(eventType)
+	if !ok {
+		return
+	}
+	self.svcSubscription.Lock()
+	if self.svcSubscription.active {
+		if self.svcSubscription.pending == nil {
+			self.svcSubscription.pending = map[string]edge_client_pb.Op{}
+		}
+		// Removed trumps Added/Updated for the same service in one pass.
+		if existing, seen := self.svcSubscription.pending[service.GetId()]; !seen || existing != edge_client_pb.Op_Removed {
+			self.svcSubscription.pending[service.GetId()] = op
+		}
+	}
+	self.svcSubscription.Unlock()
+}
+
+// serviceEventToOp maps an identity service event type to its protobuf Op.
+// Returns false for event types that don't produce a ServiceDef entry (e.g. posture-only changes).
+func serviceEventToOp(e common.ServiceEventType) (edge_client_pb.Op, bool) {
+	switch e {
+	case common.ServiceAccessGainedEvent:
+		return edge_client_pb.Op_Added, true
+	case common.ServiceUpdatedEvent, common.ServiceDialPoliciesChanged, common.ServiceBindPoliciesChanged:
+		return edge_client_pb.Op_Updated, true
+	case common.ServiceAccessLostEvent:
+		return edge_client_pb.Op_Removed, true
+	}
+	return 0, false
 }
 
 func (self *edgeClientConn) handleBindAccessLost(service *common.IdentityService) {
@@ -1482,6 +1541,408 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 
 	}
+}
+
+func (self *edgeClientConn) processSubscribeToServiceUpdates(msg *channel.Message, ch channel.Channel) {
+	req := &edge_client_pb.SubscribeToServiceUpdates{}
+	if err := proto.Unmarshal(msg.Body, req); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal SubscribeToServiceUpdates")
+		return
+	}
+
+	identityId := self.getIdentityId()
+	if identityId == "" {
+		pfxlog.Logger().Error("SubscribeToServiceUpdates received with no identity id")
+		return
+	}
+
+	self.checkForStateListener()
+
+	// Deactivate and drain pending changes before building the snapshot.
+	// This prevents a stale incremental from racing the snapshot in the channel.
+	self.svcSubscription.Lock()
+	self.svcSubscription.active = false
+	self.svcSubscription.pending = nil
+	self.svcSubscription.Unlock()
+
+	rdm := self.listener.factory.stateManager.RouterDataModel()
+	cs := buildServiceSnapshot(rdm, identityId)
+
+	b, err := proto.Marshal(cs)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal ServiceChangeSet snapshot")
+		return
+	}
+
+	reply := channel.NewMessage(sdkedge.ContentTypeServiceChangeSet, b)
+	if err := ch.Send(reply); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send ServiceChangeSet snapshot")
+		return
+	}
+
+	// Activate incremental push only after the snapshot is queued so any
+	// concurrent scan pass cannot deliver an incremental before the snapshot.
+	self.svcSubscription.Lock()
+	self.svcSubscription.active = true
+	self.svcSubscription.lastIndex = cs.Index
+	self.svcSubscription.Unlock()
+
+	// Follow the structural snapshot with the full initial posture state, so the SDK has pass/fail
+	// for every check/policy from the moment it subscribes (matches the snapshot sequence:
+	// ServiceChangeSet then PostureStateChange).
+	self.sendPostureState(uint64(cs.Index))
+}
+
+func (self *edgeClientConn) processResyncPostureState(_ *channel.Message, _ channel.Channel) {
+	self.svcSubscription.Lock()
+	active := self.svcSubscription.active
+	structuralIndex := uint64(self.svcSubscription.lastIndex)
+	self.svcSubscription.Unlock()
+	if !active {
+		return
+	}
+
+	self.sendPostureState(structuralIndex)
+}
+
+// sendPostureState evaluates the connection's current posture state against the RDM at
+// structuralIndex and pushes a full PostureStateChange to the SDK. Used for the initial state on
+// subscribe and for SDK-requested resyncs. No-op if the connection has no api session.
+func (self *edgeClientConn) sendPostureState(structuralIndex uint64) {
+	apiSession := self.apiSessionToken
+	if apiSession == nil {
+		return
+	}
+
+	rdm := self.listener.factory.stateManager.RouterDataModel()
+	data := self.listener.factory.stateManager.GetPostureData(apiSession.Id)
+
+	seq := self.postureSeq.Inc()
+	ps := buildPostureStateChange(seq, structuralIndex, rdm, self.getIdentityId(), data)
+
+	b, err := proto.Marshal(ps)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal PostureStateChange")
+		return
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypePostureStateChange, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send PostureStateChange")
+	}
+}
+
+// buildServiceSnapshot builds a full-state ServiceChangeSet (previousIndex=-1) for the
+// given identity from the current RDM. Every service the identity can access is included
+// along with the PolicyDef and PostureCheckDef entries they reference.
+func buildServiceSnapshot(rdm *common.RouterDataModel, identityId string) *edge_client_pb.ServiceChangeSet {
+	cs := &edge_client_pb.ServiceChangeSet{
+		Index:         int64(rdm.CurrentIndex()),
+		PreviousIndex: -1,
+	}
+
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok {
+		return cs
+	}
+
+	// accumulate policyIds per service, plus collect services/policies/checks
+	servicePolicyIds := map[string][]string{}
+	services := map[string]*common.Service{}
+	policies := map[string]*common.ServicePolicy{}
+	checks := map[string]*common.PostureCheck{}
+
+	identity.IterateServicePolicies(func(policyId string) {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			return
+		}
+		policies[policyId] = policy
+
+		policy.Services.IterCb(func(serviceId string, _ struct{}) {
+			if svc, ok := rdm.Services.Get(serviceId); ok {
+				services[serviceId] = svc
+				servicePolicyIds[serviceId] = append(servicePolicyIds[serviceId], policyId)
+			}
+		})
+
+		policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			if _, present := checks[checkId]; !present {
+				if check, ok := rdm.PostureChecks.Get(checkId); ok {
+					checks[checkId] = check
+				}
+			}
+		})
+	})
+
+	for serviceId, svc := range services {
+		cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+			Op:                 edge_client_pb.Op_Added,
+			Id:                 serviceId,
+			Name:               svc.Name,
+			EncryptionRequired: svc.EncryptionRequired,
+			Configs:            svc.Configs,
+			PolicyIds:          servicePolicyIds[serviceId],
+		})
+	}
+
+	for policyId, policy := range policies {
+		policyType := edge_client_pb.PolicyType_Dial
+		if policy.IsBind() {
+			policyType = edge_client_pb.PolicyType_Bind
+		}
+
+		var postureCheckIds []string
+		policy.PostureChecks.IterCb(func(id string, _ struct{}) {
+			postureCheckIds = append(postureCheckIds, id)
+		})
+
+		cs.Policies = append(cs.Policies, &edge_client_pb.PolicyDef{
+			Op:              edge_client_pb.Op_Added,
+			Id:              policyId,
+			Type:            policyType,
+			PostureCheckIds: postureCheckIds,
+		})
+	}
+
+	for checkId, check := range checks {
+		cs.PostureChecks = append(cs.PostureChecks, buildPostureCheckDef(checkId, check))
+	}
+
+	return cs
+}
+
+func (self *edgeClientConn) NotifyBatchComplete(rdm *common.RouterDataModel, index uint64) {
+	self.svcSubscription.Lock()
+	if !self.svcSubscription.active || len(self.svcSubscription.pending) == 0 {
+		self.svcSubscription.Unlock()
+		return
+	}
+	pending := self.svcSubscription.pending
+	self.svcSubscription.pending = nil
+	prevIndex := self.svcSubscription.lastIndex
+	self.svcSubscription.lastIndex = int64(index)
+	self.svcSubscription.Unlock()
+
+	cs := buildIncrementalServiceChangeSet(rdm, self.getIdentityId(), pending, prevIndex, int64(index))
+
+	b, err := proto.Marshal(cs)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal incremental ServiceChangeSet")
+		return
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypeServiceChangeSet, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send incremental ServiceChangeSet")
+	}
+}
+
+func buildIncrementalServiceChangeSet(rdm *common.RouterDataModel, identityId string, pending map[string]edge_client_pb.Op, prevIndex, index int64) *edge_client_pb.ServiceChangeSet {
+	cs := &edge_client_pb.ServiceChangeSet{
+		Index:         index,
+		PreviousIndex: prevIndex,
+	}
+
+	identity, hasIdentity := rdm.Identities.Get(identityId)
+	policies := map[string]*common.ServicePolicy{}
+	checks := map[string]*common.PostureCheck{}
+
+	for serviceId, op := range pending {
+		if op == edge_client_pb.Op_Removed {
+			cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+				Op: edge_client_pb.Op_Removed,
+				Id: serviceId,
+			})
+			continue
+		}
+
+		svc, ok := rdm.Services.Get(serviceId)
+		if !ok {
+			continue
+		}
+
+		var policyIds []string
+		if hasIdentity {
+			identity.IterateServicePolicies(func(policyId string) {
+				policy, ok := rdm.ServicePolicies.Get(policyId)
+				if !ok || !policy.Services.Has(serviceId) {
+					return
+				}
+				policyIds = append(policyIds, policyId)
+				policies[policyId] = policy
+				policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+					if _, present := checks[checkId]; !present {
+						if check, ok := rdm.PostureChecks.Get(checkId); ok {
+							checks[checkId] = check
+						}
+					}
+				})
+			})
+		}
+
+		cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+			Op:                 op,
+			Id:                 serviceId,
+			Name:               svc.Name,
+			EncryptionRequired: svc.EncryptionRequired,
+			Configs:            svc.Configs,
+			PolicyIds:          policyIds,
+		})
+	}
+
+	for policyId, policy := range policies {
+		policyType := edge_client_pb.PolicyType_Dial
+		if policy.IsBind() {
+			policyType = edge_client_pb.PolicyType_Bind
+		}
+		var postureCheckIds []string
+		policy.PostureChecks.IterCb(func(id string, _ struct{}) {
+			postureCheckIds = append(postureCheckIds, id)
+		})
+		cs.Policies = append(cs.Policies, &edge_client_pb.PolicyDef{
+			Op:              edge_client_pb.Op_Added,
+			Id:              policyId,
+			Type:            policyType,
+			PostureCheckIds: postureCheckIds,
+		})
+	}
+
+	for checkId, check := range checks {
+		cs.PostureChecks = append(cs.PostureChecks, buildPostureCheckDef(checkId, check))
+	}
+
+	return cs
+}
+
+func (self *edgeClientConn) SendPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData) {
+	self.svcSubscription.Lock()
+	active := self.svcSubscription.active
+	self.svcSubscription.Unlock()
+	if !active {
+		return
+	}
+
+	seq := self.postureSeq.Inc()
+	ps := buildPostureStateChange(seq, structuralIndex, rdm, self.getIdentityId(), data)
+
+	b, err := proto.Marshal(ps)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal PostureStateChange")
+		return
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypePostureStateChange, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send PostureStateChange")
+	}
+}
+
+func buildPostureStateChange(seq, structuralIndex uint64, rdm *common.RouterDataModel, identityId string, data *posture.InstanceData) *edge_client_pb.PostureStateChange {
+	ps := &edge_client_pb.PostureStateChange{
+		Seq:             seq,
+		StructuralIndex: structuralIndex,
+		GeneratedAt:     timestamppb.Now(),
+	}
+
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok {
+		return ps
+	}
+
+	// checkResults maps checkId → isPassing; deduplicates checks appearing in multiple policies.
+	checkResults := map[string]bool{}
+
+	identity.IterateServicePolicies(func(policyId string) {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			return
+		}
+
+		policyPassing := true
+		policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			check, ok := rdm.PostureChecks.Get(checkId)
+			if !ok {
+				policyPassing = false
+				return
+			}
+			passing := data != nil && posture.EvaluatePostureCheck(check.DataStatePostureCheck, data) == nil
+			checkResults[checkId] = passing
+			if !passing {
+				policyPassing = false
+			}
+		})
+
+		ps.PolicyStates = append(ps.PolicyStates, &edge_client_pb.PostureStateChange_PolicyState{
+			PolicyId:  policyId,
+			IsPassing: policyPassing,
+		})
+	})
+
+	now := time.Now()
+	for checkId, passing := range checkResults {
+		check, ok := rdm.PostureChecks.Get(checkId)
+		if !ok {
+			continue
+		}
+
+		cs := &edge_client_pb.PostureStateChange_CheckState{
+			CheckId:   checkId,
+			IsPassing: passing,
+		}
+
+		if mfa := check.GetMfa(); mfa != nil && data != nil && data.PassedMfaAt != nil && mfa.TimeoutSeconds >= 0 {
+			expiresAt := data.PassedMfaAt.Add(time.Duration(mfa.TimeoutSeconds) * time.Second)
+			cs.TimeoutAt = timestamppb.New(expiresAt)
+			remaining := int32(expiresAt.Sub(now).Seconds())
+			if remaining < 0 {
+				remaining = 0
+			}
+			cs.TimeoutRemainingSeconds = remaining
+		}
+
+		ps.CheckStates = append(ps.CheckStates, cs)
+	}
+
+	return ps
+}
+
+func buildPostureCheckDef(id string, check *common.PostureCheck) *edge_client_pb.PostureCheckDef {
+	def := &edge_client_pb.PostureCheckDef{
+		Op:   edge_client_pb.Op_Added,
+		Id:   id,
+		Type: check.GetTypeId(),
+	}
+
+	if mfa := check.GetMfa(); mfa != nil {
+		def.PromptOnWake = mfa.GetPromptOnWake()
+		def.PromptOnUnlock = mfa.GetPromptOnUnlock()
+		def.PromptGracePeriodSeconds = int32(mfa.GetTimeoutSeconds())
+	}
+
+	if pm := check.GetProcessMulti(); pm != nil {
+		def.Semantic = pm.GetSemantic()
+		for _, p := range pm.GetProcesses() {
+			def.Processes = append(def.Processes, &edge_client_pb.PostureCheckDef_Process{
+				OsType: p.GetOsType(),
+				Path:   p.GetPath(),
+			})
+		}
+	}
+
+	// Normalize a single PROCESS check into a one-element PROCESS_MULTI so the SDK only ever handles
+	// one process-check shape. AllOf is trivially correct for a single process. The PROCESS type is
+	// never sent on the wire.
+	if p := check.GetProcess(); p != nil {
+		def.Type = "PROCESS_MULTI"
+		def.Semantic = "AllOf"
+		def.Processes = append(def.Processes, &edge_client_pb.PostureCheckDef_Process{
+			OsType: p.GetOsType(),
+			Path:   p.GetPath(),
+		})
+	}
+
+	return def
 }
 
 func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {
