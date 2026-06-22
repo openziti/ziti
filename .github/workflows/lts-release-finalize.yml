@@ -35,6 +35,7 @@ jobs:
       # PAT so the created tag triggers release.yml (GITHUB_TOKEN would not)
       GH_TOKEN: ${{ secrets.GH_CI_KEY }}
       BASE: ${{ github.event.pull_request.base.ref }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
@@ -76,6 +77,21 @@ jobs:
           version="$(printf '%s' "${marker}" | grep -oP 'version=\Kv[0-9]+\.[0-9]+\.[0-9]+')"
           marker_sha="$(printf '%s' "${marker}" | grep -oP 'sha=\K[0-9a-f]{7,40}')"
           marker_base="$(printf '%s' "${marker}" | grep -oP 'base=\Krelease-v[0-9]+\.[0-9]+\.x')"
+
+          # The exact version is fixed at validation time and baked into the head
+          # branch name (lts-bump-<version>-<run_id>), which is not body-editable.
+          # Treat that as authoritative so a tampered body cannot change the patch
+          # number tagged onto the validated commit.
+          branch_version="$(printf '%s' "${HEAD_REF}" | grep -oP '^lts-bump-\Kv[0-9]+\.[0-9]+\.[0-9]+(?=-[0-9]+$)' || true)"
+          if [[ -z "${branch_version}" ]]; then
+            echo "::error ::could not parse version from head branch '${HEAD_REF}'"
+            exit 1
+          fi
+          if [[ "${version}" != "${branch_version}" ]]; then
+            echo "::error ::PR body version ${version} does not match the validated branch version ${branch_version}; refusing to release"
+            exit 1
+          fi
+          version="${branch_version}"
 
           # The version's major.minor must match the branch we are releasing on,
           # so a tampered body cannot tag e.g. v9.9.9 onto release-v2.0.x. BASE is
