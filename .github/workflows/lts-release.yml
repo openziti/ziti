@@ -147,6 +147,13 @@ jobs:
 
           # Validation policy: by default only the Active LTS line runs the full
           # suite (RELEASE_POLICY.md). Maintenance and older lines are smoketest-only.
+          #
+          # NOTE: the HA smoketest and the full validation suite are currently
+          # gated to the active line because the older lines (1.5/1.6) predate
+          # full HA/validation support. Once 2.0.0 ages into the Maintenance LTS
+          # slot, it DOES support both, so the maintenance line should then also
+          # run the HA smoketest and the full validation suite. Revisit this
+          # gating (here and the ha-smoketest job's `if`) at that transition.
           case "${IN_VALIDATION:-auto}" in
             run) run_validation="true" ;;
             skip) run_validation="false" ;;
@@ -341,6 +348,10 @@ jobs:
   # HA smoketest, mirroring the regular smoketest gate that main.yml runs. Only
   # the Active LTS line runs it; maintenance and older lines are basic-smoketest
   # only (HA may predate or differ on those lines). Self-contained.
+  #
+  # TODO: once 2.0.0 becomes the Maintenance LTS, run the HA smoketest (and the
+  # full validation suite) on the maintenance line too -- 2.0 supports both. See
+  # the validation-policy note in the prepare job's resolve step.
   ha-smoketest:
     name: HA Smoketest
     needs: prepare
