@@ -311,24 +311,27 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		logrus.Debugf("Using local interface %s to dial controller", config.Ctrl.LocalBinding)
 	}
 
-	// Build headers for the initial dial, including grouped channel flags
-	headers.PutBoolHeader(channel.IsGroupedHeader, true)
-	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
-
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:     config.Id,
 		Endpoint:     addr,
 		LocalBinding: config.Ctrl.LocalBinding,
-		Headers:      headers,
+		Headers:      headers, // base hello headers only; no group flags
 		TransportConfig: transport.Configuration{
 			transport.KeyProtocol:                 "ziti-ctrl",
 			transport.KeyCachedProxyConfiguration: config.Proxy,
 		},
 	})
 
+	// Headers for the initial dial only: establish a new grouped channel as its first connection.
+	// These must NOT live on the dialer's base headers, or non-first (constraint/backoff/reconnect)
+	// dials would inherit IsFirstGroupConnection=true and spawn a new listener-side group.
+	firstDialHeaders := channel.Headers{}
+	firstDialHeaders.PutBoolHeader(channel.IsGroupedHeader, true)
+	firstDialHeaders.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
+	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
 	// Dial initial underlay
-	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, headers)
+	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
