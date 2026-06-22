@@ -36,20 +36,58 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
-      - name: Parse release version
+      # Parse the version/sha/base marker recorded at validation time and verify
+      # it still matches the live PR. This is what guarantees we only release the
+      # commit that was actually validated: if the lts-bump branch was changed
+      # after validation, the recorded sha no longer matches the PR head and we
+      # refuse rather than releasing an unvalidated commit.
+      - name: Verify and parse release metadata
         id: meta
         shell: bash
         run: |
           set -euo pipefail
           body="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json body -q .body)"
-          version="$(printf '%s' "${body}" | grep -oP '(?<=lts-release version=)v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
-          if [[ -z "${version}" ]]; then
-            echo "::error ::could not parse 'lts-release version=' marker from PR #${PR_NUMBER} body"
+          marker="$(printf '%s' "${body}" | grep -oP '<!-- lts-release version=v[0-9]+\.[0-9]+\.[0-9]+ sha=[0-9a-f]{7,40} base=release-v[0-9]+\.[0-9]+\.x -->' | head -1 || true)"
+          if [[ -z "${marker}" ]]; then
+            echo "::error ::could not parse the 'lts-release' marker from PR #${PR_NUMBER} body"
             exit 1
           fi
+          version="$(printf '%s' "${marker}" | grep -oP 'version=\Kv[0-9]+\.[0-9]+\.[0-9]+')"
+          marker_sha="$(printf '%s' "${marker}" | grep -oP 'sha=\K[0-9a-f]{7,40}')"
+          marker_base="$(printf '%s' "${marker}" | grep -oP 'base=\Krelease-v[0-9]+\.[0-9]+\.x')"
+
+          if [[ "${marker_sha}" != "${HEAD_SHA}" ]]; then
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: The branch head (\`${HEAD_SHA}\`) does not match the validated commit recorded at validation time (\`${marker_sha}\`). The branch changed after validation, so this commit is unvalidated. Re-run the **lts-release** workflow to re-validate, then approve the new PR. Not releasing."
+            echo "::error ::PR head ${HEAD_SHA} != validated commit ${marker_sha}; refusing to release"
+            exit 1
+          fi
+          if [[ "${marker_base}" != "${BASE}" ]]; then
+            echo "::error ::marker base ${marker_base} != PR base ${BASE}; refusing to release"
+            exit 1
+          fi
+
           echo "version=${version}" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=${marker_sha}" | tee -a "$GITHUB_OUTPUT"
+
+      # Preflight before moving anything: if the tag already exists, a prior run
+      # already released this version. Refuse rather than advancing the branch.
+      - name: Preflight - tag must not already exist
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${VERSION}" >/dev/null 2>&1; then
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: Tag \`${VERSION}\` already exists; this version was already released. Not re-releasing."
+            echo "::error ::tag ${VERSION} already exists"
+            exit 1
+          fi
 
       - name: Fast-forward LTS branch
+        env:
+          SHA: ${{ steps.meta.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -57,21 +95,22 @@ jobs:
           # advanced since validation (e.g. a backport landed), the API returns
           # an error and we ask for a re-validation rather than merging untested code.
           if ! gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BASE}" \
-                -f "sha=${HEAD_SHA}" -F "force=false" >/dev/null 2>err.txt; then
+                -f "sha=${SHA}" -F "force=false" >/dev/null 2>err.txt; then
             cat err.txt >&2
             gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
-              --body ":warning: Could not fast-forward \`${BASE}\` to the validated commit \`${HEAD_SHA}\` (the branch moved since validation). Re-run the **lts-release** workflow to re-validate on top of the updated branch, then approve the new PR."
+              --body ":warning: Could not fast-forward \`${BASE}\` to the validated commit \`${SHA}\` (the branch moved since validation). Re-run the **lts-release** workflow to re-validate on top of the updated branch, then approve the new PR."
             exit 1
           fi
 
       - name: Tag the validated commit
         env:
           VERSION: ${{ steps.meta.outputs.version }}
+          SHA: ${{ steps.meta.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
           gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
             -f "ref=refs/tags/${VERSION}" \
-            -f "sha=${HEAD_SHA}" >/dev/null
+            -f "sha=${SHA}" >/dev/null
           gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
-            --body ":white_check_mark: Fast-forwarded \`${BASE}\` and tagged \`${VERSION}\` at \`${HEAD_SHA}\`. The release build (\`release.yml\`) will run from the tag."
+            --body ":white_check_mark: Fast-forwarded \`${BASE}\` and tagged \`${VERSION}\` at \`${SHA}\`. The release build (\`release.yml\`) will run from the tag."

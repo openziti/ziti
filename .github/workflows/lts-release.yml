@@ -77,6 +77,7 @@ jobs:
     outputs:
       base: ${{ steps.resolve.outputs.base }}
       minor: ${{ steps.resolve.outputs.minor }}
+      is_active: ${{ steps.resolve.outputs.is_active }}
       run_validation: ${{ steps.resolve.outputs.run_validation }}
       update_internal: ${{ steps.resolve.outputs.update_internal }}
       version: ${{ steps.version.outputs.version }}
@@ -159,6 +160,7 @@ jobs:
 
           echo "minor=${minor}" | tee -a "$GITHUB_OUTPUT"
           echo "base=${base}" | tee -a "$GITHUB_OUTPUT"
+          echo "is_active=${is_active}" | tee -a "$GITHUB_OUTPUT"
           echo "run_validation=${run_validation}" | tee -a "$GITHUB_OUTPUT"
           echo "update_internal=${update_internal}" | tee -a "$GITHUB_OUTPUT"
 
@@ -209,11 +211,13 @@ jobs:
           fi
 
           # Internal openziti libraries (Active LTS line only): latest point/bugfix.
-          # Older / maintenance lines leave these pinned.
+          # The @patch query selects the highest patch of each module's currently
+          # required minor, so no minor/feature bumps slip in. Older / maintenance
+          # lines leave these pinned.
           if [[ "${UPDATE_INTERNAL}" == "true" ]]; then
             oz=$(directs | grep '/openziti/' || true)
             if [[ -n "${oz}" ]]; then
-              echo "${oz}" | xargs -r -n1 -I{} go get -u=patch {}
+              echo "${oz}" | xargs -r -n1 -I{} go get {}@patch
             fi
           fi
 
@@ -231,7 +235,9 @@ jobs:
           set -euxo pipefail
           $(go env GOPATH)/bin/ziti-ci configure-git
 
-          branch="lts-bump-${{ steps.version.outputs.version }}"
+          # include the run id so a fresh dispatch after a failed run (e.g. the
+          # force_release recovery path) does not collide with an orphaned branch
+          branch="lts-bump-${{ steps.version.outputs.version }}-${{ github.run_id }}"
           git checkout -b "${branch}"
 
           git add go.mod go.sum
@@ -332,11 +338,85 @@ jobs:
         run: |
           $(go env GOPATH)/bin/smoketest dispose
 
+  # HA smoketest, mirroring the regular smoketest gate that main.yml runs. Only
+  # the Active LTS line runs it; maintenance and older lines are basic-smoketest
+  # only (HA may predate or differ on those lines). Self-contained.
+  ha-smoketest:
+    name: HA Smoketest
+    needs: prepare
+    if: needs.prepare.outputs.is_active == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~1.5
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-lts-ha-${GITHUB_RUN_NUMBER} -n smoketest-lts-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-lts-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/smoketest up
+
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lts-ha-smoketest-logs-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest dispose
+
   # Full validation suite against the validated commit. Each test is its own job
   # so a flaky failure can be resumed with "re-run failed jobs".
   validation-circuit:
     name: Validation (Circuits)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -347,7 +427,7 @@ jobs:
 
   validation-ert:
     name: Validation (ER/T Terminators)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -358,7 +438,7 @@ jobs:
 
   validation-sdk-terminators:
     name: Validation (SDK Terminators)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -369,7 +449,7 @@ jobs:
 
   validation-links:
     name: Validation (Links)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -380,7 +460,7 @@ jobs:
 
   validation-router-data-model:
     name: Validation (Router Data Model)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -391,7 +471,7 @@ jobs:
 
   validation-sdk-status:
     name: Validation (SDK Status)
-    needs: [ prepare, smoketest ]
+    needs: [ prepare, smoketest, ha-smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -408,6 +488,7 @@ jobs:
     needs:
       - prepare
       - smoketest
+      - ha-smoketest
       - validation-circuit
       - validation-ert
       - validation-sdk-terminators
@@ -418,6 +499,7 @@ jobs:
       !cancelled()
       && needs.prepare.result == 'success'
       && needs.smoketest.result == 'success'
+      && (needs.ha-smoketest.result == 'success' || needs.ha-smoketest.result == 'skipped')
       && (
         needs.prepare.outputs.run_validation != 'true'
         || inputs.force_release
@@ -499,6 +581,7 @@ jobs:
     needs:
       - prepare
       - smoketest
+      - ha-smoketest
       - validation-circuit
       - validation-ert
       - validation-sdk-terminators
