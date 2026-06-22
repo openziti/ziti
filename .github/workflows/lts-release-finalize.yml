@@ -1,0 +1,77 @@
+name: lts-release-finalize
+
+# Phase 2 of the automated LTS release. When a maintainer approves an
+# lts-release PR (opened by lts-release.yml), this fast-forwards the LTS branch
+# to the validated commit and tags it. The tag is created with GH_CI_KEY (a PAT)
+# so release.yml fires and builds the release; the default GITHUB_TOKEN would
+# not trigger downstream workflows.
+#
+# Approval is the release gate: the smoketest and validation already ran in
+# Phase 1 against the exact commit being tagged, so nothing is re-run here.
+
+on:
+  pull_request_review:
+    types: [ submitted ]
+
+# don't let two approvals on the same PR race
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    name: Tag validated commit
+    if: >
+      github.repository_owner == 'openziti'
+      && github.event.review.state == 'approved'
+      && startsWith(github.event.pull_request.base.ref, 'release-v')
+      && startsWith(github.event.pull_request.head.ref, 'lts-bump')
+      && contains(github.event.pull_request.labels.*.name, 'lts-release')
+      && contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)
+    runs-on: ubuntu-24.04
+    env:
+      # PAT so the created tag triggers release.yml (GITHUB_TOKEN would not)
+      GH_TOKEN: ${{ secrets.GH_CI_KEY }}
+      BASE: ${{ github.event.pull_request.base.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Parse release version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json body -q .body)"
+          version="$(printf '%s' "${body}" | grep -oP '(?<=lts-release version=)v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
+          if [[ -z "${version}" ]]; then
+            echo "::error ::could not parse 'lts-release version=' marker from PR #${PR_NUMBER} body"
+            exit 1
+          fi
+          echo "version=${version}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Fast-forward LTS branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          # force=false makes this a fast-forward-only update. If the branch has
+          # advanced since validation (e.g. a backport landed), the API returns
+          # an error and we ask for a re-validation rather than merging untested code.
+          if ! gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BASE}" \
+                -f "sha=${HEAD_SHA}" -F "force=false" >/dev/null 2>err.txt; then
+            cat err.txt >&2
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: Could not fast-forward \`${BASE}\` to the validated commit \`${HEAD_SHA}\` (the branch moved since validation). Re-run the **lts-release** workflow to re-validate on top of the updated branch, then approve the new PR."
+            exit 1
+          fi
+
+      - name: Tag the validated commit
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${VERSION}" \
+            -f "sha=${HEAD_SHA}" >/dev/null
+          gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+            --body ":white_check_mark: Fast-forwarded \`${BASE}\` and tagged \`${VERSION}\` at \`${HEAD_SHA}\`. The release build (\`release.yml\`) will run from the tag."

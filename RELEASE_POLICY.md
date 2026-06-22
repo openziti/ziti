@@ -61,9 +61,13 @@ OpenZiti is an open-source project with community consumers. LTS here establishe
 | Phase | Duration | Scope | Notes |
 |---|---|---|---|
 | Latest Development | Rolling | Features + Security + Bug Fixes | Continuous releases; no LTS guarantees |
-| Active LTS (N) | 12 months | Security + Critical Bug Fixes | Dependency updates restricted to security fixes, required vulnerability SLA remediation, build/toolchain compatibility, and explicitly approved low-risk updates |
+| Active LTS (N) | 12 months | Security + Critical Bug Fixes | Dependency updates accept compatible (minor and patch) updates of external dependencies and point/bugfix updates of internal dependencies, gated by the smoketest and full validation suite. Breaking (major) updates and feature backports remain excluded |
 | Maintenance LTS (N-1) | Months 13–24 | Security + Critical Production Defects Only | Dependency updates restricted to security fixes and required vulnerability SLA remediation |
 | End of Life | Month 25+ | No Support | Deprecation announced in release notes; archive only. See [No Support](#definitions) definition above. |
+
+#### Dependency Update Stance (Active LTS)
+
+Security vulnerabilities in transitive dependencies are common enough that holding an Active LTS to security-only dependency updates leaves it carrying known issues between cuts. Active LTS therefore accepts compatible (minor and patch) updates of external dependencies and point/bugfix updates of internal OpenZiti dependencies on each monthly cut. The churn this introduces is mitigated by gating every cut on the smoketest and the full validation suite: a dependency update ships only if the validated build passes. Breaking (major) dependency updates and feature backports are out of scope and follow the [Feature Backport Exception](#feature-backport-exception) rules where applicable. Maintenance LTS (N-1) remains restricted to security and required vulnerability-SLA updates only.
 
 ### Patch Release Cadence
 

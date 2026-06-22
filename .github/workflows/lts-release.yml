@@ -1,0 +1,532 @@
+name: lts-release
+
+# Automated LTS point-release preparation.
+#
+# Runs monthly for the Active LTS line (and on demand for either line). It bumps
+# dependencies, validates the result with the smoketest and full validation
+# suite, and opens a PR against the LTS release branch. Approving that PR
+# (handled by lts-release-finalize.yml) fast-forwards the branch to the
+# validated commit and tags it, which triggers release.yml.
+#
+# See RELEASE_POLICY.md for the dependency-update and testing policy.
+
+on:
+  schedule:
+    # 08:00 UTC on the 1st of each month: Active LTS line (smoketest + full validation).
+    - cron: '0 8 1 * *'
+    # 09:00 UTC on the 1st of each month: older extended-support line, smoketest only.
+    # This branch is not in lts-versions.json, so it is named explicitly here.
+    # Change or remove this entry as extended-support lines come and go.
+    - cron: '0 9 1 * *'
+  workflow_dispatch:
+    inputs:
+      line:
+        description: Which LTS line to release (resolved from lts-versions.json). Ignored if 'branch' is set.
+        type: choice
+        options:
+          - active
+          - maintenance
+        default: active
+      branch:
+        description: Explicit release branch to target (e.g. release-v1.5.x). Overrides 'line'; use for older lines not in lts-versions.json.
+        type: string
+        default: ''
+      validation:
+        description: Whether to run the full validation suite. 'auto' runs it only for the active LTS line (per RELEASE_POLICY.md).
+        type: choice
+        options:
+          - auto
+          - run
+          - skip
+        default: auto
+      validation_duration:
+        description: How long to run each validation test.
+        type: string
+        default: '2h'
+      force_release:
+        description: Open the PR even if the full validation suite failed (for flaky validation only; the smoketest must still pass).
+        type: boolean
+        default: false
+
+# never run two preparation runs for the same line at once
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.branch || inputs.line || github.event.schedule || 'active' }}
+  cancel-in-progress: false
+
+# prepare pushes the bump branch; the PR and failure issue are created with
+# GH_CI_KEY (a PAT) so their events trigger the Mattermost forwarder.
+permissions:
+  contents: write
+
+env:
+  GOFLAGS: "-tags=pkcs11 -trimpath"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
+jobs:
+  # Resolve the target LTS branch, compute the next patch version, bump
+  # dependencies, and push a bump branch whose head commit is what everything
+  # downstream validates and (on approval) tags.
+  prepare:
+    name: Prepare dependency bump
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    outputs:
+      base: ${{ steps.resolve.outputs.base }}
+      minor: ${{ steps.resolve.outputs.minor }}
+      run_validation: ${{ steps.resolve.outputs.run_validation }}
+      update_internal: ${{ steps.resolve.outputs.update_internal }}
+      version: ${{ steps.version.outputs.version }}
+      branch: ${{ steps.push.outputs.branch }}
+      sha: ${{ steps.push.outputs.sha }}
+    steps:
+      - name: Resolve target release branch and validation policy
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # empty on schedule; populated on workflow_dispatch
+          IN_LINE: ${{ inputs.line }}
+          IN_BRANCH: ${{ inputs.branch }}
+          IN_VALIDATION: ${{ inputs.validation }}
+          SCHEDULE: ${{ github.event.schedule }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest() {
+            gh api "repos/${GITHUB_REPOSITORY}/contents/lts-versions.json" \
+              -H "Accept: application/vnd.github.raw" | jq -r ".$1 // empty"
+          }
+          active_minor="$(manifest active)"
+          if [[ -z "${active_minor}" ]]; then
+            echo "::error ::no 'active' entry in lts-versions.json"
+            exit 1
+          fi
+
+          base=""
+          key=""
+          if [[ -n "${IN_BRANCH}" ]]; then
+            # explicit branch override (e.g. an older line not in the manifest)
+            base="${IN_BRANCH}"
+          elif [[ -n "${SCHEDULE}" ]]; then
+            # map each scheduled cron to a target
+            case "${SCHEDULE}" in
+              '0 8 1 * *') key="active" ;;
+              '0 9 1 * *') base="release-v1.5.x" ;;
+              *) echo "::error ::unmapped schedule '${SCHEDULE}'"; exit 1 ;;
+            esac
+          else
+            key="${IN_LINE:-active}"
+          fi
+
+          if [[ -n "${key}" ]]; then
+            if [[ "${key}" != "active" && "${key}" != "maintenance" ]]; then
+              echo "::error ::invalid line '${key}' (expected active or maintenance)"
+              exit 1
+            fi
+            minor="$(manifest "${key}")"
+            if [[ -z "${minor}" ]]; then
+              echo "::error ::no '${key}' entry in lts-versions.json"
+              exit 1
+            fi
+            base="release-v${minor}.x"
+          fi
+
+          if ! [[ "${base}" =~ ^release-v[0-9]+\.[0-9]+\.x$ ]]; then
+            echo "::error ::resolved branch '${base}' is not a release-v<major>.<minor>.x branch"
+            exit 1
+          fi
+          minor="$(printf '%s' "${base}" | sed -E 's/^release-v(.*)\.x$/\1/')"
+
+          is_active="false"
+          [[ "${minor}" == "${active_minor}" ]] && is_active="true"
+
+          # Validation policy: by default only the Active LTS line runs the full
+          # suite (RELEASE_POLICY.md). Maintenance and older lines are smoketest-only.
+          case "${IN_VALIDATION:-auto}" in
+            run) run_validation="true" ;;
+            skip) run_validation="false" ;;
+            *) run_validation="${is_active}" ;;
+          esac
+
+          # Internal openziti libraries are only auto-updated on the Active LTS line.
+          # Maintenance and older lines take external dependency updates only, leaving
+          # the openziti libraries pinned to what that line shipped with.
+          update_internal="${is_active}"
+
+          echo "minor=${minor}" | tee -a "$GITHUB_OUTPUT"
+          echo "base=${base}" | tee -a "$GITHUB_OUTPUT"
+          echo "run_validation=${run_validation}" | tee -a "$GITHUB_OUTPUT"
+          echo "update_internal=${update_internal}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.resolve.outputs.base }}
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Compute next version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -o pipefail
+          ver="$($(go env GOPATH)/bin/ziti-ci -q get-next-version)"
+          ver="v${ver#v}"
+          if ! [[ "${ver}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error ::computed version '${ver}' is not a release semver"
+            exit 1
+          fi
+          echo "version=${ver}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Update dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_INTERNAL: ${{ steps.resolve.outputs.update_internal }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          directs() {
+            go mod edit -json | jq -r '.Require[] | select((.Indirect // false) | not) | .Path'
+          }
+
+          # External dependencies (every line): direct, non-openziti, non-pfxlog
+          # modules to latest compatible version. Mirrors ~/bin/update-ext-deps.
+          ext=$(directs | grep -v 'ziti' | grep -v 'pfxlog' || true)
+          if [[ -n "${ext}" ]]; then
+            echo "${ext}" | xargs -r -n1 -I{} go get {}@latest
+          fi
+
+          # Internal openziti libraries (Active LTS line only): latest point/bugfix.
+          # Older / maintenance lines leave these pinned.
+          if [[ "${UPDATE_INTERNAL}" == "true" ]]; then
+            oz=$(directs | grep '/openziti/' || true)
+            if [[ -n "${oz}" ]]; then
+              echo "${oz}" | xargs -r -n1 -I{} go get -u=patch {}
+            fi
+          fi
+
+          go mod tidy
+          if [[ -f zititest/go.mod ]]; then
+            ( cd zititest && go mod tidy )
+          fi
+
+      - name: Commit and push bump branch
+        id: push
+        env:
+          UPDATE_INTERNAL: ${{ steps.resolve.outputs.update_internal }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          $(go env GOPATH)/bin/ziti-ci configure-git
+
+          branch="lts-bump-${{ steps.version.outputs.version }}"
+          git checkout -b "${branch}"
+
+          git add go.mod go.sum
+          if [[ -f zititest/go.mod ]]; then
+            git add zititest/go.mod zititest/go.sum
+          fi
+
+          if git diff --cached --quiet; then
+            # No dependency changes this cycle; still cut a release to ship any
+            # accumulated backports on the branch.
+            git commit --allow-empty -m "Cut LTS release ${{ steps.version.outputs.version }} (no dependency changes)"
+          else
+            if [[ "${UPDATE_INTERNAL}" == "true" ]]; then
+              internal_note="- bumps internal openziti dependencies to latest point/bugfix"
+            else
+              internal_note="- internal openziti dependencies left pinned (non-active LTS line)"
+            fi
+            git commit -m "Update dependencies for LTS release ${{ steps.version.outputs.version }}" \
+                       -m "- bumps external dependencies to latest compatible (minor + patch)" \
+                       -m "${internal_note}" \
+                       -m "- runs go mod tidy in root and zititest"
+          fi
+
+          git push origin "${branch}"
+          echo "branch=${branch}" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" | tee -a "$GITHUB_OUTPUT"
+
+  # Smoketest the validated commit. This is the gate for committing the bump:
+  # if it fails, no PR is opened. Self-contained (creates and tears down its own
+  # fablab environment in one job).
+  smoketest:
+    name: Smoketest
+    needs: prepare
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~1.5
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-lts-${GITHUB_RUN_NUMBER} -n smoketest-lts-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-lts-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/smoketest up
+
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lts-smoketest-logs-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest dispose
+
+  # Full validation suite against the validated commit. Each test is its own job
+  # so a flaky failure can be resumed with "re-run failed jobs".
+  validation-circuit:
+    name: Validation (Circuits)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: circuit-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  validation-ert:
+    name: Validation (ER/T Terminators)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: ert-hosting-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  validation-sdk-terminators:
+    name: Validation (SDK Terminators)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: sdk-hosting-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  validation-links:
+    name: Validation (Links)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: links-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  validation-router-data-model:
+    name: Validation (Router Data Model)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: router-data-model-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  validation-sdk-status:
+    name: Validation (SDK Status)
+    needs: [ prepare, smoketest ]
+    if: needs.prepare.outputs.run_validation == 'true'
+    uses: ./.github/workflows/validation-test.yml
+    secrets: inherit
+    with:
+      test: sdk-status-test
+      ref: ${{ needs.prepare.outputs.sha }}
+      duration: ${{ inputs.validation_duration || '2h' }}
+
+  # Open the review PR once the smoketest passed and validation passed (or was
+  # force-bypassed). Created with GH_CI_KEY so the pull_request:opened event
+  # fires and is forwarded to Mattermost by mattermost-channel-posts.yml.
+  open-pr:
+    name: Open release PR
+    needs:
+      - prepare
+      - smoketest
+      - validation-circuit
+      - validation-ert
+      - validation-sdk-terminators
+      - validation-links
+      - validation-router-data-model
+      - validation-sdk-status
+    if: >
+      !cancelled()
+      && needs.prepare.result == 'success'
+      && needs.smoketest.result == 'success'
+      && (
+        needs.prepare.outputs.run_validation != 'true'
+        || inputs.force_release
+        || (
+          needs.validation-circuit.result == 'success'
+          && needs.validation-ert.result == 'success'
+          && needs.validation-sdk-terminators.result == 'success'
+          && needs.validation-links.result == 'success'
+          && needs.validation-router-data-model.result == 'success'
+          && needs.validation-sdk-status.result == 'success'
+        )
+      )
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GH_CI_KEY }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BASE: ${{ needs.prepare.outputs.base }}
+          BRANCH: ${{ needs.prepare.outputs.branch }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FORCED: ${{ inputs.force_release }}
+          RUN_VALIDATION: ${{ needs.prepare.outputs.run_validation }}
+          R_SMOKE: ${{ needs.smoketest.result }}
+          R_CIRCUIT: ${{ needs.validation-circuit.result }}
+          R_ERT: ${{ needs.validation-ert.result }}
+          R_SDK_TERM: ${{ needs.validation-sdk-terminators.result }}
+          R_LINKS: ${{ needs.validation-links.result }}
+          R_RDM: ${{ needs.validation-router-data-model.result }}
+          R_SDK_STATUS: ${{ needs.validation-sdk-status.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          emoji() { [[ "$1" == "success" ]] && echo ":white_check_mark:" || echo ":warning: $1"; }
+
+          body_file="${RUNNER_TEMP}/lts-pr-body.md"
+          {
+            printf '## LTS release %s\n\n' "${VERSION}"
+            printf 'Automated dependency update for the `%s` line.\n\n' "${BASE}"
+            printf 'Validated commit: `%s`\n\n' "${SHA}"
+            printf '| Gate | Result |\n|---|---|\n'
+            printf '| Smoketest | %s |\n' "$(emoji "${R_SMOKE}")"
+            if [[ "${RUN_VALIDATION}" == "true" ]]; then
+              printf '| Validation: circuit-test | %s |\n' "$(emoji "${R_CIRCUIT}")"
+              printf '| Validation: ert-hosting-test | %s |\n' "$(emoji "${R_ERT}")"
+              printf '| Validation: sdk-hosting-test | %s |\n' "$(emoji "${R_SDK_TERM}")"
+              printf '| Validation: links-test | %s |\n' "$(emoji "${R_LINKS}")"
+              printf '| Validation: router-data-model-test | %s |\n' "$(emoji "${R_RDM}")"
+              printf '| Validation: sdk-status-test | %s |\n\n' "$(emoji "${R_SDK_STATUS}")"
+            else
+              printf '| Full validation suite | skipped (smoketest-only line, per RELEASE_POLICY.md) |\n\n'
+            fi
+            printf 'Full run: %s\n\n' "${RUN_URL}"
+            if [[ "${RUN_VALIDATION}" == "true" && "${FORCED}" == "true" ]]; then
+              printf '> :warning: **Validation was force-bypassed for this run.** Review the validation results above before approving.\n\n'
+            fi
+            printf '### How this gets released\n\n'
+            printf '**Approving** this PR fast-forwards `%s` to the validated commit and tags `%s`, which triggers the release build. No re-run of the smoketest or validation happens on this PR; the results above are the gate.\n\n' "${BASE}" "${VERSION}"
+            printf 'If `%s` has moved since this run (e.g. a backport landed), the fast-forward will be refused and you will be asked to re-run the **lts-release** workflow to re-validate.\n\n' "${BASE}"
+            printf '<!-- lts-release version=%s sha=%s base=%s -->\n' "${VERSION}" "${SHA}" "${BASE}"
+          } > "${body_file}"
+
+          gh label create lts-release --color 0e8a16 --description "Automated LTS release PR" 2>/dev/null || true
+
+          gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base "${BASE}" \
+            --head "${BRANCH}" \
+            --title "LTS release ${VERSION} (${BASE})" \
+            --label lts-release \
+            --body-file "${body_file}"
+
+  # On a failed *scheduled* run, open a tracking issue. Created with GH_CI_KEY so
+  # the issues:opened event is forwarded to Mattermost by mattermost-channel-posts.yml.
+  notify-failure:
+    name: Notify on scheduled failure
+    needs:
+      - prepare
+      - smoketest
+      - validation-circuit
+      - validation-ert
+      - validation-sdk-terminators
+      - validation-links
+      - validation-router-data-model
+      - validation-sdk-status
+      - open-pr
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Open failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GH_CI_KEY }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh label create lts-release-failure --color b60205 --description "Automated LTS release run failed" 2>/dev/null || true
+
+          body_file="${RUNNER_TEMP}/lts-failure-body.md"
+          {
+            printf 'The scheduled **lts-release** workflow failed.\n\n'
+            printf 'Run: %s\n\n' "${RUN_URL}"
+            printf 'To continue, **re-run failed jobs** on that run (the bump commit is already pushed, so it resumes from where it stopped). If the failure is flaky validation, dispatch **lts-release** manually with `force_release: true` to open the PR anyway (the smoketest must still pass).\n'
+          } > "${body_file}"
+
+          gh issue create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Scheduled LTS release run failed (run ${GITHUB_RUN_ID})" \
+            --label lts-release-failure \
+            --body-file "${body_file}"
