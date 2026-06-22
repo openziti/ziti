@@ -79,7 +79,6 @@ jobs:
       minor: ${{ steps.resolve.outputs.minor }}
       is_active: ${{ steps.resolve.outputs.is_active }}
       run_validation: ${{ steps.resolve.outputs.run_validation }}
-      update_internal: ${{ steps.resolve.outputs.update_internal }}
       version: ${{ steps.version.outputs.version }}
       branch: ${{ steps.push.outputs.branch }}
       sha: ${{ steps.push.outputs.sha }}
@@ -160,16 +159,14 @@ jobs:
             *) run_validation="${is_active}" ;;
           esac
 
-          # Internal openziti libraries are only auto-updated on the Active LTS line.
-          # Maintenance and older lines take external dependency updates only, leaving
-          # the openziti libraries pinned to what that line shipped with.
-          update_internal="${is_active}"
+          # Internal openziti libraries are intentionally NOT auto-updated on any
+          # line (see the "Update dependencies" step). They stay pinned to what
+          # the line shipped with; bumping them is a deliberate, separate step.
 
           echo "minor=${minor}" | tee -a "$GITHUB_OUTPUT"
           echo "base=${base}" | tee -a "$GITHUB_OUTPUT"
           echo "is_active=${is_active}" | tee -a "$GITHUB_OUTPUT"
           echo "run_validation=${run_validation}" | tee -a "$GITHUB_OUTPUT"
-          echo "update_internal=${update_internal}" | tee -a "$GITHUB_OUTPUT"
 
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -201,7 +198,6 @@ jobs:
       - name: Update dependencies
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPDATE_INTERNAL: ${{ steps.resolve.outputs.update_internal }}
         shell: bash
         run: |
           set -euxo pipefail
@@ -217,16 +213,16 @@ jobs:
             echo "${ext}" | xargs -r -n1 -I{} go get {}@latest
           fi
 
-          # Internal openziti libraries (Active LTS line only): latest point/bugfix.
-          # The @patch query selects the highest patch of each module's currently
-          # required minor, so no minor/feature bumps slip in. Older / maintenance
-          # lines leave these pinned.
-          if [[ "${UPDATE_INTERNAL}" == "true" ]]; then
-            oz=$(directs | grep '/openziti/' || true)
-            if [[ -n "${oz}" ]]; then
-              echo "${oz}" | xargs -r -n1 -I{} go get {}@patch
-            fi
-          fi
+          # Internal openziti libraries are deliberately left pinned. Most LTS bug
+          # fixes land as commits on the release branch itself (already captured by
+          # this bump branch), and auto-bumping the libraries via @patch would trust
+          # their semver tags, which are not yet enforced.
+          #
+          # TODO: once the openziti library repos gate their releases on an
+          # API-compatibility check (e.g. golang.org/x/exp/cmd/gorelease) so a
+          # patch tag is guaranteed non-breaking, re-enable point/bugfix bumps of
+          # the openziti modules on the active LTS line:
+          #   if active: directs | grep '/openziti/' | xargs -n1 -I{} go get {}@patch
 
           go mod tidy
           if [[ -f zititest/go.mod ]]; then
@@ -235,8 +231,6 @@ jobs:
 
       - name: Commit and push bump branch
         id: push
-        env:
-          UPDATE_INTERNAL: ${{ steps.resolve.outputs.update_internal }}
         shell: bash
         run: |
           set -euxo pipefail
@@ -257,14 +251,9 @@ jobs:
             # accumulated backports on the branch.
             git commit --allow-empty -m "Cut LTS release ${{ steps.version.outputs.version }} (no dependency changes)"
           else
-            if [[ "${UPDATE_INTERNAL}" == "true" ]]; then
-              internal_note="- bumps internal openziti dependencies to latest point/bugfix"
-            else
-              internal_note="- internal openziti dependencies left pinned (non-active LTS line)"
-            fi
             git commit -m "Update dependencies for LTS release ${{ steps.version.outputs.version }}" \
                        -m "- bumps external dependencies to latest compatible (minor + patch)" \
-                       -m "${internal_note}" \
+                       -m "- leaves internal openziti dependencies pinned" \
                        -m "- runs go mod tidy in root and zititest"
           fi
 
