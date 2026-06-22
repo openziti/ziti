@@ -17,7 +17,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/channel/v5 v5.0.12-0.20260619021106-960fd6850f5c
+	github.com/openziti/channel/v5 v5.0.15
 	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/fablab v0.6.16
 	github.com/openziti/foundation/v2 v2.0.95
