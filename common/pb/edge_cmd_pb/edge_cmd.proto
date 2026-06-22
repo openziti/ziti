@@ -232,6 +232,8 @@ message EdgeRouter {
   repeated Interface interfaces = 16;
   map<string, CtrlChanListenerDetail> ctrlChanListeners = 17;
   repeated string configs = 18;
+  int64 capabilitiesMask = 19;
+  string version = 20;
 }
 
 message ReEnrollEdgeRouterCmd {

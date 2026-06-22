@@ -17,8 +17,12 @@
 package routes
 
 import (
+	"fmt"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/edge_router"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -190,4 +194,31 @@ func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext)
 	}
 
 	rc.RespondWithEmptyOk()
+}
+
+// routerCapabilityBitNames maps capability bit positions (see common/capabilities) to their
+// edge-api enum value. Bits set in the mask but absent here render as UNKNOWN_CAPABILITY_BIT_<n>.
+var routerCapabilityBitNames = map[int]rest_model.RouterCapabilities{
+	capabilities.RouterMultiChannel:         rest_model.RouterCapabilitiesMULTICHANNEL,
+	capabilities.RouterServiceSubscriptions: rest_model.RouterCapabilitiesSERVICESUBSCRIPTIONS,
+	capabilities.RouterDataModel:            rest_model.RouterCapabilitiesRDMSUPPORTED,
+}
+
+// renderRouterCapabilities expands a router capabilities bitmask into the edge-api string list.
+// Known bits map to their enum value; an unknown set bit (a router newer than this controller)
+// renders as UNKNOWN_CAPABILITY_BIT_<position> so it stays visible rather than being silently
+// dropped. Returns nil for an empty mask.
+func renderRouterCapabilities(mask int64) []string {
+	var result []string
+	for i := 0; i < 63; i++ {
+		if mask&(1<<uint(i)) == 0 {
+			continue
+		}
+		if name, ok := routerCapabilityBitNames[i]; ok {
+			result = append(result, string(name))
+		} else {
+			result = append(result, fmt.Sprintf("UNKNOWN_CAPABILITY_BIT_%d", i))
+		}
+	}
+	return result
 }

@@ -271,6 +271,12 @@ func (self *IdentitySubscription) notifyServiceChange(state *IdentityState, prev
 	}
 }
 
+func (self *IdentitySubscription) notifyBatchComplete(rdm *RouterDataModel, index uint64) {
+	for _, subscriber := range self.listeners.Value() {
+		subscriber.NotifyBatchComplete(rdm, index)
+	}
+}
+
 func (self *IdentitySubscription) initializeWithDenorm(rdm *RouterDataModel, identity *Identity) (*IdentityState, bool) {
 	self.Lock()
 	defer self.Unlock()
@@ -288,6 +294,7 @@ func (self *IdentitySubscription) initializeWithDenorm(rdm *RouterDataModel, ide
 
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	idx := rdm.CurrentIndex()
+	defer self.notifyBatchComplete(rdm, idx)
 	log := pfxlog.Logger().
 		WithField("index", idx).
 		WithField("identity", self.IdentityId)
@@ -472,9 +479,12 @@ type IdentityState struct {
 // IdentityEventSubscriber is the interface that must be implemented to receive notifications
 // about changes to an identity's state or service access. Subscribers are notified when
 // the identity is created, updated, or deleted, and when services are added, removed, or modified.
+// NotifyBatchComplete is called once at the end of each RDM scan pass with the current index,
+// signalling that all per-service notifications for that pass have been delivered.
 type IdentityEventSubscriber interface {
 	NotifyIdentityEvent(state *IdentityState, eventType IdentityEventType)
 	NotifyServiceChange(state *IdentityState, previousService, service *IdentityService, eventType ServiceEventType)
+	NotifyBatchComplete(rdm *RouterDataModel, index uint64)
 }
 
 // subscriberEvent is an internal interface for events that need to be processed to update

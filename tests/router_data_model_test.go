@@ -86,6 +86,8 @@ func (self *testSubscriber) NotifyServiceChange(state *common.IdentityState, _, 
 	}
 }
 
+func (self *testSubscriber) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+
 func (self *testSubscriber) getNextIdentityEvent(eventType common.IdentityEventType) *identityEvent {
 	select {
 	case evt := <-self.identityEvents:
