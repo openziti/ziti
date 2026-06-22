@@ -427,7 +427,9 @@ jobs:
   # so a flaky failure can be resumed with "re-run failed jobs".
   validation-circuit:
     name: Validation (Circuits)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -438,7 +440,9 @@ jobs:
 
   validation-ert:
     name: Validation (ER/T Terminators)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -449,7 +453,9 @@ jobs:
 
   validation-sdk-terminators:
     name: Validation (SDK Terminators)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -460,7 +466,9 @@ jobs:
 
   validation-links:
     name: Validation (Links)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -471,7 +479,9 @@ jobs:
 
   validation-router-data-model:
     name: Validation (Router Data Model)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
@@ -482,7 +492,9 @@ jobs:
 
   validation-sdk-status:
     name: Validation (SDK Status)
-    needs: [ prepare, smoketest, ha-smoketest ]
+    # depends on the basic smoketest only (not ha-smoketest, which is skipped on
+    # non-active lines); the HA gate is still enforced by open-pr below
+    needs: [ prepare, smoketest ]
     if: needs.prepare.outputs.run_validation == 'true'
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
