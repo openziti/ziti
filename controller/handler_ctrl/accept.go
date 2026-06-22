@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -54,44 +54,41 @@ func NewCtrlAccepter(network *network.Network,
 	}
 }
 
-// NewMultiListener returns an acceptor that handles both grouped (multi-underlay) and
-// ungrouped (single underlay) connections from routers.
-func (self *CtrlAccepter) NewMultiListener() channel.UnderlayAcceptor {
-	multiListener := channel.NewMultiListener(self.HandleGroupedUnderlay, self.AcceptUnderlay)
-	return &multiListenerAcceptor{multiListener: multiListener}
-}
-
-// multiListenerAcceptor wraps MultiListener to implement UnderlayAcceptor
-type multiListenerAcceptor struct {
-	multiListener *channel.MultiListener
-}
-
-func (self *multiListenerAcceptor) AcceptUnderlay(underlay channel.Underlay) error {
-	self.multiListener.AcceptUnderlay(underlay)
-	return nil
+// NewMultiListener returns a HelloAcceptor that handles both grouped (multi-underlay) and
+// ungrouped (single underlay) connections from routers. As a HelloAcceptor it defers the
+// hello acknowledgement until the group is registered, closing the race where a second
+// underlay for the same group could arrive before the group was known.
+func (self *CtrlAccepter) NewMultiListener() channel.HelloAcceptor {
+	return channel.NewMultiListener(self.HandleGroupedUnderlay, self.AcceptUnderlay)
 }
 
 // HandleGroupedUnderlay handles incoming grouped connections from routers that support
 // multi-underlay control channels. It creates a MultiChannel with ListenerCtrlChannel.
-func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+func (self *CtrlAccepter) HandleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
 	if _, hasSecret := underlay.Headers()[channel.GroupSecretHeader]; !hasSecret {
 		underlay.Headers()[channel.GroupSecretHeader] = []byte(uuid.NewString())
 	}
 
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
-	multiConfig := channel.MultiChannelConfig{
-		LogicalName:     "ctrl/" + underlay.Id(),
-		Options:         self.options,
-		UnderlayHandler: listenerCtrlChan,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+	multiConfig := channel.Config{
+		LogicalName: "ctrl/" + underlay.Id(),
+		Options:     self.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
 			}))
 			return self.Bind(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                listenerCtrlChan,
+		MessageSourceProvider:  listenerCtrlChan,
+		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
+		// Multi-underlay-capable so the high/low-priority underlays are accepted;
+		// MinTotalUnderlays closes the channel only when its last underlay is lost.
+		Constraints:       listenerCtrlChan.GetConstraints(),
+		MinTotalUnderlays: 1,
 	}
-	mc, err := channel.NewMultiChannel(&multiConfig)
+	mc, err := channel.NewChannel(&multiConfig)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure accepting ctrl channel %v with multi-underlay", underlay.Label())
 		return nil, err
@@ -190,7 +187,12 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	r.Control = ch.GetSenders().(ctrlchan.CtrlChannel)
+	// Record the channel before the downstream bind handlers run: GetCtrlHandlers builds
+	// handlers (e.g. NewConnectEventsHandler) that dereference the ctrl channel's Channel().
+	// UnderlayAdded fires after this bind handler, so without InitChannel here those derefs
+	// would hit a nil channel.
+	r.Control.InitChannel(ch)
 	r.ConnectTime = time.Now()
 	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")

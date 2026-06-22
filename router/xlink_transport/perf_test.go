@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/stretchr/testify/assert"
 )
@@ -57,6 +57,10 @@ func (t testUnderlay) Headers() map[int32][]byte {
 	return nil
 }
 
+func (t testUnderlay) CreatedAt() time.Time {
+	return time.Time{}
+}
+
 func (t testUnderlay) SetWriteTimeout(time.Duration) error {
 	return nil
 }
@@ -90,7 +94,7 @@ func Test_Throughput(t *testing.T) {
 
 	options := channel.DefaultOptions()
 	options.OutQueueSize = 64
-	ch, err := channel.NewChannel("test", underlayFactory, nil, options)
+	ch, err := channel.NewSingleChannel("test", underlayFactory, nil, options)
 	assert.NoError(t, err)
 
 	registry := metrics.NewRegistry("test", nil)

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/versions"
@@ -73,7 +73,7 @@ func (factory *Factory) Enabled() bool {
 }
 
 func (factory *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
 	})

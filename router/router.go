@@ -39,7 +39,7 @@ import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
@@ -124,7 +124,7 @@ type Router struct {
 	xgMetrics           *routerMetrics.XgressMetrics
 	healthChecker       gosundheit.Health
 	alertReporter       *alert.Reporter
-	inspectHandler      channel.TypedReceiveHandler
+	inspectHandler      channel.ContentTypeReceiver
 }
 
 func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
@@ -240,7 +240,7 @@ func (self *Router) GetXgressListeners() []xgress_router.Listener {
 	return self.xgressListeners
 }
 
-func (self *Router) GetInspectHandler() channel.TypedReceiveHandler {
+func (self *Router) GetInspectHandler() channel.ContentTypeReceiver {
 	return self.inspectHandler
 }
 
@@ -939,7 +939,7 @@ func (self *Router) startCtrlListeners() error {
 
 		multiListener := channel.NewMultiListener(ctrlAcceptor.HandleGroupedUnderlay, ctrlAcceptor.AcceptUnderlay)
 
-		listener, err := channel.NewClassicListenerF(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener.AcceptUnderlay)
+		listener, err := channel.NewClassicListenerWithAcceptor(self.config.Id, listenerCfg.Bind, listenerConfig, multiListener)
 		if err != nil {
 			return fmt.Errorf("error starting ctrl channel listener on %s (%w)", listenerCfg.Bind.String(), err)
 		}

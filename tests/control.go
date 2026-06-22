@@ -3,7 +3,7 @@ package tests
 import (
 	"math/big"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/capabilities"

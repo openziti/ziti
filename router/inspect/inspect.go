@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -39,7 +39,7 @@ type Handler struct {
 	fwd *forwarder.Forwarder
 }
 
-func NewInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) channel.TypedReceiveHandler {
+func NewInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) channel.ContentTypeReceiver {
 	return &Handler{
 		env: env,
 		fwd: fwd,

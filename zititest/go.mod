@@ -17,13 +17,13 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/channel/v4 v4.3.11
-	github.com/openziti/edge-api v0.31.1
+	github.com/openziti/channel/v5 v5.0.15
+	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/fablab v0.6.16
 	github.com/openziti/foundation/v2 v2.0.95
 	github.com/openziti/identity v1.0.133
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang v1.8.0
+	github.com/openziti/sdk-golang v1.9.0
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1

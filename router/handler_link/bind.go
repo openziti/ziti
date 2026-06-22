@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/latency"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/latency"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/metrics"
@@ -75,10 +75,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.SetUserData(self.xlink.Id())
 	binding.AddCloseHandler(newCloseHandler(self.xlink, self.forwarder, self.xlinkRegistry))
 	binding.AddErrorHandler(newErrorHandler(self.xlink, self.ctrl))
-	binding.AddTypedReceiveHandler(newPayloadHandler(self.xlink, self.forwarder))
-	binding.AddTypedReceiveHandler(newAckHandler(self.xlink, self.forwarder))
-	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
-	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
+	channel.AddReceiveHandlers(binding, newPayloadHandler(self.xlink, self.forwarder))
+	channel.AddReceiveHandlers(binding, newAckHandler(self.xlink, self.forwarder))
+	binding.AddReceiveHandler(channel.ContentTypeLatencyType, &latency.LatencyHandler{})
+	channel.AddReceiveHandlers(binding, newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id(), ch, self.forwarder.TraceController()))
 	if self.xlink.LinkProtocol() == "dtls" {

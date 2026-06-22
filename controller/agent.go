@@ -10,8 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"

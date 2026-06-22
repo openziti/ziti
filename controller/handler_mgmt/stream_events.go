@@ -22,7 +22,7 @@ import (
 	"io"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/event"

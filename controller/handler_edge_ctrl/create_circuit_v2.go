@@ -18,14 +18,14 @@ package handler_edge_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 )
 
-func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,

@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/sdk-golang/ziti"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
@@ -105,7 +105,7 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 	options := channel.DefaultOptions()
 
 	var ch channel.Channel
-	ch, err = channel.NewChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
+	ch, err = channel.NewSingleChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
 	if err != nil {
 		return fmt.Errorf("unable to establish connection from sim (%w)", err)
 	}

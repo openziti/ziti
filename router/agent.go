@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -30,7 +30,7 @@ func (self *Router) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
 
 func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 	self.agentBindHandlers = append(self.agentBindHandlers, channel.BindHandlerF(func(binding channel.Binding) error {
-		binding.AddTypedReceiveHandler(self.inspectHandler)
+		channel.AddReceiveHandlers(binding, self.inspectHandler)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), self.agentOpDumpForwarderTables)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), self.agentOpsDumpLinks)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesceRequestType), self.agentOpQuiesceRouter)

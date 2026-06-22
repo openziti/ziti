@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"

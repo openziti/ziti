@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
@@ -173,7 +173,7 @@ func StartLinkTest(checker *LinkStateChecker, id string, uf channel.UnderlayFact
 	}
 
 	timeoutUF := NewTimeoutUnderlayFactory(uf, 2*time.Second)
-	ch, err := channel.NewChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
+	ch, err := channel.NewSingleChannel(id, timeoutUF, channel.BindHandlerF(bindHandler), channel.DefaultOptions())
 	assertions.NoError(err)
 	return ch
 }

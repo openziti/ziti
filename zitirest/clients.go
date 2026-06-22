@@ -35,8 +35,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_client/authentication"
 	"github.com/openziti/edge-api/rest_model"
@@ -149,7 +149,7 @@ func (self *Clients) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.
 	id := &identity.TokenId{Token: "mgmt"}
 	underlayFactory := websockets.NewUnderlayFactory(id, conn, nil)
 
-	ch, err := channel.NewChannel("mgmt", underlayFactory, bindHandler, nil)
+	ch, err := channel.NewSingleChannel("mgmt", underlayFactory, bindHandler, nil)
 	if err != nil {
 		return nil, err
 	}

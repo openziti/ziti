@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -17,7 +17,7 @@ type listTunnelServicesHandler struct {
 	*TunnelState
 }
 
-func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
+func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ContentTypeReceiver {
 	return &listTunnelServicesHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"

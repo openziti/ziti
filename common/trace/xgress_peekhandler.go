@@ -21,8 +21,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/trace/pb"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/trace/pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"

@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -34,7 +34,7 @@ type healthEventHandler struct {
 	serviceHealthCheckFailedCounter metrics.IntervalCounter
 }
 
-func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	serviceEventMetrics := appEnv.GetHostController().GetNetwork().GetServiceEventsMetricsRegistry()
 	return &healthEventHandler{
 		baseRequestHandler: baseRequestHandler{

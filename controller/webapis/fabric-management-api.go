@@ -25,8 +25,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
@@ -166,7 +166,7 @@ func (self *FabricManagementApiHandler) handleWebSocket(writer http.ResponseWrit
 	id := &identity.TokenId{Token: "mgmt"}
 	underlayFactory := websockets.NewUnderlayFactory(id, conn, certs)
 
-	_, err = channel.NewChannel("mgmt", underlayFactory, self.bindHandler, nil)
+	_, err = channel.NewSingleChannel("mgmt", underlayFactory, self.bindHandler, nil)
 	if err != nil {
 		log.WithError(err).Error("unable to create channel over websocket")
 		return

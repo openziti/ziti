@@ -19,7 +19,7 @@ package env
 import (
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
@@ -65,7 +65,7 @@ type RouterEnv interface {
 	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
 	UpdateLeader(leaderId string)
 	GetXgressListeners() []xgress_router.Listener
-	GetInspectHandler() channel.TypedReceiveHandler
+	GetInspectHandler() channel.ContentTypeReceiver
 }
 
 type Alerter interface {

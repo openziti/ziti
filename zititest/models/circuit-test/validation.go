@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/openziti/ziti/zititest/zitilab"

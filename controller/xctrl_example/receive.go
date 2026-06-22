@@ -21,12 +21,12 @@ import (
 	"encoding/binary"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 )
 
 type receiveHandler struct{}
 
-func newReceiveHandler() channel.TypedReceiveHandler {
+func newReceiveHandler() channel.ContentTypeReceiver {
 	return &receiveHandler{}
 }
 

@@ -22,8 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
@@ -165,7 +165,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		},
 	}
 
-	payloadCh, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options)
+	payloadCh, err := channel.NewSingleChannel("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
@@ -175,7 +175,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	headers.PutByteHeader(LinkHeaderType, byte(AckChannel))
 	ackDialer := channel.NewClassicDialer(channelDialerConfig)
 
-	_, err = channel.NewChannel("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options)
+	_, err = channel.NewSingleChannel("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options)
 	if err != nil {
 		_ = payloadCh.Close()
 		return nil, errors.Wrapf(err, "error dialing ack channel for [l/%s]", linkId.Token)
@@ -225,7 +225,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		},
 	}
 
-	_, err := channel.NewChannel("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options)
+	_, err := channel.NewSingleChannel("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
 	}
@@ -298,16 +298,21 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 			},
 		}
 		var dialLinkChannel = NewDialLinkChannel(dialLinkChangeConfig)
-		multiChannelConfig := &channel.MultiChannelConfig{
-			LogicalName:     fmt.Sprintf("l/%s", underlay.Id()),
-			Options:         self.config.options,
-			UnderlayHandler: dialLinkChannel,
-			BindHandler:     bindHandler,
-			Underlay:        underlay,
+		multiChannelConfig := &channel.Config{
+			LogicalName:            fmt.Sprintf("l/%s", underlay.Id()),
+			Options:                self.config.options,
+			Underlay:               underlay,
+			Binder:                 channel.MakeBinder(bindHandler),
+			Senders:                dialLinkChannel,
+			MessageSourceProvider:  dialLinkChannel,
+			DialPolicy:             dialLinkChannel.GetDialPolicy(),
+			Constraints:            dialLinkChannel.GetConstraints(),
+			ConstraintStartupDelay: dialLinkChannel.GetStartupDelay(),
+			UnderlayEventListeners: []channel.UnderlayEventListener{dialLinkChannel},
 		}
-		_, err = channel.NewMultiChannel(multiChannelConfig)
+		_, err = channel.NewChannel(multiChannelConfig)
 	} else {
-		_, err = channel.NewChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
+		_, err = channel.NewSingleChannelWithUnderlay(fmt.Sprintf("ziti-link[router=%v]", address.String()), underlay, bindHandler, self.config.options)
 	}
 
 	if err != nil {
@@ -364,15 +369,15 @@ type dialBindHandler struct {
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
-	if mc, ok := binding.GetChannel().(channel.MultiChannel); ok {
-		if linkChan, ok := mc.GetUnderlayHandler().(LinkChannel); ok {
-			self.link.ch = linkChan
-		}
+	if linkChan, ok := binding.GetChannel().GetSenders().(LinkChannel); ok {
+		self.link.ch = linkChan
 	}
 
 	if self.link.ch == nil {
 		self.link.ch = NewSingleLinkChannel(binding.GetChannel())
 	}
+
+	self.link.ch.InitChannel(binding.GetChannel())
 
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 	return bindHandler.BindChannel(binding)

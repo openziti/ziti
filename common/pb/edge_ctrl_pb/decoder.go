@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"google.golang.org/protobuf/proto"
 )
 

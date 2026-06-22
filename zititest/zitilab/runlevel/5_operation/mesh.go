@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/transport/v2"
@@ -35,7 +35,7 @@ func (mesh *mesh) Execute(run model.Run) error {
 	if endpoint, id, err := dotziti.LoadIdentity(model.ActiveInstanceId()); err == nil {
 		if address, err := transport.ParseAddress(endpoint); err == nil {
 			dialer := channel.NewClassicDialer(channel.DialerConfig{Identity: id, Endpoint: address})
-			if ch, err := channel.NewChannel("mesh", dialer, nil, nil); err == nil {
+			if ch, err := channel.NewSingleChannel("mesh", dialer, nil, nil); err == nil {
 				mesh.ch = ch
 			} else {
 				return fmt.Errorf("error connecting mesh channel (%w)", err)

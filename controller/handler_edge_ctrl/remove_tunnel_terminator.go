@@ -17,7 +17,7 @@
 package handler_edge_ctrl
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -28,7 +28,7 @@ type removeTunnelTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &removeTunnelTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

@@ -46,8 +46,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/websockets"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/util"
@@ -411,7 +411,7 @@ func (ctx *TestContext) NewWsMgmtChannel(bindHandler channel.BindHandler) (chann
 	id := &idlib.TokenId{Token: "mgmt"}
 	underlayFactory := websockets.NewUnderlayFactory(id, conn, nil)
 
-	ch, err := channel.NewChannel("mgmt", underlayFactory, bindHandler, nil)
+	ch, err := channel.NewSingleChannel("mgmt", underlayFactory, bindHandler, nil)
 	if err != nil {
 		return nil, err
 	}

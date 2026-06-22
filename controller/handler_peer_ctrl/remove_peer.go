@@ -19,7 +19,7 @@ package handler_peer_ctrl
 import (
 	raft2 "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/controller/peermsg"
 	"github.com/openziti/ziti/v2/controller/raft"
@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newRemovePeerHandler(controller *raft.Controller) channel.TypedReceiveHandler {
+func newRemovePeerHandler(controller *raft.Controller) channel.ContentTypeReceiver {
 	return &removePeerHandler{
 		controller: controller,
 	}

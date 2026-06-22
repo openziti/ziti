@@ -18,7 +18,7 @@ package handler_edge_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -30,7 +30,7 @@ type createCircuitForServiceHandler struct {
 	*TunnelState
 }
 
-func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
+func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ContentTypeReceiver {
 	return &createCircuitForServiceHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

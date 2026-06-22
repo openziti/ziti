@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -39,7 +39,7 @@ type connectEventsHandler struct {
 // NewConnectEventsHandler creates a handler that processes identity connect/disconnect
 // events from a router. Each handler gets its own single-worker pool to ensure events
 // from the same router are processed in order.
-func NewConnectEventsHandler(appEnv *env.AppEnv, ch ctrlchan.CtrlChannel) channel.TypedReceiveHandler {
+func NewConnectEventsHandler(appEnv *env.AppEnv, ch ctrlchan.CtrlChannel) channel.ContentTypeReceiver {
 	cfg := appEnv.GetConfig().ConnectEventsConfig
 	pool, err := goroutines.NewPool(goroutines.PoolConfig{
 		QueueSize:   cfg.QueueSize,

@@ -63,15 +63,15 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v4 v4.3.11
+	github.com/openziti/channel/v5 v5.0.15
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.31.1
+	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/foundation/v2 v2.0.95
 	github.com/openziti/identity v1.0.133
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.90
-	github.com/openziti/sdk-golang v1.8.0
+	github.com/openziti/sdk-golang v1.9.0
 	github.com/openziti/secretstream v0.1.51
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/x509-claims v1.0.3

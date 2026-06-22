@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/sirupsen/logrus"
@@ -60,7 +60,7 @@ func (example *example) Enabled() bool {
 }
 
 func (example *example) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(newReceiveHandler())
+	channel.AddReceiveHandlers(binding, newReceiveHandler())
 	return nil
 }
 

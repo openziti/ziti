@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentid"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
@@ -17,6 +17,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	tunnelpkg "github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -33,10 +34,28 @@ const (
 )
 
 func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
+	var verbose bool
 	agentCmd := &cobra.Command{
 		Use:   "agent",
 		Short: "Interact with ziti processes using the the IPC agent",
+		// Agent commands are short-lived clients. The channel library logs
+		// underlay add/remove at INFO on every connection, which pollutes
+		// stderr and breaks tooling that treats any stderr output as an error
+		// (e.g. the helm chart's readiness probe parsing `ziti agent cluster
+		// list` output). Quiet logging to Warn by default; --verbose restores
+		// detailed logging. This PersistentPreRun replaces the root command's,
+		// so preserve its SilenceUsage behavior here too.
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			cmd.SilenceUsage = true
+			if verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+			} else {
+				logrus.SetLevel(logrus.WarnLevel)
+			}
+		},
 	}
+
+	agentCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
 	agentCmd.AddCommand(NewPsCmd(p))
 	agentCmd.AddCommand(NewListCmd(p))

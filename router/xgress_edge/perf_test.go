@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -286,6 +286,14 @@ func (ch *NoopTestChannel) CloseNotify() <-chan struct{} {
 }
 
 func (ch *NoopTestChannel) GetUnderlays() []channel.Underlay {
+	panic("implement me")
+}
+
+func (ch *NoopTestChannel) AcceptUnderlay(channel.Underlay) error {
+	panic("implement me")
+}
+
+func (ch *NoopTestChannel) GetSenders() channel.Senders {
 	panic("implement me")
 }
 

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -499,22 +499,28 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 
-	multiConfig := &channel.MultiChannelConfig{
-		LogicalName:     "ctrl/" + underlay.Id(),
-		Options:         self.ctrlAccepter.options,
-		UnderlayHandler: listenerCtrlChan,
-		BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+	multiConfig := &channel.Config{
+		LogicalName: "ctrl/" + underlay.Id(),
+		Options:     self.ctrlAccepter.options,
+		Underlay:    underlay,
+		Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				time.AfterFunc(time.Second, func() {
 					self.queueEvent(&routerDisconnectedEvent{routerId: routerId})
 				})
 			}))
 			return self.ctrlAccepter.Bind(binding)
-		}),
-		Underlay: underlay,
+		})),
+		Senders:                listenerCtrlChan,
+		MessageSourceProvider:  listenerCtrlChan,
+		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
+		// Multi-underlay-capable so the high/low-priority underlays are accepted;
+		// MinTotalUnderlays closes the channel only when its last underlay is lost.
+		Constraints:       listenerCtrlChan.GetConstraints(),
+		MinTotalUnderlays: 1,
 	}
 
-	if _, err = channel.NewMultiChannel(multiConfig); err != nil {
+	if _, err = channel.NewChannel(multiConfig); err != nil {
 		if closeErr := underlay.Close(); closeErr != nil {
 			log.WithError(closeErr).Error("error closing underlay after multi channel creation failure")
 		}

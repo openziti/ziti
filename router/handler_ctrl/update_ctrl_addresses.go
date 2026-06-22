@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/sirupsen/logrus"
@@ -140,7 +140,7 @@ func (handler *updateCtrlAddressesHandler) requestCtrlListFromLeader() {
 	}
 }
 
-func newUpdateCtrlAddressesHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newUpdateCtrlAddressesHandler(env env.RouterEnv) channel.ContentTypeReceiver {
 	result := &updateCtrlAddressesHandler{
 		env: env,
 	}

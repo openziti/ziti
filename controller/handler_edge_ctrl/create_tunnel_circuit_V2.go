@@ -18,7 +18,7 @@ package handler_edge_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
 	"google.golang.org/protobuf/proto"
@@ -28,7 +28,7 @@ type createTunnelCircuitV2Handler struct {
 	baseRequestHandler
 }
 
-func NewCreateTunnelCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateTunnelCircuitV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &createTunnelCircuitV2Handler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 	}

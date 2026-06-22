@@ -25,7 +25,7 @@ import (
 	cmdHelper "github.com/openziti/ziti/v2/ziti/cmd/helpers"
 	"github.com/openziti/ziti/v2/ziti/constants"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	foundation "github.com/openziti/transport/v2"
 	fabXweb "github.com/openziti/xweb/v3"
 	edge "github.com/openziti/ziti/v2/controller/config"

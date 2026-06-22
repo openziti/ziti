@@ -26,7 +26,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
@@ -311,24 +311,27 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		logrus.Debugf("Using local interface %s to dial controller", config.Ctrl.LocalBinding)
 	}
 
-	// Build headers for the initial dial, including grouped channel flags
-	headers.PutBoolHeader(channel.IsGroupedHeader, true)
-	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
-
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:     config.Id,
 		Endpoint:     addr,
 		LocalBinding: config.Ctrl.LocalBinding,
-		Headers:      headers,
+		Headers:      headers, // base hello headers only; no group flags
 		TransportConfig: transport.Configuration{
 			transport.KeyProtocol:                 "ziti-ctrl",
 			transport.KeyCachedProxyConfiguration: config.Proxy,
 		},
 	})
 
+	// Headers for the initial dial only: establish a new grouped channel as its first connection.
+	// These must NOT live on the dialer's base headers, or non-first (constraint/backoff/reconnect)
+	// dials would inherit IsFirstGroupConnection=true and spawn a new listener-side group.
+	firstDialHeaders := channel.Headers{}
+	firstDialHeaders.PutBoolHeader(channel.IsGroupedHeader, true)
+	firstDialHeaders.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
+	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
 	// Dial initial underlay
-	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, headers)
+	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
@@ -369,6 +372,11 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
 
+		// Record the channel before Add(), which fires ControllerAdded listeners that
+		// dereference Channel(). UnderlayAdded fires after the bind handler, so relying on
+		// it alone would leave Channel() nil during that notification.
+		dialCtrlChan.InitChannel(binding.GetChannel())
+
 		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
 			return err
 		}
@@ -391,15 +399,20 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 
 	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
 
-	multiChannelConfig := &channel.MultiChannelConfig{
-		LogicalName:     fmt.Sprintf("ctrl/%s", underlay.Id()),
-		Options:         config.Ctrl.Options,
-		UnderlayHandler: dialCtrlChan,
-		BindHandler:     combinedBindHandler,
-		Underlay:        underlay,
+	multiChannelConfig := &channel.Config{
+		LogicalName:            fmt.Sprintf("ctrl/%s", underlay.Id()),
+		Options:                config.Ctrl.Options,
+		Underlay:               underlay,
+		Binder:                 channel.MakeBinder(combinedBindHandler),
+		Senders:                dialCtrlChan,
+		MessageSourceProvider:  dialCtrlChan,
+		DialPolicy:             dialCtrlChan.GetDialPolicy(),
+		Constraints:            dialCtrlChan.GetConstraints(),
+		ConstraintStartupDelay: dialCtrlChan.GetStartupDelay(),
+		UnderlayEventListeners: []channel.UnderlayEventListener{dialCtrlChan},
 	}
 
-	if _, err = channel.NewMultiChannel(multiChannelConfig); err != nil {
+	if _, err = channel.NewChannel(multiChannelConfig); err != nil {
 		if closeErr := underlay.Close(); closeErr != nil {
 			pfxlog.Logger().WithError(closeErr).Error("unable to close underlay")
 		}
@@ -462,6 +475,9 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	id := binding.GetChannel().Id()
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+
+	// Record the channel before Add() fires ControllerAdded listeners (see the dial path).
+	ctrlCh.InitChannel(binding.GetChannel())
 
 	if err := self.Add(address, ctrlCh, binding.GetChannel(), underlay); err != nil {
 		return err

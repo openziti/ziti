@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
@@ -64,7 +64,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newSettingsHandler(env env.RouterEnv) channel.ContentTypeReceiver {
 	return &settingsHandler{
 		env: env,
 	}

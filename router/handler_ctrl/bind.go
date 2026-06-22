@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
@@ -38,8 +38,8 @@ type bindHandler struct {
 	forwarder                  *forwarder.Forwarder
 	xgDialerPool               goroutines.Pool
 	terminatorValidationPool   goroutines.Pool
-	ctrlAddrChangeHandler      channel.TypedReceiveHandler
-	clusterLeaderChangeHandler channel.TypedReceiveHandler
+	ctrlAddrChangeHandler      channel.ContentTypeReceiver
+	clusterLeaderChangeHandler channel.ContentTypeReceiver
 }
 
 func XgressDialerWorker(_ uint32, f func()) {
@@ -106,18 +106,18 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		return fmt.Errorf("controller %s does not support JWT format legacy sessions", binding.GetChannel().Id())
 	}
 
-	ctrlCh := binding.GetChannel().(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
-	binding.AddTypedReceiveHandler(newPeerStateChangeHandler(self.env))
-	binding.AddTypedReceiveHandler(newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
-	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
-	binding.AddTypedReceiveHandler(newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
-	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
-	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
-	binding.AddTypedReceiveHandler(self.env.GetInspectHandler())
-	binding.AddTypedReceiveHandler(newSettingsHandler(self.env))
-	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(self.ctrlAddrChangeHandler)
-	binding.AddTypedReceiveHandler(self.clusterLeaderChangeHandler)
+	ctrlCh := binding.GetChannel().GetSenders().(ctrlchan.CtrlChannel)
+	channel.AddReceiveHandlers(binding, newPeerStateChangeHandler(self.env))
+	channel.AddReceiveHandlers(binding, newRouteHandler(ctrlCh, self.env, self.forwarder, self.xgDialerPool))
+	channel.AddReceiveHandlers(binding, newValidateTerminatorsHandler(self.env))
+	channel.AddReceiveHandlers(binding, newValidateTerminatorsV2Handler(self.env, self.terminatorValidationPool))
+	channel.AddReceiveHandlers(binding, newUnrouteHandler(self.forwarder))
+	channel.AddReceiveHandlers(binding, newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
+	channel.AddReceiveHandlers(binding, self.env.GetInspectHandler())
+	channel.AddReceiveHandlers(binding, newSettingsHandler(self.env))
+	channel.AddReceiveHandlers(binding, newFaultHandler(self.env.GetXlinkRegistry()))
+	channel.AddReceiveHandlers(binding, self.ctrlAddrChangeHandler)
+	channel.AddReceiveHandlers(binding, self.clusterLeaderChangeHandler)
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 

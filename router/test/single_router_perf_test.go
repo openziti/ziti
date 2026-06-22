@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/sdk-golang/xgress"

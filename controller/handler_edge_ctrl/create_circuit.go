@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -33,7 +33,7 @@ type createCircuitHandler struct {
 	baseRequestHandler
 }
 
-func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,

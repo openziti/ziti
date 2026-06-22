@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/goroutines"
 	id "github.com/openziti/identity"
 	"github.com/openziti/metrics"

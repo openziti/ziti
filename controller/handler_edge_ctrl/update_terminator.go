@@ -18,7 +18,7 @@ package handler_edge_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -31,7 +31,7 @@ type updateTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewUpdateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewUpdateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &updateTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

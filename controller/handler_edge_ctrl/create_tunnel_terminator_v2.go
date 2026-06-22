@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -39,7 +39,7 @@ type createTunnelTerminatorV2Handler struct {
 	*TunnelState
 }
 
-func NewCreateTunnelTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateTunnelTerminatorV2Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	return &createTunnelTerminatorV2Handler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 	}

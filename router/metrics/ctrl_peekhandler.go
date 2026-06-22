@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 )
 

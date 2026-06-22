@@ -16,16 +16,24 @@ _err_handler() {
     if (( _in_err_handler )); then return; fi
     _in_err_handler=1
     echo "ERROR: FAILED at line ${LINENO}: ${BASH_COMMAND} (exit ${_exit_code})" >&2
-    # Dump pod status and logs for diagnostics
+    # Dump pod status, descriptions, and logs for diagnostics. kubectl logs
+    # requires a pod or selector, so iterate pods per namespace. describe is
+    # included because readiness/liveness probe failures surface as pod events,
+    # not container logs.
     (
         set +e
-        minikube kubectl --profile "${ZITI_NAMESPACE:-zititest}" -- \
-            --context "${ZITI_NAMESPACE:-zititest}" \
-            get pods -A 2>&1 || true
-        for _ns in "${ZITI_NAMESPACE:-zititest}" traefik; do
-            minikube kubectl --profile "${ZITI_NAMESPACE:-zititest}" -- \
-                --context "${ZITI_NAMESPACE:-zititest}" \
-                logs -n "${_ns}" --all-containers --tail=100 2>&1 || true
+        local _ctx="${ZITI_NAMESPACE:-zititest}"
+        minikube kubectl --profile "${_ctx}" -- --context "${_ctx}" get pods -A 2>&1 || true
+        for _ns in "${_ctx}" traefik; do
+            for _pod in $(minikube kubectl --profile "${_ctx}" -- --context "${_ctx}" \
+                get pods -n "${_ns}" -o name 2>/dev/null); do
+                echo "===== describe ${_ns}/${_pod} ====="
+                minikube kubectl --profile "${_ctx}" -- --context "${_ctx}" \
+                    describe -n "${_ns}" "${_pod}" 2>&1 || true
+                echo "===== logs ${_ns}/${_pod} ====="
+                minikube kubectl --profile "${_ctx}" -- --context "${_ctx}" \
+                    logs -n "${_ns}" "${_pod}" --all-containers --prefix --tail=100 2>&1 || true
+            done
         done
     ) >&2
 }

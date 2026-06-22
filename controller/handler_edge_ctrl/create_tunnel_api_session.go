@@ -1,7 +1,7 @@
 package handler_edge_ctrl
 
 import (
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/sirupsen/logrus"
@@ -13,7 +13,7 @@ type createApiSessionHandler struct {
 	*TunnelState
 }
 
-func NewCreateApiSessionHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
+func NewCreateApiSessionHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ContentTypeReceiver {
 	return &createApiSessionHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

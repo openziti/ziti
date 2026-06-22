@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/raft"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/controller/models"

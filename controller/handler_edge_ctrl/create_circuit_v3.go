@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
@@ -37,7 +37,7 @@ import (
 // come from routers that have already authorized the dial locally via RDM, so no service
 // session token is required. Instead, the request carries identity ID, service ID, and
 // a pre-assigned circuit ID.
-func NewCreateCircuitV3Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
+func NewCreateCircuitV3Handler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,

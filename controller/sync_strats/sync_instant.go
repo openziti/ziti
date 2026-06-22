@@ -29,7 +29,7 @@ import (
 
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"
@@ -96,9 +96,9 @@ type InstantStrategy struct {
 
 	rtxMap *routerTxMap
 
-	helloHandler  channel.TypedReceiveHandler
-	resyncHandler channel.TypedReceiveHandler
-	subHandler    channel.TypedReceiveHandler
+	helloHandler  channel.ContentTypeReceiver
+	resyncHandler channel.ContentTypeReceiver
+	subHandler    channel.ContentTypeReceiver
 	ae            *env.AppEnv
 
 	routerConnectedQueue     chan *RouterSender
@@ -393,8 +393,8 @@ func (strategy *InstantStrategy) RouterDisconnected(router *model.Router) {
 	strategy.rtxMap.Remove(router)
 }
 
-func (strategy *InstantStrategy) GetReceiveHandlers() []channel.TypedReceiveHandler {
-	var result []channel.TypedReceiveHandler
+func (strategy *InstantStrategy) GetReceiveHandlers() []channel.ContentTypeReceiver {
+	var result []channel.ContentTypeReceiver
 	if strategy.helloHandler != nil {
 		result = append(result, strategy.helloHandler)
 	}

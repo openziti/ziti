@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -30,8 +31,8 @@ import (
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
@@ -83,7 +84,7 @@ type Controller struct {
 	xwebFactoryRegistry xweb.Registry
 	xweb                xweb.Instance
 
-	ctrlListener channel.UnderlayListener
+	ctrlListener io.Closer
 	mgmtListener channel.UnderlayListener
 
 	shutdownC         chan struct{}
@@ -536,28 +537,27 @@ func (c *Controller) Run() error {
 	}
 
 	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
-	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
-	c.ctrlListener = ctrlListener
-	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
-		panic(err)
-	}
 
 	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
 
-	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
+	ctrlAcceptors := map[string]channel.HelloAcceptor{}
 	if c.raftController != nil {
 		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
-		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
+		ctrlAcceptors[mesh.ChannelTypeMesh] = channel.AsHelloAcceptor(c.raftController.GetMesh())
 	}
 
-	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{
-		Listener:        ctrlListener,
-		ConnectTimeout:  c.config.Ctrl.Options.ConnectTimeout,
+	acceptor := &channel.TypeRoutingAcceptor{
 		Acceptors:       ctrlAcceptors,
 		DefaultAcceptor: ctrlAccepter.NewMultiListener(),
-	})
+	}
 
-	go underlayDispatcher.Run()
+	ctrlChannelListenerConfig.ConnectionHandlers = append(ctrlChannelListenerConfig.ConnectionHandlers, c.ctrlConnectHandler)
+
+	ctrlListener, err := channel.NewClassicListenerWithAcceptor(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig, acceptor)
+	if err != nil {
+		panic(err)
+	}
+	c.ctrlListener = ctrlListener
 
 	if err = c.config.Configure(c.xweb); err != nil {
 		panic(err)
