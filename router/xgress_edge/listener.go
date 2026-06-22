@@ -46,6 +46,7 @@ import (
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
+	"github.com/openziti/ziti/v2/router/posture"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/router/xgress_router"
@@ -54,6 +55,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var peerHeaderRequestMappings = map[uint32]uint32{
@@ -381,7 +383,26 @@ func (listener *listener) Binding() string {
 	return common.EdgeBinding
 }
 
+// Close hard-closes accepted client connections and then the accept listener. NOTE: the
+// connection tracker is factory-scoped and shared by every edge binding the factory owns, so this
+// closes ALL of the factory's accepted client connections, not only those accepted by this
+// listener. That matches the only current caller (router shutdown, where every listener closes);
+// a future selective close needs per-listener connection tracking first.
 func (listener *listener) Close() error {
+	// Close accepted client connections so connected SDKs observe the disconnect immediately
+	// (their channel close handler fires), rather than waiting for a heartbeat timeout. Collect the
+	// channels first, then close them outside the tracker's per-identity lock to avoid re-entrancy
+	// when each close drives markDisconnected.
+	if tracker := listener.factory.connectionTracker; tracker != nil {
+		var channels []channel.Channel
+		tracker.iterateClientConns(func(conn *edgeClientConn) {
+			channels = append(channels, conn.ch.GetChannel())
+		})
+		for _, ch := range channels {
+			_ = ch.Close()
+		}
+	}
+
 	return listener.underlayListener.Close()
 }
 
@@ -405,7 +426,54 @@ type edgeClientConn struct {
 		enabled      atomic.Bool
 		lastRequired concurrenz.AtomicValue[time.Time]
 	}
+
+	// postureSeq is the per-connection PostureStateChange counter. postureSendMu serializes seq
+	// assignment with the channel send (see emitPostureStateChange): two concurrent emits must not
+	// enqueue out of seq order, since the SDK reads out-of-order seqs as gaps.
+	postureSeq    atomic.Uint64
+	postureSendMu sync.Mutex
+
+	// svcSubscription tracks the per-connection service push subscription state.
+	svcSubscription struct {
+		sync.Mutex
+		active    bool
+		lastIndex int64
+		// pending accumulates service changes during a scan pass (serviceId -> op).
+		// Using a map deduplicates multiple events for the same service in one pass.
+		pending map[string]edge_client_pb.Op
+		// pendingChecks accumulates posture-check DEFINITION changes during a scan pass
+		// (checkId -> op). Definition edits produce no service events (membership is unchanged),
+		// so they ride the same envelope as their own PostureCheckDef entries.
+		pendingChecks map[string]edge_client_pb.Op
+		// pendingPostureState is set alongside pendingChecks: a definition change can flip
+		// pass/fail without any posture-data mutation (the usual PostureStateChange trigger), so
+		// the envelope flush follows up with a fresh full posture state.
+		pendingPostureState bool
+		// snapshotPending is true while a subscribe snapshot is being built and sent. Changes
+		// keep buffering into pending, but their flush is deferred (pendingIndex records the
+		// completed batch's index) until the snapshot is on the wire, preserving wire order
+		// without dropping changes that race the snapshot build.
+		snapshotPending bool
+		pendingIndex    int64
+		// fullSyncPending is set when the identity's IdentityFullState notification arrives while
+		// a subscribe snapshot is in flight (the snapshot may predate the identity's arrival in
+		// the RDM); the subscribe path sends a fresh authoritative full sync after its snapshot.
+		fullSyncPending bool
+	}
+
+	// structuralSendMu serializes committing lastIndex with sending the resulting ServiceChangeSet
+	// (NotifyBatchComplete, the subscribe path's deferred flush, and the identity-arrival full
+	// sync): without it, a scan pass completing between a commit and its send can put a
+	// higher-index envelope on the wire first, which the SDK reads as a gap and answers with a
+	// needless resubscribe. Lock order: structuralSendMu before svcSubscription, never the reverse.
+	structuralSendMu sync.Mutex
 }
+
+// The posture push path discovers these interfaces at runtime (state.ManagerImpl type-asserts
+// PostureStateNotifier); a signature drift would otherwise compile cleanly and silently disable
+// posture push.
+var _ state.PostureStateNotifier = (*edgeClientConn)(nil)
+var _ common.IdentityEventSubscriber = (*edgeClientConn)(nil)
 
 func (self *edgeClientConn) GetHostedServicesRegistry() *hostedServiceRegistry {
 	return self.listener.factory.hostedServices
@@ -435,6 +503,17 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 		// service-membership diff does not surface this, so re-evaluate this
 		// connection's active circuits and terminators against current posture.
 		self.revalidatePostureAccess()
+		// A pure definition change also produces no service events, so buffer the changed check
+		// defs for the push envelope; the batch flush ships them and follows with a fresh posture
+		// state (the re-evaluation above may have flipped pass/fail without any posture-data
+		// mutation to trigger the usual state push).
+		self.bufferPostureCheckChanges(state.ChangedPostureChecks)
+	} else if eventType == common.IdentityFullState {
+		// The identity just arrived in this router's data model (the SDK subscribed before the
+		// identity synced, so the subscribe snapshot was empty). No per-service change events
+		// accompany this transition, so push the authoritative full state explicitly; otherwise
+		// a subscribed SDK stays on the empty pre-arrival view until some future change.
+		self.sendFullServiceSync()
 	}
 }
 
@@ -444,7 +523,6 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 // identity-subscription worker, which dedups (via the data model's dirty-set
 // marker) and retries (via the scan fallback), so it inherits that resilience.
 func (self *edgeClientConn) revalidatePostureAccess() {
-	stateManager := self.listener.factory.stateManager
 	apiSession := self.apiSessionToken
 	// Only OIDC sessions are enforced router-side against the RDM. Legacy
 	// sessions have their posture evaluated at the controller, which invalidates
@@ -453,6 +531,7 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 	if apiSession == nil || !apiSession.IsOidc() {
 		return
 	}
+	stateManager := self.listener.factory.stateManager
 
 	// Dial circuits — both connId mux-sink conns and SDK-hosted xgress circuits.
 	// Collect first, then close: CloseForAccessLoss mutates the maps
@@ -513,6 +592,68 @@ func (self *edgeClientConn) NotifyServiceChange(_ *common.IdentityState, previou
 	if dialLost {
 		self.handleDialAccessLost(service)
 	}
+
+	// Buffer service change for the SDK push subscription.
+	op, ok := serviceEventToOp(eventType)
+	if !ok {
+		return
+	}
+	self.svcSubscription.Lock()
+	if self.svcSubscription.active {
+		if self.svcSubscription.pending == nil {
+			self.svcSubscription.pending = map[string]edge_client_pb.Op{}
+		}
+		// Removed trumps Added/Updated for the same service in one pass.
+		if existing, seen := self.svcSubscription.pending[service.GetId()]; !seen || existing != edge_client_pb.Op_Removed {
+			self.svcSubscription.pending[service.GetId()] = op
+		}
+	}
+	self.svcSubscription.Unlock()
+}
+
+// bufferPostureCheckChanges accumulates a scan pass's posture-check definition delta for the push
+// subscription, mirroring the service-change buffering in NotifyServiceChange. The changes ship as
+// PostureCheckDef entries in the pass's ServiceChangeSet envelope (see NotifyBatchComplete).
+func (self *edgeClientConn) bufferPostureCheckChanges(changes map[string]common.PostureCheckChangeType) {
+	if len(changes) == 0 {
+		return
+	}
+	self.svcSubscription.Lock()
+	defer self.svcSubscription.Unlock()
+	if !self.svcSubscription.active {
+		return
+	}
+	if self.svcSubscription.pendingChecks == nil {
+		self.svcSubscription.pendingChecks = map[string]edge_client_pb.Op{}
+	}
+	for checkId, changeType := range changes {
+		op := edge_client_pb.Op_Updated
+		switch changeType {
+		case common.PostureCheckAdded:
+			op = edge_client_pb.Op_Added
+		case common.PostureCheckRemoved:
+			op = edge_client_pb.Op_Removed
+		}
+		// Removed trumps Added/Updated for the same check in one pass.
+		if existing, seen := self.svcSubscription.pendingChecks[checkId]; !seen || existing != edge_client_pb.Op_Removed {
+			self.svcSubscription.pendingChecks[checkId] = op
+		}
+	}
+	self.svcSubscription.pendingPostureState = true
+}
+
+// serviceEventToOp maps an identity service event type to its protobuf Op.
+// Returns false for event types that don't produce a ServiceDef entry (e.g. posture-only changes).
+func serviceEventToOp(e common.ServiceEventType) (edge_client_pb.Op, bool) {
+	switch e {
+	case common.ServiceAccessGainedEvent:
+		return edge_client_pb.Op_Added, true
+	case common.ServiceUpdatedEvent, common.ServiceDialPoliciesChanged, common.ServiceBindPoliciesChanged:
+		return edge_client_pb.Op_Updated, true
+	case common.ServiceAccessLostEvent:
+		return edge_client_pb.Op_Removed, true
+	}
+	return 0, false
 }
 
 func (self *edgeClientConn) handleBindAccessLost(service *common.IdentityService) {
@@ -820,22 +961,31 @@ func (self *edgeClientConn) checkForStateListener() {
 		defer self.stateListener.Unlock()
 
 		if self.stateListener.enabled.CompareAndSwap(false, true) {
-			err := self.listener.factory.stateManager.RouterDataModel().SubscribeToIdentityChanges(self.getIdentityId(), self, false)
-			if err != nil {
-				pfxlog.Logger().
-					WithField("identityId", self.getIdentityId()).
-					WithError(err).
-					Error("failed to subscribe to identity change event")
-				self.stateListener.enabled.Store(false)
-			}
+			// Registers a pending subscription when the identity has not yet synced to this
+			// router's data model; the identity's arrival delivers IdentityFullState.
+			self.listener.factory.stateManager.RouterDataModel().SubscribeToIdentityChanges(self.getIdentityId(), self, false)
 		}
 	}
 
 	self.stateListener.lastRequired.Store(time.Now())
 }
 
+// isServiceSubscriptionActive reports whether this connection holds an active service push
+// subscription.
+func (self *edgeClientConn) isServiceSubscriptionActive() bool {
+	self.svcSubscription.Lock()
+	defer self.svcSubscription.Unlock()
+	return self.svcSubscription.active
+}
+
+// IsStateListenerEligibleForRemovalCheck reports whether the idle sweep may consider removing
+// this connection's RDM identity listener. An active service push subscription pins the listener:
+// push snapshots and incrementals depend on it, and the SDK pauses controller polling while
+// subscribed, so removing it would silently blind the SDK to service changes.
 func (self *edgeClientConn) IsStateListenerEligibleForRemovalCheck() bool {
-	return self.stateListener.enabled.Load() && time.Since(self.stateListener.lastRequired.Load()) > 5*time.Minute
+	return self.stateListener.enabled.Load() &&
+		!self.isServiceSubscriptionActive() &&
+		time.Since(self.stateListener.lastRequired.Load()) > 5*time.Minute
 }
 
 func (self *edgeClientConn) removeStateListenerIfEligible() {
@@ -887,9 +1037,8 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	serviceSessionToken, err := self.listener.factory.stateManager.GetServiceSessionToken(serviceSessionTokenStr, self.apiSessionToken)
 
 	if err != nil {
-		errStr := err.Error()
 		log.Error(err)
-		self.sendStateClosedReply(errStr, req)
+		self.sendStateClosedDenial(NewServiceSessionDenialError(err), req)
 		return
 	}
 
@@ -904,7 +1053,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	if err = self.checkAccessIfOidc(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
 		log.WithError(err).Error("access denied")
-		self.sendStateClosedReply(err.Error(), req)
+		self.sendStateClosedDenial(NewAccessDeniedError(err), req)
 		return
 	}
 	self.checkForStateListener()
@@ -999,7 +1148,7 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 		resolvedId, ok := rdm.ServiceIdByName(serviceIdOrName)
 		if !ok {
 			log.WithField("serviceName", serviceIdOrName).Error("service not found by name")
-			self.sendStateClosedReply("service not found", req)
+			self.sendStateClosedDenial(&EdgeError{Message: "service not found", Code: sdkedge.ErrorCodeInvalidService}, req)
 			return
 		}
 		serviceId = resolvedId
@@ -1007,7 +1156,7 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 
 	if err := self.checkAccess(serviceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
 		log.WithError(err).Error("access denied")
-		self.sendStateClosedReply(err.Error(), req)
+		self.sendStateClosedDenial(NewAccessDeniedError(err), req)
 		return
 	}
 
@@ -1192,7 +1341,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 
 	if err = self.checkAccessIfOidc(serviceSessionToken.ServiceId, edge_ctrl_pb.PolicyType_BindPolicy); err != nil {
 		log.Error(err.Error())
-		self.sendStateClosedReply(err.Error(), req)
+		self.sendStateClosedDenial(NewAccessDeniedError(err), req)
 		return
 	}
 
@@ -1619,6 +1768,20 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 	}
 }
 
+// sendStateClosedDenial replies with a state-closed carrying the structured denial (cause code
+// and, for posture denials, the failing check ids), so SDKs can present the failure's cause
+// instead of parsing message text.
+func (self *edgeClientConn) sendStateClosedDenial(edgeErr *EdgeError, req *channel.Message) {
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
+	msg := sdkedge.NewStateClosedMsg(connId, edgeErr.Message)
+	msg.ReplyTo(req)
+	edgeErr.ApplyToMsg(msg)
+
+	if err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender()); err != nil {
+		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+	}
+}
+
 func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message, headers ...channel.Headers) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 	msg := sdkedge.NewStateClosedMsg(connId, message)
@@ -1651,6 +1814,659 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 
 	}
+}
+
+func (self *edgeClientConn) processSubscribeToServiceUpdates(msg *channel.Message, ch channel.Channel) {
+	req := &edge_client_pb.SubscribeToServiceUpdates{}
+	if err := proto.Unmarshal(msg.Body, req); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to unmarshal SubscribeToServiceUpdates")
+		return
+	}
+
+	identityId := self.getIdentityId()
+	if identityId == "" {
+		pfxlog.Logger().Error("SubscribeToServiceUpdates received with no identity id")
+		return
+	}
+
+	self.checkForStateListener()
+
+	// Activate buffering BEFORE the snapshot's RDM read: a change scanned while the snapshot is
+	// built accumulates as pending instead of being silently dropped (a drop would leave no gap
+	// for the SDK to detect). snapshotPending defers the flush of those changes until the
+	// snapshot is on the wire, preserving order.
+	self.svcSubscription.Lock()
+	self.svcSubscription.active = true
+	self.svcSubscription.snapshotPending = true
+	self.svcSubscription.pending = nil
+	self.svcSubscription.pendingChecks = nil
+	self.svcSubscription.pendingPostureState = false
+	self.svcSubscription.pendingIndex = 0
+	self.svcSubscription.fullSyncPending = false
+	self.svcSubscription.Unlock()
+
+	rdm := self.listener.factory.stateManager.RouterDataModel()
+	cs := buildServiceSnapshot(rdm, identityId)
+
+	b, err := proto.Marshal(cs)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal ServiceChangeSet snapshot")
+		self.deactivateServiceSubscription()
+		return
+	}
+
+	reply := channel.NewMessage(sdkedge.ContentTypeServiceChangeSet, b)
+	if err := ch.Send(reply); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send ServiceChangeSet snapshot")
+		self.deactivateServiceSubscription()
+		return
+	}
+
+	// Commit the snapshot index and flush any scan pass that completed during the build/send.
+	// A completed batch at or below the snapshot index is already reflected in the snapshot and
+	// drops; one above it flushes as the first incremental. Pending changes whose scan pass has
+	// not completed remain buffered for that pass's NotifyBatchComplete. structuralSendMu keeps a
+	// scan pass completing during the flush from sending its (higher-index) envelope first.
+	self.structuralSendMu.Lock()
+	self.svcSubscription.Lock()
+	if !self.svcSubscription.active {
+		// Unsubscribed while the snapshot was in flight; stay deactivated.
+		self.svcSubscription.Unlock()
+		self.structuralSendMu.Unlock()
+		return
+	}
+	self.svcSubscription.snapshotPending = false
+	self.svcSubscription.lastIndex = cs.Index
+	fullSync := self.svcSubscription.fullSyncPending
+	self.svcSubscription.fullSyncPending = false
+	// The unconditional sendPostureState below covers any posture state owed by a batch that
+	// completed during the snapshot, so the flag is just cleared.
+	self.svcSubscription.pendingPostureState = false
+	var pending map[string]edge_client_pb.Op
+	var pendingChecks map[string]edge_client_pb.Op
+	var pendingIndex int64
+	if self.svcSubscription.pendingIndex != 0 {
+		// When a full sync is owed, any completed batch is superseded by it (the sync is built
+		// fresh, after those changes were applied to the RDM), so the batch is discarded.
+		if !fullSync && self.svcSubscription.pendingIndex > cs.Index &&
+			(len(self.svcSubscription.pending) > 0 || len(self.svcSubscription.pendingChecks) > 0) {
+			pending = self.svcSubscription.pending
+			pendingChecks = self.svcSubscription.pendingChecks
+			pendingIndex = self.svcSubscription.pendingIndex
+			self.svcSubscription.lastIndex = pendingIndex
+		}
+		self.svcSubscription.pending = nil
+		self.svcSubscription.pendingChecks = nil
+		self.svcSubscription.pendingIndex = 0
+	}
+	self.svcSubscription.Unlock()
+
+	if fullSync {
+		// The identity arrived in the RDM while the snapshot (built before it existed) was in
+		// flight; follow the snapshot with a fresh authoritative full sync.
+		self.sendFullSyncLocked(rdm)
+	} else if pending != nil || pendingChecks != nil {
+		self.sendIncrementalServiceChangeSet(rdm, pending, pendingChecks, cs.Index, pendingIndex)
+	}
+	self.structuralSendMu.Unlock()
+
+	pfxlog.Logger().
+		WithField("identityId", identityId).
+		WithField("index", cs.Index).
+		Debug("service update push subscription activated")
+
+	// Follow the structural snapshot with the full initial posture state, so the SDK has pass/fail
+	// for every check/policy from the moment it subscribes (matches the snapshot sequence:
+	// ServiceChangeSet then PostureStateChange).
+	self.sendPostureState()
+}
+
+// deactivateServiceSubscription clears all push subscription state for this connection,
+// returning whether a subscription was active.
+func (self *edgeClientConn) deactivateServiceSubscription() bool {
+	self.svcSubscription.Lock()
+	wasActive := self.svcSubscription.active
+	self.svcSubscription.active = false
+	self.svcSubscription.snapshotPending = false
+	self.svcSubscription.pending = nil
+	self.svcSubscription.pendingChecks = nil
+	self.svcSubscription.pendingPostureState = false
+	self.svcSubscription.pendingIndex = 0
+	self.svcSubscription.fullSyncPending = false
+	self.svcSubscription.Unlock()
+	return wasActive
+}
+
+// processUnsubscribeFromServiceUpdates handles the SDK's push opt-out: incremental push
+// deactivates, pending changes are discarded, and the RDM identity listener is un-pinned so the
+// idle sweep may reclaim it once nothing else needs it. The SDK broadcasts unsubscribe to every
+// connection, so receiving one on a never-subscribed connection is normal.
+func (self *edgeClientConn) processUnsubscribeFromServiceUpdates(_ *channel.Message, _ channel.Channel) {
+	if self.deactivateServiceSubscription() {
+		pfxlog.Logger().
+			WithField("identityId", self.getIdentityId()).
+			Debug("service update push subscription deactivated")
+	}
+}
+
+// sendFullServiceSync pushes an authoritative full-reset ServiceChangeSet (plus the full posture
+// state) to a subscribed SDK, superseding whatever was sent before. Called when the identity's
+// IdentityFullState notification fires — the subscribe-before-identity-synced recovery. When a
+// subscribe snapshot is in flight, the sync is deferred to the subscribe path via fullSyncPending
+// (sending here would race the snapshot send, which happens outside structuralSendMu, and a
+// lower-index full reset arriving after this one would regress the SDK's view).
+func (self *edgeClientConn) sendFullServiceSync() {
+	self.structuralSendMu.Lock()
+
+	self.svcSubscription.Lock()
+	if !self.svcSubscription.active {
+		self.svcSubscription.Unlock()
+		self.structuralSendMu.Unlock()
+		return
+	}
+	if self.svcSubscription.snapshotPending {
+		self.svcSubscription.fullSyncPending = true
+		self.svcSubscription.Unlock()
+		self.structuralSendMu.Unlock()
+		return
+	}
+	self.svcSubscription.Unlock()
+
+	rdm := self.listener.factory.stateManager.RouterDataModel()
+	sent := self.sendFullSyncLocked(rdm)
+	self.structuralSendMu.Unlock()
+
+	if sent {
+		// Match the subscribe sequence: structure first, then the full posture state, so the SDK
+		// can attach pass/fail to the checks and policies it just learned about.
+		self.sendPostureState()
+	}
+}
+
+// sendFullSyncLocked builds and sends a full-reset ServiceChangeSet for the identity's current
+// RDM state, advancing lastIndex. Returns whether an envelope was sent: a sync at or below the
+// last emitted index is dropped (already covered — e.g. a duplicate IdentityFullState
+// notification). Buffered pending changes are left alone; a scan pass completing later is dropped
+// or chained by NotifyBatchComplete's index guard as usual. Caller must hold structuralSendMu.
+func (self *edgeClientConn) sendFullSyncLocked(rdm *common.RouterDataModel) bool {
+	cs := buildServiceSnapshot(rdm, self.getIdentityId())
+
+	self.svcSubscription.Lock()
+	if !self.svcSubscription.active || cs.Index <= self.svcSubscription.lastIndex {
+		self.svcSubscription.Unlock()
+		return false
+	}
+	self.svcSubscription.lastIndex = cs.Index
+	self.svcSubscription.Unlock()
+
+	b, err := proto.Marshal(cs)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal full sync ServiceChangeSet")
+		return false
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypeServiceChangeSet, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send full sync ServiceChangeSet")
+		return false
+	}
+
+	pfxlog.Logger().
+		WithField("identityId", self.getIdentityId()).
+		WithField("index", cs.Index).
+		Debug("sent full service sync to subscribed SDK")
+	return true
+}
+
+func (self *edgeClientConn) processResyncPostureState(_ *channel.Message, _ channel.Channel) {
+	if !self.isServiceSubscriptionActive() {
+		return
+	}
+
+	self.sendPostureState()
+}
+
+// sendPostureState evaluates the connection's current posture state against the current RDM and
+// pushes a full PostureStateChange to the SDK, stamped with the RDM index that evaluation read.
+// Used for the initial state on subscribe and for SDK-requested resyncs. No-op if the connection
+// has no api session.
+func (self *edgeClientConn) sendPostureState() {
+	apiSession := self.apiSessionToken
+	if apiSession == nil {
+		return
+	}
+
+	rdm := self.listener.factory.stateManager.RouterDataModel()
+	data := self.listener.factory.stateManager.GetPostureData(apiSession.Id)
+
+	self.emitPostureStateChange(rdm, uint64(rdm.CurrentIndex()), data)
+}
+
+// emitPostureStateChange assigns the next posture seq and sends the state change through one
+// serialized per-connection path. All PostureStateChange emission funnels through here.
+func (self *edgeClientConn) emitPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData) {
+	self.postureSendMu.Lock()
+	defer self.postureSendMu.Unlock()
+
+	seq := self.postureSeq.Inc()
+	ps := buildPostureStateChange(seq, structuralIndex, rdm, self.getIdentityId(), data)
+
+	b, err := proto.Marshal(ps)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal PostureStateChange")
+		return
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypePostureStateChange, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send PostureStateChange")
+	}
+}
+
+// buildConfigData resolves the config bodies an identity should use for a service and converts them
+// to wire form. Returns nil when the service has no configs in scope for the identity.
+func buildConfigData(rdm *common.RouterDataModel, identity *common.Identity, serviceId string) []*edge_client_pb.ConfigData {
+	resolved := rdm.GetIdentityServiceConfigs(identity, serviceId)
+	if len(resolved) == 0 {
+		return nil
+	}
+
+	result := make([]*edge_client_pb.ConfigData, 0, len(resolved))
+	for _, cfg := range resolved {
+		result = append(result, &edge_client_pb.ConfigData{
+			TypeId:   cfg.TypeId,
+			TypeName: cfg.TypeName,
+			DataJson: cfg.DataJson,
+		})
+	}
+	return result
+}
+
+// buildServiceSnapshot builds a full-state ServiceChangeSet (previousIndex=-1) for the
+// given identity from the current RDM. Every service the identity can access is included
+// along with the PolicyDef and PostureCheckDef entries they reference.
+func buildServiceSnapshot(rdm *common.RouterDataModel, identityId string) *edge_client_pb.ServiceChangeSet {
+	cs := &edge_client_pb.ServiceChangeSet{
+		Index:         int64(rdm.CurrentIndex()),
+		PreviousIndex: -1,
+	}
+
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok {
+		return cs
+	}
+
+	// accumulate policyIds per service, plus collect services/policies/checks
+	servicePolicyIds := map[string][]string{}
+	services := map[string]*common.Service{}
+	policies := map[string]*common.ServicePolicy{}
+	checks := map[string]*common.PostureCheck{}
+
+	identity.IterateServicePolicies(func(policyId string) {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			return
+		}
+		policies[policyId] = policy
+
+		policy.Services.IterCb(func(serviceId string, _ struct{}) {
+			if svc, ok := rdm.Services.Get(serviceId); ok {
+				services[serviceId] = svc
+				servicePolicyIds[serviceId] = append(servicePolicyIds[serviceId], policyId)
+			}
+		})
+
+		policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			if _, present := checks[checkId]; !present {
+				if check, ok := rdm.PostureChecks.Get(checkId); ok {
+					checks[checkId] = check
+				}
+			}
+		})
+	})
+
+	for serviceId, svc := range services {
+		cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+			Op:                 edge_client_pb.Op_Added,
+			Id:                 serviceId,
+			Name:               svc.Name,
+			EncryptionRequired: svc.EncryptionRequired,
+			Configs:            svc.Configs,
+			PolicyIds:          servicePolicyIds[serviceId],
+			ConfigData:         buildConfigData(rdm, identity, serviceId),
+		})
+	}
+
+	for policyId, policy := range policies {
+		policyType := edge_client_pb.PolicyType_Dial
+		if policy.IsBind() {
+			policyType = edge_client_pb.PolicyType_Bind
+		}
+
+		var postureCheckIds []string
+		policy.PostureChecks.IterCb(func(id string, _ struct{}) {
+			postureCheckIds = append(postureCheckIds, id)
+		})
+
+		cs.Policies = append(cs.Policies, &edge_client_pb.PolicyDef{
+			Op:              edge_client_pb.Op_Added,
+			Id:              policyId,
+			Type:            policyType,
+			PostureCheckIds: postureCheckIds,
+		})
+	}
+
+	for checkId, check := range checks {
+		cs.PostureChecks = append(cs.PostureChecks, buildPostureCheckDef(checkId, check))
+	}
+
+	return cs
+}
+
+func (self *edgeClientConn) NotifyBatchComplete(rdm *common.RouterDataModel, index uint64) {
+	// Serialized with the subscribe path's deferred flush so index commits and their sends hit
+	// the wire in order (see structuralSendMu).
+	if self.flushServiceChangeBatch(rdm, index) {
+		// The pass carried posture-check definition changes; the re-evaluation they triggered can
+		// flip pass/fail without any posture-data mutation, so follow the envelope with a fresh
+		// full posture state. Sent outside structuralSendMu (matches the subscribe sequence:
+		// structure first, then state).
+		self.sendPostureState()
+	}
+}
+
+// flushServiceChangeBatch commits and sends a completed scan pass's envelope (service changes and
+// posture-check definition changes), returning whether a follow-up posture state is owed.
+func (self *edgeClientConn) flushServiceChangeBatch(rdm *common.RouterDataModel, index uint64) bool {
+	self.structuralSendMu.Lock()
+	defer self.structuralSendMu.Unlock()
+
+	self.svcSubscription.Lock()
+	if !self.svcSubscription.active || (len(self.svcSubscription.pending) == 0 && len(self.svcSubscription.pendingChecks) == 0) {
+		self.svcSubscription.Unlock()
+		return false
+	}
+	// A subscribe snapshot is being built/sent: hold the accumulated changes; the subscribe path
+	// flushes or drops them once the snapshot is on the wire, preserving wire order.
+	if self.svcSubscription.snapshotPending {
+		self.svcSubscription.pendingIndex = int64(index)
+		self.svcSubscription.Unlock()
+		return false
+	}
+	// A batch at or below the last emitted index is already covered by what was sent (the
+	// subscribe snapshot or a full sync, both of which carry full defs and are followed by a full
+	// posture state); drop it rather than emitting an envelope whose index regresses.
+	if int64(index) <= self.svcSubscription.lastIndex {
+		lastIndex := self.svcSubscription.lastIndex
+		self.svcSubscription.pending = nil
+		self.svcSubscription.pendingChecks = nil
+		self.svcSubscription.pendingPostureState = false
+		self.svcSubscription.Unlock()
+		pfxlog.Logger().
+			WithField("identityId", self.getIdentityId()).
+			Debugf("dropping service change batch at index %d: at or below last emitted index %d", index, lastIndex)
+		return false
+	}
+	pending := self.svcSubscription.pending
+	pendingChecks := self.svcSubscription.pendingChecks
+	sendState := self.svcSubscription.pendingPostureState
+	self.svcSubscription.pending = nil
+	self.svcSubscription.pendingChecks = nil
+	self.svcSubscription.pendingPostureState = false
+	prevIndex := self.svcSubscription.lastIndex
+	self.svcSubscription.lastIndex = int64(index)
+	self.svcSubscription.Unlock()
+
+	self.sendIncrementalServiceChangeSet(rdm, pending, pendingChecks, prevIndex, int64(index))
+	return sendState
+}
+
+// sendIncrementalServiceChangeSet builds and sends one incremental ServiceChangeSet envelope for
+// the given pending service and posture-check changes. Shared by the scan-pass flush
+// (NotifyBatchComplete) and the subscribe path's deferred flush.
+func (self *edgeClientConn) sendIncrementalServiceChangeSet(rdm *common.RouterDataModel, pending map[string]edge_client_pb.Op, pendingChecks map[string]edge_client_pb.Op, prevIndex, index int64) {
+	cs := buildIncrementalServiceChangeSet(rdm, self.getIdentityId(), pending, pendingChecks, prevIndex, index)
+
+	b, err := proto.Marshal(cs)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to marshal incremental ServiceChangeSet")
+		return
+	}
+
+	msg := channel.NewMessage(sdkedge.ContentTypeServiceChangeSet, b)
+	if err := self.ch.GetChannel().Send(msg); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send incremental ServiceChangeSet")
+	}
+}
+
+func buildIncrementalServiceChangeSet(rdm *common.RouterDataModel, identityId string, pending map[string]edge_client_pb.Op, pendingChecks map[string]edge_client_pb.Op, prevIndex, index int64) *edge_client_pb.ServiceChangeSet {
+	cs := &edge_client_pb.ServiceChangeSet{
+		Index:         index,
+		PreviousIndex: prevIndex,
+	}
+
+	identity, hasIdentity := rdm.Identities.Get(identityId)
+	policies := map[string]*common.ServicePolicy{}
+	checks := map[string]*common.PostureCheck{}
+
+	for serviceId, op := range pending {
+		if op == edge_client_pb.Op_Removed {
+			cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+				Op: edge_client_pb.Op_Removed,
+				Id: serviceId,
+			})
+			continue
+		}
+
+		svc, ok := rdm.Services.Get(serviceId)
+		if !ok {
+			continue
+		}
+
+		var policyIds []string
+		if hasIdentity {
+			identity.IterateServicePolicies(func(policyId string) {
+				policy, ok := rdm.ServicePolicies.Get(policyId)
+				if !ok || !policy.Services.Has(serviceId) {
+					return
+				}
+				policyIds = append(policyIds, policyId)
+				policies[policyId] = policy
+				policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+					if _, present := checks[checkId]; !present {
+						if check, ok := rdm.PostureChecks.Get(checkId); ok {
+							checks[checkId] = check
+						}
+					}
+				})
+			})
+		}
+
+		var configData []*edge_client_pb.ConfigData
+		if hasIdentity {
+			configData = buildConfigData(rdm, identity, serviceId)
+		}
+
+		cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
+			Op:                 op,
+			Id:                 serviceId,
+			Name:               svc.Name,
+			EncryptionRequired: svc.EncryptionRequired,
+			Configs:            svc.Configs,
+			PolicyIds:          policyIds,
+			ConfigData:         configData,
+		})
+	}
+
+	for policyId, policy := range policies {
+		policyType := edge_client_pb.PolicyType_Dial
+		if policy.IsBind() {
+			policyType = edge_client_pb.PolicyType_Bind
+		}
+		var postureCheckIds []string
+		policy.PostureChecks.IterCb(func(id string, _ struct{}) {
+			postureCheckIds = append(postureCheckIds, id)
+		})
+		cs.Policies = append(cs.Policies, &edge_client_pb.PolicyDef{
+			Op:              edge_client_pb.Op_Added,
+			Id:              policyId,
+			Type:            policyType,
+			PostureCheckIds: postureCheckIds,
+		})
+	}
+
+	for checkId, check := range checks {
+		def := buildPostureCheckDef(checkId, check)
+		// A check both referenced by a changed service's closure and directly changed this pass
+		// carries its delta op instead of the closure's default Added.
+		if op, changed := pendingChecks[checkId]; changed && op != edge_client_pb.Op_Removed {
+			def.Op = op
+		}
+		cs.PostureChecks = append(cs.PostureChecks, def)
+	}
+
+	// Posture-check DEFINITION changes ship as just the changed defs — membership did not change,
+	// so no service or policy entries accompany them; the SDK maps them to affected services via
+	// its cached references. Checks already emitted via a changed service's closure above are not
+	// repeated.
+	for checkId, op := range pendingChecks {
+		if _, emitted := checks[checkId]; emitted {
+			continue
+		}
+		if check, ok := rdm.PostureChecks.Get(checkId); ok && op != edge_client_pb.Op_Removed {
+			def := buildPostureCheckDef(checkId, check)
+			def.Op = op
+			cs.PostureChecks = append(cs.PostureChecks, def)
+		} else {
+			// Removed — or changed then deleted within the pass, where the removal is what the
+			// SDK needs. Removed entries are id-only.
+			cs.PostureChecks = append(cs.PostureChecks, &edge_client_pb.PostureCheckDef{
+				Op: edge_client_pb.Op_Removed,
+				Id: checkId,
+			})
+		}
+	}
+
+	return cs
+}
+
+func (self *edgeClientConn) SendPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData) {
+	if !self.isServiceSubscriptionActive() {
+		return
+	}
+
+	self.emitPostureStateChange(rdm, structuralIndex, data)
+}
+
+func buildPostureStateChange(seq, structuralIndex uint64, rdm *common.RouterDataModel, identityId string, data *posture.InstanceData) *edge_client_pb.PostureStateChange {
+	ps := &edge_client_pb.PostureStateChange{
+		Seq:             seq,
+		StructuralIndex: structuralIndex,
+		GeneratedAt:     timestamppb.Now(),
+	}
+
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok {
+		return ps
+	}
+
+	// checkResults maps checkId → isPassing; deduplicates checks appearing in multiple policies.
+	checkResults := map[string]bool{}
+
+	identity.IterateServicePolicies(func(policyId string) {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			return
+		}
+
+		policyPassing := true
+		policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			check, ok := rdm.PostureChecks.Get(checkId)
+			if !ok {
+				policyPassing = false
+				return
+			}
+			passing := data != nil && posture.EvaluatePostureCheck(check.DataStatePostureCheck, data) == nil
+			checkResults[checkId] = passing
+			if !passing {
+				policyPassing = false
+			}
+		})
+
+		ps.PolicyStates = append(ps.PolicyStates, &edge_client_pb.PostureStateChange_PolicyState{
+			PolicyId:  policyId,
+			IsPassing: policyPassing,
+		})
+	})
+
+	now := time.Now()
+	for checkId, passing := range checkResults {
+		check, ok := rdm.PostureChecks.Get(checkId)
+		if !ok {
+			continue
+		}
+
+		cs := &edge_client_pb.PostureStateChange_CheckState{
+			CheckId:   checkId,
+			IsPassing: passing,
+		}
+
+		// The pushed expiry is the earliest applicable MFA deadline — the MFA timeout and any
+		// pending wake/unlock re-prompt grace period — matching what evaluation enforces.
+		if mfa := check.GetMfa(); mfa != nil {
+			if expiresAt := posture.MfaExpiresAt(mfa, data); expiresAt != nil {
+				cs.TimeoutAt = timestamppb.New(*expiresAt)
+				remaining := int32(expiresAt.Sub(now).Seconds())
+				if remaining < 0 {
+					remaining = 0
+				}
+				cs.TimeoutRemainingSeconds = remaining
+			}
+		}
+
+		ps.CheckStates = append(ps.CheckStates, cs)
+	}
+
+	return ps
+}
+
+func buildPostureCheckDef(id string, check *common.PostureCheck) *edge_client_pb.PostureCheckDef {
+	def := &edge_client_pb.PostureCheckDef{
+		Op:   edge_client_pb.Op_Added,
+		Id:   id,
+		Type: check.GetTypeId(),
+	}
+
+	if mfa := check.GetMfa(); mfa != nil {
+		def.PromptOnWake = mfa.GetPromptOnWake()
+		def.PromptOnUnlock = mfa.GetPromptOnUnlock()
+		def.PromptGracePeriodSeconds = int32(posture.PromptGracePeriod.Seconds())
+		def.TimeoutSeconds = mfa.GetTimeoutSeconds()
+	}
+
+	if pm := check.GetProcessMulti(); pm != nil {
+		def.Semantic = pm.GetSemantic()
+		for _, p := range pm.GetProcesses() {
+			def.Processes = append(def.Processes, &edge_client_pb.PostureCheckDef_Process{
+				OsType: p.GetOsType(),
+				Path:   p.GetPath(),
+			})
+		}
+	}
+
+	// Normalize a single PROCESS check into a one-element PROCESS_MULTI so the SDK only ever handles
+	// one process-check shape. AllOf is trivially correct for a single process. The PROCESS type is
+	// never sent on the wire.
+	if p := check.GetProcess(); p != nil {
+		def.Type = "PROCESS_MULTI"
+		def.Semantic = "AllOf"
+		def.Processes = append(def.Processes, &edge_client_pb.PostureCheckDef_Process{
+			OsType: p.GetOsType(),
+			Path:   p.GetPath(),
+		})
+	}
+
+	return def
 }
 
 func (self *edgeClientConn) processTokenUpdate(req *channel.Message, ch channel.Channel) {

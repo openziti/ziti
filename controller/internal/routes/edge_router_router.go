@@ -17,10 +17,12 @@
 package routes
 
 import (
+	"sort"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/edge_router"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -29,6 +31,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func init() {
@@ -190,4 +194,51 @@ func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext)
 	}
 
 	rc.RespondWithEmptyOk()
+}
+
+// routerCapabilityBitNames maps capability bit positions (see common/capabilities) to their
+// edge-api enum value. Bits set in the mask but absent here are omitted from the rendered string
+// list; the raw mask is exposed alongside it for diagnosing capabilities this controller does not
+// yet know.
+var routerCapabilityBitNames = map[capabilities.RouterCapability]rest_model.RouterCapabilities{
+	capabilities.RouterMultiChannel:         rest_model.RouterCapabilitiesMULTICHANNEL,
+	capabilities.RouterConnectV2:            rest_model.RouterCapabilitiesCONNECTV2,
+	capabilities.RouterServiceSubscriptions: rest_model.RouterCapabilitiesSERVICESUBSCRIPTIONS,
+	capabilities.RouterDataModel:            rest_model.RouterCapabilitiesRDMSUPPORTED,
+	capabilities.RouterPostureChecks:        rest_model.RouterCapabilitiesPOSTURECHECKS,
+	capabilities.RouterBindSuccess:          rest_model.RouterCapabilitiesBINDSUCCESS,
+}
+
+// renderRouterCapabilities expands a router capabilities bitmask into the edge-api string list.
+// Only bits with a known edge-api enum value are rendered; unmapped set bits (a capability newer
+// than this controller, or a control-plane-only capability) are omitted rather than surfaced as an
+// opaque string. Returns nil for an empty mask.
+func renderRouterCapabilities(mask int64) []string {
+	var result []string
+	for i := 0; i < 63; i++ {
+		if mask&(1<<uint(i)) == 0 {
+			continue
+		}
+		if name, ok := routerCapabilityBitNames[capabilities.RouterCapability(i)]; ok {
+			result = append(result, string(name))
+		}
+	}
+	return result
+}
+
+// enumeratedRouterCapabilities returns every router capability this controller can render, ordered
+// by bit position. It is the source for the enumerated-router-capabilities endpoint and is derived
+// from the same map used to render an edge router's capabilities, so the two cannot drift.
+func enumeratedRouterCapabilities() []rest_model.RouterCapabilities {
+	bits := make([]capabilities.RouterCapability, 0, len(routerCapabilityBitNames))
+	for bit := range routerCapabilityBitNames {
+		bits = append(bits, bit)
+	}
+	sort.Slice(bits, func(i, j int) bool { return bits[i] < bits[j] })
+
+	result := make([]rest_model.RouterCapabilities, 0, len(bits))
+	for _, bit := range bits {
+		result = append(result, routerCapabilityBitNames[bit])
+	}
+	return result
 }

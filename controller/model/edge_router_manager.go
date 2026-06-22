@@ -176,6 +176,28 @@ func (self *EdgeRouterManager) Read(id string) (*EdgeRouter, error) {
 	return modelEntity, nil
 }
 
+// UpdateRouterReportedState persists the capabilities bitmask and binary version a router reports
+// when it connects, but only when they differ from the stored values. The router-reported values
+// are authoritative; the no-op-on-match guard avoids a raft write on every router (re)connection.
+func (self *EdgeRouterManager) UpdateRouterReportedState(routerId string, capabilitiesMask int64, version string, ctx *change.Context) error {
+	router, err := self.Read(routerId)
+	if err != nil {
+		return err
+	}
+
+	if router.CapabilitiesMask == capabilitiesMask && router.Version == version {
+		return nil
+	}
+
+	router.CapabilitiesMask = capabilitiesMask
+	router.Version = version
+
+	return self.Update(router, true, &fields.UpdatedFieldsMap{
+		db.FieldEdgeRouterCapabilitiesMask: struct{}{},
+		db.FieldEdgeRouterVersion:          struct{}{},
+	}, ctx)
+}
+
 func (self *EdgeRouterManager) readInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
 	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
@@ -461,6 +483,8 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		Disabled:              entity.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 		Configs:               entity.Configs,
+		CapabilitiesMask:      entity.CapabilitiesMask,
+		Version:               entity.Version,
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -511,6 +535,8 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		Disabled:              msg.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 		Configs:               msg.Configs,
+		CapabilitiesMask:      msg.CapabilitiesMask,
+		Version:               msg.Version,
 	}
 
 	for _, intf := range msg.Interfaces {

@@ -66,6 +66,10 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(ir.ListCapabilities, params.HTTPRequest, "", "", permissions.Always())
 	})
 
+	ae.ClientApi.InformationalListEnumeratedRouterCapabilitiesHandler = clientInformational.ListEnumeratedRouterCapabilitiesHandlerFunc(func(params clientInformational.ListEnumeratedRouterCapabilitiesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(ir.ListRouterCapabilities, params.HTTPRequest, "", "", permissions.Always())
+	})
+
 	ae.ManagementApi.InformationalListVersionHandler = managementInformational.ListVersionHandlerFunc(func(params managementInformational.ListVersionParams) middleware.Responder {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
@@ -76,6 +80,10 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.InformationalListEnumeratedCapabilitiesHandler = managementInformational.ListEnumeratedCapabilitiesHandlerFunc(func(params managementInformational.ListEnumeratedCapabilitiesParams) middleware.Responder {
 		return ae.IsAllowed(ir.ListCapabilities, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.InformationalListEnumeratedRouterCapabilitiesHandler = managementInformational.ListEnumeratedRouterCapabilitiesHandlerFunc(func(params managementInformational.ListEnumeratedRouterCapabilitiesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(ir.ListRouterCapabilities, params.HTTPRequest, "", "", permissions.Always())
 	})
 }
 
@@ -172,6 +180,12 @@ func (ir *VersionRouter) ListCapabilities(_ *env.AppEnv, rc *response.RequestCon
 	}
 
 	rc.RespondWithOk(capabilities, &rest_model.Meta{})
+}
+
+// ListRouterCapabilities responds with every router capability this controller is aware of, the
+// decoded form of the bits it renders on an edge router's capabilities list.
+func (ir *VersionRouter) ListRouterCapabilities(_ *env.AppEnv, rc *response.RequestContext) {
+	rc.RespondWithOk(enumeratedRouterCapabilities(), &rest_model.Meta{})
 }
 
 func apiBindingToPath(binding string) string {

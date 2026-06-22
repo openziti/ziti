@@ -92,6 +92,13 @@ const (
 	// RouterConnectV2 indicates the router supports the ConnectV2 message flow
 	RouterConnectV2 RouterCapability = RouterCapability(edge_client_pb.RouterCapability_ConnectV2)
 
+	// RouterDataModel indicates the router supports the router data model
+	RouterDataModel RouterCapability = RouterCapability(edge_client_pb.RouterCapability_RouterDataModel)
+
+	// RouterServiceSubscriptions indicates the router can push service change and posture
+	// state notifications to subscribed SDK clients over the edge protocol
+	RouterServiceSubscriptions RouterCapability = RouterCapability(edge_client_pb.RouterCapability_ServiceSubscriptions)
+
 	// RouterPostureChecks indicates the router supports posture checks. Also
 	// advertised to older SDKs via the deprecated SupportsPostureChecks edge header.
 	RouterPostureChecks RouterCapability = RouterCapability(edge_client_pb.RouterCapability_PostureChecks)
@@ -116,6 +123,8 @@ func GetRouterCapabilitiesMask() *RouterCapabilityMask {
 	return NewMask(
 		RouterMultiChannel,
 		RouterConnectV2,
+		RouterDataModel,
+		RouterServiceSubscriptions,
 		RouterPostureChecks,
 		RouterBindSuccess,
 	)

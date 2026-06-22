@@ -50,6 +50,16 @@ func (helper *ClientHelperClient) GetVersion() (*rest_model.Version, error) {
 	return resp.Payload.Data, nil
 }
 
+// ListCurrentIdentityEdgeRouters returns the edge routers the authenticated identity can access,
+// via the client current-identity/edge-routers endpoint.
+func (helper *ClientHelperClient) ListCurrentIdentityEdgeRouters() ([]*rest_model.CurrentIdentityEdgeRouterDetail, error) {
+	resp, err := helper.API.CurrentIdentity.GetCurrentIdentityEdgeRouters(&clientCurrentIdentity.GetCurrentIdentityEdgeRoutersParams{}, nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+	return resp.Payload.Data, nil
+}
+
 func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToCertAuth(enrollmentJwt string) (*edgeApis.CertCredentials, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {

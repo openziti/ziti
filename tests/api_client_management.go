@@ -15,6 +15,7 @@ import (
 	managementConfig "github.com/openziti/edge-api/rest_management_api_client/config"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
+	managementEdgeRouter "github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
@@ -137,6 +138,31 @@ func (helper *ManagementHelperClient) CreateConfig(configTypeId string, data int
 	}
 
 	resp, err := helper.API.Config.CreateConfig(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// ListEnumeratedRouterCapabilities returns every router capability the controller advertises via
+// the enumerated-router-capabilities endpoint.
+func (helper *ManagementHelperClient) ListEnumeratedRouterCapabilities() ([]rest_model.RouterCapabilities, error) {
+	resp, err := helper.API.Informational.ListEnumeratedRouterCapabilities(managementInformational.NewListEnumeratedRouterCapabilitiesParams(), nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// GetEdgeRouter returns the management-API detail for the edge router with the given id.
+func (helper *ManagementHelperClient) GetEdgeRouter(edgeRouterId string) (*rest_model.EdgeRouterDetail, error) {
+	resp, err := helper.API.EdgeRouter.DetailEdgeRouter(&managementEdgeRouter.DetailEdgeRouterParams{
+		ID: edgeRouterId,
+	}, nil)
 
 	if err != nil {
 		return nil, rest_util.WrapErr(err)
@@ -471,6 +497,18 @@ func (helper *ManagementHelperClient) CreatePostureCheck(check rest_model.Postur
 	return postureCheckDetail, nil
 }
 
+// PatchPostureCheck applies a partial update to a posture check by id.
+func (helper *ManagementHelperClient) PatchPostureCheck(id string, patch rest_model.PostureCheckPatch) error {
+	patchParams := managementPostureChecks.NewPatchPostureCheckParams()
+	patchParams.ID = id
+	patchParams.PostureCheck = patch
+
+	if _, err := helper.API.PostureChecks.PatchPostureCheck(patchParams, nil); err != nil {
+		return fmt.Errorf("could not patch posture check: %w", util.WrapIfApiError(err))
+	}
+	return nil
+}
+
 func (helper *ManagementHelperClient) CreatePostureCheckOs(operatingSystems []*rest_model.OperatingSystem, attributes []string) (*rest_model.PostureCheckOperatingSystemDetail, error) {
 	newCheck := &rest_model.PostureCheckOperatingSystemCreate{
 		OperatingSystems: operatingSystems,
@@ -511,6 +549,36 @@ func (helper *ManagementHelperClient) CreatePostureCheckMac(addresses []string, 
 	}
 
 	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckMacAddressDetail)
+
+	if !ok {
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+	}
+
+	return checkDetail, nil
+}
+
+// CreatePostureCheckMfa creates an MFA posture check with the given timeout (-1 for no timeout)
+// and wake/unlock prompt configuration, assigned the given role attributes.
+func (helper *ManagementHelperClient) CreatePostureCheckMfa(timeoutSeconds int64, promptOnWake, promptOnUnlock bool, attributes []string) (*rest_model.PostureCheckMfaDetail, error) {
+	newCheck := &rest_model.PostureCheckMfaCreate{
+		PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+			TimeoutSeconds: timeoutSeconds,
+			PromptOnWake:   promptOnWake,
+			PromptOnUnlock: promptOnUnlock,
+		},
+	}
+
+	attrs := rest_model.Attributes(attributes)
+	newCheck.SetRoleAttributes(&attrs)
+	newCheck.SetName(ToPtr(eid.New()))
+
+	postureCheckDetail, err := helper.CreatePostureCheck(newCheck)
+
+	if err != nil {
+		return nil, err
+	}
+
+	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckMfaDetail)
 
 	if !ok {
 		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
