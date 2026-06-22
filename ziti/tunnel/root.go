@@ -126,7 +126,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	// the channel's logical name, so the channel type is visible in output and
 	// operators can tune verbosity per channel type independently of the
 	// global level.
-	channel.LoggerFor = logging.For
+	channel.SetLoggerFor(logging.For)
 
 	util.LogReleaseVersionCheck()
 }

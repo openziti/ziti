@@ -88,7 +88,7 @@ func (self *Options) PreRun(cmd *cobra.Command, _ []string) {
 	// channel type visible in output and lets operators tune verbosity per
 	// channel type via `ziti agent set-channel-log-level <name> <level>`,
 	// independently of the global level.
-	channel.LoggerFor = logging.For
+	channel.SetLoggerFor(logging.For)
 
 	util.LogReleaseVersionCheck()
 }
