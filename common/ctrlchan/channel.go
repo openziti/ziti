@@ -340,18 +340,38 @@ func (self *DialCtrlChannel) UnderlayRemoved(ch channel.Channel, underlay channe
 }
 
 // NewListenerCtrlChannel creates a control channel handler for the listening side (controller).
-// It dials no underlays; with no constraints and no dial policy the channel closes when its
-// last underlay is lost, which is the desired controller-side behavior.
+// It dials no underlays. It declares Min: 0 constraints for each underlay type so the channel
+// is multi-underlay-capable (and accepts the high/low-priority underlays the router dials)
+// without closing when a single type is lost; the config's MinTotalUnderlays closes the
+// channel only when its last underlay is gone.
+//
+// This is a workaround: channel/v5 does not (yet) treat MinTotalUnderlays alone as a
+// multi-underlay signal, so Min: 0 constraints are needed to flip that bit. Once channel makes
+// MinTotalUnderlays first-class, the constraints can be dropped in favor of MinTotalUnderlays: 1.
 func NewListenerCtrlChannel() *ListenerCtrlChannel {
 	return &ListenerCtrlChannel{
 		BaseCtrlChannel: NewBaseCtrlChannel(),
+		constraints: map[string]channel.UnderlayConstraint{
+			ChannelTypeDefault:      {Min: 0},
+			ChannelTypeHighPriority: {Min: 0},
+			ChannelTypeLowPriority:  {Min: 0},
+		},
 	}
 }
 
 // ListenerCtrlChannel implements CtrlChannel for the listening side (controller). Unlike
-// DialCtrlChannel it does not dial; the channel closes if all underlays are lost.
+// DialCtrlChannel it does not dial; with MinTotalUnderlays: 1 in its config the channel closes
+// when all underlays are lost.
 type ListenerCtrlChannel struct {
 	*BaseCtrlChannel
+	constraints map[string]channel.UnderlayConstraint
+}
+
+// GetConstraints returns the per-underlay-type constraints for the listener channel. Every type
+// carries Min: 0, marking the channel multi-underlay-capable without closing it when an
+// individual type is lost; close-on-empty is governed by the config's MinTotalUnderlays.
+func (self *ListenerCtrlChannel) GetConstraints() map[string]channel.UnderlayConstraint {
+	return self.constraints
 }
 
 // UnderlayAdded implements channel.UnderlayEventListener.

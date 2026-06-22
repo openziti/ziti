@@ -514,6 +514,10 @@ func (self *CtrlDialer) dial(routerId string, addr transport.Address, log *logru
 		Senders:                listenerCtrlChan,
 		MessageSourceProvider:  listenerCtrlChan,
 		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
+		// Multi-underlay-capable so the high/low-priority underlays are accepted;
+		// MinTotalUnderlays closes the channel only when its last underlay is lost.
+		Constraints:       listenerCtrlChan.GetConstraints(),
+		MinTotalUnderlays: 1,
 	}
 
 	if _, err = channel.NewChannel(multiConfig); err != nil {

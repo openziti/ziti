@@ -69,6 +69,10 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 		Senders:                listenerCtrlChan,
 		MessageSourceProvider:  listenerCtrlChan,
 		UnderlayEventListeners: []channel.UnderlayEventListener{listenerCtrlChan},
+		// Multi-underlay-capable so the high/low-priority underlays are accepted;
+		// MinTotalUnderlays closes the channel only when its last underlay is lost.
+		Constraints:       listenerCtrlChan.GetConstraints(),
+		MinTotalUnderlays: 1,
 	}
 
 	mc, err := channel.NewChannel(multiConfig)
