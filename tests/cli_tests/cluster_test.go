@@ -18,8 +18,10 @@ limitations under the License.
 package cli_tests
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -126,6 +128,85 @@ func Test_Quickstart_Cluster(t *testing.T) {
 			"node %d (%s) never became ready; see %s", i+1, ctrlUrl, logPath)
 		t.Logf("node %d ready and admin login succeeded at %s", i+1, ctrlUrl)
 	}
+
+	// Drive the cluster through the same ziti CLI that launched it: log into each
+	// node, dump and verify raft membership, then prove a model write replicates.
+	cliCfg := filepath.Join(t.TempDir(), "test-cli")
+	runZiti := func(arg ...string) (stdout, stderr string, err error) {
+		c := exec.Command(zitiPath, arg...)
+		c.Env = append(os.Environ(), "ZITI_CONFIG_DIR="+cliCfg)
+		var so, se bytes.Buffer
+		c.Stdout, c.Stderr = &so, &se
+		err = c.Run()
+		return so.String(), se.String(), err
+	}
+	login := func(node int) error {
+		url := fmt.Sprintf("https://localhost:%d", int(ctrlBase)+node)
+		if _, se, err := runZiti("edge", "login", url, "-u", "admin", "-p", "admin", "-y"); err != nil {
+			return fmt.Errorf("%w: %s", err, se)
+		}
+		return nil
+	}
+
+	// log in to every node through the CLI
+	for i := 0; i < size; i++ {
+		require.NoErrorf(t, login(i), "ziti edge login to node %d", i+1)
+	}
+
+	// dump the raft membership for a human to eyeball
+	membersOut, membersErr, listErr := runZiti("ops", "cluster", "list")
+	require.NoErrorf(t, listErr, "ziti ops cluster list: %s", membersErr)
+	t.Logf("ziti ops cluster list:\n%s", membersOut)
+
+	// verify it: size members, exactly one leader, all connected voters
+	require.Eventuallyf(t, func() bool {
+		so, _, e := runZiti("ops", "cluster", "list", "-j")
+		if e != nil {
+			return false
+		}
+		var resp struct {
+			Data []struct {
+				Connected bool `json:"connected"`
+				Leader    bool `json:"leader"`
+				Voter     bool `json:"voter"`
+			} `json:"data"`
+		}
+		if json.Unmarshal([]byte(so), &resp) != nil || len(resp.Data) != size {
+			return false
+		}
+		leaders, connectedVoters := 0, 0
+		for _, m := range resp.Data {
+			if m.Leader {
+				leaders++
+			}
+			if m.Connected && m.Voter {
+				connectedVoters++
+			}
+		}
+		return leaders == 1 && connectedVoters == size
+	}, 30*time.Second, time.Second, "cluster should converge to %d connected voters with one leader", size)
+	t.Logf("raft membership verified: %d connected voting members, one leader", size)
+
+	// prove replication: create an identity on node 1, see it appear on node 2
+	idName := fmt.Sprintf("repl-check-%d", time.Now().UnixNano())
+	require.NoError(t, login(0))
+	if _, createErr, err := runZiti("edge", "create", "identity", idName); err != nil {
+		require.NoErrorf(t, err, "create identity on node 1: %s", createErr)
+	}
+	require.NoError(t, login(1))
+	require.Eventuallyf(t, func() bool {
+		so, _, e := runZiti("edge", "list", "identities", fmt.Sprintf("name=%q", idName), "-j")
+		if e != nil {
+			return false
+		}
+		var resp struct {
+			Data []struct {
+				Name string `json:"name"`
+			} `json:"data"`
+		}
+		return json.Unmarshal([]byte(so), &resp) == nil && len(resp.Data) == 1 && resp.Data[0].Name == idName
+	}, 30*time.Second, time.Second, "identity %q created on node 1 should replicate to node 2", idName)
+	t.Logf("identity %q created on node 1 is visible on node 2 (raft replication confirmed)", idName)
 
 	// Clean shutdown: deliver a graceful stop to the parent. It relays to the
 	// children, then removes the temp home.

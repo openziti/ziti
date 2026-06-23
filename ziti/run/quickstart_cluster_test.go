@@ -52,8 +52,9 @@ func assertArg(t *testing.T, args []string, flag, want string) {
 }
 
 func TestClusterChildArgs_InitNode(t *testing.T) {
+	home := t.TempDir()
 	o := &QuickstartClusterOpts{
-		Home: "/tmp/h", Username: "admin", Password: "secret",
+		Home: home, Username: "admin", Password: "secret",
 		CtrlPort: 1280, RouterPort: 3022, TrustDomain: "quickstart", Size: 3,
 	}
 	args := o.childArgs(0, "ctrl.example")
@@ -73,12 +74,12 @@ func TestClusterChildArgs_InitNode(t *testing.T) {
 	assertArg(t, args, "--trust-domain", "quickstart")
 	assertArg(t, args, "--username", "admin")
 	assertArg(t, args, "--password", "secret")
-	assertArg(t, args, "--home", "/tmp/h")
+	assertArg(t, args, "--home", home)
 }
 
 func TestClusterChildArgs_JoinNodePortsAndMember(t *testing.T) {
 	o := &QuickstartClusterOpts{
-		Home: "/tmp/h", Username: "admin", Password: "admin",
+		Home: t.TempDir(), Username: "admin", Password: "admin",
 		CtrlPort: 1280, RouterPort: 3022, TrustDomain: "qs", Size: 3,
 	}
 	// third node (index 2)
@@ -97,7 +98,7 @@ func TestClusterChildArgs_JoinNodePortsAndMember(t *testing.T) {
 
 func TestClusterChildArgs_OptionalFlags(t *testing.T) {
 	with := &QuickstartClusterOpts{
-		Home: "/h", CtrlPort: 1280, RouterPort: 3022,
+		Home: t.TempDir(), CtrlPort: 1280, RouterPort: 3022,
 		ControllerAddress: "cadr", RouterAddress: "radr", verbose: true,
 	}
 	a := with.childArgs(0, "cadr")
@@ -107,7 +108,7 @@ func TestClusterChildArgs_OptionalFlags(t *testing.T) {
 		t.Errorf("expected --verbose when set: %v", a)
 	}
 
-	without := &QuickstartClusterOpts{Home: "/h", CtrlPort: 1280, RouterPort: 3022}
+	without := &QuickstartClusterOpts{Home: t.TempDir(), CtrlPort: 1280, RouterPort: 3022}
 	b := without.childArgs(0, "x")
 	if hasArg(b, "--ctrl-address") || hasArg(b, "--router-address") {
 		t.Errorf("address flags must be omitted when unset: %v", b)

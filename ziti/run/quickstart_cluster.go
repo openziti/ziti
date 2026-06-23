@@ -186,9 +186,10 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 		readyChans[idx] = ready
 
 		// Mirror each node's output to a per-node log file as well as the merged,
-		// prefixed console stream. The console writer also detects the readiness
-		// marker. The file gets the raw, unprefixed output.
-		stdout := io.Writer(newReadyWriter(o.out, prefix, nodeReadyMarker, func() { close(ready) }))
+		// prefixed console stream. The console writer also watches for the line a
+		// node prints once it is fully up (leader elected/joined, router running)
+		// and closes ready when it sees it. The file gets the raw, unprefixed output.
+		stdout := io.Writer(newReadyWriter(o.out, prefix, "Quickly add another member", func() { close(ready) }))
 		stderr := io.Writer(newPrefixWriter(o.errOut, prefix))
 		// The instance dir holds the node's db, pki, and CLI config dir, so it
 		// must exist before the node starts.
@@ -452,11 +453,6 @@ func (o *QuickstartClusterOpts) routerAddrOrDefault() string {
 }
 
 var prefixWriterMu sync.Mutex
-
-// nodeReadyMarker is a line a quickstart node prints only once it is fully up:
-// leader elected or joined, edge router enrolled, and router running. The parent
-// gates the next node's start on seeing it.
-const nodeReadyMarker = "Quickly add another member"
 
 // prefixWriter prefixes each complete line written to it, so interleaved output
 // from multiple child nodes stays attributable. A package-level mutex keeps lines

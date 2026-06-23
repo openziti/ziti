@@ -317,6 +317,11 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	p := common.NewOptionsProvider(o.out, o.errOut)
 	fmt.Println("waiting three seconds for controller to become ready...")
 
+	// Target our own ops-agent by its socket path rather than --pid. With --pid the
+	// agent client enumerates and contacts every gops socket on the host, which is
+	// slow when stale sockets accumulate. --app-addr dials us directly.
+	agentSock := "unix:" + path.Join(os.TempDir(), fmt.Sprintf("gops-agent.%d.sock", os.Getpid()))
+
 	if o.AlreadyInitialized {
 		logrus.Infof("instance %s already initialized; skipping cluster init/join and rejoining the existing cluster", o.InstanceID)
 	} else if !o.joinCommand {
@@ -324,12 +329,11 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		for attempt := 1; attempt <= maxRetries; attempt++ {
 			fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
 			agentInitCmd := agentcli.NewAgentClusterInit(p)
-			pid := os.Getpid()
 			args := []string{
 				o.Username,
 				o.Password,
 				o.Username,
-				fmt.Sprintf("--pid=%d", pid),
+				fmt.Sprintf("--app-addr=%s", agentSock),
 				"--timeout=30s",
 			}
 			agentInitCmd.SetArgs(args)
@@ -358,7 +362,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
 			agentJoinCmd.SetArgs([]string{
 				o.ClusterMember,
-				fmt.Sprintf("--pid=%d", os.Getpid()),
+				fmt.Sprintf("--app-addr=%s", agentSock),
 				fmt.Sprintf("--voter=%t", !o.nonVoter),
 				"--timeout=30s",
 			})
