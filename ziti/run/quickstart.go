@@ -354,7 +354,6 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		}
 	} else {
 		// Joining can fail transiently while the target elects a leader, so retry until it succeeds or the deadline elapses.
-		o.waitForLeader()
 		joinDeadline := time.Now().Add(90 * time.Second)
 		attempt := 0
 		for {

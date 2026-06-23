@@ -86,7 +86,7 @@ func NewQuickStartClusterCmd(out io.Writer, errOut io.Writer, ctx context.Contex
 	cmd.Flags().Uint16Var(&options.CtrlPort, "ctrl-port", uint16(defaultCtrlPort), "base controller port (node index N listens on base+N)")
 	cmd.Flags().Uint16Var(&options.RouterPort, "router-port", uint16(defaultRouterPort), "base router port (node index N listens on base+N)")
 	cmd.Flags().StringVar(&options.TrustDomain, "trust-domain", "quickstart", "trust domain used in SPIFFE ids")
-	cmd.Flags().IntVar(&options.Size, "size", 3, "number of nodes in the cluster (minimum 3)")
+	cmd.Flags().IntVar(&options.Size, "size", 3, "number of nodes in the cluster (3-9)")
 	cmd.Flags().DurationVar(&options.ShutdownGrace, "shutdown-grace", 30*time.Second, "max time to wait for nodes to shut down cleanly before the parent gives up waiting")
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "show additional output")
 
@@ -102,8 +102,19 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 	if o.verbose {
 		pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().Color())
 	}
-	if o.Size < 3 {
-		return fmt.Errorf("--size must be at least 3 (an HA cluster needs at least 3 nodes to tolerate a failure)")
+	if o.Size < 3 || o.Size > 9 {
+		return fmt.Errorf("when using --size the value must be between 3 and 9. More cluster members cause slower mutations.")
+	}
+	// Node i uses CtrlPort+i and RouterPort+i. Validate the derived ranges up front
+	// so an out-of-range or overlapping port is a clear error rather than a
+	// confusing bind failure partway through bring-up.
+	ctrlMax := int(o.CtrlPort) + o.Size - 1
+	routerMax := int(o.RouterPort) + o.Size - 1
+	if ctrlMax > 65535 || routerMax > 65535 {
+		return fmt.Errorf("--ctrl-port/--router-port plus %d nodes exceeds the maximum port 65535", o.Size)
+	}
+	if int(o.CtrlPort) <= routerMax && int(o.RouterPort) <= ctrlMax {
+		return fmt.Errorf("the --ctrl-port range %d-%d and --router-port range %d-%d overlap for %d nodes. Pick port bases at least %d apart", o.CtrlPort, ctrlMax, o.RouterPort, routerMax, o.Size, o.Size)
 	}
 	if o.Username == "" {
 		o.Username = "admin"

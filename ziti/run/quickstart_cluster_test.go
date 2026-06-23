@@ -18,6 +18,7 @@ package run
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -42,6 +43,23 @@ func hasArg(args []string, flag string) bool {
 		}
 	}
 	return false
+}
+
+// TestClusterSizeOutOfRangeRejected checks that run() rejects sizes outside 3-9
+// before doing anything (the size check is the first validation in run(), so no
+// nodes are started for these inputs).
+func TestClusterSizeOutOfRangeRejected(t *testing.T) {
+	for _, size := range []int{-1, 0, 1, 2, 10, 100} {
+		o := &QuickstartClusterOpts{Size: size}
+		err := o.run(context.Background())
+		if err == nil {
+			t.Errorf("--size %d should be rejected, got nil error", size)
+			continue
+		}
+		if !strings.Contains(err.Error(), "between 3 and 9") {
+			t.Errorf("--size %d: unexpected error: %v", size, err)
+		}
+	}
 }
 
 func assertArg(t *testing.T, args []string, flag, want string) {
