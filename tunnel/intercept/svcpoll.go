@@ -30,7 +30,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/tunnel"
 	"github.com/openziti/ziti/v2/tunnel/dns"
 	"github.com/openziti/ziti/v2/tunnel/entities"

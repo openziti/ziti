@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/stretchr/testify/require"
 )

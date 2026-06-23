@@ -27,7 +27,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/identity/dotziti"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/router/xgress_transport"
 	"github.com/spf13/cobra"

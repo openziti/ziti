@@ -28,7 +28,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	loop4Pb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )

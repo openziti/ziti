@@ -26,7 +26,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/certificate_authority"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/env"

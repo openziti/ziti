@@ -24,14 +24,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openziti/sdk-golang/ziti/sdkinfo"
+	"github.com/openziti/sdk-golang/v2/ziti/sdkinfo"
 	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/openziti/ziti/v2/ziti/util"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentlog"
 	"github.com/openziti/ziti/v2/common/version"

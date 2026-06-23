@@ -37,7 +37,7 @@ import (
 	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/identity/certtools"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/common/spiffehlp"
 )
 

@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/state"

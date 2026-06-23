@@ -28,7 +28,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/xt"

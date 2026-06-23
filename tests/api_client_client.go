@@ -31,8 +31,8 @@ import (
 	"github.com/openziti/edge-api/rest_util"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
-	edgeApis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
+	edgeApis "github.com/openziti/sdk-golang/v2/edge-apis"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )

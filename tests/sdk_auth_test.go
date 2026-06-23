@@ -17,7 +17,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 )
 
 func TestSdkAuth(t *testing.T) {

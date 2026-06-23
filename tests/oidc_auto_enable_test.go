@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/openziti/edge-api/rest_model"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 )
 
 // Test_OIDC_Auto_Enable verifies that the controller automatically adds the edge-oidc API

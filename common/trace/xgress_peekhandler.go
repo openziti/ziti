@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v5/trace/pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 )
 
 type XgressPeekHandler struct {

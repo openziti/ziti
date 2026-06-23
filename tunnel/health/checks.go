@@ -12,7 +12,7 @@ import (
 	health "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/pkg/errors"
 )
 
