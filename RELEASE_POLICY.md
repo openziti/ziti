@@ -166,3 +166,113 @@ Community-contributed test coverage is accepted but not required for LTS designa
 
 ---
 
+## LTS Patch Release Policy
+
+This section defines when, how, and where LTS patch releases are produced. Terms used here (Active LTS, Maintenance LTS, Security Fix, Critical Bug Fix, Critical Production Defect) carry the meanings defined above.
+
+The patch release process is identical for Active LTS (N) and Maintenance LTS (N-1). The phases differ only in the scope of changes permitted on the branch — see [Support Lifecycle](#support-lifecycle) for those rules.
+
+---
+
+### Patch Triggers
+
+#### Scheduled (Monthly)
+
+Both LTS versions produce a patch release once per calendar month. Each release rolls up all accumulated qualifying changes since the prior patch. If no qualifying changes have accumulated, the monthly release is skipped.
+
+#### Unscheduled (Out-of-band)
+
+An out-of-band patch may be cut at any time when a CVE warrants it or a Critical Production Defect is present:
+
+| Trigger | Action |
+|---|---|
+| Critical CVE (CVSS ≥ 9.0) | Immediate out-of-band patch |
+| High CVE (CVSS ≥ 7.0) with known exploit or active exploitation | Immediate out-of-band patch |
+| High CVE (CVSS ≥ 7.0) without known exploit | Roll into next monthly |
+| Medium CVE (CVSS ≥ 4.0) | Roll into next monthly |
+| Low CVE (CVSS < 4.0) | Roll into next monthly |
+| Critical Production Defect | Immediate out-of-band patch |
+
+**CVE severity ratings** follow the CVSS v3.1 base score. When a NVD score is unavailable, the OpenZiti security team assigns a provisional rating using the same scale.
+
+---
+
+### Dependency Update Policy
+
+Dependency updates in LTS branches are not automatic. The following rules govern which dependency changes are permitted.
+
+#### Security-Driven Updates
+
+A dependency version bump is permitted when it resolves a CVE present in the currently pinned version, regardless of whether the CVE is in a direct or transitive dependency. The bump is limited to the minimum version that resolves the CVE.
+
+#### Approved Low-Risk Updates
+
+A dependency update that does not resolve a CVE may be included in a monthly patch if all of the following are true:
+
+1. The update is to a direct dependency (not transitive-only).
+2. The update is to a minor or patch version — no major version bumps.
+3. The change has passed CI and does not require any code changes in OpenZiti itself.
+4. The update has been explicitly approved in the patch preparation checklist by a maintainer.
+
+#### Toolchain and Build Compatibility
+
+Updates to build toolchain, Go version, or CI infrastructure that are required to produce a buildable, testable artifact are permitted. These are not considered functional dependency updates.
+
+---
+
+### Patch Preparation Process
+
+#### Branch Structure
+
+Each LTS line maintains a dedicated support branch named `release-vMAJOR.MINOR` (e.g., `release-v2.0`). All patches are applied to this branch and tagged from it. No patch is applied without a corresponding reviewed and approved commit (cherry-pick or direct fix).
+
+The `main` branch is the source of truth for active development and is not used for LTS patch releases.
+
+#### Patch Checklist
+
+Before cutting a patch, the maintainer responsible for the release completes the following:
+
+1. **Change audit** — review all commits on the LTS branch since the last tag; confirm every commit is a permitted change type (security fix, critical bug fix, approved dependency update, toolchain update).
+2. **CVE scan** — run a dependency vulnerability scan against the branch; confirm no unaddressed Critical or High CVEs remain.
+3. **Testing gate** — confirm the required test suite has passed (see [Release Testing Levels](#release-testing-levels)).
+4. **Changelog entry** — draft release notes listing every change, CVEs addressed (with CVE ID and CVSS score), and any dependency version changes.
+5. **Tag and sign** — create an annotated, signed git tag of the form `vMAJOR.MINOR.PATCH`.
+
+#### Release Notes
+
+Every LTS patch release must include:
+
+- The list of CVEs addressed, with CVE ID, CVSS score, affected component, and fix summary.
+- Any dependency version changes, including old and new versions.
+- Any critical bug fixes, with a plain-language description of the impact.
+- The next expected patch date.
+
+---
+
+### Where Patches Are Published
+
+LTS patch releases are published to all of the following:
+
+| Channel | Notes |
+|---|---|
+| GitHub Releases | Tagged release with changelog, signed binaries, and SHA checksums. |
+| Docker Hub / GitHub Container Registry | Updated image tags for the `vMAJOR.MINOR` line. |
+| Package repositories (apt/rpm) | Updated for distributions where packages are maintained. |
+
+Point tags (`vMAJOR.MINOR.PATCH`) are immutable once published.
+
+Security-related releases include a corresponding GitHub Security Advisory linked from the release notes.
+
+---
+
+### Communication
+
+| Event | Action |
+|---|---|
+| Monthly scheduled patch | GitHub Release notes; changelog entry. |
+| Out-of-band security patch (Critical CVE or High with exploit) | GitHub Release notes; GitHub Security Advisory; post to OpenZiti community forum and Discourse/Slack announcement channels. |
+| LTS phase transition (Active → Maintenance) | Announcement in GitHub Discussions and release notes of the final Active LTS patch. |
+| LTS End of Life | Announcement 90 days in advance; final EOL notice in the last patch release notes. |
+
+---
+
