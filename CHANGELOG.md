@@ -3,6 +3,7 @@
 ## What's New
 
 * [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
+* [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
@@ -31,6 +32,23 @@ controller and add new peers normally with `ziti ops cluster add`.
 * Add support for negotiating e2ee scheme during Dial/Accept handshake
 * Allow hosting-side crypto material to be generated on per connection basis (instead of per terminator)
 
+
+## Quickstart Cluster
+
+`ziti run quickstart cluster` stands up a multi-node HA controller cluster with a single command, for
+testing, learning, and local development. It launches one quickstart child process per node (default 3,
+minimum 3, configurable with `--size`), initializes the first
+node, joins the rest, and prints a banner once the whole cluster is online listing each node's controller
+address, router address, process id, and per-node log file.
+
+Each node runs as its own operating-system process, so you can stop, restart, or attach a debugger to any
+single node to explore HA behavior without disturbing the others. The banner prints the exact
+`ziti run quickstart` command needed to start each node by hand.
+
+Lifecycle mirrors the single-node quickstart. Pass `--home` for a persistent cluster you can stop and start
+again: restarting against an existing `--home` rejoins the existing cluster rather than re-initializing it,
+and the nodes start together to re-form a quorum. Omit `--home` to run from a temporary directory that is
+removed on a clean shutdown. Pressing Ctrl-C stops every node.
 
 ## Fully Connected Controller Mesh
 

@@ -125,6 +125,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 	addCommonQuickstartFlags(cmd, options)
 	addQuickstartHaFlags(cmd, options)
 	cmd.AddCommand(NewQuickStartJoinClusterCmd(out, errOut, context))
+	cmd.AddCommand(NewQuickStartClusterCmd(out, errOut, context))
 	return cmd
 }
 
@@ -316,17 +317,23 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	p := common.NewOptionsProvider(o.out, o.errOut)
 	fmt.Println("waiting three seconds for controller to become ready...")
 
-	if !o.joinCommand {
+	// Target our own ops-agent by its socket path rather than --pid. With --pid the
+	// agent client enumerates and contacts every gops socket on the host, which is
+	// slow when stale sockets accumulate. --app-addr dials us directly.
+	agentSock := "unix:" + path.Join(os.TempDir(), fmt.Sprintf("gops-agent.%d.sock", os.Getpid()))
+
+	if o.AlreadyInitialized {
+		logrus.Infof("instance %s already initialized; skipping cluster init/join and rejoining the existing cluster", o.InstanceID)
+	} else if !o.joinCommand {
 		maxRetries := 5
 		for attempt := 1; attempt <= maxRetries; attempt++ {
 			fmt.Printf("initializing controller at port: %d\n", o.ControllerPort)
 			agentInitCmd := agentcli.NewAgentClusterInit(p)
-			pid := os.Getpid()
 			args := []string{
 				o.Username,
 				o.Password,
 				o.Username,
-				fmt.Sprintf("--pid=%d", pid),
+				fmt.Sprintf("--app-addr=%s", agentSock),
 				"--timeout=30s",
 			}
 			agentInitCmd.SetArgs(args)
@@ -346,35 +353,31 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			}
 		}
 	} else {
-		agentJoinCmd := agentcli.NewAgentClusterAdd(p)
+		// Joining can fail transiently while the target elects a leader, so retry until it succeeds or the deadline elapses.
+		joinDeadline := time.Now().Add(90 * time.Second)
+		attempt := 0
+		for {
+			attempt++
+			agentJoinCmd := agentcli.NewAgentClusterAdd(p)
+			agentJoinCmd.SetArgs([]string{
+				o.ClusterMember,
+				fmt.Sprintf("--app-addr=%s", agentSock),
+				fmt.Sprintf("--voter=%t", !o.nonVoter),
+				"--timeout=30s",
+			})
 
-		args := []string{
-			o.ClusterMember,
-			fmt.Sprintf("--pid=%d", os.Getpid()),
-			fmt.Sprintf("--voter=%t", !o.nonVoter),
-			"--timeout=30s",
-		}
-		agentJoinCmd.SetArgs(args)
-
-		addChan := make(chan error, 1)
-		addTimeout := time.Second * 30
-		go func() {
-			o.waitForLeader()
-			addChan <- agentJoinCmd.Execute()
-		}()
-
-		select {
-		case agentJoinErr := <-addChan:
-			if agentJoinErr != nil {
+			joinErr := agentJoinCmd.Execute()
+			if joinErr == nil {
+				logrus.Infof("add command successful after %d attempt(s). continuing...", attempt)
+				break
+			}
+			if time.Now().After(joinDeadline) {
 				o.cleanupHome()
 				cancel()
-				return fmt.Errorf("failed to join cluster: %w", agentJoinErr)
+				return fmt.Errorf("failed to join cluster after %d attempt(s): %w", attempt, joinErr)
 			}
-			logrus.Info("Add command successful. continuing...")
-		case <-time.After(addTimeout):
-			o.cleanupHome()
-			cancel()
-			return fmt.Errorf("timed out adding to cluster")
+			logrus.Warnf("join attempt %d failed: %v, retrying", attempt, joinErr)
+			time.Sleep(2 * time.Second)
 		}
 	}
 
@@ -387,6 +390,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	o.runRouter(erConfigFile)
 
 	ch := make(chan os.Signal, 1)
+	// os.Interrupt also catches a relayed Windows CTRL_BREAK which the Go runtime maps to SIGINT
 	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 
 	if !o.Routerless {
@@ -419,7 +423,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 			cont = "`"
 		}
 		fmt.Println("Quickly add another member to this cluster using: ")
-		fmt.Printf("  ziti edge quickstart join %s\n", cont)
+		fmt.Printf("  ziti run quickstart join %s\n", cont)
 		fmt.Printf("    --ctrl-port %d %s\n", o.ControllerPort+1, cont)
 		fmt.Printf("    --router-port %d %s\n", o.RouterPort+1, cont)
 		fmt.Printf("    --home \"%s\" %s\n", o.Home, cont)
