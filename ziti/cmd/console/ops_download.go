@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -93,13 +92,9 @@ func (o *DownloadOptions) Run() error {
 		return err
 	}
 
-	version := normalizeVersion(o.Version)
-	if version == "" || strings.EqualFold(version, "latest") {
-		resolved, err := resolveLatestVersion()
-		if err != nil {
-			return fmt.Errorf("failed to resolve latest ZAC version: %w", err)
-		}
-		version = resolved
+	version, err := resolveVersion(o.Version)
+	if err != nil {
+		return err
 	}
 
 	_, _ = fmt.Fprintf(o.Out, "Downloading ZAC %s\n  source    %s\n  target    %s\n", version, downloadURL(version), o.Location)

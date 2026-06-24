@@ -41,14 +41,9 @@ func (o *ConsoleOptions) resolveAssets() (string, error) {
 }
 
 func (o *ConsoleOptions) downloadAssets() (string, error) {
-	version := normalizeVersion(o.Version)
-	if strings.EqualFold(version, "latest") {
-		resolved, err := resolveLatestVersion()
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve latest ZAC version: %w", err)
-		}
-		o.logger().Infof("latest ZAC version resolved to %s", resolved)
-		version = resolved
+	version, err := resolveVersion(o.Version)
+	if err != nil {
+		return "", err
 	}
 
 	cacheRoot, err := o.cacheDir()

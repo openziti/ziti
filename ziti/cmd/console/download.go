@@ -62,6 +62,20 @@ func normalizeVersion(version string) string {
 	return strings.TrimPrefix(strings.TrimSpace(version), "v")
 }
 
+// resolveVersion normalizes v and resolves it to a concrete published version, treating "" or
+// "latest" as a request for the newest release.
+func resolveVersion(v string) (string, error) {
+	v = normalizeVersion(v)
+	if v == "" || strings.EqualFold(v, "latest") {
+		resolved, err := resolveLatestVersion()
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve latest ZAC version: %w", err)
+		}
+		return resolved, nil
+	}
+	return v, nil
+}
+
 // resolveLatestVersion lists releases and returns the highest semver bearing the ZAC app
 // tag prefix. The repo also publishes library releases under a different prefix, so we
 // filter rather than trusting /releases/latest.

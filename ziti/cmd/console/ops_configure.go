@@ -181,14 +181,9 @@ func (o *ConfigureOptions) ensureLocationAndAssets(reader *bufio.Reader) error {
 		}
 	}
 
-	// Be lenient about a leading "v": the release tag prefix already supplies it, so strip it.
-	version = normalizeVersion(version)
-	if version == "" || strings.EqualFold(version, "latest") {
-		resolved, err := resolveLatestVersion()
-		if err != nil {
-			return fmt.Errorf("failed to resolve latest ZAC version: %w", err)
-		}
-		version = resolved
+	version, err = resolveVersion(version)
+	if err != nil {
+		return err
 	}
 
 	_, _ = fmt.Fprintf(o.Out, "\nDownloading ZAC %s from %s\n  to %s ...\n", version, downloadURL(version), o.Location)
