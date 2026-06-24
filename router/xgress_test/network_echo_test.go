@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

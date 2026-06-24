@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 )
 
 func Test_UpdateTerminators(t *testing.T) {

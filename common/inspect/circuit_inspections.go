@@ -1,6 +1,6 @@
 package inspect
 
-import "github.com/openziti/sdk-golang/xgress"
+import "github.com/openziti/sdk-golang/v2/xgress"
 
 const (
 	RouterCircuitsKey     = "router-circuits"

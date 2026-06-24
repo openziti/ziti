@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/spf13/cobra"
 )
 
@@ -180,7 +180,7 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 			circuitId = ztConn.GetCircuitId()
 			log = log.WithField("circuitId", circuitId).
 				WithField("connId", ztConn.Id()).
-				WithField("routerId", ztConn.GetRouterId())
+				WithField("remoteAddr", ztConn.RemoteAddr().String())
 		}
 
 		active.Add(1)

@@ -17,7 +17,7 @@
 package xgress_geneve
 
 import (
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/pkg/errors"
 )
 

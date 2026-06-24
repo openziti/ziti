@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"

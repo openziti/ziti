@@ -17,8 +17,8 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/env"
 	fabric_rest_client "github.com/openziti/ziti/v2/controller/rest_client"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"

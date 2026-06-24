@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
 	"github.com/zitadel/oidc/v3/pkg/oidc"

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 )

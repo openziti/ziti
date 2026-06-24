@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
 )
 

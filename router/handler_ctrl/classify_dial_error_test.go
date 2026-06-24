@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"

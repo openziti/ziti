@@ -49,7 +49,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common"

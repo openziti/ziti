@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"

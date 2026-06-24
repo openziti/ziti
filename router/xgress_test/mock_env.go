@@ -3,7 +3,7 @@ package xgress_test
 import (
 	"time"
 
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 )
 
 type noopMetrics struct{}

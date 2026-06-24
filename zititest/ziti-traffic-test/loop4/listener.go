@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -113,9 +113,9 @@ func (cmd *listenerCmd) handle(conn net.Conn, workload *Workload) {
 
 	if edgeConn, ok := conn.(edge.Conn); ok {
 		log = log.WithFields(logrus.Fields{
-			"connId":    edgeConn.Id(),
-			"circuitId": edgeConn.GetCircuitId(),
-			"routerId":  edgeConn.GetRouterId(),
+			"connId":     edgeConn.Id(),
+			"circuitId":  edgeConn.GetCircuitId(),
+			"remoteAddr": edgeConn.RemoteAddr().String(),
 		})
 	}
 

@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/websockets"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/ziti/util"
 )
 

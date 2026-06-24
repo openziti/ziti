@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/info"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/openziti/ziti/v2/router/xgress_udp"
