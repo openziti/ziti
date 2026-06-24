@@ -10,6 +10,7 @@
     * [Issue #3928](https://github.com/openziti/ziti/issues/3928) - [Backport-2.0] Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
     * [Issue #3958](https://github.com/openziti/ziti/issues/3958) - [Backport-2.0] Tunneler skips iptables rules for services sharing an intercept hostname
     * [Issue #3959](https://github.com/openziti/ziti/issues/3959) - [Backport-2.0] Refcount wildcard-allocated intercept hostnames
+    * [Issue #4031](https://github.com/openziti/ziti/issues/4031) - [Backport-2.0] Router deletes terminators ~12m after creation when host SDK replies with wrong inspect content type
 
 
 # Release 2.0.0
