@@ -103,7 +103,7 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 		pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().Color())
 	}
 	if o.Size < 3 || o.Size > 9 {
-		return fmt.Errorf("when using --size the value must be between 3 and 9. More cluster members cause slower mutations.")
+		return fmt.Errorf("when using --size the value must be between 3 and 9, more cluster members cause slower mutations")
 	}
 	// Node i uses CtrlPort+i and RouterPort+i. Validate the derived ranges up front
 	// so an out-of-range or overlapping port is a clear error rather than a

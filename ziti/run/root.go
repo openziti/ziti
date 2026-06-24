@@ -24,6 +24,7 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/logging"
+	"github.com/openziti/ziti/v2/ziti/cmd/console"
 	"github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/sirupsen/logrus"
@@ -117,6 +118,7 @@ func NewRunCmd(out, err io.Writer) *cobra.Command {
 	cmd.AddCommand(NewRunRouterCmd())
 	cmd.AddCommand(tunnel.NewTunnelCmd(false))
 	cmd.AddCommand(NewQuickStartCmd(out, err, context.Background()))
+	cmd.AddCommand(console.NewConsoleCmd(out, err))
 
 	return cmd
 }

@@ -150,6 +150,21 @@ ziti edge quickstart
 
 This brings up a local development network: controller, router, and a default admin identity. Ideal for testing and learning.
 
+To add the Ziti Admin Console (ZAC) to a running controller:
+
+```bash
+ziti ops console download --location /opt/openziti/console
+ziti ops console configure /path/to/controller.yml --all --location /opt/openziti/console
+# restart the controller, then open https://<controller-address>/zac/
+```
+
+Or serve ZAC locally without touching the controller config:
+
+```bash
+ziti run console --version latest
+# opens https://127.0.0.1:8443. point it at any controller from the browser
+```
+
 ### Learn More
 
 | Resource | Description |
