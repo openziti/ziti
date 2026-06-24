@@ -2,6 +2,7 @@
 
 ## What's New
 
+* [ZAC Bootstrapping CLI](#zac-bootstrapping-cli) - CLI commands to download, configure, and serve the Ziti Admin Console without hand-editing YAML
 * [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
@@ -11,6 +12,50 @@
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
+
+## ZAC Bootstrapping CLI
+
+Three new commands make it easy to get the Ziti Admin Console running without manual file editing.
+
+**Download ZAC:**
+
+```
+ziti ops console download [version] --location <dir>
+```
+
+Downloads a ZAC release from GitHub and extracts it into the given directory. `version` defaults to
+`latest`. The target directory must be empty or not yet exist; the command never removes or overwrites
+existing files.
+
+**Configure a controller to serve it:**
+
+```
+ziti ops console configure <controller-config.yml> --all --location <dir>
+```
+
+Edits the controller config YAML in place, adding or updating the `spa` web-listener binding so the
+controller serves ZAC from the given directory. Selects listeners with `--all` or `--name`; prompts
+interactively when neither is given. The file's comments and structure are preserved.
+
+**Serve it locally:**
+
+If you prefer to serve the console locally rather than have a controller host it, you can serve ZAC
+straight from the ziti CLI:
+
+```
+ziti run console --location <dir>
+ziti run console --version latest
+```
+
+Serves the ZAC SPA over HTTPS on `127.0.0.1:8443`. Generates a self-signed cert automatically if none
+is supplied. The browser points ZAC at whatever controller you choose inside the console itself.
+
+To serve with your own certificate on a specific address and port:
+
+```
+ziti run console --location <dir> --bind-address 0.0.0.0 --port 9443 \
+  --tls-cert ./server.pem --tls-key ./server.key
+```
 
 ## Cluster Quorum Recovery
 

@@ -41,6 +41,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/v2/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/console"
 	"github.com/openziti/ziti/v2/ziti/cmd/create"
 	"github.com/openziti/ziti/v2/ziti/cmd/demo"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
@@ -245,6 +246,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
+	opsCommands.AddCommand(console.NewConsoleOpsCmd(out, err))
 
 	groups := templates.CommandGroups{
 		{
@@ -430,6 +432,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
 	opsCommands.AddCommand(importer.NewImportCmd(out, err))
+	opsCommands.AddCommand(console.NewConsoleOpsCmd(out, err))
 
 	// Add agent under ops
 	opsCommands.AddCommand(agentcli.NewAgentCmd(p))
