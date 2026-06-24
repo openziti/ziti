@@ -591,6 +591,56 @@ func (self *inspectResponseEvent) handle(registry *hostedServiceRegistry) {
 	}
 }
 
+// inspectRequestSendable wraps a ConnInspectRequest so its reply is correlated by reply
+// sequence (via the channel waiter map) instead of by message content type.
+//
+// Workaround for sdk-golang v1.1.0 - v1.5.3: those versions reply to a ConnInspectRequest
+// (60798) with content type InspectResponse (60805) instead of ConnInspectResponse (60799).
+// Such a reply has no typed receive handler on the router, so it is dropped, the post-create
+// inspect never completes, and the terminator is deleted as unresponsive. Registering a reply
+// receiver keyed on the request sequence lets us accept the reply regardless of content type.
+//
+// To remove once sdk-golang < v1.5.4 is out of support: send a plain *channel.Message again
+// and let the ContentTypeConnInspectResponse handler registered in accept.go process the reply.
+type inspectRequestSendable struct {
+	*channel.Message
+	registry *hostedServiceRegistry
+	conn     *edgeClientConn
+}
+
+var _ channel.Sendable = (*inspectRequestSendable)(nil)
+var _ channel.ReplyReceiver = (*inspectRequestSendable)(nil)
+
+// ReplyReceiver returns the sendable itself so the channel delivers the reply to AcceptReply.
+func (self *inspectRequestSendable) ReplyReceiver() channel.ReplyReceiver {
+	return self
+}
+
+// AcceptReply is invoked on the channel rx goroutine when the inspect reply arrives. It parses
+// the result leniently (ignoring content type) and hands off to the registry event loop.
+func (self *inspectRequestSendable) AcceptReply(reply *channel.Message) {
+	self.registry.queue(&inspectResponseEvent{
+		conn:     self.conn,
+		replyFor: reply.ReplyFor(),
+		result:   unmarshalInspectResultLenient(reply),
+	})
+}
+
+// unmarshalInspectResultLenient parses a conn inspect reply without checking the content type,
+// unlike edge.UnmarshalInspectResult. See inspectRequestSendable for why this is needed.
+func unmarshalInspectResultLenient(msg *channel.Message) *edge.InspectResult {
+	connId, _ := msg.GetUint32Header(edge.ConnIdHeader)
+	connType, found := msg.GetByteHeader(edge.ConnTypeHeader)
+	if !found {
+		connType = byte(edge.ConnTypeUnknown)
+	}
+	return &edge.InspectResult{
+		ConnId: connId,
+		Type:   edge.ConnType(connType),
+		Detail: string(msg.Body),
+	}
+}
+
 func (self *hostedServiceRegistry) evaluatePostCreateInspects() {
 	for id, pending := range self.postCreateInspectSet {
 		log := pfxlog.Logger().
@@ -632,7 +682,15 @@ func (self *hostedServiceRegistry) evaluatePostCreateInspects() {
 		if pending.lastSent.IsZero() || time.Since(pending.lastSent) > 10*time.Second {
 			msg := channel.NewMessage(edge.ContentTypeConnInspectRequest, nil)
 			msg.PutUint32Header(edge.ConnIdHeader, pending.terminator.Id())
-			queued, err := pending.terminator.GetControlSender().TrySend(msg)
+			// Wrap the request so the reply is correlated by reply sequence rather than content
+			// type. See inspectRequestSendable for why this workaround exists. The reply still
+			// flows into inspectResponseEvent, so the validation logic below is unchanged.
+			sendable := &inspectRequestSendable{
+				Message:  msg,
+				registry: self,
+				conn:     pending.terminator.edgeClientConn,
+			}
+			queued, err := pending.terminator.GetControlSender().TrySend(sendable)
 			if err != nil {
 				log.WithError(err).Warn("post-create inspect: error sending inspect request, removing")
 				delete(self.postCreateInspectSet, id)
