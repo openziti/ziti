@@ -19,15 +19,33 @@ package cli_tests
 
 import (
 	"bytes"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+// skipIfNoGitHub skips the calling test when the GitHub releases API is unreachable or
+// rate-limiting, so an offline or rate-limited run does not fail for reasons unrelated to the
+// code under test. Unauthenticated GitHub API calls are capped at 60/hr.
+func skipIfNoGitHub(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodHead,
+		"https://api.github.com/repos/openziti/ziti-console/releases?per_page=1", nil)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	if err != nil {
+		t.Skipf("skipping network test: GitHub unreachable: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		t.Skipf("skipping network test: GitHub rate-limited (status %d)", resp.StatusCode)
+	}
+}
 
 // runZiti drives the ziti command tree in-process with an explicit arg slice (so paths with
 // spaces are not mangled) and returns command output plus the command error. Output is
@@ -272,6 +290,7 @@ func Test_Console_Ops(t *testing.T) {
 	// These hit the openziti/ziti-console GitHub releases over the network on purpose: they
 	// are the guard that "latest" resolution and concrete-version downloads keep working.
 	t.Run("download latest installs a usable console", func(t *testing.T) {
+		skipIfNoGitHub(t)
 		dir := filepath.Join(t.TempDir(), "console")
 
 		_, err := runZiti("ops", "console", "download", "--location", dir)
@@ -288,10 +307,20 @@ func Test_Console_Ops(t *testing.T) {
 	})
 
 	t.Run("download a specific version installs that version", func(t *testing.T) {
-		const wantVersion = "4.3.0"
-		dir := filepath.Join(t.TempDir(), "console")
+		skipIfNoGitHub(t)
 
-		_, err := runZiti("ops", "console", "download", wantVersion, "--location", dir)
+		// Discover a currently-published version rather than pinning a literal that may be
+		// yanked or superseded, then download it explicitly and confirm it is what we asked for.
+		latestDir := filepath.Join(t.TempDir(), "latest")
+		_, err := runZiti("ops", "console", "download", "--location", latestDir)
+		require.NoError(t, err)
+		v, vErr := os.ReadFile(filepath.Join(latestDir, ".version"))
+		require.NoError(t, vErr)
+		wantVersion := strings.TrimSpace(string(v))
+		require.NotEmpty(t, wantVersion)
+
+		dir := filepath.Join(t.TempDir(), "console")
+		_, err = runZiti("ops", "console", "download", wantVersion, "--location", dir)
 		require.NoError(t, err)
 
 		_, statErr := os.Stat(filepath.Join(dir, "index.html"))
