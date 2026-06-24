@@ -261,6 +261,7 @@ const (
 	FlagPostCreateAccessChecked = 1
 	FlagIsCircuitInitiator      = 2
 	FlagIsHostSide              = 3
+	FlagSentFin                 = 4
 
 	FlagPostCreateAccessCheckedMask = 1 << FlagPostCreateAccessChecked
 	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
@@ -284,7 +285,16 @@ func (self *edgeXgressConn) GetCircuitId() string {
 }
 
 func (self *edgeXgressConn) GetServiceId() string {
-	if data := self.GetData(); data != nil && data.ServiceSessionToken != nil {
+	data := self.GetData()
+	if data == nil {
+		return ""
+	}
+	if data.ServiceId != "" {
+		return data.ServiceId
+	}
+	// Defensive fallback for any path that didn't populate ConnState.ServiceId
+	// directly but did set the legacy ServiceSessionToken.
+	if data.ServiceSessionToken != nil {
 		return data.ServiceSessionToken.ServiceId
 	}
 	return ""
@@ -496,6 +506,36 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 	if self.onClose != nil {
 		self.onClose()
+	}
+}
+
+// FlowFromFabricToXgressClosed implements xgress.SignalConnection. It is invoked
+// when the fabric->app (tx) half of the circuit closes gracefully: the far side
+// sent EOF/end-of-circuit without tearing the whole circuit down. This happens
+// on the ConnectV2 path when an xgress-based initiator closes (the SDK sends a
+// half-close EOF rather than a full CircuitEnd), with this conn bridging to a
+// legacy host. We propagate a FIN to the SDK edge conn so a blocked Read returns
+// io.EOF, while leaving the app->fabric (rx) half open so the conn can still
+// write. This is the half-close counterpart to close(), which sends a full
+// StateClosed and tears down both halves.
+func (self *edgeXgressConn) FlowFromFabricToXgressClosed() {
+	if self.flags.IsSet(FlagClosed) || self.GetChannel().IsClosed() {
+		return
+	}
+
+	// Send the FIN at most once; a subsequent full close still sends StateClosed.
+	if !self.flags.CompareAndSet(FlagSentFin, false, true) {
+		return
+	}
+
+	// An empty data message carrying the FIN flag; the SDK's chunk reader maps
+	// FIN to io.EOF. Sent on the default (data) sender so it stays ordered
+	// behind any payloads already forwarded to the SDK.
+	msg := edge.NewDataMsg(self.Id(), nil)
+	msg.PutUint32Header(edge.FlagsHeader, edge.FIN)
+	if err := self.GetDefaultSender().Send(msg); err != nil {
+		pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id()).
+			WithError(err).Warn("unable to send FIN to edge client on fabric-to-xgress close")
 	}
 }
 

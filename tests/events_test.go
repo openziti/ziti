@@ -294,7 +294,9 @@ func Test_OidcEvents(t *testing.T) {
 	ctx.Req.Equal("circuit", circuitEvent.Namespace)
 	ctx.Req.Equal("created", string(circuitEvent.EventType))
 	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
-	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
+	// ConnectV2 dials are sessionless, so the circuit's ClientId is the dialing
+	// identity id rather than an edge (dial) session id.
+	ctx.Req.Equal(clientIdentity.Id, circuitEvent.ClientId)
 
 	timeout := time.Second * 20
 	for i := 0; i < 3; i++ {
@@ -310,7 +312,7 @@ func Test_OidcEvents(t *testing.T) {
 		} else if circuitEvent, ok := evt.(*event.CircuitEvent); ok {
 			ctx.Req.Equal("circuit", circuitEvent.Namespace)
 			ctx.Req.Equal("deleted", string(circuitEvent.EventType))
-			ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
+			ctx.Req.Equal(clientIdentity.Id, circuitEvent.ClientId)
 		} else {
 			ctx.Req.Fail("unexpected event type: %v", reflect.TypeOf(evt))
 		}

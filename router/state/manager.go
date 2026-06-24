@@ -67,9 +67,15 @@ type RemoveListener func()
 // ConnState encapsulates the authentication and authorization context for an
 // edge connection, bundling API session credentials, service-specific tokens,
 // and policy enforcement metadata for streamlined access control decisions.
+//
+// ServiceId is the authoritative service identifier for the connection. For
+// V1 dials it matches ServiceSessionToken.ServiceId; for V2 sessionless
+// dials there is no token so this field is the only carrier. Set unconditionally
+// by the connect handlers.
 type ConnState struct {
 	ApiSessionToken     *ApiSessionToken
 	ServiceSessionToken *ServiceSessionToken
+	ServiceId           string
 	PolicyType          edge_ctrl_pb.PolicyType
 }
 
@@ -1224,7 +1230,14 @@ func (self *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *Service
 		edgeConn, connIdToSink := GetConnProviderAndSinksFromCh(activeChannel)
 
 		for connId, sink := range connIdToSink {
-			if serviceSessionToken.TokenId() == sink.GetData().ServiceSessionToken.TokenId() {
+			// V2 (sessionless) dials register a sink whose ConnState has no
+			// ServiceSessionToken; such a conn can't belong to a legacy service
+			// session, so skip it rather than dereferencing a nil token.
+			sinkToken := sink.GetData().ServiceSessionToken
+			if sinkToken == nil {
+				continue
+			}
+			if serviceSessionToken.TokenId() == sinkToken.TokenId() {
 				err := edgeConn.CloseConn(connId, fmt.Sprintf("closing connId %d, legacy service session was removed by controller sync", connId))
 
 				if err != nil {
