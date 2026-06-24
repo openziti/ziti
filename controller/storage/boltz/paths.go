@@ -149,6 +149,11 @@ type deletedIdScanner struct {
 }
 
 func (visitor *deletedIdScanner) VisitBucket(path string, key []byte, _ *bbolt.Bucket) bool {
+	for _, ignorePath := range visitor.ignorePaths {
+		if strings.HasPrefix(path, ignorePath) {
+			return true
+		}
+	}
 	if bytes.Equal(visitor.key, key) {
 		visitor.err = errors.Errorf("found id %v as key under path %v", string(visitor.key), path)
 		return false

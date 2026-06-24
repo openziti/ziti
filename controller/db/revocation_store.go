@@ -24,14 +24,16 @@ import (
 )
 
 const (
-	FieldRevocationExpiresAt = "expiresAt"
-	FieldRevocationType      = "type"
+	FieldRevocationExpiresAt    = "expiresAt"
+	FieldRevocationType         = "type"
+	FieldRevocationIssuedBefore = "issuedBefore"
 )
 
 type Revocation struct {
 	boltz.BaseExtEntity
-	ExpiresAt time.Time `json:"expiresAt"`
-	Type      string    `json:"type"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+	Type         string    `json:"type"`
+	IssuedBefore time.Time `json:"issuedBefore"`
 }
 
 func (r Revocation) GetEntityType() string {
@@ -59,6 +61,7 @@ func (store *revocationStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.AddSymbol(FieldRevocationExpiresAt, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldRevocationType, ast.NodeTypeString)
+	store.AddSymbol(FieldRevocationIssuedBefore, ast.NodeTypeDatetime)
 }
 
 func (store *revocationStoreImpl) initializeLinked() {}
@@ -71,10 +74,12 @@ func (store *revocationStoreImpl) FillEntity(entity *Revocation, bucket *boltz.T
 	entity.LoadBaseValues(bucket)
 	entity.ExpiresAt = bucket.GetTimeOrError(FieldRevocationExpiresAt)
 	entity.Type = bucket.GetStringWithDefault(FieldRevocationType, "")
+	entity.IssuedBefore = bucket.GetTimeOrDefault(FieldRevocationIssuedBefore, time.Time{})
 }
 
 func (store *revocationStoreImpl) PersistEntity(entity *Revocation, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetTimeP(FieldRevocationExpiresAt, &entity.ExpiresAt)
 	ctx.SetString(FieldRevocationType, entity.Type)
+	ctx.SetTimeP(FieldRevocationIssuedBefore, &entity.IssuedBefore)
 }
