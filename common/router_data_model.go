@@ -2250,19 +2250,29 @@ func (rdm *RouterDataModel) loadServicePostureChecks(identity *Identity, policy 
 }
 
 func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *IdentityService) {
-	log := pfxlog.Logger().
-		WithField("identityId", identity.Id).
-		WithField("serviceId", svc.Service.Id)
+	svc.Configs = rdm.GetIdentityServiceConfigs(identity, svc.Service.Id)
+}
 
+// GetIdentityServiceConfigs returns the resolved config set for the given identity and service,
+// keyed by config type name. It merges the service's base configs with the identity's per-service
+// config overrides, so the result is the effective config that identity should use for that
+// service. Returns nil if the service is unknown.
+func (rdm *RouterDataModel) GetIdentityServiceConfigs(identity *Identity, serviceId string) map[string]*IdentityConfig {
+	svc, ok := rdm.Services.Get(serviceId)
+	if !ok {
+		return nil
+	}
+
+	log := pfxlog.Logger().WithField("identityId", identity.Id).WithField("serviceId", serviceId)
 	result := map[string]*IdentityConfig{}
 
-	for _, configId := range svc.Service.Configs {
+	for _, configId := range svc.Configs {
 		if identityConfig := rdm.loadIdentityConfig(configId, log); identityConfig != nil {
 			result[identityConfig.TypeName] = identityConfig
 		}
 	}
 
-	if serviceConfigs, hasOverride := identity.ServiceConfigs[svc.Service.Id]; hasOverride {
+	if serviceConfigs, hasOverride := identity.ServiceConfigs[serviceId]; hasOverride {
 		for _, configId := range serviceConfigs.Configs {
 			if identityConfig := rdm.loadIdentityConfig(configId, log); identityConfig != nil {
 				result[identityConfig.TypeName] = identityConfig
@@ -2270,7 +2280,7 @@ func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *Identity
 		}
 	}
 
-	svc.Configs = result
+	return result
 }
 
 func (rdm *RouterDataModel) loadIdentityConfig(configId string, log *logrus.Entry) *IdentityConfig {

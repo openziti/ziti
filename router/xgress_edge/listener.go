@@ -1635,6 +1635,25 @@ func (self *edgeClientConn) sendPostureState(structuralIndex uint64) {
 // buildServiceSnapshot builds a full-state ServiceChangeSet (previousIndex=-1) for the
 // given identity from the current RDM. Every service the identity can access is included
 // along with the PolicyDef and PostureCheckDef entries they reference.
+// buildConfigData resolves the config bodies an identity should use for a service and converts them
+// to wire form. Returns nil when the service has no configs in scope for the identity.
+func buildConfigData(rdm *common.RouterDataModel, identity *common.Identity, serviceId string) []*edge_client_pb.ConfigData {
+	resolved := rdm.GetIdentityServiceConfigs(identity, serviceId)
+	if len(resolved) == 0 {
+		return nil
+	}
+
+	result := make([]*edge_client_pb.ConfigData, 0, len(resolved))
+	for _, cfg := range resolved {
+		result = append(result, &edge_client_pb.ConfigData{
+			TypeId:   cfg.TypeId,
+			TypeName: cfg.TypeName,
+			DataJson: cfg.DataJson,
+		})
+	}
+	return result
+}
+
 func buildServiceSnapshot(rdm *common.RouterDataModel, identityId string) *edge_client_pb.ServiceChangeSet {
 	cs := &edge_client_pb.ServiceChangeSet{
 		Index:         int64(rdm.CurrentIndex()),
@@ -1683,6 +1702,7 @@ func buildServiceSnapshot(rdm *common.RouterDataModel, identityId string) *edge_
 			EncryptionRequired: svc.EncryptionRequired,
 			Configs:            svc.Configs,
 			PolicyIds:          servicePolicyIds[serviceId],
+			ConfigData:         buildConfigData(rdm, identity, serviceId),
 		})
 	}
 
@@ -1781,6 +1801,11 @@ func buildIncrementalServiceChangeSet(rdm *common.RouterDataModel, identityId st
 			})
 		}
 
+		var configData []*edge_client_pb.ConfigData
+		if hasIdentity {
+			configData = buildConfigData(rdm, identity, serviceId)
+		}
+
 		cs.Services = append(cs.Services, &edge_client_pb.ServiceDef{
 			Op:                 op,
 			Id:                 serviceId,
@@ -1788,6 +1813,7 @@ func buildIncrementalServiceChangeSet(rdm *common.RouterDataModel, identityId st
 			EncryptionRequired: svc.EncryptionRequired,
 			Configs:            svc.Configs,
 			PolicyIds:          policyIds,
+			ConfigData:         configData,
 		})
 	}
 
