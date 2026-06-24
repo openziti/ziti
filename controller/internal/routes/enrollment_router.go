@@ -96,101 +96,111 @@ func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	if !r.allowNonAdminAccessToEnrollment(ae, rc) {
-		return
-	}
-	DetailWithHandler[*model.Enrollment](ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
+	r.checkNonAdminAccessToEnrollment(ae, rc, func() {
+		DetailWithHandler[*model.Enrollment](ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
+	})
 }
 
 func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	if !r.allowNonAdminAccessToEnrollment(ae, rc) {
-		return
-	}
-	DeleteWithHandler(rc, ae.Managers.Enrollment)
+	r.checkNonAdminAccessToEnrollment(ae, rc, func() {
+		DeleteWithHandler(rc, ae.Managers.Enrollment)
+	})
 }
 
 func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, params enrollment.RefreshEnrollmentParams) {
-	if !r.allowNonAdminAccessToEnrollment(ae, rc) {
-		return
-	}
+	r.checkNonAdminAccessToEnrollment(ae, rc, func() {
+		id, err := rc.GetEntityId()
 
-	id, err := rc.GetEntityId()
-
-	if err != nil {
-		rc.RespondWithError(err)
-		return
-	}
-
-	if id == "" {
-		rc.RespondWithNotFound()
-		return
-	}
-
-	if err := ae.Managers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt), rc.NewChangeContext()); err != nil {
-		if fe, ok := err.(*errorz.FieldError); ok {
-			rc.RespondWithFieldError(fe)
+		if err != nil {
+			rc.RespondWithError(err)
 			return
 		}
-		rc.RespondWithError(err)
-		return
-	}
 
-	rc.RespondWithEmptyOk()
+		if id == "" {
+			rc.RespondWithNotFound()
+			return
+		}
+
+		if err := ae.Managers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt), rc.NewChangeContext()); err != nil {
+			if fe, ok := err.(*errorz.FieldError); ok {
+				rc.RespondWithFieldError(fe)
+				return
+			}
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithEmptyOk()
+	})
 }
 
 func (r *EnrollmentRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params enrollment.CreateEnrollmentParams) {
-	if !r.allowNonAdminEnrollmentForIdentity(ae, rc, stringz.OrEmpty(params.Enrollment.IdentityID)) {
+	r.checkNonAdminEnrollmentForIdentity(ae, rc, stringz.OrEmpty(params.Enrollment.IdentityID), func() {
+		Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
+			return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment), rc)
+		})
+	})
+}
+
+// checkNonAdminEnrollmentForIdentity ensures that a non-admin caller is not creating an enrollment
+// that targets an admin identity. An enrollment mints the one-time-token used to enroll as its
+// target identity, so allowing this would let a non-admin escalate to admin. When access is granted
+// it invokes handler; otherwise it writes the appropriate error response and does not call handler.
+func (r *EnrollmentRouter) checkNonAdminEnrollmentForIdentity(ae *env.AppEnv, rc *response.RequestContext, identityId string, handler func()) {
+	if rc.HasPermission(permissions.AdminPermission) {
+		handler()
 		return
 	}
 
-	Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment), rc)
-	})
-
-}
-
-// allowNonAdminEnrollmentForIdentity ensures that a non-admin caller is not creating an enrollment
-// that targets an admin identity. An enrollment mints the one-time-token used to enroll as its
-// target identity, so allowing this would let a non-admin escalate to admin. It responds with an
-// unauthorized error and returns false when the operation should be denied.
-func (r *EnrollmentRouter) allowNonAdminEnrollmentForIdentity(ae *env.AppEnv, rc *response.RequestContext, identityId string) bool {
-	if rc.HasPermission(permissions.AdminPermission) {
-		return true
-	}
-
 	if identityId != "" {
-		if identity, _ := ae.Managers.Identity.Read(identityId); identity != nil && identity.IsAdmin {
+		identity, err := ae.Managers.Identity.Read(identityId)
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+		if identity != nil && identity.IsAdmin {
 			rc.RespondWithError(nonAdminNotAllowedError(errors.New("non-admins may not manage enrollments for admin identities")))
-			return false
+			return
 		}
 	}
 
-	return true
+	handler()
 }
 
-// allowNonAdminAccessToEnrollment ensures that a non-admin caller is not reading, refreshing, or
+// checkNonAdminAccessToEnrollment ensures that a non-admin caller is not reading, refreshing, or
 // deleting an enrollment that belongs to an admin identity. The enrollment carries the live token
 // and JWT used to enroll as its target identity, so exposing or refreshing an admin identity's
-// enrollment would permit privilege escalation. It responds with an unauthorized error and returns
-// false when the operation should be denied. When the enrollment cannot be loaded, it allows the
-// request to proceed so the downstream handler can produce the appropriate not-found response.
-func (r *EnrollmentRouter) allowNonAdminAccessToEnrollment(ae *env.AppEnv, rc *response.RequestContext) bool {
+// enrollment would permit privilege escalation. When access is granted it invokes handler;
+// otherwise it writes the appropriate error response and does not call handler. When the enrollment
+// cannot be loaded it denies the request rather than relying on a downstream handler to do so.
+func (r *EnrollmentRouter) checkNonAdminAccessToEnrollment(ae *env.AppEnv, rc *response.RequestContext, handler func()) {
 	if rc.HasPermission(permissions.AdminPermission) {
-		return true
+		handler()
+		return
 	}
 
 	id, err := rc.GetEntityId()
 	if err != nil {
 		rc.RespondWithError(err)
-		return false
+		return
 	}
 
 	enrollmentEntity, err := ae.Managers.Enrollment.Read(id)
-	if err != nil || enrollmentEntity == nil || enrollmentEntity.IdentityId == nil {
-		return true
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+	if enrollmentEntity == nil {
+		rc.RespondWithNotFound()
+		return
+	}
+	if enrollmentEntity.IdentityId == nil {
+		// an enrollment not tied to an identity has no admin to escalate to
+		handler()
+		return
 	}
 
-	return r.allowNonAdminEnrollmentForIdentity(ae, rc, *enrollmentEntity.IdentityId)
+	r.checkNonAdminEnrollmentForIdentity(ae, rc, *enrollmentEntity.IdentityId, handler)
 }
 
 func MapCreateEnrollmentToModel(create *rest_model.EnrollmentCreate) *model.Enrollment {
