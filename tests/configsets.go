@@ -53,6 +53,15 @@ var DualOidcServers = ConfigSet{
 	CtrlConfig: "testdata/configs/dual-oidc-servers/ctrl.yml",
 }
 
+// OidcListenerBindFailure is a controller-only config set with a second web server whose bind
+// point interface is an unbindable address, so its listener fails at startup. Used to verify that
+// a web server whose listener cannot bind causes the controller to log the error and keep the
+// other servers running, rather than panicking on a nil listener.
+var OidcListenerBindFailure = ConfigSet{
+	Name:       "oidc-listener-bind-failure",
+	CtrlConfig: "testdata/configs/oidc-listener-bind-failure/ctrl.yml",
+}
+
 // WildcardOidcServer is a controller-only config set that supplies a wildcard (*.wildcard.test) server
 // certificate via alt_server_certs alongside an ordinary primary server cert, modeling a controller fronted
 // by a wildcard (e.g. LetsEncrypt) certificate. Used to verify that the OIDC discovery document served to a
