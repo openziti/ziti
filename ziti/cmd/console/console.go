@@ -104,15 +104,17 @@ func (o *ConsoleOptions) Run() error {
 		return err
 	}
 
+	// Resolve the certificate before binding so a cert error doesn't leave the listener open or
+	// claim the port.
+	cert, err := o.serverCertificate()
+	if err != nil {
+		return err
+	}
+
 	listenAddr := net.JoinHostPort(o.BindAddress, fmt.Sprintf("%d", o.Port))
 	rawLn, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", listenAddr, err)
-	}
-
-	cert, err := o.serverCertificate()
-	if err != nil {
-		return err
 	}
 	ln := tls.NewListener(rawLn, &tls.Config{Certificates: []tls.Certificate{cert}})
 

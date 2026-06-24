@@ -95,6 +95,11 @@ func (o *ConfigureOptions) Run() error {
 	if o.Path == "" {
 		return fmt.Errorf("--path must not be empty")
 	}
+	// The controller's spa binding rejects a path with interior separators, so fail here rather
+	// than write a config the controller will refuse to load.
+	if strings.ContainsAny(o.Path, "/\\") {
+		return fmt.Errorf("--path %q must be a single segment with no '/' or '\\' separators", o.Path)
+	}
 
 	reader := bufio.NewReader(o.In)
 	if err := o.ensureLocationAndAssets(reader); err != nil {
