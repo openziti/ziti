@@ -114,7 +114,11 @@ func (self *ControllerType) StageFiles(r model.Run, c *model.Component) error {
 		return err
 	}
 
-	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
+	if err := stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath); err != nil {
+		return err
+	}
+
+	return stageLogPipeBinary(r, c, self.Version)
 }
 
 func (self *ControllerType) getConfigName(c *model.Component) string {
@@ -155,6 +159,12 @@ func (self *ControllerType) Start(r model.Run, c *model.Component) error {
 
 func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
+}
+
+// Kill hard-kills the controller with SIGKILL, skipping the graceful SIGTERM,
+// simulating an OOM kill / power loss / panic.
+func (self *ControllerType) Kill(_ model.Run, c *model.Component) error {
+	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
 }
 
 func (self *ControllerType) GetBinaryPath(c *model.Component) string {
