@@ -161,6 +161,27 @@ func (self *RouterType) Stop(run model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
 }
 
+// Kill hard-kills the router with SIGKILL, skipping the graceful SIGTERM. The
+// process gets no chance to close links or send faults, simulating an OOM kill /
+// power loss / panic. Used by chaos to exercise orphan creation from un-closed
+// links and undelivered faults.
+func (self *RouterType) Kill(_ model.Run, c *model.Component) error {
+	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
+}
+
+// Freeze pauses the router with SIGSTOP, simulating a node that is alive but not
+// processing (a long GC pause, a hung disk, a debugger stop). The process keeps
+// its TCP connections open but stops responding, so peers time out and close its
+// links while it is paused; Resume (SIGCONT) lets it continue with stale state.
+func (self *RouterType) Freeze(_ model.Run, c *model.Component) error {
+	return c.GetHost().KillProcesses("-STOP", self.getProcessFilter(c))
+}
+
+// Resume continues a router previously paused by Freeze (SIGCONT).
+func (self *RouterType) Resume(_ model.Run, c *model.Component) error {
+	return c.GetHost().KillProcesses("-CONT", self.getProcessFilter(c))
+}
+
 func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error {
 	jwtFileName := filepath.Join(run.GetTmpDir(), c.Id+".jwt")
 

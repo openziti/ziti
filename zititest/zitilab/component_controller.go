@@ -157,6 +157,12 @@ func (self *ControllerType) Stop(_ model.Run, c *model.Component) error {
 	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }
 
+// Kill hard-kills the controller with SIGKILL, skipping the graceful SIGTERM,
+// simulating an OOM kill / power loss / panic.
+func (self *ControllerType) Kill(_ model.Run, c *model.Component) error {
+	return c.GetHost().KillProcesses("-KILL", self.getProcessFilter(c))
+}
+
 func (self *ControllerType) GetBinaryPath(c *model.Component) string {
 	return GetZitiBinaryPath(c, self.Version)
 }
