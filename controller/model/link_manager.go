@@ -18,22 +18,26 @@ package model
 
 import (
 	"math"
-	"sync"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/objectz"
+	"github.com/openziti/ziti/v2/common/concurrency"
 	"github.com/openziti/ziti/v2/common/datastructures"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/orcaman/concurrent-map/v2"
 )
 
+// linkLog is the logger for the controller's link manager. Its channel name is
+// "controller.link".
+var linkLog = logging.For("controller.link")
+
 type LinkManager struct {
 	linkTable      *linkTable
-	lock           sync.Mutex
+	linkLocks      *concurrency.StripedIdLocker
 	initialLatency time.Duration
 	models.BaseObjectStoreManager[*Link]
 }
@@ -46,6 +50,7 @@ func NewLinkManager(env Env) *LinkManager {
 
 	result := &LinkManager{
 		linkTable:      newLinkTable(),
+		linkLocks:      concurrency.NewStripedIdLocker(256),
 		initialLatency: initialLatency,
 	}
 
@@ -139,24 +144,38 @@ func (self *LinkManager) ScanForDeadLinks() {
 }
 
 func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	// Striped by link id so concurrent reports for different links proceed in
+	// parallel; reports for the same link still serialize. Replaces a single
+	// global mutex that funneled every router's link reports through one lock.
+	defer self.linkLocks.LockFor(reportedLink.Id)()
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {
+		// Update router pointers — the link may have been created with a
+		// database-loaded router before it connected. Now that it's reporting
+		// links, it's connected and has version info, routerLinks, etc.
+		if src != nil && src.Connected.Load() {
+			link.Src = src
+		}
+		if dst != nil && dst.Connected.Load() {
+			link.Dst.Store(dst)
+		}
 		return link, false
 	}
 
 	// remove the older link before adding the new one
 	if link != nil {
-		log := pfxlog.Logger().
-			WithField("routerId", src.Id).
-			WithField("linkId", reportedLink.Id).
-			WithField("destRouterId", reportedLink.DestRouterId).
-			WithField("iteration", reportedLink.Iteration)
+		log := linkLog.With(
+			"routerId", src.Id,
+			"linkId", reportedLink.Id,
+			"destRouterId", reportedLink.DestRouterId,
+			"iteration", reportedLink.Iteration)
 
+		oldIteration := link.Iteration
 		self.Remove(link)
-		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, reportedLink.Iteration)
+		log.Info("replaced link with newer iteration",
+			"oldIteration", oldIteration,
+			"newIteration", reportedLink.Iteration)
 	}
 
 	link = newLink(reportedLink.Id, reportedLink.LinkProtocol, reportedLink.DialAddress, self.initialLatency)
@@ -303,6 +322,17 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 
 func (lt *linkTable) remove(link *Link) bool {
 	return lt.links.RemoveCb(link.Id, func(key string, v *Link, exists bool) bool {
-		return v != nil && v.Iteration == link.Iteration
+		match := v != nil && v.Iteration == link.Iteration
+		if exists && !match {
+			// Predicate mismatch is normally a safe race: a newer iteration
+			// arrived between the caller's Get and this RemoveCb. But it can
+			// also leave a phantom link in the table when the caller expected
+			// removal. Log so the next phantom-link incident has a trail.
+			linkLog.Info("linkTable.remove: iteration mismatch, link not removed",
+				"linkId", link.Id,
+				"requestedIteration", link.Iteration,
+				"currentIteration", v.Iteration)
+		}
+		return match
 	})
 }
