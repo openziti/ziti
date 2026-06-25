@@ -177,6 +177,16 @@ func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]
 }
 
 func (self *RouterManager) Read(id string) (entity *Router, err error) {
+	// Fast path: the router cache is read-through (populated by readInTx) and
+	// invalidated on update/delete, so a cache hit can return without opening a
+	// bolt read transaction at all. readInTx already trusts the cache; checking
+	// it here too just avoids paying for beginTx (and its contention on bbolt's
+	// metalock) on hot paths like VerifyRouter, which otherwise opens a
+	// transaction per call.
+	if cached, _ := self.cache.Get(id); cached != nil {
+		return cached, nil
+	}
+
 	err = self.GetDb().View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err

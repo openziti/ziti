@@ -17,10 +17,13 @@
 package model
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // A simple test to check for failure of alignment on atomic operations for 64 bit variables in a struct
@@ -83,4 +86,67 @@ func TestNeighbors(t *testing.T) {
 	neighbors := linkController.ConnectedNeighborsOfRouter(r0)
 	assert.Equal(t, 1, len(neighbors))
 	assert.Equal(t, r1, neighbors[0])
+}
+
+// Test_RouterReportedLink_serializesAndStableOnStaleReport covers two
+// RouterReportedLink guarantees: concurrent reports for the same link serialize
+// through the striped per-link lock (no corruption under -race, and the highest
+// reported iteration wins regardless of arrival order), and a stale/same-iteration
+// report is a no-op that returns the existing link without replacing it or its
+// source/dest routers.
+func Test_RouterReportedLink_serializesAndStableOnStaleReport(t *testing.T) {
+	req := require.New(t)
+	lm := NewLinkManager(nil)
+
+	src := NewRouter("r0", "", "", 0, true)
+	src.Connected.Store(true)
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+
+	report := func(iteration uint32) *ctrl_pb.RouterLinks_RouterLink {
+		return &ctrl_pb.RouterLinks_RouterLink{
+			Id:           "l0",
+			DestRouterId: dst.Id,
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    iteration,
+		}
+	}
+
+	link, created := lm.RouterReportedLink(report(1), src, dst)
+	req.True(created)
+	req.NotNil(link)
+	req.Same(src, link.Src)
+	req.Same(dst, link.GetDest())
+
+	// A stale/same-iteration report returns the existing link unchanged: created is
+	// false, the same link object comes back, and the source router is not swapped
+	// even though a different (also connected) router object with the same id reports.
+	otherSrc := NewRouter("r0", "", "", 0, true)
+	otherSrc.Connected.Store(true)
+	again, created2 := lm.RouterReportedLink(report(1), otherSrc, dst)
+	req.False(created2)
+	req.Same(link, again, "same-iteration report returns the existing link")
+	req.Same(src, again.Src, "same-iteration report must not replace the source router")
+
+	// Concurrent reports for the same link serialize through the per-link lock. With
+	// mixed iterations arriving in arbitrary order the highest iteration must win
+	// (lower ones are rejected as stale once it lands), and the table holds exactly
+	// one link. Run under -race to catch unsynchronized access.
+	const maxIteration = 32
+	var wg sync.WaitGroup
+	for i := uint32(1); i <= maxIteration; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			lm.RouterReportedLink(report(i), src, dst)
+		}()
+	}
+	wg.Wait()
+
+	got, ok := lm.Get("l0")
+	req.True(ok)
+	req.Equal(uint32(maxIteration), got.Iteration, "highest reported iteration wins regardless of arrival order")
+	req.Len(lm.All(), 1, "exactly one link remains in the table")
 }

@@ -18,22 +18,26 @@ package model
 
 import (
 	"math"
-	"sync"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/objectz"
+	"github.com/openziti/ziti/v2/common/concurrency"
 	"github.com/openziti/ziti/v2/common/datastructures"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/orcaman/concurrent-map/v2"
 )
 
+// linkLog is the logger for the controller's link manager. Its channel name is
+// "controller.link".
+var linkLog = logging.For("controller.link")
+
 type LinkManager struct {
 	linkTable      *linkTable
-	lock           sync.Mutex
+	linkLocks      *concurrency.StripedIdLocker
 	initialLatency time.Duration
 	models.BaseObjectStoreManager[*Link]
 }
@@ -46,6 +50,7 @@ func NewLinkManager(env Env) *LinkManager {
 
 	result := &LinkManager{
 		linkTable:      newLinkTable(),
+		linkLocks:      concurrency.NewStripedIdLocker(256),
 		initialLatency: initialLatency,
 	}
 
@@ -139,8 +144,10 @@ func (self *LinkManager) ScanForDeadLinks() {
 }
 
 func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	// Striped by link id so concurrent reports for different links proceed in
+	// parallel; reports for the same link still serialize. Replaces a single
+	// global mutex that funneled every router's link reports through one lock.
+	defer self.linkLocks.LockFor(reportedLink.Id)()
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {
@@ -149,14 +156,17 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 
 	// remove the older link before adding the new one
 	if link != nil {
-		log := pfxlog.Logger().
-			WithField("routerId", src.Id).
-			WithField("linkId", reportedLink.Id).
-			WithField("destRouterId", reportedLink.DestRouterId).
-			WithField("iteration", reportedLink.Iteration)
+		log := linkLog.With(
+			"routerId", src.Id,
+			"linkId", reportedLink.Id,
+			"destRouterId", reportedLink.DestRouterId,
+			"iteration", reportedLink.Iteration)
 
+		oldIteration := link.Iteration
 		self.Remove(link)
-		log.Infof("replaced link with newer iteration %v => %v", link.Iteration, reportedLink.Iteration)
+		log.Info("replaced link with newer iteration",
+			"oldIteration", oldIteration,
+			"newIteration", reportedLink.Iteration)
 	}
 
 	link = newLink(reportedLink.Id, reportedLink.LinkProtocol, reportedLink.DialAddress, self.initialLatency)
