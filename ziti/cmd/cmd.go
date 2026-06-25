@@ -242,6 +242,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	clusterCmd.AddCommand(cluster.NewCmdRecover(out, err))
 	opsCommands.AddCommand(clusterCmd)
 	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
+	opsCommands.AddCommand(ops.NewCmdLogPipe(out, err))
 	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
@@ -425,6 +426,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		Short: "miscellaneous utility tools",
 	}
 	toolsCmd.AddCommand(ops.NewCmdLogFormat(out, err))
+	toolsCmd.AddCommand(ops.NewCmdLogPipe(out, err))
 	toolsCmd.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
 	toolsCmd.AddCommand(newCompletionCmd())
 	toolsCmd.AddCommand(lets_encrypt.NewCmdLE(out, err))
