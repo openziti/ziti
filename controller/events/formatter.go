@@ -392,6 +392,12 @@ func (event *PrometheusMetricsEvent) getTags() *[]string {
 		}
 	}
 	tags = append(tags, event.newTag("source_id", event.SourceAppId))
+	// Some metrics (e.g. per-router ctrl channel metrics, per-link metrics) share a single source_id
+	// but are scoped to an entity whose id is carried in SourceEntityId. Without emitting it as a label,
+	// those metrics collapse into identical time series and Prometheus drops the duplicate samples.
+	if event.SourceEntityId != "" {
+		tags = append(tags, event.newTag("source_entity_id", event.SourceEntityId))
+	}
 	return &tags
 }
 
