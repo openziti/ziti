@@ -76,6 +76,7 @@ func (options *PKICreateKeyOptions) addPKICreateKeyFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (options *PKICreateKeyOptions) Run() error {
+	options.ResolveFlagsFromViper(options.Cmd)
 
 	pkiRoot, err := options.ObtainPKIRoot()
 	if err != nil {
