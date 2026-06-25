@@ -597,8 +597,7 @@ func (s *cliTestState) testFileAuthIgnoresCachedServerCert(t *testing.T) {
 }
 
 func (s *cliTestState) testStaleCachedCertRefreshed(t *testing.T) {
-	// A cached CA that no longer trusts the server (e.g. dev controller rebuilt with new certs) should be
-	// detected and, with --yes, refreshed from the server rather than failing with a cryptic x509 error.
+	// A stale cached CA should be detected and, with --yes, refreshed from the server.
 	s.removeZitiDir(t)
 
 	opts1 := s.controllerUnderTest.NewTestLoginOpts()
@@ -613,13 +612,23 @@ func (s *cliTestState) testStaleCachedCertRefreshed(t *testing.T) {
 	require.NoError(t, err, "should be able to read the freshly cached CA")
 	require.NotEmpty(t, goodCertData)
 
-	// Corrupt the cached CA so it no longer verifies the server, simulating regenerated server certs.
+	// Corrupt the cached CA so it no longer verifies the server.
 	require.NoError(t, os.WriteFile(cachedCert, []byte("INVALID JUNK CERT DATA"), 0600), "corrupt cached CA")
+
+	// Without --yes and no terminal to confirm, login must fail rather than silently proceeding.
+	optsNoConfirm := s.controllerUnderTest.NewTestLoginOpts()
+	optsNoConfirm.Yes = false
+	require.Error(t, optsNoConfirm.Run(), "stale cached CA without confirmation should fail, not silently proceed")
+
+	staleAfterDecline, err := os.ReadFile(cachedCert)
+	require.NoError(t, err)
+	require.Equal(t, "INVALID JUNK CERT DATA", string(staleAfterDecline), "declined refresh must not overwrite the cached CA")
 
 	opts2 := s.controllerUnderTest.NewTestLoginOpts()
 	opts2.Yes = true // auto-accepts the refresh prompt
 	require.NoError(t, opts2.Run(), "login with a stale cached CA should refresh it and succeed")
 	require.NotEmpty(t, opts2.ApiSession)
+	require.Equal(t, cachedCert, opts2.CaCert, "refreshed CA should be written back to the same cached path")
 
 	refreshedCertData, err := os.ReadFile(cachedCert)
 	require.NoError(t, err, "cached CA should still exist after refresh")
