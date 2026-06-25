@@ -45,9 +45,10 @@ type Store interface {
 	//  The signing CA name.
 	//  The destination CA name.
 	//  The certificate bundle name.
+	//  Flag indicating if existing chain can be overwritten.
 	//
 	// Returns an error if it failed to store the bundle.
-	Chain(string, string, string) error
+	Chain(string, string, string, bool) error
 
 	// AddCSR adds a CSR to the store.
 	//
