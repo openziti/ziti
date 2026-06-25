@@ -441,6 +441,49 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 		return nil
 	}
 
+	// A cached (non-explicit) CA is present but the OS doesn't trust the server. Check whether the cached
+	// CA itself still trusts the server. If it doesn't, the server's certs were likely regenerated (common
+	// in dev), so print a clear message and offer to pull down the current certs instead of failing later
+	// with a cryptic x509 error.
+	if o.CaCert != "" && !explicitCa {
+		cachedClient := o.GetClient()
+		if trustedByCached, _ := util.IsServerTrusted(host, &cachedClient); trustedByCached {
+			return nil
+		}
+
+		o.Printf("WARNING: the cached certificate authority at %v no longer trusts the server at %v\n", o.CaCert, host)
+		o.Println("The server's certificates were likely regenerated. This is common when a dev controller is rebuilt.")
+		refresh := o.Yes
+		if !refresh {
+			var askErr error
+			if refresh, askErr = o.askYesNo("Pull down and trust the current server certificate authority? [Y/N]: "); askErr != nil {
+				return askErr
+			}
+		}
+		if !refresh {
+			return errors.Errorf("the cached certificate authority at %v no longer trusts the server at %v. Re-run with --ca or remove the cached cert to continue", o.CaCert, host)
+		}
+
+		httpClient := o.GetClient()
+		wellKnownCerts, _, err := util.GetWellKnownCerts(host, httpClient)
+		if err != nil {
+			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
+		}
+		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts, httpClient)
+		if err != nil {
+			return err
+		}
+		if !certsTrusted {
+			return errors.New("server supplied certs not trusted by server, unable to continue")
+		}
+		newCertFile, err := util.WriteCert(o, ctrlUrl, wellKnownCerts)
+		if err != nil {
+			return err
+		}
+		o.CaCert = newCertFile
+		return nil
+	}
+
 	if !isServerTrusted && o.CaCert == "" {
 		httpClient := o.GetClient()
 		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
