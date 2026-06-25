@@ -228,6 +228,173 @@ func TestQueryUpstreams_EmptyList(t *testing.T) {
 	require.Contains(t, err.Error(), "no upstream")
 }
 
+func TestParseUpstreamMode(t *testing.T) {
+	cases := map[string]upstreamMode{
+		"":         upstreamParallel,
+		"parallel": upstreamParallel,
+		"serial":   upstreamSerial,
+		"failover": upstreamFailover,
+		"random":   upstreamRandom,
+		"SERIAL":   upstreamSerial,
+		" serial ": upstreamSerial,
+	}
+	for raw, expected := range cases {
+		mode, err := parseUpstreamMode(raw)
+		require.NoError(t, err, "raw=%q", raw)
+		require.Equal(t, expected, mode, "raw=%q", raw)
+	}
+
+	_, err := parseUpstreamMode("bogus")
+	require.Error(t, err)
+}
+
+func TestValidateUpstreamMode(t *testing.T) {
+	require.NoError(t, ValidateUpstreamMode(""))
+	require.NoError(t, ValidateUpstreamMode("serial"))
+	require.NoError(t, ValidateUpstreamMode("FAILOVER"))
+	require.Error(t, ValidateUpstreamMode("bogus"))
+}
+
+func TestValidateUnansweredDisposition(t *testing.T) {
+	require.NoError(t, ValidateUnansweredDisposition(""))
+	require.NoError(t, ValidateUnansweredDisposition("servfail"))
+	require.NoError(t, ValidateUnansweredDisposition("REFUSED"))
+	require.Error(t, ValidateUnansweredDisposition("bogus"))
+}
+
+// In serial mode a healthy first upstream answers every query, and the
+// remaining upstreams are never contacted (no fan-out traffic).
+func TestQueryUpstreams_SerialFirstUpstreamWinsNoFanout(t *testing.T) {
+	upstreamFirst := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.1")
+	})
+	upstreamSecond := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.2")
+	})
+	r := makeResolver(upstreamFirst.addr, upstreamSecond.addr)
+	r.upstreamMode = upstreamSerial
+
+	for i := 0; i < 3; i++ {
+		resp, err := r.queryUpstreams(newQuery("example.com"))
+		require.NoError(t, err)
+		require.Equal(t, "10.0.0.1", resp.Answer[0].(*dns.A).A.String())
+	}
+
+	require.Equal(t, int32(3), upstreamFirst.queries.Load())
+	require.Equal(t, int32(0), upstreamSecond.queries.Load(), "second upstream must not be queried while the first answers")
+}
+
+// In serial mode a transport failure on the first upstream fails through to the
+// next, which answers.
+func TestQueryUpstreams_SerialFailsThroughOnError(t *testing.T) {
+	upstreamDrop := startTestUpstream(t, func(q *dns.Msg) *dns.Msg { return nil })
+	upstreamOk := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.55")
+	})
+	r := makeResolver(upstreamDrop.addr, upstreamOk.addr)
+	r.upstreamMode = upstreamSerial
+
+	resp, err := r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.55", resp.Answer[0].(*dns.A).A.String())
+	require.Equal(t, int32(1), upstreamDrop.queries.Load())
+	require.Equal(t, int32(1), upstreamOk.queries.Load())
+}
+
+// In serial mode a non-NOERROR response fails through to the next upstream
+// rather than being returned, even though that response would win a parallel
+// rcode-ranked comparison.
+func TestQueryUpstreams_SerialFailsThroughOnNXDOMAIN(t *testing.T) {
+	upstreamNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseRcode(q, dns.RcodeNameError)
+	})
+	upstreamOk := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.66")
+	})
+	r := makeResolver(upstreamNx.addr, upstreamOk.addr)
+	r.upstreamMode = upstreamSerial
+
+	resp, err := r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, dns.RcodeSuccess, resp.Rcode)
+	require.Equal(t, "10.0.0.66", resp.Answer[0].(*dns.A).A.String())
+}
+
+// When no upstream returns NOERROR, serial mode returns the best-ranked
+// non-NOERROR response, matching the parallel path's selection.
+func TestQueryUpstreams_SerialBestRcodeWhenNoNoerror(t *testing.T) {
+	upstreamServfail := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseRcode(q, dns.RcodeServerFailure)
+	})
+	upstreamNx := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseRcode(q, dns.RcodeNameError)
+	})
+	r := makeResolver(upstreamServfail.addr, upstreamNx.addr)
+	r.upstreamMode = upstreamSerial
+
+	resp, err := r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, dns.RcodeNameError, resp.Rcode)
+}
+
+// In failover mode, once the first upstream stops answering the resolver sticks
+// to the upstream that answered and stops re-probing the dead one on every query.
+func TestQueryUpstreams_FailoverSticksToHealthyUpstream(t *testing.T) {
+	var firstUp atomic.Bool
+	firstUp.Store(true)
+	upstreamFirst := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		if firstUp.Load() {
+			return responseA(q, "10.0.0.1")
+		}
+		return nil // simulate the first upstream going down
+	})
+	upstreamSecond := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.2")
+	})
+	r := makeResolver(upstreamFirst.addr, upstreamSecond.addr)
+	r.upstreamMode = upstreamFailover
+
+	// first query: first upstream answers, preferred stays at index 0
+	resp, err := r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.1", resp.Answer[0].(*dns.A).A.String())
+
+	// first upstream goes down; next query fails through to the second, which
+	// becomes the new preferred upstream
+	firstUp.Store(false)
+	resp, err = r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.2", resp.Answer[0].(*dns.A).A.String())
+
+	firstQueriesAfterFailover := upstreamFirst.queries.Load()
+
+	// subsequent queries go straight to the second upstream without re-probing
+	// the dead first upstream
+	for i := 0; i < 3; i++ {
+		resp, err = r.queryUpstreams(newQuery("example.com"))
+		require.NoError(t, err)
+		require.Equal(t, "10.0.0.2", resp.Answer[0].(*dns.A).A.String())
+	}
+	require.Equal(t, firstQueriesAfterFailover, upstreamFirst.queries.Load(), "dead upstream must not be re-probed once failover settles")
+	// second upstream answered the failover query plus the 3 follow-ups (the
+	// very first query was served by the then-healthy first upstream).
+	require.Equal(t, int32(4), upstreamSecond.queries.Load())
+}
+
+// Random mode still returns a NOERROR answer; with a single upstream the start
+// index is deterministic.
+func TestQueryUpstreams_RandomSingleUpstream(t *testing.T) {
+	upstream := startTestUpstream(t, func(q *dns.Msg) *dns.Msg {
+		return responseA(q, "10.0.0.9")
+	})
+	r := makeResolver(upstream.addr)
+	r.upstreamMode = upstreamRandom
+
+	resp, err := r.queryUpstreams(newQuery("example.com"))
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.9", resp.Answer[0].(*dns.A).A.String())
+}
+
 // When a fast upstream produces NOERROR, queryUpstreams returns without
 // waiting for slower upstreams — the caller must not be blocked by them.
 func TestQueryUpstreams_FastPathDoesNotWaitForSlow(t *testing.T) {
