@@ -17,13 +17,17 @@
 package handler_ctrl
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
 )
+
+// routerLinkLog is the logger for the RouterLinks ctrl message handler. Its
+// channel name is "controller.link".
+var routerLinkLog = logging.For("controller.link")
 
 type routerLinkHandler struct {
 	r       *model.Router
@@ -43,41 +47,48 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 		return
 	}
 
-	log := pfxlog.ContextLogger(ch.Label())
+	log := routerLinkLog.With("ch", ch.Label())
 
 	link := &ctrl_pb.RouterLinks{}
 	if err := proto.Unmarshal(msg.Body, link); err != nil {
-		log.WithError(err).Error("failed to unmarshal link message")
+		log.Error("failed to unmarshal link message", "error", err)
 		return
 	}
 
 	h.HandleLinks(link)
 }
 
+// HandleLinks processes link reports from old routers (those not using the gossip
+// protocol directly). In HA mode, only the raft leader writes to gossip — non-
+// leaders handle links locally. New routers bypass this handler entirely and send
+// GossipDelta messages directly.
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
+	if h.network.IsLeader() {
+		h.handleLinksAsLeader(links)
+	} else {
+		h.handleLinksAsNonLeader(links)
+	}
+}
+
+// handleLinksAsLeader is the designated gossip writer path. Translates old-router
+// link reports into gossip entries using the controller's Lamport clock.
+func (h *routerLinkHandler) handleLinksAsLeader(links *ctrl_pb.RouterLinks) {
 	if links.FullRefresh {
-		linkIdMap := map[string]struct{}{}
-
+		keyMap := map[string]struct{}{}
 		for _, link := range links.Links {
-			linkIdMap[link.Id] = struct{}{}
+			keyMap[network.LinkGossipKey(link.Id, link.Iteration)] = struct{}{}
 		}
-
-		var toRemove []*model.Link
-
-		for entry := range h.network.Link.IterateLinks() {
-			if entry.Val.Src.Id == h.r.Id {
-				if _, ok := linkIdMap[entry.Key]; !ok {
-					toRemove = append(toRemove, entry.Val)
-				}
-			}
-		}
-
-		for _, link := range toRemove {
-			h.network.LinkFaulted(link, false)
-			pfxlog.Logger().WithField("linkId", link.Id).Info("removed link not present in full reported set")
-		}
+		h.network.ReconcileLinksViaGossip(h.r.Id, keyMap)
 	}
 
+	for _, link := range links.Links {
+		h.network.NotifyLinkViaGossip(h.r, link)
+	}
+}
+
+// handleLinksAsNonLeader handles links locally without writing to gossip. The
+// leader will receive the same reports from the old router and gossip them.
+func (h *routerLinkHandler) handleLinksAsNonLeader(links *ctrl_pb.RouterLinks) {
 	for _, link := range links.Links {
 		h.network.NotifyExistingLink(h.r, link)
 	}

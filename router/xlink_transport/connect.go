@@ -23,7 +23,6 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
-	log "github.com/sirupsen/logrus"
 )
 
 type ConnectionHandler struct {
@@ -47,9 +46,9 @@ func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificat
 
 	if ok {
 		if self.routerId.Token != string(dialedRouterId) {
-			log.WithField("routerId", self.routerId.Token).
-				WithField("dialedRouterId", string(dialedRouterId)).
-				Error("router id mismatch on incoming link dial, dropping link connection")
+			listenLog.Error("router id mismatch on incoming link dial, dropping link connection",
+				"routerId", self.routerId.Token,
+				"dialedRouterId", string(dialedRouterId))
 			return fmt.Errorf("received a link dial meant for a different router: '%s', closing connection", dialedRouterId)
 		}
 	}

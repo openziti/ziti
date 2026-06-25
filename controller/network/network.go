@@ -52,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
@@ -100,6 +101,14 @@ type Network struct {
 	metricsRegistry        metrics.Registry
 	VersionProvider        versions.VersionProvider
 
+	GossipStore      *gossip.Store
+	LinkGossipType   *gossip.StateType[*ctrl_pb.RouterLinks_RouterLink]
+	CanaryGossipType *gossip.StateType[*CanaryValue]
+	gossipTypes      map[string]gossip.StateTypeInfo // non-generic lookup by store type
+	canaryListener   *canaryGossipListener
+	isHA             bool
+	leaderCheck      func() bool
+
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
 	serviceDialFailCounter       servermetrics.IntervalCounter
@@ -115,6 +124,10 @@ type Network struct {
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
+	routerConnectPool   goroutines.Pool
+	gossipApplyPool     goroutines.Pool
+	peerEventsPool      goroutines.Pool
+	ioPool              goroutines.Pool
 	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
 	ctrlDialerValidator CtrlDialerValidator
 }
@@ -158,6 +171,30 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 
 	env.GetManagers().Command.Decoders.RegisterF(int32(cmd_pb.CommandType_SyncSnapshot), network.decodeSyncSnapshotCommand)
 
+	routerConnectPool, err := network.createRouterConnectPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.routerConnectPool = routerConnectPool
+
+	gossipApplyPool, err := network.createGossipApplyPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.gossipApplyPool = gossipApplyPool
+
+	peerEventsPool, err := network.createPeerEventsPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.peerEventsPool = peerEventsPool
+
+	ioPool, err := network.createIoPool(config)
+	if err != nil {
+		return nil, err
+	}
+	network.ioPool = ioPool
+
 	routerCommPool, err := network.createRouterCommPool(config)
 	if err != nil {
 		return nil, err
@@ -170,15 +207,66 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
+	servermetrics.RegisterHostStats(network.metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: config.GetOptions().HostMetrics.Enabled,
+	})
+
+	// ctrl.is_leader is 1 on the raft leader, 0 otherwise (always 1 in non-HA).
+	// Lets the metrics timeseries correlate per-controller load with leadership,
+	// which matters under chaos/partitions that shuffle leadership. The closure
+	// reads IsLeader() dynamically, so it tracks leadership set later by HA init.
+	network.metricsRegistry.FuncGauge("ctrl.is_leader", func() int64 {
+		if network.IsLeader() {
+			return 1
+		}
+		return 0
+	})
 	network.AddRouterPresenceHandler(network.RouterMessaging)
 	go network.RouterMessaging.run()
 
+	// Default to a no-op gossip mesh for single-controller mode.
+	// HA controllers override this via InitGossipStore before starting.
+	network.InitGossipStore(gossip.NewNoopMesh(), false, nil)
+	network.InitLinkGossip()
+	network.InitCanaryGossip()
+
 	return network, nil
+}
+
+// InitGossipStore creates the gossip store. The isHA flag controls disconnect
+// behavior: when true, links are marked down (other controllers may use them);
+// when false, links are tombstoned for removal. The leaderCheck callback reports
+// whether this controller is the raft leader; it may be nil for non-HA mode.
+func (network *Network) InitGossipStore(m gossip.Mesh, isHA bool, leaderCheck func() bool) {
+	network.GossipStore = gossip.NewStore(network.nodeId, m)
+	network.GossipStore.SetEventsPool(network.peerEventsPool)
+	network.GossipStore.SetIoPool(network.ioPool)
+	network.GossipStore.SetMetricsRegistry(network.metricsRegistry)
+	network.isHA = isHA
+	network.leaderCheck = leaderCheck
+}
+
+// IsLeader returns true if this controller is the designated gossip writer for
+// old-router link reports. In non-HA mode, always returns true. In HA mode,
+// returns true if this controller is the raft leader.
+func (network *Network) IsLeader() bool {
+	if !network.isHA {
+		return true
+	}
+	if network.leaderCheck != nil {
+		return network.leaderCheck()
+	}
+	return false
 }
 
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
+	// Drop the router's gossip-store owner data so memory doesn't grow
+	// unboundedly when routers are added/removed over time (e.g., autoscaling).
+	// Live entries are tombstoned and broadcast; the ownerData is compacted out
+	// of the gossip store by the reaper once tombstones age out.
+	self.dropGossipOwner(id)
 }
 
 func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {
@@ -198,6 +286,99 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 
 func routerCommunicationsWorker(_ uint32, f func()) {
 	f()
+}
+
+func (network *Network) createRouterConnectPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().RouterConnectPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().RouterConnectPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during router connect processing")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.connect")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating router connect pool: %w", err)
+	}
+	return pool, nil
+}
+
+func (network *Network) createGossipApplyPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().GossipApplyPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().GossipApplyPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during gossip apply processing")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.gossip.apply")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating gossip apply pool: %w", err)
+	}
+	return pool, nil
+}
+
+// createIoPool creates the controller's shared pool for outbound, blocking
+// network I/O, organized by kind of work rather than by function. It is kept
+// separate from the CPU/apply pools by design: I/O that stalls on a slow peer or
+// router must not pin a worker that an apply path depends on. Each submitter
+// chooses its own delivery policy (QueueOrError to drop, e.g. gossip broadcast
+// with anti-entropy as the backstop; or a blocking submit for must-deliver work).
+// Gossip broadcast is the first user; other blocking-I/O senders (e.g.
+// RouterMessaging) can migrate here. Sized with more workers than the CPU pools
+// to absorb concurrent slow sends.
+func (network *Network) createIoPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().IoPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().IoPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during gossip io")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.io")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating io pool: %w", err)
+	}
+	return pool, nil
+}
+
+func (network *Network) createPeerEventsPool(config Config) (goroutines.Pool, error) {
+	poolConfig := goroutines.PoolConfig{
+		QueueSize:   config.GetOptions().PeerEventsPool.QueueSize,
+		MinWorkers:  0,
+		MaxWorkers:  config.GetOptions().PeerEventsPool.MaxWorkers,
+		IdleTime:    30 * time.Second,
+		CloseNotify: config.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during peer event processing")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.peer.events")
+
+	pool, err := goroutines.NewPool(poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error creating peer events pool: %w", err)
+	}
+	return pool, nil
 }
 
 func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, error) {
@@ -343,22 +524,137 @@ func (network *Network) GetCloseNotify() <-chan struct{} {
 	return network.closeNotify
 }
 
+// GetRouterConnectPool returns the bounded pool for router connection setup
+// work (ConnectRouter). It is kept separate from the gossip/canary events pool
+// so that bursts of router reconnects can't starve the gossip hot path.
+func (network *Network) GetRouterConnectPool() goroutines.Pool {
+	return network.routerConnectPool
+}
+
+// GetGossipApplyPool returns the bounded pool for router-originated gossip
+// and canary message processing.
+func (network *Network) GetGossipApplyPool() goroutines.Pool {
+	return network.gossipApplyPool
+}
+
+// GetIoPool returns the shared, bounded pool for outbound blocking network I/O.
+// Submitters choose their own delivery policy (drop vs block); gossip sends use
+// it best-effort with anti-entropy / re-trigger as the backstop.
+func (network *Network) GetIoPool() goroutines.Pool {
+	return network.ioPool
+}
+
+// GetPeerEventsPool returns the bounded pool for peer controller event processing.
+func (network *Network) GetPeerEventsPool() goroutines.Pool {
+	return network.peerEventsPool
+}
+
 func (network *Network) ConnectedRouter(id string) bool {
 	return network.Router.IsConnected(id)
 }
 
-func (network *Network) ConnectRouter(r *model.Router) {
-	network.Link.BuildRouterLinks(r)
+// QueueRouterConnect marks the router as connected and notifies synchronous
+// presence handlers immediately, then queues the remaining connection setup
+// work (link building, async handlers, terminator validation) to the bounded
+// router connect pool. Returns an error if the pool is full, which causes
+// the connection to be rejected so the router can retry later.
+func (network *Network) QueueRouterConnect(r *model.Router) error {
 	network.Router.MarkConnected(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
 			h.RouterConnected(r)
-		} else {
-			go h.RouterConnected(r)
 		}
 	}
-	go network.ValidateTerminators(r)
+
+	return network.routerConnectPool.QueueOrError(func() {
+		network.ConnectRouter(r)
+	})
+}
+
+func (network *Network) ConnectRouter(r *model.Router) {
+	if r.Control.IsClosed() {
+		return
+	}
+
+	network.Link.BuildRouterLinks(r)
+
+	// When gossip is enabled and a router reconnects, mark its links as
+	// usable again — they were set down on disconnect, not removed.
+	// Also reconcile gossip entries to update stale Src/Dst pointers and
+	// create any links that were missed during initial gossip application.
+	if network.GossipStore != nil {
+		for _, l := range r.GetLinks() {
+			if l.Src.Id == r.Id && l.IsDown() {
+				l.SetDown(false)
+			}
+		}
+		network.ReconcileGossipLinksForRouter(r)
+	}
+
+	for _, h := range network.routerPresenceHandlers.Value() {
+		if syncHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncHandler.InvokeRouterConnectedSynchronously() {
+			continue // already called synchronously in QueueRouterConnect
+		}
+		h.RouterConnected(r)
+	}
+	network.ValidateTerminators(r)
+}
+
+// RegisterGossipType registers a gossip state type for non-generic lookup by
+// store type name. Used by the staleness detection logic.
+func (network *Network) RegisterGossipType(name string, t gossip.StateTypeInfo) {
+	if network.gossipTypes == nil {
+		network.gossipTypes = map[string]gossip.StateTypeInfo{}
+	}
+	network.gossipTypes[name] = t
+}
+
+// GetGossipType returns the gossip state type for the given store type name.
+func (network *Network) GetGossipType(name string) gossip.StateTypeInfo {
+	return network.gossipTypes[name]
+}
+
+// GossipStoreTypes returns the names of all registered router-replicated gossip
+// store types. Used to drive per-store-type operations (such as connect-time
+// digests) generically, so a new store type is covered without per-site edits.
+func (network *Network) GossipStoreTypes() []string {
+	names := make([]string, 0, len(network.gossipTypes))
+	for name := range network.gossipTypes {
+		names = append(names, name)
+	}
+	return names
+}
+
+// dropGossipOwner tombstones every registered store type's entries for the owner,
+// so a removed router's gossip state is reclaimed across all stores.
+func (network *Network) dropGossipOwner(id string) {
+	for _, t := range network.gossipTypes {
+		t.DropOwner(id)
+	}
+}
+
+// deleteGossipOwnerBefore removes every registered store type's entries for the
+// owner from a previous lifetime (epoch older than the given one).
+func (network *Network) deleteGossipOwnerBefore(owner string, epoch []byte) {
+	for _, t := range network.gossipTypes {
+		t.DeleteByOwnerBefore(owner, epoch)
+	}
+}
+
+// HandleRouterEpoch processes a router epoch from the hello or canary. If the
+// epoch is newer than the stored epoch, old-epoch entries for this router are
+// deleted across all gossip store types.
+func (network *Network) HandleRouterEpoch(routerId string, epoch []byte) {
+	if len(epoch) == 0 {
+		return
+	}
+
+	// Update the canary listener's epoch tracking and let it handle cleanup.
+	// This reuses the same epoch change detection as the canary path.
+	if network.canaryListener != nil {
+		network.canaryListener.checkEpoch(routerId, epoch)
+	}
 }
 
 func (network *Network) ValidateTerminators(r *model.Router) {
@@ -462,17 +758,25 @@ func (n *Network) ValidateRouterErtTerminators(filter string, cb ErtTerminatorVa
 }
 
 func (network *Network) DisconnectRouter(r *model.Router) {
-	// 1: remove Links for Router
 	for _, l := range r.GetLinks() {
-		wasConnected := l.CurrentState().Mode == model.Connected
-		if l.Src.Id == r.Id {
-			network.Link.Remove(l)
+		if l.Src.Id != r.Id {
+			continue
 		}
-		if wasConnected {
+		wasUsable := l.IsUsable()
+		if network.isHA {
+			// HA mode: mark links as down — the router may still be
+			// connected to other controllers.
+			l.SetDown(true)
+		} else {
+			// Single-controller mode: tombstone the link via gossip so
+			// the listener handles removal.
+			network.LinkGossipType.Delete(LinkGossipKey(l.Id, l.Iteration), l.Src.Id)
+		}
+		if wasUsable {
 			network.RerouteLink(l)
 		}
 	}
-	// 2: remove Router
+
 	network.Router.MarkDisconnected(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
@@ -950,7 +1254,9 @@ func (network *Network) Run() {
 		case <-ticker.C:
 			network.clean()
 			network.smart()
-			network.Link.ScanForDeadLinks()
+			if !network.isHA {
+				network.Link.ScanForDeadLinks()
+			}
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
@@ -1190,6 +1496,7 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 		log.Debugf("could not find router [r/%s] while processing metrics", metrics.SourceId)
 		return
 	}
+
 
 	for _, link := range network.GetAllLinksForRouter(router.Id) {
 		metricId := "link." + link.Id + ".latency"
@@ -1461,6 +1768,28 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 			detail.CtrlState = mgmt_pb.LinkState_LinkUnknown
 			detail.IsValid = !detail.DestConnected
 		}
+
+		// Gossip entries are owned by the dialing router. From this side of the
+		// validation, if the router we're asking dialed the link, it's the owner;
+		// otherwise the destination is.
+		gossipOwner := router.Id
+		if !link.Dialed {
+			gossipOwner = link.Dest
+		}
+		gossipKey := LinkGossipKey(link.Id, link.Iteration)
+		gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(gossipOwner, gossipKey)
+		if gossipFound {
+			detail.InGossipStore = true
+			detail.GossipVersion = gossipVer
+			detail.GossipIteration = gossipVal.Iteration
+			if ctrlLink, ctrlFound := linkMap[link.Id]; ctrlFound && gossipVal.Iteration != ctrlLink.Iteration {
+				detail.Messages = append(detail.Messages, fmt.Sprintf(
+					"gossip iteration (%d) differs from ctrl iteration (%d)", gossipVal.Iteration, ctrlLink.Iteration))
+			}
+		} else if detail.CtrlState == mgmt_pb.LinkState_LinkEstablished {
+			detail.Messages = append(detail.Messages, "link in ctrl but missing from gossip store")
+		}
+
 		delete(linkMap, link.Id)
 		result.LinkDetails = append(result.LinkDetails, detail)
 	}
@@ -1486,6 +1815,14 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 				DestRouterId:  dest,
 				Dialed:        link.Src.Id == router.Id,
 			}
+
+			gossipKey := LinkGossipKey(link.Id, link.Iteration)
+			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(link.Src.Id, gossipKey); gossipFound {
+				detail.InGossipStore = true
+				detail.GossipVersion = gossipVer
+				detail.GossipIteration = gossipVal.Iteration
+			}
+
 			result.LinkDetails = append(result.LinkDetails, detail)
 		}
 	}

@@ -21,18 +21,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/capabilities"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
+
+// dialLog is the logger for outbound link dialing. Its channel name is
+// "router.link.dial".
+var dialLog = logging.For("router.link.dial")
 
 var minMultiUnderlayVersion versions.SemVer
 var devVersion versions.SemVer
@@ -76,10 +80,10 @@ func (self *dialer) GetBinding() string {
 }
 
 func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
-	log := pfxlog.Logger().WithField("linkId", dial.GetLinkId()).
-		WithField("dialAddress", dial.GetAddress()).
-		WithField("destRouterId", dial.GetRouterId()).
-		WithField("destRouterVersion", dial.GetRouterVersion())
+	log := dialLog.With("linkId", dial.GetLinkId(),
+		"dialAddress", dial.GetAddress(),
+		"destRouterId", dial.GetRouterId(),
+		"destRouterVersion", dial.GetRouterVersion())
 
 	address, err := transport.ParseAddress(dial.GetAddress())
 	if err != nil {
@@ -110,7 +114,7 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 
 	if err = self.acceptor.Accept(xli); err != nil {
 		if closeErr := xli.Close(); closeErr != nil {
-			log.WithError(closeErr).WithField("acceptErr", err).Error("error closing link after accept error")
+			log.Error("error closing link after accept error", "error", closeErr, "acceptErr", err)
 		}
 		return nil, fmt.Errorf("error accepting link [l/%s@%v] (%w)", linkId.Token, dial.GetIteration(), err)
 	}
@@ -120,10 +124,7 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 }
 
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
-	log := pfxlog.Logger().WithFields(logrus.Fields{
-		"linkId": linkId.Token,
-		"connId": connId,
-	})
+	log := dialLog.With("linkId", linkId.Token, "connId", connId)
 
 	log.Info("dialing link with split payload/ack channels")
 
@@ -185,10 +186,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 }
 
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
-	log := pfxlog.Logger().WithFields(logrus.Fields{
-		"linkId": linkId.Token,
-		"connId": connId,
-	})
+	log := dialLog.With("linkId", linkId.Token, "connId", connId)
 
 	log.Info("dialing link with single channel")
 
@@ -234,10 +232,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 }
 
 func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
-	log := pfxlog.Logger().WithFields(logrus.Fields{
-		"linkId": linkId.Token,
-		"connId": connId,
-	})
+	log := dialLog.With("linkId", linkId.Token, "connId", connId)
 
 	log.Info("dialing link with multi-underlay channel")
 
@@ -327,10 +322,17 @@ func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
 		return
 	}
 
-	log := pfxlog.Logger().WithField("linkId", link.Id())
+	log := dialLog.With("linkId", link.Id())
 
 	stateUuid, first := ch.LinkConnectionsChanged(self.env.GetNetworkControllers())
 	if first { // initial connection is reported by newRouterLink event
+		return
+	}
+
+	// When all controllers support gossip, route conn state changes through the
+	// link registry so the existing gossip notification cycle picks them up.
+	if self.env.GetNetworkControllers().AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		self.env.GetXLinkRegistry().NotifyLinkConnStateChanged(link)
 		return
 	}
 
@@ -350,16 +352,16 @@ func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
 
 		for _, ctrlCh := range channels {
 			if err := protobufs.MarshalTyped(message).WithTimeout(time.Second).Send(ctrlCh); err != nil {
-				log.WithError(err).Error("error sending router link state message")
+				log.Error("error sending router link state message", "error", err)
 			} else {
-				log.WithField("ctrlId", ctrlCh.Id()).Info("notified controller of updated router link state")
+				log.Info("notified controller of updated router link state", "ctrlId", ctrlCh.Id())
 				ch.MarkLinkStateSyncedForState(ctrlCh.Id(), stateUuid)
 			}
 		}
 	})
 
 	if err != nil {
-		log.WithError(err).Error("failed to queue send of router link state message")
+		log.Error("failed to queue send of router link state message", "error", err)
 	}
 }
 

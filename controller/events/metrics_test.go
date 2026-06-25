@@ -58,6 +58,52 @@ func Test_ExtractId(t *testing.T) {
 	req.Equal(entityId, ".tO.kK.D.")
 }
 
+// Test_FilterMetrics_GroupGate guards the anyFieldAllowed fast path in
+// convertMetricsMsgToEvents: a metric whose fields are all filtered out must be
+// skipped (no event), while a metric matched only on a tail field (here a
+// histogram's p9999) must still be emitted. The latter catches the hazard of the
+// per-type key lists drifting out of sync with the filterMetric calls.
+func Test_FilterMetrics_GroupGate(t *testing.T) {
+	req := require.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+	dispatcher := NewDispatcher(closeNotify)
+	dispatcher.ctrlId = "ctrl1"
+
+	eventC := make(chan *event.MetricsEvent, 8)
+	filter, err := regexp.Compile("p9999$")
+	req.NoError(err)
+	adapter := dispatcher.NewFilteredMetricsAdapter(nil, filter, event.MetricsEventHandlerF(func(evt *event.MetricsEvent) {
+		eventC <- evt
+	}))
+	dispatcher.AddMetricsMessageHandler(adapter)
+
+	go func() {
+		registry := metrics.NewRegistry("test", nil)
+		registry.Histogram("some.histogram").Update(100) // only p9999 (a tail field) matches the filter
+		registry.Meter("other.meter").Mark(1)            // no field matches -> must be skipped entirely
+		dispatcher.AcceptMetricsMsg(servermetrics.Poll(registry))
+	}()
+
+	var evt *event.MetricsEvent
+	select {
+	case evt = <-eventC:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for histogram event")
+	}
+
+	req.Equal("some.histogram", evt.Metric)
+	req.Equal(1, len(evt.Metrics))
+	req.NotNil(evt.Metrics["p9999"])
+
+	select {
+	case extra := <-eventC:
+		t.Fatalf("expected no further events, got one for %s", extra.Metric)
+	case <-time.After(250 * time.Millisecond):
+	}
+}
+
 func Test_FilterMetrics(t *testing.T) {
 	req := require.New(t)
 

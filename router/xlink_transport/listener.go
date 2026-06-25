@@ -19,19 +19,23 @@ package xlink_transport
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
+
+// listenLog is the logger for inbound link listening/accepting. Its channel
+// name is "router.link.listen".
+var listenLog = logging.For("router.link.listen")
 
 type listener struct {
 	id                 *identity.TokenId
@@ -110,7 +114,7 @@ func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 	mc, err := channel.NewChannel(&multiConfig)
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("failure accepting link channel %v with mult-underlay", underlay.Label())
+		listenLog.Error("failure accepting link channel with multi-underlay", "error", err, "label", underlay.Label())
 		return nil, err
 	}
 
@@ -119,7 +123,7 @@ func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 
 func (self *listener) handleUngroupedNewUnderlay(underlay channel.Underlay) error {
 	if _, err := channel.NewSingleChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
-		logrus.WithError(err).Error("error creating link channel")
+		listenLog.Error("error creating link channel", "error", err)
 		return err
 	}
 	return nil
@@ -129,9 +133,7 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 	headers := channel.Headers(binding.GetChannel().Underlay().Headers())
 	linkId := resolveLinkId(headers, binding.GetChannel().Id())
 
-	log := pfxlog.ChannelLogger("link", "linkListener").
-		WithField("linkProtocol", self.GetLinkProtocol()).
-		WithField("linkId", linkId)
+	log := listenLog.With("linkProtocol", self.GetLinkProtocol(), "linkId", linkId)
 
 	var chanType channelType
 
@@ -143,20 +145,20 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 	if headers != nil {
 		var ok bool
 		if routerId, ok = headers.GetStringHeader(LinkHeaderRouterId); ok {
-			log = log.WithField("routerId", routerId)
+			log = log.With("routerId", routerId)
 		}
 		if val, ok := headers.GetByteHeader(LinkHeaderType); ok {
 			chanType = channelType(val)
 		}
 		if routerVersion, ok = headers.GetStringHeader(LinkHeaderRouterVersion); ok {
-			log = log.WithField("routerVersion", routerVersion)
+			log = log.With("routerVersion", routerVersion)
 		}
 		if dialerBinding, ok = headers.GetStringHeader(LinkHeaderBinding); ok {
-			log = log.WithField("dialerBinding", dialerBinding)
+			log = log.With("dialerBinding", dialerBinding)
 		}
 		if val, ok := headers.GetUint32Header(LinkHeaderIteration); ok {
 			iteration = val
-			log = log.WithField("iteration", iteration)
+			log = log.With("iteration", iteration)
 		}
 	}
 
@@ -171,26 +173,26 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 	}
 
 	if chanType != 0 {
-		log = log.WithField("channelType", chanType)
+		log = log.With("channelType", chanType)
 		return self.bindSplitChannel(binding, chanType, linkMeta, log)
 	}
 
 	return self.bindNonSplitChannel(binding, linkMeta, log)
 }
 
-func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, linkMeta *linkMetadata, log *logrus.Entry) error {
+func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, linkMeta *linkMetadata, log *slog.Logger) error {
 	headers := binding.GetChannel().Underlay().Headers()
 	connId, ok := channel.Headers(headers).GetStringHeader(LinkHeaderConnId)
 	if !ok {
 		return errors.New("split conn received but missing connection id. closing")
 	}
 
-	log = log.WithField("connId", connId)
+	log = log.With("connId", connId)
 	log.Info("accepted part of split conn")
 
 	complete, xli, err := self.getOrCreateSplitLink(connId, linkMeta, binding, chanType)
 	if err != nil {
-		log.WithError(err).Error("error binding link channel")
+		log.Error("error binding link channel", "error", err)
 		return err
 	}
 
@@ -198,17 +200,17 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	if err = self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
 		self.cleanupDeadPartialLink(connId)
 		if closeErr := xli.Close(); closeErr != nil {
-			log.WithError(closeErr).Error("error closing partial split link")
+			log.Error("error closing partial split link", "error", closeErr)
 		}
 		return err
 	}
 
 	if complete && xli.payloadCh != nil && xli.ackCh != nil {
 		if err = self.accepter.Accept(xli); err != nil {
-			log.WithError(err).Error("error accepting incoming Xlink")
+			log.Error("error accepting incoming Xlink", "error", err)
 
 			if err := xli.Close(); err != nil {
-				log.WithError(err).Debugf("error closing link")
+				log.Debug("error closing link", "error", err)
 			}
 			return err
 		}
@@ -217,7 +219,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 		if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 			log.Info("link registered")
 		} else if existingLink != nil {
-			log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
+			log.Info("existing link found, new link closed", "existingLinkId", existingLink.Id())
 		}
 	}
 
@@ -287,7 +289,7 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 	return complete, link, nil
 }
 
-func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *logrus.Entry) error {
+func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *linkMetadata, log *slog.Logger) error {
 	xli := &impl{
 		id:            linkMeta.linkId,
 		key:           self.xlinkRegistery.GetLinkKey(linkMeta.dialerBinding, self.GetLinkProtocol(), linkMeta.routerId, self.config.bindInterface),
@@ -320,9 +322,9 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 	log.Info("accepting link")
 
 	if err := self.accepter.Accept(xli); err != nil {
-		log.WithError(err).Error("error accepting incoming Xlink")
+		log.Error("error accepting incoming Xlink", "error", err)
 		if err := xli.Close(); err != nil {
-			log.WithError(err).Debugf("error closing link")
+			log.Debug("error closing link", "error", err)
 		}
 		return err
 	}
@@ -330,7 +332,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, linkMeta *lin
 	if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 		log.Info("link registered")
 	} else if existingLink != nil {
-		log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
+		log.Info("existing link found, new link closed", "existingLinkId", existingLink.Id())
 	}
 
 	log.Info("accepted link")

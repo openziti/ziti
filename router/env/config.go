@@ -166,6 +166,9 @@ type Config struct {
 		MessageQueueSize      int
 		EventQueueSize        int
 		EnableDataDelayMetric bool
+		HostMetrics           struct {
+			Enabled bool
+		}
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -733,6 +736,19 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			}
 			if value, found := submap["enableDataDelayMetric"]; found {
 				cfg.Metrics.EnableDataDelayMetric = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+			if value, found := submap["hostMetrics"]; found {
+				if hostMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := hostMap["enabled"]; found {
+						if enabled, ok := v.(bool); ok {
+							cfg.Metrics.HostMetrics.Enabled = enabled
+						} else {
+							return nil, errors.New("invalid value for metrics.hostMetrics.enabled, must be a boolean")
+						}
+					}
+				} else {
+					return nil, errors.New("invalid value for metrics.hostMetrics")
+				}
 			}
 		}
 	}

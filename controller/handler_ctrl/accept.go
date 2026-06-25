@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -194,7 +195,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	// would hit a nil channel.
 	r.Control.InitChannel(ch)
 	r.ConnectTime = time.Now()
-	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
+	// WithSlowHandlerDiagnostic is temporary - see handler_diagnostic.go for removal criteria.
+	if err = WithSlowHandlerDiagnostic(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
 
@@ -202,9 +204,18 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
+	// Check the router's epoch for stale entry cleanup. If the epoch changed
+	// (router restarted), delete old-epoch link gossip entries before creating
+	// new links in ConnectRouter.
+	if epoch, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_EpochHeader)]; found && len(epoch) > 0 {
+		self.network.HandleRouterEpoch(r.Id, epoch)
+	}
+
 	log.Info("accepted new router connection")
 
-	self.network.ConnectRouter(r)
+	if err := self.network.QueueRouterConnect(r); err != nil {
+		return fmt.Errorf("router connect pool full, rejecting connection: %w", err)
+	}
 
 	return nil
 }

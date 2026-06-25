@@ -314,6 +314,25 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Controller Gossip I/O Pool
+
+Controllers now send gossip peer broadcasts on a dedicated, bounded I/O pool,
+kept separate from the pool that applies inbound gossip. This is organized by
+kind of work rather than by function: a slow or stalled peer send is blocking
+I/O and must not pin a worker that gossip apply depends on. Sends are
+best-effort, so when the pool is full the broadcast is dropped and anti-entropy
+recovers it.
+
+The pool is tunable via a new optional `ioPool` stanza under the controller
+`network` config (defaults shown):
+
+```yaml
+network:
+  ioPool:
+    queueSize:  1024
+    maxWorkers: 32
+```
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/edge-api: [v0.31.0 -> v0.31.1](https://github.com/openziti/edge-api/compare/v0.31.0...v0.31.1)

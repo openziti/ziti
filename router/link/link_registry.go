@@ -19,25 +19,32 @@ package link
 import (
 	"container/heap"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
-	"github.com/sirupsen/logrus"
 )
+
+// linkLog is the logger for the router link registry subsystem (registry,
+// link state machine, and link event handlers). Its channel name is
+// "router.link"; operators can adjust verbosity with
+// `ziti agent set-channel-log-level router.link <level>`.
+var linkLog = logging.For("router.link")
 
 type Env interface {
 	GetRouterId() *identity.TokenId
@@ -47,6 +54,7 @@ type Env interface {
 	GetLinkDialerPool() goroutines.Pool
 	GetRateLimiterPool() goroutines.Pool
 	GetMetricsRegistry() servermetrics.UsageRegistry
+	GetLinkGossipNotifier() env.LinkGossipNotifier
 }
 
 func NewLinkRegistry(routerEnv Env) xlink.Registry {
@@ -187,36 +195,53 @@ func (self *linkRegistryImpl) DebugForgetLink(linkId string) bool {
 
 func (self *linkRegistryImpl) LinkAccepted(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	// Side-effect events queued outside the registry lock: queueEvent does a
+	// bounded-channel send and blocks when the event loop is backlogged. Doing
+	// it while holding the lock caused concurrent LinkAccepted/DialSucceeded
+	// goroutines to pile up behind one back-pressured event channel send.
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
 func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
-func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
-	log := logrus.WithField("dest", link.DestinationId()).
-		WithField("linkProtocol", link.LinkProtocol()).
-		WithField("newLinkId", link.Id()).
-		WithField("newLinkIteration", link.Iteration()).
-		WithField("dialed", link.IsDialed())
+// applyLinkLocked applies the incoming link. The caller must hold self.Lock().
+// Returns any events that should be queued after the lock is released; the
+// caller is responsible for invoking queueEvent on each one.
+func (self *linkRegistryImpl) applyLinkLocked(link xlink.Xlink) (xlink.Xlink, bool, []event) {
+	log := linkLog.With("dest", link.DestinationId(),
+		"linkProtocol", link.LinkProtocol(),
+		"newLinkId", link.Id(),
+		"newLinkIteration", link.Iteration(),
+		"dialed", link.IsDialed())
 
 	if link.IsClosed() {
 		log.Info("link being registered, but is already closed, skipping registration")
-		return nil, false
+		return nil, false, nil
 	}
 
+	var pending []event
+
 	if existing, _ := self.GetLink(link.Key()); existing != nil {
-		log = log.WithField("currentLinkId", existing.Id()).
-			WithField("currentLinkIteration", existing.Iteration())
+		log = log.With("currentLinkId", existing.Id(),
+			"currentLinkIteration", existing.Iteration())
 
 		if existing == link {
 			log.Warn("link was re-applied, should not happen, not making any changes")
 			debugz.DumpLocalStack()
-			return nil, true
+			return nil, true, nil
 		}
 
 		// If the id is the same, we want to throw away the older one, since the new one is a replacement.
@@ -229,51 +254,40 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 				// if we dialed the link, close it right away
 				go func() {
 					if err := link.Close(); err != nil {
-						log.WithError(err).Error("error closing duplicate link")
+						log.Error("error closing duplicate link", "error", err)
 					}
 				}()
 			} else {
 				// give the other side a chance to close the link first and report it as a duplicate
 				time.AfterFunc(30*time.Second, func() {
 					if err := link.Close(); err != nil {
-						log.WithError(err).Error("error closing duplicate link")
+						log.Error("error closing duplicate link", "error", err)
 					}
 				})
 			}
-			return existing, false
+			return existing, false, nil
 		}
 
-		// make sure we don't block the registry loop
-		go func() {
-			log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
+		log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
 
-			self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
-				// report link fault, then close link after allowing some time for circuits to be re-routed
-				fault := &ctrl_pb.Fault{
-					Id:        existing.Id(),
-					Subject:   ctrl_pb.FaultSubject_LinkDuplicate,
-					Iteration: existing.Iteration(),
-				}
+		// Queue the fault through the event loop so the tombstone version is
+		// assigned after any pending live entry versions from the notification
+		// cycle. Sending directly from a goroutine races with the notification
+		// cycle's version stamping. Returned via `pending` so the caller can
+		// queue it after releasing the registry lock.
+		pending = append(pending, &addLinkFaultForReplacedLink{link: existing})
 
-				if err := protobufs.MarshalTyped(fault).WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
-					log.WithField("ctrlId", ctrlId).
-						WithError(err).
-						Error("failed to send router fault when duplicate link detected")
-				}
-			})
-
-			// if we're not the link dialer, wait longer to let the dialer close the link
-			closeTimeout := func() time.Duration {
-				if existing.IsDialed() {
-					return time.Minute
-				}
-				return 75 * time.Second
-			}()
-
-			time.AfterFunc(closeTimeout, func() {
-				_ = existing.Close()
-			})
+		// Close the link asynchronously to avoid blocking the registry.
+		closeTimeout := func() time.Duration {
+			if existing.IsDialed() {
+				return time.Minute
+			}
+			return 75 * time.Second
 		}()
+
+		time.AfterFunc(closeTimeout, func() {
+			_ = existing.Close()
+		})
 	}
 
 	self.linkMapLocks.Lock()
@@ -281,11 +295,14 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkByIdMap[link.Id()] = link
 	self.linkMapLocks.Unlock()
 
-	self.updateLinkStateEstablished(link)
+	pending = append(pending, &updateLinkStatusForLink{
+		link:   link,
+		status: StatusEstablished,
+	})
 
 	log.Info("link registered")
 
-	return nil, true
+	return nil, true, pending
 }
 
 func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
@@ -309,14 +326,13 @@ func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 }
 
 func (self *linkRegistryImpl) Shutdown() {
-	log := pfxlog.Logger()
 	linkCount := 0
 	for link := range self.Iter() {
-		log.WithField("linkId", link.Id()).Info("closing link")
+		linkLog.Info("closing link", "linkId", link.Id())
 		_ = link.Close()
 		linkCount++
 	}
-	log.WithField("linkCount", linkCount).Info("shutdown links in link registry")
+	linkLog.Info("shutdown links in link registry", "linkCount", linkCount)
 }
 
 func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels ...channel.Channel) {
@@ -333,10 +349,10 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 		},
 	}
 
-	log := pfxlog.Logger().
-		WithField("linkId", link.Id()).
-		WithField("dest", link.DestinationId()).
-		WithField("linkProtocol", link.LinkProtocol())
+	log := linkLog.With(
+		"linkId", link.Id(),
+		"dest", link.DestinationId(),
+		"linkProtocol", link.LinkProtocol())
 
 	if len(channels) == 0 {
 		log.Info("no controllers available to notify of link")
@@ -345,9 +361,9 @@ func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels .
 	for _, ch := range channels {
 		if link.IsDialed() {
 			if err := protobufs.MarshalTyped(linkMsg).Send(ch); err != nil {
-				log.WithError(err).Error("error sending router link message")
+				log.Error("error sending router link message", "error", err)
 			}
-			log.WithField("ctrlId", ch.Id()).Info("notified controller of new link")
+			log.Info("notified controller of new link", "ctrlId", ch.Id())
 		}
 	}
 }
@@ -384,10 +400,19 @@ func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
 }
 
 func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
+	// For gossip-capable controllers, the controller initiates anti-entropy by
+	// sending us a digest. We respond with our current state + tombstones for
+	// dead links. No need to proactively send FullRefresh.
+	if self.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		linkLog.Info("gossip-capable controller reconnected, skipping FullRefresh (anti-entropy will reconcile)",
+			"ctrlId", ch.Id())
+		return
+	}
+
 	self.Lock()
 	defer self.Unlock()
 
-	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("resending link states after reconnect")
+	linkLog.Info("resending link states after reconnect", "ctrlId", ch.Id())
 
 	var onComplete []func()
 
@@ -416,7 +441,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	}
 
 	if err := protobufs.MarshalTyped(routerLinks).Send(ch); err != nil {
-		logrus.WithError(err).Error("failed to send router links on reconnect")
+		linkLog.Error("failed to send router links on reconnect", "error", err)
 	} else {
 		for _, f := range onComplete {
 			f()
@@ -428,15 +453,20 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
 		id:        id,
+		ctrlId:    ctrlId,
 		version:   version,
 		healthy:   healthy,
 		listeners: listeners,
 	}
 
 	self.queueEvent(updateEvent)
+}
+
+func (self *linkRegistryImpl) NotifyLinkConnStateChanged(link xlink.Xlink) {
+	self.queueEvent(&linkConnStateChanged{link: link})
 }
 
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
@@ -547,6 +577,10 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 }
 
 func (self *linkRegistryImpl) syncRequiredLinkStates() {
+	if self.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		return
+	}
+
 	for link := range self.Iter() {
 		if link.IsClosed() {
 			continue
@@ -565,52 +599,76 @@ func (self *linkRegistryImpl) syncRequiredLinkStates() {
 			}
 
 			for _, ctrlId := range ctrlIds {
-				log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("linkId", link.Id())
+				log := linkLog.With("ctrlId", ctrlId, "linkId", link.Id())
 				ctrlCh := self.ctrls.GetChannel(ctrlId)
 
 				err := self.env.GetRateLimiterPool().QueueOrError(func() {
 					if err := protobufs.MarshalTyped(message).WithTimeout(100 * time.Millisecond).Send(ctrlCh); err != nil {
-						log.WithError(err).Error("error sending router link state message")
+						log.Error("error sending router link state message", "error", err)
 					} else {
-						log.WithField("ctrlId", ctrlCh.Id()).Info("notified controller of updated router link state")
+						log.Info("notified controller of updated router link state", "ctrlId", ctrlCh.Id())
 						multiConnLink.MarkLinkStateSyncedForState(ctrlCh.Id(), stateUuid)
 					}
 				})
 
 				if err != nil {
-					log.WithError(err).Error("failed to queue send of router link state message")
+					log.Error("failed to queue send of router link state message", "error", err)
 				}
 			}
 		}
 	}
 }
 
+// scheduleNewLink adds jitter to a newly created link state before dialing.
+// The jitter scales with the number of known destinations to spread the
+// thundering herd when many routers start simultaneously. For small meshes
+// the jitter is negligible; for 400 routers it spreads dials over ~10 seconds.
+func (self *linkRegistryImpl) scheduleNewLink(state *linkState) {
+	destCount := len(self.destinations)
+	if destCount <= 1 {
+		self.evaluateLinkState(state)
+		return
+	}
+
+	// Scale jitter: 25ms per destination, so 400 destinations → 10s max jitter.
+	maxJitter := time.Duration(destCount) * 25 * time.Millisecond
+	jitter := time.Duration(rand.Int63n(int64(maxJitter)))
+	state.nextDial = time.Now().Add(jitter)
+	heap.Push(self.linkStateQueue, state)
+}
+
 func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
-	log := pfxlog.Logger().WithField("key", state.linkKey)
+	log := linkLog.With("key", state.linkKey)
 
 	couldDial := state.status != StatusEstablished && state.status != StatusDialing && state.nextDial.Before(time.Now())
 
 	if couldDial && state.dialActive.CompareAndSwap(false, true) {
 		state.updateStatus(StatusDialing)
 		iteration := state.dialAttempts.Add(1)
-		log = log.WithField("linkId", state.linkId).WithField("iteration", iteration)
+		log = log.With("linkId", state.linkId, "iteration", iteration)
 		log.Info("queuing link to dial")
 
 		err := self.env.GetLinkDialerPool().QueueOrError(func() {
 			defer state.dialActive.Store(false)
 
-			link, _ := self.GetLink(state.linkKey)
-			if link != nil {
-				log.Info("link already present, attempting to mark established")
-				self.updateLinkStateEstablished(link)
-				return
-			}
-
 			log.Info("dialing link")
 			link, err := state.dialer.Dial(state)
 			if err != nil {
-				log.WithError(err).Error("error dialing link")
+				log.Error("error dialing link", "error", err)
 				self.dialFailed(state, false)
+				return
+			}
+
+			// If a link was accepted from the other side while we were
+			// dialing, check if our dialed link would lose the duplicate
+			// detection comparison. If so, close it early to avoid the
+			// heavier applyLinkLocked duplicate path. If our link would win,
+			// let it go through DialSucceeded to properly replace the
+			// accepted link.
+			if existing, _ := self.GetLink(state.linkKey); existing != nil && existing.Id() < link.Id() {
+				log.Info("link accepted while dialing, closing dialed link (would lose duplicate check)")
+				go link.Close()
+				self.updateLinkStateEstablished(existing)
 				return
 			}
 
@@ -621,7 +679,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 		})
 		if err != nil {
 			state.dialActive.Store(false)
-			log.WithError(err).Error("unable to queue link dial, see pool error")
+			log.Error("unable to queue link dial, see pool error", "error", err)
 			state.updateStatus(StatusQueueFailed)
 			state.dialFailed(self, false)
 		}
@@ -681,10 +739,13 @@ func (self *linkRegistryImpl) GetLinkKey(dialerBinding, protocol, dest, listener
 }
 
 func (self *linkRegistryImpl) notifyControllersOfLinks() {
+	notifyLog := linkLog.With("op", "link-notify")
 	if self.notifyInProgress.Load() {
-		pfxlog.Logger().WithField("op", "link-notify").Info("new link notification already in progress, exiting")
+		notifyLog.Info("new link notification already in progress, exiting")
 		return
 	}
+
+	notifier := self.env.GetLinkGossipNotifier()
 
 	var links []stateAndLink
 	var faults []stateAndFaults
@@ -695,16 +756,19 @@ func (self *linkRegistryImpl) notifyControllersOfLinks() {
 				if state.status == StatusEstablished {
 					link, _ := self.GetLink(state.linkKey)
 					if link == nil {
-						pfxlog.Logger().
-							WithField("op", "link-notify").
-							WithField("linkId", state.linkId).
-							Info("link not found for link key on established link, marking failed")
+						notifyLog.Info("link not found for link key on established link, marking failed",
+							"linkId", state.linkId)
 						state.updateStatus(StatusDialFailed)
 						state.dialFailed(self, false)
 					} else if link.IsDialed() {
+						var version uint64
+						if notifier != nil {
+							version = notifier.NextVersion()
+						}
 						links = append(links, stateAndLink{
-							state: state,
-							link:  link,
+							state:   state,
+							link:    link,
+							version: version,
 						})
 					}
 
@@ -736,14 +800,14 @@ func (self *linkRegistryImpl) notifyControllersOfLinks() {
 		return
 	}
 
-	pfxlog.Logger().WithField("op", "link-notify").Info("attempting to queue link notifications")
+	notifyLog.Info("attempting to queue link notifications")
 	self.notifyInProgress.Store(true)
 	err := self.env.GetRateLimiterPool().QueueOrError(func() {
-		pfxlog.Logger().WithField("op", "link-notify").Info("link notifications starting")
+		notifyLog.Info("link notifications starting")
 
 		defer func() {
 			self.notifyInProgress.Store(false)
-			pfxlog.Logger().WithField("op", "link-notify").Info("link notifications exiting")
+			notifyLog.Info("link notifications exiting")
 		}()
 
 		if len(links) > 0 {
@@ -756,12 +820,55 @@ func (self *linkRegistryImpl) notifyControllersOfLinks() {
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithField("op", "link-notify").Info("unable to queue link notifications")
+		notifyLog.Info("unable to queue link notifications")
 		self.notifyInProgress.Store(false)
 	}
 }
 
 func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
+	// Drop any link that has closed since it was collected for notification.
+	// Collection runs on the event loop, but the send runs later on the
+	// rate-limiter pool; in that gap a link can fail (e.g. all underlays
+	// dropping) or be replaced. Advertising a closed link as a live gossip
+	// entry seeds a resurrection: the stale live entry races the fault tombstone
+	// across controllers and can leave an orphan link in a controller's link
+	// manager. link.IsClosed() is safe to read off the event loop.
+	current := make([]stateAndLink, 0, len(links))
+	for _, pair := range links {
+		if pair.link.IsClosed() {
+			linkLog.Info("skipping new-link gossip for link closed since collection",
+				"op", "link-notify",
+				"linkId", pair.link.Id(),
+				"iteration", pair.link.Iteration())
+			continue
+		}
+		current = append(current, pair)
+	}
+	links = current
+	if len(links) == 0 {
+		return
+	}
+
+	// When all controllers support link gossip, send gossip deltas directly.
+	if notifier := self.env.GetLinkGossipNotifier(); notifier != nil &&
+		self.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip) {
+		var vlinks []env.VersionedLink
+		for _, pair := range links {
+			vlinks = append(vlinks, env.VersionedLink{
+				Link:    pair.link,
+				Version: pair.version,
+			})
+		}
+		if err := notifier.NotifyLinks(vlinks); err != nil {
+			linkLog.Warn("failed to send new links via gossip, will retry",
+				"op", "link-notify", "error", err)
+		} else {
+			self.markNewLinksNotified(links)
+		}
+		return
+	}
+
+	// Fallback: send RouterLinks to all controllers (old-router path).
 	routerLinks := &ctrl_pb.RouterLinks{}
 	for _, pair := range links {
 		link := pair.link
@@ -777,24 +884,24 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 
 	allSent := true
 	for ctrlId, ctrl := range self.ctrls.GetAll() {
-		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("op", "link-notify")
+		log := linkLog.With("ctrlId", ctrlId, "op", "link-notify")
 		if ctrl.IsConnected() {
 			msgEnv := protobufs.MarshalTyped(routerLinks).WithTimeout(10 * time.Second)
 			if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
-				log.WithError(err).Error("timeout sending new router links")
+				log.Error("timeout sending new router links", "error", err)
 				allSent = false
 
 				for _, pair := range links {
-					log.WithError(err).
-						WithField("linkId", pair.link.Id()).
-						WithField("iteration", pair.link.Iteration()).
-						Info("failed to notify controller of new link")
+					log.Info("failed to notify controller of new link",
+						"error", err,
+						"linkId", pair.link.Id(),
+						"iteration", pair.link.Iteration())
 				}
 			} else {
 				for _, pair := range links {
-					log.WithField("linkId", pair.link.Id()).
-						WithField("iteration", pair.link.Iteration()).
-						Info("notified controller of new link")
+					log.Info("notified controller of new link",
+						"linkId", pair.link.Id(),
+						"iteration", pair.link.Iteration())
 				}
 			}
 		}
@@ -806,42 +913,55 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 }
 
 func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
+	notifier := self.env.GetLinkGossipNotifier()
+	useGossip := notifier != nil && self.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip)
+
 	var successfullySent []stateAndFaults
 	for _, item := range list {
 		var sent []linkFault
 
 		for _, fault := range item.faults {
-			allSent := true
-			for ctrlId, ctrl := range self.ctrls.GetAll() {
+			if useGossip {
+				if err := notifier.NotifyLinkFault(fault.linkId, fault.iteration); err != nil {
+					linkLog.Warn("failed to send link fault via gossip, will retry",
+						"op", "link-notify",
+						"linkId", fault.linkId,
+						"error", err)
+				} else {
+					sent = append(sent, fault)
+				}
+			} else {
 				faultMsg := &ctrl_pb.Fault{
 					Subject:   ctrl_pb.FaultSubject_LinkFault,
 					Id:        fault.linkId,
 					Iteration: fault.iteration,
 				}
 
-				log := pfxlog.Logger().WithField("ctrlId", ctrlId).
-					WithField("op", "link-notify").
-					WithField("linkId", fault.linkId).
-					WithField("iteration", fault.iteration)
+				allSent := true
+				for ctrlId, ctrl := range self.ctrls.GetAll() {
+					log := linkLog.With("ctrlId", ctrlId,
+						"op", "link-notify",
+						"linkId", fault.linkId,
+						"iteration", fault.iteration)
 
-				if ctrl.IsConnected() {
-					msgEnv := protobufs.MarshalTyped(faultMsg).WithTimeout(10 * time.Second)
-					if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
-						log.WithError(err).Error("timeout sending link fault")
+					if ctrl.IsConnected() {
+						msgEnv := protobufs.MarshalTyped(faultMsg).WithTimeout(10 * time.Second)
+						if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
+							log.Error("timeout sending link fault", "error", err)
+							allSent = false
+							log.Info("failed to notify controller of link fault")
+						} else {
+							log.Info("notified controller of link fault")
+						}
+					} else if ctrl.TimeSinceLastContact() < 2*time.Minute {
 						allSent = false
-						log.Info("failed to notify controller of link fault")
 					} else {
-						log.Info("notified controller of link fault")
+						log.Info("controller has been disconnected for longer than 2 minutes, not sending link fault")
 					}
-				} else if ctrl.TimeSinceLastContact() < 2*time.Minute {
-					// if this is a brief outage, need to keep trying; otherwise there are potential race conditions
-					allSent = false
-				} else {
-					log.Info("controller has been disconnected for longer than 2 minutes, not sending link fault")
 				}
-			}
-			if allSent {
-				sent = append(sent, fault)
+				if allSent {
+					sent = append(sent, fault)
+				}
 			}
 		}
 		if len(sent) > 0 {
@@ -858,8 +978,9 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 }
 
 type stateAndLink struct {
-	state *linkState
-	link  xlink.Xlink
+	state   *linkState
+	link    xlink.Xlink
+	version uint64 // gossip version stamped at collection time in the event loop
 }
 
 type stateAndFaults struct {

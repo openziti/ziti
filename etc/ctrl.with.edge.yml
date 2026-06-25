@@ -8,6 +8,29 @@ network:
   # Defaults to 1 minute
   routerConnectChurnLimit: 1m
 
+  # Bounded pool for router connection setup (ConnectRouter).
+  #routerConnectPool:
+    #queueSize:  1
+    #maxWorkers: 200
+
+  # Bounded pool for router-originated gossip and canary message processing.
+  #gossipApplyPool:
+    #queueSize:  1024
+    #maxWorkers: 50
+
+  # Bounded pool for peer controller events (gossip deltas, digests).
+  #peerEventsPool:
+    #queueSize:  1
+    #maxWorkers: 10
+
+  # Bounded pool for outbound, blocking gossip network I/O (peer broadcasts and
+  # router digest sends), organized by kind of work rather than by function so a
+  # slow send can't pin a worker that gossip apply depends on. Sends are
+  # best-effort; a full pool drops the send and anti-entropy / re-trigger recover.
+  #ioPool:
+    #queueSize:  1024
+    #maxWorkers: 32
+
 # `trustDomain` is used to name and uniquely identify a network. Its main use is as a trust domain in SPIFFE ids.
 # Defining it here is only for single controller environments that are not configured for high
 # availability. Deployments with high availability MUST be configured via x509 certificate URI SANs.

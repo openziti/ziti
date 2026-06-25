@@ -21,13 +21,16 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/router/link"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
+
+// configLog is the logger for link listener/dialer config parsing. Its channel
+// name is "router.link.config".
+var configLog = logging.For("router.link.config")
 
 const (
 	MinRetryInterval = 10 * time.Millisecond
@@ -38,7 +41,7 @@ const (
 
 	DefaultHealthyMinRetryInterval   = 5 * time.Second
 	DefaultHealthyMaxRetryInterval   = 5 * time.Minute
-	DefaultHealthyRetryBackoffFactor = 1.5
+	DefaultHealthyRetryBackoffFactor = 1.2
 
 	DefaultUnhealthyMinRetryInterval   = time.Minute
 	DefaultUnhealthyMaxRetryInterval   = time.Hour
@@ -81,9 +84,9 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		if addr, ok := config.bind.(transport.HostPortAddress); ok {
 			intf, err := transport.ResolveInterface(addr.Hostname())
 			if err != nil {
-				pfxlog.Logger().WithError(err).WithField("addr", addr.String()).Warn("unable to get interface for address")
+				configLog.Warn("unable to get interface for address", "error", err, "addr", addr.String())
 			} else {
-				pfxlog.Logger().Infof("found interface %v for bind address %v", intf.Name, addr.String())
+				configLog.Info("found interface for bind address", "interface", intf.Name, "addr", addr.String())
 				config.bindInterface = intf.Name
 			}
 		}
@@ -127,6 +130,12 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		config.groups = append(config.groups, link.GroupDefault)
 	}
 
+	// Link listeners need higher connection limits than the channel defaults
+	// (16/1) to handle mesh startup where many routers connect simultaneously.
+	config.options = channel.DefaultOptions()
+	config.options.MaxOutstandingConnects = 32
+	config.options.MaxQueuedConnects = 8
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -137,8 +146,6 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		} else {
 			return nil, fmt.Errorf("invalid 'options' in listener config (%s)", reflect.TypeOf(value))
 		}
-	} else {
-		config.options = channel.DefaultOptions()
 	}
 
 	return config, nil
@@ -155,11 +162,15 @@ type listenerConfig struct {
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
+	defaultOpts := channel.DefaultOptions()
+	defaultOpts.ConnectTimeout = 10 * time.Second
+
 	config := &dialerConfig{
 		split:                 true,
 		maxDefaultConnections: DefaultMaxDefaultConnections,
 		maxAckConnections:     DefaultMaxAckConnections,
 		startupDelay:          DefaultStartupDelay,
+		options:               defaultOpts,
 	}
 
 	if value, found := data["split"]; found {
@@ -216,14 +227,14 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	}
 
 	if value, found := data["bind"]; found {
-		logrus.Debugf("Parsing dialer bind config")
+		configLog.Debug("parsing dialer bind config")
 		if addressString, ok := value.(string); ok {
 			_, err := transport.ResolveInterface(addressString)
 			if err != nil {
 				return nil, errors.Errorf("invalid 'bind' address in dialer config (%s)", err)
 			}
 			config.localBinding = addressString
-			logrus.Debugf("Using local bind address %s", config.localBinding)
+			configLog.Debug("using local bind address", "addr", config.localBinding)
 		} else {
 			return nil, fmt.Errorf("invalid 'bind' address in dialer config (%s)", reflect.TypeOf(value))
 		}
