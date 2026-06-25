@@ -19,6 +19,7 @@ package router
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/router/env"
@@ -35,6 +36,13 @@ func (reporter *controllersReporter) AcceptMetrics(message *metrics_pb.MetricsMe
 
 	for len(reporter.msgs) > 0 {
 		message = reporter.msgs[0]
+
+		// Signal whether this router publishes per-link latency over gossip, so a
+		// controller knows not to also derive routing latency from this message.
+		// True exactly when every connected controller is gossip-capable, the same
+		// gate the gossip latency publisher uses; the histograms still travel for
+		// observability.
+		message.LinkLatencyInGossip = reporter.ctrls.AllControllersHaveCapability(capabilities.ControllerLinkGossip)
 
 		successfulSend := false
 

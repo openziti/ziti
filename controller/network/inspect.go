@@ -225,6 +225,8 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 		ctx.handleLocalJsonResponse(name, result)
 	} else if lc == "gossip-links" {
 		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipLinks())
+	} else if lc == "gossip-link-metrics" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipLinkMetrics())
 	} else if lc == "gossip-store" {
 		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipStore())
 	} else if lc == "gossip-canaries" {
