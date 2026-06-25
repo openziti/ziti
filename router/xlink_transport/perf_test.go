@@ -9,6 +9,7 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -106,9 +107,9 @@ func Test_Throughput(t *testing.T) {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			v := registry.Poll().Meters["drops"]
+			v := servermetrics.Poll(registry).Meters["drops"]
 			fmt.Printf("drops - m1: %v, count: %v\n", v.M1Rate, v.Count)
-			v = registry.Poll().Meters["msgs"]
+			v = servermetrics.Poll(registry).Meters["msgs"]
 			fmt.Printf("msgs  - m1: %v, count: %v\n", v.M1Rate, v.Count)
 		}
 	}()

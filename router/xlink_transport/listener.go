@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/transport/v2"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -50,7 +50,7 @@ func (self *listener) Listen() error {
 	config := channel.ListenerConfig{
 		ConnectOptions:     self.config.options.ConnectOptions,
 		TransportConfig:    self.tcfg,
-		PoolConfigurator:   fabricMetrics.GoroutinesPoolMetricsConfigF(self.env.GetMetricsRegistry(), "pool.listener.link"),
+		PoolConfigurator:   servermetrics.GoroutinesPoolMetricsConfigF(self.env.GetMetricsRegistry(), "pool.listener.link"),
 		ConnectionHandlers: []channel.ConnectionHandler{&ConnectionHandler{self.id}},
 		MessageStrategy:    channel.DatagramMessageStrategy(xgress.UnmarshallPacketPayload),
 	}

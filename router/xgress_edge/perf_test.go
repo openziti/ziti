@@ -7,11 +7,11 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
@@ -141,8 +141,8 @@ func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
 	req := require.New(b)
 	req.NoError(mux.Add(conn))
 
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
+	registryConfig := servermetrics.DefaultUsageRegistryConfig("test", nil)
+	metricsRegistry := servermetrics.NewUsageRegistry(registryConfig)
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
@@ -227,8 +227,8 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	}
 	xgOptions := xgress.DefaultOptions()
 
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", nil)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
+	registryConfig := servermetrics.DefaultUsageRegistryConfig("test", nil)
+	metricsRegistry := servermetrics.NewUsageRegistry(registryConfig)
 
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)

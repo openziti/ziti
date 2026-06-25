@@ -24,10 +24,10 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
@@ -41,7 +41,7 @@ type RouterEnv interface {
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry
 	GetCloseNotify() <-chan struct{}
-	GetMetricsRegistry() metrics.UsageRegistry
+	GetMetricsRegistry() servermetrics.UsageRegistry
 	RenderJsonConfig() (string, error)
 	GetHeartbeatOptions() HeartbeatOptions
 	GetRateLimiterPool() goroutines.Pool
@@ -97,6 +97,6 @@ type Destination interface {
 }
 
 type XgressMetrics interface {
-	Rx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
-	Tx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
+	Rx(source servermetrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
+	Tx(source servermetrics.UsageSource, originator xgress.Originator, payload *xgress.Payload)
 }

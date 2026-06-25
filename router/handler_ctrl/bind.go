@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
-	"github.com/openziti/ziti/v2/common/metrics"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
@@ -59,7 +59,7 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder) (ch
 		WorkerFunction: XgressDialerWorker,
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.route.handler")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.route.handler")
 
 	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
 	if err != nil {
@@ -78,7 +78,7 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder) (ch
 		WorkerFunction: terminatorValidatorWorker,
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&terminatorValidatorPoolConfig, routerEnv.GetMetricsRegistry(), "pool.terminator_validation")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&terminatorValidatorPoolConfig, routerEnv.GetMetricsRegistry(), "pool.terminator_validation")
 
 	terminatorValidationPool, err := goroutines.NewPool(terminatorValidatorPoolConfig)
 	if err != nil {

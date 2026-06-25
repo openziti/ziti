@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/sirupsen/logrus"
@@ -45,7 +46,7 @@ type Env interface {
 	GetCloseNotify() <-chan struct{}
 	GetLinkDialerPool() goroutines.Pool
 	GetRateLimiterPool() goroutines.Pool
-	GetMetricsRegistry() metrics.UsageRegistry
+	GetMetricsRegistry() servermetrics.UsageRegistry
 }
 
 func NewLinkRegistry(routerEnv Env) xlink.Registry {
