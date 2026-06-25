@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
@@ -66,7 +66,7 @@ func (self channelType) String() string {
 }
 
 type LinkEnv interface {
-	GetMetricsRegistry() metrics.UsageRegistry
+	GetMetricsRegistry() servermetrics.UsageRegistry
 	GetXLinkRegistry() xlink.Registry
 	GetNetworkControllers() env.NetworkControllers
 	GetRateLimiterPool() goroutines.Pool

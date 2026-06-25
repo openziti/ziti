@@ -23,8 +23,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ func newCommandHandler(controller *raft.Controller) channel.ContentTypeReceiver 
 		},
 		WorkerFunction: commandHandlerWorker,
 	}
-	metrics.ConfigureGoroutinesPoolMetrics(&poolConfig, controller.GetMetricsRegistry(), "command_handler")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, controller.GetMetricsRegistry(), "command_handler")
 	pool, err := goroutines.NewPool(poolConfig)
 	if err != nil {
 		panic(err)
@@ -95,26 +95,26 @@ func (self *commandHandler) processMessages() {
 // Why use two phases?
 //
 // 1. Rate Limiting Separation:
-//    - The adaptive rate limiter (raft.rateLimiter) controls how many operations are
-//      IN-FLIGHT (waiting for Raft consensus), preventing overwhelming the Raft subsystem
-//    - The queue (self.queue) controls how many operations are SUBMITTED (pending rate limiting)
-//    - This separation allows for independent tuning of submission vs. in-flight limits
+//   - The adaptive rate limiter (raft.rateLimiter) controls how many operations are
+//     IN-FLIGHT (waiting for Raft consensus), preventing overwhelming the Raft subsystem
+//   - The queue (self.queue) controls how many operations are SUBMITTED (pending rate limiting)
+//   - This separation allows for independent tuning of submission vs. in-flight limits
 //
 // 2. Prevents Queue Starvation:
-//    - Phase 1 holds the lock only long enough to dequeue and submit to Raft
-//    - Phase 2 releases the lock while waiting for Raft consensus (potentially seconds)
-//    - This allows other workers to dequeue and submit their commands to Raft concurrently
-//    - Without this, one slow Raft operation would block all other operations from even
-//      being submitted, leading to queue buildup and timeouts
+//   - Phase 1 holds the lock only long enough to dequeue and submit to Raft
+//   - Phase 2 releases the lock while waiting for Raft consensus (potentially seconds)
+//   - This allows other workers to dequeue and submit their commands to Raft concurrently
+//   - Without this, one slow Raft operation would block all other operations from even
+//     being submitted, leading to queue buildup and timeouts
 //
 // 3. Maximizes Raft Throughput:
-//    - Multiple operations can be submitted to Raft's internal queue quickly in succession
-//    - Raft can then batch and process these operations more efficiently
-//    - Workers block waiting for results outside the critical section
+//   - Multiple operations can be submitted to Raft's internal queue quickly in succession
+//   - Raft can then batch and process these operations more efficiently
+//   - Workers block waiting for results outside the critical section
 //
 // 4. Fair Processing:
-//    - Commands are dequeued in order (Phase 1) but can complete in any order (Phase 2)
-//    - This prevents head-of-line blocking where a single slow command delays all others
+//   - Commands are dequeued in order (Phase 1) but can complete in any order (Phase 2)
+//   - This prevents head-of-line blocking where a single slow command delays all others
 //
 // Example scenario without two-phase:
 //   - Worker 1 dequeues msg A, holds lock, calls Raft.Apply(), waits 5s for consensus

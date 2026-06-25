@@ -41,9 +41,9 @@ import (
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/state"
@@ -363,7 +363,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 		ConnectOptions:   listener.options.channelOptions.ConnectOptions,
 		TransportConfig:  listener.factory.edgeRouterConfig.Tcfg,
 		Headers:          listener.headers,
-		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
+		PoolConfigurator: servermetrics.GoroutinesPoolMetricsConfigF(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
 	}
 
 	accepter := NewAcceptor(listener)

@@ -132,7 +132,7 @@ func (context *inspectRequestContext) processLocal() {
 			result := context.handler.fwd.InspectCircuits()
 			context.handleJsonResponse(requested, result)
 		} else if strings.HasPrefix(lc, "metrics") {
-			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
+			msg := context.handler.fwd.MetricsRegistry().PollMessageWithoutUsageMetrics()
 			context.handleJsonResponse(requested, msg)
 		} else if lc == "config" {
 			js, err := context.handler.env.RenderJsonConfig()

@@ -16,6 +16,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/link"
 	"github.com/openziti/ziti/v2/router/xlink"
@@ -53,7 +54,7 @@ func (t testBindHandlerFactory) NewBindHandler(l xlink.Xlink, _ bool, _ bool) ch
 type testRegistryEnv struct {
 	ctrls           env.NetworkControllers
 	closeNotify     chan struct{}
-	metricsRegistry metrics.UsageRegistry
+	metricsRegistry servermetrics.UsageRegistry
 }
 
 func (self *testRegistryEnv) GetRouterId() *id.TokenId {
@@ -82,7 +83,7 @@ func (self *testRegistryEnv) GetRateLimiterPool() goroutines.Pool {
 	panic("implement me")
 }
 
-func (self *testRegistryEnv) GetMetricsRegistry() metrics.UsageRegistry {
+func (self *testRegistryEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
@@ -145,8 +146,8 @@ func (self *dialEnvMock) NotifyOfReconnect(ctrlchan.CtrlChannel) {
 func setupEnv() link.Env {
 	closeNotify := make(chan struct{})
 	ctrls := env.NewNetworkControllers(&dialEnvMock{}, env.NewDefaultHeartbeatOptions())
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
+	registryConfig := servermetrics.DefaultUsageRegistryConfig("test", closeNotify)
+	metricsRegistry := servermetrics.NewUsageRegistry(registryConfig)
 	return &testRegistryEnv{
 		ctrls:           ctrls,
 		closeNotify:     closeNotify,
