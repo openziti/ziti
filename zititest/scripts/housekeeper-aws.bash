@@ -235,13 +235,151 @@ function terminate_instances(){
   done
 }
 
+# delete_vpc_with_deps deletes a single VPC after removing the dependencies that
+# would otherwise block delete-vpc. The order mirrors how fablab provisions a VPC
+# (instances in a subnet, an internet gateway, a custom route table and security
+# group), tearing those down before the VPC itself. Mutating calls are best-effort:
+# a failure is logged as a warning and teardown continues so one stuck resource
+# does not abort the whole run.
+function delete_vpc_with_deps() {
+  local region=$1
+  local vpc_id=$2
+  echo "Deleting VPC ${vpc_id} in ${region} and its dependencies"
+
+  # 1. Terminate any instances in the VPC and wait for them to go away; while they
+  #    exist they hold ENIs in the subnet and reference the security group.
+  local -a instance_ids=()
+  while read -r; do
+    [[ -n "$REPLY" ]] && instance_ids+=("$REPLY")
+  done < <(
+    aws --region "$region" ec2 describe-instances \
+      --filters "Name=vpc-id,Values=${vpc_id}" \
+                "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+      --query 'Reservations[*].Instances[*].InstanceId' \
+      --output text | tr '\t' '\n'
+  )
+  if [[ ${#instance_ids[@]} -ge 1 ]]
+  then
+    echo "  Terminating ${#instance_ids[@]} instance(s): ${instance_ids[*]}"
+    aws --region "$region" ec2 terminate-instances --instance-ids "${instance_ids[@]}" >/dev/null \
+      || echo "  WARN: failed to terminate instances in ${vpc_id}"
+    echo "  Waiting for instances to terminate..."
+    aws --region "$region" ec2 wait instance-terminated --instance-ids "${instance_ids[@]}" \
+      || echo "  WARN: timed out waiting for instances to terminate"
+  fi
+
+  # 2. Delete leftover (available) network interfaces that could block subnet deletion.
+  while read -r eni
+  do
+    [[ -z "$eni" ]] && continue
+    echo "  Deleting network interface ${eni}"
+    aws --region "$region" ec2 delete-network-interface --network-interface-id "$eni" \
+      || echo "  WARN: failed to delete network interface ${eni}"
+  done < <(
+    aws --region "$region" ec2 describe-network-interfaces \
+      --filters "Name=vpc-id,Values=${vpc_id}" "Name=status,Values=available" \
+      --query 'NetworkInterfaces[*].NetworkInterfaceId' \
+      --output text | tr '\t' '\n'
+  )
+
+  # 3. Detach and delete internet gateways.
+  while read -r igw
+  do
+    [[ -z "$igw" ]] && continue
+    echo "  Detaching and deleting internet gateway ${igw}"
+    aws --region "$region" ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$vpc_id" \
+      || echo "  WARN: failed to detach internet gateway ${igw}"
+    aws --region "$region" ec2 delete-internet-gateway --internet-gateway-id "$igw" \
+      || echo "  WARN: failed to delete internet gateway ${igw}"
+  done < <(
+    aws --region "$region" ec2 describe-internet-gateways \
+      --filters "Name=attachment.vpc-id,Values=${vpc_id}" \
+      --query 'InternetGateways[*].InternetGatewayId' \
+      --output text | tr '\t' '\n'
+  )
+
+  # 4. Delete subnets.
+  while read -r subnet
+  do
+    [[ -z "$subnet" ]] && continue
+    echo "  Deleting subnet ${subnet}"
+    aws --region "$region" ec2 delete-subnet --subnet-id "$subnet" \
+      || echo "  WARN: failed to delete subnet ${subnet}"
+  done < <(
+    aws --region "$region" ec2 describe-subnets \
+      --filters "Name=vpc-id,Values=${vpc_id}" \
+      --query 'Subnets[*].SubnetId' \
+      --output text | tr '\t' '\n'
+  )
+
+  # 5. Delete non-main route tables, disassociating their subnet associations first.
+  #    The VPC's main route table has a Main==true association and cannot be deleted.
+  local rt_json
+  rt_json="$(aws --region "$region" ec2 describe-route-tables \
+    --filters "Name=vpc-id,Values=${vpc_id}" --output json)"
+  while read -r rt
+  do
+    [[ -z "$rt" ]] && continue
+    while read -r assoc
+    do
+      [[ -z "$assoc" ]] && continue
+      echo "  Disassociating route table association ${assoc}"
+      aws --region "$region" ec2 disassociate-route-table --association-id "$assoc" \
+        || echo "  WARN: failed to disassociate ${assoc}"
+    done < <(jq -r --arg rt "$rt" '.RouteTables[]|select(.RouteTableId==$rt)|.Associations[]?|select(.Main==false)|.RouteTableAssociationId' <<< "$rt_json")
+    echo "  Deleting route table ${rt}"
+    aws --region "$region" ec2 delete-route-table --route-table-id "$rt" \
+      || echo "  WARN: failed to delete route table ${rt}"
+  done < <(jq -r '.RouteTables[]|select(any(.Associations[]?; .Main==true)|not)|.RouteTableId' <<< "$rt_json")
+
+  # 6. Delete non-default security groups.
+  while read -r sg
+  do
+    [[ -z "$sg" ]] && continue
+    echo "  Deleting security group ${sg}"
+    aws --region "$region" ec2 delete-security-group --group-id "$sg" \
+      || echo "  WARN: failed to delete security group ${sg}"
+  done < <(
+    aws --region "$region" ec2 describe-security-groups \
+      --filters "Name=vpc-id,Values=${vpc_id}" \
+      --query 'SecurityGroups[?GroupName!=`default`].GroupId' \
+      --output text | tr '\t' '\n'
+  )
+
+  # 7. Delete the VPC itself.
+  if aws --region "$region" ec2 delete-vpc --vpc-id "$vpc_id"
+  then
+    echo "Deleted VPC ${vpc_id} in ${region}"
+  else
+    echo "ERROR: failed to delete VPC ${vpc_id} in ${region} (dependencies may remain)"
+  fi
+}
+
+# delete_vpcs deletes every VPC listed in a JSON file produced by `describe vpc`,
+# removing each VPC's dependencies first via delete_vpc_with_deps.
+function delete_vpcs(){
+  local vpcfile onecount region vpc_id
+  vpcfile=$1
+  onecount=$(jq 'length' "$vpcfile")
+  if [[ "$onecount" -lt 1 ]]
+  then
+    return 0
+  fi
+  for i in $(seq 0 $((onecount-1)))
+  do
+    region=$(jq -r ".[$i].awsRegion // .[$i].Region" "$vpcfile")
+    vpc_id=$(jq -r ".[$i].vpcId" "$vpcfile")
+    delete_vpc_with_deps "$region" "$vpc_id"
+  done
+}
+
 check_json_file(){
   local JSONFILE=$1
   if [[ -f "$JSONFILE" ]]
   then
     jq -e . "$JSONFILE" >/dev/null
   else
-    echo "Usage: $BASENAME stop|terminate FILE"
+    echo "Usage: $BASENAME stop|terminate|delete FILE"
     return 1
   fi
 }
@@ -342,6 +480,57 @@ do
         exit
       fi
       ;;
+    delete)
+      if [[ "${2:-}" =~ ^vpc(s)?$ ]]
+      then
+        shift 2
+        export TMPDIR="${TMPDIR:-$(mktemp -d)}"
+        describe_vpcs "$(date -d "-${AGE:-7} days" -Id)"
+
+        echo "Planned VPC deletions:"
+        total_count=0
+        for region in us-east-1 us-west-2 eu-west-2 eu-central-1 ap-southeast-2
+        do
+          f="${TMPDIR}/old-fablab-vpcs-${region}.json"
+          if [[ -f "$f" ]]
+          then
+            count="$(jq 'length' "$f")"
+            if [[ "$count" -gt 0 ]]
+            then
+              echo "- ${region}: ${count}"
+              total_count=$((total_count + count))
+            fi
+          fi
+        done
+
+        if [[ "$total_count" -lt 1 ]]
+        then
+          echo "No old VPCs to delete"
+          exit
+        fi
+
+        read -r -p "Proceed to delete ${total_count} VPCs and all their dependencies? Type 'yes' to continue: " CONFIRM
+        if [[ "${CONFIRM}" != "yes" ]]
+        then
+          echo "Aborted"
+          exit 1
+        fi
+
+        for region in us-east-1 us-west-2 eu-west-2 eu-central-1 ap-southeast-2
+        do
+          f="${TMPDIR}/old-fablab-vpcs-${region}.json"
+          if [[ -f "$f" ]]
+          then
+            delete_vpcs "$f"
+          fi
+        done
+        exit
+      else
+        check_json_file "${2:-}"
+        delete_vpcs "${2:-}"
+        exit
+      fi
+      ;;
     describe)
       if [[ "${2:-}" =~ ^(instance|vpc)s?$ ]]
       then
@@ -376,9 +565,12 @@ do
       shift 1
       ;;
     --help|\?|*)
-      echo "Usage: $BASENAME [describe instance --age DAYS --state (running|stopped) | describe vpc [--odd] ] | stop FILE | terminate FILE]"\
-        "--odd reports VPCs where CreateVpc CloudTrail events are missing or duplicated (cannot determine age)"\
-        "where FILE is a JSON file created by the describe command"
+      echo "Usage: $BASENAME [ describe instance --age DAYS --state (running|stopped) | describe vpc [--odd]"\
+        "| stop (instances|FILE) | terminate (instances|FILE) | delete (vpcs|FILE) ]"\
+        "--odd reports VPCs where CreateVpc CloudTrail events are missing or duplicated (cannot determine age)."\
+        "delete vpcs describes old VPCs, prompts, then deletes each VPC after tearing down its dependencies"\
+        "(instances, network interfaces, internet gateways, subnets, route tables, security groups)."\
+        "FILE is a JSON file created by the matching describe command (instances for stop/terminate, vpc for delete)."
       exit 0
       ;;
   esac
