@@ -27,9 +27,9 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_router"
@@ -68,7 +68,7 @@ type Factory struct {
 	ctrls             env.NetworkControllers
 	stateManager      state.Manager
 	tunneler          *tunneler
-	metricsRegistry   metrics.UsageRegistry
+	metricsRegistry   servermetrics.UsageRegistry
 	env               env.RouterEnv
 	hostedServices    *HostedServiceRegistry
 	dialerInitialized atomic.Bool

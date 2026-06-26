@@ -14,13 +14,13 @@
 	limitations under the License.
 */
 
-package metrics
+package router
 
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
+	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
 )
@@ -73,7 +73,7 @@ func (reporter *controllersReporter) AcceptMetrics(message *metrics_pb.MetricsMe
 }
 
 // NewControllersReporter creates a metrics handler which sends metrics messages to the controllers
-func NewControllersReporter(ctrls env.NetworkControllers) metrics.Handler {
+func NewControllersReporter(ctrls env.NetworkControllers) servermetrics.Handler {
 	return &controllersReporter{
 		ctrls: ctrls,
 	}

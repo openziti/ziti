@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/openziti/ziti/v2/controller/xt"
@@ -164,7 +165,7 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 		result := debugz.GenerateStack()
 		ctx.handleLocalStringResponse(name, &result, nil)
 	} else if strings.HasPrefix(lc, "metrics") {
-		msg := ctx.network.metricsRegistry.Poll()
+		msg := servermetrics.Poll(ctx.network.metricsRegistry)
 		ctx.handleLocalJsonResponse(name, msg)
 	} else if lc == "config" {
 		if rc, ok := ctx.network.config.(renderConfig); ok {

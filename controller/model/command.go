@@ -24,8 +24,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/metrics"
-	metricsUtil "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/fields"
@@ -66,7 +66,7 @@ func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
 			WorkerFunction: backgroundCommandPoolWorker,
 		}
 
-		metricsUtil.ConfigureGoroutinesPoolMetrics(&poolConfig, env.GetMetricsRegistry(), backgroundQueueMetricsBase)
+		servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, env.GetMetricsRegistry(), backgroundQueueMetricsBase)
 
 		pool, err := goroutines.NewPool(poolConfig)
 		if err != nil {

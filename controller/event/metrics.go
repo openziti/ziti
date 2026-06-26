@@ -19,7 +19,7 @@ package event
 import (
 	"time"
 
-	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 )
 
 const (

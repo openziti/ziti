@@ -26,11 +26,11 @@ import (
 
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/uuidz"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
@@ -71,7 +71,7 @@ type Forwarder struct {
 	circuits        *circuitTable
 	destinations    *destinationTable
 	faulter         FaultReceiver
-	metricsRegistry metrics.UsageRegistry
+	metricsRegistry servermetrics.UsageRegistry
 	traceController trace.Controller
 	Options         *env.ForwarderOptions
 	CloseNotify     <-chan struct{}
@@ -83,7 +83,7 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter FaultReceiver, options *env.ForwarderOptions, closeNotify <-chan struct{}) *Forwarder {
+func NewForwarder(metricsRegistry servermetrics.UsageRegistry, faulter FaultReceiver, options *env.ForwarderOptions, closeNotify <-chan struct{}) *Forwarder {
 	f := &Forwarder{
 		circuits:        newCircuitTable(),
 		destinations:    newDestinationTable(),
@@ -107,7 +107,7 @@ func (forwarder *Forwarder) StartScanner(ctrls env.NetworkControllers) {
 	}
 }
 
-func (forwarder *Forwarder) MetricsRegistry() metrics.UsageRegistry {
+func (forwarder *Forwarder) MetricsRegistry() servermetrics.UsageRegistry {
 	return forwarder.metricsRegistry
 }
 

@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
@@ -35,7 +36,7 @@ import (
 )
 
 type testEnv struct {
-	metricsRegistry metrics.UsageRegistry
+	metricsRegistry servermetrics.UsageRegistry
 	closeNotify     chan struct{}
 	ctrls           env.NetworkControllers
 	config          *env.Config
@@ -84,7 +85,7 @@ func (self *testEnv) GetRateLimiterPool() goroutines.Pool {
 	panic("implement me")
 }
 
-func (self *testEnv) GetMetricsRegistry() metrics.UsageRegistry {
+func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
@@ -196,8 +197,8 @@ func newTestLink(reg *linkRegistryImpl) *testLink {
 func newTestEnv() *testEnv {
 	closeNotify := make(chan struct{})
 
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", closeNotify)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
+	registryConfig := servermetrics.DefaultUsageRegistryConfig("test", closeNotify)
+	metricsRegistry := servermetrics.NewUsageRegistry(registryConfig)
 
 	testEnv := &testEnv{
 		metricsRegistry: metricsRegistry,

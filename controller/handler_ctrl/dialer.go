@@ -31,8 +31,8 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -98,7 +98,7 @@ func (self *CtrlDialer) Run() {
 				Errorf("panic in dial worker: %v", err)
 		},
 	}
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, self.metricsRegistry, "ctrl_channel.dialer")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, self.metricsRegistry, "ctrl_channel.dialer")
 	pool, err := goroutines.NewPool(poolConfig)
 	if err != nil {
 		log.WithError(err).Error("failed to create dial pool")

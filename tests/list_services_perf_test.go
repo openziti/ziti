@@ -13,6 +13,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
 	"go.etcd.io/bbolt"
@@ -52,7 +53,7 @@ func TestServicePerf(t *testing.T) {
 	fmt.Println("all queries started")
 	wg.WaitForDone(2 * time.Minute)
 
-	msg := registry.Poll()
+	msg := servermetrics.Poll(registry)
 	lookupTimeSnapshot := msg.Timers["serviceLookup"]
 	fmt.Printf("mean: %v\n", time.Duration(lookupTimeSnapshot.Mean).String())
 	fmt.Printf("min: %v\n", time.Duration(lookupTimeSnapshot.Min).String())

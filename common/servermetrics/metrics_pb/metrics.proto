@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+// Package ziti.common.servermetrics.pb holds ziti's copy of the metrics wire format.
+// It is a distinct proto package from github.com/openziti/metrics so the two can
+// coexist in one binary without a global proto-registry collision. The field
+// numbers and the MetricsType content-type are identical to the historical
+// metrics message, so the wire encoding is byte-compatible across the move.
+package ziti.common.servermetrics.pb;
+
+option go_package = "github.com/openziti/ziti/v2/common/servermetrics/metrics_pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum ContentType {
+  Zero = 0;
+  MetricsType = 1007; // see common/pb/ctrl_pb/ctrl.proto
+}
+
+message MetricsMessage {
+  string eventId = 1;
+  string sourceId = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  map<string, string> tags = 4;
+  map<string, int64> intValues = 5;
+  map<string, double> floatValues = 6;
+  map<string, Meter> meters = 7;
+  map<string, Histogram> histograms = 8;
+  map<string, IntervalCounter> intervalCounters = 9;
+  map<string, Timer> timers = 10;
+  repeated UsageCounter usageCounters = 11;
+  bool doNotPropagate = 12; // if set to true, some other controller has already propagated this event
+
+  message Meter {
+    int64 count = 1;
+    double m1Rate = 2;
+    double m5Rate = 3;
+    double m15Rate = 4;
+    double meanRate = 5;
+  }
+
+  message Histogram {
+    int64 count = 1;
+    int64 max = 2;
+    double mean = 3;
+    int64 min = 4;
+    double stdDev = 5;
+    double variance = 6;
+    double p50 = 7;
+    double p75 = 8;
+    double p95 = 9;
+    double p99 = 10;
+    double p999 = 11;
+    double p9999 = 12;
+  }
+
+  message Timer {
+    int64 count = 1;
+    int64 max = 2;
+    double mean = 3;
+    int64 min = 4;
+    double stdDev = 5;
+    double variance = 6;
+    double p50 = 7;
+    double p75 = 8;
+    double p95 = 9;
+    double p99 = 10;
+    double p999 = 11;
+    double p9999 = 12;
+
+    double m1Rate = 13;
+    double m5Rate = 14;
+    double m15Rate = 15;
+    double meanRate = 16;
+  }
+
+  message IntervalCounter {
+    uint64 intervalLength = 1;
+    repeated IntervalBucket buckets = 2;
+  }
+
+  message IntervalBucket {
+    int64 intervalStartUTC = 1; // Only need minute resolution, this will be seconds resolution
+    map<string, uint64> values = 3;
+  }
+
+  message UsageCounter {
+    int64 intervalStartUTC = 1;
+    uint64 intervalLength = 2;
+    map<string, UsageBucket> buckets = 3;
+  }
+
+  message UsageBucket {
+    map<string, uint64> values = 1;
+    map<string, string> tags = 2;
+  }
+}
