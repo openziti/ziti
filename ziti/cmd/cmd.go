@@ -242,6 +242,7 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	clusterCmd.AddCommand(cluster.NewCmdRecover(out, err))
 	opsCommands.AddCommand(clusterCmd)
 	opsCommands.AddCommand(ops.NewCmdLogFormat(out, err))
+	opsCommands.AddCommand(ops.NewCmdLogPipe(out, err))
 	opsCommands.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
 	opsCommands.AddCommand(verify.NewVerifyCommand(out, err, context.Background()))
 	opsCommands.AddCommand(exporter.NewExportCmd(out, err))
@@ -425,6 +426,7 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 		Short: "miscellaneous utility tools",
 	}
 	toolsCmd.AddCommand(ops.NewCmdLogFormat(out, err))
+	toolsCmd.AddCommand(ops.NewCmdLogPipe(out, err))
 	toolsCmd.AddCommand(ops.NewUnwrapIdentityFileCommand(out, err))
 	toolsCmd.AddCommand(newCompletionCmd())
 	toolsCmd.AddCommand(lets_encrypt.NewCmdLE(out, err))
@@ -924,10 +926,14 @@ func addV1BackwardCompatCommands(
 	hiddenEnrollEdgeRouter.Hidden = true
 	enrollCmd.AddCommand(hiddenEnrollEdgeRouter)
 
-	// 6. ziti ops log-format and ziti ops unwrap (V1 paths, now under ops tools)
+	// 6. ziti ops log-format, ziti ops log-pipe and ziti ops unwrap (V1 paths, now under ops tools)
 	hiddenLogFormat := ops.NewCmdLogFormat(out, errOut)
 	hiddenLogFormat.Hidden = true
 	opsCommands.AddCommand(hiddenLogFormat)
+
+	hiddenLogPipe := ops.NewCmdLogPipe(out, errOut)
+	hiddenLogPipe.Hidden = true
+	opsCommands.AddCommand(hiddenLogPipe)
 
 	hiddenUnwrap := ops.NewUnwrapIdentityFileCommand(out, errOut)
 	hiddenUnwrap.Hidden = true
