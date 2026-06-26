@@ -19,10 +19,12 @@ package dns
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/miekg/dns"
 	"github.com/sirupsen/logrus"
@@ -44,6 +46,56 @@ var unansweredKeywords = map[string]unansweredDisposition{
 	"timeout":  unansweredTimeout,
 }
 
+// upstreamMode controls how the resolver dispatches a query across multiple
+// configured upstream DNS servers.
+type upstreamMode int
+
+const (
+	// upstreamParallel queries every upstream concurrently and returns the
+	// first NOERROR response. This is the historical default; with N upstreams
+	// it produces up to N outbound queries per request.
+	upstreamParallel upstreamMode = iota
+	// upstreamSerial queries upstreams one at a time in configured order,
+	// always starting at the first and failing through to the next only when
+	// an upstream times out, errors, or returns a non-NOERROR response.
+	upstreamSerial
+	// upstreamFailover behaves like upstreamSerial but remembers the upstream
+	// that last answered NOERROR and starts subsequent queries there, so a
+	// healthy upstream is reused rather than re-probing from the top each time.
+	upstreamFailover
+	// upstreamRandom queries upstreams serially starting from a randomly chosen
+	// upstream and failing through to the rest in order.
+	upstreamRandom
+)
+
+var upstreamModeKeywords = map[string]upstreamMode{
+	"parallel": upstreamParallel,
+	"serial":   upstreamSerial,
+	"failover": upstreamFailover,
+	"random":   upstreamRandom,
+}
+
+// parseUpstreamMode resolves an upstream-dispatch keyword to its upstreamMode.
+// An empty string yields the default upstreamParallel mode.
+func parseUpstreamMode(raw string) (upstreamMode, error) {
+	if raw == "" {
+		return upstreamParallel, nil
+	}
+
+	if mode, found := upstreamModeKeywords[strings.ToLower(strings.TrimSpace(raw))]; found {
+		return mode, nil
+	}
+
+	return upstreamParallel, fmt.Errorf("invalid dns upstream mode '%s': must be one of parallel, serial, failover, or random", raw)
+}
+
+// ValidateUpstreamMode returns an error if raw is not a recognized upstream
+// query mode keyword. An empty string is valid and selects the default mode.
+func ValidateUpstreamMode(raw string) error {
+	_, err := parseUpstreamMode(raw)
+	return err
+}
+
 // upstream represents a single upstream DNS server the resolver can forward to.
 type upstream struct {
 	server string
@@ -51,14 +103,16 @@ type upstream struct {
 }
 
 type resolver struct {
-	servers    []*dns.Server
-	names      map[string]net.IP
-	ips        map[string]string
-	namesMtx   sync.Mutex
-	domains    map[string]*domainEntry
-	domainsMtx sync.Mutex
-	upstreams  []upstream
-	unanswered unansweredDisposition
+	servers      []*dns.Server
+	names        map[string]net.IP
+	ips          map[string]string
+	namesMtx     sync.Mutex
+	domains      map[string]*domainEntry
+	domainsMtx   sync.Mutex
+	upstreams    []upstream
+	upstreamMode upstreamMode
+	preferred    atomic.Uint32 // start index for upstreamFailover mode
+	unanswered   unansweredDisposition
 }
 
 func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
@@ -73,11 +127,20 @@ func parseUnansweredDisposition(raw string) (unansweredDisposition, error) {
 	return unansweredRefused, fmt.Errorf("invalid unanswerable response '%s': must be one of timeout, servfail, or refused", raw)
 }
 
+// ValidateUnansweredDisposition returns an error if raw is not a recognized
+// unanswerable-query disposition keyword. An empty string is valid and selects
+// the default disposition.
+func ValidateUnansweredDisposition(raw string) error {
+	_, err := parseUnansweredDisposition(raw)
+	return err
+}
+
 // NewResolver constructs a Resolver from a listener URL, zero or more upstream URLs,
-// and an unanswered-query disposition. An empty upstreams slice disables upstream
-// forwarding. When multiple upstreams are provided, queries are fanned out in
-// parallel and the first NOERROR response wins (see queryUpstreams).
-func NewResolver(configs []string, upstreams []string, unansweredConfig string) (Resolver, error) {
+// an unanswered-query disposition, and an upstream-dispatch mode. An empty upstreams
+// slice disables upstream forwarding. The upstreamModeConfig keyword (parallel, serial,
+// failover, or random; empty defaults to parallel) selects how multiple upstreams are
+// queried (see queryUpstreams).
+func NewResolver(configs []string, upstreams []string, unansweredConfig string, upstreamModeConfig string) (Resolver, error) {
 	flushDnsCaches()
 	if len(configs) == 0 || (len(configs) == 1 && configs[0] == "") {
 		return nil, nil
@@ -87,6 +150,11 @@ func NewResolver(configs []string, upstreams []string, unansweredConfig string) 
 	firstURL, err := url.Parse(configs[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resolver configuration '%s': %w", configs[0], err)
+	}
+
+	mode, err := parseUpstreamMode(upstreamModeConfig)
+	if err != nil {
+		return nil, err
 	}
 
 	unanswered := unansweredRefused
@@ -135,7 +203,7 @@ func NewResolver(configs []string, upstreams []string, unansweredConfig string) 
 			}
 			addrs = append(addrs, u.Host)
 		}
-		dnsResolver, err := NewDnsServer(addrs, upstreams, unanswered)
+		dnsResolver, err := NewDnsServer(addrs, upstreams, unanswered, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +299,77 @@ func rcodeScore(rcode int) int {
 	}
 }
 
-// queryUpstreams forwards the query to all configured upstreams concurrently
+// queryUpstreams forwards the query to the configured upstreams and returns the
+// selected response. The dispatch strategy is governed by the resolver's
+// upstreamMode: upstreamParallel fans out to all upstreams at once, while the
+// serial modes query one upstream at a time and fail through to the next.
+func (r *resolver) queryUpstreams(query *dns.Msg) (*dns.Msg, error) {
+	if len(r.upstreams) == 0 {
+		return nil, errors.New("no upstream server configured")
+	}
+
+	switch r.upstreamMode {
+	case upstreamSerial:
+		return r.queryUpstreamsSerial(query, 0, false)
+	case upstreamFailover:
+		start := int(r.preferred.Load()) % len(r.upstreams)
+		return r.queryUpstreamsSerial(query, start, true)
+	case upstreamRandom:
+		return r.queryUpstreamsSerial(query, rand.Intn(len(r.upstreams)), false)
+	default:
+		return r.queryUpstreamsParallel(query)
+	}
+}
+
+// queryUpstreamsSerial queries upstreams one at a time, starting at startIdx and
+// wrapping around the list. It returns the first NOERROR response; failing that,
+// the best-ranked non-NOERROR response (NXDOMAIN > SERVFAIL > REFUSED > other);
+// failing that, the last transport error so the caller can fall through to
+// handleUnanswerable.
+//
+// Unlike the parallel path, at most one upstream query is in flight at a time and
+// iteration stops as soon as an upstream answers NOERROR, so a healthy first
+// upstream costs exactly one outbound query regardless of how many are configured.
+// When updatePreferred is set (failover mode), the index of the upstream that
+// produced the winning NOERROR is recorded so subsequent queries start there.
+func (r *resolver) queryUpstreamsSerial(query *dns.Msg, startIdx int, updatePreferred bool) (*dns.Msg, error) {
+	var bestResp *dns.Msg
+	bestScore := -1
+	var lastErr error
+
+	n := len(r.upstreams)
+	for i := 0; i < n; i++ {
+		idx := (startIdx + i) % n
+		u := r.upstreams[idx]
+		log.Debugf("forwarding query to upstream server %s: %s", u.server, query.Question[0].Name)
+		resp, _, err := u.client.Exchange(query, u.server)
+		if err != nil || resp == nil {
+			if err != nil {
+				log.Warnf("upstream query to %s failed: %v", u.server, err)
+				lastErr = err
+			}
+			continue
+		}
+		if resp.Rcode == dns.RcodeSuccess {
+			log.Debugf("received NOERROR from %s: %d answers", u.server, len(resp.Answer))
+			if updatePreferred {
+				r.preferred.Store(uint32(idx))
+			}
+			return resp, nil
+		}
+		if s := rcodeScore(resp.Rcode); s > bestScore {
+			bestScore = s
+			bestResp = resp
+		}
+	}
+
+	if bestResp != nil {
+		return bestResp, nil
+	}
+	return nil, lastErr
+}
+
+// queryUpstreamsParallel forwards the query to all configured upstreams concurrently
 // and selects a winner based on response code:
 //   - the first NOERROR response is returned immediately;
 //   - otherwise, after all upstreams have returned, the best-ranked
@@ -244,11 +382,7 @@ func rcodeScore(rcode int) int {
 // buffered so these late writes don't block. This is a bounded wait, not a
 // leak — miekg/dns ExchangeContext honors ctx.Deadline but not ctx.Done,
 // so there's no mechanism to abort an in-flight UDP read sooner.
-func (r *resolver) queryUpstreams(query *dns.Msg) (*dns.Msg, error) {
-	if len(r.upstreams) == 0 {
-		return nil, errors.New("no upstream server configured")
-	}
-
+func (r *resolver) queryUpstreamsParallel(query *dns.Msg) (*dns.Msg, error) {
 	type result struct {
 		resp *dns.Msg
 		err  error

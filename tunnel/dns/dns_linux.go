@@ -34,18 +34,19 @@ import (
 // zero or more upstream DNS servers for recursive forwarding. All listeners
 // share a single resolver instance so hostname mappings are consistent across
 // addresses. Each upstream is a URL of the form udp://host:port or
-// tcp://host:port. When multiple upstreams are provided, queries are fanned
-// out in parallel; see resolver.queryUpstreams for winner-selection semantics.
-func NewDnsServer(addrs []string, upstreams []string, unanswered unansweredDisposition) (Resolver, error) {
+// tcp://host:port. The mode argument selects how multiple upstreams are queried;
+// see resolver.queryUpstreams for the dispatch and winner-selection semantics.
+func NewDnsServer(addrs []string, upstreams []string, unanswered unansweredDisposition, mode upstreamMode) (Resolver, error) {
 	log.Infof("starting dns server...")
 
 	r := &resolver{
-		names:      make(map[string]net.IP),
-		ips:        make(map[string]string),
-		namesMtx:   sync.Mutex{},
-		domains:    make(map[string]*domainEntry),
-		domainsMtx: sync.Mutex{},
-		unanswered: unanswered,
+		names:        make(map[string]net.IP),
+		ips:          make(map[string]string),
+		namesMtx:     sync.Mutex{},
+		domains:      make(map[string]*domainEntry),
+		domainsMtx:   sync.Mutex{},
+		upstreamMode: mode,
+		unanswered:   unanswered,
 	}
 
 	for _, upstreamConfig := range upstreams {
