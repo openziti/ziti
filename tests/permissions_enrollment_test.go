@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/permissions"
 )
 
@@ -251,4 +253,83 @@ func testEnrollmentNoPermissions(ctx *TestContext) {
 	// Cleanup
 	testHelper.deleteEnrollment(ctx, ctx.AdminManagementSession, enrollmentId, http.StatusOK)
 	testHelper.deleteIdentity(ctx, ctx.AdminManagementSession, testIdentityId, http.StatusOK)
+}
+
+// Test_Permissions_Enrollment_AdminIdentityEscalation verifies that a non-admin with entity-level
+// enrollment permissions cannot use enrollments to escalate to admin. An enrollment mints and
+// exposes the one-time-token used to enroll as its target identity, so a non-admin must not be able
+// to create, read, refresh, delete, or list enrollments belonging to an admin identity. Fixes #4010.
+func Test_Permissions_Enrollment_AdminIdentityEscalation(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	testHelper := permissionTestHelper{}
+
+	// Attacker: a non-admin identity granted the full enrollment entity permission.
+	enrollPermSession := testHelper.newIdentityWithPermissions(ctx, []string{"enrollment"})
+
+	// Target admin identity (no enrollment yet) plus a control non-admin identity.
+	adminIdentityId := testHelper.createAdminIdentityWithoutEnrollment(ctx, ctx.AdminManagementSession, eid.New(), http.StatusCreated)
+	userIdentityId := testHelper.createIdentityWithoutEnrollment(ctx, ctx.AdminManagementSession, eid.New(), http.StatusCreated)
+
+	t.Run("non-admin may not create an enrollment for an admin identity", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testHelper.createEnrollment(ctx, enrollPermSession, adminIdentityId, http.StatusUnauthorized)
+	})
+
+	t.Run("non-admin may still create an enrollment for a non-admin identity", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		enrollmentId := testHelper.createEnrollment(ctx, enrollPermSession, userIdentityId, http.StatusCreated)
+		testHelper.deleteEnrollment(ctx, ctx.AdminManagementSession, enrollmentId, http.StatusOK)
+	})
+
+	// Create an enrollment on the admin identity as admin so the read/refresh/delete/list paths
+	// have an admin-owned enrollment to operate on.
+	adminEnrollmentId := testHelper.createEnrollment(ctx, ctx.AdminManagementSession, adminIdentityId, http.StatusCreated)
+
+	t.Run("non-admin may not read an admin identity's enrollment", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testHelper.getEnrollment(ctx, enrollPermSession, adminEnrollmentId, http.StatusUnauthorized)
+	})
+
+	t.Run("non-admin may not refresh an admin identity's enrollment", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testHelper.refreshEnrollment(ctx, enrollPermSession, adminEnrollmentId, http.StatusUnauthorized)
+	})
+
+	t.Run("non-admin may not delete an admin identity's enrollment", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testHelper.deleteEnrollment(ctx, enrollPermSession, adminEnrollmentId, http.StatusUnauthorized)
+	})
+
+	t.Run("non-admin enrollment list excludes admin identity enrollments", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		enrollmentsResp := &rest_model.ListEnrollmentsEnvelope{}
+		resp, err := enrollPermSession.newAuthenticatedRequest().
+			SetResult(enrollmentsResp).
+			Get("/enrollments")
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		for _, e := range enrollmentsResp.Data {
+			if e.ID != nil {
+				ctx.Req.NotEqual(adminEnrollmentId, *e.ID, "admin identity enrollment must not appear in non-admin enrollment list")
+			}
+		}
+	})
+
+	t.Run("admin may manage an admin identity's enrollment", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testHelper.getEnrollment(ctx, ctx.AdminManagementSession, adminEnrollmentId, http.StatusOK)
+		testHelper.listEnrollments(ctx, ctx.AdminManagementSession, http.StatusOK)
+		testHelper.refreshEnrollment(ctx, ctx.AdminManagementSession, adminEnrollmentId, http.StatusOK)
+		testHelper.deleteEnrollment(ctx, ctx.AdminManagementSession, adminEnrollmentId, http.StatusOK)
+	})
+
+	// Cleanup
+	testHelper.deleteIdentity(ctx, ctx.AdminManagementSession, adminIdentityId, http.StatusOK)
+	testHelper.deleteIdentity(ctx, ctx.AdminManagementSession, userIdentityId, http.StatusOK)
 }
