@@ -926,10 +926,14 @@ func addV1BackwardCompatCommands(
 	hiddenEnrollEdgeRouter.Hidden = true
 	enrollCmd.AddCommand(hiddenEnrollEdgeRouter)
 
-	// 6. ziti ops log-format and ziti ops unwrap (V1 paths, now under ops tools)
+	// 6. ziti ops log-format, ziti ops log-pipe and ziti ops unwrap (V1 paths, now under ops tools)
 	hiddenLogFormat := ops.NewCmdLogFormat(out, errOut)
 	hiddenLogFormat.Hidden = true
 	opsCommands.AddCommand(hiddenLogFormat)
+
+	hiddenLogPipe := ops.NewCmdLogPipe(out, errOut)
+	hiddenLogPipe.Hidden = true
+	opsCommands.AddCommand(hiddenLogPipe)
 
 	hiddenUnwrap := ops.NewUnwrapIdentityFileCommand(out, errOut)
 	hiddenUnwrap.Hidden = true
