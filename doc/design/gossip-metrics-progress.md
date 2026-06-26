@@ -117,10 +117,30 @@ How each piece landed (for reference):
    This removed the third metrics package and the `metrics`-name alias collision;
    the gossip `fabricMetrics` alias is gone (all call sites use `servermetrics.`).
 
-### Remaining
-**Carve the squash into the PR-split commits** (see "Planned PR split" above):
-infra commits / link-state-gossip (incl #10 + broadcast fix) / link-metrics-gossip.
-Verify each commit builds. This is the only integration step left.
+### Carve: DONE (2026-06-25)
+
+The squash was carved into a stacked series on `gossip-links-v5` (base
+`c9e58f232`, the servermetrics PR #4036). Each commit builds independently
+(`go build ./...`; zititest single-package builds); the stack tree equals the
+`gossip-links-v5-squash-checkpoint` backup branch (modulo this doc):
+
+1. `3b7594777` Add striped per-link locking and cache-before-txn router reads (infra)
+2. `0cda84407` Add ziti ops log-pipe command (infra)
+3. `9ffa6f003` Add fablab log strategy and host-reachability-aware chaos helpers (infra)
+4. `84b2026a4` Add link state replication over gossip. Fixes #3726
+5. `cb68a9c12` Add link metrics over gossip
+
+Pragmatic-split notes (targeted carveouts possible later):
+- slog migration, observability (is_leader gauge / pool meters / slow-handler
+  diagnostic), bounded router-connect pool, and the #10 stability + broadcast
+  fix all ride in commit 4 (entangled with gossip in network.go/controller.go/
+  router.go; not separable into independent base PRs without heavy hunk-surgery).
+- The `ctrl_pb.LinkMetrics` proto message lives in commit 4's regenerated
+  `ctrl.pb.go` (the regen is dominated by link-state changes; protoc version drift
+  makes a per-stage regen produce huge noise). The link-metrics *logic* and the
+  servermetrics `linkLatencyInGossip` field are cleanly in commit 5.
+
+Backup branch `gossip-links-v5-squash-checkpoint` retains the single squash commit.
 
 ## Link-metrics-over-gossip implementation status
 
