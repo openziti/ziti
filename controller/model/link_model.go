@@ -32,7 +32,7 @@ type Link struct {
 	DstLatency  int64
 	Cost        int64
 	Iteration   uint32
-	Src         *Router
+	Src         concurrenz.AtomicValue[*Router]
 	DstId       string
 	Dst         concurrenz.AtomicValue[*Router]
 	Protocol    string
@@ -66,6 +66,14 @@ func newLink(id string, linkProtocol string, dialAddress string, initialLatency 
 
 func (link *Link) GetId() string {
 	return link.Id
+}
+
+// GetSrc returns the link's source router. Src is an AtomicValue (mirroring Dst)
+// because a link created from a gossiped entry may initially reference a
+// database-loaded source router and later be repointed to the connected router
+// object when that router connects, concurrently with readers.
+func (link *Link) GetSrc() *Router {
+	return link.Src.Load()
 }
 
 func (link *Link) GetDest() *Router {

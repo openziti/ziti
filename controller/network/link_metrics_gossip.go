@@ -66,7 +66,7 @@ func (network *Network) InitLinkMetricsGossip() *gossip.StateType[*ctrl_pb.LinkM
 // link's current iteration. An older iteration is ignored; a newer iteration is
 // left unapplied (link creation reconciles it from the store once the link-state
 // entry for that iteration arrives). The owner of the entry is the reporting
-// router, so owner == link.Src.Id sets source latency and owner == link.DstId
+// router, so owner == link.GetSrc().Id sets source latency and owner == link.DstId
 // sets destination latency, the same directionality AcceptMetricsMsg uses.
 func (network *Network) applyLinkMetric(value *ctrl_pb.LinkMetrics, owner string) {
 	link, found := network.Link.Get(value.LinkId)
@@ -78,7 +78,7 @@ func (network *Network) applyLinkMetric(value *ctrl_pb.LinkMetrics, owner string
 		return
 	}
 
-	if owner == link.Src.Id {
+	if owner == link.GetSrc().Id {
 		link.SetSrcLatency(value.LatencyNanos)
 	} else if owner == link.DstId {
 		link.SetDstLatency(value.LatencyNanos)
@@ -86,7 +86,7 @@ func (network *Network) applyLinkMetric(value *ctrl_pb.LinkMetrics, owner string
 		linkMetricsGossipLog.Debug("link-metrics entry owner is neither endpoint of the link",
 			"linkId", value.LinkId,
 			"owner", owner,
-			"srcRouterId", link.Src.Id,
+			"srcRouterId", link.GetSrc().Id,
 			"destRouterId", link.DstId)
 	}
 }
@@ -101,8 +101,8 @@ func (network *Network) reconcileLinkMetricsForLink(link *model.Link) {
 	if network.LinkMetricsType == nil {
 		return
 	}
-	owners := []string{link.Src.Id}
-	if link.DstId != "" && link.DstId != link.Src.Id {
+	owners := []string{link.GetSrc().Id}
+	if link.DstId != "" && link.DstId != link.GetSrc().Id {
 		owners = append(owners, link.DstId)
 	}
 	for _, owner := range owners {

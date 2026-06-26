@@ -587,7 +587,7 @@ func (network *Network) ConnectRouter(r *model.Router) {
 	// create any links that were missed during initial gossip application.
 	if network.GossipStore != nil {
 		for _, l := range r.GetLinks() {
-			if l.Src.Id == r.Id && l.IsDown() {
+			if l.GetSrc().Id == r.Id && l.IsDown() {
 				l.SetDown(false)
 			}
 		}
@@ -761,7 +761,7 @@ func (n *Network) ValidateRouterErtTerminators(filter string, cb ErtTerminatorVa
 
 func (network *Network) DisconnectRouter(r *model.Router) {
 	for _, l := range r.GetLinks() {
-		if l.Src.Id != r.Id {
+		if l.GetSrc().Id != r.Id {
 			continue
 		}
 		wasUsable := l.IsUsable()
@@ -772,7 +772,7 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 		} else {
 			// Single-controller mode: tombstone the link via gossip so
 			// the listener handles removal.
-			network.LinkGossipType.Delete(LinkGossipKey(l.Id, l.Iteration), l.Src.Id)
+			network.LinkGossipType.Delete(LinkGossipKey(l.Id, l.Iteration), l.GetSrc().Id)
 		}
 		if wasUsable {
 			network.RerouteLink(l)
@@ -1343,11 +1343,11 @@ func (network *Network) RemoveLink(linkId string) {
 	var routerList []*model.Router
 	if link != nil {
 		iteration = link.Iteration
-		routerList = []*model.Router{link.Src}
+		routerList = []*model.Router{link.GetSrc()}
 		if dst := link.GetDest(); dst != nil {
 			routerList = append(routerList, dst)
 		}
-		log = log.WithField("srcRouterId", link.Src.Id).
+		log = log.WithField("srcRouterId", link.GetSrc().Id).
 			WithField("dstRouterId", link.DstId).
 			WithField("iteration", iteration)
 		log.Info("deleting known link")
@@ -1522,7 +1522,7 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 		}
 
 		if found {
-			if link.Src.Id == router.Id {
+			if link.GetSrc().Id == router.Id {
 				link.SetSrcLatency(latencyCost) // latency is in nanoseconds
 			} else if link.DstId == router.Id {
 				link.SetDstLatency(latencyCost) // latency is in nanoseconds
@@ -1806,12 +1806,12 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 	for _, link := range linkMap {
 		related := false
 		dest := ""
-		if link.Src.Id == router.Id {
+		if link.GetSrc().Id == router.Id {
 			related = true
 			dest = link.DstId
 		} else if link.DstId == router.Id {
 			related = true
-			dest = link.Src.Id
+			dest = link.GetSrc().Id
 		}
 
 		if related {
@@ -1822,11 +1822,11 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 				RouterState:   mgmt_pb.LinkState_LinkUnknown,
 				IsValid:       false,
 				DestRouterId:  dest,
-				Dialed:        link.Src.Id == router.Id,
+				Dialed:        link.GetSrc().Id == router.Id,
 			}
 
 			gossipKey := LinkGossipKey(link.Id, link.Iteration)
-			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(link.Src.Id, gossipKey); gossipFound {
+			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(link.GetSrc().Id, gossipKey); gossipFound {
 				detail.InGossipStore = true
 				detail.GossipVersion = gossipVer
 				detail.GossipIteration = gossipVal.Iteration
@@ -1863,7 +1863,7 @@ func (network *Network) checkLinkConns(ctrlLink *model.Link, routerLink *inspect
 	}
 
 	// ensure that conn info is being reported
-	if srcR := ctrlLink.Src; srcR != nil {
+	if srcR := ctrlLink.GetSrc(); srcR != nil {
 		hasMinVersion, err := srcR.VersionInfo.HasMinimumVersion("v1.6.6")
 		if err != nil {
 			result.IsValid = false

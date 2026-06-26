@@ -226,7 +226,7 @@ func (network *Network) validateControllerGossip(cb GossipValidationCallback) {
 
 	for _, link := range network.Link.GetLinkMap() {
 		key := LinkGossipKey(link.Id, link.Iteration)
-		_, ver, found := network.LinkGossipType.GetForOwner(link.Src.Id, key)
+		_, ver, found := network.LinkGossipType.GetForOwner(link.GetSrc().Id, key)
 		detail := &mgmt_pb.GossipLinkDetail{
 			LinkId:        link.Id,
 			Iteration:     link.Iteration,

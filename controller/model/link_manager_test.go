@@ -17,10 +17,12 @@
 package model
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // A simple test to check for failure of alignment on atomic operations for 64 bit variables in a struct
@@ -45,9 +47,9 @@ func TestLifecycle(t *testing.T) {
 	r1 := NewRouter("r1", "", "", 0, true)
 	l0 := &Link{
 		Id:    "l0",
-		Src:   r0,
 		DstId: r1.Id,
 	}
+	l0.Src.Store(r0)
 	l0.Dst.Store(r1)
 
 	linkController.Add(l0)
@@ -83,4 +85,93 @@ func TestNeighbors(t *testing.T) {
 	neighbors := linkController.ConnectedNeighborsOfRouter(r0)
 	assert.Equal(t, 1, len(neighbors))
 	assert.Equal(t, r1, neighbors[0])
+}
+
+// Test_BuildRouterLinks_refreshesStaleSrc covers the gossip scenario: a link can
+// be created referencing a database-loaded (disconnected) source router when its
+// gossip entry arrives before the router connects to this controller. When the
+// router then connects, BuildRouterLinks must repoint the link at the connected
+// router object and index the link under it.
+func Test_BuildRouterLinks_refreshesStaleSrc(t *testing.T) {
+	req := require.New(t)
+	lm := NewLinkManager(nil)
+
+	srcDb := NewRouter("r0", "", "", 0, true) // database-loaded, not connected
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+
+	link := NewTestLink("l0", srcDb, dst)
+	lm.Add(link)
+	req.Same(srcDb, link.GetSrc())
+
+	// r0 connects: a fresh, connected router object with the same id.
+	srcConn := NewRouter("r0", "", "", 0, true)
+	srcConn.Connected.Store(true)
+	lm.BuildRouterLinks(srcConn)
+
+	req.Same(srcConn, link.GetSrc(), "link source repointed to the connected router object")
+
+	connLinks := srcConn.routerLinks.GetLinks()
+	req.Len(connLinks, 1, "link indexed under the connected source router")
+	req.Same(link, connLinks[0])
+
+	// The link still removes cleanly (index stays consistent after the refresh).
+	lm.Remove(link)
+	req.False(lm.has(link))
+	req.Len(srcConn.routerLinks.GetLinks(), 0)
+}
+
+// Test_RouterReportedLink_srcConcurrentAccess is the regression guard for the
+// data race the AtomicValue change fixes: the connect-time source repoint
+// (BuildRouterLinks) Stores link.Src while routing/path code Loads it. With Src
+// as a plain pointer this raced; as an AtomicValue it is safe. Run under -race.
+func Test_RouterReportedLink_srcConcurrentAccess(t *testing.T) {
+	lm := NewLinkManager(nil)
+
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+	link := NewTestLink("l0", NewRouter("r0", "", "", 0, true), dst)
+	lm.Add(link)
+
+	// Two connected r0 objects so each BuildRouterLinks call repoints (src != router),
+	// keeping the Store path hot against the concurrent readers.
+	srcA := NewRouter("r0", "", "", 0, true)
+	srcA.Connected.Store(true)
+	srcB := NewRouter("r0", "", "", 0, true)
+	srcB.Connected.Store(true)
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					if s := link.GetSrc(); s != nil {
+						_ = s.Id
+					}
+				}
+			}
+		}()
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2000; i++ {
+			if i%2 == 0 {
+				lm.BuildRouterLinks(srcA)
+			} else {
+				lm.BuildRouterLinks(srcB)
+			}
+		}
+		close(stop)
+	}()
+
+	wg.Wait()
 }

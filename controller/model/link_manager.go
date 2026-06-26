@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
-	"github.com/orcaman/concurrent-map/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // linkLog is the logger for the controller's link manager. Its channel name is
@@ -68,7 +68,7 @@ func NewLinkManager(env Env) *LinkManager {
 		return &entity.DialAddress
 	})
 	result.GetStore().AddStringSymbol("sourceRouter", func(entity *Link) *string {
-		return &entity.Src.Id
+		return &entity.GetSrc().Id
 	})
 	result.GetStore().AddStringSymbol("destRouter", func(entity *Link) *string {
 		return &entity.DstId
@@ -112,17 +112,26 @@ func (self *LinkManager) BaseLoad(id string) (*Link, error) {
 func (self *LinkManager) BuildRouterLinks(router *Router) {
 	self.linkTable.links.IterCb(func(_ string, link *Link) {
 		if link.DstId == router.Id {
-			router.routerLinks.Add(link, link.Src.Id)
+			router.routerLinks.Add(link, link.GetSrc().Id)
 			link.Dst.Store(router)
+		}
+		// Symmetric to the Dst handling above: a link created from a gossiped
+		// entry can hold a database-loaded source router. When that router
+		// connects, repoint the link at the connected object and index it under
+		// the connected router (Add keyed src links by DstId), so neighbor and
+		// path queries see the live router rather than the stale placeholder.
+		if src := link.GetSrc(); src != nil && src.Id == router.Id && src != router {
+			link.Src.Store(router)
+			router.routerLinks.Add(link, link.DstId)
 		}
 	})
 }
 
 func (self *LinkManager) Add(link *Link) {
 	self.linkTable.add(link)
-	link.Src.routerLinks.Add(link, link.DstId)
+	link.GetSrc().routerLinks.Add(link, link.DstId)
 	if dest := link.GetDest(); dest != nil {
-		dest.routerLinks.Add(link, link.Src.Id)
+		dest.routerLinks.Add(link, link.GetSrc().Id)
 	}
 }
 
@@ -133,7 +142,7 @@ func (self *LinkManager) has(link *Link) bool {
 func (self *LinkManager) ScanForDeadLinks() {
 	var toRemove []*Link
 	self.linkTable.links.IterCb(func(_ string, link *Link) {
-		if !link.Src.Connected.Load() {
+		if !link.GetSrc().Connected.Load() {
 			toRemove = append(toRemove, link)
 		}
 	})
@@ -151,15 +160,10 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {
-		// Update router pointers — the link may have been created with a
-		// database-loaded router before it connected. Now that it's reporting
-		// links, it's connected and has version info, routerLinks, etc.
-		if src != nil && src.Connected.Load() {
-			link.Src = src
-		}
-		if dst != nil && dst.Connected.Load() {
-			link.Dst.Store(dst)
-		}
+		// A link created from a gossiped entry can reference a database-loaded
+		// (disconnected) source router. Repointing it to the connected router
+		// object is handled at connect time in BuildRouterLinks, not here, so a
+		// same-iteration report just confirms the existing link.
 		return link, false
 	}
 
@@ -180,7 +184,7 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 
 	link = newLink(reportedLink.Id, reportedLink.LinkProtocol, reportedLink.DialAddress, self.initialLatency)
 	link.Iteration = reportedLink.Iteration
-	link.Src = src
+	link.Src.Store(src)
 	link.Dst.Store(dst)
 	link.DstId = reportedLink.DestRouterId
 	link.SetState(Connected)
@@ -211,9 +215,9 @@ func (self *LinkManager) GetLinkMap() map[string]*Link {
 
 func (self *LinkManager) Remove(link *Link) {
 	if self.linkTable.remove(link) {
-		link.Src.routerLinks.Remove(link, link.DstId)
+		link.GetSrc().routerLinks.Remove(link, link.DstId)
 		if dest := link.GetDest(); dest != nil {
-			dest.routerLinks.Remove(link, link.Src.Id)
+			dest.routerLinks.Remove(link, link.GetSrc().Id)
 		}
 	}
 }
@@ -225,8 +229,8 @@ func (self *LinkManager) ConnectedNeighborsOfRouter(router *Router) []*Router {
 	for _, link := range links {
 		dstRouter := link.GetDest()
 		if dstRouter != nil && dstRouter.Connected.Load() && link.IsUsable() {
-			if link.Src.Id != router.Id {
-				neighborMap[link.Src.Id] = link.Src
+			if link.GetSrc().Id != router.Id {
+				neighborMap[link.GetSrc().Id] = link.GetSrc()
 			}
 			if link.DstId != router.Id {
 				neighborMap[link.DstId] = dstRouter
@@ -255,7 +259,7 @@ func (self *LinkManager) LeastExpensiveLink(a, b *Router) (*Link, bool) {
 					selected = link
 					cost = linkCost
 				}
-			} else if link.Src.Id == b.Id {
+			} else if link.GetSrc().Id == b.Id {
 				if linkCost < cost {
 					selected = link
 					cost = linkCost

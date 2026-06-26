@@ -348,7 +348,7 @@ func ss(vals ...string) []string {
 
 func NewTestLink(id string, src, dst *Router) *Link {
 	l := newLink(id, "tls", "tcp:localhost:1234", 0)
-	l.Src = src
+	l.Src.Store(src)
 	l.DstId = dst.Id
 	l.Dst.Store(dst)
 	src.Connected.Store(true)

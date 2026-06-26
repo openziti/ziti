@@ -125,7 +125,7 @@ func (network *Network) ReconcileGossipLinksForRouter(router *model.Router) {
 // link failures reported by routers, not controller-router disconnect.
 func (network *Network) LinkFaultedViaGossip(link *model.Link) {
 	key := LinkGossipKey(link.Id, link.Iteration)
-	network.LinkGossipType.Delete(key, link.Src.Id)
+	network.LinkGossipType.Delete(key, link.GetSrc().Id)
 }
 
 // linkGossipListener implements gossip.StateListener for link state.
@@ -294,8 +294,8 @@ func (l *linkGossipListener) EntryRemoved(key string, owner string, version uint
 // its link and will simply ignore the message.
 func (l *linkGossipListener) forwardLinkFaultToConnectedEndpoints(linkId string, iteration uint32, link *model.Link) {
 	endpoints := make([]string, 0, 2)
-	if link.Src != nil {
-		endpoints = append(endpoints, link.Src.Id)
+	if link.GetSrc() != nil {
+		endpoints = append(endpoints, link.GetSrc().Id)
 	}
 	if link.DstId != "" {
 		endpoints = append(endpoints, link.DstId)
