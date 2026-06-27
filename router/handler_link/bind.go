@@ -21,22 +21,51 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewBindHandlerFactory(c env.NetworkControllers, f *forwarder.Forwarder, hbo *channel.HeartbeatOptions, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
+// LinkSettings supplies the per-link settings the bind handler reads, which can
+// change at runtime via controller-managed config. It's an interface so
+// handler_link doesn't depend on the link package; the link subsystem's
+// FactoryRegistry satisfies it. Reads happen on the per-link heartbeat check,
+// so the implementation must be safe for concurrent reads. New managed-config
+// values (heartbeat intervals, queue sizes) get added here as they're wired up.
+type LinkSettings interface {
+	// CloseUnresponsiveTimeout is the current threshold after which an
+	// unresponsive link is closed.
+	CloseUnresponsiveTimeout() time.Duration
+	// SendInterval is how often a heartbeat is sent on an otherwise idle link.
+	SendInterval() time.Duration
+	// CheckInterval is how often the heartbeat loop wakes to send/check.
+	CheckInterval() time.Duration
+}
+
+// LinkChannelEnv bundles everything the link bind handler needs. Passing a
+// single env keeps the constructor stable as more inputs are added. The router
+// satisfies it directly; GetForwarderImpl returns the concrete
+// *forwarder.Forwarder (distinct from the router's env.Forwarder-returning
+// GetForwarder, which can't, to avoid an env->forwarder import cycle).
+type LinkChannelEnv interface {
+	GetNetworkControllers() env.NetworkControllers
+	GetForwarderImpl() *forwarder.Forwarder
+	GetMetricsRegistry() metrics.UsageRegistry
+	GetXlinkRegistry() xlink.Registry
+	GetLinkSettings() LinkSettings
+}
+
+func NewBindHandlerFactory(linkEnv LinkChannelEnv) *bindHandlerFactory {
 	return &bindHandlerFactory{
-		ctrl:             c,
-		forwarder:        f,
-		metricsRegistry:  mr,
-		xlinkRegistry:    registry,
-		heartbeatOptions: hbo,
+		ctrl:            linkEnv.GetNetworkControllers(),
+		forwarder:       linkEnv.GetForwarderImpl(),
+		metricsRegistry: linkEnv.GetMetricsRegistry(),
+		xlinkRegistry:   linkEnv.GetXlinkRegistry(),
+		linkSettings:    linkEnv.GetLinkSettings(),
 	}
 }
 
 type bindHandlerFactory struct {
-	ctrl             env.NetworkControllers
-	forwarder        *forwarder.Forwarder
-	metricsRegistry  metrics.Registry
-	xlinkRegistry    xlink.Registry
-	heartbeatOptions *channel.HeartbeatOptions
+	ctrl            env.NetworkControllers
+	forwarder       *forwarder.Forwarder
+	metricsRegistry metrics.Registry
+	xlinkRegistry   xlink.Registry
+	linkSettings    LinkSettings
 }
 
 func (self *bindHandlerFactory) NewBindHandler(link xlink.Xlink, latency bool, listenerSide bool) channel.BindHandler {
@@ -101,11 +130,12 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		latencyMetric:    latencyMetric,
 		queueTimeMetric:  queueTimeMetric,
 		ch:               binding.GetChannel(),
-		heartbeatOptions: self.heartbeatOptions,
+		linkSettings:     self.linkSettings,
 		latencySemaphore: concurrenz.NewSemaphore(2),
-		lastResponse:     time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(),
+		lastResponse:     time.Now().Add(self.linkSettings.CloseUnresponsiveTimeout() * 2).UnixMilli(),
 	}
-	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+	hc := channel.ConfigureHeartbeat(binding, self.linkSettings.SendInterval(), self.linkSettings.CheckInterval(), cb)
+	self.xlink.SetHeartbeatControl(hc)
 
 	return nil
 }
@@ -151,7 +181,7 @@ type heartbeatCallback struct {
 	latencyMetric    metrics.Histogram
 	queueTimeMetric  metrics.Histogram
 	lastResponse     int64
-	heartbeatOptions *channel.HeartbeatOptions
+	linkSettings     LinkSettings
 	ch               channel.Channel
 	latencySemaphore concurrenz.Semaphore
 }
@@ -176,7 +206,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 		self.latencyMetric.Clear()
 		self.latencyMetric.Update(8888888888888)
 
-		if delta > self.heartbeatOptions.CloseUnresponsiveTimeout.Milliseconds() {
+		if delta > self.linkSettings.CloseUnresponsiveTimeout().Milliseconds() {
 			log.Error("heartbeat not received in time, closing router link connection")
 			if err := self.ch.Close(); err != nil {
 				log.WithError(err).Error("error while closing router link connection")

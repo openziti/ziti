@@ -165,6 +165,14 @@ type Xlink interface {
 	LinkKey() LinkKey
 	CloseOnce(f func())
 	IsClosed() bool
+	// SetHeartbeatControl registers a channel's heartbeat control handle with
+	// the link so its intervals can be retuned later. A split link has one per
+	// underlying channel.
+	SetHeartbeatControl(hc channel.HeartbeatControl)
+	// UpdateHeartbeatIntervals retunes the heartbeat send and check intervals
+	// on every channel backing the link, applying a managed-config change to an
+	// established link without rebuilding it.
+	UpdateHeartbeatIntervals(sendInterval, checkInterval time.Duration)
 	InspectLink() *inspect.LinkInspectDetail
 	GetLinkConnState() *ctrl_pb.LinkConnState
 	IsDialed() bool

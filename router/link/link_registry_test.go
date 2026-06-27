@@ -154,6 +154,10 @@ func (self *testLink) DestinationId() string {
 	return self.destId
 }
 
+func (self *testLink) SetHeartbeatControl(channel.HeartbeatControl) {}
+
+func (self *testLink) UpdateHeartbeatIntervals(time.Duration, time.Duration) {}
+
 func (self *testLink) DestVersion() string {
 	panic("implement me")
 }

@@ -241,6 +241,20 @@ func (self *Router) GetForwarder() env.Forwarder {
 	return self.forwarder
 }
 
+// GetForwarderImpl returns the concrete forwarder. It exists alongside
+// GetForwarder (which returns the env.Forwarder interface to avoid an
+// env->forwarder import cycle) so callers needing the concrete type — like the
+// link bind handler — can get it without a separate adapter.
+func (self *Router) GetForwarderImpl() *forwarder.Forwarder {
+	return self.forwarder
+}
+
+// GetLinkSettings returns the live, managed-config-driven link settings (backed
+// by the link subsystem) for the link bind handler.
+func (self *Router) GetLinkSettings() handler_link.LinkSettings {
+	return self.linkSubsystem
+}
+
 func (self *Router) GetXgressMetrics() env.XgressMetrics {
 	return self.xgMetrics
 }
@@ -750,13 +764,7 @@ func (self *Router) NotifyCertsUpdated() {
 
 func (self *Router) registerComponents() error {
 	acceptor := newXlinkAccepter(self.forwarder)
-	xlinkChAccepter := handler_link.NewBindHandlerFactory(
-		self.ctrls,
-		self.forwarder,
-		&self.config.Link.Heartbeats,
-		self.metricsRegistry,
-		self.xlinkRegistry,
-	)
+	xlinkChAccepter := handler_link.NewBindHandlerFactory(self)
 
 	linkTransportConfig := map[interface{}]interface{}{}
 	for k, v := range self.config.Transport {
@@ -876,6 +884,15 @@ func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	}
 	if change.DialersChanged {
 		self.xlinkRegistry.RescanForDialOpportunities()
+	}
+	if change.HeartbeatsChanged {
+		// Retune heartbeat intervals on established links in place; the
+		// close-unresponsive timeout is read live by the callbacks, so it
+		// needs no push. New links pick up the intervals at bind time.
+		send, check := self.linkSubsystem.SendInterval(), self.linkSubsystem.CheckInterval()
+		for xl := range self.xlinkRegistry.Iter() {
+			xl.UpdateHeartbeatIntervals(send, check)
+		}
 	}
 	self.runLinkGcIfConfigured()
 }

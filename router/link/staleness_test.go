@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/inspect"
@@ -40,25 +41,27 @@ type stubXlink struct {
 	closed       bool
 }
 
-func (*stubXlink) GetDestinationType() string { return "link" }
-func (s *stubXlink) Id() string                { return s.id }
-func (s *stubXlink) Key() string               { return s.linkKey.String() }
-func (s *stubXlink) DialAddress() string       { return s.dialAddress }
-func (s *stubXlink) LinkKey() xlink.LinkKey    { return s.linkKey }
-func (s *stubXlink) LinkProtocol() string      { return s.linkProtocol }
-func (s *stubXlink) IsDialed() bool            { return s.dialed }
-func (s *stubXlink) IsClosed() bool            { return s.closed }
+func (*stubXlink) GetDestinationType() string                            { return "link" }
+func (*stubXlink) SetHeartbeatControl(channel.HeartbeatControl)          {}
+func (*stubXlink) UpdateHeartbeatIntervals(time.Duration, time.Duration) {}
+func (s *stubXlink) Id() string                                          { return s.id }
+func (s *stubXlink) Key() string                                         { return s.linkKey.String() }
+func (s *stubXlink) DialAddress() string                                 { return s.dialAddress }
+func (s *stubXlink) LinkKey() xlink.LinkKey                              { return s.linkKey }
+func (s *stubXlink) LinkProtocol() string                                { return s.linkProtocol }
+func (s *stubXlink) IsDialed() bool                                      { return s.dialed }
+func (s *stubXlink) IsClosed() bool                                      { return s.closed }
 
 // Required by the interface but not exercised by these tests.
-func (*stubXlink) Iteration() uint32                                              { return 0 }
-func (*stubXlink) DestinationId() string                                          { return "" }
-func (*stubXlink) DestVersion() string                                            { return "" }
-func (*stubXlink) CloseOnce(func())                                               {}
-func (s *stubXlink) Close() error                                                 { s.closed = true; return nil }
-func (*stubXlink) CloseNotified() error                                           { return nil }
-func (*stubXlink) AreFaultsSent() bool                                            { return false }
-func (*stubXlink) DuplicatesRejected() uint32                                     { return 0 }
-func (*stubXlink) Init(metrics.Registry) error                                    { panic("not used") }
+func (*stubXlink) Iteration() uint32           { return 0 }
+func (*stubXlink) DestinationId() string       { return "" }
+func (*stubXlink) DestVersion() string         { return "" }
+func (*stubXlink) CloseOnce(func())            {}
+func (s *stubXlink) Close() error              { s.closed = true; return nil }
+func (*stubXlink) CloseNotified() error        { return nil }
+func (*stubXlink) AreFaultsSent() bool         { return false }
+func (*stubXlink) DuplicatesRejected() uint32  { return 0 }
+func (*stubXlink) Init(metrics.Registry) error { panic("not used") }
 func (*stubXlink) SendPayload(*xgress.Payload, time.Duration, xgress.PayloadType) error {
 	panic("not used")
 }

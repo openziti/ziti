@@ -17,6 +17,7 @@
 package xlink_transport
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,6 +28,34 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
+
+// heartbeatControl holds a link's channel heartbeat handle so its intervals can
+// be retuned when managed config changes. Embedded into the link impls to
+// satisfy xlink.Xlink's SetHeartbeatControl / UpdateHeartbeatIntervals.
+//
+// Deprecated split links bind two channels and so call SetHeartbeatControl
+// twice; only the last handle is kept, so a live interval change reaches just
+// one of their channels. Split links are slated for removal in OpenZiti 4.0,
+// so we don't carry the extra machinery to retune both.
+type heartbeatControl struct {
+	lock sync.Mutex
+	hc   channel.HeartbeatControl
+}
+
+func (self *heartbeatControl) SetHeartbeatControl(hc channel.HeartbeatControl) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.hc = hc
+}
+
+func (self *heartbeatControl) UpdateHeartbeatIntervals(sendInterval, checkInterval time.Duration) {
+	self.lock.Lock()
+	hc := self.hc
+	self.lock.Unlock()
+	if hc != nil {
+		hc.UpdateIntervals(sendInterval, checkInterval)
+	}
+}
 
 type impl struct {
 	id            string
@@ -39,12 +68,13 @@ type impl struct {
 	// establishment. Key() returns its canonical string form (the
 	// registry map key); individual components are used by the
 	// stale-link check to compare against the current configuration.
-	linkKey xlink.LinkKey
-	closed        atomic.Bool
-	faultsSent    atomic.Bool
-	dialed        bool
-	iteration     uint32
-	dupsRejected  uint32
+	linkKey      xlink.LinkKey
+	closed       atomic.Bool
+	faultsSent   atomic.Bool
+	dialed       bool
+	iteration    uint32
+	dupsRejected uint32
+	heartbeatControl
 
 	droppedMsgMeter    metrics.Meter
 	droppedXgMsgMeter  metrics.Meter
