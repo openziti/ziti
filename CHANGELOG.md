@@ -314,6 +314,16 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Current Beta Features
+
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will
+be removed.
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
+
 ## Deprecated Features
 
 Deprecated features still work, but are no longer recommended and will be removed
