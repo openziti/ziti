@@ -42,6 +42,14 @@ const (
 	defaultHeartbeatCheckInterval = time.Second
 )
 
+// Link sender queue size fallbacks, matching the router env defaults
+// (DefaultLinkPayloadSenderQueueSize / DefaultLinkAckSenderQueueSize), used
+// when no link config supplies them.
+const (
+	defaultPayloadSenderQueueSize = 128
+	defaultAckSenderQueueSize     = 64
+)
+
 // FactoryRegistry owns the link subsystem's configurable surface: the set of
 // xlink.Factory implementations registered for each binding name, the
 // currently-applied router.link.v1 config, and the listener / dialer
@@ -106,6 +114,31 @@ func (self *FactoryRegistry) CheckInterval() time.Duration {
 		return v
 	}
 	return defaultHeartbeatCheckInterval
+}
+
+// PayloadSenderQueueSize returns the effective link payload sender queue size
+// from the applied config, falling back to the default when unset. Read when a
+// link channel is built, so a change takes effect on links established after
+// it; existing links keep the size they were built with.
+func (self *FactoryRegistry) PayloadSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.PayloadSenderQueueSize > 0 {
+		return self.config.PayloadSenderQueueSize
+	}
+	return defaultPayloadSenderQueueSize
+}
+
+// AckSenderQueueSize returns the effective link ack sender queue size from the
+// applied config, falling back to the default when unset. Like
+// PayloadSenderQueueSize, it applies to links established after a change.
+func (self *FactoryRegistry) AckSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.AckSenderQueueSize > 0 {
+		return self.config.AckSenderQueueSize
+	}
+	return defaultAckSenderQueueSize
 }
 
 // applyHeartbeatDuration parses a heartbeat duration string from config and

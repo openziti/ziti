@@ -187,6 +187,26 @@ func Test_FactoryRegistry_HeartbeatIntervals(t *testing.T) {
 	req.Equal(defaultHeartbeatCheckInterval, r.CheckInterval())
 }
 
+func Test_FactoryRegistry_QueueSizes(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, fall back to the defaults
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
+
+	// applied sizes take effect (for links established afterward)
+	req.NoError(r.Apply(1, `{"payloadSenderQueueSize":256,"ackSenderQueueSize":96}`))
+	req.Equal(256, r.PayloadSenderQueueSize())
+	req.Equal(96, r.AckSenderQueueSize())
+
+	// the sizes come from the active config, so a later apply that omits them
+	// reverts to the defaults
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
+}
+
 func Test_FactoryRegistry_Apply_MapsDialerBindInterfaceToTransportBind(t *testing.T) {
 	req := require.New(t)
 	r, f := newTestRegistry(t)
