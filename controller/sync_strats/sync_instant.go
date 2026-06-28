@@ -337,7 +337,7 @@ func (strategy *InstantStrategy) Stop() {
 	}
 }
 
-func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router) {
+func (strategy *InstantStrategy) RouterConnected(router *model.Router) {
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
@@ -357,11 +357,14 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 		return
 	}
 
-	rtx := newRouterSender(strategy.ae, edgeRouter, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
+	rtx := newRouterSender(strategy.ae, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
 	rtx.SetSyncStatus(env.RouterSyncQueued)
 	rtx.SetIsOnline(true)
+	// This is the edge-router connect path; mark the sender so it receives the legacy
+	// api-session/session broadcasts. Set before it's added to the map (below).
+	rtx.isEdge = true
 
-	log.WithField("syncStatus", rtx.SyncStatus()).Info("edge router connected, adding to sync routerConnectedQueue")
+	log.WithField("syncStatus", rtx.SyncStatus()).Info("router connected, adding to sync routerConnectedQueue")
 
 	strategy.rtxMap.Add(router.Id, rtx)
 
@@ -379,16 +382,16 @@ func (strategy *InstantStrategy) RouterDisconnected(router *model.Router) {
 	existingRtx := strategy.rtxMap.Get(router.Id)
 
 	if existingRtx == nil {
-		log.Infof("edge router [%s] disconnect event, but no rtx found, ignoring", router.Id)
+		log.Infof("router [%s] disconnect event, but no rtx found, ignoring", router.Id)
 		return
 	}
 
 	if existingRtx.Router.Control != router.Control && !existingRtx.Router.Control.IsClosed() {
-		log.Infof("edge router [%s] disconnect event, but channels do not match and existing channel is still open, ignoring", router.Id)
+		log.Infof("router [%s] disconnect event, but channels do not match and existing channel is still open, ignoring", router.Id)
 		return
 	}
 
-	log.Infof("edge router [%s] disconnect event, router rtx removed", router.Id)
+	log.Infof("router [%s] disconnect event, router rtx removed", router.Id)
 	existingRtx.SetIsOnline(false)
 	strategy.rtxMap.Remove(router)
 }
@@ -408,6 +411,11 @@ func (strategy *InstantStrategy) GetReceiveHandlers() []channel.ContentTypeRecei
 	return result
 }
 
+// ApiSessionAdded broadcasts an api-session-added event to edge routers. These events are
+// essentially deprecated: they only feed the legacy session model (API sessions and service
+// sessions), which is itself deprecated and slated for removal in OpenZiti 3.0. The broadcast
+// goes to edge routers only (RangeEdge); non-edge (transit) routers register the same handlers
+// and would store the sessions, so they are excluded.
 func (strategy *InstantStrategy) ApiSessionAdded(apiSession *db.ApiSession) {
 	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
 
@@ -427,7 +435,7 @@ func (strategy *InstantStrategy) ApiSessionAdded(apiSession *db.ApiSession) {
 		Sequence: 0,
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) {
+	strategy.rtxMap.RangeEdge(func(rtx *RouterSender) {
 		_ = strategy.sendApiSessionAdded(rtx, false, state, []*edge_ctrl_pb.ApiSession{apiSessionProto})
 	})
 }
@@ -449,7 +457,7 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *db.ApiSession, _ 
 		ApiSessions: []*edge_ctrl_pb.ApiSession{apiSessionProto},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) {
+	strategy.rtxMap.RangeEdge(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(apiSessionAdded)
 		msg := channel.NewMessage(env.ApiSessionUpdatedType, content)
 		msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
@@ -463,7 +471,7 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *db.ApiSession) {
 		Tokens: []string{apiSession.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) {
+	strategy.rtxMap.RangeEdge(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel.NewMessage(env.ApiSessionRemovedType, content)
 		_ = rtx.Send(msg)
@@ -476,7 +484,7 @@ func (strategy *InstantStrategy) SessionDeleted(session *db.Session) {
 		Tokens: []string{session.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) {
+	strategy.rtxMap.RangeEdge(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel.NewMessage(env.ServiceSessionRemovedType, content)
 		_ = rtx.Send(msg)
@@ -598,19 +606,55 @@ func (strategy *InstantStrategy) ReceiveResync(routerId string, _ *edge_ctrl_pb.
 }
 
 func (strategy *InstantStrategy) receiveSubscribeRequest(routerId string, request *edge_ctrl_pb.SubscribeToDataModelRequest) {
-	rtx := strategy.rtxMap.Get(routerId)
-
-	if rtx == nil {
-		routerName := "<unable to retrieve>"
-		if router, _ := strategy.ae.Managers.Router.Read(routerId); router != nil {
-			routerName = router.Name
-		}
+	// Always resolve the live connection and route through GetOrCreate keyed on the current
+	// control channel. An edge router already has a sender (created on connect) whose channel
+	// matches, so it's returned unchanged; a non-edge (transit) router gets one created on
+	// demand; and a sender left over from a prior connection (its channel now stale) is
+	// replaced rather than reused, so the subscription is never enqueued on a dead channel.
+	router := strategy.ae.Managers.Router.GetConnected(routerId)
+	if router == nil || router.Control == nil || router.Control.IsClosed() {
 		pfxlog.Logger().
 			WithField("strategy", strategy.Type()).
 			WithField("routerId", routerId).
-			WithField("routerName", routerName).
-			Error("received subscribe from router that is currently not tracked by the strategy, dropping subscribe")
+			Error("received subscribe from router that is not connected, dropping subscribe")
 		return
+	}
+
+	// Determine edge-router membership up front. This path normally creates senders for
+	// non-edge (transit) routers, but it can also replace a stale edge sender during a
+	// reconnect race, and a mis-classified sender either leaks legacy session state to a
+	// transit router or drops it from an edge router. A not-found result means the router is
+	// non-edge; any other error means the edge-router store is in a bad state, so drop the
+	// subscribe rather than guess at membership (the router will retry).
+	edgeRouter, err := strategy.ae.Managers.EdgeRouter.Read(routerId)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		pfxlog.Logger().
+			WithField("strategy", strategy.Type()).
+			WithField("routerId", routerId).
+			WithError(err).
+			Error("could not determine edge-router membership for subscribing router, dropping subscribe")
+		return
+	}
+	isEdge := edgeRouter != nil
+
+	rtx, created := strategy.rtxMap.GetOrCreate(routerId, router.Control, func() *RouterSender {
+		newRtx := newRouterSender(strategy.ae, router, strategy.RouterTxBufferSize, strategy.GetRouterDataModel())
+		newRtx.SetIsOnline(true)
+		// A subscribe request is proof the router wants the data model, so mark it supported.
+		// Set before the sender is added to rtxMap (inside GetOrCreate) so the model-event
+		// fanout can't observe SupportsRouterModel mid-write.
+		newRtx.SupportsRouterModel = true
+		newRtx.isEdge = isEdge
+		return newRtx
+	})
+
+	if created {
+		pfxlog.Logger().
+			WithField("strategy", strategy.Type()).
+			WithField("routerId", routerId).
+			WithField("routerName", router.Name).
+			WithField("isEdge", rtx.isEdge).
+			Info("router subscribed to data model, sender created on demand")
 	}
 
 	rtx.subscribe(request)

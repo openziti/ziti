@@ -22,11 +22,11 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // RouterSyncStrategyType aliased type for router strategies
@@ -75,7 +75,7 @@ type RouterSyncStrategy interface {
 // This is intended for API Session but additional state is possible. Implementations may bind additional
 // handlers to the channel.
 type RouterConnectionHandler interface {
-	RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router)
+	RouterConnected(router *model.Router)
 	RouterDisconnected(router *model.Router)
 	GetReceiveHandlers() []channel.ContentTypeReceiver
 }

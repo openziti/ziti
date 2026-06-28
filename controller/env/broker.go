@@ -21,12 +21,12 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -151,7 +151,7 @@ func (broker *Broker) RouterConnected(router *model.Router) {
 
 	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
 		log.Infof("broker detected edge router with id %s connecting", router.Id)
-		broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+		broker.routerSyncStrategy.RouterConnected(router)
 		if edgeRouter.IsTunnelerEnabled {
 			// note: may be better to send a connect event from the router for itself, rather than special casing this here
 			//       however, the special casing also makes it more reactive, specifically for disconnect
