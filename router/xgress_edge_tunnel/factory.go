@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_router"
+	"github.com/openziti/ziti/v2/tunnel/dns"
 	"github.com/pkg/errors"
 )
 
@@ -42,6 +43,7 @@ const (
 	DefaultDnsResolver       = "udp://127.0.0.1:53"
 	DefaultDnsServiceIpRange = "100.64.0.1/10"
 	DefaultDnsUnanswerable   = "refused"
+	DefaultDnsUpstreamMode   = "parallel"
 )
 
 var fabricProviderF concurrenz.AtomicValue[func(env.RouterEnv, *HostedServiceRegistry) TunnelFabricProvider]
@@ -164,6 +166,7 @@ type Options struct {
 	resolver         []string
 	dnsSvcIpRange    string
 	dnsUpstreams     []string
+	dnsUpstreamMode  string
 	dnsUnanswerable  string
 	lanIf            []string
 	services         []string
@@ -177,6 +180,7 @@ func (options *Options) load(data xgress.OptionsData) error {
 	options.resolver = []string{DefaultDnsResolver}
 	options.dnsSvcIpRange = DefaultDnsServiceIpRange
 	options.dnsUnanswerable = DefaultDnsUnanswerable
+	options.dnsUpstreamMode = DefaultDnsUpstreamMode
 
 	var err error
 	options.Options, err = xgress.LoadOptions(data)
@@ -245,8 +249,22 @@ func (options *Options) load(data xgress.OptionsData) error {
 			}
 		}
 
+		if value, found := data["dnsUpstreamMode"]; found {
+			if strVal, ok := value.(string); ok {
+				if err := dns.ValidateUpstreamMode(strVal); err != nil {
+					return errors.Wrapf(err, "invalid value '%v' for dnsUpstreamMode", value)
+				}
+				options.dnsUpstreamMode = strVal
+			} else {
+				return errors.Errorf("invalid value '%v' for dnsUpstreamMode, must be string value", value)
+			}
+		}
+
 		if value, found := data["dnsUnanswerable"]; found {
 			if strVal, ok := value.(string); ok {
+				if err := dns.ValidateUnansweredDisposition(strVal); err != nil {
+					return errors.Wrapf(err, "invalid value '%v' for dnsUnanswerable", value)
+				}
 				options.dnsUnanswerable = strVal
 			} else {
 				return errors.Errorf("invalid value '%v' for dnsUnanswerable, must be string value", value)

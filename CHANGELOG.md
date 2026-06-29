@@ -11,6 +11,7 @@
 * [Router Configs](#router-configs) - Allow routers to have a list of associated configs
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
+* [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 
 ## ZAC Bootstrapping CLI
@@ -258,6 +259,48 @@ across interfaces. Existing single-address configs are unchanged.
     resolver:
       - udp://172.18.102.70:53
       - udp://192.168.10.1:53
+```
+
+## DNS Upstream Query Modes
+
+When more than one DNS upstream is configured for tproxy host-side resolution, the
+resolver previously always fanned out: every upstream was queried in parallel and
+the first NOERROR response won. For a high-volume router with several upstreams this
+multiplies outbound DNS traffic, since every request hits every upstream.
+
+A new `dnsUpstreamMode` option (router config) / `--dnsUpstreamMode` flag
+(`ziti tunnel`) controls how multiple upstreams are queried:
+
+* `parallel` (default) - query all upstreams at once; first NOERROR wins. Unchanged
+  behavior.
+* `serial` - query upstreams one at a time in order, starting at the first. Fail
+  through to the next only on timeout, transport error, or a non-NOERROR response.
+* `failover` - like `serial`, but the upstream that last answered is reused as the
+  starting point, so a healthy upstream isn't re-probed from the top on every query.
+* `random` - like `serial`, but each query starts at a randomly chosen upstream.
+
+In all serial modes a healthy upstream costs exactly one outbound query regardless of
+how many upstreams are configured. The single-upstream case is unaffected.
+
+In a router's `xgress_edge_tunnel` tproxy config:
+
+```yaml
+- binding: tunnel
+  options:
+    mode: tproxy
+    dnsUpstreamMode: serial
+    dnsUpstream:
+      - udp://10.96.0.10:53
+      - tcp://8.8.8.8:53
+```
+
+The standalone `ziti tunnel` gains a matching `--dnsUpstreamMode` flag (default
+`parallel`):
+
+```
+ziti tunnel run --dnsUpstreamMode serial \
+  --dnsUpstream udp://10.96.0.10:53 \
+  --dnsUpstream tcp://8.8.8.8:53
 ```
 
 ## Logging Now Uses slog with an Async Handler

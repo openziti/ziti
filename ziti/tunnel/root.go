@@ -48,6 +48,7 @@ const (
 	resolverCfgFlag     = "resolver"
 	dnsSvcIpRangeFlag   = "dnsSvcIpRange"
 	dnsUpstreamFlag     = "dnsUpstream"
+	dnsUpstreamModeFlag = "dnsUpstreamMode"
 	dnsUnanswerableFlag = "dnsUnanswerable"
 )
 
@@ -66,7 +67,8 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().String("identity-dir", "", "Path to directory file that contains one or more enrolled identities")
 	root.PersistentFlags().Uint(svcPollRateFlag, 15, "Set poll rate for service updates (seconds). Polling in proxy mode is disabled unless this value is explicitly set")
 	root.PersistentFlags().StringP(resolverCfgFlag, "r", "udp://127.0.0.1:53", "Resolver configuration")
-	root.PersistentFlags().StringSlice(dnsUpstreamFlag, nil, "Upstream DNS server(s) for recursive queries (e.g., udp://10.96.0.10:53 or tcp://8.8.8.8:53). Repeat or comma-separate to query multiple in parallel; first NOERROR response wins.")
+	root.PersistentFlags().StringSlice(dnsUpstreamFlag, nil, "Upstream DNS server(s) for recursive queries (e.g., udp://10.96.0.10:53 or tcp://8.8.8.8:53). Repeat or comma-separate to specify multiple. See --dnsUpstreamMode for how multiple upstreams are queried.")
+	root.PersistentFlags().String(dnsUpstreamModeFlag, "", "How multiple DNS upstreams are queried (parallel|serial|failover|random, default: parallel). parallel fans out to all at once; serial/failover/random query one at a time and fail through to the next.")
 	root.PersistentFlags().String(dnsUnanswerableFlag, "", "Disposition for unanswerable DNS queries (timeout|servfail|refused, default: refused)")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	root.PersistentFlags().StringP(dnsSvcIpRangeFlag, "d", "100.64.0.1/10", "cidr to use when assigning IPs to unresolvable intercept hostnames")
@@ -161,8 +163,9 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 
 	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
 	upstreams, _ := cmd.Flags().GetStringSlice(dnsUpstreamFlag)
+	upstreamMode, _ := cmd.Flags().GetString(dnsUpstreamModeFlag)
 	unansweredDisposition, _ := cmd.Flags().GetString(dnsUnanswerableFlag)
-	resolver, err := dns.NewResolver([]string{resolverConfig}, upstreams, unansweredDisposition)
+	resolver, err := dns.NewResolver([]string{resolverConfig}, upstreams, unansweredDisposition, upstreamMode)
 	if err != nil {
 		log.WithError(err).Fatal("failed to start DNS resolver")
 	}
