@@ -103,8 +103,7 @@ func ControllerDetailEntity(api API, entityType, entityId string, logJSON bool, 
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), PrettyPrintResponse(resp))
+		return nil, controllerResponseError(fmt.Sprintf("listing %v", queryUrl), resp)
 	}
 
 	if logJSON {
@@ -165,8 +164,7 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), PrettyPrintResponse(resp))
+		return nil, controllerResponseError(fmt.Sprintf("listing %v", queryUrl), resp)
 	}
 
 	if logJSON {
@@ -251,6 +249,34 @@ func WrapIfApiError(err error) error {
 	return err
 }
 
+// controllerResponseError builds a concise error for a non-success controller response. Authentication
+// failures get an actionable hint instead of the raw server body, and other failures surface the API
+// error's code and message rather than dumping the full JSON envelope and metadata.
+func controllerResponseError(action string, resp *resty.Response) error {
+	return controllerResponseErrorFromParts(action, resp.StatusCode(), resp.Status(), resp.Body())
+}
+
+// controllerResponseErrorFromParts is the testable core of controllerResponseError.
+func controllerResponseErrorFromParts(action string, statusCode int, status string, body []byte) error {
+	if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden {
+		return fmt.Errorf("not authorized: your session is invalid or has expired, please run 'ziti edge login' again (%s)", status)
+	}
+	if msg := parseApiErrorMessage(body); msg != "" {
+		return fmt.Errorf("error %s. Status code: %s, %s", action, status, msg)
+	}
+	return fmt.Errorf("error %s. Status code: %s", action, status)
+}
+
+// parseApiErrorMessage extracts the "CODE - message" summary from a controller API error envelope,
+// returning "" when the body is not a recognizable error envelope.
+func parseApiErrorMessage(body []byte) string {
+	env := &rest_model.APIErrorEnvelope{}
+	if err := json.Unmarshal(body, env); err != nil || env.Error == nil {
+		return ""
+	}
+	return formatApiError(env.Error)
+}
+
 type ClientOpts interface {
 	OutputRequestJson() bool
 	OutputResponseJson() bool
@@ -318,8 +344,7 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 	}
 
 	if resp.StatusCode() != http.StatusCreated {
-		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+		return nil, controllerResponseError(fmt.Sprintf("creating %v instance", entityType), resp)
 	}
 
 	if logResponseJson {
@@ -373,8 +398,7 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 	if resp.StatusCode() != http.StatusOK {
 		statusCode := resp.StatusCode()
-		return &statusCode, fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+		return &statusCode, controllerResponseError(fmt.Sprintf("deleting %v instance", entityPath), resp)
 	}
 
 	if logResponseJson {
@@ -416,8 +440,7 @@ func ControllerUpdate(api API, entityType string, body string, out io.Writer, me
 	}
 
 	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
-		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+		return nil, controllerResponseError(fmt.Sprintf("updating %v instance", entityType), resp)
 	}
 
 	if logResponseJSON {
@@ -466,8 +489,7 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("error verifying %v instance (%v) in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, id, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+		return controllerResponseError(fmt.Sprintf("verifying %v instance (%v)", entityType, id), resp)
 	}
 
 	if logJSON {
@@ -500,8 +522,7 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			request.Method, entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
+		return nil, controllerResponseError(fmt.Sprintf("performing request [%s] %v instance", request.Method, entityType), resp)
 	}
 
 	if logJSON {
