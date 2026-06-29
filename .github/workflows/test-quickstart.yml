@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install zsh
         shell: bash
@@ -35,7 +35,7 @@ jobs:
 
       - name: Upload compose-test logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: expressInstall-compose-test-logs
           # compose-test.zsh creates /tmp/compose-test.<datestamp>.<suffix>/logs/
@@ -53,7 +53,7 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
@@ -99,13 +99,13 @@ jobs:
       BUILD_DIR: /tmp/build  # dir is created by build step and env var used by test script to find ziti executable
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         uses: ./.github/actions/setup-go
 
       - name: Go Caching
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
