@@ -36,9 +36,9 @@ func TestControllerResponseErrorFromParts(t *testing.T) {
 		require.NotContains(t, err.Error(), "apiVersion")
 	})
 
-	t.Run("403 is treated like 401", func(t *testing.T) {
+	t.Run("403 reports a permission problem, not an expired session", func(t *testing.T) {
 		err := controllerResponseErrorFromParts("deleting identity", http.StatusForbidden, "403 Forbidden", nil)
-		require.EqualError(t, err, "not authorized: your session is invalid or has expired, please run 'ziti edge login' again (403 Forbidden)")
+		require.EqualError(t, err, "not authorized: this identity does not have permission to perform this action (403 Forbidden)")
 	})
 
 	t.Run("other errors surface the api error code and message, not the raw body", func(t *testing.T) {
