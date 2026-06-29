@@ -7,11 +7,15 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.0.1](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
-    * [Issue #3928](https://github.com/openziti/ziti/issues/3928) - [Backport-2.0] Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
-    * [Issue #3958](https://github.com/openziti/ziti/issues/3958) - [Backport-2.0] Tunneler skips iptables rules for services sharing an intercept hostname
+    * [Issue #4049](https://github.com/openziti/ziti/issues/4049) - [Backport-2.0] Non-admin with enrollment permission can escalate to admin identity
+    * [Issue #4031](https://github.com/openziti/ziti/issues/4031) - [Backport-2.0] Router deletes terminators ~12m after creation when host SDK replies with wrong inspect content type
+    * [Issue #4054](https://github.com/openziti/ziti/issues/4054) - [Backport-2.0] Router panics evaluating an AnyOf process posture check when client reports no process/OS data
     * [Issue #3959](https://github.com/openziti/ziti/issues/3959) - [Backport-2.0] Refcount wildcard-allocated intercept hostnames
-    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
+    * [Issue #3958](https://github.com/openziti/ziti/issues/3958) - [Backport-2.0] Tunneler skips iptables rules for services sharing an intercept hostname
+    * [Issue #3952](https://github.com/openziti/ziti/issues/3952) - externalIdClaim on CA returns HTTP 500 with empty body for most matcher/parser combinations
     * [Issue #3929](https://github.com/openziti/ziti/issues/3929) - Router does not enforce api-session or identity revocations on live connections
+    * [Issue #3928](https://github.com/openziti/ziti/issues/3928) - [Backport-2.0] Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
+
 
 # Release 2.0.0
 
