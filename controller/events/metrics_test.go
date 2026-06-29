@@ -116,6 +116,49 @@ func Test_FilterMetrics(t *testing.T) {
 	req.NotNil(evt.Metrics["m1_rate"])
 }
 
+func Test_PrometheusMetricsLabels(t *testing.T) {
+	req := require.New(t)
+
+	baseEvent := func() *PrometheusMetricsEvent {
+		return &PrometheusMetricsEvent{
+			Namespace:   event.MetricsEventNS,
+			MetricType:  "meter",
+			Metric:      "ctrl.rx.msgrate",
+			SourceAppId: "ctrl1",
+			Timestamp:   time.Now(),
+			Metrics:     map[string]any{"m1_rate": 0.235},
+			Version:     event.MetricsEventsVersion,
+		}
+	}
+
+	// without a source entity id, only source_id is emitted
+	evt := baseEvent()
+	buf, err := evt.Marshal(false)
+	req.NoError(err)
+	out := string(buf)
+	req.Contains(out, `source_id="ctrl1"`)
+	req.NotContains(out, "source_entity_id")
+
+	// per-router ctrl metrics share a source_id but must be distinguished by source_entity_id
+	router1 := baseEvent()
+	router1.SourceEntityId = "router1"
+	buf, err = router1.Marshal(false)
+	req.NoError(err)
+	out1 := string(buf)
+	req.Contains(out1, `source_id="ctrl1"`)
+	req.Contains(out1, `source_entity_id="router1"`)
+
+	router2 := baseEvent()
+	router2.SourceEntityId = "router2"
+	buf, err = router2.Marshal(false)
+	req.NoError(err)
+	out2 := string(buf)
+	req.Contains(out2, `source_entity_id="router2"`)
+
+	// the two routers' series must not be identical (which would cause Prometheus to drop samples)
+	req.NotEqual(out1, out2)
+}
+
 func Test_MetricsFormat(t *testing.T) {
 	req := require.New(t)
 
