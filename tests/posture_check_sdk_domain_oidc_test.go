@@ -127,22 +127,7 @@ func Test_PostureCheck_SDK_Domain_OIDC(t *testing.T) {
 				currentPostureDomain = "invalid"
 				postureCache.Evaluate()
 
-				lastReadCount := 0
-				var lastReadErr error
-				count := 0
-				for !clientConn.IsClosed() && count <= 20 {
-					var buff []byte
-
-					//read till end of client buffer
-					lastReadCount, lastReadErr = clientConn.Read(buff)
-
-					if lastReadErr != nil {
-						break
-					}
-
-					time.Sleep(100 * time.Millisecond)
-					count = count + 1
-				}
+				lastReadCount, lastReadErr := awaitClientConnClosed(clientConn)
 
 				t.Run("closes the connection", func(t *testing.T) {
 					ctx.testContextChanged(t)

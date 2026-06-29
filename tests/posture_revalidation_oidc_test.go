@@ -67,6 +67,26 @@ func requireConnClosed(ctx *TestContext, conn *TestConn) {
 	ctx.Req.True(conn.IsClosed(), "expected connection to be closed by posture revalidation")
 }
 
+// awaitClientConnClosed polls a conn until it reports closed, returning the last
+// read result so callers can also assert on it. Posture revocation is
+// asynchronous (the router revokes access, the circuit is torn down, and the
+// close propagates back), so checking IsClosed right after the first read error
+// is too eager; a read is what surfaces the close on these conns.
+func awaitClientConnClosed(conn *TestConn) (int, error) {
+	var n int
+	var err error
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var buff []byte
+		n, err = conn.Read(buff)
+		if err != nil && conn.IsClosed() {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return n, err
+}
+
 // requireConnUsable asserts a connection survives a posture change: revocation,
 // if it were going to happen, fires within ~100ms of the posture update, so this
 // waits well past that and then confirms the connection is still open and still

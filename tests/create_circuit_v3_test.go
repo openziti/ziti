@@ -164,6 +164,24 @@ func Test_CreateCircuitV3(t *testing.T) {
 		ctx.Req.Error(err)
 	})
 
+	t.Run("controller-generated circuit ID", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		// An empty CircuitId on the request tells the controller to generate one.
+		// This is the connect-v2 router path's default behavior.
+		req := &ctrl_msg.CreateCircuitV3Request{
+			IdentityId: dialerIdentity.Id,
+			ServiceId:  svc.Id,
+			PeerData:   map[uint32][]byte{},
+		}
+
+		resp, err := sendV3Request(req)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(resp)
+		ctx.Req.NotEmpty(resp.CircuitId, "controller should have generated a circuit id")
+		ctx.Req.NotEmpty(resp.Address)
+	})
+
 	t.Run("duplicate circuit ID", func(t *testing.T) {
 		ctx.NextTest(t)
 

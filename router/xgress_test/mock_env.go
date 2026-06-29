@@ -20,8 +20,8 @@ func (n noopMetrics) PayloadWritten(time.Duration)   {}
 func (n noopMetrics) BufferUnblocked(time.Duration)  {}
 func (n noopMetrics) SendPayloadBuffered(int64)      {}
 func (n noopMetrics) SendPayloadDelivered(int64)     {}
-func (n noopMetrics) MarkRetransmission()             {}
-func (n noopMetrics) MarkRetransmissionFailure()      {}
+func (n noopMetrics) MarkRetransmission()            {}
+func (n noopMetrics) MarkRetransmissionFailure()     {}
 
 type MockEnv struct {
 	payloadIngester *xgress.PayloadIngester
