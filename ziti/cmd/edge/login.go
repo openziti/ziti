@@ -407,17 +407,7 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	// Probe with system trust only, reusing the configured transport so overlay-only hosts (e.g.
 	// mgmt.ziti) still resolve via its zitified DialContext. An explicit --ca is honored below.
 	systemRoots, _ := o.systemCertPool()
-	probeClient := o.GetClient()
-	if t, ok := probeClient.Transport.(*http.Transport); ok && t != nil {
-		pt := t.Clone()
-		if pt.TLSClientConfig == nil {
-			pt.TLSClientConfig = &tls.Config{}
-		}
-		pt.TLSClientConfig.RootCAs = systemRoots
-		probeClient.Transport = pt
-	} else {
-		probeClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: systemRoots}}
-	}
+	probeClient := o.probeClientWithPool(systemRoots)
 	isServerTrusted, err := util.IsServerTrusted(host, &probeClient)
 	if err != nil {
 		return err
@@ -441,19 +431,51 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 		return nil
 	}
 
-	if !isServerTrusted && o.CaCert == "" {
-		httpClient := o.GetClient()
-		wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
-		if err != nil {
-			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
+	// OS doesn't trust the server but a cached CA is present. If the cached CA no longer trusts the
+	// server, offer to pull down the current certs rather than failing later with a raw x509 error.
+	if o.CaCert != "" && !explicitCa {
+		cachedPool, poolErr := o.GetCaPool()
+		if poolErr != nil {
+			return poolErr
+		}
+		cachedProbe := o.probeClientWithPool(cachedPool)
+		trustedByCache, trustErr := util.IsServerTrusted(host, &cachedProbe)
+		if trustErr != nil {
+			return errors.Wrapf(trustErr, "checking whether the cached CA trusts %v", host)
+		}
+		if trustedByCache {
+			return nil
 		}
 
-		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts, httpClient)
+		o.Printf("WARNING: the cached certificate authority at %v no longer trusts the server at %v\n", o.CaCert, host)
+		o.Println("The server's certificates were likely regenerated. This is common when a dev controller is rebuilt.")
+		refresh := o.Yes
+		if !refresh {
+			var askErr error
+			if refresh, askErr = o.askYesNo("Pull down and trust the current server certificate authority? [Y/N]: "); askErr != nil {
+				return askErr
+			}
+		}
+		if !refresh {
+			return errors.Errorf("the cached certificate authority at %v no longer trusts the server at %v. Re-run with --ca or remove the cached cert to continue", o.CaCert, host)
+		}
+
+		wellKnownCerts, _, err := o.fetchTrustedServerCerts(host)
 		if err != nil {
 			return err
 		}
-		if !certsTrusted {
-			return errors.New("server supplied certs not trusted by server, unable to continue")
+		newCertFile, err := util.WriteCert(o, ctrlUrl, wellKnownCerts)
+		if err != nil {
+			return err
+		}
+		o.CaCert = newCertFile
+		return nil
+	}
+
+	if !isServerTrusted && o.CaCert == "" {
+		wellKnownCerts, certs, err := o.fetchTrustedServerCerts(host)
+		if err != nil {
+			return err
 		}
 
 		savedCerts, certFile, err := util.ReadCert(ctrlUrl)
@@ -500,6 +522,43 @@ func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	}
 
 	return nil
+}
+
+// fetchTrustedServerCerts retrieves the server's advertised CA chain and confirms the server itself
+// trusts it. It returns the PEM bundle and the parsed certificates.
+func (o *LoginOptions) fetchTrustedServerCerts(host string) ([]byte, []*x509.Certificate, error) {
+	httpClient := o.GetClient()
+	wellKnownCerts, certs, err := util.GetWellKnownCerts(host, httpClient)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
+	}
+	certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts, httpClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !certsTrusted {
+		return nil, nil, errors.New("server supplied certs not trusted by server, unable to continue")
+	}
+	return wellKnownCerts, certs, nil
+}
+
+// probeClientWithPool returns a copy of the configured client with its TLS trust roots replaced by pool,
+// preserving any zitified DialContext so overlay-only hosts stay reachable. Used to test whether a given
+// set of roots trusts the server without disturbing o.client.
+func (o *LoginOptions) probeClientWithPool(pool *x509.CertPool) http.Client {
+	probe := o.GetClient()
+	if t, ok := probe.Transport.(*http.Transport); ok && t != nil {
+		pt := t.Clone()
+		if pt.TLSClientConfig == nil {
+			pt.TLSClientConfig = &tls.Config{}
+		}
+		pt.TLSClientConfig.RootCAs = pool
+		pt.TLSClientConfig.InsecureSkipVerify = false
+		probe.Transport = pt
+	} else {
+		probe.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}
+	}
+	return probe
 }
 
 func (o *LoginOptions) askYesNo(prompt string) (bool, error) {

@@ -50,6 +50,7 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("switch controller file auth", s.testSwitchControllerFileAuth)
 	t.Run("file auth ignores cached server cert", s.testFileAuthIgnoresCachedServerCert)
 	t.Run("os-trusted server cert uses system store and clears cache", s.testTrustedServerCertUsesSystemStore)
+	t.Run("stale cached cert is refreshed with yes flag", s.testStaleCachedCertRefreshed)
 
 	// Edge Cases
 	t.Run("empty username", s.testEmptyUsername)
@@ -593,6 +594,46 @@ func (s *cliTestState) testFileAuthIgnoresCachedServerCert(t *testing.T) {
 	cachedCertData, err := os.ReadFile(cachedCertPath)
 	require.NoError(t, err, "cached cert file should still exist")
 	require.Equal(t, "INVALID JUNK CERT DATA", string(cachedCertData), "cached cert should remain corrupted after file-based auth succeeds")
+}
+
+func (s *cliTestState) testStaleCachedCertRefreshed(t *testing.T) {
+	// A stale cached CA should be detected and, with --yes, refreshed from the server.
+	s.removeZitiDir(t)
+
+	opts1 := s.controllerUnderTest.NewTestLoginOpts()
+	opts1.CaCert = ""
+	opts1.Yes = true
+	require.NoError(t, opts1.Run(), "initial untrusted-path login should succeed and cache the CA")
+	require.NotEmpty(t, opts1.ApiSession)
+	require.NotEmpty(t, opts1.CaCert, "untrusted path should cache and reference a CA file")
+
+	cachedCert := opts1.CaCert
+	goodCertData, err := os.ReadFile(cachedCert)
+	require.NoError(t, err, "should be able to read the freshly cached CA")
+	require.NotEmpty(t, goodCertData)
+
+	// Corrupt the cached CA so it no longer verifies the server.
+	require.NoError(t, os.WriteFile(cachedCert, []byte("INVALID JUNK CERT DATA"), 0600), "corrupt cached CA")
+
+	// Without --yes and no terminal to confirm, login must fail rather than silently proceeding.
+	optsNoConfirm := s.controllerUnderTest.NewTestLoginOpts()
+	optsNoConfirm.Yes = false
+	require.Error(t, optsNoConfirm.Run(), "stale cached CA without confirmation should fail, not silently proceed")
+
+	staleAfterDecline, err := os.ReadFile(cachedCert)
+	require.NoError(t, err)
+	require.Equal(t, "INVALID JUNK CERT DATA", string(staleAfterDecline), "declined refresh must not overwrite the cached CA")
+
+	opts2 := s.controllerUnderTest.NewTestLoginOpts()
+	opts2.Yes = true // auto-accepts the refresh prompt
+	require.NoError(t, opts2.Run(), "login with a stale cached CA should refresh it and succeed")
+	require.NotEmpty(t, opts2.ApiSession)
+	require.Equal(t, cachedCert, opts2.CaCert, "refreshed CA should be written back to the same cached path")
+
+	refreshedCertData, err := os.ReadFile(cachedCert)
+	require.NoError(t, err, "cached CA should still exist after refresh")
+	require.NotEqual(t, "INVALID JUNK CERT DATA", string(refreshedCertData), "stale cached CA should be overwritten")
+	require.Equal(t, goodCertData, refreshedCertData, "refreshed CA should match the original server-supplied CA")
 }
 
 func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
