@@ -943,6 +943,31 @@ func (self permissionTestHelper) createIdentityWithoutEnrollment(ctx *TestContex
 	return ""
 }
 
+// createAdminIdentityWithoutEnrollment creates an admin identity without any enrollment
+func (self permissionTestHelper) createAdminIdentityWithoutEnrollment(ctx *TestContext, session *session, name string, expectedStatus int) string {
+	identityType := rest_model.IdentityTypeUser
+	identityCreate := &rest_model.IdentityCreate{
+		AuthPolicyID: ToPtr("default"),
+		IsAdmin:      ToPtr(true),
+		Name:         ToPtr(name),
+		Type:         &identityType,
+	}
+
+	identityCreateResp := &rest_model.CreateEnvelope{}
+	resp, err := session.newAuthenticatedRequest().
+		SetResult(identityCreateResp).
+		SetBody(identityCreate).
+		Post("/identities")
+
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(expectedStatus, resp.StatusCode(), string(resp.Body()))
+
+	if identityCreateResp.Data != nil {
+		return identityCreateResp.Data.ID
+	}
+	return ""
+}
+
 // createEnrollment creates an enrollment for an identity
 func (self permissionTestHelper) createEnrollment(ctx *TestContext, session *session, identityId string, expected int) string {
 	enrollmentCreate := &rest_model.EnrollmentCreate{
