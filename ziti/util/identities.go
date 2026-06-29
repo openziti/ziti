@@ -229,7 +229,7 @@ func OidcRefreshTokenValid(sess edge_apis.ApiSession) bool {
 	if err != nil || exp == nil {
 		return false
 	}
-	return time.Now().Before(exp.Time)
+	return time.Now().Add(oidcTokenLeeway).Before(exp.Time)
 }
 
 // refreshOidcTokenIfExpired refreshes the cached OIDC access token when it has expired and the
@@ -453,8 +453,10 @@ func LoadSelectedIdentity() (RestClientIdentity, error) {
 		if refreshed, err := clientIdentity.refreshOidcTokenIfExpired(); err != nil {
 			return nil, err
 		} else if refreshed {
+			// the refresh already succeeded server side, so use the new token even if saving fails,
+			// otherwise a write error would waste a single-use refresh token
 			if persistErr := PersistRestClientConfig(config); persistErr != nil {
-				return nil, errors.Wrap(persistErr, "could not persist refreshed token to CLI config")
+				_, _ = fmt.Fprintf(os.Stderr, "warning: could not save refreshed token to CLI config: %v\n", persistErr)
 			}
 		}
 

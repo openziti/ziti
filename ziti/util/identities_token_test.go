@@ -93,6 +93,11 @@ func TestOidcRefreshTokenValid(t *testing.T) {
 		require.False(t, OidcRefreshTokenValid(sess))
 	})
 
+	t.Run("refresh token expiring inside the leeway window is invalid", func(t *testing.T) {
+		sess := edge_apis.NewApiSessionOidc(makeJwtWithExp(t, now.Add(-time.Hour)), makeJwtWithExp(t, now.Add(5*time.Second)))
+		require.False(t, OidcRefreshTokenValid(sess))
+	})
+
 	t.Run("unexpired refresh token is valid", func(t *testing.T) {
 		sess := edge_apis.NewApiSessionOidc(makeJwtWithExp(t, now.Add(-time.Hour)), makeJwtWithExp(t, now.Add(time.Hour)))
 		require.True(t, OidcRefreshTokenValid(sess))

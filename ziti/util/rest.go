@@ -258,8 +258,11 @@ func controllerResponseError(action string, resp *resty.Response) error {
 
 // controllerResponseErrorFromParts is the testable core of controllerResponseError.
 func controllerResponseErrorFromParts(action string, statusCode int, status string, body []byte) error {
-	if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden {
+	if statusCode == http.StatusUnauthorized {
 		return fmt.Errorf("not authorized: your session is invalid or has expired, please run 'ziti edge login' again (%s)", status)
+	}
+	if statusCode == http.StatusForbidden {
+		return fmt.Errorf("not authorized: this identity does not have permission to perform this action (%s)", status)
 	}
 	if msg := parseApiErrorMessage(body); msg != "" {
 		return fmt.Errorf("error %s. Status code: %s, %s", action, status, msg)
