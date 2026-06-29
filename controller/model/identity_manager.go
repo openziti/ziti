@@ -89,7 +89,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 	env.GetStores().Identity.AddEntityConstraint(db.NewIdentityRevocationConstraint(
 		env.GetStores().Revocation,
 		common.RevocationTypeIdentity,
-		func() time.Duration { return env.GetConfig().Edge.Oidc.RefreshTokenDuration },
+		func() time.Duration { return env.GetConfig().Edge.Oidc.MaxTokenDuration() },
 	))
 
 	return manager
