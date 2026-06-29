@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ConfigTypeTargetRouter is the Target value on ConfigType for router-managed configs.
@@ -740,7 +741,7 @@ func (rdm *RouterDataModelSender) Diff(o *RouterDataModelSender, sink DiffSink) 
 
 	diffType("configType", rdm.ConfigTypes, o.ConfigTypes, sink, ConfigType{}, DataStateConfigType{})
 	diffType("config", rdm.Configs, o.Configs, sink, Config{}, DataStateConfig{})
-	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{})
+	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{}, edge_ctrl_pb.DataState_ServiceConfigs{})
 	diffType("service", rdm.Services, o.Services, sink, Service{}, DataStateService{})
 	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink, ServicePolicy{}, DataStateServicePolicy{})
 	diffType("posture-check", rdm.PostureChecks, o.PostureChecks, sink,
@@ -752,7 +753,7 @@ func (rdm *RouterDataModelSender) Diff(o *RouterDataModelSender, sink DiffSink) 
 		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
 		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{})
 	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
-	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{})
+	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{})
 	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
 		if a == nil || b == nil {
 			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, b)}
