@@ -47,7 +47,7 @@ func TestControllerResponseErrorFromParts(t *testing.T) {
 		require.EqualError(t, err, "error getting identity. Status code: 404 Not Found, NOT_FOUND - resource not found")
 	})
 
-	t.Run("unparseable body falls back to status only", func(t *testing.T) {
+	t.Run("unparsable body falls back to status only", func(t *testing.T) {
 		err := controllerResponseErrorFromParts("creating identity", http.StatusInternalServerError, "500 Internal Server Error", []byte("<html>boom</html>"))
 		require.EqualError(t, err, "error creating identity. Status code: 500 Internal Server Error")
 	})
