@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	"github.com/fatih/color"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 )
 
 type zitiEchoServer struct {

@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/metrics"
-	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
+	edgeSdk "github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/inspect"

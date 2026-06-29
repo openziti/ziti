@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/ctrlchan"

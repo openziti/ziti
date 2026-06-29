@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"

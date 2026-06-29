@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
 	"github.com/zitadel/oidc/v3/pkg/oidc"

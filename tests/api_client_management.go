@@ -23,7 +23,7 @@ import (
 	managementRevocation "github.com/openziti/edge-api/rest_management_api_client/revocation"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
-	edgeApis "github.com/openziti/sdk-golang/edge-apis"
+	edgeApis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/ziti/util"

@@ -2,7 +2,7 @@ package edge_ctrl_pb
 
 import (
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/xt"
 )
 

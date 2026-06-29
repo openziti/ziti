@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/xgress"
-	edgeSdk "github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/xgress"
+	edgeSdk "github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/logcontext"

@@ -7,7 +7,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/pb/edge_client_pb"
+	"github.com/openziti/sdk-golang/v2/pb/edge_client_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 )

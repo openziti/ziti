@@ -28,8 +28,8 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/v2/xgress"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_common"
@@ -492,7 +492,7 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) AcceptMessage(msg *channel.Message) {
+func (self *edgeXgressConn) AcceptMessage(msg *channel.Message, _ edge.SdkChannel) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)

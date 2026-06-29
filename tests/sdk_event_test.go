@@ -17,8 +17,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/foundation/v2/debugz"
-	edgeapis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
+	edgeapis "github.com/openziti/sdk-golang/v2/edge-apis"
+	"github.com/openziti/sdk-golang/v2/ziti"
 )
 
 func Test_SDK_Events(t *testing.T) {

@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/logcontext"

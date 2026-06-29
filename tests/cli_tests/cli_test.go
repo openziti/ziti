@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/tests/testutil"
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"

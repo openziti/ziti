@@ -27,8 +27,8 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common/eid"
 )
 

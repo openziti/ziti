@@ -27,7 +27,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/proxies"
 	"github.com/openziti/ziti/v2/tunnel"

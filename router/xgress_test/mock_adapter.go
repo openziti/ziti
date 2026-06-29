@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 )
 
 // MockDataPlaneAdapter is a shared test implementation of DataPlaneAdapter that routes messages between xgress instances

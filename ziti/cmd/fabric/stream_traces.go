@@ -25,7 +25,7 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/trace/pb"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"

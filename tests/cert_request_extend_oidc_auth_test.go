@@ -5,7 +5,7 @@ import (
 
 	mangementAuthenticator "github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/edge-api/rest_model"
-	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 )
 
 func Test_Cert_Request_Extend_OIDC_Auth(t *testing.T) {

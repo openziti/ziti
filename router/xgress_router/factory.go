@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/xt"
 )

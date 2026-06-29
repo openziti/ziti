@@ -8,8 +8,8 @@ import (
 
 	restidentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
-	edgeapis "github.com/openziti/sdk-golang/edge-apis"
-	"github.com/openziti/sdk-golang/ziti"
+	edgeapis "github.com/openziti/sdk-golang/v2/edge-apis"
+	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/controller/webapis"
 )
 
