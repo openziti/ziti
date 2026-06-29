@@ -809,6 +809,9 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 		if !util.OidcRefreshTokenValid(o.ApiSession) {
 			return nil, fmt.Errorf("the cached access token has expired and the refresh token can no longer be used to re-authenticate, please login again")
 		}
+		if o.mgmtClient == nil {
+			return nil, fmt.Errorf("cannot refresh the access token, no management client is available")
+		}
 		o.Println("Access token has expired, refreshing it using the cached refresh token...")
 		refreshed, refreshErr := o.mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, o.ApiSession)
 		if refreshErr != nil || refreshed == nil {
