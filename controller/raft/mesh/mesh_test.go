@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/raft"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/v2/controller/event"
 
@@ -119,6 +120,73 @@ func Test_RemovePeer_RemovesReadonlyWhenDeletingLastPeer(t *testing.T) {
 
 	m.PeerDisconnected(m.Peers["1"])
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
+}
+
+// firewalledPeerAddr is a well-formed transport address that is not reachable.
+// The reuse tests below register a peer at this address, then assert the mesh
+// returns the existing connection without attempting to dial it.
+const firewalledPeerAddr = "tls:firewalled-node.example:6262"
+
+// Test_GetPeerInfo_ReusesExistingConnectionWithoutDialing verifies that when the
+// leader adds a member that is behind a firewall (no inbound ports open), the
+// already-established inbound connection is reused. The joining node has opened an
+// outbound connection to the leader, and GetPeerInfo is the first place the
+// add-member flow could dial out, so it must return the already-connected peer's
+// id/address directly instead of dialing the unreachable advertise address (which
+// would time out and fail the join).
+func Test_GetPeerInfo_ReusesExistingConnectionWithoutDialing(t *testing.T) {
+	m := &impl{
+		Peers: map[string]*Peer{
+			firewalledPeerAddr: {Id: "joining-node-id", Address: firewalledPeerAddr},
+		},
+	}
+
+	start := time.Now()
+	id, addr, err := m.GetPeerInfo(firewalledPeerAddr, time.Second)
+	elapsed := time.Since(start)
+
+	assert.NoError(t, err)
+	assert.Equal(t, raft.ServerID("joining-node-id"), id)
+	assert.Equal(t, raft.ServerAddress(firewalledPeerAddr), addr)
+	assert.Less(t, elapsed, 200*time.Millisecond, "should reuse existing connection, not dial out")
+}
+
+// Test_WaitForPeer_ReturnsExistingPeerWithoutDialing verifies that WaitForPeer
+// returns an already-connected inbound peer immediately. The raft StreamLayer Dial
+// path (used when the leader replicates to a new voter) goes through WaitForPeer, so
+// an existing peer must be returned right away rather than blocking while a dial out
+// to the (possibly unreachable) node is attempted.
+func Test_WaitForPeer_ReturnsExistingPeerWithoutDialing(t *testing.T) {
+	peer := &Peer{Id: "joining-node-id", Address: firewalledPeerAddr}
+	m := &impl{
+		Peers:       map[string]*Peer{firewalledPeerAddr: peer},
+		peerWaiters: map[string][]chan *Peer{},
+		closeNotify: make(chan struct{}),
+	}
+
+	start := time.Now()
+	got, err := m.WaitForPeer(firewalledPeerAddr, time.Second)
+	elapsed := time.Since(start)
+
+	assert.NoError(t, err)
+	assert.Same(t, peer, got)
+	assert.Less(t, elapsed, 200*time.Millisecond, "should return immediately, not wait/dial")
+}
+
+// Test_GetOrConnectPeer_ReusesExistingConnection verifies that command forwarding to
+// the leader reuses an established peer connection and does not dial out when one
+// already exists.
+func Test_GetOrConnectPeer_ReusesExistingConnection(t *testing.T) {
+	peer := &Peer{Id: "joining-node-id", Address: firewalledPeerAddr}
+	m := &impl{
+		Peers:       map[string]*Peer{firewalledPeerAddr: peer},
+		peerWaiters: map[string][]chan *Peer{},
+		closeNotify: make(chan struct{}),
+	}
+
+	got, err := m.GetOrConnectPeer(firewalledPeerAddr, time.Second)
+	assert.NoError(t, err)
+	assert.Same(t, peer, got)
 }
 
 func testVersion(v string) *versions.VersionInfo {
