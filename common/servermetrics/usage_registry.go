@@ -38,12 +38,9 @@ const (
 // UsageRegistry extends a metrics registry with interval and usage counters and
 // produces ziti's MetricsMessage wire format. It embeds metrics.Registry (so
 // it can be used anywhere a base registry is expected, including the sdk xgress
-// machinery) and layers the reporting/usage subsystem ziti owns on top. The wire
-// poll is exposed as PollMessage rather than Poll to avoid colliding with the
-// embedded library's Poll, which returns the library's own (unused) message type.
+// machinery) and layers the reporting/usage subsystem ziti owns on top.
 type UsageRegistry interface {
 	metrics.Registry
-	PollMessage() *metrics_pb.MetricsMessage
 	PollMessageWithoutUsageMetrics() *metrics_pb.MetricsMessage
 	IntervalCounter(name string, intervalSize time.Duration) IntervalCounter
 	UsageCounter(name string, intervalSize time.Duration) UsageCounter
@@ -159,34 +156,6 @@ func (self *usageRegistryImpl) UsageCounter(name string, intervalSize time.Durat
 	usageCounter := newUsageCounter(name, intervalSize, self.intervalAgeThreshold, self, disposeF, self.eventChan)
 	self.intervalMetrics.Set(name, usageCounter)
 	return usageCounter
-}
-
-// PollMessage returns a MetricsMessage including the base metrics plus any
-// accumulated interval and usage buckets.
-func (self *usageRegistryImpl) PollMessage() *metrics_pb.MetricsMessage {
-	base := pollRegistry(self.Registry, self.sourceId, self.tags)
-	if base == nil && self.intervalBuckets == nil {
-		return nil
-	}
-
-	var builder *messageBuilder
-	if base == nil {
-		builder = newMessageBuilder(self.sourceId, self.tags)
-	} else {
-		builder = (*messageBuilder)(base)
-	}
-
-	builder.addIntervalBucketEvents(self.intervalBuckets)
-	self.intervalBuckets = nil
-
-	builder.UsageCounters = self.usageBuckets
-	self.usageBuckets = nil
-
-	sort.Slice(builder.UsageCounters, func(i, j int) bool {
-		return builder.UsageCounters[i].IntervalStartUTC < builder.UsageCounters[j].IntervalStartUTC
-	})
-
-	return (*metrics_pb.MetricsMessage)(builder)
 }
 
 // PollMessageWithoutUsageMetrics returns a MetricsMessage of the base metrics

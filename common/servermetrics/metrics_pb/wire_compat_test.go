@@ -32,8 +32,9 @@ import (
 // package name is not transmitted in the binary encoding.
 //
 // The fact that this test binary links both proto packages (distinct proto
-// package names: ziti.common.metrics.pb vs ziti.metrics.pb) without panicking at
-// init also guards against a global proto-registry duplicate-registration clash.
+// package names: ziti.common.servermetrics.pb vs ziti.metrics.pb) without
+// panicking at init also guards against a global proto-registry
+// duplicate-registration clash.
 func Test_WireCompatibleWithLibraryMetricsMessage(t *testing.T) {
 	req := require.New(t)
 

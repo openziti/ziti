@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
+	routerMetrics "github.com/openziti/ziti/v2/router/metrics"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/stretchr/testify/require"
 )
@@ -136,6 +137,24 @@ type eventSink struct{}
 func (e eventSink) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 }
 
+// testRouterEnv is a minimal env.RouterEnv stub for the perf test. It supplies only the
+// forwarder and xgress metrics that the xgress bind handler accesses; any other method
+// call indicates the test exercised an unexpected code path and will panic on the nil
+// embedded interface.
+type testRouterEnv struct {
+	env.RouterEnv
+	forwarder env.Forwarder
+	xgMetrics env.XgressMetrics
+}
+
+func (self *testRouterEnv) GetForwarder() env.Forwarder {
+	return self.forwarder
+}
+
+func (self *testRouterEnv) GetXgressMetrics() env.XgressMetrics {
+	return self.xgMetrics
+}
+
 func Test_SingleRouterPerf(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
@@ -159,7 +178,12 @@ func Test_SingleRouterPerf(t *testing.T) {
 		Metrics:         xgress.NewMetrics(registry),
 	})
 
-	bindHandler := handler_xgress.NewBindHandler(dataPlaneAdapter, testXgCloseHandler{}, fwd)
+	routerEnv := &testRouterEnv{
+		forwarder: fwd,
+		xgMetrics: routerMetrics.NewXgressMetrics(registry),
+	}
+
+	bindHandler := handler_xgress.NewBindHandler(routerEnv, dataPlaneAdapter, testXgCloseHandler{})
 
 	srcXg := xgress.NewXgress("test", "ctrl", "src", srcConn, xgress.Initiator, options, nil)
 	bindHandler.HandleXgressBind(srcXg)
