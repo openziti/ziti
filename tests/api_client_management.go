@@ -159,6 +159,19 @@ func (helper *ManagementHelperClient) GetIdentity(identityId string) (*rest_mode
 	return resp.Payload.Data, nil
 }
 
+// ListIdentitiesByFilter returns all identities matching the supplied ziti filter expression.
+func (helper *ManagementHelperClient) ListIdentitiesByFilter(filter string) ([]*rest_model.IdentityDetail, error) {
+	resp, err := helper.API.Identity.ListIdentities(&managementIdentity.ListIdentitiesParams{
+		Filter: &filter,
+	}, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
 func (helper *ManagementHelperClient) CreateEnrollmentOtt(identityId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
 	var expAt *strfmt.DateTime
 

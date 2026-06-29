@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -255,6 +256,48 @@ func Test_EnrollmentToken_ToToken(t *testing.T) {
 				})
 			})
 		})
+	})
+
+	t.Run("a bearer token cannot authenticate before enrollment and provisions no identity", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		extJwtSigner := createExtJwtComponents("auth-before-enroll-to-token")
+		extJwtSigner.Create.EnrollToTokenEnabled = true
+		extJwtSigner.Create.EnrollAuthPolicyID = *authPolicyOnlyExtJwtCreate.Detail.ID
+		extJwtSigner.Create.EnrollAttributeClaimsSelector = ""
+		extJwtSigner.Create.ClaimsProperty = nil
+		extJwtSigner.Create.EnrollNameClaimsSelector = ""
+		extJwtSigner.Detail, err = adminManClient.CreateExtJwtSigner(extJwtSigner.Create)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(extJwtSigner.Detail)
+
+		enrollClaims := &claimsWithAttributes{}
+		bearerJwt, err := newJwtForExtJwtSigner(extJwtSigner, enrollClaims)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(bearerJwt)
+
+		filter := fmt.Sprintf(`externalId="%s"`, enrollClaims.Subject)
+
+		// nothing exists for this subject yet
+		before, err := adminManClient.ListIdentitiesByFilter(filter)
+		ctx.Req.NoError(err)
+		ctx.Req.Len(before, 0)
+
+		clientApi := ctx.NewEdgeClientApi(nil)
+		ctx.Req.NotNil(clientApi)
+
+		// present the bearer token to /authenticate WITHOUT enrolling first
+		creds := edgeApis.NewJwtCredentials(bearerJwt)
+		apiSession, err := clientApi.Authenticate(creds, nil)
+
+		// expect failure: a valid IdP token alone has no identity to bind to
+		ctx.Req.Error(err)
+		ctx.Req.Nil(apiSession)
+
+		// and auth must NOT have provisioned an identity as a side effect
+		after, err := adminManClient.ListIdentitiesByFilter(filter)
+		ctx.Req.NoError(err)
+		ctx.Req.Len(after, 0)
 	})
 
 	t.Run("a token for token auth is invalid", func(t *testing.T) {
