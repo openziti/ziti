@@ -801,7 +801,21 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 			return edge_apis.NewApiSessionLegacy(o.Token), nil
 		}
 	} else if o.ApiSession != nil {
-		return o.ApiSession, nil
+		if o.ApiSession.GetType() != edge_apis.ApiSessionTypeOidc || !util.OidcAccessTokenExpired(o.ApiSession) {
+			return o.ApiSession, nil
+		}
+		// The cached OIDC access token is expired. It can only be refreshed if the cached refresh
+		// token is itself still valid, otherwise the user must authenticate from scratch.
+		if !util.OidcRefreshTokenValid(o.ApiSession) {
+			return nil, fmt.Errorf("the cached access token has expired and the refresh token can no longer be used to re-authenticate, please login again")
+		}
+		o.Println("Access token has expired, refreshing it using the cached refresh token...")
+		refreshed, refreshErr := o.mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, o.ApiSession)
+		if refreshErr != nil || refreshed == nil {
+			return nil, fmt.Errorf("failed to refresh the access token using the cached refresh token, please login again: %w", refreshErr)
+		}
+		o.Println("Successfully refreshed the access token")
+		return refreshed, nil
 	} else if o.Username != "" && o.Password != "" {
 		authCreds = edge_apis.NewUpdbCredentials(o.Username, o.Password)
 	} else if o.ClientCert != "" || o.ClientKey != "" {

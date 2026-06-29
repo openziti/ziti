@@ -16,6 +16,7 @@ import (
 	"time"
 
 	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/sdk-golang/ziti"
@@ -187,6 +188,86 @@ func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Requ
 		r.SetHeader(env.ZitiSession, self.Token)
 	}
 	return r
+}
+
+// oidcTokenLeeway skews the OIDC token expiration slightly before its true expiry so it is
+// used on the border, requests won't fail 401s.
+const oidcTokenLeeway = 30 * time.Second
+
+// OidcAccessTokenExpired reports whether sess is an OIDC session whose access token is expired (or
+// will expire within oidcTokenLeeway). Non-OIDC sessions always report false. An unreadable token is
+// treated as expired so the caller refreshes rather than sending a token it cannot validate.
+func OidcAccessTokenExpired(sess edge_apis.ApiSession) bool {
+	oidcSess, ok := sess.(*edge_apis.ApiSessionOidc)
+	if !ok {
+		return false
+	}
+	claims, err := oidcSess.GetAccessClaims()
+	if err != nil {
+		return true
+	}
+	exp, err := claims.GetExpirationTime()
+	if err != nil || exp == nil {
+		return true
+	}
+	return time.Now().Add(oidcTokenLeeway).After(exp.Time)
+}
+
+// OidcRefreshTokenValid reports whether sess carries an OIDC refresh token that is present and not
+// yet expired. A missing, unreadable, or expired refresh token returns false, indicating the user
+// must authenticate again rather than refresh.
+func OidcRefreshTokenValid(sess edge_apis.ApiSession) bool {
+	oidcSess, ok := sess.(*edge_apis.ApiSessionOidc)
+	if !ok || oidcSess.OidcTokens == nil || oidcSess.OidcTokens.RefreshToken == "" {
+		return false
+	}
+	claims := &jwt.RegisteredClaims{}
+	if _, _, err := jwt.NewParser().ParseUnverified(oidcSess.OidcTokens.RefreshToken, claims); err != nil {
+		return false
+	}
+	exp, err := claims.GetExpirationTime()
+	if err != nil || exp == nil {
+		return false
+	}
+	return time.Now().Before(exp.Time)
+}
+
+// refreshOidcTokenIfExpired refreshes the cached OIDC access token when it has expired and the
+// refresh token is still valid. It returns true when the session was refreshed so the caller can
+// persist the updated config. Non-OIDC sessions and still-valid access tokens are no-ops. An expired
+// refresh token, or a failed refresh, returns an error telling the user to log in again.
+func (self *RestClientEdgeIdentity) refreshOidcTokenIfExpired() (bool, error) {
+	if self.ApiSession == nil || self.ApiSession.ApiSession == nil {
+		return false, nil
+	}
+	if !OidcAccessTokenExpired(self.ApiSession.ApiSession) {
+		return false, nil
+	}
+	if !OidcRefreshTokenValid(self.ApiSession.ApiSession) {
+		return false, errors.New("the cached access token has expired and the refresh token can no longer be used to re-authenticate, please login again")
+	}
+
+	ctrlUrl, err := url.Parse(self.Url)
+	if err != nil {
+		return false, errors.Wrapf(err, "could not parse controller url %v while refreshing token", self.Url)
+	}
+
+	tlsClientConfig, err := self.NewTlsClientConfig()
+	if err != nil {
+		return false, err
+	}
+
+	_, _ = fmt.Fprintln(os.Stderr, "Access token has expired, refreshing it using the cached refresh token...")
+
+	mgmtClient := edge_apis.NewManagementApiClient([]*url.URL{ctrlUrl}, tlsClientConfig.RootCAs, nil)
+	refreshed, refreshErr := mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, self.ApiSession.ApiSession)
+	if refreshErr != nil || refreshed == nil {
+		return false, errors.Wrap(refreshErr, "failed to refresh the access token using the cached refresh token, please login again")
+	}
+
+	self.ApiSession = &edge_apis.ApiSessionJsonWrapper{ApiSession: refreshed}
+	_, _ = fmt.Fprintln(os.Stderr, "Successfully refreshed the access token")
+	return true, nil
 }
 
 func (self *RestClientEdgeIdentity) GetBaseUrlForApi(api API) (string, error) {
@@ -367,6 +448,16 @@ func LoadSelectedIdentity() (RestClientIdentity, error) {
 				return nil, errors.Errorf("no identity '%v' found in CLI config %v. You can select an existing identity using 'ziti edge use <identity_name>'", id, configFile)
 			}
 		}
+
+		// refresh an expired OIDC access token before any request uses it, persisting the new tokens
+		if refreshed, err := clientIdentity.refreshOidcTokenIfExpired(); err != nil {
+			return nil, err
+		} else if refreshed {
+			if persistErr := PersistRestClientConfig(config); persistErr != nil {
+				return nil, errors.Wrap(persistErr, "could not persist refreshed token to CLI config")
+			}
+		}
+
 		selectedIdentity = clientIdentity
 	}
 	return selectedIdentity, nil
