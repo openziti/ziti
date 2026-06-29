@@ -325,6 +325,10 @@ func Test_RouterEnrollment(t *testing.T) {
 				caCerts, err := parsePEMBundle([]byte(caCertPem))
 				ctx.Req.NoError(err)
 
+				// the controllers list is only attached for client identity enrollment methods; router
+				// enrollment must not carry it
+				ctx.Req.False(enrollmentContainer.ExistsP("data.controllers"), "expected router enrollment response to omit the controllers list")
+
 				t.Run("is reported as enrolled", func(t *testing.T) {
 					ctx.testContextChanged(t)
 

@@ -44,6 +44,19 @@ var DisabledOidcAutoBinding = ConfigSet{
 	CtrlConfig: "testdata/configs/disabled-oidc-auto-binding/ctrl.yml",
 }
 
+// SingleRaftDataDir is the raft data directory used by the SingleRaft config set. It is cleaned by
+// StartServerRaft before each run and must match the cluster.dataDir in single-raft/ctrl.yml.
+const SingleRaftDataDir = "testdata/single-raft-data"
+
+// SingleRaft is a controller-only config set that runs a single controller in raft/cluster mode
+// (cluster.dataDir set instead of db). Used to exercise the raft self-registration path, where the
+// controller records itself in the Controller store on leadership rather than relying on the
+// non-raft synthesized-self fallback.
+var SingleRaft = ConfigSet{
+	Name:       "single-raft",
+	CtrlConfig: "testdata/configs/single-raft/ctrl.yml",
+}
+
 // DualOidcServers is a controller-only config set with two web server entries, each
 // on a different port and each hosting the edge-oidc API. Used to verify that the OIDC
 // discovery document returns issuer-specific endpoint URLs that reflect the port the

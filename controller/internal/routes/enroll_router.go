@@ -232,6 +232,11 @@ func (ro *EnrollRouter) processEnrollContext(ae *env.AppEnv, rc *response.Reques
 		return
 	}
 
+	if err = ro.addControllerList(ae, enrollContext.GetMethod(), result.Content); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	//prefer json producer for non ott methods (backwards compat for ott)
 	explicitJsonAccept := false
 	if accept := rc.Request.Header.Values("accept"); len(accept) == 0 {
@@ -251,6 +256,56 @@ func (ro *EnrollRouter) processEnrollContext(ae *env.AppEnv, rc *response.Reques
 	}
 
 	rc.RespondWithOk(result.Content, &rest_model.Meta{})
+}
+
+// addControllerList attaches the cluster's controllers to the enrollment response content so an
+// enrolling client learns every controller it may connect to, not just the one it enrolled against.
+// It applies only to client identity enrollment methods; other methods (e.g. router enrollment) are
+// left untouched. Content that does not embed an enrollment response carrier is ignored.
+func (ro *EnrollRouter) addControllerList(ae *env.AppEnv, method string, content interface{}) error {
+	switch method {
+	case db.MethodEnrollOtt, db.MethodEnrollOttCa, db.MethodEnrollUpdb, db.MethodEnrollToken:
+	default:
+		return nil
+	}
+
+	controllers, err := ro.listClientControllers(ae)
+	if err != nil {
+		return err
+	}
+
+	switch c := content.(type) {
+	case *rest_model.EnrollmentCerts:
+		c.Controllers = controllers
+	case *rest_model.EnrollmentResponse:
+		c.Controllers = controllers
+	case *rest_model.EnrollmentResponseUpdb:
+		c.Controllers = controllers
+	}
+
+	return nil
+}
+
+// listClientControllers returns the cluster's controllers mapped to their client-facing REST detail,
+// exposing only the client and OIDC API addresses. ReadAllForClient synthesizes the running
+// controller in single-controller (non-HA) deployments, so the list is never empty for an enrolling
+// client.
+func (ro *EnrollRouter) listClientControllers(ae *env.AppEnv) (rest_model.ControllersList, error) {
+	ctrls, err := ae.Managers.Controller.ReadAllForClient()
+	if err != nil {
+		return nil, err
+	}
+
+	controllers := rest_model.ControllersList{}
+	for _, ctrl := range ctrls {
+		detail, err := MapControllerToClientRestModel(ctrl)
+		if err != nil {
+			return nil, err
+		}
+		controllers = append(controllers, detail)
+	}
+
+	return controllers, nil
 }
 
 // legacyGenericEnrollPemHandler handles legacy generic enrollment. It should not be used and is considered deprecated.

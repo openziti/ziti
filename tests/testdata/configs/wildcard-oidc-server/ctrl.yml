@@ -5,15 +5,16 @@ db: ${ZITI_TEST_DB}
 # Wildcard server cert (*.wildcard.test) via alt_server_certs. A wildcard SAN becomes an OIDC issuer only
 # for the edge-oidc 'allowedHostnames' it covers (here, ctrl.wildcard.test).
 identity:
-  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
-  key: testdata/ca/intermediate/private/ctrl.key.pem
-  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+  cert: testdata/pki/ctrl1/certs/client.chain.pem
+  server_cert: testdata/pki/ctrl1/certs/server.chain.pem
+  key: testdata/pki/ctrl1/keys/client.key
+  server_key: testdata/pki/ctrl1/keys/server.key
+  ca: testdata/pki/root/certs/root.cert
   alt_server_certs:
-    - server_cert: testdata/ca/intermediate/certs/ctrl-server-wildcard.cert.pem
-      server_key: testdata/ca/intermediate/private/ctrl.key.pem
+    - server_cert: testdata/pki/ctrl1/certs/ctrl1-wildcard.chain.pem
+      server_key: testdata/pki/ctrl1/keys/ctrl1-wildcard.key
 
-trustDomain: at-test
+trustDomain: ziti.test
 
 ctrl:
   listener: tls:127.0.0.1:6262
@@ -31,9 +32,9 @@ edge:
     address: 127.0.0.1:1281
   enrollment:
     signingCert:
-      cert: testdata/ca/intermediate/certs/intermediate.cert.pem
-      key: testdata/ca/intermediate/private/intermediate.key.decrypted.pem
-      ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+      cert: testdata/pki/ctrl1/certs/ctrl1.chain.pem
+      key: testdata/pki/ctrl1/keys/ctrl1.key
+      ca: testdata/pki/root/certs/root.cert
     edgeIdentity:
       duration: 20m
     edgeRouter:

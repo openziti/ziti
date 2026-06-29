@@ -102,7 +102,10 @@ func (o *PKICreateIntermediateOptions) Run() error {
 	commonName := o.Flags.IntermediateName
 
 	filename := o.ObtainFileName(intermediateFile, commonName)
-	template := o.ObtainPKIRequestTemplate(commonName)
+	template, err := o.ObtainPKIRequestTemplate(commonName)
+	if err != nil {
+		return err
+	}
 
 	template.IsCA = true
 

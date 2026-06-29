@@ -186,14 +186,14 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/pki/ctrl1/certs/001-client.cert")
 	ctx.startFabricRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
 	badId, err := id.LoadClientIdentity(
 		"./testdata/invalid_client_cert/client.cert",
 		"./testdata/invalid_client_cert/client.key",
-		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+		"./testdata/pki/root/certs/root.cert")
 	ctx.Req.NoError(err)
 
 	xla := &testXlinkAcceptor{}
@@ -222,15 +222,15 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	ctx.EnrollFabricRouter("002", "router-2", "testdata/router/002-client.cert.pem")
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/pki/ctrl1/certs/001-client.cert")
+	ctx.EnrollFabricRouter("002", "router-2", "testdata/pki/ctrl1/certs/002-client.cert")
 	ctx.startFabricRouter(1)
 	ctx.Req.NoError(ctx.waitForPort("127.0.0.1:6004", 2*time.Second))
 
 	router2Id, err := id.LoadClientIdentity(
-		"./testdata/router/002-client.cert.pem",
-		"./testdata/router/002.key.pem",
-		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+		"./testdata/pki/ctrl1/certs/002-client.chain.pem",
+		"./testdata/pki/ctrl1/keys/002.key",
+		"./testdata/pki/root/certs/root.cert")
 	ctx.Req.NoError(err)
 
 	xla := &testXlinkAcceptor{}
@@ -272,8 +272,8 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	ctx.EnrollFabricRouter("001", "router-1", "testdata/router/001-client.cert.pem")
-	ctx.EnrollFabricRouter("002", "router-2", "testdata/router/002-client.cert.pem")
+	ctx.EnrollFabricRouter("001", "router-1", "testdata/pki/ctrl1/certs/001-client.cert")
+	ctx.EnrollFabricRouter("002", "router-2", "testdata/pki/ctrl1/certs/002-client.cert")
 	ctx.Teardown()
 
 	ctrlListener := ctx.NewControlChannelListener()

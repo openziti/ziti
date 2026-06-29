@@ -91,21 +91,35 @@ func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToCertAuth(enrollmen
 }
 
 func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToTokenAuth(enrollmentJwt string) error {
+	_, err := helper.CompleteJwtTokenEnrollmentToTokenAuthWithControllers(enrollmentJwt)
+	return err
+}
+
+// CompleteJwtTokenEnrollmentToTokenAuthWithControllers performs a token-to-token enrollment and returns
+// the list of controllers carried in the enrollment response.
+func (helper *ClientHelperClient) CompleteJwtTokenEnrollmentToTokenAuthWithControllers(enrollmentJwt string) (rest_model.ControllersList, error) {
 	params := clientEnroll.NewEnrollTokenParams()
 
 	params.TokenEnrollmentRequest = &rest_model.TokenEnrollmentRequest{}
 	params.Authorization = "Bearer " + enrollmentJwt
 
-	_, err := helper.API.Enroll.EnrollToken(params)
+	resp, err := helper.API.Enroll.EnrollToken(params)
 
 	if err != nil {
-		return rest_util.WrapErr(err)
+		return nil, rest_util.WrapErr(err)
 	}
 
-	return nil
+	return resp.Payload.Data.Controllers, nil
 }
 
 func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) (*edgeApis.CertCredentials, error) {
+	creds, _, err := helper.CompleteOttEnrollmentWithControllers(enrollmentToken)
+	return creds, err
+}
+
+// CompleteOttEnrollmentWithControllers performs an OTT enrollment and additionally returns the list of
+// controllers carried in the enrollment response.
+func (helper *ClientHelperClient) CompleteOttEnrollmentWithControllers(enrollmentToken string) (*edgeApis.CertCredentials, rest_model.ControllersList, error) {
 	token := enrollmentToken
 
 	if IsJwt(token) {
@@ -114,7 +128,7 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 		_, _, err := jwtParser.ParseUnverified(token, enrollmentClaims)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
+			return nil, nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
 		}
 
 		token = enrollmentClaims.ID
@@ -123,7 +137,7 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	template := &x509.CertificateRequest{}
@@ -131,7 +145,7 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, template, privateKey)
 
 	if err != nil {
-		return nil, rest_util.WrapErr(err)
+		return nil, nil, rest_util.WrapErr(err)
 	}
 
 	csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
@@ -145,13 +159,13 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 	resp, err := helper.API.Enroll.EnrollOtt(params)
 
 	if err != nil {
-		return nil, rest_util.WrapErr(err)
+		return nil, nil, rest_util.WrapErr(err)
 	}
 
 	certs := nfPem.PemStringToCertificates(resp.Payload.Data.Cert)
 
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("no certificates returned from enrollment")
+		return nil, nil, fmt.Errorf("no certificates returned from enrollment")
 	}
 
 	caCerts := nfPem.PemStringToCertificates(resp.Payload.Data.Ca)
@@ -173,7 +187,7 @@ func (helper *ClientHelperClient) CompleteOttEnrollment(enrollmentToken string) 
 		},
 		Certs: certs,
 		Key:   privateKey,
-	}, nil
+	}, resp.Payload.Data.Controllers, nil
 }
 
 func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken string) (*edgeApis.CertCredentials, error) {
@@ -236,10 +250,17 @@ func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken s
 }
 
 func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, error) {
+	creds, _, err := helper.CompleteOttCaEnrollmentWithControllers(enrollmentToken, clientCert, clientKey)
+	return creds, err
+}
+
+// CompleteOttCaEnrollmentWithControllers performs an OTTCA enrollment and additionally returns the list
+// of controllers carried in the enrollment response.
+func (helper *ClientHelperClient) CompleteOttCaEnrollmentWithControllers(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, rest_model.ControllersList, error) {
 	token := enrollmentToken
 
 	if len(clientCert) == 0 {
-		return nil, fmt.Errorf("no client certificates returned from enrollment")
+		return nil, nil, fmt.Errorf("no client certificates returned from enrollment")
 	}
 
 	var rawCerts [][]byte
@@ -277,7 +298,7 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string
 		_, _, err := jwtParser.ParseUnverified(token, enrollmentClaims)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
+			return nil, nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
 		}
 
 		token = enrollmentClaims.ID
@@ -296,16 +317,23 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string
 
 	helper.Credentials = certCreds
 
-	_, err := helper.API.Enroll.EnrollOttCa(params)
+	resp, err := helper.API.Enroll.EnrollOttCa(params)
 
 	if err != nil {
-		return nil, rest_util.WrapErr(err)
+		return nil, nil, rest_util.WrapErr(err)
 	}
 
-	return certCreds, nil
+	return certCreds, resp.Payload.Data.Controllers, nil
 }
 
 func (helper *ClientHelperClient) CompleteUpdbEnrollment(enrollmentToken string, username string, password string) (*edgeApis.UpdbCredentials, error) {
+	creds, _, err := helper.CompleteUpdbEnrollmentWithResponse(enrollmentToken, username, password)
+	return creds, err
+}
+
+// CompleteUpdbEnrollmentWithResponse performs a UPDB enrollment and additionally returns the enrollment
+// response, which carries the established username and the list of controllers.
+func (helper *ClientHelperClient) CompleteUpdbEnrollmentWithResponse(enrollmentToken string, username string, password string) (*edgeApis.UpdbCredentials, *rest_model.EnrollmentResponseUpdb, error) {
 	token := enrollmentToken
 
 	if IsJwt(token) {
@@ -314,7 +342,7 @@ func (helper *ClientHelperClient) CompleteUpdbEnrollment(enrollmentToken string,
 		_, _, err := jwtParser.ParseUnverified(token, enrollmentClaims)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
+			return nil, nil, fmt.Errorf("could not parse enrollment JWT: %w", rest_util.WrapErr(err))
 		}
 
 		token = enrollmentClaims.ID
@@ -327,17 +355,17 @@ func (helper *ClientHelperClient) CompleteUpdbEnrollment(enrollmentToken string,
 		Username: rest_model.Username(username),
 	}
 
-	_, err := helper.API.Enroll.EnrollUpdb(params)
+	resp, err := helper.API.Enroll.EnrollUpdb(params)
 
 	if err != nil {
-		return nil, rest_util.WrapErr(err)
+		return nil, nil, rest_util.WrapErr(err)
 	}
 
 	return &edgeApis.UpdbCredentials{
 		BaseCredentials: edgeApis.BaseCredentials{},
 		Username:        username,
 		Password:        password,
-	}, nil
+	}, resp.Payload.Data, nil
 }
 
 func (helper *ClientHelperClient) ExtendCertsWithAuthenticatorId(authenticatorId string) (*edgeApis.CertCredentials, error) {

@@ -438,14 +438,24 @@ func (ctx *TestContext) StartServer() *ControllerHelper {
 // single test override settings (e.g., OIDC token durations) without affecting
 // other tests that call StartServer with the shared default config.
 func (ctx *TestContext) StartServerWithConfigModifier(modifier func(*config.Config)) *ControllerHelper {
-	return ctx.startServerWith("testdata/default.db", true, modifier)
+	return ctx.startServerWith("testdata/default.db", true, modifier, false)
 }
 
 func (ctx *TestContext) StartServerFor(testDb string, clean bool) *ControllerHelper {
-	return ctx.startServerWith(testDb, clean, nil)
+	return ctx.startServerWith(testDb, clean, nil, false)
 }
 
-func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config)) *ControllerHelper {
+// StartServerRaft starts a controller using a raft/cluster config set (e.g. SingleRaft). It removes
+// any stale raft data directory first so the node bootstraps a fresh single-node cluster. The shared
+// InitializeDefaultAdmin path bootstraps raft (Dispatcher.Bootstrap) and waits for leadership before
+// creating the admin, so no separate bootstrap step is needed here.
+func (ctx *TestContext) StartServerRaft() *ControllerHelper {
+	err := os.RemoveAll(SingleRaftDataDir)
+	ctx.Req.NoError(err)
+	return ctx.startServerWith("testdata/single-raft-unused.db", true, nil, true)
+}
+
+func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config), initAdminAfterRun bool) *ControllerHelper {
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -491,13 +501,13 @@ func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func
 
 	ctx.EdgeController.Initialize()
 
-	err = ctx.EdgeController.AppEnv.Managers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, eid.New())
-	if err != nil {
-		log.WithError(err).Warn("error during initialize admin")
+	// In raft/cluster mode the default admin is created after Run, mirroring `ziti agent cluster
+	// init` against a live controller: InitializeDefaultAdmin bootstraps raft and triggers self
+	// registration, which captures API addresses from the running xweb, so it must run once xweb is
+	// fully up. Non-raft controllers initialize the admin before Run as before.
+	if !initAdminAfterRun {
+		ctx.initializeDefaultAdmin()
 	}
-
-	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
-	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
 
 	ctx.EdgeController.Run()
 	go func() {
@@ -507,7 +517,23 @@ func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func
 	err = ctx.waitForRestAPIPort(time.Minute * 5)
 	ctx.Req.NoError(err)
 
+	if initAdminAfterRun {
+		ctx.initializeDefaultAdmin()
+	}
+
 	return &ControllerHelper{Controller: ctx.EdgeController}
+}
+
+// initializeDefaultAdmin creates the default admin identity. In raft mode this also bootstraps the
+// cluster (via Dispatcher.Bootstrap) and waits for leadership before the admin is created.
+func (ctx *TestContext) initializeDefaultAdmin() {
+	err := ctx.EdgeController.AppEnv.Managers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, eid.New())
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("error during initialize admin")
+	}
+
+	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
+	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
