@@ -275,6 +275,8 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 
 	capabilityMask := &big.Int{}
 	capabilityMask.SetBit(capabilityMask, capabilities.RouterMultiChannel, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.RouterServiceSubscriptions, 1)
+	capabilityMask.SetBit(capabilityMask, capabilities.RouterDataModel, 1)
 	headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = capabilityMask.Bytes()
 
 	ctrlListeners := &ctrl_pb.CtrlChanListeners{}

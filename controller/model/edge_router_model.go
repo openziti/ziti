@@ -43,6 +43,8 @@ type EdgeRouter struct {
 	CtrlChanListeners     map[string][]string
 	Interfaces            []*Interface
 	Configs               []string
+	CapabilitiesMask      int64
+	Version               string
 }
 
 func (self *EdgeRouter) GetName() string {
@@ -98,6 +100,8 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker b
 		AppData:               entity.AppData,
 		UnverifiedFingerprint: entity.UnverifiedFingerprint,
 		UnverifiedCertPem:     entity.UnverifiedCertPem,
+		CapabilitiesMask:      entity.CapabilitiesMask,
+		Version:               entity.Version,
 	}, nil
 }
 
@@ -118,5 +122,7 @@ func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *db.EdgeRo
 	entity.CtrlChanListeners = boltEdgeRouter.CtrlChanListeners
 	entity.Interfaces = InterfacesFromBolt(boltEdgeRouter.Interfaces)
 	entity.Configs = boltEdgeRouter.Configs
+	entity.CapabilitiesMask = boltEdgeRouter.CapabilitiesMask
+	entity.Version = boltEdgeRouter.Version
 	return nil
 }

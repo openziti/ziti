@@ -172,10 +172,11 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 	capMask.SetBit(capMask, edge.RouterCapabilityConnectV2, 1)
 
 	headers := map[int32][]byte{
-		channel.HelloVersionHeader:       versionHeader,
-		edge.SupportsBindSuccessHeader:   {1},
-		edge.SupportsPostureChecksHeader: {1},
-		edge.RouterCapabilitiesHeader:    capMask.Bytes(),
+		channel.HelloVersionHeader:              versionHeader,
+		edge.SupportsBindSuccessHeader:          {1},
+		edge.SupportsPostureChecksHeader:        {1},
+		edge.RouterCapabilitiesHeader:           capMask.Bytes(),
+		edge.SupportsServiceSubscriptionsHeader: {1},
 	}
 
 	wrappedId := state.WrapIdentityWithCertValidation(factory.env.GetRouterId(), factory.stateManager)

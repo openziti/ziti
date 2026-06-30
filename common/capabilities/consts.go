@@ -52,6 +52,16 @@ const (
 	// RouterMultiChannel indicates the router uses new (1000+) ControlHeaders IDs
 	// and supports multi-underlay control channels
 	RouterMultiChannel int = 1
+
+	// RouterServiceSubscriptions indicates the router can push service change and posture
+	// state notifications to subscribed SDK clients over the edge protocol
+	RouterServiceSubscriptions int = 2
+
+	// RouterDataModel indicates the router supports the router data model. This is also
+	// negotiated per-connection via the Header_RouterDataModel header (which additionally
+	// carries the current index); the capability bit provides a static, persistable
+	// advertisement of the same support.
+	RouterDataModel int = 3
 )
 
 func GetControllerCapabilitiesMask() *big.Int {

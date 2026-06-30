@@ -98,6 +98,13 @@ type BindTerminator interface {
 	CloseForBindAccessLoss()
 }
 
+// PostureStateNotifier is an optional extension of ConnProvider. When implemented,
+// the connection wants to receive posture evaluation results after each posture
+// data update so it can push a PostureStateChange message to the SDK.
+type PostureStateNotifier interface {
+	SendPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData)
+}
+
 // ConnProvider is an interface used to abstract specific conn implementations from lower level packages
 // (such as xgress_edge) to avoid circular dependencies.
 type ConnProvider interface {
@@ -286,6 +293,10 @@ type Manager interface {
 	// the router's posture cache.
 	ProcessPostureResponses(ch channel.Channel, response *edge_client_pb.PostureResponses)
 
+	// GetPostureData returns a snapshot of the current posture instance data for the
+	// given API session, or nil if no posture data has been received yet.
+	GetPostureData(apiSessionId string) *posture.InstanceData
+
 	// GetEnv returns the router environment instance.
 	GetEnv() env.RouterEnv
 
@@ -462,6 +473,10 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		for _, t := range bindToClose {
 			t.CloseForBindAccessLoss()
 		}
+
+		if notifier, ok := edgeConn.(PostureStateNotifier); ok {
+			notifier.SendPostureStateChange(rdm, uint64(rdm.CurrentIndex()), data)
+		}
 	}
 }
 
@@ -483,6 +498,17 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 
 func routerDataModelWorker(_ uint32, f func()) {
 	f()
+}
+
+// GetPostureData returns a copy of the current posture instance data for the
+// given API session, or nil if no data has arrived yet.
+func (self *ManagerImpl) GetPostureData(apiSessionId string) *posture.InstanceData {
+	instance := self.postureCache.GetInstance(apiSessionId)
+	if instance == nil {
+		return nil
+	}
+	data := instance.InstanceData
+	return &data
 }
 
 // HasBindAccess evaluates service binding authorization, determining if an
