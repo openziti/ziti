@@ -123,6 +123,55 @@ func Test_EnrollmentToken_ToCertificate(t *testing.T) {
 			})
 		})
 
+		t.Run("when the attribute selector is set but the claim is absent", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			extJwtSingerAttrSelectorAbsent := createExtJwtComponents("enroll-to-cert-attr-selector-absent")
+			extJwtSingerAttrSelectorAbsent.Create.EnrollToCertEnabled = true
+			extJwtSingerAttrSelectorAbsent.Create.EnrollAuthPolicyID = *authPolicyOnlyCerts.Detail.ID
+			extJwtSingerAttrSelectorAbsent.Create.EnrollAttributeClaimsSelector = "absent-attr-selector"
+			extJwtSingerAttrSelectorAbsent.Create.ClaimsProperty = nil
+			extJwtSingerAttrSelectorAbsent.Create.EnrollNameClaimsSelector = ""
+			extJwtSingerAttrSelectorAbsent.Detail, err = adminManClient.CreateExtJwtSigner(extJwtSingerAttrSelectorAbsent.Create)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(extJwtSingerAttrSelectorAbsent.Detail)
+
+			enrollClaims := &claimsWithAttributes{}
+			enrollmentJwt, err := newJwtForExtJwtSigner(extJwtSingerAttrSelectorAbsent, enrollClaims)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(enrollmentJwt)
+
+			clientApi := ctx.NewEdgeClientApi(nil)
+			ctx.Req.NotNil(clientApi)
+
+			// an optional attribute claim absent from the token enrolls with no role attributes rather than failing
+			creds, err := clientApi.CompleteJwtTokenEnrollmentToCertAuth(enrollmentJwt)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(creds)
+			ctx.Req.NotNil(creds.Key)
+			ctx.Req.NotEmpty(creds.Certs)
+
+			t.Run("the identity has no role attributes", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				apiSession, err := clientApi.Authenticate(creds, nil)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(apiSession)
+
+				queryApiSession, err := clientApi.QueryCurrentApiSession()
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(queryApiSession)
+				ctx.Req.NotNil(queryApiSession.Identity)
+				ctx.Req.NotEmpty(queryApiSession.Identity.ID)
+
+				createdIdentity, err := adminManClient.GetIdentity(queryApiSession.Identity.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(createdIdentity)
+
+				ctx.Req.Empty(*createdIdentity.RoleAttributes)
+			})
+		})
+
 		t.Run("when all selectors set with multiple attributes", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
@@ -330,31 +379,6 @@ func Test_EnrollmentToken_ToCertificate(t *testing.T) {
 
 			enrollClaims := &claimsWithAttributes{}
 			enrollmentJwt, err := newJwtForExtJwtSigner(extJwtSingerNameIsNumberSelectorFails, enrollClaims)
-			ctx.Req.NoError(err)
-			ctx.Req.NotEmpty(enrollmentJwt)
-
-			clientApi := ctx.NewEdgeClientApi(nil)
-			ctx.Req.NotNil(clientApi)
-
-			creds, err := clientApi.CompleteJwtTokenEnrollmentToCertAuth(enrollmentJwt)
-
-			ctx.Req.Error(err)
-			ctx.Req.ApiErrorWithCode(err, apierror.InvalidEnrollmentTokenCode)
-			ctx.Req.Nil(creds)
-		})
-
-		t.Run("if the attribute claim selector does not resolve", func(t *testing.T) {
-			extJwtSingerAttrSelectorFails := createExtJwtComponents("enroll-to-cert-attr-selector-fails")
-			extJwtSingerAttrSelectorFails.Create.EnrollAuthPolicyID = *authPolicyOnlyCerts.Detail.ID
-			extJwtSingerAttrSelectorFails.Create.Enabled = ToPtr(true)
-			extJwtSingerAttrSelectorFails.Create.EnrollToCertEnabled = true
-			extJwtSingerAttrSelectorFails.Create.EnrollAttributeClaimsSelector = "invalid-attr-selector"
-			extJwtSingerAttrSelectorFails.Detail, err = adminManClient.CreateExtJwtSigner(extJwtSingerAttrSelectorFails.Create)
-			ctx.Req.NoError(err)
-			ctx.Req.NotNil(extJwtSingerAttrSelectorFails.Detail)
-
-			enrollClaims := &claimsWithAttributes{}
-			enrollmentJwt, err := newJwtForExtJwtSigner(extJwtSingerAttrSelectorFails, enrollClaims)
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(enrollmentJwt)
 
