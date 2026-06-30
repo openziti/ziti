@@ -32,10 +32,10 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )
@@ -629,7 +629,8 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 }
 
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
-// Returns a string slice even if the claim is a single string value.
+// Returns a string slice even if the claim is a single string value. An absent claim or unset selector
+// resolves to no values without error; only a malformed pointer or a present-but-wrong-type claim errors.
 func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]string, error) {
 	if property == "" {
 		return nil, nil
@@ -648,7 +649,11 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	val, _, err := jsonPointer.Get(claims)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: %w", property, err)
+		// Pointer syntax was already validated by jsonpointer.New above, so a Get
+		// failure means the path is simply not present in this token. The role
+		// attributes claim is optional, so an absent claim resolves to no attributes
+		// rather than an error, matching the unset-selector and empty-claim cases.
+		return nil, nil
 	}
 
 	strVal, ok := val.(string)
