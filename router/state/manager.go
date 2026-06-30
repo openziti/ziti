@@ -40,9 +40,9 @@ import (
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
-	"github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/common/runner"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/posture"
@@ -341,7 +341,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		WorkerFunction: routerDataModelWorker,
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, stateEnv.GetMetricsRegistry(), "pool.rdm.handler")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&routerDataModelPoolConfig, stateEnv.GetMetricsRegistry(), "pool.rdm.handler")
 
 	routerDataModelPool, err := goroutines.NewPool(routerDataModelPoolConfig)
 	if err != nil {

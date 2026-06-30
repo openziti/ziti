@@ -21,10 +21,11 @@ import (
 
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 )
 
-func NewXgressMetrics(registry metrics.UsageRegistry) *XgressMetrics {
+func NewXgressMetrics(registry servermetrics.UsageRegistry) *XgressMetrics {
 	ingressTxBytesMeter := registry.Meter("ingress.tx.bytesrate")
 	ingressTxMsgMeter := registry.Meter("ingress.tx.msgrate")
 	ingressRxBytesMeter := registry.Meter("ingress.rx.bytesrate")
@@ -73,10 +74,10 @@ type XgressMetrics struct {
 	egressTxMsgSizeHistogram  metrics.Histogram
 	egressRxMsgSizeHistogram  metrics.Histogram
 
-	usageCounter metrics.UsageCounter
+	usageCounter servermetrics.UsageCounter
 }
 
-func (handler *XgressMetrics) Rx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload) {
+func (handler *XgressMetrics) Rx(source servermetrics.UsageSource, originator xgress.Originator, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if originator == xgress.Initiator {
 		handler.usageCounter.Update(source, "ingress.rx", time.Now(), uint64(msgSize))
@@ -91,7 +92,7 @@ func (handler *XgressMetrics) Rx(source metrics.UsageSource, originator xgress.O
 	}
 }
 
-func (handler *XgressMetrics) Tx(source metrics.UsageSource, originator xgress.Originator, payload *xgress.Payload) {
+func (handler *XgressMetrics) Tx(source servermetrics.UsageSource, originator xgress.Originator, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if originator == xgress.Initiator {
 		handler.usageCounter.Update(source, "ingress.tx", time.Now(), uint64(msgSize))

@@ -21,8 +21,8 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"google.golang.org/protobuf/proto"
@@ -30,8 +30,8 @@ import (
 
 type healthEventHandler struct {
 	baseRequestHandler
-	serviceHealthCheckPassedCounter metrics.IntervalCounter
-	serviceHealthCheckFailedCounter metrics.IntervalCounter
+	serviceHealthCheckPassedCounter servermetrics.IntervalCounter
+	serviceHealthCheckFailedCounter servermetrics.IntervalCounter
 }
 
 func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ContentTypeReceiver {

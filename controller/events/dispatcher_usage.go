@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/pkg/errors"
 )

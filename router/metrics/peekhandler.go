@@ -23,11 +23,12 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 )
 
 // NewChannelPeekHandler creates a channel PeekHandler which tracks latency, message rate and message size distribution
-func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channel.PeekHandler {
+func NewChannelPeekHandler(linkId string, registry servermetrics.UsageRegistry) channel.PeekHandler {
 	appTxBytesMeter := registry.Meter("fabric.tx.bytesrate")
 	appTxMsgMeter := registry.Meter("fabric.tx.msgrate")
 	appTxMsgSizeHistogram := registry.Histogram("fabric.tx.msgsize")
@@ -78,7 +79,7 @@ type channelPeekHandler struct {
 	linkTxMsgSizeHistogram metrics.Histogram
 	linkRxMsgSizeHistogram metrics.Histogram
 
-	usageCounter metrics.UsageCounter
+	usageCounter servermetrics.UsageCounter
 }
 
 func (h *channelPeekHandler) Connect(channel.Channel, string) {

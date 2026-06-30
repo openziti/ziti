@@ -39,16 +39,14 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/logcontext"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
+	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/config"
@@ -56,6 +54,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
@@ -100,16 +100,16 @@ type Network struct {
 	metricsRegistry        metrics.Registry
 	VersionProvider        versions.VersionProvider
 
-	serviceEventMetrics          metrics.UsageRegistry
-	serviceDialSuccessCounter    metrics.IntervalCounter
-	serviceDialFailCounter       metrics.IntervalCounter
-	serviceDialTimeoutCounter    metrics.IntervalCounter
-	serviceDialOtherErrorCounter metrics.IntervalCounter
+	serviceEventMetrics          servermetrics.UsageRegistry
+	serviceDialSuccessCounter    servermetrics.IntervalCounter
+	serviceDialFailCounter       servermetrics.IntervalCounter
+	serviceDialTimeoutCounter    servermetrics.IntervalCounter
+	serviceDialOtherErrorCounter servermetrics.IntervalCounter
 
-	serviceTerminatorTimeoutCounter           metrics.IntervalCounter
-	serviceTerminatorConnectionRefusedCounter metrics.IntervalCounter
-	serviceInvalidTerminatorCounter           metrics.IntervalCounter
-	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
+	serviceTerminatorTimeoutCounter           servermetrics.IntervalCounter
+	serviceTerminatorConnectionRefusedCounter servermetrics.IntervalCounter
+	serviceInvalidTerminatorCounter           servermetrics.IntervalCounter
+	serviceMisconfiguredTerminatorCounter     servermetrics.IntervalCounter
 
 	config Config
 
@@ -120,12 +120,12 @@ type Network struct {
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
-	metricsConfig := metrics.DefaultUsageRegistryConfig(config.GetId().Token, config.GetCloseNotify())
+	metricsConfig := servermetrics.DefaultUsageRegistryConfig(config.GetId().Token, config.GetCloseNotify())
 	if config.GetOptions().IntervalAgeThreshold != 0 {
 		metricsConfig.IntervalAgeThreshold = config.GetOptions().IntervalAgeThreshold
 		logrus.Infof("set interval age threshold to '%v'", config.GetOptions().IntervalAgeThreshold)
 	}
-	serviceEventMetrics := metrics.NewUsageRegistry(metricsConfig)
+	serviceEventMetrics := servermetrics.NewUsageRegistry(metricsConfig)
 
 	network := &Network{
 		env:                   env,
@@ -213,7 +213,7 @@ func (network *Network) createRouterCommPool(config Config) (goroutines.Pool, er
 		WorkerFunction: routerCommunicationsWorker,
 	}
 
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.messaging")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&poolConfig, config.GetMetricsRegistry(), "pool.router.messaging")
 
 	pool, err := goroutines.NewPool(poolConfig)
 	if err != nil {
@@ -230,7 +230,7 @@ func (network *Network) relayControllerMetrics() {
 		for {
 			select {
 			case <-timer.C:
-				if msg := network.metricsRegistry.Poll(); msg != nil {
+				if msg := servermetrics.Poll(network.metricsRegistry); msg != nil {
 					network.eventDispatcher.AcceptMetricsMsg(msg)
 				}
 			case <-network.closeNotify:
@@ -240,7 +240,7 @@ func (network *Network) relayControllerMetrics() {
 	}()
 }
 
-func (network *Network) InitServiceCounterDispatch(handler metrics.Handler) {
+func (network *Network) InitServiceCounterDispatch(handler servermetrics.Handler) {
 	network.serviceEventMetrics.StartReporting(handler, network.GetOptions().MetricsReportInterval, 10)
 }
 
@@ -335,7 +335,7 @@ func (network *Network) GetMetricsRegistry() metrics.Registry {
 	return network.metricsRegistry
 }
 
-func (network *Network) GetServiceEventsMetricsRegistry() metrics.UsageRegistry {
+func (network *Network) GetServiceEventsMetricsRegistry() servermetrics.UsageRegistry {
 	return network.serviceEventMetrics
 }
 

@@ -37,16 +37,15 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common/bindpoints"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/concurrency"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/profiler"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -58,6 +57,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/openziti/ziti/v2/controller/raft/mesh"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/webapis"
 	"github.com/openziti/ziti/v2/controller/xctrl"
 	"github.com/openziti/ziti/v2/controller/xmgmt"
@@ -527,7 +527,7 @@ func (c *Controller) Run() error {
 	 */
 	ctrlChannelListenerConfig := channel.ListenerConfig{
 		ConnectOptions:   c.config.Ctrl.Options.ConnectOptions,
-		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
+		PoolConfigurator: servermetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
 		Headers:          headers,
 		TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
 	}

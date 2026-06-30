@@ -45,7 +45,6 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/xweb/v3"
@@ -57,9 +56,9 @@ import (
 	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/health"
-	fabricMetrics "github.com/openziti/ziti/v2/common/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/profiler"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/router/env"
@@ -105,11 +104,11 @@ type Router struct {
 	linkDialerPool      goroutines.Pool
 	rateLimiterPool     goroutines.Pool
 	ctrlRateLimiter     rate.AdaptiveRateLimitTracker
-	metricsRegistry     metrics.UsageRegistry
+	metricsRegistry     servermetrics.UsageRegistry
 	shutdownC           chan struct{}
 	shutdownDoneC       chan struct{}
 	isShutdown          atomic.Bool
-	metricsReporter     metrics.Handler
+	metricsReporter     servermetrics.Handler
 	versionProvider     versions.VersionProvider
 	debugOperations     map[byte]func(c *bufio.ReadWriter) error
 	stateManager        state.Manager
@@ -169,7 +168,7 @@ func (self *Router) GetCloseNotify() <-chan struct{} {
 	return self.shutdownC
 }
 
-func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
+func (self *Router) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
@@ -301,8 +300,8 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 	return headers, nil
 }
 
-func createMetricsRegistry(cfg *env.Config, closeNotify <-chan struct{}) metrics.UsageRegistry {
-	metricsConfig := metrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
+func createMetricsRegistry(cfg *env.Config, closeNotify <-chan struct{}) servermetrics.UsageRegistry {
+	metricsConfig := servermetrics.DefaultUsageRegistryConfig(cfg.Id.Token, closeNotify)
 	metricsConfig.EventQueueSize = cfg.Metrics.EventQueueSize
 	if cfg.Metrics.IntervalAgeThreshold != 0 {
 		metricsConfig.IntervalAgeThreshold = cfg.Metrics.IntervalAgeThreshold
@@ -310,7 +309,7 @@ func createMetricsRegistry(cfg *env.Config, closeNotify <-chan struct{}) metrics
 	}
 	env.IntervalSize = cfg.Metrics.ReportInterval
 
-	return metrics.NewUsageRegistry(metricsConfig)
+	return servermetrics.NewUsageRegistry(metricsConfig)
 }
 
 func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
@@ -620,7 +619,7 @@ func (self *Router) initLinkDialerPool() error {
 		WorkerFunction: linkDialerWorker,
 	}
 
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.metricsRegistry, "pool.link.dialer")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.metricsRegistry, "pool.link.dialer")
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
@@ -648,7 +647,7 @@ func (self *Router) initRateLimiterPool() error {
 		WorkerFunction: rateLimiterWorker,
 	}
 
-	fabricMetrics.ConfigureGoroutinesPoolMetrics(&rateLimiterPoolConfig, self.GetMetricsRegistry(), "pool.rate_limiter")
+	servermetrics.ConfigureGoroutinesPoolMetrics(&rateLimiterPoolConfig, self.GetMetricsRegistry(), "pool.rate_limiter")
 
 	rateLimiterPool, err := goroutines.NewPool(rateLimiterPoolConfig)
 	if err != nil {
@@ -886,7 +885,7 @@ func (self *Router) startControlPlane() error {
 		self.ctrls.ConnectToInitialEndpoints(endpoints)
 	}
 
-	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
+	self.metricsReporter = NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	if self.config.Ctrl.StartupTimeout > 0 {
@@ -933,7 +932,7 @@ func (self *Router) startCtrlListeners() error {
 		listenerConfig := channel.ListenerConfig{
 			ConnectOptions:   listenerCfg.Options.ConnectOptions,
 			TransportConfig:  transport.Configuration{"protocol": "ziti-ctrl"},
-			PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.ctrl"),
+			PoolConfigurator: servermetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.ctrl"),
 			HeadersF:         self.ctrlHelloHeaders,
 		}
 

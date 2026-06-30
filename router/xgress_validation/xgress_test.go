@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
 	"github.com/openziti/ziti/v2/router/handler_xgress"
@@ -38,8 +38,8 @@ type testSetup struct {
 func (self *testSetup) init() {
 	self.closeNotify = make(chan struct{})
 
-	registryConfig := metrics.DefaultUsageRegistryConfig("test", self.closeNotify)
-	metricsRegistry := metrics.NewUsageRegistry(registryConfig)
+	registryConfig := servermetrics.DefaultUsageRegistryConfig("test", self.closeNotify)
+	metricsRegistry := servermetrics.NewUsageRegistry(registryConfig)
 
 	fwdOptions := env.DefaultForwarderOptions()
 	self.fwd = forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, self.closeNotify)

@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	metrics2 "github.com/openziti/metrics"
+	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/stretchr/testify/require"
 )
@@ -81,10 +82,10 @@ func Test_FilterMetrics(t *testing.T) {
 	dispatcher.AddMetricsMessageHandler(adapter)
 
 	go func() {
-		registry := metrics2.NewRegistry("test", nil)
+		registry := metrics.NewRegistry("test", nil)
 		meter := registry.Meter("foo.bar")
 		meter.Mark(1)
-		dispatcher.AcceptMetricsMsg(registry.Poll())
+		dispatcher.AcceptMetricsMsg(servermetrics.Poll(registry))
 	}()
 
 	var evt *event.MetricsEvent
@@ -173,11 +174,11 @@ func Test_MetricsFormat(t *testing.T) {
 	dispatcher.AddMetricsMessageHandler(adapter)
 
 	go func() {
-		registry := metrics2.NewRegistry("test", nil)
+		registry := metrics.NewRegistry("test", nil)
 		meter := registry.Meter("foo.bar")
 		time.Sleep(10 * time.Millisecond)
 		meter.Mark(1)
-		dispatcher.AcceptMetricsMsg(registry.Poll())
+		dispatcher.AcceptMetricsMsg(servermetrics.Poll(registry))
 	}()
 
 	var evt *event.MetricsEvent
