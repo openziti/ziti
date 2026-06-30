@@ -3,12 +3,13 @@ v: 3
 db: ${ZITI_TEST_DB}
 
 identity:
-  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
-  key: testdata/ca/intermediate/private/ctrl.key.pem
-  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+  cert: testdata/pki/ctrl1/certs/client.chain.pem
+  server_cert: testdata/pki/ctrl1/certs/server.chain.pem
+  key: testdata/pki/ctrl1/keys/client.key
+  server_key: testdata/pki/ctrl1/keys/server.key
+  ca: testdata/pki/root/certs/root.cert
 
-trustDomain: at-test
+trustDomain: ziti.test
 
 ctrl:
   listener: tls:127.0.0.1:6262
@@ -26,9 +27,9 @@ edge:
     address: 127.0.0.1:1281
   enrollment:
     signingCert:
-      cert: testdata/ca/intermediate/certs/intermediate.cert.pem
-      key: testdata/ca/intermediate/private/intermediate.key.decrypted.pem
-      ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+      cert: testdata/pki/ctrl1/certs/ctrl1.chain.pem
+      key: testdata/pki/ctrl1/keys/ctrl1.key
+      ca: testdata/pki/root/certs/root.cert
     edgeIdentity:
       duration: 20m
     edgeRouter:
