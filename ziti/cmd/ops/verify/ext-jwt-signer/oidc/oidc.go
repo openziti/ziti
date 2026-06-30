@@ -298,90 +298,12 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 			}
 			internal.ConfigureLogFormat(logLvl)
 
-			config, _, cfgErr := util.LoadRestClientConfig()
-			if cfgErr == nil {
-				// any error indicates there are probably no saved credentials.
-				id := config.GetIdentity()
-				if defaultId := config.EdgeIdentities[id]; defaultId != nil && !opts.IgnoreConfig {
-					opts.Token = defaultId.Token
-				}
-			}
-
-			if opts.ControllerUrl != "" && !strings.HasPrefix(opts.ControllerUrl, "http") {
-				opts.ControllerUrl = "https://" + opts.ControllerUrl
-			}
-			ctrlUrl, urlParseErr := url.Parse(opts.ControllerUrl)
-			if urlParseErr != nil {
-				return fmt.Errorf("invalid controller URL: %w", urlParseErr)
-			}
-
-			if err := opts.ConfigureCerts(opts.ControllerUrl, ctrlUrl); err != nil {
-				log.WithError(err).Warn("failed to configure certificates")
-				return err
-			}
-
-			m, merr := opts.NewClientApiClient()
-			if merr != nil {
-				log.WithError(merr).Fatal("error creating mgmt")
-			}
-
-			s := client.ExternalJWTSignerFromFilter(m, `name="`+args[0]+`"`)
-			if s == nil {
-				return errors.New("no external JWT signer found with name")
-			}
-
-			if opts.RedirectURL == "" {
-				opts.RedirectURL = "http://localhost:20314/auth/callback"
-				log.Infof("using default redirect url: %s", opts.RedirectURL)
-			} else {
-				log.Infof("using supplied redirect url: %s", opts.RedirectURL)
-			}
-
-			if s.Audience != nil {
-				opts.AdditionalLoginParams = append(opts.AdditionalLoginParams, fmt.Sprintf("audience=%s", *s.Audience))
-			}
-
-			if s.Scopes != nil {
-				opts.additionalScopes = append(opts.additionalScopes, s.Scopes...)
-			}
-
-			log.Infof("found external JWT signer")
-			if s.ExternalAuthURL == nil {
-				return errors.New("external JWT signer has no externalAuthURL configured")
-			}
-			if s.ClientID == nil {
-				return errors.New("external JWT signer has no clientId configured")
-			}
-			opts.Issuer = *s.ExternalAuthURL
-			opts.ClientID = *s.ClientID
-			log.Infof("  - issuer: %s", safeValue(s.ExternalAuthURL))
-			log.Infof("  - clientId: %s", safeValue(s.ClientID))
-
 			ctx, cancel := context.WithTimeout(initialContext, Timeout)
 			defer cancel()
 
-			relyingParty, rpErr := opts.NewRelyingParty()
-			if rpErr != nil {
-				return fmt.Errorf("error creating relying party %w", rpErr)
-			}
-
-			if opts.Issuer != "" {
-				if opts.Issuer == relyingParty.Issuer() {
-					log.Infof("supplied issuer matches discovered issuer: %s", opts.Issuer)
-				} else {
-					log.Infof("discovered issuer [%s] overridden: %s", relyingParty.Issuer(), opts.Issuer)
-				}
-			} else {
-				log.Infof("issuer discovered as: %s", relyingParty.Issuer())
-			}
-
-			log.Info("attempting to authenticate to external provider")
-			log.Debugf("auth url: %s", opts.OIDCConfig.AuthUrl(relyingParty))
-			time.Sleep(100 * time.Millisecond) //allow the logger to log before starting the wait spinner
-
-			tokens, oidcErr := GetTokens(ctx, opts.OIDCConfig, relyingParty)
-			if oidcErr != nil {
-				return fmt.Errorf("error performing OIDC flow: %w", oidcErr)
+			tokens, s, err := opts.AuthenticateWithSigner(ctx, args[0])
+			if err != nil {
+				return err
 			}
 
 			log.Tracef("authentication succeeded")
@@ -470,6 +392,105 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 
 	ziticobra.SetHelpTemplate(cmd)
 	return cmd
+}
+
+// AuthenticateWithSigner runs the OIDC auth-code/PKCE flow for the named ext-jwt-signer
+// using the configured login options, returning the obtained tokens and the signer
+// record. Shared by the `oidc` verify command and `ops verify traffic`'s
+// --client-ext-jwt-signer path so both drive the exact same OIDC flow.
+func (opts *OidcVerificationConfig) AuthenticateWithSigner(ctx context.Context, signerName string) (*OIDCResponse, *rest_model.ClientExternalJWTSignerDetail, error) {
+	log := pfxlog.Logger()
+
+	config, _, cfgErr := util.LoadRestClientConfig()
+	if cfgErr == nil {
+		// any error indicates there are probably no saved credentials.
+		id := config.GetIdentity()
+		if defaultId := config.EdgeIdentities[id]; defaultId != nil && !opts.IgnoreConfig {
+			opts.Token = defaultId.Token
+		}
+	}
+
+	if opts.ControllerUrl != "" && !strings.HasPrefix(opts.ControllerUrl, "http") {
+		opts.ControllerUrl = "https://" + opts.ControllerUrl
+	}
+	ctrlUrl, urlParseErr := url.Parse(opts.ControllerUrl)
+	if urlParseErr != nil {
+		return nil, nil, fmt.Errorf("invalid controller URL: %w", urlParseErr)
+	}
+
+	if err := opts.ConfigureCerts(opts.ControllerUrl, ctrlUrl); err != nil {
+		return nil, nil, fmt.Errorf("failed to configure certificates: %w", err)
+	}
+
+	m, merr := opts.NewClientApiClient()
+	if merr != nil {
+		return nil, nil, fmt.Errorf("error creating client api: %w", merr)
+	}
+
+	s := client.ExternalJWTSignerFromFilter(m, `name="`+signerName+`"`)
+	if s == nil {
+		return nil, nil, errors.New("no external JWT signer found with name")
+	}
+
+	if opts.RedirectURL == "" {
+		opts.RedirectURL = "http://localhost:20314/auth/callback"
+		log.Infof("using default redirect url: %s", opts.RedirectURL)
+	} else {
+		log.Infof("using supplied redirect url: %s", opts.RedirectURL)
+	}
+
+	if s.Audience != nil {
+		opts.AdditionalLoginParams = append(opts.AdditionalLoginParams, fmt.Sprintf("audience=%s", *s.Audience))
+	}
+	if s.Scopes != nil {
+		opts.additionalScopes = append(opts.additionalScopes, s.Scopes...)
+	}
+
+	log.Infof("found external JWT signer")
+	if s.ExternalAuthURL == nil {
+		return nil, nil, errors.New("external JWT signer has no externalAuthURL configured")
+	}
+	if s.ClientID == nil {
+		return nil, nil, errors.New("external JWT signer has no clientId configured")
+	}
+	opts.Issuer = *s.ExternalAuthURL
+	opts.ClientID = *s.ClientID
+	log.Infof("  - issuer: %s", safeValue(s.ExternalAuthURL))
+	log.Infof("  - clientId: %s", safeValue(s.ClientID))
+
+	relyingParty, rpErr := opts.NewRelyingParty()
+	if rpErr != nil {
+		return nil, nil, fmt.Errorf("error creating relying party %w", rpErr)
+	}
+
+	if opts.Issuer != "" {
+		if opts.Issuer == relyingParty.Issuer() {
+			log.Infof("supplied issuer matches discovered issuer: %s", opts.Issuer)
+		} else {
+			log.Infof("discovered issuer [%s] overridden: %s", relyingParty.Issuer(), opts.Issuer)
+		}
+	} else {
+		log.Infof("issuer discovered as: %s", relyingParty.Issuer())
+	}
+
+	log.Info("attempting to authenticate to external provider")
+	log.Debugf("auth url: %s", opts.OIDCConfig.AuthUrl(relyingParty))
+	time.Sleep(100 * time.Millisecond) //allow the logger to log before starting the wait spinner
+
+	tokens, oidcErr := GetTokens(ctx, opts.OIDCConfig, relyingParty)
+	if oidcErr != nil {
+		return nil, nil, fmt.Errorf("error performing OIDC flow: %w", oidcErr)
+	}
+	return tokens, s, nil
+}
+
+// TokenForSigner returns the token the controller expects for the signer's configured
+// targetToken (access token by default, id token when targetToken is ID).
+func TokenForSigner(tokens *OIDCResponse, s *rest_model.ClientExternalJWTSignerDetail) string {
+	if s.TargetToken == nil || *s.TargetToken == rest_model.TargetTokenACCESS {
+		return tokens.AccessToken
+	}
+	return tokens.IDToken
 }
 
 /* jwtPayload extracts the payload from a jwt so the contents can be logged and shown to the user
