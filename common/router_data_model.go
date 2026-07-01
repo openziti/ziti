@@ -39,6 +39,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -2618,7 +2619,7 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 
 	diffType("configType", rdm.ConfigTypes, o.ConfigTypes, sink, ConfigType{}, DataStateConfigType{})
 	diffType("config", rdm.Configs, o.Configs, sink, Config{}, DataStateConfig{})
-	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{}, serviceAccess{})
+	diffType("identity", rdm.Identities, o.Identities, sink, Identity{}, DataStateIdentity{}, serviceAccess{}, edge_ctrl_pb.DataState_ServiceConfigs{})
 	diffType("service", rdm.Services, o.Services, sink, Service{}, DataStateService{})
 	diffType("router", rdm.Routers, o.Routers, sink, edge_ctrl_pb.DataState_Router{})
 	diffType("service-policy", rdm.ServicePolicies, o.ServicePolicies, sink, ServicePolicy{}, DataStateServicePolicy{})
@@ -2631,7 +2632,7 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
 		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{})
 	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
-	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{})
+	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{})
 	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
 		if a == nil || b == nil {
 			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, b)}
