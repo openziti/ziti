@@ -16,7 +16,11 @@
 
 package capabilities
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/openziti/sdk-golang/v2/pb/edge_client_pb"
+)
 
 const (
 	// ControllerCreateTerminatorV2 deprecated, assumed to be supported
@@ -47,12 +51,28 @@ const (
 	ControllerSupportsJWTLegacySessions int = 6
 )
 
-// Router Capabilities
+// Router Capabilities form a single bit namespace shared across the control
+// channel and the edge channel. The bit values come from the sdk-golang
+// RouterCapability enum so a capability means the same thing everywhere. A
+// router advertises the full set on both channels; each consumer acts on the
+// bits it recognizes and ignores the rest.
 const (
 	// RouterMultiChannel indicates the router uses new (1000+) ControlHeaders IDs
 	// and supports multi-underlay control channels
-	RouterMultiChannel int = 1
+	RouterMultiChannel = int(edge_client_pb.RouterCapability_MultiChannel)
+
+	// RouterConnectV2 indicates the router supports the ConnectV2 message flow
+	RouterConnectV2 = int(edge_client_pb.RouterCapability_ConnectV2)
 )
+
+// GetRouterCapabilitiesMask returns the full router capability bitmask advertised
+// on both the control channel and the edge channel.
+func GetRouterCapabilitiesMask() *big.Int {
+	capabilityMask := &big.Int{}
+	capabilityMask.SetBit(capabilityMask, RouterMultiChannel, 1)
+	capabilityMask.SetBit(capabilityMask, RouterConnectV2, 1)
+	return capabilityMask
+}
 
 func GetControllerCapabilitiesMask() *big.Int {
 	capabilityMask := &big.Int{}
