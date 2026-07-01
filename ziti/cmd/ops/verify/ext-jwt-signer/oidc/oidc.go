@@ -397,7 +397,7 @@ func NewOidcVerificationCmd(out io.Writer, errOut io.Writer, initialContext cont
 // AuthenticateWithSigner runs the OIDC auth-code/PKCE flow for the named ext-jwt-signer
 // using the configured login options, returning the obtained tokens and the signer
 // record. Shared by the `oidc` verify command and `ops verify traffic`'s
-// --client-ext-jwt-signer path so both drive the exact same OIDC flow.
+// --ext-jwt-signer path so both drive the exact same OIDC flow.
 func (opts *OidcVerificationConfig) AuthenticateWithSigner(ctx context.Context, signerName string) (*OIDCResponse, *rest_model.ClientExternalJWTSignerDetail, error) {
 	log := pfxlog.Logger()
 
