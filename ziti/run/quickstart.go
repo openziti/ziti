@@ -77,8 +77,8 @@ type QuickstartOpts struct {
 	ZacLocation        string
 	Yes                bool
 
-	// changedFlags is the set of flags the user explicitly set on this invocation.
-	changedFlags map[string]bool
+	// flags is this invocation's parsed flag set, used to tell a user-supplied flag from a default.
+	flags *pflag.FlagSet
 	// ignoredSetupFlags are flags supplied on a re-run that only take effect when the environment is
 	// first created, so they had no effect this run.
 	ignoredSetupFlags []string
@@ -131,7 +131,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
-			options.recordChangedFlags(cmd)
+			options.flags = cmd.Flags()
 			if options.TrustDomain == "" {
 				options.TrustDomain = "quickstart"
 			}
@@ -157,7 +157,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
-			options.recordChangedFlags(cmd)
+			options.flags = cmd.Flags()
 			return options.join(context)
 		},
 	}
@@ -263,7 +263,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		// The controller and router boot from the configs written when the environment was created.
 		// Report any supplied flags that no longer take effect, then use the persisted address/port.
 		o.noteIgnoredSetupFlags()
-		o.adoptPersistedEndpoints(routerName)
+		o.applyConfiguredEndpoints(routerName)
 	} else {
 		if o.ControllerAddress != "" {
 			_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
@@ -533,30 +533,23 @@ func (o *QuickstartOpts) printDetails() {
 	}
 }
 
-// recordChangedFlags records the flags the user explicitly set on this invocation.
-func (o *QuickstartOpts) recordChangedFlags(cmd *cobra.Command) {
-	o.changedFlags = map[string]bool{}
-	cmd.Flags().Visit(func(f *pflag.Flag) {
-		o.changedFlags[f.Name] = true
-	})
-}
-
 // noteIgnoredSetupFlags records, for the closing banner, the flags supplied on a re-run of an existing
-// --home that only take effect when the environment is first created. username and password are
-// excluded: a crash-resume login still uses them.
+// --home that only take effect when the environment is first created. Cobra flags always carry a value,
+// so o.flags.Changed distinguishes a flag the user typed from one left at its default. username and
+// password are excluded: a crash-resume login still uses them.
 func (o *QuickstartOpts) noteIgnoredSetupFlags() {
 	setupOnlyFlags := []string{"ctrl-address", "ctrl-port", "router-address", "router-port", "trust-domain"}
 	o.ignoredSetupFlags = nil
 	for _, name := range setupOnlyFlags {
-		if o.changedFlags[name] {
+		if o.flags != nil && o.flags.Changed(name) {
 			o.ignoredSetupFlags = append(o.ignoredSetupFlags, "--"+name)
 		}
 	}
 }
 
-// adoptPersistedEndpoints sets the advertised address/port from the existing controller and router
+// applyConfiguredEndpoints sets the advertised address/port from the existing controller and router
 // configs. Best-effort: on a read or parse error it logs and leaves the current values unchanged.
-func (o *QuickstartOpts) adoptPersistedEndpoints(routerName string) {
+func (o *QuickstartOpts) applyConfiguredEndpoints(routerName string) {
 	if host, port, ok := readAdvertisedFromCtrlConfig(o.ConfigFile); ok {
 		o.ControllerAddress = host
 		o.ControllerPort = port

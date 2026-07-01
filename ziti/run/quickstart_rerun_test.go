@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/pflag"
 )
 
 func TestSplitHostPortU16(t *testing.T) {
@@ -114,24 +116,33 @@ listeners:
 }
 
 func TestNoteIgnoredSetupFlags(t *testing.T) {
-	// username/password are intentionally NOT reported as ignored (a crash-resume login uses them).
-	o := &QuickstartOpts{changedFlags: map[string]bool{
-		"ctrl-port": true,
-		"username":  true,
-		"password":  true,
-		"home":      true, // takes effect on a re-run, so not reported
-	}}
+	// username/password are supplied but intentionally NOT reported (a crash-resume login uses them);
+	// home takes effect on a re-run, so it is not reported either.
+	o := &QuickstartOpts{flags: flagSetWith(t, "ctrl-port", "username", "password", "home")}
 	o.noteIgnoredSetupFlags()
 	if len(o.ignoredSetupFlags) != 1 || o.ignoredSetupFlags[0] != "--ctrl-port" {
 		t.Fatalf("ignoredSetupFlags = %v, want [--ctrl-port]", o.ignoredSetupFlags)
 	}
 
 	// No setup-only flag changed: empty.
-	o2 := &QuickstartOpts{changedFlags: map[string]bool{"zac": true, "home": true}}
+	o2 := &QuickstartOpts{flags: flagSetWith(t, "zac", "home")}
 	o2.noteIgnoredSetupFlags()
 	if len(o2.ignoredSetupFlags) != 0 {
 		t.Fatalf("ignoredSetupFlags = %v, want empty", o2.ignoredSetupFlags)
 	}
+}
+
+// flagSetWith returns a flag set with each named flag defined and marked as explicitly set.
+func flagSetWith(t *testing.T, names ...string) *pflag.FlagSet {
+	t.Helper()
+	fs := pflag.NewFlagSet("quickstart", pflag.ContinueOnError)
+	for _, name := range names {
+		fs.String(name, "", "")
+		if err := fs.Set(name, "x"); err != nil {
+			t.Fatalf("set %s: %v", name, err)
+		}
+	}
+	return fs
 }
 
 func writeFile(t *testing.T, path, content string) {
