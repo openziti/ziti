@@ -20,10 +20,10 @@ require (
 	github.com/openziti/channel/v5 v5.0.15
 	github.com/openziti/edge-api v0.32.0
 	github.com/openziti/fablab v0.6.16
-	github.com/openziti/foundation/v2 v2.0.95
+	github.com/openziti/foundation/v2 v2.0.99
 	github.com/openziti/identity v1.0.133
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang/v2 v2.0.0-pre1.0.20260624192439-7081a4d51c11
+	github.com/openziti/sdk-golang/v2 v2.0.0-pre2
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -190,7 +190,7 @@ require (
 	github.com/openziti/runzmd v1.0.90 // indirect
 	github.com/openziti/secretstream v0.1.51 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
-	github.com/openziti/xweb/v3 v3.0.4 // indirect
+	github.com/openziti/xweb/v3 v3.0.5-0.20260618140905-54cc19903f1c // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pion/dtls/v3 v3.1.4 // indirect

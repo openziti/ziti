@@ -18,7 +18,6 @@ package model
 
 import (
 	"fmt"
-	"math/big"
 	"sync/atomic"
 	"time"
 
@@ -52,7 +51,7 @@ type Router struct {
 	Cost              uint16
 	NoTraversal       bool
 	Disabled          bool
-	Capabilities      *big.Int
+	Capabilities      *capabilities.RouterCapabilityMask
 	Interfaces        []*Interface
 	CtrlChanListeners map[string][]string
 	Configs           []string
@@ -160,6 +159,6 @@ func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
 	entity.Listeners = listeners
 }
 
-func (entity *Router) HasCapability(capability int) bool {
-	return entity.Capabilities != nil && capabilities.IsSet(entity.Capabilities, capability)
+func (entity *Router) HasCapability(capability capabilities.RouterCapability) bool {
+	return entity.Capabilities != nil && entity.Capabilities.IsSet(capability)
 }
