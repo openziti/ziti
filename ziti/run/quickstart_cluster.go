@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/ziti/cmd/console"
 	"github.com/openziti/ziti/v2/ziti/cmd/helpers"
 	"github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/sirupsen/logrus"
@@ -53,6 +54,10 @@ type QuickstartClusterOpts struct {
 	TrustDomain       string
 	Size              int
 	ShutdownGrace     time.Duration
+	Zac               bool
+	ZacVersion        string
+	ZacLocation       string
+	Yes               bool
 
 	out         io.Writer
 	errOut      io.Writer
@@ -88,6 +93,10 @@ func NewQuickStartClusterCmd(out io.Writer, errOut io.Writer, ctx context.Contex
 	cmd.Flags().StringVar(&options.TrustDomain, "trust-domain", "quickstart", "trust domain used in SPIFFE ids")
 	cmd.Flags().IntVar(&options.Size, "size", 3, "number of nodes in the cluster (3-9)")
 	cmd.Flags().DurationVar(&options.ShutdownGrace, "shutdown-grace", 30*time.Second, "max time to wait for nodes to shut down cleanly before the parent gives up waiting")
+	cmd.Flags().BoolVar(&options.Zac, "zac", false, "download the Ziti Admin Console (ZAC) and configure every node to serve it")
+	cmd.Flags().StringVar(&options.ZacVersion, "zac-version", "latest", "ZAC version to download when --zac is set")
+	cmd.Flags().StringVar(&options.ZacLocation, "zac-location", "", "directory to install ZAC into; defaults to <home>/console (shared by all nodes)")
+	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "answer yes to prompts (e.g. replacing installed ZAC assets with a different --zac-version)")
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "show additional output")
 
 	return cmd
@@ -128,6 +137,24 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 
 	if err := o.resolveHome(); err != nil {
 		return err
+	}
+
+	// Install ZAC once in the parent. Nodes reuse the shared location.
+	if o.Zac {
+		if o.ZacLocation == "" {
+			o.ZacLocation = filepath.Join(o.Home, "console")
+		}
+		// Normalize separators to match the location the config generator writes when creating the config.
+		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
+		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
+		if zacErr != nil {
+			return fmt.Errorf("failed to install ZAC: %w", zacErr)
+		}
+		if version != "" {
+			logrus.Infof("ZAC %s ready at '%s' (shared by all nodes)", version, o.ZacLocation)
+			// Pin children to the concrete version the parent installed, not the "latest" request.
+			o.ZacVersion = version
+		}
 	}
 
 	ctrlAddr := o.ControllerAddress
@@ -339,6 +366,16 @@ func (o *QuickstartClusterOpts) childArgs(idx int, ctrlAddr string) []string {
 	if o.verbose {
 		args = append(args, "--verbose")
 	}
+	if o.Zac {
+		// Each node serves the parent-installed assets from the shared location.
+		args = append(args, "--zac", "--zac-location", o.ZacLocation)
+		if o.ZacVersion != "" {
+			args = append(args, "--zac-version", o.ZacVersion)
+		}
+		if o.Yes {
+			args = append(args, "--yes")
+		}
+	}
 	if idx > 0 {
 		args = append(args, "--cluster-member", fmt.Sprintf("tls:%s:%d", ctrlAddr, o.CtrlPort))
 	}
@@ -398,6 +435,9 @@ func (o *QuickstartClusterOpts) printDetails(ctrlAddr string, children []*exec.C
 		}
 		fmt.Printf("    node %d  controller: %s:%d  router: %s:%d  pid: %d\n",
 			i+1, ctrlAddr, o.CtrlPort+uint16(i), o.routerAddrOrDefault(), o.RouterPort+uint16(i), pid)
+	}
+	if o.Zac {
+		fmt.Printf("    console (ZAC)          : each node serves it on its controller port, e.g. https://%s:%d/zac\n", ctrlAddr, o.CtrlPort)
 	}
 	fmt.Println("    home directory         : " + o.Home)
 	fmt.Println("    configured trust domain: " + o.TrustDomain)

@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
+	"github.com/openziti/ziti/v2/ziti/cmd/console"
 	"github.com/openziti/ziti/v2/ziti/cmd/create"
 	"github.com/openziti/ziti/v2/ziti/cmd/helpers"
 	"github.com/openziti/ziti/v2/ziti/cmd/pki"
@@ -49,6 +50,8 @@ import (
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v3"
 )
 
 type QuickstartOpts struct {
@@ -69,6 +72,16 @@ type QuickstartOpts struct {
 	Routerless         bool
 	ConfigureAndExit   bool
 	ConfigFile         string
+	Zac                bool
+	ZacVersion         string
+	ZacLocation        string
+	Yes                bool
+
+	// flags is this invocation's parsed flag set, used to tell a user-supplied flag from a default.
+	flags *pflag.FlagSet
+	// ignoredSetupFlags are flags supplied on a re-run that only take effect when the environment is
+	// first created, so they had no effect this run.
+	ignoredSetupFlags []string
 
 	joinCommand bool
 	verbose     bool
@@ -96,6 +109,11 @@ func addCommonQuickstartFlags(cmd *cobra.Command, options *QuickstartOpts) {
 
 	cmd.Flags().BoolVar(&options.verbose, "verbose", false, "Show additional output.")
 	cmd.Flags().BoolVar(&options.ConfigureAndExit, "configure-and-exit", false, "Configures everything and then exits gracefully")
+
+	cmd.Flags().BoolVar(&options.Zac, "zac", false, "download the Ziti Admin Console (ZAC) and configure the controller to serve it")
+	cmd.Flags().StringVar(&options.ZacVersion, "zac-version", "latest", "ZAC version to download when --zac is set")
+	cmd.Flags().StringVar(&options.ZacLocation, "zac-location", "", "directory to install ZAC into; defaults to <home>/console")
+	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "answer yes to prompts (e.g. replacing installed ZAC assets with a different --zac-version)")
 }
 
 func addQuickstartHaFlags(cmd *cobra.Command, options *QuickstartOpts) {
@@ -113,6 +131,7 @@ func NewQuickStartCmd(out io.Writer, errOut io.Writer, context context.Context) 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
+			options.flags = cmd.Flags()
 			if options.TrustDomain == "" {
 				options.TrustDomain = "quickstart"
 			}
@@ -138,6 +157,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
+			options.flags = cmd.Flags()
 			return options.join(context)
 		},
 	}
@@ -200,21 +220,6 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		}
 		logrus.Infof("permanent --home '%s' will not be removed on exit", o.Home)
 	}
-	if o.ControllerAddress != "" {
-		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
-		_ = os.Setenv(constants.CtrlEdgeAdvertisedAddressVarName, o.ControllerAddress)
-	}
-	if o.ControllerPort > 0 {
-		_ = os.Setenv(constants.CtrlAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
-		_ = os.Setenv(constants.CtrlEdgeAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
-	}
-	if o.RouterAddress != "" {
-		_ = os.Setenv(constants.ZitiEdgeRouterAdvertisedAddressVarName, o.RouterAddress)
-	}
-	if o.RouterPort > 0 {
-		_ = os.Setenv(constants.ZitiEdgeRouterPortVarName, strconv.Itoa(int(o.RouterPort)))
-		_ = os.Setenv(constants.ZitiEdgeRouterListenerBindPortVarName, strconv.Itoa(int(o.RouterPort)))
-	}
 	if o.Username == "" {
 		o.Username = "admin"
 	}
@@ -250,9 +255,52 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}
 
 	dbDir := path.Join(o.instHome(), "db")
-	if _, err := os.Stat(dbDir); !os.IsNotExist(err) {
+	if _, statErr := os.Stat(dbDir); !os.IsNotExist(statErr) {
 		o.AlreadyInitialized = true
+	}
+
+	if o.AlreadyInitialized {
+		// The controller and router boot from the configs written when the environment was created.
+		// Report any supplied flags that no longer take effect, then use the persisted address/port.
+		o.noteIgnoredSetupFlags()
+		o.applyConfiguredEndpoints(routerName)
 	} else {
+		if o.ControllerAddress != "" {
+			_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, o.ControllerAddress)
+			_ = os.Setenv(constants.CtrlEdgeAdvertisedAddressVarName, o.ControllerAddress)
+		}
+		if o.ControllerPort > 0 {
+			_ = os.Setenv(constants.CtrlAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
+			_ = os.Setenv(constants.CtrlEdgeAdvertisedPortVarName, strconv.Itoa(int(o.ControllerPort)))
+		}
+		if o.RouterAddress != "" {
+			_ = os.Setenv(constants.ZitiEdgeRouterAdvertisedAddressVarName, o.RouterAddress)
+		}
+		if o.RouterPort > 0 {
+			_ = os.Setenv(constants.ZitiEdgeRouterPortVarName, strconv.Itoa(int(o.RouterPort)))
+			_ = os.Setenv(constants.ZitiEdgeRouterListenerBindPortVarName, strconv.Itoa(int(o.RouterPort)))
+		}
+	}
+
+	// Install the console assets before the controller starts.
+	if o.Zac {
+		if o.ZacLocation == "" {
+			o.ZacLocation = path.Join(o.Home, "console")
+		}
+		// Normalize separators to match the location the config generator writes when creating the config.
+		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
+		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
+		if zacErr != nil {
+			return fmt.Errorf("failed to install ZAC: %w", zacErr)
+		}
+		if version != "" {
+			logrus.Infof("ZAC %s ready at '%s'", version, o.ZacLocation)
+		}
+		// Read by controller config generation, which emits the "spa" web binding when it writes the config.
+		_ = os.Setenv(constants.CtrlConsoleLocationVarName, o.ZacLocation)
+	}
+
+	if !o.AlreadyInitialized {
 		_ = os.MkdirAll(dbDir, 0o700)
 		logrus.Debugf("made directory '%s'", dbDir)
 
@@ -262,13 +310,30 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 
 		_ = os.Setenv("ZITI_HOME", o.instHome())
 		ctrl := create.NewCmdCreateConfigController()
-		args := []string{
+		ctrl.SetArgs([]string{
 			fmt.Sprintf("--output=%s", o.ConfigFile),
-		}
-		ctrl.SetArgs(args)
-		err = ctrl.Execute()
-		if err != nil {
+		})
+		if err := ctrl.Execute(); err != nil {
 			return err
+		}
+	}
+
+	// On a re-run the config already exists and was not regenerated. Reconcile the "spa" binding:
+	// add it if the first run omitted --zac, or point it at the current --zac-location.
+	if o.Zac && o.AlreadyInitialized {
+		cfg := &console.ConfigureOptions{
+			Out:        o.out,
+			Err:        o.errOut,
+			In:         os.Stdin,
+			ConfigFile: o.ConfigFile,
+			All:        true,
+			Location:   o.ZacLocation,
+			Path:       "zac",
+			IndexFile:  "index.html",
+			Yes:        true,
+		}
+		if err := cfg.Run(); err != nil {
+			return fmt.Errorf("failed to configure console binding: %w", err)
 		}
 	}
 
@@ -458,6 +523,130 @@ func (o *QuickstartOpts) printDetails() {
 	fmt.Println("    config dir located at  : " + o.Home)
 	fmt.Println("    configured trust domain: " + o.TrustDomain)
 	fmt.Printf("    instance pid           : %d\n", os.Getpid())
+	if o.Zac {
+		// The console is served on the edge listener, so use the edge address and port.
+		fmt.Printf("    console (ZAC) at       : https://%s:%s/zac\n", helpers.GetCtrlEdgeAdvertisedAddress(), helpers.GetCtrlEdgeAdvertisedPort())
+	}
+	if len(o.ignoredSetupFlags) > 0 {
+		fmt.Println()
+		fmt.Println("    NOTE: --home already exists. these flags only take effect when first creating it, so they were ignored: " + strings.Join(o.ignoredSetupFlags, ", "))
+	}
+}
+
+// noteIgnoredSetupFlags records, for the closing banner, the flags supplied on a re-run of an existing
+// --home that only take effect when the environment is first created. Cobra flags always carry a value,
+// so o.flags.Changed distinguishes a flag the user typed from one left at its default. username and
+// password are excluded: a crash-resume login still uses them.
+func (o *QuickstartOpts) noteIgnoredSetupFlags() {
+	setupOnlyFlags := []string{"ctrl-address", "ctrl-port", "router-address", "router-port", "trust-domain"}
+	o.ignoredSetupFlags = nil
+	for _, name := range setupOnlyFlags {
+		if o.flags != nil && o.flags.Changed(name) {
+			o.ignoredSetupFlags = append(o.ignoredSetupFlags, "--"+name)
+		}
+	}
+}
+
+// applyConfiguredEndpoints sets the advertised address/port from the existing controller and router
+// configs. Best-effort: on a read or parse error it logs and leaves the current values unchanged.
+func (o *QuickstartOpts) applyConfiguredEndpoints(routerName string) {
+	if host, port, ok := readAdvertisedFromCtrlConfig(o.ConfigFile); ok {
+		o.ControllerAddress = host
+		o.ControllerPort = port
+		// The ctrl-plane and edge address/port are equal in quickstart, so the edge value sets both.
+		_ = os.Setenv(constants.CtrlAdvertisedAddressVarName, host)
+		_ = os.Setenv(constants.CtrlEdgeAdvertisedAddressVarName, host)
+		_ = os.Setenv(constants.CtrlAdvertisedPortVarName, strconv.Itoa(int(port)))
+		_ = os.Setenv(constants.CtrlEdgeAdvertisedPortVarName, strconv.Itoa(int(port)))
+	} else {
+		logrus.Warnf("could not read persisted controller address from '%s', using flag/default values", o.ConfigFile)
+	}
+
+	if o.Routerless {
+		return
+	}
+	routerCfg := path.Join(o.instHome(), routerName+".yaml")
+	if host, port, ok := readAdvertisedFromRouterConfig(routerCfg); ok {
+		o.RouterAddress = host
+		o.RouterPort = port
+		_ = os.Setenv(constants.ZitiEdgeRouterAdvertisedAddressVarName, host)
+		_ = os.Setenv(constants.ZitiEdgeRouterPortVarName, strconv.Itoa(int(port)))
+		_ = os.Setenv(constants.ZitiEdgeRouterListenerBindPortVarName, strconv.Itoa(int(port)))
+	} else {
+		logrus.Warnf("could not read persisted router address from '%s', using flag/default values", routerCfg)
+	}
+}
+
+// readAdvertisedFromCtrlConfig returns the advertised host and port from the first web listener
+// bind point in a controller config file.
+func readAdvertisedFromCtrlConfig(file string) (string, uint16, bool) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return "", 0, false
+	}
+	var cfg struct {
+		Web []struct {
+			BindPoints []struct {
+				Address string `yaml:"address"`
+			} `yaml:"bindPoints"`
+		} `yaml:"web"`
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return "", 0, false
+	}
+	for _, w := range cfg.Web {
+		for _, bp := range w.BindPoints {
+			if h, p, ok := splitHostPortU16(bp.Address); ok {
+				return h, p, true
+			}
+		}
+	}
+	return "", 0, false
+}
+
+// readAdvertisedFromRouterConfig returns the advertised host and port of the edge listener in a
+// router config file.
+func readAdvertisedFromRouterConfig(file string) (string, uint16, bool) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return "", 0, false
+	}
+	var cfg struct {
+		Listeners []struct {
+			Binding string `yaml:"binding"`
+			Options struct {
+				Advertise string `yaml:"advertise"`
+			} `yaml:"options"`
+		} `yaml:"listeners"`
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return "", 0, false
+	}
+	for _, l := range cfg.Listeners {
+		if l.Binding == "edge" {
+			if h, p, ok := splitHostPortU16(l.Options.Advertise); ok {
+				return h, p, true
+			}
+		}
+	}
+	return "", 0, false
+}
+
+// splitHostPortU16 parses a "host:port" string into its host and a uint16 port.
+func splitHostPortU16(addr string) (string, uint16, bool) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return "", 0, false
+	}
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", 0, false
+	}
+	p, err := strconv.Atoi(portStr)
+	if err != nil || p <= 0 || p > 65535 {
+		return "", 0, false
+	}
+	return host, uint16(p), true
 }
 
 func (o *QuickstartOpts) configureRouter(ctx context.Context, routerName string, configFile string, ctrlUrl string) error {
