@@ -25,6 +25,7 @@ import (
 	"math/rand"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -383,6 +384,10 @@ func validateLinksForCtrl(run model.Run, c *model.Component) error {
 		if linkCount == expectedLinkCount {
 			allLinksPresent = true
 		} else {
+			// The poll reached the controller, so this is reachable, slow-converging
+			// time that must be charged to the budget. Record it so the deadline's
+			// unreachable-time accounting isn't credited for this interval.
+			deadline.Observe(true)
 			time.Sleep(5 * time.Second)
 		}
 		if time.Since(lastLog) > time.Minute {
@@ -417,7 +422,10 @@ func validateLinksForCtrl(run model.Run, c *model.Component) error {
 			return err
 		}
 
-		logger.Infof("current link errors: %v, gossip errors: %v, elapsed time: %v", linkErrs, gossipErrs, time.Since(start))
+		// Log why the pass did not succeed, not just the counts: an unreachable router reports zero link
+		// errors, so counts alone leave a retrying-until-deadline run with no visible cause.
+		logger.Infof("validation not yet complete: %v (link errors: %v, gossip errors: %v, elapsed time: %v)",
+			err, linkErrs, gossipErrs, time.Since(start))
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -490,14 +498,22 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 	expected := response.RouterCount
 
 	invalid := 0
+	var unreachable []string
 	for expected > 0 {
 		select {
 		case <-closeNotify:
 			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
+			expected--
 			if !routerDetail.ValidateSuccess {
-				return invalid, fmt.Errorf("error: unable to validate router %s (%s) on controller %s (%s)",
-					routerDetail.RouterId, routerDetail.RouterName, id, routerDetail.Message)
+				// The controller could not reach this router, so its links are unknown rather than wrong.
+				// Collect it and keep draining the pass: during chaos a router is routinely restarting or
+				// mid-reconnect, and failing here would both abandon the remaining routers' results and
+				// turn a momentary gap into a failed run. The caller retries until its deadline, so a
+				// router that never becomes reachable still fails the run, named below.
+				unreachable = append(unreachable,
+					fmt.Sprintf("%s (%s): %s", routerDetail.RouterName, routerDetail.RouterId, routerDetail.Message))
+				continue
 			}
 			for _, linkDetail := range routerDetail.LinkDetails {
 				if !linkDetail.IsValid {
@@ -509,14 +525,30 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 						linkDetail.Dialed, linkDetail.Messages)
 				}
 			}
-			expected--
 		}
 	}
-	if invalid == 0 {
-		logger.Infof("link validation of %v routers successful", response.RouterCount)
-		return invalid, nil
+
+	// An inconsistent link is a real failure and is reported ahead of unreachability, which may just be
+	// churn that has not settled yet.
+	if invalid > 0 {
+		return invalid, fmt.Errorf("invalid links found")
 	}
-	return invalid, fmt.Errorf("invalid links found")
+	if len(unreachable) > 0 {
+		return invalid, fmt.Errorf("%d of %d routers could not be validated on controller %s: %s",
+			len(unreachable), response.RouterCount, id, describeUnreachable(unreachable))
+	}
+	logger.Infof("link validation of %v routers successful", response.RouterCount)
+	return invalid, nil
+}
+
+// describeUnreachable renders the routers or components a controller could not reach, naming the first few
+// so a failure says where to look, without embedding hundreds of entries in one error.
+func describeUnreachable(entries []string) string {
+	const maxNamed = 5
+	if len(entries) <= maxNamed {
+		return strings.Join(entries, "; ")
+	}
+	return fmt.Sprintf("%s; and %d more", strings.Join(entries[:maxNamed], "; "), len(entries)-maxNamed)
 }
 
 // validateGossip checks link-gossip consistency across the registry, the router
@@ -575,14 +607,18 @@ func validateGossip(id string, clients *zitirest.Clients) (int, error) {
 	expected := response.ComponentCount
 
 	invalid := 0
+	var unreachable []string
 	for expected > 0 {
 		select {
 		case <-closeNotify:
 			return 0, errors.New("unexpected close of mgmt channel")
 		case detail := <-eventNotify:
+			expected--
 			if !detail.ValidateSuccess && detail.Message != "" {
-				return invalid, fmt.Errorf("error: unable to validate gossip for %s %s (%s) on controller %s (%s)",
-					detail.ComponentType, detail.ComponentId, detail.ComponentName, id, detail.Message)
+				// Unreachable, not inconsistent; see validateRouterLinks for why the pass continues.
+				unreachable = append(unreachable,
+					fmt.Sprintf("%s %s (%s): %s", detail.ComponentType, detail.ComponentName, detail.ComponentId, detail.Message))
+				continue
 			}
 			for _, linkDetail := range detail.LinkDetails {
 				if !linkDetail.IsValid {
@@ -593,14 +629,18 @@ func validateGossip(id string, clients *zitirest.Clients) (int, error) {
 						linkDetail.DestRouterId, linkDetail.Dialed, linkDetail.Messages)
 				}
 			}
-			expected--
 		}
 	}
-	if invalid == 0 {
-		logger.Infof("gossip validation of %v components successful", response.ComponentCount)
-		return invalid, nil
+
+	if invalid > 0 {
+		return invalid, fmt.Errorf("invalid gossip entries found")
 	}
-	return invalid, fmt.Errorf("invalid gossip entries found")
+	if len(unreachable) > 0 {
+		return invalid, fmt.Errorf("gossip could not be validated for %d of %d components on controller %s: %s",
+			len(unreachable), response.ComponentCount, id, describeUnreachable(unreachable))
+	}
+	logger.Infof("gossip validation of %v components successful", response.ComponentCount)
+	return invalid, nil
 }
 
 func logLinkDiagnostics(logger *logrus.Entry, clients *zitirest.Clients, linkCount int64) {
