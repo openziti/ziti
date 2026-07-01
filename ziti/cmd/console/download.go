@@ -51,6 +51,69 @@ const (
 	maxReleaseListBytes = 4 << 20
 )
 
+// EnsureAssets makes sure a usable ZAC install exists at location, downloading the requested
+// version (empty or "latest" tracks the newest release) only when assets are not already present.
+// It returns the concrete version installed, or the version already found on disk. Intended for
+// callers like quickstart that want ZAC assets on disk without the interactive configure flow.
+//
+// When a concrete version is requested that differs from what is already installed, the existing
+// install is replaced only if yes is true; otherwise the installed version is kept and reported.
+func EnsureAssets(out io.Writer, version, location string, yes bool) (string, error) {
+	if location == "" {
+		return "", fmt.Errorf("a console assets location is required")
+	}
+	abs, err := filepath.Abs(location)
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve location '%s' to an absolute path: %w", location, err)
+	}
+
+	requested := normalizeVersion(version)
+	explicit := requested != "" && !strings.EqualFold(requested, "latest")
+
+	if validateAssetsDir(abs) == nil {
+		installed := installedVersion(abs)
+		// An explicit version differing from the installed one is replaced only with consent. An
+		// install with no version marker counts as differing.
+		if explicit && installed != requested {
+			if !yes {
+				current := installed
+				if current == "" {
+					current = "an unversioned build"
+				}
+				_, _ = fmt.Fprintf(out, "ZAC %s is already installed at %s, keeping it (pass -y to replace it with %s)\n", current, abs, requested)
+				return installed, nil
+			}
+			// consent given: replace the existing install with `requested` below
+		} else {
+			return installed, nil
+		}
+	} else if entries, readErr := os.ReadDir(abs); readErr == nil && len(entries) > 0 && installedVersion(abs) == "" {
+		// Never wipe a non-empty directory that is not a prior console install.
+		return "", fmt.Errorf("location '%s' is not empty and is not a console install, choose an empty directory", abs)
+	}
+
+	resolved, err := resolveVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	// downloadRelease stages into a sibling of the target, so the parent must exist first.
+	if err = os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return "", fmt.Errorf("failed to create '%s': %w", filepath.Dir(abs), err)
+	}
+
+	_, _ = fmt.Fprintf(out, "Downloading ZAC %s from %s\n  to %s ...\n", resolved, downloadURL(resolved), abs)
+	sum, err := downloadRelease(resolved, abs)
+	if err != nil {
+		return "", err
+	}
+	if err = validateAssetsDir(abs); err != nil {
+		return "", fmt.Errorf("downloaded archive did not contain a usable console: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "Downloaded ZAC %s (sha256 %s)\n", resolved, sum)
+	return resolved, nil
+}
+
 // downloadURL returns the release asset URL for a concrete (un-prefixed) version.
 func downloadURL(version string) string {
 	tag := zacTagPrefix + version

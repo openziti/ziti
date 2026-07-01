@@ -58,6 +58,29 @@ ziti run console --location <dir> --bind-address 0.0.0.0 --port 9443 \
   --tls-cert ./server.pem --tls-key ./server.key
 ```
 
+**Bootstrap it with the quickstart:**
+
+```
+ziti run quickstart --zac
+```
+
+Adding `--zac` to the quickstart downloads ZAC and configures the controller to serve it in one step,
+so the console is available at `https://<ctrl-address>:<ctrl-port>/zac` as soon as the network is up.
+The assets install under `<home>/console` by default (override with `--zac-location`), and
+`--zac-version` selects the release (defaults to `latest`). Re-running against an existing `--home`
+reconciles the binding, so adding `--zac` on a later run enables the console on a network that was first
+brought up without it. `ziti run quickstart cluster --zac` installs the assets once and serves the
+console from every node.
+
+Two related quickstart re-run fixes ship alongside this:
+
+* Re-running against an already-initialized `--home` now adopts the controller and router ports/addresses
+  the environment was first created with, instead of falling back to the flag defaults. Previously a
+  re-run that omitted `--ctrl-port` would wait on the default port while the controller listened on the
+  original one.
+* Re-running with an init-only flag (for example `--ctrl-port` or `--username`) that cannot change after
+  first init now logs which flags were ignored, rather than silently dropping them.
+
 ## Cluster Quorum Recovery
 
 A new offline CLI command, `ziti ops cluster recover <controller-config>`, lets
