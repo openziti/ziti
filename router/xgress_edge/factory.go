@@ -18,7 +18,6 @@ package xgress_edge
 
 import (
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
@@ -168,14 +168,11 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 		return nil, fmt.Errorf("could not generate version header: %v", err)
 	}
 
-	capMask := &big.Int{}
-	capMask.SetBit(capMask, edge.RouterCapabilityConnectV2, 1)
-
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:       versionHeader,
 		edge.SupportsBindSuccessHeader:   {1},
 		edge.SupportsPostureChecksHeader: {1},
-		edge.RouterCapabilitiesHeader:    capMask.Bytes(),
+		edge.RouterCapabilitiesHeader:    capabilities.GetRouterCapabilitiesMask().Bytes(),
 	}
 
 	wrappedId := state.WrapIdentityWithCertValidation(factory.env.GetRouterId(), factory.stateManager)
