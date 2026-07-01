@@ -130,8 +130,6 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			} else {
 				return fmt.Errorf("unknown mode: %s", t.mode)
 			}
-
-			return nil
 		},
 	}
 
@@ -310,9 +308,9 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 	if err != nil {
 		id := mgmt.IdentityFromFilter(client, mgmt.NameFilter(name))
 		if id != nil {
-			return nil, fmt.Errorf("Identity named %s exists. Remove the identity before trying again or use --cleanup.", name)
+			return nil, fmt.Errorf("identity named %s exists, remove it before trying again or use --cleanup", name)
 		} else {
-			return nil, fmt.Errorf("Failed to create the identity: %v", err)
+			return nil, fmt.Errorf("failed to create the identity: %v", err)
 		}
 	}
 	return ident, nil
@@ -334,7 +332,7 @@ func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	params.SetTimeout(5 * time.Second)
 	resp, err := client.ServicePolicy.CreateServicePolicy(params, nil)
 	if resp == nil || err != nil {
-		return nil, fmt.Errorf("Failed to create service policy: %s", name)
+		return nil, fmt.Errorf("failed to create service policy: %s", name)
 	}
 	return resp.Payload.Data, nil
 }
@@ -357,7 +355,7 @@ func createService(client *rest_management_api_client.ZitiEdgeManagement, name s
 	serviceParams.SetTimeout(5 * time.Second)
 	resp, err := client.Service.CreateService(serviceParams, nil)
 	if resp == nil || err != nil {
-		return nil, fmt.Errorf("Failed to create service: %s. %v", name, err)
+		return nil, fmt.Errorf("failed to create service %s: %v", name, err)
 	}
 	return resp.Payload.Data, nil
 }
