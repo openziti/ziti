@@ -19,6 +19,7 @@ package verify
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -26,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,11 +38,13 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_model"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/sdk-golang/v2/ziti/enroll"
 	"github.com/openziti/ziti/v2/internal"
 	"github.com/openziti/ziti/v2/internal/rest/mgmt"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
+	"github.com/openziti/ziti/v2/ziti/cmd/ops/verify/ext-jwt-signer/oidc"
 )
 
 type traffic struct {
@@ -50,6 +54,8 @@ type traffic struct {
 	cleanup              bool
 	verbose              bool
 	allowMultipleServers bool
+	extJwtSigner         string
+	redirectURL          string
 
 	client       *rest_management_api_client.ZitiEdgeManagement
 	svcName      string
@@ -85,6 +91,10 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 				t.mode = "both"
 			}
 
+			if t.extJwtSigner != "" && t.loginOpts.ControllerUrl == "" {
+				return errors.New("--controller-url is required when using --ext-jwt-signer")
+			}
+
 			t.svcName = t.prefix + ".traffic"
 
 			t.serverIdName = t.prefix + ".server"
@@ -111,14 +121,14 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 			}
 
 			if t.mode == "both" {
-				t.doBoth()
+				return t.doBoth()
 			} else if t.mode == "server" {
-				t.doServer(context.Background(), true)
+				return t.doServer(context.Background(), true)
 			} else if t.mode == "client" {
 				_, c := context.WithCancel(context.Background())
-				t.doClient(c)
+				return t.doClient(c)
 			} else {
-				log.Fatal("no role supplied? should have defaulted to 'both'")
+				return fmt.Errorf("unknown mode: %s", t.mode)
 			}
 
 			return nil
@@ -130,6 +140,8 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&t.cleanup, "cleanup", false, "Whether to perform cleanup.")
 	cmd.Flags().BoolVar(&t.allowMultipleServers, "allow-multiple-servers", false, "Whether to allows the same server multiple times.")
 	cmd.Flags().StringVar(&t.loginOpts.ControllerUrl, "controller-url", "", "The url of the controller")
+	cmd.Flags().StringVar(&t.extJwtSigner, "ext-jwt-signer", "", "[optional] Authenticate via this ext-jwt-signer (OIDC) instead of a certificate, exercising the certless data-plane path. With --mode both (the default) it is used for BOTH the server (bind) and client (dial). Requires --controller-url.")
+	cmd.Flags().StringVar(&t.redirectURL, "ext-jwt-redirect-url", "", "[optional] OIDC redirect URL for --ext-jwt-signer (default http://localhost:20314/auth/callback)")
 
 	edge.AddLoginFlags(cmd, &t.loginOpts)
 	t.loginOpts.Out = out
@@ -141,12 +153,12 @@ func NewVerifyTraffic(out io.Writer, errOut io.Writer) *cobra.Command {
 func (t *traffic) startServer(ctx context.Context, serviceName string, zitiCfg *ziti.Config) error {
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	listener, err := c.Listen(serviceName)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	log.Infof("successfully bound service: %s.", serviceName)
 
@@ -188,7 +200,8 @@ func handleConnection(conn net.Conn) {
 
 	line, err := rw.ReadString('\n')
 	if err != nil {
-		log.Fatal(err)
+		log.Errorf("error reading from connection: %v", err)
+		return
 	}
 	if strings.Contains(line, "traffic test") {
 		log.Info("traffic test successfully detected")
@@ -201,21 +214,23 @@ func handleConnection(conn net.Conn) {
 }
 
 func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, zitiCfg *ziti.Config) error {
-	waitForTerminator(client, serviceName, 10*time.Second)
+	if err := waitForTerminator(client, serviceName, 10*time.Second); err != nil {
+		return err
+	}
 	c, err := ziti.NewContext(zitiCfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	foundSvc, ok := c.GetService(serviceName)
 	if !ok {
-		log.Fatal("error when retrieving all the services for the provided config")
+		return errors.New("error when retrieving all the services for the provided config")
 	}
 	log.Infof("found service named: %s", *foundSvc.Name)
 
 	svc, err := c.Dial(serviceName) //dial the service using the given name
 	if err != nil {
-		log.Fatalf("error when dialing service name %s. %v", serviceName, err)
+		return fmt.Errorf("error when dialing service name %s. %v", serviceName, err)
 	}
 	log.Infof("successfully dialed service: %s.", serviceName)
 
@@ -226,7 +241,7 @@ func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagem
 	bytesRead, err := zitiWriter.WriteString(text)
 	_ = zitiWriter.Flush()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	} else {
 		log.Debugf("wrote %d bytes", bytesRead)
 	}
@@ -240,7 +255,7 @@ func (t *traffic) startClient(client *rest_management_api_client.ZitiEdgeManagem
 	return nil
 }
 
-func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, serviceName string) bool {
+func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, serviceName string) (bool, error) {
 	filter := "service.name=\"" + serviceName + "\""
 	params := &terminator.ListTerminatorsParams{
 		Filter:  &filter,
@@ -249,30 +264,33 @@ func terminatorExists(client *rest_management_api_client.ZitiEdgeManagement, ser
 
 	resp, err := client.Terminator.ListTerminators(params, nil)
 	if err != nil {
-		log.Fatal(err)
+		return false, err
 	}
 
-	return len(resp.Payload.Data) > 0
+	return len(resp.Payload.Data) > 0, nil
 }
 
-func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, timeout time.Duration) bool {
+func waitForTerminator(client *rest_management_api_client.ZitiEdgeManagement, serviceName string, timeout time.Duration) error {
 	log.Infof("waiting %s for terminator for service: %s", timeout, serviceName)
 	startTime := time.Now()
 	for {
-		if terminatorExists(client, serviceName) {
+		exists, err := terminatorExists(client, serviceName)
+		if err != nil {
+			return err
+		}
+		if exists {
 			log.Infof("found terminator for service: %s", serviceName)
-			return true
+			return nil
 		}
 		if time.Since(startTime) >= timeout {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	log.Fatalf("terminator not found for service: %s", serviceName)
-	return false
+	return fmt.Errorf("terminator not found for service: %s", serviceName)
 }
 
-func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) *identity.CreateIdentityCreated {
+func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name string, roleAttributes rest_model.Attributes) (*identity.CreateIdentityCreated, error) {
 	falseVar := false
 	usrType := rest_model.IdentityTypeUser
 	i := &rest_model.IdentityCreate{
@@ -292,15 +310,15 @@ func createIdentity(client *rest_management_api_client.ZitiEdgeManagement, name 
 	if err != nil {
 		id := mgmt.IdentityFromFilter(client, mgmt.NameFilter(name))
 		if id != nil {
-			log.Fatalf("Identity named %s exists. Remove the identity before trying again or use --cleanup.", name)
+			return nil, fmt.Errorf("Identity named %s exists. Remove the identity before trying again or use --cleanup.", name)
 		} else {
-			log.Fatalf("Failed to create the identity: %v", err)
+			return nil, fmt.Errorf("Failed to create the identity: %v", err)
 		}
 	}
-	return ident
+	return ident, nil
 }
 
-func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, name string, servType rest_model.DialBind, identityRoles rest_model.Roles, serviceRoles rest_model.Roles) *rest_model.CreateLocation {
+func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, name string, servType rest_model.DialBind, identityRoles rest_model.Roles, serviceRoles rest_model.Roles) (*rest_model.CreateLocation, error) {
 	defaultSemantic := rest_model.SemanticAllOf
 	servicePolicy := &rest_model.ServicePolicyCreate{
 		IdentityRoles: identityRoles,
@@ -316,13 +334,12 @@ func createServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	params.SetTimeout(5 * time.Second)
 	resp, err := client.ServicePolicy.CreateServicePolicy(params, nil)
 	if resp == nil || err != nil {
-		log.Fatalf("Failed to create service policy: %s", name)
-		return nil
+		return nil, fmt.Errorf("Failed to create service policy: %s", name)
 	}
-	return resp.Payload.Data
+	return resp.Payload.Data, nil
 }
 
-func createService(client *rest_management_api_client.ZitiEdgeManagement, name string, serviceConfigs []string, roles rest_model.Attributes) *rest_model.CreateLocation {
+func createService(client *rest_management_api_client.ZitiEdgeManagement, name string, serviceConfigs []string, roles rest_model.Attributes) (*rest_model.CreateLocation, error) {
 	encryptOn := true
 	serviceCreate := &rest_model.ServiceCreate{
 		Configs:            serviceConfigs,
@@ -340,10 +357,9 @@ func createService(client *rest_management_api_client.ZitiEdgeManagement, name s
 	serviceParams.SetTimeout(5 * time.Second)
 	resp, err := client.Service.CreateService(serviceParams, nil)
 	if resp == nil || err != nil {
-		log.Fatalf("Failed to create service: %s. %v", name, err)
-		return nil
+		return nil, fmt.Errorf("Failed to create service: %s. %v", name, err)
 	}
-	return resp.Payload.Data
+	return resp.Payload.Data, nil
 }
 
 func deleteIdentity(client *rest_management_api_client.ZitiEdgeManagement, toDelete *rest_model.IdentityDetail) {
@@ -391,7 +407,7 @@ func deleteServicePolicy(client *rest_management_api_client.ZitiEdgeManagement, 
 	}
 }
 
-func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id string) *ziti.Config {
+func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id string) (*ziti.Config, error) {
 	// Get the identity object
 	params := &identity.DetailIdentityParams{
 		Context: context.Background(),
@@ -401,13 +417,13 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id st
 	resp, err := client.Identity.DetailIdentity(params, nil)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Enroll the identity
 	tkn, _, err := enroll.ParseToken(resp.Payload.Data.Enrollment.Ott.JWT)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	flags := enroll.EnrollmentFlags{
@@ -417,10 +433,10 @@ func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, id st
 	conf, err := enroll.Enroll(flags)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return conf
+	return conf, nil
 }
 
 func (t *traffic) bindAttr() string {
@@ -435,42 +451,57 @@ func (t *traffic) svcAttr() string {
 	return t.svcName
 }
 
-func (t *traffic) configureService() {
+func (t *traffic) configureService() error {
 	svc := mgmt.ServiceFromFilter(t.client, mgmt.NameFilter(t.svcName))
 	if svc != nil && t.allowMultipleServers {
 		log.Debugf("service already exists. not creating: %s", t.svcName)
-	} else {
-		_ = createService(t.client, t.svcName, nil, []string{t.svcAttr()})
+	} else if _, err := createService(t.client, t.svcName, nil, []string{t.svcAttr()}); err != nil {
+		return err
 	}
 
-	bind := mgmt.ServicePolicyFromFilter(t.client, mgmt.NameFilter(t.bindSPName))
-	if bind != nil && t.allowMultipleServers {
-		log.Debugf("service policy already exists. not creating: %s", t.bindSPName)
-	} else {
-		_ = createServicePolicy(t.client, t.bindSPName, rest_model.DialBindBind, rest_model.Roles{"#" + t.bindAttr()}, rest_model.Roles{"#" + t.svcAttr()})
+	// As with the dialer, a cert-based binder matches the bind policy by attribute; an
+	// ext-jwt binder is a pre-existing OIDC identity granted bind later against its id.
+	if t.extJwtSigner == "" {
+		bind := mgmt.ServicePolicyFromFilter(t.client, mgmt.NameFilter(t.bindSPName))
+		if bind != nil && t.allowMultipleServers {
+			log.Debugf("service policy already exists. not creating: %s", t.bindSPName)
+		} else if _, err := createServicePolicy(t.client, t.bindSPName, rest_model.DialBindBind, rest_model.Roles{"#" + t.bindAttr()}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+			return err
+		}
 	}
 
-	dial := mgmt.ServicePolicyFromFilter(t.client, mgmt.NameFilter(t.dialSPName))
-	if dial != nil && t.allowMultipleServers {
-		log.Debugf("service policy already exists. not creating: %s", t.dialSPName)
-	} else {
-		_ = createServicePolicy(t.client, t.dialSPName, rest_model.DialBindDial, rest_model.Roles{"#" + t.dialAttr()}, rest_model.Roles{"#" + t.svcAttr()})
+	// The cert-based dialer matches the dial policy by attribute. When authenticating via
+	// ext-jwt instead, the dialer is a pre-existing OIDC identity granted dial against its id.
+	if t.extJwtSigner == "" {
+		dial := mgmt.ServicePolicyFromFilter(t.client, mgmt.NameFilter(t.dialSPName))
+		if dial != nil && t.allowMultipleServers {
+			log.Debugf("service policy already exists. not creating: %s", t.dialSPName)
+		} else if _, err := createServicePolicy(t.client, t.dialSPName, rest_model.DialBindDial, rest_model.Roles{"#" + t.dialAttr()}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (t *traffic) configureServer() *ziti.Config {
-	serverIdent := createIdentity(t.client, t.serverIdName, []string{t.bindAttr()})
+func (t *traffic) configureServer() (*ziti.Config, error) {
+	serverIdent, err := createIdentity(t.client, t.serverIdName, []string{t.bindAttr()})
+	if err != nil {
+		return nil, err
+	}
 	return enrollIdentity(t.client, serverIdent.Payload.Data.ID)
 }
 
-func (t *traffic) configureClient() *ziti.Config {
-	clientIdent := createIdentity(t.client, t.clientIdName, []string{t.dialAttr()})
+func (t *traffic) configureClient() (*ziti.Config, error) {
+	clientIdent, err := createIdentity(t.client, t.clientIdName, []string{t.dialAttr()})
+	if err != nil {
+		return nil, err
+	}
 	return enrollIdentity(t.client, clientIdent.Payload.Data.ID)
 }
 
 func (t *traffic) cleanupServer() {
 	if t.allowMultipleServers {
-		if terminatorExists(t.client, t.svcName) {
+		if exists, _ := terminatorExists(t.client, t.svcName); exists {
 			log.Debugf("found terminator for service: %s. cleanup will be skipped.", t.svcName)
 			return
 		}
@@ -491,42 +522,292 @@ func (t *traffic) cleanupClient() {
 	deleteIdentity(t.client, id)
 }
 
-func (t *traffic) doBoth() {
-	t.configureService()
+func (t *traffic) doBoth() error {
+	if t.extJwtSigner != "" {
+		return t.doBothExtJwt()
+	}
+	if err := t.configureService(); err != nil {
+		return err
+	}
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		defer wg.Done()
-		t.doServer(ctx, false)
+		if err := t.doServer(ctx, false); err != nil {
+			log.Error(err)
+		}
 	}()
 	go func() {
 		defer wg.Done()
-		t.doClient(cancel)
+		if err := t.doClient(cancel); err != nil {
+			log.Error(err)
+		}
 	}()
 	wg.Wait()
+	return nil
 }
 
-func (t *traffic) doServer(ctx context.Context, configureServices bool) {
-	if configureServices {
-		t.configureService()
+func (t *traffic) doServer(ctx context.Context, configureServices bool) error {
+	if t.extJwtSigner != "" {
+		return t.doServerExtJwt(ctx, configureServices)
 	}
-	serverCfg := t.configureServer()
+
+	if configureServices {
+		if err := t.configureService(); err != nil {
+			return err
+		}
+	}
+	serverCfg, err := t.configureServer()
+	if err != nil {
+		return err
+	}
 	defer t.cleanupServer()
 	if err := t.startServer(ctx, t.svcName, serverCfg); err != nil {
-		log.Fatalf("unexpected error: %v", err)
+		return fmt.Errorf("unexpected error: %v", err)
 	}
+	return nil
 }
 
-func (t *traffic) doClient(cancel context.CancelFunc) {
-	clientCfg := t.configureClient()
+func (t *traffic) doClient(cancel context.CancelFunc) error {
+	if t.extJwtSigner != "" {
+		return t.doClientExtJwt(cancel)
+	}
+
+	clientCfg, err := t.configureClient()
+	if err != nil {
+		return err
+	}
 	defer t.cleanupClient()
 	if err := t.startClient(t.client, t.svcName, clientCfg); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Debug("client received expected response. stopping server if it's running")
 	cancel() //end the server
 	time.Sleep(1 * time.Second)
 	log.Info("client complete")
+	return nil
+}
+
+// doBothExtJwt runs the server (bind) and client (dial) in one process as the SAME certless
+// ext-jwt identity. It performs a single OIDC login and reuses the token for both sides,
+// which avoids a second browser flow colliding on the OIDC redirect port and the
+// bind-completes-after-the-client-already-gave-up-waiting race. The bind/dial grants use the
+// base policy names so cleanupServer (and a later --cleanup) reclaim them.
+func (t *traffic) doBothExtJwt() error {
+	log.Infof("--ext-jwt-signer %q will be used for BOTH the server (bind) and the client (dial)", t.extJwtSigner)
+	if err := t.configureService(); err != nil {
+		return err
+	}
+	defer t.cleanupServer()
+
+	token, identityID, err := t.extJwtSession(t.extJwtSigner)
+	if err != nil {
+		return err
+	}
+
+	if _, err := createServicePolicy(t.client, t.bindSPName, rest_model.DialBindBind,
+		rest_model.Roles{"@" + identityID}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+		return err
+	}
+	if _, err := createServicePolicy(t.client, t.dialSPName, rest_model.DialBindDial,
+		rest_model.Roles{"@" + identityID}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+		return err
+	}
+
+	serverCfg, err := t.extJwtConfig(token)
+	if err != nil {
+		return err
+	}
+	clientCfg, err := t.extJwtConfig(token)
+	if err != nil {
+		return err
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		defer wg.Done()
+		log.Infof("binding %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
+		if err := t.startServer(ctx, t.svcName, serverCfg); err != nil {
+			log.Errorf("ext-jwt server error: %v", err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		log.Infof("dialing %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
+		if err := t.startClient(t.client, t.svcName, clientCfg); err != nil {
+			log.Errorf("ext-jwt client error: %v", err)
+		}
+		cancel() // end the server
+		time.Sleep(1 * time.Second)
+		log.Info("client complete")
+	}()
+	wg.Wait()
+	return nil
+}
+
+// doClientExtJwt runs the dialing client as a certless ext-jwt (OIDC) identity instead of
+// a cert-enrolled one: it authenticates via the signer, grants the matched identity dial
+// access to the test service, then dials. This exercises the certless dial path.
+func (t *traffic) doClientExtJwt(cancel context.CancelFunc) error {
+	defer func() {
+		cancel() // end the server
+		time.Sleep(1 * time.Second)
+		log.Info("client complete")
+	}()
+
+	token, identityID, err := t.extJwtSession(t.extJwtSigner)
+	if err != nil {
+		return err
+	}
+
+	if _, err := createServicePolicy(t.client, t.dialSPName, rest_model.DialBindDial,
+		rest_model.Roles{"@" + identityID}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+		return err
+	}
+	defer func() {
+		deleteServicePolicy(t.client, mgmt.ServicePolicyFromFilter(t.client, mgmt.NameFilter(t.dialSPName)))
+	}()
+
+	cfg, err := t.extJwtConfig(token)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("dialing %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
+	if err := t.startClient(t.client, t.svcName, cfg); err != nil {
+		return err
+	}
+	log.Debug("client received expected response. stopping server if it's running")
+	return nil
+}
+
+// doServerExtJwt runs the hosting server as a certless ext-jwt (OIDC) identity: it
+// authenticates via the signer, grants the matched identity bind access to the test
+// service, then binds and serves. This exercises the certless bind path on the router.
+func (t *traffic) doServerExtJwt(ctx context.Context, configureServices bool) error {
+	if configureServices {
+		if err := t.configureService(); err != nil {
+			return err
+		}
+	}
+	defer t.cleanupServer()
+
+	token, identityID, err := t.extJwtSession(t.extJwtSigner)
+	if err != nil {
+		return err
+	}
+
+	if _, err := createServicePolicy(t.client, t.bindSPName, rest_model.DialBindBind,
+		rest_model.Roles{"@" + identityID}, rest_model.Roles{"#" + t.svcAttr()}); err != nil {
+		return err
+	}
+
+	cfg, err := t.extJwtConfig(token)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("binding %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
+	if err := t.startServer(ctx, t.svcName, cfg); err != nil {
+		return fmt.Errorf("ext-jwt server failed: %v", err)
+	}
+	return nil
+}
+
+// extJwtSession performs the OIDC flow for the named signer and returns the bearer token
+// plus the id of the existing identity the controller will match it to.
+func (t *traffic) extJwtSession(signerName string) (string, string, error) {
+	oidcOpts := &oidc.OidcVerificationConfig{}
+	oidcOpts.LoginOptions = t.loginOpts
+	oidcOpts.RedirectURL = t.redirectURL
+
+	octx, ocancel := context.WithTimeout(context.Background(), oidc.Timeout)
+	defer ocancel()
+	tokens, signer, err := oidcOpts.AuthenticateWithSigner(octx, signerName)
+	if err != nil {
+		return "", "", fmt.Errorf("OIDC authentication with signer %q failed: %v", signerName, err)
+	}
+	token := oidc.TokenForSigner(tokens, signer)
+	if token == "" {
+		return "", "", errors.New("IdP returned no usable token for the signer's target token type")
+	}
+	identityID, err := t.findExtJwtIdentity(signerName, token)
+	if err != nil {
+		return "", "", err
+	}
+	return token, identityID, nil
+}
+
+// extJwtConfig builds a certless SDK config that authenticates with the given bearer token.
+func (t *traffic) extJwtConfig(token string) (*ziti.Config, error) {
+	ctrlUrl := t.loginOpts.ControllerUrl
+	if !strings.HasPrefix(ctrlUrl, "http") {
+		ctrlUrl = "https://" + ctrlUrl
+	}
+	ctrlUrl = strings.TrimRight(ctrlUrl, "/")
+
+	caPool, err := ziti.GetControllerWellKnownCaPool(ctrlUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch controller CA pool: %v", err)
+	}
+	creds := edge_apis.NewJwtCredentials(token)
+	creds.CaPool = caPool
+	return &ziti.Config{ZtAPI: ctrlUrl + "/edge/client/v1", Credentials: creds}, nil
+}
+
+// findExtJwtIdentity decodes the token and matches it to an existing identity the same way
+// the controller will. This mirrors the controller's ext-jwt identity matching
+// (controller/model AuthModuleExtJwt: the signer's claimsProperty selects the claim,
+// useExternalId picks externalId vs internal id), and must stay in sync with it.
+// ext-jwt auth does not auto-provision on a plain authenticate, so the identity must exist.
+func (t *traffic) findExtJwtIdentity(signerName, token string) (string, error) {
+	signer := mgmt.ExternalJWTSignerFromFilter(t.client, mgmt.NameFilter(signerName))
+	if signer == nil {
+		return "", fmt.Errorf("ext-jwt-signer %q not found via management api", signerName)
+	}
+
+	claimName := "sub"
+	if signer.ClaimsProperty != nil && *signer.ClaimsProperty != "" {
+		claimName = *signer.ClaimsProperty
+	}
+	claims := decodeJwtClaims(token)
+	claimVal, _ := claims[claimName].(string)
+	if claimVal == "" {
+		return "", fmt.Errorf("token has no %q claim to match an identity", claimName)
+	}
+	// claimVal comes from the IdP token and is interpolated into a controller filter
+	// below; reject filter-breaking characters rather than risk an injected query.
+	// Legitimate sub/externalId values (UUIDs, emails, usernames) never contain these.
+	if strings.ContainsAny(claimVal, "\"\\") {
+		return "", fmt.Errorf("claim %q value contains illegal characters", claimName)
+	}
+
+	useExternal := signer.UseExternalID == nil || *signer.UseExternalID
+	var id *rest_model.IdentityDetail
+	if useExternal {
+		id = mgmt.IdentityFromFilter(t.client, fmt.Sprintf("externalId=\"%s\"", claimVal))
+	} else {
+		id = mgmt.IdentityFromFilter(t.client, fmt.Sprintf("id=\"%s\"", claimVal))
+	}
+	if id == nil {
+		return "", fmt.Errorf("no identity matches claim %s=%q; the ext-jwt identity must already exist", claimName, claimVal)
+	}
+	log.Infof("matched identity %s (%s) for service %s", *id.Name, *id.ID, t.svcName)
+	return *id.ID, nil
+}
+
+// decodeJwtClaims returns the JWT's claims without verifying its signature. This is only
+// used to route to the matching identity; the controller re-validates the token's
+// signature when the SDK authenticates on dial/bind, so a forged claim here at worst
+// resolves the wrong identity, it cannot bypass authentication.
+func decodeJwtClaims(token string) jwt.MapClaims {
+	claims := jwt.MapClaims{}
+	if _, _, err := jwt.NewParser().ParseUnverified(token, claims); err != nil {
+		return nil
+	}
+	return claims
 }
