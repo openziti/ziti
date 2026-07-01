@@ -31,7 +31,7 @@ func TestSplitHostPortU16(t *testing.T) {
 		wantPort uint16
 		wantOK   bool
 	}{
-		{"sg4:20000", "sg4", 20000, true},
+		{"testhost:20000", "testhost", 20000, true},
 		{"localhost:1280", "localhost", 1280, true},
 		{"[::1]:8443", "::1", 8443, true},
 		{"host", "", 0, false},              // missing port
@@ -40,7 +40,7 @@ func TestSplitHostPortU16(t *testing.T) {
 		{"host:-1", "", 0, false},           // negative
 		{"tls:host:20000", "", 0, false},    // scheme-prefixed, not a bare host:port
 		{"", "", 0, false},                  // empty
-		{"  sg4:20000  ", "sg4", 20000, true}, // trimmed
+		{"  testhost:20000  ", "testhost", 20000, true}, // trimmed
 	}
 	for _, c := range cases {
 		host, port, ok := splitHostPortU16(c.in)
@@ -61,11 +61,11 @@ web:
   - name: client-management
     bindPoints:
       - interface: 0.0.0.0:20000
-        address: sg4:20000
+        address: testhost:20000
 `)
 	host, port, ok := readAdvertisedFromCtrlConfig(good)
-	if !ok || host != "sg4" || port != 20000 {
-		t.Fatalf("ctrl config = (%q, %d, %v), want (sg4, 20000, true)", host, port, ok)
+	if !ok || host != "testhost" || port != 20000 {
+		t.Fatalf("ctrl config = (%q, %d, %v), want (testhost, 20000, true)", host, port, ok)
 	}
 
 	// No web section: fail safe (caller keeps flag/default).
@@ -92,19 +92,19 @@ link:
   listeners:
     - binding: transport
       bind: tls:0.0.0.0:20001
-      advertise: tls:sg4:20001
+      advertise: tls:testhost:20001
 listeners:
   - binding: edge
     address: tls:0.0.0.0:20001
     options:
-      advertise: sg4:20001
+      advertise: testhost:20001
   - binding: tunnel
     options:
       mode: host
 `)
 	host, port, ok := readAdvertisedFromRouterConfig(good)
-	if !ok || host != "sg4" || port != 20001 {
-		t.Fatalf("router config = (%q, %d, %v), want (sg4, 20001, true)", host, port, ok)
+	if !ok || host != "testhost" || port != 20001 {
+		t.Fatalf("router config = (%q, %d, %v), want (testhost, 20001, true)", host, port, ok)
 	}
 
 	// No edge listener: fail safe.
