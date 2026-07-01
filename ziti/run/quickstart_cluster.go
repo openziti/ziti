@@ -436,6 +436,9 @@ func (o *QuickstartClusterOpts) printDetails(ctrlAddr string, children []*exec.C
 		fmt.Printf("    node %d  controller: %s:%d  router: %s:%d  pid: %d\n",
 			i+1, ctrlAddr, o.CtrlPort+uint16(i), o.routerAddrOrDefault(), o.RouterPort+uint16(i), pid)
 	}
+	if o.Zac {
+		fmt.Printf("    console (ZAC)          : each node serves it on its controller port, e.g. https://%s:%d/zac\n", ctrlAddr, o.CtrlPort)
+	}
 	fmt.Println("    home directory         : " + o.Home)
 	fmt.Println("    configured trust domain: " + o.TrustDomain)
 	fmt.Println("    per-node logs:")
