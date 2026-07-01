@@ -79,8 +79,9 @@ type QuickstartOpts struct {
 
 	// changedFlags is the set of flags the user explicitly set on this invocation.
 	changedFlags map[string]bool
-	// ignoredInitFlags is the set of init-only flags supplied on a re-run of an initialized --home.
-	ignoredInitFlags []string
+	// ignoredSetupFlags are flags supplied on a re-run that only take effect when the environment is
+	// first created, so they had no effect this run.
+	ignoredSetupFlags []string
 
 	joinCommand bool
 	verbose     bool
@@ -156,6 +157,7 @@ func NewQuickStartJoinClusterCmd(out io.Writer, errOut io.Writer, context contex
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.out = out
 			options.errOut = errOut
+			options.recordChangedFlags(cmd)
 			return options.join(context)
 		},
 	}
@@ -258,9 +260,9 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	}
 
 	if o.AlreadyInitialized {
-		// The controller and router boot from the configs written on first init. Report the
-		// init-only flags supplied here, then use the persisted advertised address/port.
-		o.noteIgnoredInitFlags()
+		// The controller and router boot from the configs written when the environment was created.
+		// Report any supplied flags that no longer take effect, then use the persisted address/port.
+		o.noteIgnoredSetupFlags()
 		o.adoptPersistedEndpoints(routerName)
 	} else {
 		if o.ControllerAddress != "" {
@@ -285,6 +287,8 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		if o.ZacLocation == "" {
 			o.ZacLocation = path.Join(o.Home, "console")
 		}
+		// Normalize separators to match the location the config generator writes when creating the config.
+		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
 		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
 		if zacErr != nil {
 			return fmt.Errorf("failed to install ZAC: %w", zacErr)
@@ -292,7 +296,7 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		if version != "" {
 			logrus.Infof("ZAC %s ready at '%s'", version, o.ZacLocation)
 		}
-		// Read by controller config generation on a first init to emit the "spa" web binding.
+		// Read by controller config generation, which emits the "spa" web binding when it writes the config.
 		_ = os.Setenv(constants.CtrlConsoleLocationVarName, o.ZacLocation)
 	}
 
@@ -523,9 +527,9 @@ func (o *QuickstartOpts) printDetails() {
 		// The console is served on the edge listener, so use the edge address and port.
 		fmt.Printf("    console (ZAC) at       : https://%s:%s/zac\n", helpers.GetCtrlEdgeAdvertisedAddress(), helpers.GetCtrlEdgeAdvertisedPort())
 	}
-	if len(o.ignoredInitFlags) > 0 {
+	if len(o.ignoredSetupFlags) > 0 {
 		fmt.Println()
-		fmt.Println("    NOTE: --home was already initialized. these init-only flags were ignored: " + strings.Join(o.ignoredInitFlags, ", "))
+		fmt.Println("    NOTE: --home already exists. these flags only take effect when first creating it, so they were ignored: " + strings.Join(o.ignoredSetupFlags, ", "))
 	}
 }
 
@@ -537,15 +541,15 @@ func (o *QuickstartOpts) recordChangedFlags(cmd *cobra.Command) {
 	})
 }
 
-// noteIgnoredInitFlags records, for the closing banner, the init-only flags supplied on a re-run of
-// an initialized --home. These apply only during first-init config generation. username and password
-// are excluded: a crash-resume login still uses them.
-func (o *QuickstartOpts) noteIgnoredInitFlags() {
-	initOnly := []string{"ctrl-address", "ctrl-port", "router-address", "router-port", "trust-domain"}
-	o.ignoredInitFlags = nil
-	for _, name := range initOnly {
+// noteIgnoredSetupFlags records, for the closing banner, the flags supplied on a re-run of an existing
+// --home that only take effect when the environment is first created. username and password are
+// excluded: a crash-resume login still uses them.
+func (o *QuickstartOpts) noteIgnoredSetupFlags() {
+	setupOnlyFlags := []string{"ctrl-address", "ctrl-port", "router-address", "router-port", "trust-domain"}
+	o.ignoredSetupFlags = nil
+	for _, name := range setupOnlyFlags {
 		if o.changedFlags[name] {
-			o.ignoredInitFlags = append(o.ignoredInitFlags, "--"+name)
+			o.ignoredSetupFlags = append(o.ignoredSetupFlags, "--"+name)
 		}
 	}
 }

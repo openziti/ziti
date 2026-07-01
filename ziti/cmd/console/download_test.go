@@ -70,9 +70,8 @@ func TestEnsureAssetsReuse(t *testing.T) {
 		}
 	})
 
-	// Regression for the review finding: valid assets with NO version marker plus an explicit
-	// version and no -y must be treated as "different" and kept (not silently reused), rather than
-	// short-circuiting the explicit request. It must still not hit the network.
+	// Valid assets with no version marker plus an explicit version and no -y are kept, not replaced,
+	// and no download happens.
 	t.Run("unversioned install with explicit version without -y keeps existing", func(t *testing.T) {
 		dir := installAssets(t, "") // no .version marker
 		got, err := EnsureAssets(io.Discard, "3.0.0", dir, false)
@@ -100,6 +99,22 @@ func TestEnsureAssetsReuse(t *testing.T) {
 	t.Run("empty location errors", func(t *testing.T) {
 		if _, err := EnsureAssets(io.Discard, "latest", "", false); err == nil {
 			t.Fatal("expected an error for an empty location")
+		}
+	})
+
+	// A location that exists but is not a usable directory (here a regular file) fails closed and
+	// leaves the target in place instead of downloading over it.
+	t.Run("uninspectable location fails closed", func(t *testing.T) {
+		dir := t.TempDir()
+		file := filepath.Join(dir, "not-a-dir")
+		if err := os.WriteFile(file, []byte("keep me"), 0o644); err != nil {
+			t.Fatalf("seed file: %v", err)
+		}
+		if _, err := EnsureAssets(io.Discard, "latest", file, false); err == nil {
+			t.Fatal("expected an error when the location is not an inspectable directory")
+		}
+		if _, err := os.Stat(file); err != nil {
+			t.Fatalf("target file must survive a failed EnsureAssets: %v", err)
 		}
 	})
 }

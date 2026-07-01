@@ -3,6 +3,7 @@
 ## What's New
 
 * [ZAC Bootstrapping CLI](#zac-bootstrapping-cli) - CLI commands to download, configure, and serve the Ziti Admin Console without hand-editing YAML
+* [Verify Traffic with ext-jwt-signers](#verify-traffic-with-ext-jwt-signers) - `ziti ops verify traffic` can authenticate with an ext-jwt-signer (OIDC) to test the certless ephemeral-cert path
 * [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
@@ -78,8 +79,17 @@ Two related quickstart re-run fixes ship alongside this:
   the environment was first created with, instead of falling back to the flag defaults. Previously a
   re-run that omitted `--ctrl-port` would wait on the default port while the controller listened on the
   original one.
-* Re-running with an init-only flag (for example `--ctrl-port` or `--username`) that cannot change after
-  first init now logs which flags were ignored, rather than silently dropping them.
+* Re-running against an existing `--home` with a flag that only takes effect when the environment is
+  first created (for example `--ctrl-port`) now reports that the flag was ignored, rather than silently
+  dropping it.
+
+## Verify Traffic with ext-jwt-signers
+
+`ziti ops verify traffic` can now authenticate with an ext-jwt-signer (OIDC), so the certless
+ephemeral-certificate path can be traffic-tested.
+
+* `--ext-jwt-signer <name>` selects the signer to authenticate with and generate a cert from.
+* `--ext-jwt-redirect-url` sets the OIDC redirect URL (default `http://localhost:20314/auth/callback`).
 
 ## Cluster Quorum Recovery
 

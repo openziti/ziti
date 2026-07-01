@@ -113,24 +113,24 @@ listeners:
 	}
 }
 
-func TestNoteIgnoredInitFlags(t *testing.T) {
+func TestNoteIgnoredSetupFlags(t *testing.T) {
 	// username/password are intentionally NOT reported as ignored (a crash-resume login uses them).
 	o := &QuickstartOpts{changedFlags: map[string]bool{
 		"ctrl-port": true,
 		"username":  true,
 		"password":  true,
-		"home":      true, // not an init-only flag
+		"home":      true, // takes effect on a re-run, so not reported
 	}}
-	o.noteIgnoredInitFlags()
-	if len(o.ignoredInitFlags) != 1 || o.ignoredInitFlags[0] != "--ctrl-port" {
-		t.Fatalf("ignoredInitFlags = %v, want [--ctrl-port]", o.ignoredInitFlags)
+	o.noteIgnoredSetupFlags()
+	if len(o.ignoredSetupFlags) != 1 || o.ignoredSetupFlags[0] != "--ctrl-port" {
+		t.Fatalf("ignoredSetupFlags = %v, want [--ctrl-port]", o.ignoredSetupFlags)
 	}
 
-	// Nothing init-only changed: empty.
+	// No setup-only flag changed: empty.
 	o2 := &QuickstartOpts{changedFlags: map[string]bool{"zac": true, "home": true}}
-	o2.noteIgnoredInitFlags()
-	if len(o2.ignoredInitFlags) != 0 {
-		t.Fatalf("ignoredInitFlags = %v, want empty", o2.ignoredInitFlags)
+	o2.noteIgnoredSetupFlags()
+	if len(o2.ignoredSetupFlags) != 0 {
+		t.Fatalf("ignoredSetupFlags = %v, want empty", o2.ignoredSetupFlags)
 	}
 }
 

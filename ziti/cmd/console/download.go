@@ -87,9 +87,27 @@ func EnsureAssets(out io.Writer, version, location string, yes bool) (string, er
 		} else {
 			return installed, nil
 		}
-	} else if entries, readErr := os.ReadDir(abs); readErr == nil && len(entries) > 0 && installedVersion(abs) == "" {
-		// Never wipe a non-empty directory that is not a prior console install.
-		return "", fmt.Errorf("location '%s' is not empty and is not a console install, choose an empty directory", abs)
+	} else {
+		// No usable install present. A missing location is the normal fresh-install case and proceeds
+		// to download. Anything else must fail closed: never fall through to a download that removes
+		// the target when we could not confirm it is safe to replace.
+		info, statErr := os.Stat(abs)
+		switch {
+		case statErr != nil && os.IsNotExist(statErr):
+			// fresh install, proceed
+		case statErr != nil:
+			return "", fmt.Errorf("cannot inspect location '%s': %w", abs, statErr)
+		case !info.IsDir():
+			return "", fmt.Errorf("location '%s' is not a directory", abs)
+		default:
+			entries, readErr := os.ReadDir(abs)
+			if readErr != nil {
+				return "", fmt.Errorf("cannot inspect location '%s': %w", abs, readErr)
+			}
+			if len(entries) > 0 && installedVersion(abs) == "" {
+				return "", fmt.Errorf("location '%s' is not empty and is not a console install, choose an empty directory", abs)
+			}
+		}
 	}
 
 	resolved, err := resolveVersion(version)

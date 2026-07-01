@@ -144,12 +144,16 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 		if o.ZacLocation == "" {
 			o.ZacLocation = filepath.Join(o.Home, "console")
 		}
+		// Normalize separators to match the location the config generator writes when creating the config.
+		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
 		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
 		if zacErr != nil {
 			return fmt.Errorf("failed to install ZAC: %w", zacErr)
 		}
 		if version != "" {
 			logrus.Infof("ZAC %s ready at '%s' (shared by all nodes)", version, o.ZacLocation)
+			// Pin children to the concrete version the parent installed, not the "latest" request.
+			o.ZacVersion = version
 		}
 	}
 
