@@ -400,7 +400,6 @@ func (c *Controller) initWeb() {
 		// if no edge  we need 1 default API, make the fabric api the default
 		fabricManagementFactory.MakeDefault = true
 	}
-	c.xwebInitialized.MarkInitialized()
 }
 
 func (c *Controller) IsEdgeEnabled() bool {
@@ -562,6 +561,11 @@ func (c *Controller) Run() error {
 	if err = c.config.Configure(c.xweb); err != nil {
 		panic(err)
 	}
+
+	// Signal that xweb is fully configured. GetApiAddresses waits on this before reading the
+	// xweb config, so that mesh hellos triggered by early raft connections can't cache an empty
+	// address set (populated only once Configure has run) for the lifetime of the process.
+	c.xwebInitialized.MarkInitialized()
 
 	c.xweb.Run()
 
