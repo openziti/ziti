@@ -144,7 +144,11 @@ func (o *QuickstartClusterOpts) run(ctx context.Context) error {
 		if o.ZacLocation == "" {
 			o.ZacLocation = filepath.Join(o.Home, "console")
 		}
-		// Normalize separators to match the location the config generator writes when creating the config.
+		// Resolve to an absolute path so the SPA location the children persist does not depend on the
+		// working directory, then normalize separators to match what the config generator writes.
+		if abs, absErr := filepath.Abs(o.ZacLocation); absErr == nil {
+			o.ZacLocation = abs
+		}
 		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
 		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
 		if zacErr != nil {

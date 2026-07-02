@@ -27,6 +27,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -287,7 +288,11 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		if o.ZacLocation == "" {
 			o.ZacLocation = path.Join(o.Home, "console")
 		}
-		// Normalize separators to match the location the config generator writes when creating the config.
+		// Resolve to an absolute path so the persisted config's SPA location does not depend on the
+		// working directory, then normalize separators to match what the config generator writes.
+		if abs, absErr := filepath.Abs(o.ZacLocation); absErr == nil {
+			o.ZacLocation = abs
+		}
 		o.ZacLocation = helpers.NormalizePath(o.ZacLocation)
 		version, zacErr := console.EnsureAssets(o.out, o.ZacVersion, o.ZacLocation, o.Yes)
 		if zacErr != nil {
@@ -493,6 +498,9 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 		fmt.Printf("    --router-port %d %s\n", o.RouterPort+1, cont)
 		fmt.Printf("    --home \"%s\" %s\n", o.Home, cont)
 		fmt.Printf("    --trust-domain=\"%s\" %s\n", o.TrustDomain, cont)
+		if o.Zac {
+			fmt.Printf("    --zac --zac-location \"%s\" %s\n", o.ZacLocation, cont)
+		}
 		fmt.Printf("    --cluster-member tls:%s:%d %s\n", o.ControllerAddress, o.ControllerPort, cont)
 		fmt.Printf("    --instance-id \"%s\"\n", nextInstId)
 		fmt.Println("=======================================================================================")
