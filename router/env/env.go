@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/router/managedconfig"
@@ -36,6 +37,7 @@ import (
 type RouterEnv interface {
 	GetNetworkControllers() NetworkControllers
 	GetRouterId() *identity.TokenId
+	GetRouterCapabilities() *capabilities.RouterCapabilityMask
 	GetDialerCfg() map[string]xgress.OptionsData
 	GetXlinkDialers() []xlink.Dialer
 	GetXrctrls() []Xrctrl

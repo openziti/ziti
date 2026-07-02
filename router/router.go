@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/big"
 	"net"
 	"os"
 	"os/signal"
@@ -91,6 +90,7 @@ import (
 
 type Router struct {
 	config              *env.Config
+	routerCapabilities  *capabilities.RouterCapabilityMask
 	ctrls               env.NetworkControllers
 	ctrlBindhandler     channel.BindHandler
 	faulter             *forwarder.Faulter
@@ -140,6 +140,10 @@ func (self *Router) GetCtrlChannelBindHandler() channel.BindHandler {
 
 func (self *Router) GetRouterId() *identity.TokenId {
 	return self.config.Id
+}
+
+func (self *Router) GetRouterCapabilities() *capabilities.RouterCapabilityMask {
+	return self.routerCapabilities
 }
 
 func (self *Router) GetNetworkControllers() env.NetworkControllers {
@@ -280,9 +284,7 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		headers[int32(ctrl_pb.ControlHeaders_ListenersHeader)] = buf
 	}
 
-	capabilityMask := &big.Int{}
-	capabilityMask.SetBit(capabilityMask, capabilities.RouterMultiChannel, 1)
-	headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = capabilityMask.Bytes()
+	headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = self.routerCapabilities.Bytes()
 
 	ctrlListeners := &ctrl_pb.CtrlChanListeners{}
 	for _, listener := range self.config.Ctrl.Listeners {
@@ -329,6 +331,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router := &Router{
 		xgRegistry:          env.NewRegistry(),
 		config:              cfg,
+		routerCapabilities:  capabilities.GetRouterCapabilitiesMask(),
 		metricsRegistry:     metricsRegistry,
 		shutdownC:           closeNotify,
 		shutdownDoneC:       make(chan struct{}),

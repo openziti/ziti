@@ -17,28 +17,23 @@
 package capabilities
 
 import (
-	"math/big"
-
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 )
 
 // GetCapabilities reads the capabilities bitmask from underlay headers, checking
 // the current header ID first, then falling back to the legacy ID for pre-2.0
-// compatibility.
-func GetCapabilities(headers map[int32][]byte) *big.Int {
+// compatibility. T selects the capability namespace to interpret the mask as
+// (e.g. RouterCapability or ControllerCapability).
+func GetCapabilities[T ~int](headers map[int32][]byte) *Mask[T] {
 	if val, found := headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)]; found {
-		return new(big.Int).SetBytes(val)
+		return MaskFromBytes[T](val)
 	}
 	if val, found := headers[ctrl_pb.LegacyCapabilitiesHeader]; found {
-		return new(big.Int).SetBytes(val)
+		return MaskFromBytes[T](val)
 	}
-	return new(big.Int)
+	return NewMask[T]()
 }
 
-func IsCapable(headers map[int32][]byte, capability int) bool {
-	return GetCapabilities(headers).Bit(capability) == 1
-}
-
-func IsSet(mask *big.Int, capability int) bool {
-	return mask.Bit(capability) == 1
+func IsCapable[T ~int](headers map[int32][]byte, capability T) bool {
+	return GetCapabilities[T](headers).IsSet(capability)
 }

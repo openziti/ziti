@@ -144,8 +144,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		// send a CapabilitiesHeader with RouterMultiChannel set and use header IDs
 		// in the 1000+ range. Pre-2.0 routers use legacy IDs (10-12) and don't
 		// send a CapabilitiesHeader.
-		r.Capabilities = capabilities.GetCapabilities(headers)
-		useNewHeaders := capabilities.IsSet(r.Capabilities, capabilities.RouterMultiChannel)
+		r.Capabilities = capabilities.GetCapabilities[capabilities.RouterCapability](headers)
+		useNewHeaders := r.Capabilities.IsSet(capabilities.RouterMultiChannel)
 
 		listenersHeaderId := ctrl_pb.LegacyListenersHeader
 		if useNewHeaders {

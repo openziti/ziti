@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"math/big"
-
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
@@ -19,10 +17,11 @@ func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
 	versionHeader, err := versions.StdVersionEncDec.Encode(versions.NewDefaultVersionProvider().AsVersionInfo())
 	ctx.Req.NoError(err)
 
-	capabilityMask := &big.Int{}
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerCreateTerminatorV2, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSingleRouterLinkSource, 1)
-	capabilityMask.SetBit(capabilityMask, capabilities.ControllerSupportsJWTLegacySessions, 1)
+	capabilityMask := capabilities.NewMask(
+		capabilities.ControllerCreateTerminatorV2,
+		capabilities.ControllerSingleRouterLinkSource,
+		capabilities.ControllerSupportsJWTLegacySessions,
+	)
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:                       versionHeader,
 		int32(ctrl_pb.ControlHeaders_CapabilitiesHeader): capabilityMask.Bytes(),

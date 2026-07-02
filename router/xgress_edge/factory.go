@@ -18,7 +18,6 @@ package xgress_edge
 
 import (
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -168,14 +167,11 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 		return nil, fmt.Errorf("could not generate version header: %v", err)
 	}
 
-	capMask := &big.Int{}
-	capMask.SetBit(capMask, edge.RouterCapabilityConnectV2, 1)
-
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:       versionHeader,
 		edge.SupportsBindSuccessHeader:   {1},
 		edge.SupportsPostureChecksHeader: {1},
-		edge.RouterCapabilitiesHeader:    capMask.Bytes(),
+		edge.RouterCapabilitiesHeader:    factory.env.GetRouterCapabilities().Bytes(),
 	}
 
 	wrappedId := state.WrapIdentityWithCertValidation(factory.env.GetRouterId(), factory.stateManager)

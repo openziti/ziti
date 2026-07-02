@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -46,6 +47,10 @@ func (self *testEnv) GetRouterId() *identity.TokenId {
 	return &identity.TokenId{
 		Token: "test",
 	}
+}
+
+func (self *testEnv) GetRouterCapabilities() *capabilities.RouterCapabilityMask {
+	return capabilities.NewMask[capabilities.RouterCapability]()
 }
 
 func (self *testEnv) GetChannelHeaders() (channel.Headers, error) {
