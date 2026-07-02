@@ -87,6 +87,7 @@ type Forwarder interface {
 	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 	ReportForwardingFault(circuitId string, ctrlId string)
 	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
+	UnregisterDestination(circuitId string, address xgress.Address)
 	EndCircuit(circuitId string)
 }
 
