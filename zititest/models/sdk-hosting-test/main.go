@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"
@@ -36,6 +35,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/openziti/ziti/zititest/zitilab/validations"
+	"github.com/openziti/ziti/zititest/zitirest"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 

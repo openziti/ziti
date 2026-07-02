@@ -17,7 +17,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -26,13 +25,12 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/v2/controller/rest_client/terminator"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/ziti-traffic-test/loop4"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"github.com/openziti/ziti/zititest/zitilab/validations"
+	"github.com/openziti/ziti/zititest/zitirest"
 )
 
 // noopControllerCallback satisfies loop4.ControllerCallback without requesting any diagnostics.
@@ -361,7 +359,7 @@ func ertRouterFilter(m *model.Model) string {
 func (g *steadyStateGate) missingTerminators(clients *zitirest.Clients) ([]string, error) {
 	var missing []string
 	for _, e := range expectedTerminators {
-		count, err := terminatorCountForService(clients, e.service)
+		count, err := validations.GetTerminatorCountForService(clients, e.service)
 		if err != nil {
 			return nil, err
 		}
@@ -370,20 +368,4 @@ func (g *steadyStateGate) missingTerminators(clients *zitirest.Clients) ([]strin
 		}
 	}
 	return missing, nil
-}
-
-// terminatorCountForService returns the number of terminators the controller has for the named service.
-func terminatorCountForService(clients *zitirest.Clients, service string) (int64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	filter := fmt.Sprintf(`service.name="%s" limit 1`, service)
-	result, err := clients.Fabric.Terminator.ListTerminators(&terminator.ListTerminatorsParams{
-		Filter:  &filter,
-		Context: ctx,
-	}, nil)
-	if err != nil {
-		return 0, err
-	}
-	return *result.Payload.Meta.Pagination.TotalCount, nil
 }

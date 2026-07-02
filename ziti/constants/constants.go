@@ -19,16 +19,15 @@ package constants
 import "time"
 
 const (
-	OpenZitiOrg             = "openziti"
-	ZITI                    = "ziti"
-	ZROK                    = "zrok"
-	CaddyOrg                = "caddyserver"
-	Caddy                   = "caddy"
-	ZITI_CONTROLLER         = "ziti-controller"
-	ZITI_ROUTER             = "ziti-router"
-	ZITI_TUNNEL             = "ziti-tunnel"
-	ZITI_EDGE_TUNNEL        = "ziti-edge-tunnel"
-	ZITI_EDGE_TUNNEL_GITHUB = "ziti-tunnel-sdk-c"
+	OpenZitiOrg          = "openziti"
+	ZITI                 = "ziti"
+	ZROK                 = "zrok"
+	CaddyOrg             = "caddyserver"
+	Caddy                = "caddy"
+	ZitiEdgeTunnel       = "ziti-edge-tunnel"
+	ZitiEdgeTunnelGithub = "ziti-tunnel-sdk-c"
+	ZitiProxC            = "ziti-prox-c"
+	ZitiSdkCGithub       = "ziti-sdk-c"
 )
 
 // Config Template Constants

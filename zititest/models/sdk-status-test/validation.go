@@ -27,8 +27,8 @@ import (
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"google.golang.org/protobuf/proto"
 )
 
