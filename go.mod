@@ -16,7 +16,7 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/biogo/store v0.0.0-20201120204734-aad293a2328f
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/c-bata/go-prompt v0.2.5
+	github.com/c-bata/go-prompt v0.2.6
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
@@ -28,13 +28,13 @@ require (
 	github.com/go-acme/lego/v4 v4.35.2
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-openapi/errors v0.22.8
-	github.com/go-openapi/jsonpointer v0.23.1
+	github.com/go-openapi/jsonpointer v0.24.0
 	github.com/go-openapi/loads v0.24.0
-	github.com/go-openapi/runtime v0.32.3
-	github.com/go-openapi/spec v0.22.5
-	github.com/go-openapi/strfmt v0.26.3
-	github.com/go-openapi/swag v0.26.1
-	github.com/go-openapi/swag/jsonutils v0.26.1
+	github.com/go-openapi/runtime v0.32.4
+	github.com/go-openapi/spec v0.22.6
+	github.com/go-openapi/strfmt v0.26.4
+	github.com/go-openapi/swag v0.27.0
+	github.com/go-openapi/swag/jsonutils v0.27.0
 	github.com/go-openapi/validate v0.26.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -50,8 +50,8 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-boltdb/v2 v2.3.1
-	github.com/jedib0t/go-pretty/v6 v6.8.1
-	github.com/jellydator/ttlcache/v3 v3.4.0
+	github.com/jedib0t/go-pretty/v6 v6.8.2
+	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/judedaryl/go-arrayutils v0.0.1
@@ -92,7 +92,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc/v3 v3.47.5
-	go.etcd.io/bbolt v1.4.3
+	go.etcd.io/bbolt v1.5.0
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.53.0
@@ -102,7 +102,7 @@ require (
 	golang.org/x/sys v0.46.0
 	golang.org/x/term v0.44.0
 	golang.org/x/text v0.38.0
-	golang.org/x/tools v0.45.0
+	golang.org/x/tools v0.47.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	gopkg.in/resty.v1 v1.12.0
@@ -140,16 +140,16 @@ require (
 	github.com/go-openapi/analysis v0.25.2 // indirect
 	github.com/go-openapi/jsonreference v0.21.6 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.32.3 // indirect
-	github.com/go-openapi/swag/cmdutils v0.26.1 // indirect
-	github.com/go-openapi/swag/conv v0.26.1 // indirect
-	github.com/go-openapi/swag/fileutils v0.26.1 // indirect
+	github.com/go-openapi/swag/cmdutils v0.27.0 // indirect
+	github.com/go-openapi/swag/conv v0.27.0 // indirect
+	github.com/go-openapi/swag/fileutils v0.27.0 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
-	github.com/go-openapi/swag/loading v0.26.1 // indirect
-	github.com/go-openapi/swag/mangling v0.26.1 // indirect
-	github.com/go-openapi/swag/netutils v0.26.1 // indirect
-	github.com/go-openapi/swag/stringutils v0.26.1 // indirect
-	github.com/go-openapi/swag/typeutils v0.26.1 // indirect
-	github.com/go-openapi/swag/yamlutils v0.26.1 // indirect
+	github.com/go-openapi/swag/loading v0.27.0 // indirect
+	github.com/go-openapi/swag/mangling v0.27.0 // indirect
+	github.com/go-openapi/swag/netutils v0.27.0 // indirect
+	github.com/go-openapi/swag/stringutils v0.27.0 // indirect
+	github.com/go-openapi/swag/typeutils v0.27.0 // indirect
+	github.com/go-openapi/swag/yamlutils v0.27.0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -177,7 +177,7 @@ require (
 	github.com/pion/dtls/v3 v3.1.4 // indirect
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/transport/v4 v4.0.2 // indirect
-	github.com/pkg/term v1.1.0 // indirect
+	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rs/cors v1.11.1 // indirect
