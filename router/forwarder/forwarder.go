@@ -122,7 +122,7 @@ func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress
 
 func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
 	log := routeLog.With("circuitId", circuitId)
-	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
+	if addresses, found := forwarder.destinations.takeAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				log.Debug("unregistering destination for circuit", "address", address)
@@ -132,9 +132,25 @@ func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
 				log.Debug("no destinations found for address", "address", address)
 			}
 		}
-		forwarder.destinations.unlinkCircuit(circuitId)
 	} else {
 		log.Debug("found no addresses to unregister for circuit")
+	}
+}
+
+// UnregisterDestination removes a single endpoint's destination (by address) for a circuit,
+// rather than every destination for the circuit as UnregisterDestinations does, and fires the
+// removed destination's Unrouted callback. Used when one endpoint of a circuit closes but other
+// endpoints for the same circuit on this router (e.g. a co-located terminator on a single-router
+// circuit) must be preserved.
+func (forwarder *Forwarder) UnregisterDestination(circuitId string, address xgress.Address) {
+	log := routeLog.With("circuitId", circuitId, "address", address)
+	if destination, found := forwarder.destinations.getDestination(address); found {
+		log.Debug("unregistering single destination for circuit")
+		forwarder.destinations.removeDestination(address)
+		forwarder.destinations.unlinkDestinationFromCircuit(circuitId, address)
+		go destination.(XgressDestination).Unrouted()
+	} else {
+		log.Debug("no destination found for address")
 	}
 }
 
