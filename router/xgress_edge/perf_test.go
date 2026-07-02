@@ -79,6 +79,10 @@ func (link *mirrorLink) DestinationId() string {
 	return "test"
 }
 
+func (link *mirrorLink) SetHeartbeatControl(channel.HeartbeatControl) {}
+
+func (link *mirrorLink) UpdateHeartbeatIntervals(time.Duration, time.Duration) {}
+
 func (link *mirrorLink) Id() string {
 	return "router1"
 }
