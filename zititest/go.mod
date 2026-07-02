@@ -16,6 +16,7 @@ require (
 	github.com/go-openapi/runtime v0.32.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/channel/v5 v5.0.15
 	github.com/openziti/edge-api v0.32.0
@@ -136,7 +137,6 @@ require (
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
@@ -181,6 +181,7 @@ require (
 	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/natefinch/npipe v0.0.0-20160621034901-c1b8fa8bdcce // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/oliveagle/jsonpath v0.1.4 // indirect

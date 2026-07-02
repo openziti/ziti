@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilibActions "github.com/openziti/ziti/zititest/zitilab/actions"

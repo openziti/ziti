@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
@@ -123,7 +124,7 @@ func (self *ZitiEdgeTunnelType) Start(r model.Run, c *model.Component) error {
 	}
 
 	if isRunninng {
-		fmt.Printf("ziti-edge-tunnel %s already started\n", c.Id)
+		pfxlog.Logger().Infof("ziti-edge-tunnel %s already started", c.Id)
 		return nil
 	}
 

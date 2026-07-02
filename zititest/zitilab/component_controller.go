@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/fs"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
 	"github.com/openziti/fablab/kernel/model"
@@ -147,7 +148,7 @@ func (self *ControllerType) Start(r model.Run, c *model.Component) error {
 		return err
 	}
 	if isRunninng {
-		fmt.Printf("controller %s already started\n", c.Id)
+		pfxlog.Logger().Infof("controller %s already started", c.Id)
 		return nil
 	}
 	extraArgs := ""

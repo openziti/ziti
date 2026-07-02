@@ -46,7 +46,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"

@@ -24,13 +24,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fablab/kernel/lib"
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
@@ -142,7 +143,7 @@ func (self *RouterType) Start(r model.Run, c *model.Component) error {
 		return err
 	}
 	if isRunninng {
-		fmt.Printf("router %s already started\n", c.Id)
+		pfxlog.Logger().Infof("router %s already started", c.Id)
 		return nil
 	}
 	extraArgs := ""

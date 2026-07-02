@@ -13,7 +13,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/ziti/util"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 )
 
 func ListServices(clients *zitirest.Clients, filter string, timeout time.Duration) ([]*rest_model.ServiceDetail, error) {
