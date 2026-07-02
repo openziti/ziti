@@ -462,8 +462,19 @@ func (n *Network) ValidateRouterErtTerminators(filter string, cb ErtTerminatorVa
 }
 
 func (network *Network) DisconnectRouter(r *model.Router) {
-	// 1: remove Links for Router
-	for _, l := range r.GetLinks() {
+	// Snapshot the router's links before marking it disconnected: MarkDisconnected clears the
+	// router's link set (routerLinks.Clear()), so a later r.GetLinks() would return nothing and
+	// the link-removal/reroute cascade below would be skipped entirely.
+	links := r.GetLinks()
+
+	// Mark the router disconnected before the RerouteLink cascade, so reroute and everything it
+	// calls (shortestPath, connected-map reads) sees the dying router as gone. Otherwise reroute
+	// runs while the router still appears connected and can compute a replacement path through the
+	// very router that is being removed.
+	network.Router.MarkDisconnected(r)
+
+	// remove Links for Router, rerouting circuits off any that were connected
+	for _, l := range links {
 		wasConnected := l.CurrentState().Mode == model.Connected
 		if l.Src.Id == r.Id {
 			network.Link.Remove(l)
@@ -472,8 +483,6 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 			network.RerouteLink(l)
 		}
 	}
-	// 2: remove Router
-	network.Router.MarkDisconnected(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		h.RouterDisconnected(r)
