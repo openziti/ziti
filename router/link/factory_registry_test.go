@@ -150,6 +150,80 @@ func Test_FactoryRegistry_Apply_BuildsListenersAndDialers(t *testing.T) {
 	req.Equal("tls:0.0.0.0:6262", f.createdListeners[0].bind)
 }
 
+func Test_FactoryRegistry_CloseUnresponsiveTimeout(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, falls back to the default
+	req.Equal(defaultCloseUnresponsiveTimeout, r.CloseUnresponsiveTimeout())
+
+	// an applied config with the field takes effect (for established links too)
+	req.NoError(r.Apply(1, `{"heartbeats":{"closeUnresponsiveTimeout":"45s"}}`))
+	req.Equal(45*time.Second, r.CloseUnresponsiveTimeout())
+
+	// the value comes from the active config, so a later apply that omits it
+	// reverts to the default
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultCloseUnresponsiveTimeout, r.CloseUnresponsiveTimeout())
+}
+
+func Test_FactoryRegistry_HeartbeatIntervals(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, fall back to the channel defaults
+	req.Equal(defaultHeartbeatSendInterval, r.SendInterval())
+	req.Equal(defaultHeartbeatCheckInterval, r.CheckInterval())
+
+	// applied intervals take effect
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"3s","checkInterval":"250ms"}}`))
+	req.Equal(3*time.Second, r.SendInterval())
+	req.Equal(250*time.Millisecond, r.CheckInterval())
+
+	// the settings come from the active config, so a later apply that omits
+	// them reverts to the defaults
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultHeartbeatSendInterval, r.SendInterval())
+	req.Equal(defaultHeartbeatCheckInterval, r.CheckInterval())
+}
+
+func Test_FactoryRegistry_Remove_RevertsHeartbeatsToDefaults(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"3s","checkInterval":"250ms","closeUnresponsiveTimeout":"45s"}}`))
+	req.Equal(3*time.Second, r.SendInterval())
+	req.Equal(250*time.Millisecond, r.CheckInterval())
+	req.Equal(45*time.Second, r.CloseUnresponsiveTimeout())
+
+	// removing the config drops its heartbeat settings, reverting to the
+	// defaults just as a later apply that omits them would
+	req.NoError(r.Remove())
+	req.Equal(defaultHeartbeatSendInterval, r.SendInterval())
+	req.Equal(defaultHeartbeatCheckInterval, r.CheckInterval())
+	req.Equal(defaultCloseUnresponsiveTimeout, r.CloseUnresponsiveTimeout())
+}
+
+func Test_FactoryRegistry_QueueSizes(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, fall back to the defaults
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
+
+	// applied sizes take effect (for links established afterward)
+	req.NoError(r.Apply(1, `{"payloadSenderQueueSize":256,"ackSenderQueueSize":96}`))
+	req.Equal(256, r.PayloadSenderQueueSize())
+	req.Equal(96, r.AckSenderQueueSize())
+
+	// the sizes come from the active config, so a later apply that omits them
+	// reverts to the defaults
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
+}
+
 func Test_FactoryRegistry_Apply_MapsDialerBindInterfaceToTransportBind(t *testing.T) {
 	req := require.New(t)
 	r, f := newTestRegistry(t)

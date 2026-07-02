@@ -20,11 +20,34 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/router/xlink"
+)
+
+// defaultCloseUnresponsiveTimeout is the fallback used when no link config has
+// supplied heartbeats.closeUnresponsiveTimeout. It matches the router env
+// default (DefaultLinkUnresponsiveTimeout) so behavior is unchanged when the
+// field is absent.
+const defaultCloseUnresponsiveTimeout = time.Minute
+
+// Heartbeat interval fallbacks, matching the channel package defaults, used
+// when no link config supplies heartbeats.sendInterval / checkInterval.
+const (
+	defaultHeartbeatSendInterval  = 10 * time.Second
+	defaultHeartbeatCheckInterval = time.Second
+)
+
+// Link sender queue size fallbacks, matching the router env defaults
+// (DefaultLinkPayloadSenderQueueSize / DefaultLinkAckSenderQueueSize), used
+// when no link config supplies them.
+const (
+	defaultPayloadSenderQueueSize = 128
+	defaultAckSenderQueueSize     = 64
 )
 
 // FactoryRegistry owns the link subsystem's configurable surface: the set of
@@ -57,7 +80,88 @@ type FactoryRegistry struct {
 	listeners   []xlink.Listener
 	dialers     []xlink.Dialer
 
+	// closeUnresponsiveTimeout, sendInterval, and checkInterval hold the
+	// effective heartbeat settings from the applied config, read by each link's
+	// heartbeat wiring off the per-link hot path. Updated on Apply; the zero
+	// value (returned when unset) means "use the default".
+	closeUnresponsiveTimeout concurrenz.AtomicValue[time.Duration]
+	sendInterval             concurrenz.AtomicValue[time.Duration]
+	checkInterval            concurrenz.AtomicValue[time.Duration]
+
 	changeHandler ConfigurationChangeHandler
+}
+
+// CloseUnresponsiveTimeout returns the effective link heartbeat
+// close-unresponsive timeout. Lock-free so the per-link heartbeat callback can
+// read it on every check. Falls back to defaultCloseUnresponsiveTimeout until a
+// config with the field has been applied.
+func (self *FactoryRegistry) CloseUnresponsiveTimeout() time.Duration {
+	if v := self.closeUnresponsiveTimeout.Load(); v > 0 {
+		return v
+	}
+	return defaultCloseUnresponsiveTimeout
+}
+
+// SendInterval returns the effective heartbeat send interval, falling back to
+// the default until a config supplies it.
+func (self *FactoryRegistry) SendInterval() time.Duration {
+	if v := self.sendInterval.Load(); v > 0 {
+		return v
+	}
+	return defaultHeartbeatSendInterval
+}
+
+// CheckInterval returns the effective heartbeat check interval, falling back to
+// the default until a config supplies it.
+func (self *FactoryRegistry) CheckInterval() time.Duration {
+	if v := self.checkInterval.Load(); v > 0 {
+		return v
+	}
+	return defaultHeartbeatCheckInterval
+}
+
+// PayloadSenderQueueSize returns the effective link payload sender queue size
+// from the applied config, falling back to the default when unset. Read when a
+// link channel is built, so a change takes effect on links established after
+// it; existing links keep the size they were built with.
+func (self *FactoryRegistry) PayloadSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.PayloadSenderQueueSize > 0 {
+		return self.config.PayloadSenderQueueSize
+	}
+	return defaultPayloadSenderQueueSize
+}
+
+// AckSenderQueueSize returns the effective link ack sender queue size from the
+// applied config, falling back to the default when unset. Like
+// PayloadSenderQueueSize, it applies to links established after a change.
+func (self *FactoryRegistry) AckSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.AckSenderQueueSize > 0 {
+		return self.config.AckSenderQueueSize
+	}
+	return defaultAckSenderQueueSize
+}
+
+// applyHeartbeatDuration parses a heartbeat duration string from config and
+// stores it (in nanos) for live reads. An empty value is left untouched so the
+// accessor's default applies; a malformed value (which the schema should
+// prevent) is logged and the previous value kept.
+func (self *FactoryRegistry) applyHeartbeatDuration(value string, target *concurrenz.AtomicValue[time.Duration], name string) {
+	if value != "" {
+		if d, err := time.ParseDuration(value); err == nil {
+			target.Store(d)
+			return
+		} else {
+			pfxlog.Logger().WithError(err).WithField("value", value).
+				Errorf("invalid heartbeats.%s; using default", name)
+		}
+	}
+	// The applied config is authoritative: an absent (or invalid) value reverts
+	// to the default rather than retaining a previously-applied one.
+	target.Store(0)
 }
 
 // ConfigurationChange describes which parts of the link configuration
@@ -76,6 +180,10 @@ type ConfigurationChange struct {
 	// GcModeChanged is true when the gcMode field transitioned. The
 	// handler should consult the current config for the new mode.
 	GcModeChanged bool
+	// HeartbeatsChanged is true when any heartbeat field (send/check interval
+	// or close-unresponsive timeout) differs from the previous state. The
+	// handler retunes established links' heartbeat intervals in response.
+	HeartbeatsChanged bool
 }
 
 // ConfigurationChangeHandler is invoked asynchronously after a successful
@@ -175,6 +283,19 @@ func (self *FactoryRegistry) Apply(version int, data string) error {
 	handler := self.changeHandler
 	self.mu.Unlock()
 
+	// Apply the heartbeat settings so they take effect on established links,
+	// not just new ones: the callbacks read closeUnresponsiveTimeout live, and
+	// onLinkSubsystemChanged pushes interval changes via UpdateHeartbeatIntervals.
+	// The applied config is authoritative, so settings absent from it revert to
+	// their defaults (handled in applyHeartbeatDuration).
+	var hb HeartbeatsConfig
+	if cfg.Heartbeats != nil {
+		hb = *cfg.Heartbeats
+	}
+	self.applyHeartbeatDuration(hb.CloseUnresponsiveTimeout, &self.closeUnresponsiveTimeout, "closeUnresponsiveTimeout")
+	self.applyHeartbeatDuration(hb.SendInterval, &self.sendInterval, "sendInterval")
+	self.applyHeartbeatDuration(hb.CheckInterval, &self.checkInterval, "checkInterval")
+
 	closeListeners(oldListeners)
 	setDefaultDialerBinding(newListeners, newDialers)
 	if err := startListeners(newListeners); err != nil {
@@ -199,6 +320,15 @@ func (self *FactoryRegistry) Remove() error {
 	handler := self.changeHandler
 	self.mu.Unlock()
 
+	// A removed config is no longer authoritative, so its heartbeat settings
+	// revert to the defaults, mirroring how Apply treats a config that omits
+	// them. Without this, the removed intervals would linger on the lock-free
+	// accessors and the change handler would retune established links to the
+	// stale values instead of the defaults.
+	self.closeUnresponsiveTimeout.Store(0)
+	self.sendInterval.Store(0)
+	self.checkInterval.Store(0)
+
 	closeListeners(oldListeners)
 	notifyChange(handler, prevConfig, nil)
 	return nil
@@ -214,14 +344,24 @@ func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
 		return
 	}
 	change := ConfigurationChange{
-		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
-		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
-		GcModeChanged:    getGcMode(prev) != getGcMode(next),
+		ListenersChanged:  !listenerSlicesEqual(getListeners(prev), getListeners(next)),
+		DialersChanged:    !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+		GcModeChanged:     getGcMode(prev) != getGcMode(next),
+		HeartbeatsChanged: getHeartbeats(prev) != getHeartbeats(next),
 	}
-	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged {
+	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged && !change.HeartbeatsChanged {
 		return
 	}
 	go handler(change)
+}
+
+// getHeartbeats returns a comparable value of the config's heartbeat settings
+// (zero value when unset), so notifyChange can detect heartbeat changes.
+func getHeartbeats(c *Config) HeartbeatsConfig {
+	if c == nil || c.Heartbeats == nil {
+		return HeartbeatsConfig{}
+	}
+	return *c.Heartbeats
 }
 
 func getGcMode(c *Config) string {

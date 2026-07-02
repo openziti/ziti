@@ -275,6 +275,26 @@ plausible refinement when we have multiple subsystems with item-level identity (
 ctrl-channel listeners), but the link subsystem doesn't need it. Add it when a second consumer
 shows up and the simple-rebuild approach has actual cost there.
 
+### Heartbeats and Queue Sizes
+
+Beyond listeners and dialers, the link handler applies the `router.link.v1` `heartbeats` settings
+and sender queue sizes from the effective config. These follow full-config (PUT) semantics: a field
+absent from the applied config reverts to its default rather than retaining a previously-applied
+value.
+
+- **`closeUnresponsiveTimeout`** is read live by each link's heartbeat callback, so a change takes
+  effect on established links on their next check.
+- **`sendInterval` / `checkInterval`** are applied at bind time for new links and pushed to
+  established links in place via the channel `HeartbeatControl` handle when the heartbeat config
+  changes — no link teardown.
+- **`payloadSenderQueueSize` / `ackSenderQueueSize`** are read when a link channel is built, so a
+  change applies to links established afterward; an established channel's send queues aren't resized.
+
+Split links (the legacy fallback for peers without multi-underlay support) are deprecated. They
+keep a single heartbeat control, so a live interval change reaches one of their two channels;
+multi-underlay is a superset of split links, and the `split` option is slated for removal in
+OpenZiti 4.0.
+
 ### Config Application Strategy
 
 The router maintains a config handler registry keyed by config type. When a config event arrives:
