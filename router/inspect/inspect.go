@@ -144,6 +144,8 @@ func (context *inspectRequestContext) processLocal() {
 		} else if lc == "router-data-model" {
 			result := context.handler.env.GetRouterDataModel()
 			context.handleJsonResponse(requested, result.ToMap())
+		} else if lc == inspect.RouterConfigRegistryKey {
+			context.handleJsonResponse(requested, context.handler.env.GetRouterConfigRegistry().Inspect())
 		} else if lc == "router-data-model-index" {
 			idx := context.handler.env.GetRouterDataModel().CurrentIndex()
 			data := map[string]any{
