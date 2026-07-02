@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/tui"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
