@@ -437,6 +437,16 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Current Beta Features
+
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will
+be removed.
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
+
 ## Removed Features
 
 * **Link `costTags`** - The `costTags` option on router link listeners has been
@@ -445,6 +455,22 @@ today and expand as packages are converted. The global `ziti agent set-log-level
   behavior. Routers ignore the setting if it is still present in config, and the
   corresponding protobuf fields are now reserved, so no migration is required
   beyond optionally deleting the setting.
+
+## Deprecated Features
+
+Deprecated features still work, but are no longer recommended and will be removed
+in a future release. Plan to migrate off them.
+
+* **Split links** - The split-channel link implementation (separate payload and
+  ack connections) is a fallback used only when dialing a router that doesn't
+  support multi-underlay links. The multi-underlay link implementation is a
+  superset of what split links provide, so nothing is lost by moving off them.
+  The deprecation proceeds in two steps: in OpenZiti 3.0 the `split` option will
+  be interpreted as a multi-underlay link with one ack and one payload channel,
+  retiring the separate split implementation; in OpenZiti 4.0 the `split`
+  configuration option will be removed entirely. As part of the deprecation,
+  controller-managed link heartbeat interval changes are applied in full only to
+  multi-underlay links.
 
 ## Component Updates and Bug Fixes
 
