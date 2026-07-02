@@ -50,9 +50,10 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 		return true
 	})
 
-	// Notify the forwarder that the circuit is ending
-	log.Debug("removing circuit from forwarder")
-	txc.forwarder.EndCircuit(x.CircuitId())
+	// Retire only this endpoint: on a single-router circuit the other endpoint is registered here too,
+	// and ends through the end of circuit above or the controller's unroute.
+	log.Debug("removing endpoint from forwarder")
+	txc.forwarder.UnregisterDestination(x.CircuitId(), x.Address(), x)
 
 	// Notify the controller of the xgress fault
 	subject := ctrl_pb.FaultSubject_IngressFault

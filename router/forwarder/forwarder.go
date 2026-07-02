@@ -119,21 +119,36 @@ func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress
 	forwarder.destinations.linkDestinationToCircuit(circuitId, address)
 }
 
+// UnregisterDestinations removes every destination linked to the circuit and calls Unrouted on each.
 func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
 	log := routeLog.With("circuitId", circuitId)
-	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
+	if addresses, found := forwarder.destinations.takeAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
-			if destination, found := forwarder.destinations.getDestination(address); found {
+			if destination, found := forwarder.destinations.takeDestination(address); found {
 				log.Debug("unregistering destination for circuit", "address", address)
-				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Unrouted()
 			} else {
 				log.Debug("no destinations found for address", "address", address)
 			}
 		}
-		forwarder.destinations.unlinkCircuit(circuitId)
 	} else {
 		log.Debug("found no addresses to unregister for circuit")
+	}
+}
+
+// UnregisterDestination removes destination from address if it is still registered there, unlinks
+// address from the circuit and calls destination's Unrouted, leaving the circuit's other destinations
+// on this router in place. It does nothing if address is unregistered or holds a different destination.
+// A destination that UnregisterDestinations removes concurrently is unrouted once, by whichever call
+// removes it.
+func (forwarder *Forwarder) UnregisterDestination(circuitId string, address xgress.Address, destination env.Destination) {
+	log := routeLog.With("circuitId", circuitId, "address", address)
+	if forwarder.destinations.takeDestinationIfMatches(address, destination) {
+		log.Debug("unregistering single destination for circuit")
+		forwarder.destinations.unlinkDestinationFromCircuit(circuitId, address)
+		go destination.(XgressDestination).Unrouted()
+	} else {
+		log.Debug("destination not removed, address unregistered or holding another destination")
 	}
 }
 

@@ -19,12 +19,13 @@ package forwarder
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/orcaman/concurrent-map/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // circuitTable implements a directory of forwardTables, keyed by circuitId.
@@ -103,7 +104,11 @@ func (ft *forwardTable) debug() string {
 // destinationTable implements a directory of destinations, keyed by Address.
 type destinationTable struct {
 	destinations cmap.ConcurrentMap[string, env.Destination]
-	xgress       cmap.ConcurrentMap[string, []xgress.Address]
+
+	// circuitLock guards the read-modify-write updates of xgress, which cmap doesn't make atomic. An
+	// address lost from a circuit's list strands its destination, since teardown finds destinations there.
+	circuitLock sync.Mutex
+	xgress      cmap.ConcurrentMap[string, []xgress.Address]
 }
 
 func newDestinationTable() *destinationTable {
@@ -124,8 +129,18 @@ func (dt *destinationTable) getDestination(addr xgress.Address) (env.Destination
 	return nil, false
 }
 
-func (dt *destinationTable) removeDestination(addr xgress.Address) {
-	dt.destinations.Remove(string(addr))
+// takeDestination removes the destination at addr and returns it. Of several concurrent callers for
+// the same addr, at most one gets found true.
+func (dt *destinationTable) takeDestination(addr xgress.Address) (env.Destination, bool) {
+	return dt.destinations.Pop(string(addr))
+}
+
+// takeDestinationIfMatches removes the destination at addr if it is destination, reporting whether it
+// did. The compare and remove are atomic.
+func (dt *destinationTable) takeDestinationIfMatches(addr xgress.Address, destination env.Destination) bool {
+	return dt.destinations.RemoveCb(string(addr), func(_ string, v env.Destination, exists bool) bool {
+		return exists && v == destination
+	})
 }
 
 func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, destination env.Destination) {
@@ -135,14 +150,11 @@ func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, dest
 }
 
 func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
-	var addresses []xgress.Address
-	if i, found := dt.xgress.Get(circuitId); found {
-		addresses = i
-	} else {
-		addresses = make([]xgress.Address, 0)
-	}
-	addresses = append(addresses, address)
-	dt.xgress.Set(circuitId, addresses)
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, _ := dt.xgress.Get(circuitId)
+	dt.xgress.Set(circuitId, append(addresses, address))
 }
 
 func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
@@ -152,8 +164,41 @@ func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.A
 	return nil, false
 }
 
-func (dt *destinationTable) unlinkCircuit(circuitId string) {
+// takeAddressesForCircuit removes the circuit's address list and returns it in one step. An address
+// linked afterwards starts a new list, which a later teardown of the circuit finds.
+func (dt *destinationTable) takeAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, found := dt.xgress.Get(circuitId)
+	if !found {
+		return nil, false
+	}
 	dt.xgress.Remove(circuitId)
+	return addresses, true
+}
+
+// unlinkDestinationFromCircuit removes address from the circuit's address list, leaving the circuit's
+// other addresses linked, and removes the list once it is empty.
+func (dt *destinationTable) unlinkDestinationFromCircuit(circuitId string, address xgress.Address) {
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, found := dt.xgress.Get(circuitId)
+	if !found {
+		return
+	}
+	var remaining []xgress.Address
+	for _, addr := range addresses {
+		if addr != address {
+			remaining = append(remaining, addr)
+		}
+	}
+	if len(remaining) == 0 {
+		dt.xgress.Remove(circuitId)
+		return
+	}
+	dt.xgress.Set(circuitId, remaining)
 }
 
 func (dt *destinationTable) debug() string {
