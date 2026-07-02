@@ -23,9 +23,10 @@ type TestLink struct {
 }
 
 type LinkStateChecker struct {
-	errorC chan error
-	links  map[string]*TestLink
-	req    *require.Assertions
+	errorC        chan error
+	links         map[string]*TestLink
+	pendingFaults map[string]int
+	req           *require.Assertions
 	sync.Mutex
 }
 
@@ -48,12 +49,19 @@ func (self *LinkStateChecker) HandleLink(msg *channel.Message, ch channel.Channe
 	for _, link := range routerLinks.Links {
 		testLink, ok := self.links[link.Id]
 		if !ok {
-			self.links[link.Id] = &TestLink{
+			newLink := &TestLink{
 				Id:    link.Id,
 				Src:   ch.Id(),
 				Dest:  link.DestRouterId,
 				Valid: true,
 			}
+			// Apply any faults that arrived before this link was registered.
+			if pendingCount, hasPending := self.pendingFaults[link.Id]; hasPending {
+				newLink.FaultCount = pendingCount
+				newLink.Valid = false
+				delete(self.pendingFaults, link.Id)
+			}
+			self.links[link.Id] = newLink
 		} else {
 			if testLink.Src != ch.Id() {
 				self.reportError(fmt.Errorf("source router change for link %v => %v", testLink.Src, ch.Id()))
@@ -61,7 +69,11 @@ func (self *LinkStateChecker) HandleLink(msg *channel.Message, ch channel.Channe
 			if testLink.Dest != link.DestRouterId {
 				self.reportError(fmt.Errorf("dest router change for link %v => %v", testLink.Dest, link.DestRouterId))
 			}
-			testLink.Valid = true
+			// Don't resurrect a link that has been faulted. A router may re-report a
+			// faulted link on reconnect before it's finished closing the duplicate.
+			if testLink.FaultCount == 0 {
+				testLink.Valid = true
+			}
 		}
 	}
 }
@@ -82,9 +94,11 @@ func (self *LinkStateChecker) HandleFault(msg *channel.Message, _ channel.Channe
 		if link, found := self.links[fault.Id]; found {
 			link.FaultCount++
 			link.Valid = false
+		} else {
+			// Fault arrived before the link was registered via HandleLink.
+			// Track it so HandleLink can apply it when the link shows up.
+			self.pendingFaults[fault.Id]++
 		}
-		// Faults for unknown link IDs are expected — the fault can arrive
-		// before the link is registered via HandleLink due to message ordering.
 	}
 }
 
@@ -139,9 +153,10 @@ func (self *LinkStateChecker) RequireOneActiveLink() *TestLink {
 
 func NewLinkChecker(assertions *require.Assertions) *LinkStateChecker {
 	checker := &LinkStateChecker{
-		errorC: make(chan error, 4),
-		links:  map[string]*TestLink{},
-		req:    assertions,
+		errorC:        make(chan error, 4),
+		links:         map[string]*TestLink{},
+		pendingFaults: map[string]int{},
+		req:           assertions,
 	}
 	return checker
 }
