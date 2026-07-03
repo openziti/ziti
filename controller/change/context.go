@@ -18,9 +18,10 @@ package change
 
 import (
 	"context"
+	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 type ContextKeyType string
@@ -65,6 +66,13 @@ func New() *Context {
 type Context struct {
 	Attributes map[string]string
 	RaftIndex  uint64
+	// Timestamp is the wall-clock time of the mutation, stamped once on the
+	// originating controller when the command is dispatched. Because it travels
+	// with the replicated command, every raft node applies the same value.
+	// Apply-time code that must be consistent across the cluster (e.g. a store
+	// constraint deriving a revocation cutoff) uses this instead of a per-node
+	// time.Now(). Zero when unset.
+	Timestamp time.Time
 }
 
 type Author struct {
@@ -169,7 +177,26 @@ func (self *Context) ToProtoBuf() *cmd_pb.ChangeContext {
 	return &cmd_pb.ChangeContext{
 		Attributes: self.Attributes,
 		RaftIndex:  self.RaftIndex,
+		Timestamp:  TimeToUnixNanos(self.Timestamp),
 	}
+}
+
+// TimeToUnixNanos encodes a time as unix nanoseconds for the wire, mapping the
+// zero time to 0 so it round-trips as "unset".
+func TimeToUnixNanos(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixNano()
+}
+
+// UnixNanosToTime decodes a wire timestamp produced by TimeToUnixNanos, mapping
+// 0 back to the zero time.
+func UnixNanosToTime(nanos int64) time.Time {
+	if nanos == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, nanos)
 }
 
 func (self *Context) GetContext() context.Context {
@@ -205,6 +232,7 @@ func FromProtoBuf(ctx *cmd_pb.ChangeContext) *Context {
 	result := &Context{
 		Attributes: ctx.Attributes,
 		RaftIndex:  ctx.RaftIndex,
+		Timestamp:  UnixNanosToTime(ctx.Timestamp),
 	}
 	if result.Attributes == nil {
 		result.Attributes = map[string]string{}

@@ -47,6 +47,7 @@ func ContextToProtobuf(context *change.Context) *edge_cmd_pb.ChangeContext {
 	return &edge_cmd_pb.ChangeContext{
 		Attributes: context.Attributes,
 		RaftIndex:  context.RaftIndex,
+		Timestamp:  change.TimeToUnixNanos(context.Timestamp),
 	}
 }
 
@@ -57,5 +58,6 @@ func ProtobufToContext(context *edge_cmd_pb.ChangeContext) *change.Context {
 	return &change.Context{
 		Attributes: context.Attributes,
 		RaftIndex:  context.RaftIndex,
+		Timestamp:  change.UnixNanosToTime(context.Timestamp),
 	}
 }

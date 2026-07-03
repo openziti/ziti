@@ -96,9 +96,14 @@ func (CommandType) EnumDescriptor() ([]byte, []int) {
 }
 
 type ChangeContext struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attributes    map[string]string      `protobuf:"bytes,1,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	RaftIndex     uint64                 `protobuf:"varint,2,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Attributes map[string]string      `protobuf:"bytes,1,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RaftIndex  uint64                 `protobuf:"varint,2,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
+	// timestamp is the wall-clock time of the mutation as unix nanoseconds,
+	// stamped once on the originating controller so every raft node applies the
+	// same value. Apply-time code that needs a cluster-consistent "now" (rather
+	// than a per-node time.Now()) reads this. 0 means unset.
+	Timestamp     int64 `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -143,6 +148,13 @@ func (x *ChangeContext) GetAttributes() map[string]string {
 func (x *ChangeContext) GetRaftIndex() uint64 {
 	if x != nil {
 		return x.RaftIndex
+	}
+	return 0
+}
+
+func (x *ChangeContext) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
 	}
 	return 0
 }
@@ -4763,12 +4775,13 @@ var File_edge_cmd_proto protoreflect.FileDescriptor
 
 const file_edge_cmd_proto_rawDesc = "" +
 	"\n" +
-	"\x0eedge_cmd.proto\x12\x10ziti.edge_cmd.pb\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbd\x01\n" +
+	"\x0eedge_cmd.proto\x12\x10ziti.edge_cmd.pb\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x01\n" +
 	"\rChangeContext\x12O\n" +
 	"\n" +
 	"attributes\x18\x01 \x03(\v2/.ziti.edge_cmd.pb.ChangeContext.AttributesEntryR\n" +
 	"attributes\x12\x1c\n" +
-	"\traftIndex\x18\x02 \x01(\x04R\traftIndex\x1a=\n" +
+	"\traftIndex\x18\x02 \x01(\x04R\traftIndex\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"x\n" +

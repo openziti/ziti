@@ -31,6 +31,11 @@ enum CommandType {
 message ChangeContext {
   map<string, string> attributes = 1;
   uint64 raftIndex = 2;
+  // timestamp is the wall-clock time of the mutation as unix nanoseconds,
+  // stamped once on the originating controller so every raft node applies the
+  // same value. Apply-time code that needs a cluster-consistent "now" (rather
+  // than a per-node time.Now()) reads this. 0 means unset.
+  int64 timestamp = 3;
 }
 
 message AddPeerRequest {

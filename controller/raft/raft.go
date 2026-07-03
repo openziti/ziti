@@ -41,7 +41,6 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -53,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/peermsg"
 	"github.com/openziti/ziti/v2/controller/raft/mesh"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
 )
@@ -318,6 +318,13 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 
 	if self.Mesh.IsReadOnly() {
 		return errors.New("unable to execute command. In a readonly state: different versions detected in cluster")
+	}
+
+	// Stamp the mutation time once here, before the command is encoded and
+	// replicated, so every raft node applies the same value rather than each
+	// deriving its own time.Now() during apply.
+	if changeCtx := cmd.GetChangeContext(); changeCtx != nil && changeCtx.Timestamp.IsZero() {
+		changeCtx.Timestamp = time.Now()
 	}
 
 	if self.IsLeader() {
