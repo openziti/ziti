@@ -50,7 +50,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
@@ -64,6 +63,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/events"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -229,7 +229,7 @@ func (ae *AppEnv) ValidateAccessToken(token string) (*common.AccessClaims, error
 		return nil, err
 	}
 
-	if revocation != nil && !revocation.CreatedAt.Truncate(time.Second).Before(accessClaims.IssuedAt.AsTime()) {
+	if revocation != nil && revocation.RevokesSessionIssuedAt(accessClaims.IssuedAt.AsTime()) {
 		return nil, errors.New("access token has been revoked by identity")
 	}
 
@@ -295,7 +295,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		return nil, err
 	}
 
-	if revocation != nil && revocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
+	if revocation != nil && revocation.RevokesSessionIssuedAt(serviceAccessClaims.IssuedAt.Time) {
 		return nil, errors.New("service access token has been revoked by identity")
 	}
 

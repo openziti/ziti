@@ -56,10 +56,13 @@ func (self *IdentityRevocationConstraint) ProcessPreCommit(state *boltz.EntityCh
 	switch state.ChangeType {
 	case boltz.EntityDeleted:
 		if state.InitialState != nil {
-			// A deleted identity can never re-authenticate, so the cutoff is the
-			// moment of deletion. Take it from the replicated change context so
-			// every raft node writes the same value.
-			return self.revoke(state, state.InitialState.Id, self.mutationTime(state))
+			// A deleted identity can never re-authenticate, so there's nothing to
+			// preserve past a cutoff: revoke all of its sessions (a zero
+			// IssuedBefore). This also avoids a cutoff window; any token minted
+			// while the delete was in flight is still covered. ExpiresAt only bounds
+			// how long the revocation lingers, so it uses the replicated change
+			// context time to stay identical across nodes.
+			return self.revoke(state, state.InitialState.Id, self.mutationTime(state), time.Time{})
 		}
 	case boltz.EntityUpdated:
 		// Only the transition into the disabled state warrants a revocation;
@@ -67,11 +70,14 @@ func (self *IdentityRevocationConstraint) ProcessPreCommit(state *boltz.EntityCh
 		// existing revocation untouched.
 		if state.InitialState != nil && state.FinalState != nil &&
 			state.InitialState.DisabledAt == nil && state.FinalState.DisabledAt != nil {
-			// DisabledAt is stamped once on the originating controller and carried
-			// in the update command, so it's identical on every node and is exactly
-			// the cutoff we want: sessions issued before the disable are revoked,
-			// while one re-authenticated after a re-enable survives.
-			return self.revoke(state, state.FinalState.Id, *state.FinalState.DisabledAt)
+			// A disabled identity can be re-enabled, so the revocation lingers with
+			// a cutoff (Enable does not clear it): sessions issued before the
+			// disable stay revoked, while one authenticated after a re-enable
+			// survives. DisabledAt is stamped once on the originating controller and
+			// carried in the update command, so it's identical on every node and is
+			// exactly that cutoff.
+			disabledAt := *state.FinalState.DisabledAt
+			return self.revoke(state, state.FinalState.Id, disabledAt, disabledAt)
 		}
 	}
 	return nil
@@ -93,16 +99,18 @@ func (self *IdentityRevocationConstraint) mutationTime(state *boltz.EntityChange
 func (self *IdentityRevocationConstraint) ProcessPostCommit(*boltz.EntityChangeState[*Identity]) {}
 
 // revoke creates, replacing any prior entry, an identity-scoped revocation within
-// the change's transaction. The cutoff is at, so a session re-authenticated
-// after a re-enable survives the still-lingering revocation. at must be a
-// cluster-consistent value (not a per-node time.Now()) so the revocation is
-// identical across controllers and routers.
-func (self *IdentityRevocationConstraint) revoke(state *boltz.EntityChangeState[*Identity], identityId string, at time.Time) error {
+// the change's transaction. It expires revocationTtl() past expiresBase. A
+// non-zero issuedBefore revokes only sessions issued before that cutoff, so one
+// authenticated after a re-enable survives the still-lingering revocation; a zero
+// issuedBefore revokes all of the identity's sessions. Both expiresBase and
+// issuedBefore must be cluster-consistent values (not a per-node time.Now()) so
+// the revocation is identical across controllers and routers.
+func (self *IdentityRevocationConstraint) revoke(state *boltz.EntityChangeState[*Identity], identityId string, expiresBase time.Time, issuedBefore time.Time) error {
 	revocation := &Revocation{
 		BaseExtEntity: *boltz.NewExtEntity(identityId, nil),
-		ExpiresAt:     at.Add(self.revocationTtl()),
+		ExpiresAt:     expiresBase.Add(self.revocationTtl()),
 		Type:          self.revocationType,
-		IssuedBefore:  at,
+		IssuedBefore:  issuedBefore,
 	}
 
 	ctx := state.GetCtx()

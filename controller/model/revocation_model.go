@@ -32,6 +32,19 @@ type Revocation struct {
 	IssuedBefore time.Time
 }
 
+// RevokesSessionIssuedAt reports whether this identity revocation applies to a
+// session issued at issuedAt. A zero IssuedBefore revokes all of the identity's
+// sessions; otherwise only those issued strictly before the cutoff are revoked,
+// so a session authenticated after a re-enable survives a still-lingering
+// revocation. This mirrors RouterDataModel.IsIdentityRevoked so the controller
+// and the routers agree on the cutoff.
+func (entity *Revocation) RevokesSessionIssuedAt(issuedAt time.Time) bool {
+	if entity.IssuedBefore.IsZero() {
+		return true
+	}
+	return issuedAt.Before(entity.IssuedBefore)
+}
+
 func (entity *Revocation) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*db.Revocation, error) {
 	return entity.toBoltEntityForCreate(tx, env)
 }
