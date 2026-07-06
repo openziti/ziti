@@ -7,6 +7,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.0.1](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
+    * [Issue #4083](https://github.com/openziti/ziti/issues/4083) - [Backport-2.0] Controller bootstrap misclassifies DNS names like `8.8.8.8.nip.io` when generating cert SANs. The advertised address is now classified as IPv4 only on an anchored dotted-quad, and any ":" is treated as an IPv6 address
     * [Issue #4070](https://github.com/openziti/ziti/issues/4070) - [Backport-2.0] Controller can cache empty apiAddresses forever due to startup race between raft mesh and xweb config load
     * [Issue #4049](https://github.com/openziti/ziti/issues/4049) - [Backport-2.0] Non-admin with enrollment permission can escalate to admin identity
     * [Issue #4031](https://github.com/openziti/ziti/issues/4031) - [Backport-2.0] Router deletes terminators ~12m after creation when host SDK replies with wrong inspect content type

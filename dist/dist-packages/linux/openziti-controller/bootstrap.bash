@@ -134,7 +134,8 @@ issueLeafCerts() {
   if [[ "${ZITI_AUTO_RENEW_CERTS}" == true || ! -s "$ZITI_PKI_CTRL_SERVER_CERT" ]]; then
     local _dns_sans="localhost"
     local _ip_sans="127.0.0.1,::1"
-    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.?){4} ]]; then
+    # any ":" is treated as an IPv6 address (hostnames never contain one); otherwise dotted-quad => IPv4
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" == *:* || "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
       _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
     else
       _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
@@ -776,7 +777,8 @@ installCertRenewalTimer() {
   # Compute SANs exactly as issueLeafCerts() does
   local _dns_sans="localhost"
   local _ip_sans="127.0.0.1,::1"
-  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.?){4} ]]; then
+  # any ":" is treated as an IPv6 address (hostnames never contain one); otherwise dotted-quad => IPv4
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" == *:* || "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
     _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
   else
     _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
