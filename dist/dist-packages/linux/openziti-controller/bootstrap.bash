@@ -135,7 +135,7 @@ issueLeafCerts() {
     local _dns_sans="localhost"
     local _ip_sans="127.0.0.1,::1"
     # any ":" is treated as an IPv6 address (hostnames never contain one); otherwise dotted-quad => IPv4
-  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" == *:* || "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" == *:* || "${ZITI_CTRL_ADVERTISED_ADDRESS:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
       _ip_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
     else
       _dns_sans+=",${ZITI_CTRL_ADVERTISED_ADDRESS}"
