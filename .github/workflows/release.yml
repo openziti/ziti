@@ -142,7 +142,7 @@ jobs:
     with:
       ziti-artifact: release-${{ github.run_id }}
       tests-repo: openziti/ziti-tunnel-sdk-c
-      zetA-version: v1.17.0
+      zetA-version: latest
       label: ${{ github.ref_name }}
 
   publish:
