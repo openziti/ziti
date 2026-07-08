@@ -156,6 +156,29 @@ func (dt *destinationTable) unlinkCircuit(circuitId string) {
 	dt.xgress.Remove(circuitId)
 }
 
+// unlinkDestinationFromCircuit removes a single address from the circuit's address list, leaving
+// any other addresses linked to the circuit intact. It returns true if the circuit still has
+// addresses linked after removal (another endpoint remains on this router), false if that was the
+// last one (in which case the circuit's entry is removed entirely).
+func (dt *destinationTable) unlinkDestinationFromCircuit(circuitId string, address xgress.Address) bool {
+	addresses, found := dt.xgress.Get(circuitId)
+	if !found {
+		return false
+	}
+	var remaining []xgress.Address
+	for _, addr := range addresses {
+		if addr != address {
+			remaining = append(remaining, addr)
+		}
+	}
+	if len(remaining) == 0 {
+		dt.xgress.Remove(circuitId)
+		return false
+	}
+	dt.xgress.Set(circuitId, remaining)
+	return true
+}
+
 func (dt *destinationTable) debug() string {
 	out := fmt.Sprintf("\ndestinations (%d):\n\n", dt.destinations.Count())
 	for i := range dt.destinations.IterBuffered() {

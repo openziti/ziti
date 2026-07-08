@@ -774,7 +774,12 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
-	self.forwarder.EndCircuit(circuitId)
+	// Endpoint-scoped cleanup: retire only this endpoint's forwarding destination, not every
+	// destination for the circuit. For a multi-router circuit this router only hosts one endpoint,
+	// so it is equivalent to ending the circuit. For a single-router circuit (ingress and
+	// terminator on the same router), it preserves the co-located terminator endpoint that the
+	// other conn registered, instead of tearing the whole circuit down when one side closes.
+	self.forwarder.UnregisterDestination(circuitId, edgeForwarder.address)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault
