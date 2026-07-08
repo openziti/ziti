@@ -19,6 +19,7 @@ package db
 import (
 	"time"
 
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -39,8 +40,8 @@ type IdentityRevocationConstraint struct {
 }
 
 // NewIdentityRevocationConstraint builds an IdentityRevocationConstraint that
-// writes revocations of the given type into revocationStore, with an expiry of
-// now plus revocationTtl() (the longest a token could remain valid).
+// writes revocations of the given type into revocationStore, expiring
+// revocationTtl() (the longest a token could remain valid) past the mutation.
 func NewIdentityRevocationConstraint(revocationStore RevocationStore, revocationType string, revocationTtl func() time.Duration) *IdentityRevocationConstraint {
 	return &IdentityRevocationConstraint{
 		revocationStore: revocationStore,
@@ -55,7 +56,13 @@ func (self *IdentityRevocationConstraint) ProcessPreCommit(state *boltz.EntityCh
 	switch state.ChangeType {
 	case boltz.EntityDeleted:
 		if state.InitialState != nil {
-			return self.revoke(state, state.InitialState.Id)
+			// A deleted identity can never re-authenticate, so there's nothing to
+			// preserve past a cutoff: revoke all of its sessions (a zero
+			// IssuedBefore). This also avoids a cutoff window; any token minted
+			// while the delete was in flight is still covered. ExpiresAt only bounds
+			// how long the revocation lingers, so it uses the replicated change
+			// context time to stay identical across nodes.
+			return self.revoke(state, state.InitialState.Id, self.mutationTime(state), time.Time{})
 		}
 	case boltz.EntityUpdated:
 		// Only the transition into the disabled state warrants a revocation;
@@ -63,10 +70,28 @@ func (self *IdentityRevocationConstraint) ProcessPreCommit(state *boltz.EntityCh
 		// existing revocation untouched.
 		if state.InitialState != nil && state.FinalState != nil &&
 			state.InitialState.DisabledAt == nil && state.FinalState.DisabledAt != nil {
-			return self.revoke(state, state.FinalState.Id)
+			// A disabled identity can be re-enabled, so the revocation lingers with
+			// a cutoff (Enable does not clear it): sessions issued before the
+			// disable stay revoked, while one authenticated after a re-enable
+			// survives. DisabledAt is stamped once on the originating controller and
+			// carried in the update command, so it's identical on every node and is
+			// exactly that cutoff.
+			disabledAt := *state.FinalState.DisabledAt
+			return self.revoke(state, state.FinalState.Id, disabledAt, disabledAt)
 		}
 	}
 	return nil
+}
+
+// mutationTime returns the cluster-consistent time of the current mutation,
+// read from the replicated change context so it's identical on every raft node.
+// It falls back to time.Now() only when no change context is present, a path
+// with no raft peer to diverge from.
+func (self *IdentityRevocationConstraint) mutationTime(state *boltz.EntityChangeState[*Identity]) time.Time {
+	if changeCtx := change.FromContext(state.GetCtx().Context()); changeCtx != nil && !changeCtx.Timestamp.IsZero() {
+		return changeCtx.Timestamp
+	}
+	return time.Now()
 }
 
 // ProcessPostCommit is a no-op; the revocation is persisted in ProcessPreCommit
@@ -74,15 +99,18 @@ func (self *IdentityRevocationConstraint) ProcessPreCommit(state *boltz.EntityCh
 func (self *IdentityRevocationConstraint) ProcessPostCommit(*boltz.EntityChangeState[*Identity]) {}
 
 // revoke creates, replacing any prior entry, an identity-scoped revocation within
-// the change's transaction. The cutoff is now, so a session re-authenticated
-// after a re-enable survives the still-lingering revocation.
-func (self *IdentityRevocationConstraint) revoke(state *boltz.EntityChangeState[*Identity], identityId string) error {
-	now := time.Now()
+// the change's transaction. It expires revocationTtl() past expiresBase. A
+// non-zero issuedBefore revokes only sessions issued before that cutoff, so one
+// authenticated after a re-enable survives the still-lingering revocation; a zero
+// issuedBefore revokes all of the identity's sessions. Both expiresBase and
+// issuedBefore must be cluster-consistent values (not a per-node time.Now()) so
+// the revocation is identical across controllers and routers.
+func (self *IdentityRevocationConstraint) revoke(state *boltz.EntityChangeState[*Identity], identityId string, expiresBase time.Time, issuedBefore time.Time) error {
 	revocation := &Revocation{
 		BaseExtEntity: *boltz.NewExtEntity(identityId, nil),
-		ExpiresAt:     now.Add(self.revocationTtl()),
+		ExpiresAt:     expiresBase.Add(self.revocationTtl()),
 		Type:          self.revocationType,
-		IssuedBefore:  now,
+		IssuedBefore:  issuedBefore,
 	}
 
 	ctx := state.GetCtx()

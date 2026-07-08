@@ -18,14 +18,15 @@ package command
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -110,6 +111,13 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 	changeCtx := command.GetChangeContext()
 	if changeCtx == nil {
 		changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
+	}
+
+	// Stamp the mutation time so apply-time code sees a populated timestamp,
+	// mirroring the clustered dispatcher. A single node can't diverge, so the
+	// value only needs to be present, not agreed upon.
+	if changeCtx.Timestamp.IsZero() {
+		changeCtx.Timestamp = time.Now()
 	}
 
 	if self.EncodeDecodeCommands {
