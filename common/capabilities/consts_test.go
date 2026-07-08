@@ -29,8 +29,11 @@ func TestRouterCapabilityBitNumbering(t *testing.T) {
 	req := require.New(t)
 	req.Equal(RouterCapability(1), RouterMultiChannel)
 	req.Equal(RouterCapability(2), RouterConnectV2)
-	req.Equal(RouterCapability(3), RouterDataModel)
 	req.Equal(RouterCapability(4), RouterServiceSubscriptions)
+	// RouterDataModel is side-local (controller<->router only): negative position, off the
+	// SDK-shared namespace; its former shared value 3 is reserved in the proto enum. -2 because
+	// -1 (bit 63) cannot ride the persisted int64 mask.
+	req.Equal(RouterCapability(-2), RouterDataModel)
 }
 
 func TestGetRouterCapabilitiesMask(t *testing.T) {

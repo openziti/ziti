@@ -18,12 +18,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/channel/v5 v5.0.15
-	github.com/openziti/edge-api v0.34.1-0.20260703041337-e7f938dcaa70
+	github.com/openziti/edge-api v0.34.1-0.20260708010227-97580244baa3
 	github.com/openziti/fablab v0.6.16
 	github.com/openziti/foundation/v2 v2.0.99
 	github.com/openziti/identity v1.0.137
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang/v2 v2.0.0-pre2.0.20260707151121-8583f398a772
+	github.com/openziti/sdk-golang/v2 v2.0.0-pre2.0.20260708011019-9a6de267b69f
 	github.com/openziti/transport/v2 v2.0.216
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -110,8 +110,8 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.25.3 // indirect
 	github.com/go-openapi/errors v0.22.8 // indirect
-	github.com/go-openapi/jsonpointer v0.24.0 // indirect
-	github.com/go-openapi/jsonreference v0.21.6 // indirect
+	github.com/go-openapi/jsonpointer v1.0.0 // indirect
+	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/loads v0.24.0 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.32.4 // indirect
 	github.com/go-openapi/spec v0.22.6 // indirect

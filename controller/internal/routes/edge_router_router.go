@@ -204,7 +204,6 @@ var routerCapabilityBitNames = map[capabilities.RouterCapability]rest_model.Rout
 	capabilities.RouterMultiChannel:         rest_model.RouterCapabilitiesMULTICHANNEL,
 	capabilities.RouterConnectV2:            rest_model.RouterCapabilitiesCONNECTV2,
 	capabilities.RouterServiceSubscriptions: rest_model.RouterCapabilitiesSERVICESUBSCRIPTIONS,
-	capabilities.RouterDataModel:            rest_model.RouterCapabilitiesRDMSUPPORTED,
 	capabilities.RouterPostureChecks:        rest_model.RouterCapabilitiesPOSTURECHECKS,
 	capabilities.RouterBindSuccess:          rest_model.RouterCapabilitiesBINDSUCCESS,
 }

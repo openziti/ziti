@@ -67,8 +67,10 @@ func Test_EdgeRouterCapabilities(t *testing.T) {
 	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesMULTICHANNEL))
 	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesCONNECTV2))
 	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesSERVICESUBSCRIPTIONS))
-	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesRDMSUPPORTED))
 	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesPOSTURECHECKS))
+	// RouterDataModel is side-local (controller<->router only, negative bit position) and is
+	// deliberately absent from the rendered capability strings.
+	ctx.Req.NotContains(edgeRouter.Capabilities, "RDM_SUPPORTED")
 	ctx.Req.Contains(edgeRouter.Capabilities, string(rest_model.RouterCapabilitiesBINDSUCCESS))
 	ctx.Req.Equal("v0.0.0", edgeRouter.Version, "router-reported test version should be persisted")
 
@@ -87,7 +89,6 @@ func Test_EdgeRouterCapabilities(t *testing.T) {
 		ctx.Req.ElementsMatch([]rest_model.RouterCapabilities{
 			rest_model.RouterCapabilitiesMULTICHANNEL,
 			rest_model.RouterCapabilitiesCONNECTV2,
-			rest_model.RouterCapabilitiesRDMSUPPORTED,
 			rest_model.RouterCapabilitiesSERVICESUBSCRIPTIONS,
 			rest_model.RouterCapabilitiesPOSTURECHECKS,
 			rest_model.RouterCapabilitiesBINDSUCCESS,

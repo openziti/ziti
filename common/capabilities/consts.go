@@ -92,8 +92,12 @@ const (
 	// RouterConnectV2 indicates the router supports the ConnectV2 message flow
 	RouterConnectV2 RouterCapability = RouterCapability(edge_client_pb.RouterCapability_ConnectV2)
 
-	// RouterDataModel indicates the router supports the router data model
-	RouterDataModel RouterCapability = RouterCapability(edge_client_pb.RouterCapability_RouterDataModel)
+	// RouterDataModel indicates the router supports the router data model. This capability is
+	// meaningful only between controller and router, so it lives at a negative (side-local)
+	// position rather than in the SDK-shared enum; its former shared value 3 is reserved.
+	// Side-local capabilities start at -2: -1 maps to bit 63, which cannot ride the controller's
+	// persisted int64 capabilities mask (sign bit).
+	RouterDataModel RouterCapability = -2
 
 	// RouterServiceSubscriptions indicates the router can push service change and posture
 	// state notifications to subscribed SDK clients over the edge protocol
