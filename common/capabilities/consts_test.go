@@ -29,6 +29,8 @@ func TestRouterCapabilityBitNumbering(t *testing.T) {
 	req := require.New(t)
 	req.Equal(RouterCapability(1), RouterMultiChannel)
 	req.Equal(RouterCapability(2), RouterConnectV2)
+	req.Equal(RouterCapability(3), RouterDataModel)
+	req.Equal(RouterCapability(4), RouterServiceSubscriptions)
 }
 
 func TestGetRouterCapabilitiesMask(t *testing.T) {
@@ -38,8 +40,7 @@ func TestGetRouterCapabilitiesMask(t *testing.T) {
 	req.True(mask.IsSet(RouterConnectV2))
 	req.True(mask.IsSet(RouterPostureChecks))
 	req.True(mask.IsSet(RouterBindSuccess))
+	req.True(mask.IsSet(RouterServiceSubscriptions))
+	req.True(mask.IsSet(RouterDataModel))
 	req.False(mask.IsSet(0))
-	// Bits 3 and 4 are earmarked for #3990 and not advertised here.
-	req.False(mask.IsSet(3))
-	req.False(mask.IsSet(4))
 }
