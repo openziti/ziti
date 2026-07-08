@@ -13,13 +13,13 @@ import (
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/libssh"
 	"github.com/openziti/fablab/kernel/model"
+	zitiutil "github.com/openziti/foundation/v2/util"
 	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/sdk-golang/v2/ziti/enroll"
-	"github.com/openziti/ziti/v2/zitirest"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	zitiutil "github.com/openziti/foundation/v2/util"
+	"github.com/openziti/ziti/zititest/zitirest"
 )
 
 func InitIdentities(componentSpec string, concurrency int) model.Action {

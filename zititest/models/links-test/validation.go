@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/rest_client/link"
 	"github.com/openziti/ziti/v2/controller/rest_model"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -112,6 +112,7 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	for {
 		count, err := validateRouterLinks(c.Id, clients)
 		if err == nil {
+			logger.Infof("link validation success: elapsed time: %v", time.Since(start))
 			return nil
 		}
 

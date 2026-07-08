@@ -72,7 +72,6 @@ import (
 	"github.com/openziti/ziti/v2/router"
 	"github.com/openziti/ziti/v2/router/enroll"
 	routerEnv "github.com/openziti/ziti/v2/router/env"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	oidcPkg "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -112,7 +111,7 @@ type TestContext struct {
 	Managers               *ManagerHelpers
 	AdminManagementSession *session
 	AdminClientSession     *session
-	RestClients            *zitirest.Clients
+	RestClients            *RestClients
 	fabricController       *controller.Controller
 	EdgeController         *server.Controller
 	Req                    *CustomAssertions
@@ -707,9 +706,8 @@ func (ctx *TestContext) RequireAdminManagementApiLogin() {
 	var err error
 	ctx.AdminManagementSession, err = ctx.AdminAuthenticator.AuthenticateManagementApi(ctx)
 	ctx.Req.NoError(err)
-	ctx.RestClients, err = zitirest.NewManagementClients(ctx.ApiHost)
+	ctx.RestClients, err = newRestClients(ctx.ApiHost, *ctx.AdminManagementSession.AuthResponse.Token)
 	ctx.Req.NoError(err)
-	ctx.RestClients.SetSessionToken(*ctx.AdminManagementSession.AuthResponse.Token)
 }
 
 func (ctx *TestContext) RequireAdminClientApiLogin() {
