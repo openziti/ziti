@@ -1,0 +1,164 @@
+name: lts-release-finalize
+
+# Phase 2 of the automated LTS release. When a maintainer approves an
+# lts-release PR (opened by lts-release.yml), this fast-forwards the LTS branch
+# to the validated commit and tags it. The tag is created with GH_CI_KEY (a PAT)
+# so release.yml fires and builds the release; the default GITHUB_TOKEN would
+# not trigger downstream workflows.
+#
+# Approval is the release gate: the smoketest and validation already ran in
+# Phase 1 against the exact commit being tagged, so nothing is re-run here.
+
+on:
+  pull_request_review:
+    types: [ submitted ]
+
+# don't let two approvals on the same PR race
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    name: Tag validated commit
+    # Cheap pre-filter only. Real authorization is the "Authorize reviewer" step
+    # below: author_association (e.g. MEMBER) reflects org membership, not repo
+    # write access, so it must not be the gate for a job that tags releases.
+    if: >
+      github.repository_owner == 'openziti'
+      && github.event.review.state == 'approved'
+      && startsWith(github.event.pull_request.base.ref, 'release-v')
+      && startsWith(github.event.pull_request.head.ref, 'lts-bump')
+      && contains(github.event.pull_request.labels.*.name, 'lts-release')
+    runs-on: ubuntu-24.04
+    env:
+      # PAT so the created tag triggers release.yml (GITHUB_TOKEN would not)
+      GH_TOKEN: ${{ secrets.GH_CI_KEY }}
+      BASE: ${{ github.event.pull_request.base.ref }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      # Authorization gate: the approving reviewer must actually hold write
+      # (or maintain/admin) permission on the repo. Org membership alone is not
+      # enough, since this job can move release branches and tag releases.
+      - name: Authorize reviewer
+        env:
+          REVIEWER: ${{ github.event.review.user.login }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          perm="$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${REVIEWER}/permission" -q '.permission' 2>/dev/null || echo "none")"
+          case "${perm}" in
+            admin|maintain|write)
+              echo "reviewer ${REVIEWER} authorized (${perm})" ;;
+            *)
+              gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+                --body ":no_entry: Approval by \`${REVIEWER}\` ignored: releasing requires write access to the repository (found permission: ${perm}). A maintainer must approve to release."
+              echo "::error ::reviewer ${REVIEWER} lacks write permission (${perm}); not releasing"
+              exit 1 ;;
+          esac
+      # Parse the version/sha/base marker recorded at validation time and verify
+      # it still matches the live PR. This is what guarantees we only release the
+      # commit that was actually validated: if the lts-bump branch was changed
+      # after validation, the recorded sha no longer matches the PR head and we
+      # refuse rather than releasing an unvalidated commit.
+      - name: Verify and parse release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json body -q .body)"
+          marker="$(printf '%s' "${body}" | grep -oP '<!-- lts-release version=v[0-9]+\.[0-9]+\.[0-9]+ sha=[0-9a-f]{7,40} base=release-v[0-9]+\.[0-9]+\.x -->' | head -1 || true)"
+          if [[ -z "${marker}" ]]; then
+            echo "::error ::could not parse the 'lts-release' marker from PR #${PR_NUMBER} body"
+            exit 1
+          fi
+          version="$(printf '%s' "${marker}" | grep -oP 'version=\Kv[0-9]+\.[0-9]+\.[0-9]+')"
+          marker_sha="$(printf '%s' "${marker}" | grep -oP 'sha=\K[0-9a-f]{7,40}')"
+          marker_base="$(printf '%s' "${marker}" | grep -oP 'base=\Krelease-v[0-9]+\.[0-9]+\.x')"
+
+          # The exact version is fixed at validation time and baked into the head
+          # branch name (lts-bump-<version>-<run_id>), which is not body-editable.
+          # Treat that as authoritative so a tampered body cannot change the patch
+          # number tagged onto the validated commit.
+          branch_version="$(printf '%s' "${HEAD_REF}" | grep -oP '^lts-bump-\Kv[0-9]+\.[0-9]+\.[0-9]+(?=-[0-9]+$)' || true)"
+          if [[ -z "${branch_version}" ]]; then
+            echo "::error ::could not parse version from head branch '${HEAD_REF}'"
+            exit 1
+          fi
+          if [[ "${version}" != "${branch_version}" ]]; then
+            echo "::error ::PR body version ${version} does not match the validated branch version ${branch_version}; refusing to release"
+            exit 1
+          fi
+          version="${branch_version}"
+
+          # The version's major.minor must match the branch we are releasing on,
+          # so a tampered body cannot tag e.g. v9.9.9 onto release-v2.0.x. BASE is
+          # the event's base ref (not body-controlled), so derive the expected
+          # major.minor from it.
+          base_minor="$(printf '%s' "${BASE}" | sed -E 's/^release-v(.*)\.x$/\1/')"
+          version_minor="$(printf '%s' "${version}" | sed -E 's/^v([0-9]+\.[0-9]+)\..*$/\1/')"
+          if [[ "${version_minor}" != "${base_minor}" ]]; then
+            echo "::error ::version ${version} (minor ${version_minor}) does not match release branch ${BASE} (minor ${base_minor}); refusing to release"
+            exit 1
+          fi
+
+          if [[ "${marker_sha}" != "${HEAD_SHA}" ]]; then
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: The branch head (\`${HEAD_SHA}\`) does not match the validated commit recorded at validation time (\`${marker_sha}\`). The branch changed after validation, so this commit is unvalidated. Re-run the **lts-release** workflow to re-validate, then approve the new PR. Not releasing."
+            echo "::error ::PR head ${HEAD_SHA} != validated commit ${marker_sha}; refusing to release"
+            exit 1
+          fi
+          if [[ "${marker_base}" != "${BASE}" ]]; then
+            echo "::error ::marker base ${marker_base} != PR base ${BASE}; refusing to release"
+            exit 1
+          fi
+
+          echo "version=${version}" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=${marker_sha}" | tee -a "$GITHUB_OUTPUT"
+
+      # Preflight before moving anything: if the tag already exists, a prior run
+      # already released this version. Refuse rather than advancing the branch.
+      - name: Preflight - tag must not already exist
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${VERSION}" >/dev/null 2>&1; then
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: Tag \`${VERSION}\` already exists; this version was already released. Not re-releasing."
+            echo "::error ::tag ${VERSION} already exists"
+            exit 1
+          fi
+
+      - name: Fast-forward LTS branch
+        env:
+          SHA: ${{ steps.meta.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # force=false makes this a fast-forward-only update. If the branch has
+          # advanced since validation (e.g. a backport landed), the API returns
+          # an error and we ask for a re-validation rather than merging untested code.
+          if ! gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BASE}" \
+                -f "sha=${SHA}" -F "force=false" >/dev/null 2>err.txt; then
+            cat err.txt >&2
+            gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body ":warning: Could not fast-forward \`${BASE}\` to the validated commit \`${SHA}\` (the branch moved since validation). Re-run the **lts-release** workflow to re-validate on top of the updated branch, then approve the new PR."
+            exit 1
+          fi
+
+      - name: Tag the validated commit
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SHA: ${{ steps.meta.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${VERSION}" \
+            -f "sha=${SHA}" >/dev/null
+          gh pr comment "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+            --body ":white_check_mark: Fast-forwarded \`${BASE}\` and tagged \`${VERSION}\` at \`${SHA}\`. The release build (\`release.yml\`) will run from the tag."
