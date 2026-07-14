@@ -979,6 +979,55 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 	return nil
 }
 
+// BuildRevocations loads every unexpired revocation from the store into the
+// router data model. Without it, a data model rebuilt from the store (on startup,
+// on becoming leader, or after a snapshot install) would silently omit every
+// revocation already persisted, so routers syncing from that controller would
+// stop enforcing them.
+func (strategy *InstantStrategy) BuildRevocations(tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
+	return loadRevocations(strategy.ae.GetStores().Revocation, tx, rdm, time.Now())
+}
+
+// loadRevocations applies each revocation in the store into rdm, skipping any
+// that have already expired. Expired revocations are left out because the
+// revocation enforcer purges them, so re-adding them here would only strand them
+// on routers until the next purge.
+func loadRevocations(store db.RevocationStore, tx *bbolt.Tx, rdm *common.RouterDataModelSender, now time.Time) error {
+	for cursor := store.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		id := string(cursor.Current())
+
+		revocation, err := store.LoadById(tx, id)
+		if err != nil {
+			return err
+		}
+
+		if revocation.ExpiresAt.Before(now) {
+			continue
+		}
+
+		var issuedBefore *timestamppb.Timestamp
+		if !revocation.IssuedBefore.IsZero() {
+			issuedBefore = timestamppb.New(revocation.IssuedBefore)
+		}
+
+		model := &edge_ctrl_pb.DataState_Event_Revocation{
+			Revocation: &edge_ctrl_pb.DataState_Revocation{
+				Id:           revocation.Id,
+				ExpiresAt:    timestamppb.New(revocation.ExpiresAt),
+				Type:         revocation.Type,
+				IssuedBefore: issuedBefore,
+			},
+		}
+		event := &edge_ctrl_pb.DataState_Event{
+			Action: edge_ctrl_pb.DataState_Create,
+			Model:  model,
+		}
+		rdm.HandleRevocationEvent(event, model)
+	}
+
+	return nil
+}
+
 func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModelSender) error {
 	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
 		index := strategy.indexProvider.CurrentIndex()
@@ -1007,6 +1056,10 @@ func (strategy *InstantStrategy) BuildAll(rdm *common.RouterDataModelSender) err
 		}
 
 		if err := strategy.BuildPublicKeys(tx, rdm); err != nil {
+			return err
+		}
+
+		if err := strategy.BuildRevocations(tx, rdm); err != nil {
 			return err
 		}
 
