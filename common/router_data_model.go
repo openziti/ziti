@@ -2473,7 +2473,15 @@ func (rdm *RouterDataModel) Diff(o *RouterDataModel, sink DiffSink) {
 		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
 		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{})
 	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
-	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{})
+	// ExpiresAt and IssuedBefore are ignored for now. Identity revocations created
+	// by the store constraint on delete/disable derive those timestamps from a
+	// per-node time.Now() during raft apply, so in an HA cluster the controllers
+	// hold values that differ by the apply latency and every comparison reports a
+	// spurious mismatch. The rest of the revocation (its presence, id, and type) is
+	// still validated. Stop ignoring these once the timestamps are made
+	// cluster-consistent. See openziti/ziti#4088.
+	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{},
+		cmpopts.IgnoreFields(edge_ctrl_pb.DataState_Revocation{}, "ExpiresAt", "IssuedBefore"))
 	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
 		if a == nil || b == nil {
 			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, b)}
@@ -2507,11 +2515,25 @@ func diffMaps[T any](entityType string, m1, m2 cmap.ConcurrentMap[string, T], si
 	}
 }
 
-func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], m2 cmap.ConcurrentMap[string, T], sink DiffSink, ignoreTypes ...any) {
+// diffType compares the entities in m1 and m2, reporting differences to sink.
+// The variadic args accept both concrete zero values, whose unexported fields
+// are ignored (so protobuf types compare cleanly), and cmp.Option values, which
+// are applied as-is (e.g. cmpopts.IgnoreFields to skip a specific field).
+func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], m2 cmap.ConcurrentMap[string, T], sink DiffSink, ignoreTypesAndOpts ...any) {
 	diffReporter := &compareReporter{
 		f: func(key string, detail string) {
 			sink(entityType, key, DiffTypeMod, detail)
 		},
+	}
+
+	var ignoreTypes []any
+	var extraOpts []cmp.Option
+	for _, item := range ignoreTypesAndOpts {
+		if opt, ok := item.(cmp.Option); ok {
+			extraOpts = append(extraOpts, opt)
+		} else {
+			ignoreTypes = append(ignoreTypes, item)
+		}
 	}
 
 	hasMissing := false
@@ -2519,6 +2541,8 @@ func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], 
 	syncSetT := cmp.Transformer("CMapSetToMap", func(s cmap.ConcurrentMap[string, struct{}]) map[string]struct{} {
 		return CMapToMap(s)
 	})
+	opts := append([]cmp.Option{syncSetT, cmpopts.IgnoreUnexported(ignoreTypes...)}, extraOpts...)
+	opts = append(opts, adapter)
 	m1.IterCb(func(key string, v T) {
 		v2, exists := m2.Get(key)
 		if !exists {
@@ -2526,7 +2550,7 @@ func diffType[P any, T *P](entityType string, m1 cmap.ConcurrentMap[string, T], 
 			hasMissing = true
 		} else {
 			diffReporter.key = key
-			cmp.Diff(v, v2, syncSetT, cmpopts.IgnoreUnexported(ignoreTypes...), adapter)
+			cmp.Diff(v, v2, opts...)
 		}
 	})
 

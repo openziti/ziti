@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -614,7 +615,13 @@ func (rdm *RouterDataModelSender) Diff(o *RouterDataModelSender, sink DiffSink) 
 		edge_ctrl_pb.DataState_PostureCheck_Process_{}, edge_ctrl_pb.DataState_PostureCheck_Process{},
 		edge_ctrl_pb.DataState_PostureCheck_ProcessMulti_{}, edge_ctrl_pb.DataState_PostureCheck_ProcessMulti{})
 	diffType("public-keys", rdm.PublicKeys, o.PublicKeys, sink, edge_ctrl_pb.DataState_PublicKey{})
-	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{})
+	// ExpiresAt and IssuedBefore are ignored for now; they're derived from a
+	// per-node time.Now() during raft apply and so differ across HA controllers,
+	// producing spurious mismatches. Presence, id, and type are still validated.
+	// Stop ignoring these once the timestamps are cluster-consistent. See
+	// openziti/ziti#4088.
+	diffType("revocations", rdm.Revocations, o.Revocations, sink, edge_ctrl_pb.DataState_Revocation{}, timestamppb.Timestamp{},
+		cmpopts.IgnoreFields(edge_ctrl_pb.DataState_Revocation{}, "ExpiresAt", "IssuedBefore"))
 	diffMaps("cached-public-keys", rdm.getPublicKeysAsCmap(), o.getPublicKeysAsCmap(), sink, func(a, b crypto.PublicKey) []string {
 		if a == nil || b == nil {
 			return []string{fmt.Sprintf("cached public key is nil: orig: %v, dest: %v", a, b)}
