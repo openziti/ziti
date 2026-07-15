@@ -166,7 +166,8 @@ func (store *terminatorStoreImpl) FillEntity(entity *Terminator, bucket *boltz.T
 	entity.Binding = bucket.GetStringOrError(FieldTerminatorBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldTerminatorAddress, "")
 	entity.InstanceId = bucket.GetStringWithDefault(FieldTerminatorInstanceId, "")
-	entity.InstanceSecret = bucket.Get([]byte(FieldTerminatorInstanceSecret))
+	// bbolt values must be copied; the source memory doesn't outlive the transaction.
+	entity.InstanceSecret = append([]byte(nil), bucket.Get([]byte(FieldTerminatorInstanceSecret))...)
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 	entity.HostId = bucket.GetStringWithDefault(FieldTerminatorHostId, "")
@@ -178,7 +179,8 @@ func (store *terminatorStoreImpl) FillEntity(entity *Terminator, bucket *boltz.T
 		entity.PeerData = make(map[uint32][]byte)
 		iter := data.Cursor()
 		for k, v := iter.First(); k != nil; k, v = iter.Next() {
-			entity.PeerData[binary.LittleEndian.Uint32(k)] = v
+			// bbolt values must be copied; the source memory doesn't outlive the transaction.
+			entity.PeerData[binary.LittleEndian.Uint32(k)] = append([]byte(nil), v...)
 		}
 	}
 }
