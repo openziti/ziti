@@ -65,6 +65,63 @@ func TestRouterDataModelDiffNestedProtoMessages(t *testing.T) {
 	req.Empty(diffs, "expected no diffs between identical models, got: %v", diffs)
 }
 
+// TestRouterDataModelDiffIgnoresRevocationTimestamps verifies that a revocation's
+// ExpiresAt/IssuedBefore are ignored by the diff (they're derived per-node and
+// legitimately differ across HA controllers), while the revocation's presence and
+// type are still validated.
+func TestRouterDataModelDiffIgnoresRevocationTimestamps(t *testing.T) {
+	newModel := func() *RouterDataModel {
+		rdm := NewBareRouterDataModel()
+		rdm.Revocations.Set("revocation-1", &edge_ctrl_pb.DataState_Revocation{
+			Id:           "revocation-1",
+			Type:         "IDENTITY",
+			ExpiresAt:    timestamppb.New(time.Unix(1700000000, 0)),
+			IssuedBefore: timestamppb.New(time.Unix(1700000000, 0)),
+		})
+		return rdm
+	}
+
+	collectDiffs := func(model, correct *RouterDataModel) []string {
+		var diffs []string
+		model.Validate(correct, func(entityType string, id string, diffType DiffType, detail string) {
+			diffs = append(diffs, entityType+"/"+id+": "+detail)
+		})
+		return diffs
+	}
+
+	t.Run("differing timestamps produce no diff", func(t *testing.T) {
+		req := require.New(t)
+		correct := newModel()
+		correct.Revocations.Set("revocation-1", &edge_ctrl_pb.DataState_Revocation{
+			Id:           "revocation-1",
+			Type:         "IDENTITY",
+			ExpiresAt:    timestamppb.New(time.Unix(1700000042, 123)),
+			IssuedBefore: timestamppb.New(time.Unix(1700000042, 123)),
+		})
+		diffs := collectDiffs(newModel(), correct)
+		req.Empty(diffs, "expected no diffs when only timestamps differ, got: %v", diffs)
+	})
+
+	t.Run("a missing revocation is still reported", func(t *testing.T) {
+		req := require.New(t)
+		diffs := collectDiffs(newModel(), NewBareRouterDataModel())
+		req.NotEmpty(diffs, "expected a diff when a revocation is missing")
+	})
+
+	t.Run("a changed type is still reported", func(t *testing.T) {
+		req := require.New(t)
+		correct := newModel()
+		correct.Revocations.Set("revocation-1", &edge_ctrl_pb.DataState_Revocation{
+			Id:           "revocation-1",
+			Type:         "API_SESSION",
+			ExpiresAt:    timestamppb.New(time.Unix(1700000000, 0)),
+			IssuedBefore: timestamppb.New(time.Unix(1700000000, 0)),
+		})
+		diffs := collectDiffs(newModel(), correct)
+		req.NotEmpty(diffs, "expected a diff when the revocation type changes")
+	})
+}
+
 // fixedTimelineSource is a TimelineIdSource that returns a constant id, used to construct
 // a RouterDataModelSender in tests without standing up a real timeline.
 type fixedTimelineSource struct{}
