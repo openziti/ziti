@@ -41,7 +41,6 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -53,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/peermsg"
 	"github.com/openziti/ziti/v2/controller/raft/mesh"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
 )
@@ -220,12 +220,8 @@ func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, s
 }
 
 func (self *Controller) InitEnv(env model.Env) error {
+	// The cluster id is loaded earlier, in Init, so it is set before raft and the mesh start.
 	model.RegisterCommand(env, &InitClusterIdCmd{}, &cmd_pb.InitClusterIdCommand{})
-	clusterId, err := db.LoadClusterId(env.GetDb())
-	if err != nil {
-		return err
-	}
-	self.clusterId.Store(clusterId)
 	return nil
 }
 
@@ -649,6 +645,14 @@ func (self *Controller) Init() error {
 	if err = self.Fsm.Init(); err != nil {
 		return fmt.Errorf("failed to init FSM (%w)", err)
 	}
+
+	// Load the cluster id before raft (and the mesh) start, so this node never presents an empty id
+	// that the mesh empty-id bypass would let pair with a different cluster.
+	clusterId, err := db.LoadClusterId(self.Fsm.GetDb())
+	if err != nil {
+		return fmt.Errorf("failed to load cluster id (%w)", err)
+	}
+	self.clusterId.Store(clusterId)
 
 	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
 
