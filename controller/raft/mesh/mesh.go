@@ -71,11 +71,12 @@ type Peer struct {
 	Id              raft.ServerID
 	Address         string
 	Channel         channel.Channel
-	RaftConns       concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
+	ClusterId       string
 	Version         *versions.VersionInfo
 	SigningCerts    []*x509.Certificate
 	ApiAddresses    map[string][]event.ApiAddress
 	PreferredLeader bool
+	RaftConns       concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
 	raftPeerIdGen   uint32
 }
 
@@ -324,6 +325,10 @@ type Mesh interface {
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
 	CleanupDialRecords()
+
+	// RevalidatePeerClusterIds drops connected peers whose cluster id no longer matches the local
+	// cluster id. It is called when the local node acquires or changes its cluster id.
+	RevalidatePeerClusterIds()
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -515,6 +520,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
+		peer.ClusterId = getPeerClusterId(peer.Channel)
 
 		underlay := binding.GetChannel().Underlay()
 		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
@@ -590,12 +596,53 @@ func (self *impl) validateConnection(ch channel.Channel) error {
 }
 
 func (self *impl) checkClusterIds(ch channel.Channel) error {
-	clusterIdBytes, _ := headerWithFallback(ch.Underlay().Headers(), ClusterIdHeader, LegacyClusterIdHeader)
-	clusterId := string(clusterIdBytes)
+	clusterId := getPeerClusterId(ch)
 	if clusterId != "" && self.env.GetClusterId() != "" && clusterId != self.env.GetClusterId() {
 		return fmt.Errorf("local cluster id %s doesn't match peer cluster id %s", self.env.GetClusterId(), clusterId)
 	}
 	return nil
+}
+
+// getPeerClusterId returns the cluster id the peer advertised, or "" if none (a blank node not yet
+// joined or bootstrapped).
+func getPeerClusterId(ch channel.Channel) string {
+	clusterIdBytes, _ := headerWithFallback(ch.Underlay().Headers(), ClusterIdHeader, LegacyClusterIdHeader)
+	return string(clusterIdBytes)
+}
+
+// RevalidatePeerClusterIds drops connected peers whose known cluster id differs from the local one.
+// The bind-time check runs once and skips empty ids, so a node that connected while blank and later
+// acquired a different id would otherwise stay cross-connected. Called when the local id is set.
+func (self *impl) RevalidatePeerClusterIds() {
+	localId := self.env.GetClusterId()
+	for _, peer := range peersWithMismatchedClusterId(localId, self.GetPeers()) {
+		pfxlog.Logger().
+			WithField("peerId", string(peer.Id)).
+			WithField("peerAddress", peer.Address).
+			WithField("peerClusterId", peer.ClusterId).
+			WithField("localClusterId", localId).
+			Error("dropping peer connection with mismatched cluster id")
+		if err := peer.Channel.Close(); err != nil {
+			pfxlog.Logger().WithError(err).
+				WithField("peerId", string(peer.Id)).
+				Error("error closing peer channel with mismatched cluster id")
+		}
+	}
+}
+
+// peersWithMismatchedClusterId returns peers whose known cluster id differs from localId. Peers with
+// an empty id (legitimate blank joiners) are never returned, nor is anything when localId is empty.
+func peersWithMismatchedClusterId(localId string, peers map[string]*Peer) []*Peer {
+	if localId == "" {
+		return nil
+	}
+	var mismatched []*Peer
+	for _, peer := range peers {
+		if peer.ClusterId != "" && peer.ClusterId != localId {
+			mismatched = append(mismatched, peer)
+		}
+	}
+	return mismatched
 }
 
 func (self *impl) checkCerts(ch channel.Channel) error {
@@ -697,6 +744,12 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 
 func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	self.lock.Lock()
+	// Re-check the cluster id under the lock: the bind-time check can race a local-id change that
+	// lands before the peer is registered, which RevalidatePeerClusterIds would then miss.
+	if localId := self.env.GetClusterId(); localId != "" && peer.ClusterId != "" && peer.ClusterId != localId {
+		self.lock.Unlock()
+		return fmt.Errorf("peer %v cluster id %s does not match local cluster id %s", peer.Id, peer.ClusterId, localId)
+	}
 	if self.Peers[peer.Address] != nil {
 		defer self.lock.Unlock()
 		return fmt.Errorf("connection from peer %v @ %v already present", peer.Id, peer.Address)
@@ -875,6 +928,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
+		peer.ClusterId = getPeerClusterId(peer.Channel)
 
 		peer.Version = versionInfo
 		if certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader); found {
