@@ -69,6 +69,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
+	"go.etcd.io/bbolt"
 )
 
 type Controller struct {
@@ -842,6 +843,32 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	return c.RaftRestoreFromBoltDb(sourceDbPath)
 }
 
+// validateMigrationSourceDb rejects a migration source that is not an initialized controller db.
+// db.Open creates the root bucket on any file, so existence is not enough; it checks for a default
+// admin identity, which an initialized controller always has. The check is read-only.
+func validateMigrationSourceDb(sourceDb boltz.Db) error {
+	hasDefaultAdmin := false
+	err := sourceDb.View(func(tx *bbolt.Tx) error {
+		identities := boltz.Path(tx, db.RootBucket, db.EntityTypeIdentities)
+		if identities == nil {
+			return nil
+		}
+		return identities.ForEachTypedBucket(func(_ string, identity *boltz.TypedBucket) error {
+			if identity.GetBoolWithDefault(db.FieldIdentityIsDefaultAdmin, false) {
+				hasDefaultAdmin = true
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to read identities from source db")
+	}
+	if !hasDefaultAdmin {
+		return errors.New("source db has no default admin identity; it is empty or was never a fully initialized controller")
+	}
+	return nil
+}
+
 func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 	log := pfxlog.Logger()
 
@@ -865,6 +892,10 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 			log.WithError(err).Error("error closing migration source bolt db")
 		}
 	}()
+
+	if err = validateMigrationSourceDb(sourceDb); err != nil {
+		return errors.Wrapf(err, "migration source db [%v] is not a valid initialized controller database", sourceDbPath)
+	}
 
 	timelineId, err := sourceDb.GetTimelineId(boltz.TimelineModeForceReset, shortid.Generate)
 	if err != nil {
