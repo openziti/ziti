@@ -989,7 +989,7 @@ func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
 	signers := s.env.GetPeerSigners()
 
 	for _, cert := range signers {
-		kid := fmt.Sprintf("%s", sha1.Sum(cert.Raw))
+		kid := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
 
 		if _, found := s.keys.Get(kid); found {
 			continue
