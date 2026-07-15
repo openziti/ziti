@@ -1120,20 +1120,19 @@ type MigrationManager interface {
 	InitializeRaftFromBoltDb(srcDb string) error
 }
 
+var _ command.CriticalCommand = (*InitClusterIdCmd)(nil)
+
 type InitClusterIdCmd struct {
 	ClusterId      string `json:"clusterId"`
 	TimelineId     string `json:"timelineId"`
 	raftController *Controller
 }
 
+// IsCriticalCommand marks InitClusterIdCmd as base state: it establishes the cluster id, which is
+// not otherwise replayed, so a failed apply must halt rather than advance. Its writes are idempotent.
+func (self *InitClusterIdCmd) IsCriticalCommand() {}
+
 func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
-	self.raftController.clusterId.Store(self.ClusterId)
-	if mesh := self.raftController.Mesh; mesh != nil {
-		// The local cluster id just changed; drop any peer that connected while this node was blank
-		// (accepted via the empty-id bypass) and now belongs to a different cluster. Done off the
-		// apply path so channel teardown does not stall raft.
-		go mesh.RevalidatePeerClusterIds()
-	}
 	_, err := self.raftController.Fsm.GetDb().GetTimelineId(boltz.TimelineModeForceReset, func() (string, error) {
 		return self.TimelineId, nil
 	})
@@ -1144,7 +1143,22 @@ func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
 	if self.raftController.env.TimelineId() != self.TimelineId {
 		self.raftController.env.InitTimelineId(self.TimelineId)
 	}
-	return db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
+
+	// Persist the cluster id before publishing it in memory. db.InitClusterId commits within this
+	// call, so once it returns successfully the id is durable.
+	if err = db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId); err != nil {
+		return err
+	}
+
+	// Only after the id is persisted, publish it in memory and revalidate peers, so memory, peer
+	// state, and on-disk state cannot diverge if the write fails. Revalidation drops any peer that
+	// connected while this node was blank (accepted via the empty-id bypass) and now belongs to a
+	// different cluster; it runs off the apply path so channel teardown does not stall raft.
+	self.raftController.clusterId.Store(self.ClusterId)
+	if mesh := self.raftController.Mesh; mesh != nil {
+		go mesh.RevalidatePeerClusterIds()
+	}
+	return nil
 }
 
 func (self *InitClusterIdCmd) Encode() ([]byte, error) {

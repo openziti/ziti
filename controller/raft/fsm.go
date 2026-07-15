@@ -30,11 +30,11 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bbolterrors "go.etcd.io/bbolt/errors"
@@ -333,7 +333,8 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 				return err
 			}
 
-			logger.Infof("apply log with type %T", cmd)
+			logger = logger.WithField("cmdType", fmt.Sprintf("%T", cmd))
+			logger.Info("applying log")
 			changeCtx := cmd.GetChangeContext()
 			if changeCtx == nil {
 				changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
@@ -346,8 +347,13 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 			})
 
 			if err = cmd.Apply(ctx); err != nil {
+				if _, critical := cmd.(command.CriticalCommand); critical {
+					// Base-state command failed; halt instead of advancing over incomplete state. The
+					// in-tx index update rolled back with the apply, so raft replays it on restart.
+					logger.WithError(err).Fatal("failed to apply critical base-state command; halting rather than advancing over incomplete state")
+				}
 				logger.WithError(err).Error("applying log resulted in error")
-				// if this errored, assume that we haven't updated the index in the db
+				// apply rolled back the in-tx index update; persist it here since raft advances regardless
 				self.updateIndex(log.Index)
 			}
 
