@@ -313,8 +313,15 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
 
-	if c.raftController != nil && !c.raftController.IsBootstrapped() {
-		if err = c.TryInitializeRaftFromBoltDb(); err != nil {
+	if c.raftController != nil {
+		_, dbConfigured := c.config.Src["db"]
+		if c.raftController.IsBootstrapped() {
+			// On a clustered config 'db' only seeds a new cluster on first bootstrap; once
+			// initialized it is dead config, so warn rather than let a stale setting sit unnoticed.
+			if dbConfigured {
+				log.Warn("'db' is set but this clustered controller is already initialized; the 'db' setting is ignored and should be removed from the configuration")
+			}
+		} else if err = c.TryInitializeRaftFromBoltDb(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
 		}
 	}
