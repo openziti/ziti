@@ -1,11 +1,11 @@
 package command
 
 import (
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 )
 
@@ -144,6 +144,8 @@ func (self *DeleteEntityCommand) GetChangeContext() *change.Context {
 	return self.Context
 }
 
+var _ CriticalCommand = (*SyncSnapshotCommand)(nil)
+
 type SyncSnapshotCommand struct {
 	TimelineId   string
 	Snapshot     []byte
@@ -154,6 +156,9 @@ func (self *SyncSnapshotCommand) Apply(ctx boltz.MutateContext) error {
 	changeCtx := change.FromContext(ctx.Context())
 	return self.SnapshotSink(self, changeCtx.RaftIndex)
 }
+
+// IsCriticalCommand marks SyncSnapshotCommand as base state: a failed apply halts rather than advances.
+func (self *SyncSnapshotCommand) IsCriticalCommand() {}
 
 func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.SyncSnapshotCommand{

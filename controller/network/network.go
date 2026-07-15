@@ -1360,11 +1360,13 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 	if currentTimelineId != "" && currentTimelineId == cmd.TimelineId {
 		log.WithField("timelineId", cmd.TimelineId).Info("snapshot already current, skipping reload")
+		// The DB is already the restored snapshot, but a prior apply may have halted after the
+		// restore and before the raft index was recorded. Ensure the index is persisted so the node
+		// does not stay caught up in raft with a stale stored index.
+		if err = network.ensureRaftIndex(index); err != nil {
+			return fmt.Errorf("failed to set raft index for already-current snapshot (%w)", err)
+		}
 		return nil
-	}
-
-	if err != nil {
-		log.WithError(err).Error("unable to read current raft index before DB restore")
 	}
 
 	buf := bytes.NewBuffer(cmd.Snapshot)
@@ -1374,14 +1376,11 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	network.GetDb().RestoreFromReader(reader)
-	err = network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
-		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
-		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
-		return nil
-	})
-
-	if err != nil {
-		log.WithError(err).Errorf("failed to set index after restore")
+	if err = network.ensureRaftIndex(index); err != nil {
+		// The database was restored but its raft index was not recorded. Return the error so the
+		// command apply fails loudly (SyncSnapshotCommand is a critical command) rather than the
+		// restore being treated as successful with an unrecorded index.
+		return fmt.Errorf("failed to set raft index after db restore (%w)", err)
 	}
 
 	time.AfterFunc(5*time.Second, func() {
@@ -1390,6 +1389,19 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	})
 
 	return nil
+}
+
+// ensureRaftIndex records the raft index if the stored one is behind it, returning an error on
+// failure so a missed index update surfaces rather than being treated as success.
+func (network *Network) ensureRaftIndex(index uint64) error {
+	return network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
+		if db.LoadCurrentRaftIndex(ctx.Tx()) >= index {
+			return nil
+		}
+		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
+		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
+		return raftBucket.GetError()
+	})
 }
 
 func (network *Network) AddInspectTarget(target InspectTarget) {
