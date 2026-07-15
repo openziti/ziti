@@ -916,6 +916,17 @@ func (self *Controller) Bootstrap() error {
 		logrus.Info("raft already bootstrapped")
 		self.bootstrapped.Store(true)
 	} else {
+		// Already connected to peers means this node belongs to an existing cluster; founding a new
+		// one here would fork a divergent cluster.
+		if peers := self.Mesh.GetPeers(); len(peers) > 0 {
+			addrs := make([]string, 0, len(peers))
+			for addr := range peers {
+				addrs = append(addrs, addr)
+			}
+			return fmt.Errorf("refusing to bootstrap a new cluster: node is already connected to %d cluster peer(s) %v; "+
+				"this node should join the existing cluster (e.g. 'ziti agent cluster add' from a current member), not initialize a new one", len(peers), addrs)
+		}
+
 		if err := self.migrationMgr.ValidateMigrationEnvironment(); err != nil {
 			return err
 		}
@@ -1117,6 +1128,12 @@ type InitClusterIdCmd struct {
 
 func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
 	self.raftController.clusterId.Store(self.ClusterId)
+	if mesh := self.raftController.Mesh; mesh != nil {
+		// The local cluster id just changed; drop any peer that connected while this node was blank
+		// (accepted via the empty-id bypass) and now belongs to a different cluster. Done off the
+		// apply path so channel teardown does not stall raft.
+		go mesh.RevalidatePeerClusterIds()
+	}
 	_, err := self.raftController.Fsm.GetDb().GetTimelineId(boltz.TimelineModeForceReset, func() (string, error) {
 		return self.TimelineId, nil
 	})
