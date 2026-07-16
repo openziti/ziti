@@ -1,3 +1,14 @@
+# Release 1.6.20
+
+## What's New
+
+* Fixes a router panic on routers which aren't hosting tunnel services
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.19 -> v1.6.20](https://github.com/openziti/ziti/compare/v1.6.19...v1.6.20)
+    * [Issue #4114](https://github.com/openziti/ziti/issues/4114) - Router panics on ERT-terminator inspect when it hosts no tunnel services (1.6.x)
+
 # Release 1.6.19
 
 ## What's New

@@ -53,8 +53,12 @@ type tunneler struct {
 	interceptor     intercept.Interceptor
 	serviceListener *intercept.ServiceListener
 	fabricProvider  TunnelFabricProvider
-	hostedServices  *HostedServiceRegistry
 	notifyReconnect chan struct{}
+
+	// hostedServices is only populated when the router has a tunnel listener. It's set while the
+	// listener is being created, which can race with control channel requests, so it's accessed
+	// atomically. Callers must handle a nil registry.
+	hostedServices atomic.Pointer[HostedServiceRegistry]
 
 	createTime  time.Time
 	initialized atomic.Bool

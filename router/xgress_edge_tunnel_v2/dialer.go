@@ -34,9 +34,13 @@ import (
 
 func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
 	self.WaitForInitialized()
-	terminator, found := self.hostedServices.Get(id)
+	hostedServices := self.hostedServices.Load()
+	if hostedServices == nil {
+		return false
+	}
+	terminator, found := hostedServices.Get(id)
 	if found {
-		self.hostedServices.markEstablished(terminator, "validation message received")
+		hostedServices.markEstablished(terminator, "validation message received")
 	}
 	return found
 }
@@ -49,7 +53,12 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
-	terminator, ok := self.hostedServices.Get(destination)
+	hostedServices := self.hostedServices.Load()
+	if hostedServices == nil {
+		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("router is not hosting tunnel services, terminator for destination %v not found", destination)}
+	}
+
+	terminator, ok := hostedServices.Get(destination)
 	if !ok {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
@@ -89,7 +98,13 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 
 func (self *tunneler) Inspect(key string, timeout time.Duration) any {
 	if key == inspect.ErtTerminatorsKey {
-		return self.hostedServices.Inspect(timeout)
+		// a router that hosts no tunnel services has no terminators to report. An empty result is
+		// returned rather than nil, so callers see a successful inspect with no terminators.
+		hostedServices := self.hostedServices.Load()
+		if hostedServices == nil {
+			return &inspect.ErtTerminatorInspectResult{}
+		}
+		return hostedServices.Inspect(timeout)
 	}
 	return nil
 }
