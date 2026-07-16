@@ -311,10 +311,12 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		logrus.Debugf("Using local interface %s to dial controller", config.Ctrl.LocalBinding)
 	}
 
-	// Build headers for the initial dial, including grouped channel flags
+	// Base headers apply to every underlay of the grouped channel. IsFirstGroupConnection must NOT be
+	// set here: the dialer reuses these headers when creating additional (e.g. ctrl.high) underlays, and
+	// an inherited first-connection flag would make each additional underlay look like a new channel and
+	// trip the controller's already-connected guard.
 	headers.PutBoolHeader(channel.IsGroupedHeader, true)
 	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
 
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:     config.Id,
@@ -327,8 +329,15 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		},
 	})
 
+	// The initial underlay, and only it, carries IsFirstGroupConnection.
+	firstDialHeaders := channel.Headers{}
+	for k, v := range headers {
+		firstDialHeaders[k] = v
+	}
+	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
 	// Dial initial underlay
-	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, headers)
+	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}

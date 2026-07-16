@@ -537,9 +537,6 @@ func (c *Controller) Run() error {
 	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
-	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
-		panic(err)
-	}
 
 	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
 
@@ -547,6 +544,19 @@ func (c *Controller) Run() error {
 	if c.raftController != nil {
 		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
 		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
+	}
+
+	// Channel types routed to a dedicated acceptor above validate their own peers; the connect handler
+	// must skip exactly those and validate everything else (which the dispatcher routes to the default
+	// router control acceptor, including unrecognized types). Set this before accepting connections.
+	separatelyValidatedTypes := map[string]struct{}{}
+	for chType := range ctrlAcceptors {
+		separatelyValidatedTypes[chType] = struct{}{}
+	}
+	c.ctrlConnectHandler.SetSeparatelyValidatedChannelTypes(separatelyValidatedTypes)
+
+	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
+		panic(err)
 	}
 
 	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{
