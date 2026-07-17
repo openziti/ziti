@@ -576,6 +576,7 @@ type SyncSnapshotCommand struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SnapshotId    string                 `protobuf:"bytes,1,opt,name=snapshotId,proto3" json:"snapshotId,omitempty"`
 	Snapshot      []byte                 `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	ClusterId     string                 `protobuf:"bytes,3,opt,name=clusterId,proto3" json:"clusterId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -622,6 +623,13 @@ func (x *SyncSnapshotCommand) GetSnapshot() []byte {
 		return x.Snapshot
 	}
 	return nil
+}
+
+func (x *SyncSnapshotCommand) GetClusterId() string {
+	if x != nil {
+		return x.ClusterId
+	}
+	return ""
 }
 
 type InitClusterIdCommand struct {
@@ -1366,12 +1374,13 @@ const file_cmd_proto_rawDesc = "" +
 	"\n" +
 	"entityType\x18\x02 \x01(\tR\n" +
 	"entityType\x12,\n" +
-	"\x03ctx\x18\x03 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\"Q\n" +
+	"\x03ctx\x18\x03 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\"o\n" +
 	"\x13SyncSnapshotCommand\x12\x1e\n" +
 	"\n" +
 	"snapshotId\x18\x01 \x01(\tR\n" +
 	"snapshotId\x12\x1a\n" +
-	"\bsnapshot\x18\x02 \x01(\fR\bsnapshot\"T\n" +
+	"\bsnapshot\x18\x02 \x01(\fR\bsnapshot\x12\x1c\n" +
+	"\tclusterId\x18\x03 \x01(\tR\tclusterId\"T\n" +
 	"\x14InitClusterIdCommand\x12\x1c\n" +
 	"\tclusterId\x18\x01 \x01(\tR\tclusterId\x12\x1e\n" +
 	"\n" +

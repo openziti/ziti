@@ -933,6 +933,13 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 		return fmt.Errorf("unable to bootstrap cluster (%w)", err)
 	}
 
+	// Carry the cluster id Bootstrap established so RestoreSnapshot can write it back after the
+	// restore (the migration source has none). Blank here means a bug in Bootstrap, so fail.
+	cmd.ClusterId = c.raftController.GetClusterId()
+	if cmd.ClusterId == "" {
+		return errors.New("cluster id is blank after bootstrap; refusing to restore without a durable cluster id")
+	}
+
 	return c.raftController.Dispatch(cmd)
 }
 
