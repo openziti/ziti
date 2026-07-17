@@ -156,6 +156,7 @@ type Controller struct {
 	indexTracker               IndexTracker
 	migrationMgr               MigrationManager
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
+	clusterStateChangeLock     sync.Mutex
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
 	raftRateLimiter            rate.AdaptiveRateLimitTracker
@@ -213,6 +214,10 @@ func (self *Controller) initErrorMappers() {
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState, leaderId string)) {
+	// Hold the lock across the leader check and append so a leadership transition cannot slip
+	// between them, which would leave the handler seeing neither the immediate call nor the event.
+	self.clusterStateChangeLock.Lock()
+	defer self.clusterStateChangeLock.Unlock()
 	if self.isLeader.Load() {
 		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()), self.env.GetId().Token)
 	}
@@ -682,6 +687,7 @@ func (self *Controller) StartEventGeneration() {
 	self.addEventsHandlers()
 	go self.eventLoop()
 	self.setupPreferredLeaderTransfer()
+	self.setupClusterIdBackfill()
 	self.Mesh.StartPeerDialer(&self.Config.PeerDialer)
 }
 
@@ -779,6 +785,38 @@ func (self *Controller) transferToPreferredLeader() {
 	log.Warn("no preferred leader peers are connected, retaining leadership")
 }
 
+// setupClusterIdBackfill backfills a cluster id on leadership when the cluster has none, letting a
+// cluster migrated on an older build (which came up with no cluster id) self-heal. If a cluster
+// hasn't been bootstrapped yet, this isn't needed
+func (self *Controller) setupClusterIdBackfill() {
+	if self.Raft.LastIndex() == 0 {
+		return
+	}
+	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState, leaderId string) {
+		if evt == ClusterEventLeadershipGained {
+			go self.backfillClusterId()
+		}
+	})
+}
+
+// backfillClusterId sets a cluster id if this leader finds none; a no-op otherwise, so it is safe to
+// run on every leadership change. The current timeline id is passed through unchanged.
+func (self *Controller) backfillClusterId() {
+	if !self.IsLeader() || self.GetClusterId() != "" {
+		return
+	}
+	clusterId := uuid.NewString()
+	log := pfxlog.Logger().WithField("clusterId", clusterId)
+	log.Info("cluster has no cluster id; backfilling one on leadership acquisition")
+	if err := self.Dispatch(&InitClusterIdCmd{
+		ClusterId:      clusterId,
+		TimelineId:     self.env.TimelineId(),
+		raftController: self,
+	}); err != nil {
+		log.WithError(err).Error("failed to backfill cluster id")
+	}
+}
+
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
 	conf.SnapshotThreshold = uint64(ctrlConfig.SnapshotThreshold)
 	conf.SnapshotInterval = ctrlConfig.SnapshotInterval
@@ -867,6 +905,9 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 	pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
 
 	if raftState, ok := observation.Data.(raft.RaftState); ok {
+		// Serialize the leadership swap and dispatch with RegisterClusterEventHandler so a handler
+		// registered during a transition is not missed by both the immediate call and the event.
+		self.clusterStateChangeLock.Lock()
 		if raftState == raft.Leader {
 			if wasLeader := self.isLeader.Swap(true); !wasLeader {
 				self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
@@ -874,6 +915,7 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 		} else if wasLeader := self.isLeader.Swap(false); wasLeader {
 			self.handleClusterStateChange(ClusterEventLeadershipLost, eventState)
 		}
+		self.clusterStateChangeLock.Unlock()
 	}
 
 	if state, ok := observation.Data.(mesh.ClusterState); ok {
@@ -1144,17 +1186,16 @@ func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
 		self.raftController.env.InitTimelineId(self.TimelineId)
 	}
 
-	// Persist the cluster id before publishing it in memory. db.InitClusterId commits within this
-	// call, so once it returns successfully the id is durable.
-	if err = db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId); err != nil {
+	// Persist before publishing in memory. InitClusterId returns the effective id (an existing id
+	// wins), so a redundant command cannot diverge memory from disk.
+	effectiveClusterId, err := db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
+	if err != nil {
 		return err
 	}
 
-	// Only after the id is persisted, publish it in memory and revalidate peers, so memory, peer
-	// state, and on-disk state cannot diverge if the write fails. Revalidation drops any peer that
-	// connected while this node was blank (accepted via the empty-id bypass) and now belongs to a
-	// different cluster; it runs off the apply path so channel teardown does not stall raft.
-	self.raftController.clusterId.Store(self.ClusterId)
+	// Publish and revalidate only after persisting. Revalidation drops peers from a different
+	// cluster that connected while this node was blank; off the apply path so it does not stall raft.
+	self.raftController.clusterId.Store(effectiveClusterId)
 	if mesh := self.raftController.Mesh; mesh != nil {
 		go mesh.RevalidatePeerClusterIds()
 	}
