@@ -149,6 +149,7 @@ var _ CriticalCommand = (*SyncSnapshotCommand)(nil)
 type SyncSnapshotCommand struct {
 	TimelineId   string
 	Snapshot     []byte
+	ClusterId    string
 	SnapshotSink func(cmd *SyncSnapshotCommand, index uint64) error
 }
 
@@ -164,6 +165,7 @@ func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.SyncSnapshotCommand{
 		SnapshotId: self.TimelineId,
 		Snapshot:   self.Snapshot,
+		ClusterId:  self.ClusterId,
 	})
 }
 

@@ -190,6 +190,7 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 	cmd := &command.SyncSnapshotCommand{
 		TimelineId:   msg.SnapshotId,
 		Snapshot:     msg.Snapshot,
+		ClusterId:    msg.ClusterId,
 		SnapshotSink: self.RestoreSnapshot,
 	}
 
@@ -1360,9 +1361,10 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 	if currentTimelineId != "" && currentTimelineId == cmd.TimelineId {
 		log.WithField("timelineId", cmd.TimelineId).Info("snapshot already current, skipping reload")
-		// The DB is already the restored snapshot, but a prior apply may have halted after the
-		// restore and before the raft index was recorded. Ensure the index is persisted so the node
-		// does not stay caught up in raft with a stale stored index.
+		// DB already restored; ensure cluster id then raft index (index last, see main path).
+		if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+			return fmt.Errorf("failed to set cluster id for already-current snapshot (%w)", err)
+		}
 		if err = network.ensureRaftIndex(index); err != nil {
 			return fmt.Errorf("failed to set raft index for already-current snapshot (%w)", err)
 		}
@@ -1376,10 +1378,14 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	network.GetDb().RestoreFromReader(reader)
+
+	// Write the cluster id before the raft index. The index is the completion gate on restart (the
+	// FSM skips entries at or below the stored index), so persist it last: any earlier failure then
+	// replays and retries instead of skipping the command with a blank cluster id.
+	if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+		return fmt.Errorf("failed to set cluster id after db restore (%w)", err)
+	}
 	if err = network.ensureRaftIndex(index); err != nil {
-		// The database was restored but its raft index was not recorded. Return the error so the
-		// command apply fails loudly (SyncSnapshotCommand is a critical command) rather than the
-		// restore being treated as successful with an unrecorded index.
 		return fmt.Errorf("failed to set raft index after db restore (%w)", err)
 	}
 
@@ -1389,6 +1395,15 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	})
 
 	return nil
+}
+
+// ensureClusterId writes the cluster id if one is not already set (no-op when empty or matching).
+// The snapshot restore replaces the whole db, which carries no cluster id, so it must be set here.
+func (network *Network) ensureClusterId(clusterId string) error {
+	if clusterId == "" {
+		return nil
+	}
+	return db.InitClusterId(network.GetDb(), nil, clusterId)
 }
 
 // ensureRaftIndex records the raft index if the stored one is behind it, returning an error on
