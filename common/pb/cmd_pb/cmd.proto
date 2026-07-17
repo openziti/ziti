@@ -75,6 +75,7 @@ message DeleteEntityCommand {
 message SyncSnapshotCommand {
   string snapshotId = 1;
   bytes snapshot = 2;
+  string clusterId = 3;
 }
 
 message InitClusterIdCommand {

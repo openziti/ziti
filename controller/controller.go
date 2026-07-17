@@ -69,6 +69,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
+	"go.etcd.io/bbolt"
 )
 
 type Controller struct {
@@ -312,8 +313,15 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
 
-	if c.raftController != nil && !c.raftController.IsBootstrapped() {
-		if err = c.TryInitializeRaftFromBoltDb(); err != nil {
+	if c.raftController != nil {
+		_, dbConfigured := c.config.Src["db"]
+		if c.raftController.IsBootstrapped() {
+			// On a clustered config 'db' only seeds a new cluster on first bootstrap; once
+			// initialized it is dead config, so warn rather than let a stale setting sit unnoticed.
+			if dbConfigured {
+				log.Warn("'db' is set but this clustered controller is already initialized; the 'db' setting is ignored and should be removed from the configuration")
+			}
+		} else if err = c.TryInitializeRaftFromBoltDb(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
 		}
 	}
@@ -842,6 +850,32 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	return c.RaftRestoreFromBoltDb(sourceDbPath)
 }
 
+// validateMigrationSourceDb rejects a migration source that is not an initialized controller db.
+// db.Open creates the root bucket on any file, so existence is not enough; it checks for a default
+// admin identity, which an initialized controller always has. The check is read-only.
+func validateMigrationSourceDb(sourceDb boltz.Db) error {
+	hasDefaultAdmin := false
+	err := sourceDb.View(func(tx *bbolt.Tx) error {
+		identities := boltz.Path(tx, db.RootBucket, db.EntityTypeIdentities)
+		if identities == nil {
+			return nil
+		}
+		return identities.ForEachTypedBucket(func(_ string, identity *boltz.TypedBucket) error {
+			if identity.GetBoolWithDefault(db.FieldIdentityIsDefaultAdmin, false) {
+				hasDefaultAdmin = true
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to read identities from source db")
+	}
+	if !hasDefaultAdmin {
+		return errors.New("source db has no default admin identity; it is empty or was never a fully initialized controller")
+	}
+	return nil
+}
+
 func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 	log := pfxlog.Logger()
 
@@ -865,6 +899,10 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 			log.WithError(err).Error("error closing migration source bolt db")
 		}
 	}()
+
+	if err = validateMigrationSourceDb(sourceDb); err != nil {
+		return errors.Wrapf(err, "migration source db [%v] is not a valid initialized controller database", sourceDbPath)
+	}
 
 	timelineId, err := sourceDb.GetTimelineId(boltz.TimelineModeForceReset, shortid.Generate)
 	if err != nil {
@@ -893,6 +931,13 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 
 	if err = c.raftController.Bootstrap(); err != nil {
 		return fmt.Errorf("unable to bootstrap cluster (%w)", err)
+	}
+
+	// Carry the cluster id Bootstrap established so RestoreSnapshot can write it back after the
+	// restore (the migration source has none). Blank here means a bug in Bootstrap, so fail.
+	cmd.ClusterId = c.raftController.GetClusterId()
+	if cmd.ClusterId == "" {
+		return errors.New("cluster id is blank after bootstrap; refusing to restore without a durable cluster id")
 	}
 
 	return c.raftController.Dispatch(cmd)

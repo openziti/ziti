@@ -17,8 +17,7 @@
 package db
 
 import (
-	"fmt"
-
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -74,20 +73,29 @@ func LoadClusterId(db boltz.Db) (string, error) {
 	return result, err
 }
 
-func InitClusterId(db boltz.Db, ctx boltz.MutateContext, clusterId string) error {
-	return db.Update(ctx, func(ctx boltz.MutateContext) error {
+// InitClusterId sets the cluster id if unset and returns the effective id (an existing id wins). It
+// is set-once: a differing id is kept with a warning rather than an error, so redundant or racing
+// writes (e.g. backfill across leadership changes) cannot fail.
+func InitClusterId(db boltz.Db, ctx boltz.MutateContext, clusterId string) (string, error) {
+	effective := clusterId
+	err := db.Update(ctx, func(ctx boltz.MutateContext) error {
 		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), RootBucket, MetadataBucket)
 		if raftBucket.HasError() {
 			return raftBucket.Err
 		}
 		currentId := raftBucket.GetStringWithDefault(FieldClusterId, "")
 		if currentId != "" {
-			if currentId == clusterId {
-				return nil
+			effective = currentId
+			if currentId != clusterId {
+				pfxlog.Logger().
+					WithField("existingClusterId", currentId).
+					WithField("ignoredClusterId", clusterId).
+					Warn("cluster id already set; keeping existing value and ignoring the new one")
 			}
-			return fmt.Errorf("cluster id already initialized to %s", currentId)
+			return nil
 		}
 		raftBucket.SetString(FieldClusterId, clusterId, nil)
 		return raftBucket.Err
 	})
+	return effective, err
 }
