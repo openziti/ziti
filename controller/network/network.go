@@ -1403,7 +1403,8 @@ func (network *Network) ensureClusterId(clusterId string) error {
 	if clusterId == "" {
 		return nil
 	}
-	return db.InitClusterId(network.GetDb(), nil, clusterId)
+	_, err := db.InitClusterId(network.GetDb(), nil, clusterId)
+	return err
 }
 
 // ensureRaftIndex records the raft index if the stored one is behind it, returning an error on
