@@ -390,6 +390,15 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Deprecated Features
+
+Deprecated features still work, but are no longer recommended and will be removed
+in a future release. Plan to migrate off them.
+
+* **Legacy sessions** - The legacy session model, both API sessions and service
+  sessions, is deprecated and will be removed in OpenZiti 3.0, along with the
+  supporting infrastructure built around it.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/edge-api: [v0.31.0 -> v0.31.1](https://github.com/openziti/edge-api/compare/v0.31.0...v0.31.1)

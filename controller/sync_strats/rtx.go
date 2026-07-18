@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -43,7 +44,6 @@ import (
 type RouterSender struct {
 	env.RouterState
 	Id               string
-	EdgeRouter       *model.EdgeRouter
 	Router           *model.Router
 	ae               *env.AppEnv
 	send             chan *channel.Message
@@ -60,13 +60,19 @@ type RouterSender struct {
 
 	SupportsRouterModel bool
 
+	// isEdge is true for senders created for edge routers (via RouterConnected) and false
+	// for on-demand senders created for non-edge (transit) routers when they subscribe to the
+	// data model. It gates the legacy api-session/session broadcasts, which only edge routers
+	// consume. Set once at creation before the sender is added to the map, so it's safe to read
+	// concurrently during fanout.
+	isEdge bool
+
 	sync.Mutex
 }
 
-func newRouterSender(ae *env.AppEnv, edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
+func newRouterSender(ae *env.AppEnv, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
 	rtx := &RouterSender{
 		Id:               eid.New(),
-		EdgeRouter:       edgeRouter,
 		Router:           router,
 		ae:               ae,
 		send:             make(chan *channel.Message, sendBufferSize),
@@ -364,6 +370,28 @@ func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
 	m.internalMap.Set(id, routerMessageTxer)
 }
 
+// GetOrCreate atomically returns the RouterSender for the given id whose Router.Control
+// matches control, creating one via factory if none exists or if the existing sender is
+// bound to a stale control channel. A replaced stale sender is stopped. It returns the
+// sender and whether it was newly created.
+func (m *routerTxMap) GetOrCreate(id string, control ctrlchan.CtrlChannel, factory func() *RouterSender) (rtx *RouterSender, created bool) {
+	m.internalMap.Upsert(id, nil, func(exists bool, current *RouterSender, _ *RouterSender) *RouterSender {
+		if exists && current != nil && current.Router.Control == control {
+			rtx = current
+			return current
+		}
+
+		if exists && current != nil {
+			current.Stop()
+		}
+
+		rtx = factory()
+		created = true
+		return rtx
+	})
+	return rtx, created
+}
+
 func (m *routerTxMap) Get(id string) *RouterSender {
 	val, found := m.internalMap.Get(id)
 	if !found {
@@ -405,4 +433,15 @@ func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
 	for _, routerSender := range routerSenders {
 		callback(routerSender)
 	}
+}
+
+// RangeEdge is like Range but only visits senders for edge routers, skipping non-edge
+// (transit) senders. Used for the legacy api-session/session broadcasts, which only edge
+// routers consume.
+func (m *routerTxMap) RangeEdge(callback func(entries *RouterSender)) {
+	m.Range(func(rtx *RouterSender) {
+		if rtx.isEdge {
+			callback(rtx)
+		}
+	})
 }
