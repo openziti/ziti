@@ -1,0 +1,40 @@
+v: 3
+
+# Edge router for the ha-3 config set. The identity files are written by enrollment at test
+# runtime; the names are distinct from the default-ats router so the sets don't clobber each
+# other. All three controller ctrl endpoints are listed.
+identity:
+  cert: testdata/edge-router/ha-3-edge-router-client.cert.pem
+  server_cert: testdata/edge-router/ha-3-edge-router-server.cert.pem
+  key: testdata/edge-router/ha-3-edge-router.key.pem
+  ca: testdata/edge-router/ha-3-edge-router-ca-chain.cert.pem
+
+ctrl:
+  endpoints:
+    - tls:127.0.0.1:6262
+    - tls:127.0.0.1:6363
+    - tls:127.0.0.1:6464
+
+edge:
+  heartbeatIntervalSeconds: 10
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+    sans:
+      dns:
+        - "localhost"
+      ip:
+        - "127.0.0.1"
+
+dialers:
+  - binding: udp
+  - binding: transport
+
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:3022
+    options:
+      advertise: 127.0.0.1:3022

@@ -68,3 +68,27 @@ ziti pki create server --pki-root $PkiRoot --ca-name ctrl1 --key-file 002 --serv
 
 # Router 002: client cert
 ziti pki create client --pki-root $PkiRoot --ca-name ctrl1 --key-file 002 --client-file 002-client --client-name 002 --spiffe-id 'router/002'
+
+# Separate edge signing PKI: a self-signed root distinct from the ctrl-channel root, with
+# per-controller signing intermediates. Used by the ha-3 config set to exercise networks whose
+# edge.enrollment.signingCert root differs from the ctrl-channel root CA.
+ziti pki create ca --pki-root $PkiRoot --trust-domain $TrustDomain --ca-file signing-root --ca-name 'Ziti Test Edge Signing Root CA' --not-before $RootNotBefore
+
+# Controller 1: edge signing intermediate
+ziti pki create intermediate --pki-root $PkiRoot --ca-name signing-root --intermediate-file signing1 --intermediate-name 'Controller One Edge Signing Cert' --not-before $IntermediateNotBefore
+
+# Controller 2: edge signing intermediate
+ziti pki create intermediate --pki-root $PkiRoot --ca-name signing-root --intermediate-file signing2 --intermediate-name 'Controller Two Edge Signing Cert' --not-before $IntermediateNotBefore
+
+# Controller 3: edge signing intermediate
+ziti pki create intermediate --pki-root $PkiRoot --ca-name signing-root --intermediate-file signing3 --intermediate-name 'Controller Three Edge Signing Cert' --not-before $IntermediateNotBefore
+
+# Shared edge signing CA bundle: the signing root plus every per-controller signing
+# intermediate. Each controller's edge.enrollment.signingCert.ca points here, so the
+# controllers publish the signing root as a trust anchor with the intermediates attached.
+Get-Content `
+    "$PkiRoot/signing-root/certs/signing-root.cert", `
+    "$PkiRoot/signing1/certs/signing1.cert", `
+    "$PkiRoot/signing2/certs/signing2.cert", `
+    "$PkiRoot/signing3/certs/signing3.cert" |
+    Set-Content "$PkiRoot/signing-root/certs/signing-bundle.pem"
