@@ -53,6 +53,11 @@ const (
 	// ControllerSupportsJWTLegacySessions indicates that the controller generates legacy
 	// session tokens as JWTs, carrying identity and service information
 	ControllerSupportsJWTLegacySessions ControllerCapability = 6
+
+	// ControllerAsyncTerminatorRemove indicates the controller accepts RemoveTerminatorsV2Request
+	// and answers it asynchronously with a RemoveTerminatorsV2Response, letting routers remove
+	// terminators without holding a request slot open waiting for a synchronous reply
+	ControllerAsyncTerminatorRemove ControllerCapability = 7
 )
 
 // RouterCapability is the type for capabilities a router advertises. Router
@@ -144,5 +149,6 @@ func GetControllerCapabilitiesMask() *ControllerCapabilityMask {
 		ControllerRouterDataModel,
 		ControllerGroupedCtrlChan,
 		ControllerSupportsJWTLegacySessions,
+		ControllerAsyncTerminatorRemove,
 	)
 }
