@@ -23,6 +23,7 @@ import (
 
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/cert"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,14 +34,6 @@ type ConnectionHandler struct {
 func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	if len(certificates) == 0 {
 		return errors.New("no certificates provided, unable to verify dialer")
-	}
-
-	config := self.routerId.ServerTLSConfig()
-
-	opts := x509.VerifyOptions{
-		Roots:         config.RootCAs,
-		Intermediates: x509.NewCertPool(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
 	dialedRouterId, ok := hello.Headers[LinkDialedRouterId]
@@ -54,15 +47,9 @@ func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificat
 		}
 	}
 
-	var errorList []error
-
-	for _, cert := range certificates {
-		if _, err := cert.Verify(opts); err == nil {
-			return nil
-		} else {
-			errorList = append(errorList, err)
-		}
+	if _, err := cert.VerifyClientCertChain(self.routerId.CaPool(), certificates); err != nil {
+		return fmt.Errorf("unable to verify dialing router: %w", err)
 	}
 
-	return errors.Join(errorList...)
+	return nil
 }
