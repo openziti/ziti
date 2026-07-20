@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/ziti/v2/router/xgress_common"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,5 +110,95 @@ func Test_edgeTerminator_rateLimitSignaling(t *testing.T) {
 		got := term.GetAndClearRateLimitCallback()
 		req.NotNil(got)
 		req.Same(next, got.(*stubRateLimitControl), "the new control must be the one now stored")
+	})
+}
+
+// newTestHostedServiceRegistry builds a registry with just the maps the event-loop handlers touch,
+// without starting the run loop. It is enough to drive handleRemoveTerminatorsV2Response directly.
+func newTestHostedServiceRegistry() *hostedServiceRegistry {
+	return &hostedServiceRegistry{
+		terminators:    cmap.New[*edgeTerminator](),
+		deleteSet:      map[string]*edgeTerminator{},
+		pendingRemoves: map[string]*pendingRemoveBatch{},
+		triggerEvalC:   make(chan struct{}, 1),
+	}
+}
+
+func newDeletingTerminator(id string) *edgeTerminator {
+	term := &edgeTerminator{terminatorId: id}
+	term.operationActive.Store(true)
+	term.setState(xgress_common.TerminatorStateDeleting, "test setup")
+	return term
+}
+
+func Test_hostedServiceRegistry_handleRemoveTerminatorsV2Response(t *testing.T) {
+	t.Run("success removes the terminator and reports success", func(t *testing.T) {
+		req := require.New(t)
+
+		reg := newTestHostedServiceRegistry()
+		ctrl := &stubRateLimitControl{}
+		term := newDeletingTerminator("t1")
+		reg.terminators.Set(term.terminatorId, term)
+		reg.pendingRemoves["req1"] = &pendingRemoveBatch{rateLimitCtrl: ctrl, terminators: []*edgeTerminator{term}}
+
+		reg.handleRemoveTerminatorsV2Response(&removeTerminatorsV2ResponseEvent{requestId: "req1", success: true})
+
+		req.Equal(1, ctrl.success)
+		req.Equal(0, ctrl.backoff)
+		req.Equal(0, ctrl.failed)
+		_, found := reg.terminators.Get("t1")
+		req.False(found, "terminator must be removed from the router set on success")
+		req.False(term.operationActive.Load(), "operationActive must be cleared on success")
+		req.NotContains(reg.pendingRemoves, "req1", "the pending batch must be cleared")
+		req.Empty(reg.deleteSet, "a successfully removed terminator must not be requeued")
+	})
+
+	t.Run("rate limited backs off and requeues for retry", func(t *testing.T) {
+		req := require.New(t)
+
+		reg := newTestHostedServiceRegistry()
+		ctrl := &stubRateLimitControl{}
+		term := newDeletingTerminator("t2")
+		reg.terminators.Set(term.terminatorId, term)
+		reg.pendingRemoves["req2"] = &pendingRemoveBatch{rateLimitCtrl: ctrl, terminators: []*edgeTerminator{term}}
+
+		reg.handleRemoveTerminatorsV2Response(&removeTerminatorsV2ResponseEvent{requestId: "req2", wasRateLimited: true, msg: "server too busy"})
+
+		req.Equal(0, ctrl.success)
+		req.Equal(1, ctrl.backoff, "a rate-limited removal must signal congestion via backoff")
+		req.Equal(0, ctrl.failed)
+		_, found := reg.terminators.Get("t2")
+		req.True(found, "terminator must remain in the router set for retry")
+		req.Contains(reg.deleteSet, "t2", "terminator must be requeued for deletion")
+		req.False(term.operationActive.Load())
+		req.NotContains(reg.pendingRemoves, "req2")
+	})
+
+	t.Run("generic failure reports failed and requeues for retry", func(t *testing.T) {
+		req := require.New(t)
+
+		reg := newTestHostedServiceRegistry()
+		ctrl := &stubRateLimitControl{}
+		term := newDeletingTerminator("t3")
+		reg.terminators.Set(term.terminatorId, term)
+		reg.pendingRemoves["req3"] = &pendingRemoveBatch{rateLimitCtrl: ctrl, terminators: []*edgeTerminator{term}}
+
+		reg.handleRemoveTerminatorsV2Response(&removeTerminatorsV2ResponseEvent{requestId: "req3", msg: "boom"})
+
+		req.Equal(0, ctrl.success)
+		req.Equal(0, ctrl.backoff, "a non-rate-limited failure must not move the window")
+		req.Equal(1, ctrl.failed)
+		req.Contains(reg.deleteSet, "t3", "terminator must be requeued for deletion")
+		req.NotContains(reg.pendingRemoves, "req3")
+	})
+
+	t.Run("response for an unknown request id is a no-op", func(t *testing.T) {
+		req := require.New(t)
+
+		reg := newTestHostedServiceRegistry()
+		req.NotPanics(func() {
+			reg.handleRemoveTerminatorsV2Response(&removeTerminatorsV2ResponseEvent{requestId: "gone", success: true})
+		})
+		req.Empty(reg.deleteSet)
 	})
 }
