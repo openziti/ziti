@@ -42,7 +42,7 @@ jobs:
           fi
 
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -130,7 +130,7 @@ jobs:
       ZITI_RPM_PROD_REPO: ${{ vars.ZITI_RPM_PROD_REPO || 'zitipax-openziti-rpm-stable' }}
     steps:
       - name: Configure jFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@v5
         env:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
