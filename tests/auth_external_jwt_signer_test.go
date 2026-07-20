@@ -19,11 +19,14 @@
 package tests
 
 import (
+	"crypto"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -53,6 +56,7 @@ type jwksServer struct {
 	mutex        sync.Mutex
 	requestCount int
 	listener     net.Listener
+	tlsCert      *tls.Certificate
 }
 
 func newJwksServer(certificates []*x509.Certificate) *jwksServer {
@@ -64,6 +68,16 @@ func newJwksServer(certificates []*x509.Certificate) *jwksServer {
 	srv.server = &http.Server{
 		Handler: mux,
 	}
+	return srv
+}
+
+// newTlsJwksServer returns a jwksServer that serves its JWKS over HTTPS using tlsCert as its
+// server certificate. Callers must ensure the controller trusts tlsCert (see the root CA added
+// to http.DefaultTransport in the overlapping-kid test) for the controller's JWKS fetch to succeed.
+func newTlsJwksServer(tlsCert *tls.Certificate, certificates []*x509.Certificate) *jwksServer {
+	srv := newJwksServer(certificates)
+	srv.tlsCert = tlsCert
+	srv.server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{*tlsCert}}
 	return srv
 }
 
@@ -87,7 +101,11 @@ func (js *jwksServer) RemoveCertificate(certificate *x509.Certificate) {
 }
 
 func (js *jwksServer) GetJwksUrl() string {
-	return "http://localhost:" + strconv.Itoa(js.port) + "/jwks"
+	scheme := "http"
+	if js.tlsCert != nil {
+		scheme = "https"
+	}
+	return scheme + "://localhost:" + strconv.Itoa(js.port) + "/jwks"
 }
 
 func (js *jwksServer) GetRequestCount() int {
@@ -107,7 +125,11 @@ func (js *jwksServer) Start() error {
 	js.port = listener.Addr().(*net.TCPAddr).Port
 	js.mutex.Unlock()
 	go func() {
-		_ = js.server.Serve(listener)
+		if js.tlsCert != nil {
+			_ = js.server.ServeTLS(listener, "", "")
+		} else {
+			_ = js.server.Serve(listener)
+		}
 	}()
 
 	return nil
@@ -1035,4 +1057,217 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 		})
 	})
+}
+
+// Test_Authenticate_External_Jwt_Overlapping_Kids reproduces intermittent primary ext-jwt
+// authentication failures that occur when multiple external JWT signers expose the same key ID
+// (kid), as happens when several signers draw from a shared signing-key pool (e.g. multiple
+// Entra tenants using Microsoft's keys). Token-to-issuer binding must be disambiguated by the
+// token's iss claim so a shared kid resolves deterministically to the correct signer, and a
+// disabled signer that happens to share a kid must not poison resolution for an enabled one.
+func Test_Authenticate_External_Jwt_Overlapping_Kids(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	// The controller fetches JWKS over the default HTTP transport. Trust the test PKI root so the
+	// controller accepts the HTTPS JWKS providers below, which serve using the controller's own
+	// server certificate. Restore the prior transport config when the test completes.
+	rootPem, err := os.ReadFile("testdata/pki/root/certs/root.cert")
+	ctx.Req.NoError(err)
+
+	rootPool, err := x509.SystemCertPool()
+	if err != nil || rootPool == nil {
+		rootPool = x509.NewCertPool()
+	}
+	ctx.Req.True(rootPool.AppendCertsFromPEM(rootPem), "expected the test root CA to be added to the trust pool")
+
+	httpTransport := http.DefaultTransport.(*http.Transport)
+	priorTlsConfig := httpTransport.TLSClientConfig
+	httpTransport.TLSClientConfig = &tls.Config{RootCAs: rootPool}
+	defer func() { httpTransport.TLSClientConfig = priorTlsConfig }()
+
+	serverTlsCert, err := tls.LoadX509KeyPair("testdata/pki/ctrl1/certs/server.chain.pem", "testdata/pki/ctrl1/keys/server.key")
+	ctx.Req.NoError(err)
+
+	adminIdentityId := *ctx.AdminManagementSession.AuthResponse.IdentityID
+
+	t.Run("two enabled signers sharing a kid authenticate deterministically by issuer", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		// One signing key and kid, served by two independent HTTPS JWKS providers - the shared
+		// signing-key pool scenario.
+		sharedCert, sharedKey := newSelfSignedCert("shared-jwks-pool-" + uuid.NewString())
+		sharedKid := sharedCert.Subject.CommonName
+
+		jwksServer1 := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		ctx.Req.NoError(jwksServer1.Start())
+		defer func() { _ = jwksServer1.Stop() }()
+
+		jwksServer2 := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		ctx.Req.NoError(jwksServer2.Start())
+		defer func() { _ = jwksServer2.Stop() }()
+
+		signer1Iss := "iss-shared-kid-1-" + uuid.NewString()
+		signer1Aud := "aud-shared-kid-1-" + uuid.NewString()
+		signer1Endpoint := strfmt.URI(jwksServer1.GetJwksUrl())
+		signer1Env := &rest_model.CreateEnvelope{}
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.ExternalJWTSignerCreate{
+			JwksEndpoint: &signer1Endpoint,
+			Enabled:      ToPtr(true),
+			Name:         ToPtr("Overlapping Kid Signer 1 - " + uuid.NewString()),
+			Issuer:       ToPtr(signer1Iss),
+			Audience:     ToPtr(signer1Aud),
+		}).SetResult(signer1Env).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		signer2Iss := "iss-shared-kid-2-" + uuid.NewString()
+		signer2Aud := "aud-shared-kid-2-" + uuid.NewString()
+		signer2Endpoint := strfmt.URI(jwksServer2.GetJwksUrl())
+		signer2Env := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.ExternalJWTSignerCreate{
+			JwksEndpoint: &signer2Endpoint,
+			Enabled:      ToPtr(true),
+			Name:         ToPtr("Overlapping Kid Signer 2 - " + uuid.NewString()),
+			Issuer:       ToPtr(signer2Iss),
+			Audience:     ToPtr(signer2Aud),
+		}).SetResult(signer2Env).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.AuthPolicyPatch{
+			Primary: &rest_model.AuthPolicyPrimaryPatch{
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWTPatch{
+					Allowed:        ToPtr(true),
+					AllowedSigners: []string{signer1Env.Data.ID, signer2Env.Data.ID},
+				},
+			},
+		}).Patch("/auth-policies/default")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		// External JWT signer creation events are processed asynchronously, so wait until signer 1's
+		// JWKS has resolved into the issuer cache before asserting deterministic behavior.
+		ctx.Req.Eventually(func() bool {
+			code, err := authenticateWithSignedExtJwt(ctx, signer1Iss, signer1Aud, adminIdentityId, sharedKid, sharedKey)
+			return err == nil && code == http.StatusOK
+		}, 10*time.Second, 100*time.Millisecond, "signer 1 should become usable for primary authentication")
+
+		// Tokens are issued only by signer 1 (its iss/aud), but the kid is shared with signer 2.
+		// Kid-first binding over a non-deterministically ordered map would bind some requests to
+		// signer 2 and reject them on the issuer mismatch. Repeat enough times that a single wrong
+		// binding is overwhelmingly likely under the pre-fix behavior.
+		const attempts = 25
+		for i := 0; i < attempts; i++ {
+			code, err := authenticateWithSignedExtJwt(ctx, signer1Iss, signer1Aud, adminIdentityId, sharedKid, sharedKey)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, code, "attempt %d: a token issued by signer 1 must authenticate regardless of a kid shared with signer 2", i)
+		}
+	})
+
+	t.Run("a disabled signer sharing a kid does not poison an enabled signer", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		// One signing key and kid served by two HTTPS JWKS providers - one signer enabled, one
+		// disabled. A disabled signer that shares a kid must not capture the binding and suppress
+		// issuer-string resolution for the enabled signer.
+		sharedCert, sharedKey := newSelfSignedCert("shared-disabled-poison-" + uuid.NewString())
+		sharedKid := sharedCert.Subject.CommonName
+
+		enabledJwksServer := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		ctx.Req.NoError(enabledJwksServer.Start())
+		defer func() { _ = enabledJwksServer.Stop() }()
+
+		disabledJwksServer := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		ctx.Req.NoError(disabledJwksServer.Start())
+		defer func() { _ = disabledJwksServer.Stop() }()
+
+		enabledIss := "iss-poison-enabled-" + uuid.NewString()
+		enabledAud := "aud-poison-enabled-" + uuid.NewString()
+		enabledEndpoint := strfmt.URI(enabledJwksServer.GetJwksUrl())
+		enabledEnv := &rest_model.CreateEnvelope{}
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.ExternalJWTSignerCreate{
+			JwksEndpoint: &enabledEndpoint,
+			Enabled:      ToPtr(true),
+			Name:         ToPtr("Poison - Enabled - " + uuid.NewString()),
+			Issuer:       ToPtr(enabledIss),
+			Audience:     ToPtr(enabledAud),
+		}).SetResult(enabledEnv).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		disabledIss := "iss-poison-disabled-" + uuid.NewString()
+		disabledAud := "aud-poison-disabled-" + uuid.NewString()
+		disabledEndpoint := strfmt.URI(disabledJwksServer.GetJwksUrl())
+		disabledEnv := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.ExternalJWTSignerCreate{
+			JwksEndpoint: &disabledEndpoint,
+			Enabled:      ToPtr(false),
+			Name:         ToPtr("Poison - Disabled - " + uuid.NewString()),
+			Issuer:       ToPtr(disabledIss),
+			Audience:     ToPtr(disabledAud),
+		}).SetResult(disabledEnv).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(&rest_model.AuthPolicyPatch{
+			Primary: &rest_model.AuthPolicyPrimaryPatch{
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWTPatch{
+					Allowed:        ToPtr(true),
+					AllowedSigners: []string{enabledEnv.Data.ID},
+				},
+			},
+		}).Patch("/auth-policies/default")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		// Wait until the enabled signer's JWKS has resolved into the issuer cache (creation events
+		// are processed asynchronously) before asserting deterministic behavior.
+		ctx.Req.Eventually(func() bool {
+			code, err := authenticateWithSignedExtJwt(ctx, enabledIss, enabledAud, adminIdentityId, sharedKid, sharedKey)
+			return err == nil && code == http.StatusOK
+		}, 10*time.Second, 100*time.Millisecond, "the enabled signer should become usable for primary authentication")
+
+		// Tokens are issued by the enabled signer. Kid-first binding without an enabled filter
+		// would bind some requests to the disabled signer, drop the token without falling back to
+		// issuer-string resolution, and fail authentication.
+		const attempts = 25
+		for i := 0; i < attempts; i++ {
+			code, err := authenticateWithSignedExtJwt(ctx, enabledIss, enabledAud, adminIdentityId, sharedKid, sharedKey)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, code, "attempt %d: a token issued by the enabled signer must authenticate even though a disabled signer shares its kid", i)
+		}
+	})
+}
+
+// authenticateWithSignedExtJwt signs an ES256 JWT with the given issuer, audience, subject, and kid
+// using key, presents it as a primary ext-jwt bearer token, and returns the resulting HTTP status
+// code. It does not assert, leaving the caller to decide what a given status means.
+func authenticateWithSignedExtJwt(ctx *TestContext, issuer, audience, subject, kid string, key crypto.PrivateKey) (int, error) {
+	jwtToken := jwt.New(jwt.SigningMethodES256)
+	jwtToken.Claims = jwt.RegisteredClaims{
+		Audience:  []string{audience},
+		ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+		ID:        uuid.NewString(),
+		IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+		Issuer:    issuer,
+		NotBefore: &jwt.NumericDate{Time: time.Now()},
+		Subject:   subject,
+	}
+	jwtToken.Header["kid"] = kid
+
+	signed, err := jwtToken.SignedString(key)
+	if err != nil {
+		return 0, err
+	}
+
+	result := &rest_model.CurrentAPISessionDetailEnvelope{}
+	resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+signed).Post("/authenticate?method=ext-jwt")
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.StatusCode(), nil
 }

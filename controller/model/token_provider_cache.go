@@ -32,10 +32,10 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )
@@ -485,15 +485,26 @@ func (a *TokenIssuerCache) IterateControllerIssuers(f func(issuer common.TokenIs
 	})
 }
 
-// GetIssuerByKid searches both external JWT signers and controller issuers for the one
-// that owns the given key ID. Returns nil if no issuer claims that kid.
+// GetIssuerByKid searches enabled external JWT signers and then controller issuers for the one
+// that owns the given key ID. Disabled external signers are skipped so a disabled signer that
+// shares a kid cannot capture resolution. Returns nil if no issuer claims that kid.
 func (a *TokenIssuerCache) GetIssuerByKid(kid string) common.TokenIssuer {
 	for _, issuer := range a.externalIssuers.Items() {
+		if !issuer.IsEnabled() {
+			continue
+		}
 		if pubKey, ok := issuer.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return issuer
 		}
 	}
 
+	return a.GetControllerIssuerByKid(kid)
+}
+
+// GetControllerIssuerByKid returns the controller TokenIssuer that owns the given key ID, or nil
+// if no controller issuer claims that kid. Controller issuers are keyed by their TLS certificate
+// fingerprint, so this resolves controller-issued tokens by kid without consulting external signers.
+func (a *TokenIssuerCache) GetControllerIssuerByKid(kid string) common.TokenIssuer {
 	for _, controller := range a.controllerIssuers.Items() {
 		if pubKey, ok := controller.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return controller
