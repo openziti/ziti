@@ -30,15 +30,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// caPoolIdentity is a minimal identity.Identity whose only useful method is CaPool. The link
-// verification path consults nothing else on the identity, so the remaining interface methods are left
-// to the embedded nil interface (never called on the paths exercised here).
+// caPoolIdentity is a minimal identity.Identity whose only useful method is CA. The link verification
+// path consults nothing else on the identity, so the remaining interface methods are left to the
+// embedded nil interface (never called on the paths exercised here).
 type caPoolIdentity struct {
 	identity.Identity
-	pool *identity.CaPool
+	roots *x509.CertPool
 }
 
-func (f *caPoolIdentity) CaPool() *identity.CaPool { return f.pool }
+func (f *caPoolIdentity) CA() *x509.CertPool { return f.roots }
+
+func ltPool(certs ...*x509.Certificate) *x509.CertPool {
+	p := x509.NewCertPool()
+	for _, c := range certs {
+		p.AddCert(c)
+	}
+	return p
+}
 
 type ltCertAndKey struct {
 	cert *x509.Certificate
@@ -77,8 +85,8 @@ func ltMkCert(t *testing.T, cn string, isCA bool, signer *ltCertAndKey) *ltCertA
 	return &ltCertAndKey{cert: c, key: key}
 }
 
-func ltHandler(pool *identity.CaPool) *ConnectionHandler {
-	return &ConnectionHandler{routerId: &caPoolIdentity{pool: pool}}
+func ltHandler(roots *x509.CertPool) *ConnectionHandler {
+	return &ConnectionHandler{routerId: &caPoolIdentity{roots: roots}}
 }
 
 // Test_ConnectionHandler_RejectsUntrustedDialer covers incoming link verification: the dialing router
@@ -90,8 +98,8 @@ func Test_ConnectionHandler_RejectsUntrustedDialer(t *testing.T) {
 
 	root := ltMkCert(t, "root", true, nil)
 	inter := ltMkCert(t, "int", true, root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
-	handler := ltHandler(pool)
+	roots := ltPool(root.cert, inter.cert)
+	handler := ltHandler(roots)
 
 	legit := ltMkCert(t, "legit-router", false, inter)
 	forged := ltMkCert(t, "forged", false, nil)
@@ -108,8 +116,8 @@ func Test_ConnectionHandler_AcceptsTrustedDialer(t *testing.T) {
 
 	root := ltMkCert(t, "root", true, nil)
 	inter := ltMkCert(t, "int", true, root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
-	handler := ltHandler(pool)
+	roots := ltPool(root.cert, inter.cert)
+	handler := ltHandler(roots)
 
 	legit := ltMkCert(t, "legit-router", false, inter)
 	req.NoError(handler.HandleConnection(nil, []*x509.Certificate{legit.cert}),
