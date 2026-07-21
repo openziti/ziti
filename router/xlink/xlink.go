@@ -80,7 +80,6 @@ type Listener interface {
 	Listen() error
 	GetAdvertisement() string
 	GetLinkProtocol() string
-	GetLinkCostTags() []string
 	GetGroups() []string
 	GetLocalBinding() string
 	Close() error

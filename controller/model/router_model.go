@@ -146,11 +146,10 @@ func (entity *Router) fillFrom(_ Env, _ *bbolt.Tx, boltRouter *db.Router) error 
 	return nil
 }
 
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
+func (entity *Router) AddLinkListener(addr, linkProtocol string, groups []string) {
 	entity.Listeners = append(entity.Listeners, &ctrl_pb.Listener{
 		Address:  addr,
 		Protocol: linkProtocol,
-		CostTags: linkCostTags,
 		Groups:   groups,
 	})
 }
