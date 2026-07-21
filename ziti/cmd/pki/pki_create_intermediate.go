@@ -81,6 +81,7 @@ func (o *PKICreateIntermediateOptions) addPKICreateIntermediateFlags(cmd *cobra.
 
 // Run implements this command
 func (o *PKICreateIntermediateOptions) Run() error {
+	o.ResolveFlagsFromViper(o.Cmd)
 	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
