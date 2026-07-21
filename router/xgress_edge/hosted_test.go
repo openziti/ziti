@@ -113,6 +113,45 @@ func Test_edgeTerminator_rateLimitSignaling(t *testing.T) {
 	})
 }
 
+func Test_edgeTerminator_retryBackoff(t *testing.T) {
+	t.Run("inactive by default", func(t *testing.T) {
+		req := require.New(t)
+		term := &edgeTerminator{}
+		req.False(term.retryBackoffActive())
+	})
+
+	t.Run("scheduling activates backoff and grows the ceiling to the cap", func(t *testing.T) {
+		req := require.New(t)
+		term := &edgeTerminator{}
+
+		term.scheduleRetryBackoff()
+		req.True(term.retryBackoffActive(), "backoff must be active right after scheduling")
+		req.Equal(minRetryBackoff, term.retryBackoff, "first backoff ceiling must be the minimum")
+		// equal-jitter: the delay lands in [ceiling/2, ceiling]
+		req.WithinDuration(time.Now().Add(minRetryBackoff), term.retryAfter, minRetryBackoff/2+time.Second)
+
+		term.scheduleRetryBackoff()
+		req.Equal(2*minRetryBackoff, term.retryBackoff, "ceiling must double on the next rejection")
+
+		for i := 0; i < 20; i++ {
+			term.scheduleRetryBackoff()
+		}
+		req.Equal(maxRetryBackoff, term.retryBackoff, "ceiling must saturate at the maximum")
+	})
+
+	t.Run("clearing resets the backoff", func(t *testing.T) {
+		req := require.New(t)
+		term := &edgeTerminator{}
+
+		term.scheduleRetryBackoff()
+		req.True(term.retryBackoffActive())
+
+		term.clearRetryBackoff()
+		req.False(term.retryBackoffActive(), "cleared backoff must be inactive")
+		req.Zero(term.retryBackoff, "cleared backoff ceiling must reset to zero")
+	})
+}
+
 // newTestHostedServiceRegistry builds a registry with just the maps the event-loop handlers touch,
 // without starting the run loop. It is enough to drive handleRemoveTerminatorsV2Response directly.
 func newTestHostedServiceRegistry() *hostedServiceRegistry {
@@ -172,6 +211,7 @@ func Test_hostedServiceRegistry_handleRemoveTerminatorsV2Response(t *testing.T) 
 		req.Contains(reg.deleteSet, "t2", "terminator must be requeued for deletion")
 		req.False(term.operationActive.Load())
 		req.NotContains(reg.pendingRemoves, "req2")
+		req.True(term.retryBackoffActive(), "a rejected removal must be paced with a retry backoff, not retried immediately")
 	})
 
 	t.Run("generic failure reports failed and requeues for retry", func(t *testing.T) {
@@ -190,6 +230,7 @@ func Test_hostedServiceRegistry_handleRemoveTerminatorsV2Response(t *testing.T) 
 		req.Equal(1, ctrl.failed)
 		req.Contains(reg.deleteSet, "t3", "terminator must be requeued for deletion")
 		req.NotContains(reg.pendingRemoves, "req3")
+		req.True(term.retryBackoffActive(), "a failed removal must be paced with a retry backoff, not retried immediately")
 	})
 
 	t.Run("response for an unknown request id is a no-op", func(t *testing.T) {

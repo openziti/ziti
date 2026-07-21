@@ -48,6 +48,16 @@ import (
 // and the post-establish inspect. Kept above normal latency so a healthy system won't trip it.
 const establishmentTimeout = 30 * time.Second
 
+const (
+	// minRetryBackoff and maxRetryBackoff bound the per-terminator backoff applied after the
+	// controller rejects an establish or remove (e.g. rate limited). Without this pacing a
+	// fast-failing (immediately rejected) operation gets retried in a tight loop, which under load
+	// becomes a self-sustaining request storm against the controller. The backoff ceiling starts at
+	// minRetryBackoff and doubles per consecutive rejection up to maxRetryBackoff.
+	minRetryBackoff = time.Second
+	maxRetryBackoff = 30 * time.Second
+)
+
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
 		terminators:          cmap.New[*edgeTerminator](),
@@ -98,6 +108,11 @@ func (self *hostedServiceRegistry) run() {
 	quickTick := time.NewTicker(10 * time.Millisecond)
 	defer quickTick.Stop()
 
+	// Wakes the loop roughly every second so terminators whose retry backoff has elapsed get
+	// re-attempted promptly, without a busy tick, when nothing else is triggering evaluation.
+	retryTick := time.NewTicker(time.Second)
+	defer retryTick.Stop()
+
 	for {
 		var rateLimitedTick <-chan time.Time
 		if self.env.GetCtrlRateLimiter().IsRateLimited() {
@@ -111,6 +126,7 @@ func (self *hostedServiceRegistry) run() {
 		case <-longQueueCheckTicker.C:
 			self.scanForRetries()
 		case <-self.triggerEvalC:
+		case <-retryTick.C:
 		case <-rateLimitedTick:
 		}
 
@@ -175,6 +191,10 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			continue
 		}
 
+		if terminator.retryBackoffActive() {
+			continue // still within retry backoff after a prior rejection; leave queued and retry later
+		}
+
 		label := fmt.Sprintf("establish terminator %s", terminator.terminatorId)
 		rateLimitCtrl, err := self.env.GetCtrlRateLimiter().RunRateLimited(label)
 		if err != nil {
@@ -209,6 +229,10 @@ func (self *hostedServiceRegistry) evaluateDeleteQueue() {
 	var deleteList []*edgeTerminator
 
 	for terminatorId, terminator := range self.deleteSet {
+		if terminator.retryBackoffActive() {
+			continue // still within retry backoff after a prior rejection; leave queued and retry later
+		}
+
 		log := logrus.
 			WithField("terminatorId", terminator.terminatorId).
 			WithField("state", terminator.state.Load()).
@@ -302,6 +326,7 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 			for _, terminator := range terminators {
 				pfxlog.Logger().WithError(err).WithField("terminatorId", terminator.terminatorId).
 					Error("remove terminator failed")
+				terminator.scheduleRetryBackoff()
 				self.requeueRemoveTerminatorAsync(terminator)
 			}
 		} else {
@@ -365,6 +390,9 @@ func (self *hostedServiceRegistry) removeTerminatorsV2(ctrlCh channel.Channel, t
 			pfxlog.Logger().WithError(err).Error("failed to send remove terminators v2 request")
 		} else {
 			pfxlog.Logger().Error("failed to send remove terminators v2 request, channel too busy")
+		}
+		for _, terminator := range terminators {
+			terminator.scheduleRetryBackoff()
 		}
 		self.requeueForDeleteSync(terminators)
 		return false
@@ -498,6 +526,7 @@ func (self *hostedServiceRegistry) handleRemoveTerminatorsV2Response(event *remo
 	for _, terminator := range batch.terminators {
 		log.WithField("terminatorId", terminator.terminatorId).WithField("msg", event.msg).
 			Error("remove terminator failed")
+		terminator.scheduleRetryBackoff()
 		self.requeueRemoveTerminatorSync(terminator)
 	}
 }
@@ -1061,6 +1090,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		if rateLimitCallback := terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
 			rateLimitCallback.Backoff()
 		}
+		terminator.scheduleRetryBackoff()
 		self.queueEstablishTerminatorAsync(terminator)
 		return
 	}
@@ -1101,6 +1131,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	}
 
 	terminator.failureCount.Store(0)
+	terminator.clearRetryBackoff()
 	self.markEstablished(terminator, "create notification received")
 
 	// notify the sdk that the terminator was established
