@@ -115,6 +115,7 @@ func (self *factory) CreateListener(id *identity.TokenId, configData transport.C
 		pendingLinks:       map[string]*pendingLink{},
 		xlinkRegistery:     self.env.GetXLinkRegistry(),
 		env:                self.env,
+		stopC:              make(chan struct{}),
 	}, nil
 }
 

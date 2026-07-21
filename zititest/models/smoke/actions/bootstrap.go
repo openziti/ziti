@@ -65,6 +65,13 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
+
+	// Assign controller-managed router.link.v1 configs to the tagged
+	// routers. Must run after InitEdgeRouters (so the edge_router records
+	// exist) and before any router process starts (so the assignment is
+	// already in the RDM by the time the router subscribes).
+	workflow.AddAction(CreateManagedLinkConfigs(".ctrl-managed-link"))
+
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "sim"))
