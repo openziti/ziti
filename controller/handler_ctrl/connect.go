@@ -19,19 +19,23 @@ package handler_ctrl
 import (
 	"crypto/sha1"
 	"crypto/x509"
-	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/network"
-	"time"
 )
 
 type ConnectHandler struct {
 	identity identity.Identity
 	network  *network.Network
+
+	// separatelyValidatedTypes holds the control-channel type headers that are dispatched to a
+	// separate, self-validating acceptor (currently the raft mesh, when clustering is enabled).
+	separatelyValidatedTypes map[string]struct{}
 }
 
 func NewConnectHandler(identity identity.Identity, network *network.Network) *ConnectHandler {
@@ -41,8 +45,31 @@ func NewConnectHandler(identity identity.Identity, network *network.Network) *Co
 	}
 }
 
+// SetSeparatelyValidatedChannelTypes records the control-channel type headers that are dispatched to a
+// separate, self-validating acceptor (e.g. the raft mesh). Connections carrying one of these types are
+// skipped by HandleConnection; everything else - unrecognized types and legacy (no type header)
+// connections, all of which the dispatcher routes to the router control acceptor - is validated here.
+// This must be populated before the listener begins accepting.
+func (self *ConnectHandler) SetSeparatelyValidatedChannelTypes(types map[string]struct{}) {
+	self.separatelyValidatedTypes = types
+}
+
+// isSeparatelyValidated reports whether the connection's channel type is handled by a separate,
+// self-validating acceptor and therefore must not be validated as a router control connection here.
+func (self *ConnectHandler) isSeparatelyValidated(hello *channel.Hello) bool {
+	underlayType, found := hello.Headers[channel.TypeHeader]
+	if !found {
+		return false
+	}
+	_, ok := self.separatelyValidatedTypes[string(underlayType)]
+	return ok
+}
+
 func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
-	if _, found := hello.Headers[channel.TypeHeader]; found {
+	// Connections whose channel type is handled by a separate, self-validating acceptor (e.g. the raft
+	// mesh) are validated there, so skip them. Everything else - unrecognized types and legacy (no type
+	// header) connections - is dispatched to the router control acceptor and must be validated here.
+	if self.isSeparatelyValidated(hello) {
 		return nil
 	}
 
@@ -50,46 +77,21 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 
 	log := pfxlog.Logger().WithField("routerId", id)
 
-	// verify cert chain
 	if len(certificates) == 0 {
 		return fmt.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
 	}
 
-	config := self.identity.ServerTLSConfig()
-
-	opts := x509.VerifyOptions{
-		Roots:         config.RootCAs,
-		Intermediates: x509.NewCertPool(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	// Verify the peer's leaf certificate (certificates[0], the certificate whose private key the TLS
+	// handshake proved) chains to the controller CA, and bind the router fingerprint check to that
+	// verified leaf. Matching the enrolled fingerprint against any presented certificate would let a
+	// peer present its own leaf followed by a target router's public certificate and pass without that
+	// router's private key.
+	leaf, err := cert.VerifyClientCertChain(self.identity.CaPool(), certificates)
+	if err != nil {
+		return fmt.Errorf("unable to verify dialer, routerId: %v: %w", id, err)
 	}
-
-	var validFingerPrints []string
-	var errorList []error
-
-	for _, cert := range certificates {
-		if cert.IsCA {
-			opts.Intermediates.AddCert(cert)
-		}
-	}
-
-	for i, cert := range certificates {
-		if !cert.IsCA {
-			if _, err := cert.Verify(opts); err == nil {
-				fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
-				validFingerPrints = append(validFingerPrints, fingerprint)
-				log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
-				log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)
-			} else {
-				errorList = append(errorList, err)
-			}
-		}
-	}
-
-	if len(validFingerPrints) == 0 && len(errorList) > 0 {
-		return errors.Join(errorList...)
-	}
-
-	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
+	fingerprint := fmt.Sprintf("%x", sha1.Sum(leaf.Raw))
+	log.Debugf("peer leaf certificate fingerprint [%s], common name [%s]", fingerprint, leaf.Subject.CommonName)
 
 	if router := self.network.GetConnectedRouter(id); router != nil {
 		if time.Since(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
@@ -104,9 +106,9 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 			log.Error("router enrollment incomplete")
 			return fmt.Errorf("router enrollment incomplete, routerId: %v", id)
 		}
-		if !stringz.Contains(validFingerPrints, *r.Fingerprint) {
-			log.WithField("fp", *r.Fingerprint).WithField("givenFps", validFingerPrints).Error("router fingerprint mismatch")
-			return fmt.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
+		if fingerprint != *r.Fingerprint {
+			log.WithField("fp", *r.Fingerprint).WithField("givenFp", fingerprint).Error("router fingerprint mismatch")
+			return fmt.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprint: %v", id, fingerprint)
 		}
 		if r.Disabled {
 			log.Error("router disabled")
