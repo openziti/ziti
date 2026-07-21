@@ -47,7 +47,7 @@ func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificat
 		}
 	}
 
-	if _, err := cert.VerifyClientCertChain(self.routerId.CaPool(), certificates); err != nil {
+	if _, err := cert.VerifyLeafCertChain(self.routerId.CA(), certificates); err != nil {
 		return fmt.Errorf("unable to verify dialing router: %w", err)
 	}
 

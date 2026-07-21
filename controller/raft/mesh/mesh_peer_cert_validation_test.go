@@ -195,7 +195,7 @@ func Test_MeshPeerCert_LiveHandshake(t *testing.T) {
 		}
 	}()
 
-	pool := id.CaPool()
+	ca := id.CA()
 
 	// Scrape the node's own server certificate from the listener (a throwaway client cert satisfies
 	// RequireAnyClientCert). This is the "extra" certificate the rogue peer will present.
@@ -212,14 +212,11 @@ func Test_MeshPeerCert_LiveHandshake(t *testing.T) {
 	req.Equal("node-server", extra.Subject.CommonName)
 	<-results
 
-	// Outbound-dial direction: the peer's leaf is its TLS server certificate (here the scraped
-	// server-auth-only cert). It must pass server-auth verification but fail client-auth verification,
-	// which is why mesh validation is direction-aware - verifying an outbound peer's server certificate
-	// against client-auth usage would reject a legitimate controller under a split-EKU external PKI.
-	_, err = cert.VerifyServerCertChain(pool, serverPresented)
-	req.NoError(err, "outbound direction accepts the peer's server-auth certificate")
-	_, err = cert.VerifyClientCertChain(pool, serverPresented)
-	req.Error(err, "the same server-auth-only certificate fails client-auth verification")
+	// The scraped server certificate is server-auth-only, yet it chains to the node CA. Verification is
+	// EKU-agnostic and anchors on the node's full trusted-CA pool, so it is accepted - this is the
+	// certificate an outbound dial would present as its leaf.
+	_, err = cert.VerifyLeafCertChain(ca, serverPresented)
+	req.NoError(err, "a server-auth leaf that chains to the node CA is accepted")
 
 	// Rogue peer: self-signed identity leaf + the scraped extra cert. Handshake completes; the mesh
 	// check must reject it because the identity leaf (certs[0]) does not chain to the CA.
@@ -232,7 +229,7 @@ func Test_MeshPeerCert_LiveHandshake(t *testing.T) {
 	_ = rogueConn.Close()
 	rogueRes := <-results
 	req.NoError(rogueRes.err)
-	_, err = cert.VerifyClientCertChain(pool, rogueRes.peer)
+	_, err = cert.VerifyLeafCertChain(ca, rogueRes.peer)
 	req.Error(err, "mesh check rejects a self-signed identity leaf backed by a scraped extra cert")
 
 	// Legitimate peer: CA-signed client leaf. Handshake completes and the mesh check accepts it.
@@ -244,6 +241,6 @@ func Test_MeshPeerCert_LiveHandshake(t *testing.T) {
 	_ = legitConn.Close()
 	legitRes := <-results
 	req.NoError(legitRes.err)
-	_, err = cert.VerifyClientCertChain(pool, legitRes.peer)
+	_, err = cert.VerifyLeafCertChain(ca, legitRes.peer)
 	req.NoError(err, "mesh check accepts a legitimate CA-signed peer leaf")
 }

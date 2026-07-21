@@ -512,7 +512,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 		peer.Channel = binding.GetChannel()
 
-		if err = self.validateConnection(peer.Channel, true); err != nil {
+		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
 
@@ -581,12 +581,12 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	return peer, nil
 }
 
-func (self *impl) validateConnection(ch channel.Channel, dialed bool) error {
+func (self *impl) validateConnection(ch channel.Channel) error {
 	if err := self.checkClusterIds(ch); err != nil {
 		return err
 	}
 
-	return self.checkCerts(ch, dialed)
+	return self.checkCerts(ch)
 }
 
 func (self *impl) checkClusterIds(ch channel.Channel) error {
@@ -598,17 +598,11 @@ func (self *impl) checkClusterIds(ch channel.Channel) error {
 	return nil
 }
 
-func (self *impl) checkCerts(ch channel.Channel, dialed bool) error {
-	// Peer identity is taken from certs[0] via ExtractSpiffeId, so certs[0] is the certificate that
-	// must chain to a trusted root. The required key usage is direction-dependent: on an inbound
-	// connection certs[0] is the peer's client certificate, while on an outbound dial it is the peer's
-	// server certificate. An external PKI may issue these with distinct EKUs, so verifying an outbound
-	// peer's server certificate against client-auth usage would reject a legitimate controller.
-	verify := cert.VerifyClientCertChain
-	if dialed {
-		verify = cert.VerifyServerCertChain
-	}
-	if _, err := verify(self.env.GetNodeId().CaPool(), ch.Underlay().Certificates()); err != nil {
+func (self *impl) checkCerts(ch channel.Channel) error {
+	// Peer identity is taken from certs[0] via ExtractSpiffeId, so certs[0] is the certificate that must
+	// chain to a trusted CA; VerifyLeafCertChain verifies that leaf specifically against the node's full
+	// trusted-CA pool.
+	if _, err := cert.VerifyLeafCertChain(self.env.GetNodeId().CA(), ch.Underlay().Certificates()); err != nil {
 		return fmt.Errorf("unable to validate peer connection: %w", err)
 	}
 	return nil
@@ -658,7 +652,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 			return err
 		}
 
-		if err = self.validateConnection(binding.GetChannel(), true); err != nil {
+		if err = self.validateConnection(binding.GetChannel()); err != nil {
 			return err
 		}
 
@@ -878,7 +872,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			peer.PreferredLeader = true
 		}
 
-		if err = self.validateConnection(peer.Channel, false); err != nil {
+		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
 
