@@ -126,6 +126,12 @@ message RemoveTerminatorsRequest {
 message RemoveTerminatorsV2Request {
   repeated string terminatorIds = 1;
   string requestId = 2;
+  // createConfirmed is index-aligned with terminatorIds: entry i is true when the router received
+  // the create acknowledgement for terminatorIds[i], meaning its create is committed. The controller
+  // uses this to safely skip (as a confirmed no-op) a delete for a terminator it no longer has;
+  // absent or false entries force the normal ordered delete, since an unconfirmed create may be
+  // committed but not yet applied. Older routers omit it, which decodes as empty (all false).
+  repeated bool createConfirmed = 3;
 }
 
 // RemoveTerminatorsV2Response reports the outcome of a RemoveTerminatorsV2Request. requestId echoes
