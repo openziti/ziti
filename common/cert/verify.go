@@ -25,17 +25,33 @@ import (
 )
 
 // VerifyClientCertChain verifies that the presented leaf certificate (certs[0]) chains to a trusted
-// root in the given CA pool, and returns that verified leaf. Only certs[0] is verified: it is the
-// certificate whose private key the TLS handshake proved the peer holds, and it is the certificate a
-// caller derives peer identity from. Any remaining certs[1:] are treated only as candidate
-// intermediates (added alongside the pool's intermediates), never as independent grounds for
-// acceptance.
+// root in the given CA pool with client-authentication extended key usage, and returns that verified
+// leaf. Use this for inbound connections, where the peer's leaf is its TLS client certificate. See
+// verifyCertChain for how the leaf and any certs[1:] are treated.
 //
-// Client-authentication extended key usage is required. A certificate with no ExtKeyUsage extension
-// is unrestricted and passes (the form ziti pki produces); a leaf whose EKU excludes client
-// authentication is rejected. Callers that must accept server-auth-only client identities should
-// verify with an explicit {ClientAuth, ServerAuth} usage set instead.
+// A certificate with no ExtKeyUsage extension is unrestricted and passes (the form ziti pki produces);
+// a leaf whose EKU excludes client authentication is rejected.
 func VerifyClientCertChain(pool *identity.CaPool, certs []*x509.Certificate) (*x509.Certificate, error) {
+	return verifyCertChain(pool, certs, x509.ExtKeyUsageClientAuth)
+}
+
+// VerifyServerCertChain verifies that the presented leaf certificate (certs[0]) chains to a trusted
+// root in the given CA pool with server-authentication extended key usage, and returns that verified
+// leaf. Use this for outbound connections, where the peer's leaf is its TLS server certificate: an
+// external PKI may issue distinct client-auth and server-auth certificates, and the peer of an
+// outbound dial presents the latter. See verifyCertChain for how the leaf and any certs[1:] are
+// treated.
+func VerifyServerCertChain(pool *identity.CaPool, certs []*x509.Certificate) (*x509.Certificate, error) {
+	return verifyCertChain(pool, certs, x509.ExtKeyUsageServerAuth)
+}
+
+// verifyCertChain verifies that the presented leaf certificate (certs[0]) chains to a trusted root in
+// the given CA pool with the requested extended key usage, and returns that verified leaf. Only certs[0]
+// is verified: it is the certificate whose private key the TLS handshake proved the peer holds, and it
+// is the certificate a caller derives peer identity from. Any remaining certs[1:] are treated only as
+// candidate intermediates (added alongside the pool's intermediates), never as independent grounds for
+// acceptance.
+func verifyCertChain(pool *identity.CaPool, certs []*x509.Certificate, keyUsage x509.ExtKeyUsage) (*x509.Certificate, error) {
 	if pool == nil {
 		return nil, errors.New("no ca pool provided")
 	}
@@ -52,7 +68,7 @@ func VerifyClientCertChain(pool *identity.CaPool, certs []*x509.Certificate) (*x
 	if _, err := certs[0].Verify(x509.VerifyOptions{
 		Roots:         pool.RootsAsStdPool(),
 		Intermediates: intermediates,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		KeyUsages:     []x509.ExtKeyUsage{keyUsage},
 	}); err != nil {
 		return nil, fmt.Errorf("leaf certificate not trusted: %w", err)
 	}
