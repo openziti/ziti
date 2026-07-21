@@ -170,3 +170,38 @@ func TestVerifyClientCertChain_EmptyInputs(t *testing.T) {
 	_, err = VerifyClientCertChain(pool, nil)
 	req.Error(err, "no certs rejected")
 }
+
+// TestVerifyCertChain_DirectionAwareEKU verifies that the client-auth and server-auth variants each
+// enforce their own extended key usage. An external PKI may issue separate client-auth and server-auth
+// certificates; verifying with the wrong direction (e.g. requiring client auth of a peer's server
+// certificate on an outbound connection) would reject a legitimate peer. A leaf carrying both usages,
+// or none at all, satisfies either variant.
+func TestVerifyCertChain_DirectionAwareEKU(t *testing.T) {
+	req := require.New(t)
+	root := vMkCA(t, "root", nil)
+	inter := vMkCA(t, "int", root)
+	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
+
+	clientOnly := vMkLeaf(t, "client-only", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, inter)
+	serverOnly := vMkLeaf(t, "server-only", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, inter)
+	both := vMkLeaf(t, "both", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, inter)
+	none := vMkLeaf(t, "none", "/identity/real", nil, inter)
+
+	_, err := VerifyClientCertChain(pool, []*x509.Certificate{clientOnly.cert})
+	req.NoError(err, "client-auth leaf accepted for inbound direction")
+	_, err = VerifyClientCertChain(pool, []*x509.Certificate{serverOnly.cert})
+	req.Error(err, "server-auth-only leaf rejected for inbound direction")
+
+	_, err = VerifyServerCertChain(pool, []*x509.Certificate{serverOnly.cert})
+	req.NoError(err, "server-auth leaf accepted for outbound direction")
+	_, err = VerifyServerCertChain(pool, []*x509.Certificate{clientOnly.cert})
+	req.Error(err, "client-auth-only leaf rejected for outbound direction")
+
+	// A leaf carrying both usages, or none, satisfies either direction (the common ziti pki case).
+	for _, c := range []*x509.Certificate{both.cert, none.cert} {
+		_, err = VerifyClientCertChain(pool, []*x509.Certificate{c})
+		req.NoError(err)
+		_, err = VerifyServerCertChain(pool, []*x509.Certificate{c})
+		req.NoError(err)
+	}
+}

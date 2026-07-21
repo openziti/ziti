@@ -19,8 +19,8 @@ package mesh
 // End-to-end validation of the mesh peer certificate check over a real TCP+TLS socket, using the
 // production controller TLS config (identity.ServerTLSConfig). The ctrl listener uses
 // RequireAnyClientCert and does not verify the client chain, so the handshake completes for any
-// presented client leaf; peer admission is enforced afterward by verifyClientCertChain against the
-// node CA pool. Unit-level coverage of the shared check lives in common/cert.
+// presented client leaf; peer admission is enforced afterward by the direction-aware cert-chain check
+// against the node CA pool. Unit-level coverage of the shared check lives in common/cert.
 
 import (
 	"crypto/ecdsa"
@@ -211,6 +211,15 @@ func Test_MeshPeerCert_LiveHandshake(t *testing.T) {
 	extra := serverPresented[0]
 	req.Equal("node-server", extra.Subject.CommonName)
 	<-results
+
+	// Outbound-dial direction: the peer's leaf is its TLS server certificate (here the scraped
+	// server-auth-only cert). It must pass server-auth verification but fail client-auth verification,
+	// which is why mesh validation is direction-aware - verifying an outbound peer's server certificate
+	// against client-auth usage would reject a legitimate controller under a split-EKU external PKI.
+	_, err = cert.VerifyServerCertChain(pool, serverPresented)
+	req.NoError(err, "outbound direction accepts the peer's server-auth certificate")
+	_, err = cert.VerifyClientCertChain(pool, serverPresented)
+	req.Error(err, "the same server-auth-only certificate fails client-auth verification")
 
 	// Rogue peer: self-signed identity leaf + the scraped extra cert. Handshake completes; the mesh
 	// check must reject it because the identity leaf (certs[0]) does not chain to the CA.
