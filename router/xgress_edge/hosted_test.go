@@ -242,4 +242,29 @@ func Test_hostedServiceRegistry_handleRemoveTerminatorsV2Response(t *testing.T) 
 		})
 		req.Empty(reg.deleteSet)
 	})
+
+	t.Run("scanForRetries purges pending remove batches whose response was lost", func(t *testing.T) {
+		req := require.New(t)
+
+		reg := newTestHostedServiceRegistry()
+		reg.pendingRemoves["fresh"] = &pendingRemoveBatch{queuedAt: time.Now()}
+		reg.pendingRemoves["stale"] = &pendingRemoveBatch{queuedAt: time.Now().Add(-3 * establishmentTimeout)}
+
+		reg.scanForRetries()
+
+		req.Contains(reg.pendingRemoves, "fresh", "a recent pending batch must be retained")
+		req.NotContains(reg.pendingRemoves, "stale", "a pending batch past the expiry must be purged so it can't leak")
+	})
+}
+
+func Test_edgeTerminator_replaceCopiesCreateConfirmed(t *testing.T) {
+	req := require.New(t)
+
+	other := &edgeTerminator{terminatorId: "t1"}
+	other.createConfirmed.Store(true)
+
+	replacement := &edgeTerminator{}
+	replacement.replace(other)
+
+	req.True(replacement.createConfirmed.Load(), "replace must carry over the adopted terminator's create confirmation")
 }

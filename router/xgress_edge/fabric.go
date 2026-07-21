@@ -71,6 +71,7 @@ type edgeTerminator struct {
 	failureCount        atomic.Uint32
 	retryAfter          time.Time     // guarded by lock; earliest time to re-attempt after a rate-limit rejection
 	retryBackoff        time.Duration // guarded by lock; current backoff ceiling, doubles per consecutive rejection
+	createConfirmed     atomic.Bool   // set once the controller acknowledges the create; lets a later remove use the leader fast-path
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -88,6 +89,7 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	operationActive := other.operationActive.Load()
 	createTime := other.createTime
 	lastAttempt := other.lastAttempt
+	createConfirmed := other.createConfirmed.Load()
 	other.lock.Unlock()
 
 	self.lock.Lock()
@@ -97,6 +99,9 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	self.operationActive.Store(operationActive)
 	self.createTime = createTime
 	self.lastAttempt = lastAttempt
+	// Carry over the create confirmation: the adopted terminator's id is already established on the
+	// controller, so a later remove can still use the confirmed-absent fast-path without a re-create.
+	self.createConfirmed.Store(createConfirmed)
 	self.lock.Unlock()
 }
 

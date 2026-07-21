@@ -922,8 +922,14 @@ type RemoveTerminatorsV2Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TerminatorIds []string               `protobuf:"bytes,1,rep,name=terminatorIds,proto3" json:"terminatorIds,omitempty"`
 	RequestId     string                 `protobuf:"bytes,2,opt,name=requestId,proto3" json:"requestId,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// createConfirmed is index-aligned with terminatorIds: entry i is true when the router received
+	// the create acknowledgement for terminatorIds[i], meaning its create is committed. The controller
+	// uses this to safely skip (as a confirmed no-op) a delete for a terminator it no longer has;
+	// absent or false entries force the normal ordered delete, since an unconfirmed create may be
+	// committed but not yet applied. Older routers omit it, which decodes as empty (all false).
+	CreateConfirmed []bool `protobuf:"varint,3,rep,packed,name=createConfirmed,proto3" json:"createConfirmed,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RemoveTerminatorsV2Request) Reset() {
@@ -968,6 +974,13 @@ func (x *RemoveTerminatorsV2Request) GetRequestId() string {
 		return x.RequestId
 	}
 	return ""
+}
+
+func (x *RemoveTerminatorsV2Request) GetCreateConfirmed() []bool {
+	if x != nil {
+		return x.CreateConfirmed
+	}
+	return nil
 }
 
 // RemoveTerminatorsV2Response reports the outcome of a RemoveTerminatorsV2Request. requestId echoes
@@ -3207,10 +3220,11 @@ const file_ctrl_proto_rawDesc = "" +
 	"\x17RemoveTerminatorRequest\x12\"\n" +
 	"\fterminatorId\x18\x01 \x01(\tR\fterminatorId\"@\n" +
 	"\x18RemoveTerminatorsRequest\x12$\n" +
-	"\rterminatorIds\x18\x01 \x03(\tR\rterminatorIds\"`\n" +
+	"\rterminatorIds\x18\x01 \x03(\tR\rterminatorIds\"\x8a\x01\n" +
 	"\x1aRemoveTerminatorsV2Request\x12$\n" +
 	"\rterminatorIds\x18\x01 \x03(\tR\rterminatorIds\x12\x1c\n" +
-	"\trequestId\x18\x02 \x01(\tR\trequestId\"\x8f\x01\n" +
+	"\trequestId\x18\x02 \x01(\tR\trequestId\x12(\n" +
+	"\x0fcreateConfirmed\x18\x03 \x03(\bR\x0fcreateConfirmed\"\x8f\x01\n" +
 	"\x1bRemoveTerminatorsV2Response\x12\x1c\n" +
 	"\trequestId\x18\x01 \x01(\tR\trequestId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12&\n" +

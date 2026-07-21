@@ -90,11 +90,14 @@ type hostedServiceRegistry struct {
 
 // pendingRemoveBatch tracks a batch of terminators whose asynchronous RemoveTerminatorsV2Request has
 // been sent but not yet answered. It holds the rate-limit control for the batch so it can be resolved
-// (Success, Backoff, or Failed) when the RemoveTerminatorsV2Response arrives. It is owned by the
-// registry event loop and must only be accessed there.
+// (Success, Backoff, or Failed) when the RemoveTerminatorsV2Response arrives. queuedAt is when the
+// request was sent, used to expire the entry if the response is lost (e.g. the control channel closed)
+// so the map doesn't grow without bound. It is owned by the registry event loop and must only be
+// accessed there.
 type pendingRemoveBatch struct {
 	rateLimitCtrl rate.RateLimitControl
 	terminators   []*edgeTerminator
+	queuedAt      time.Time
 }
 
 type terminatorEvent interface {
@@ -277,7 +280,10 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 		return false
 	}
 
-	ctrlCh := self.env.GetNetworkControllers().AnyValidCtrlChannel()
+	// Prefer the leader for removes: it's where the delete is applied anyway (so this avoids a forward
+	// hop) and it's the only node that can safely run the confirmed-absent fast-path against current
+	// state. Falls back to the most responsive controller if the leader is unavailable.
+	ctrlCh := self.env.GetNetworkControllers().GetModelUpdateCtrlChannel()
 	if ctrlCh == nil {
 		self.requeueForDeleteSync(terminators)
 		return false
@@ -372,13 +378,16 @@ func (self *hostedServiceRegistry) removeTerminatorsV2(ctrlCh channel.Channel, t
 
 	requestId := idgen.MustNewUUIDString()
 	terminatorIds := make([]string, 0, len(terminators))
+	createConfirmed := make([]bool, 0, len(terminators))
 	for _, terminator := range terminators {
 		terminatorIds = append(terminatorIds, terminator.terminatorId)
+		createConfirmed = append(createConfirmed, terminator.createConfirmed.Load())
 	}
 
 	request := &ctrl_pb.RemoveTerminatorsV2Request{
-		TerminatorIds: terminatorIds,
-		RequestId:     requestId,
+		TerminatorIds:   terminatorIds,
+		RequestId:       requestId,
+		CreateConfirmed: createConfirmed,
 	}
 
 	queued, err := ctrlCh.TrySend(protobufs.MarshalTyped(request).ToSendable())
@@ -401,6 +410,7 @@ func (self *hostedServiceRegistry) removeTerminatorsV2(ctrlCh channel.Channel, t
 	self.pendingRemoves[requestId] = &pendingRemoveBatch{
 		rateLimitCtrl: rateLimitCtrl,
 		terminators:   terminators,
+		queuedAt:      time.Now(),
 	}
 
 	return true
@@ -925,6 +935,17 @@ func (self *hostedServiceRegistry) scanForRetries() {
 			self.requeueRemoveTerminatorSync(terminator)
 		}
 	}
+
+	// Drop remove batches whose response never arrived (e.g. the control channel closed after the
+	// request was sent). Without this the entry, its terminators, and their connection graph would be
+	// retained forever, growing unbounded across reconnects. The terminators themselves are recovered
+	// by the retry scan above via their Deleting state; here we only free the abandoned correlation
+	// record. The rate-limit control is expired independently by the limiter's own timeout.
+	for requestId, batch := range self.pendingRemoves {
+		if time.Since(batch.queuedAt) > 2*establishmentTimeout {
+			delete(self.pendingRemoves, requestId)
+		}
+	}
 }
 
 func (self *hostedServiceRegistry) PutV1(serviceSessionToken *state.ServiceSessionToken, terminator *edgeTerminator) {
@@ -1014,6 +1035,12 @@ func (self *hostedServiceRegistry) getRelatedTerminators(connId uint32, serviceS
 
 func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminator) error {
 	factory := terminator.edgeClientConn.listener.factory
+
+	// Reset the create confirmation for this attempt. A reconnect can re-establish an already-confirmed
+	// terminator; leaving the flag set would let a remove issued while this new create is still in flight
+	// advertise a stale confirmation, so the leader fast-path could skip the delete and let the create
+	// apply afterward, leaving an orphan. It's set true again only when this attempt is acknowledged.
+	terminator.createConfirmed.Store(false)
 
 	log := pfxlog.Logger().
 		WithField("routerId", factory.env.GetRouterId().Token).
@@ -1132,6 +1159,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 
 	terminator.failureCount.Store(0)
 	terminator.clearRetryBackoff()
+	terminator.createConfirmed.Store(true)
 	self.markEstablished(terminator, "create notification received")
 
 	// notify the sdk that the terminator was established
