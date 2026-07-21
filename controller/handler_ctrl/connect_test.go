@@ -60,15 +60,15 @@ func Test_ConnectHandler_isSeparatelyValidated(t *testing.T) {
 	require.False(t, standalone.isSeparatelyValidated(helloWithType("")))
 }
 
-// caPoolIdentity is a minimal identity.Identity whose only useful method is CaPool. The certificate
+// caPoolIdentity is a minimal identity.Identity whose only useful method is CA. The certificate
 // verification path of HandleConnection consults nothing else, so the remaining interface methods are
 // left to the embedded nil interface (never called on the paths exercised here).
 type caPoolIdentity struct {
 	identity.Identity
-	pool *identity.CaPool
+	roots *x509.CertPool
 }
 
-func (f *caPoolIdentity) CaPool() *identity.CaPool { return f.pool }
+func (f *caPoolIdentity) CA() *x509.CertPool { return f.roots }
 
 type ctCertAndKey struct {
 	cert *x509.Certificate
@@ -117,10 +117,12 @@ func Test_ConnectHandler_HandleConnection_RejectsUntrustedLeaf(t *testing.T) {
 
 	root := ctMkCert(t, "root", true, nil)
 	inter := ctMkCert(t, "int", true, root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
+	roots := x509.NewCertPool()
+	roots.AddCert(root.cert)
+	roots.AddCert(inter.cert)
 
 	handler := &ConnectHandler{
-		identity:                 &caPoolIdentity{pool: pool},
+		identity:                 &caPoolIdentity{roots: roots},
 		separatelyValidatedTypes: map[string]struct{}{},
 	}
 

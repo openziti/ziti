@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/identity"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,109 +98,115 @@ func vMkLeaf(t *testing.T, cn, spiffePath string, ekus []x509.ExtKeyUsage, signe
 	return &vCertAndKey{cert: c, key: key}
 }
 
-// TestVerifyClientCertChain_RejectsUnchainedLeaf verifies that a leaf which does not itself chain to
-// the CA is rejected even when another presented certificate does chain - i.e. verification is bound
-// to the leaf, not to "some presented certificate verifies".
-func TestVerifyClientCertChain_RejectsUnchainedLeaf(t *testing.T) {
-	req := require.New(t)
-	root := vMkCA(t, "root", nil)
-	inter := vMkCA(t, "int", root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
-
-	// A trust-domain-signed cert (chains to the CA) presented as an extra certificate.
-	extra := vMkLeaf(t, "extra", "", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, inter)
-	// The leaf itself is self-signed and does NOT chain to the CA.
-	unchained := vMkLeaf(t, "unchained", "/identity/other", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, nil)
-
-	_, err := VerifyClientCertChain(pool, []*x509.Certificate{unchained.cert, extra.cert})
-	req.Error(err, "leaf not chaining to the CA must be rejected even alongside a chaining extra cert")
+func vPoolOf(certs ...*x509.Certificate) *x509.CertPool {
+	pool := x509.NewCertPool()
+	for _, c := range certs {
+		pool.AddCert(c)
+	}
+	return pool
 }
 
-func TestVerifyClientCertChain_AcceptsLegitLeaf(t *testing.T) {
+// TestVerifyLeafCertChain_RejectsUnchainedLeaf verifies that a leaf which does not itself chain to a
+// trusted CA is rejected even when another presented certificate does chain - i.e. verification is bound
+// to the leaf, not to "some presented certificate verifies".
+func TestVerifyLeafCertChain_RejectsUnchainedLeaf(t *testing.T) {
 	req := require.New(t)
 	root := vMkCA(t, "root", nil)
 	inter := vMkCA(t, "int", root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
+	roots := vPoolOf(root.cert, inter.cert)
+
+	// A trust-anchored cert (chains to the pool) presented as an extra certificate.
+	extra := vMkLeaf(t, "extra", "", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, inter)
+	// The leaf itself is self-signed and does NOT chain to the pool.
+	unchained := vMkLeaf(t, "unchained", "/identity/other", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, nil)
+
+	_, err := VerifyLeafCertChain(roots, []*x509.Certificate{unchained.cert, extra.cert})
+	req.Error(err, "leaf not chaining to the pool must be rejected even alongside a chaining extra cert")
+}
+
+func TestVerifyLeafCertChain_AcceptsLegitLeaf(t *testing.T) {
+	req := require.New(t)
+	root := vMkCA(t, "root", nil)
+	inter := vMkCA(t, "int", root)
+	roots := vPoolOf(root.cert, inter.cert)
 
 	legit := vMkLeaf(t, "legit", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, inter)
-	leaf, err := VerifyClientCertChain(pool, []*x509.Certificate{legit.cert})
+	leaf, err := VerifyLeafCertChain(roots, []*x509.Certificate{legit.cert})
 	req.NoError(err)
 	req.Equal(legit.cert, leaf, "returns the verified leaf (certs[0]) for identity use")
 }
 
-func TestVerifyClientCertChain_AcceptsPeerSuppliedIntermediate(t *testing.T) {
+func TestVerifyLeafCertChain_AcceptsPeerSuppliedIntermediate(t *testing.T) {
 	req := require.New(t)
 	root := vMkCA(t, "root", nil)
 	inter := vMkCA(t, "int", root)
 	legit := vMkLeaf(t, "legit", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, inter)
 
 	// Pool holds ONLY the root; the intermediate must be supplied on the wire (certs[1:]).
-	rootOnly := identity.NewCaPool([]*x509.Certificate{root.cert})
-	_, err := VerifyClientCertChain(rootOnly, []*x509.Certificate{legit.cert})
+	rootOnly := vPoolOf(root.cert)
+	_, err := VerifyLeafCertChain(rootOnly, []*x509.Certificate{legit.cert})
 	req.Error(err, "without the intermediate anywhere the leaf cannot be verified")
-	_, err = VerifyClientCertChain(rootOnly, []*x509.Certificate{legit.cert, inter.cert})
+	_, err = VerifyLeafCertChain(rootOnly, []*x509.Certificate{legit.cert, inter.cert})
 	req.NoError(err, "peer-supplied intermediate lets a valid peer verify")
 }
 
-func TestVerifyClientCertChain_EKUCompat(t *testing.T) {
+// TestVerifyLeafCertChain_MultipleRoots covers a trust bundle with more than one self-signed root (as a
+// quickstart deployment produces, concatenating a controller root and a signer root). A leaf chaining to
+// either root must verify.
+func TestVerifyLeafCertChain_MultipleRoots(t *testing.T) {
+	req := require.New(t)
+	ctrlRoot := vMkCA(t, "ctrl-root", nil)
+	signerRoot := vMkCA(t, "signer-root", nil)
+	signerInter := vMkCA(t, "signer-int", signerRoot)
+	roots := vPoolOf(ctrlRoot.cert, signerRoot.cert)
+
+	leaf := vMkLeaf(t, "router", "/identity/r1", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, signerInter)
+	_, err := VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert, signerInter.cert})
+	req.NoError(err, "a leaf chaining to one of several trusted roots must verify")
+}
+
+// TestVerifyLeafCertChain_IntermediateAsTrustAnchor covers a self-managed PKI that distributes a
+// (non-self-signed) intermediate as the trust anchor without its root. Every certificate in the pool is
+// a valid chain terminus, so a leaf chaining directly to that intermediate must verify.
+func TestVerifyLeafCertChain_IntermediateAsTrustAnchor(t *testing.T) {
 	req := require.New(t)
 	root := vMkCA(t, "root", nil)
 	inter := vMkCA(t, "int", root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
+	leaf := vMkLeaf(t, "leaf", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, inter)
 
-	// No ExtKeyUsage extension (the form ziti pki produces) is unrestricted -> accepted.
-	noEKU := vMkLeaf(t, "ziti-pki", "/identity/real", nil, inter)
-	_, err := VerifyClientCertChain(pool, []*x509.Certificate{noEKU.cert})
-	req.NoError(err, "no-EKU leaf accepted (ziti pki backward compat)")
-
-	// EKU present but excludes client auth (server-auth only) -> rejected.
-	serverOnly := vMkLeaf(t, "server-only", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, inter)
-	_, err = VerifyClientCertChain(pool, []*x509.Certificate{serverOnly.cert})
-	req.Error(err, "server-auth-only leaf rejected by the client-auth requirement")
+	interAnchored := vPoolOf(inter.cert) // only the intermediate distributed, no self-signed root
+	_, err := VerifyLeafCertChain(interAnchored, []*x509.Certificate{leaf.cert})
+	req.NoError(err, "an intermediate distributed as a trust anchor must be accepted as a chain terminus")
 }
 
-func TestVerifyClientCertChain_EmptyInputs(t *testing.T) {
-	req := require.New(t)
-	root := vMkCA(t, "root", nil)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert})
-
-	_, err := VerifyClientCertChain(nil, []*x509.Certificate{root.cert})
-	req.Error(err, "nil pool rejected")
-	_, err = VerifyClientCertChain(pool, nil)
-	req.Error(err, "no certs rejected")
-}
-
-// TestVerifyCertChain_DirectionAwareEKU verifies that the client-auth and server-auth variants each
-// enforce their own extended key usage. An external PKI may issue separate client-auth and server-auth
-// certificates; verifying with the wrong direction (e.g. requiring client auth of a peer's server
-// certificate on an outbound connection) would reject a legitimate peer. A leaf carrying both usages,
-// or none at all, satisfies either variant.
-func TestVerifyCertChain_DirectionAwareEKU(t *testing.T) {
+// TestVerifyLeafCertChain_ArbitraryEKU covers external PKIs whose certificates carry arbitrary or absent
+// extended key usages. No EKU restriction is applied, so all of them verify as long as the chain is
+// valid.
+func TestVerifyLeafCertChain_ArbitraryEKU(t *testing.T) {
 	req := require.New(t)
 	root := vMkCA(t, "root", nil)
 	inter := vMkCA(t, "int", root)
-	pool := identity.NewCaPool([]*x509.Certificate{root.cert, inter.cert})
+	roots := vPoolOf(root.cert, inter.cert)
 
-	clientOnly := vMkLeaf(t, "client-only", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, inter)
-	serverOnly := vMkLeaf(t, "server-only", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, inter)
-	both := vMkLeaf(t, "both", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, inter)
-	none := vMkLeaf(t, "none", "/identity/real", nil, inter)
-
-	_, err := VerifyClientCertChain(pool, []*x509.Certificate{clientOnly.cert})
-	req.NoError(err, "client-auth leaf accepted for inbound direction")
-	_, err = VerifyClientCertChain(pool, []*x509.Certificate{serverOnly.cert})
-	req.Error(err, "server-auth-only leaf rejected for inbound direction")
-
-	_, err = VerifyServerCertChain(pool, []*x509.Certificate{serverOnly.cert})
-	req.NoError(err, "server-auth leaf accepted for outbound direction")
-	_, err = VerifyServerCertChain(pool, []*x509.Certificate{clientOnly.cert})
-	req.Error(err, "client-auth-only leaf rejected for outbound direction")
-
-	// A leaf carrying both usages, or none, satisfies either direction (the common ziti pki case).
-	for _, c := range []*x509.Certificate{both.cert, none.cert} {
-		_, err = VerifyClientCertChain(pool, []*x509.Certificate{c})
-		req.NoError(err)
-		_, err = VerifyServerCertChain(pool, []*x509.Certificate{c})
-		req.NoError(err)
+	for _, ekus := range [][]x509.ExtKeyUsage{
+		nil,
+		{x509.ExtKeyUsageClientAuth},
+		{x509.ExtKeyUsageServerAuth},
+		{x509.ExtKeyUsageEmailProtection},
+	} {
+		leaf := vMkLeaf(t, "leaf", "/identity/real", ekus, inter)
+		_, err := VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert})
+		req.NoError(err, "leaf with EKU %v must be accepted", ekus)
 	}
+}
+
+func TestVerifyLeafCertChain_EmptyInputs(t *testing.T) {
+	req := require.New(t)
+	root := vMkCA(t, "root", nil)
+	roots := vPoolOf(root.cert)
+
+	_, err := VerifyLeafCertChain(nil, []*x509.Certificate{root.cert})
+	req.Error(err, "nil pool rejected")
+	_, err = VerifyLeafCertChain(roots, nil)
+	req.Error(err, "no certs rejected")
 }
