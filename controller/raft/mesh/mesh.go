@@ -20,15 +20,17 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/controller/event"
 	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/event"
 
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
@@ -472,7 +474,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 		peer.Channel = binding.GetChannel()
 
-		if err = self.validateConnection(peer.Channel); err != nil {
+		if err = self.validateConnection(peer.Channel, true); err != nil {
 			return err
 		}
 
@@ -522,12 +524,12 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	return peer, nil
 }
 
-func (self *impl) validateConnection(ch channel.Channel) error {
+func (self *impl) validateConnection(ch channel.Channel, dialed bool) error {
 	if err := self.checkClusterIds(ch); err != nil {
 		return err
 	}
 
-	return self.checkCerts(ch)
+	return self.checkCerts(ch, dialed)
 }
 
 func (self *impl) checkClusterIds(ch channel.Channel) error {
@@ -538,19 +540,20 @@ func (self *impl) checkClusterIds(ch channel.Channel) error {
 	return nil
 }
 
-func (self *impl) checkCerts(ch channel.Channel) error {
-	certs := ch.Underlay().Certificates()
-	if len(certs) == 0 {
-		return errors.New("unable to validate peer connection, no certs presented")
+func (self *impl) checkCerts(ch channel.Channel, dialed bool) error {
+	// Peer identity is taken from certs[0] via ExtractSpiffeId, so certs[0] is the certificate that
+	// must chain to a trusted root. The required key usage is direction-dependent: on an inbound
+	// connection certs[0] is the peer's client certificate, while on an outbound dial it is the peer's
+	// server certificate. An external PKI may issue these with distinct EKUs, so verifying an outbound
+	// peer's server certificate against client-auth usage would reject a legitimate controller.
+	verify := cert.VerifyClientCertChain
+	if dialed {
+		verify = cert.VerifyServerCertChain
 	}
-
-	for _, cert := range ch.Underlay().Certificates() {
-		if _, err := self.env.GetNodeId().CaPool().VerifyToRoot(cert); err == nil {
-			return nil
-		}
+	if _, err := verify(self.env.GetNodeId().CaPool(), ch.Underlay().Certificates()); err != nil {
+		return fmt.Errorf("unable to validate peer connection: %w", err)
 	}
-
-	return errors.New("unable to validate peer connection, no certs presented matched the CA for this node")
+	return nil
 }
 
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
@@ -595,7 +598,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 			return err
 		}
 
-		if err = self.validateConnection(binding.GetChannel()); err != nil {
+		if err = self.validateConnection(binding.GetChannel(), true); err != nil {
 			return err
 		}
 
@@ -814,7 +817,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 			}
 		}
 
-		if err = self.validateConnection(peer.Channel); err != nil {
+		if err = self.validateConnection(peer.Channel, false); err != nil {
 			return err
 		}
 

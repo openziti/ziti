@@ -19,8 +19,11 @@ package xlink_transport
 import (
 	"crypto/x509"
 	"errors"
+	"fmt"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/common/cert"
 )
 
 type ConnectionHandler struct {
@@ -32,23 +35,9 @@ func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates [
 		return errors.New("no certificates provided, unable to verify dialer")
 	}
 
-	config := self.routerId.ServerTLSConfig()
-
-	opts := x509.VerifyOptions{
-		Roots:         config.RootCAs,
-		Intermediates: x509.NewCertPool(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	if _, err := cert.VerifyClientCertChain(self.routerId.CaPool(), certificates); err != nil {
+		return fmt.Errorf("unable to verify dialing router: %w", err)
 	}
 
-	var errorList []error
-
-	for _, cert := range certificates {
-		if _, err := cert.Verify(opts); err == nil {
-			return nil
-		} else {
-			errorList = append(errorList, err)
-		}
-	}
-
-	return errors.Join(errorList...)
+	return nil
 }

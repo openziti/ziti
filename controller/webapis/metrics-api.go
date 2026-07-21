@@ -22,14 +22,16 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/controller/api_impl"
 	"github.com/openziti/ziti/controller/network"
-	"net/http"
-	"os"
-	"strings"
 )
 
 var _ xweb.ApiHandlerFactory = &MetricsApiFactory{}
@@ -147,8 +149,15 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 
 		if nil != metricsApi.scrapeCert {
 			certOk := false
-			for _, r := range r.TLS.PeerCertificates {
-				if bytes.Equal(metricsApi.scrapeCert.Signature, r.Signature) {
+			// Match the pinned scrape cert against the presented LEAF only (PeerCertificates[0], the
+			// cert whose private key the TLS handshake proved) - iterating the whole chain would let a
+			// client present its own leaf plus the public scrape cert as an extra cert and pass. Compare
+			// full DER, not just the signature, and reject a leaf outside its validity window.
+			if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+				leaf := r.TLS.PeerCertificates[0]
+				now := time.Now()
+				if bytes.Equal(metricsApi.scrapeCert.Raw, leaf.Raw) &&
+					!now.Before(leaf.NotBefore) && !now.After(leaf.NotAfter) {
 					certOk = true
 				}
 			}

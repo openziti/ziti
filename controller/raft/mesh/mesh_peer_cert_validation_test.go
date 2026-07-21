@@ -38,7 +38,7 @@ import (
 	"time"
 
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/common/cert"
 	"github.com/stretchr/testify/require"
 )
 
