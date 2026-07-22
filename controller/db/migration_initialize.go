@@ -45,6 +45,8 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.addSystemAuthPolicies(step)
 	m.createConfigType(step, interfacesConfigTypeV1)
 	m.createConfigType(step, proxyConfigTypeV1)
+	m.createConfigType(step, l2HostV1ConfigType)
+	m.createConfigType(step, l2InterceptV1ConfigType)
 
 	return CurrentDbVersion
 }
@@ -321,6 +323,65 @@ var tunnelDefinitions = map[string]interface{}{
 	},
 }
 
+var listenOptions = map[string]interface{}{
+	"listenOptions": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"connectTimeoutSeconds": map[string]interface{}{
+				"$ref":        "#/definitions/timeoutSeconds",
+				"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+				"deprecated":  true,
+			},
+			"connectTimeout": map[string]interface{}{
+				"$ref":        "#/definitions/duration",
+				"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+			},
+			"maxConnections": map[string]interface{}{
+				"type":        "integer",
+				"minimum":     1,
+				"description": "defaults to 3",
+			},
+			"identity": map[string]interface{}{
+				"type":        "string",
+				"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+			},
+			"bindUsingEdgeIdentity": map[string]interface{}{
+				"type":        "boolean",
+				"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+			},
+			"cost": map[string]interface{}{
+				"type":        "integer",
+				"minimum":     0,
+				"maximum":     65535,
+				"description": "defaults to 0",
+			},
+			"precedence": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"default", "required", "failed"},
+				"description": "defaults to 'default'",
+			},
+		},
+	},
+}
+
+var dialOptions = map[string]interface{}{
+	"dialOptions": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"identity": map[string]interface{}{
+				"type":        "string",
+				"description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
+			},
+			"connectTimeoutSeconds": map[string]interface{}{
+				"$ref":        "#/definitions/timeoutSeconds",
+				"description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified.",
+			},
+		},
+	},
+}
+
 // hostV1 schema with ["$id"] and ["definitions"] excluded
 var hostV1SchemaSansDefs = map[string]interface{}{
 	"type": "object",
@@ -388,50 +449,12 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 				},
 				"description": "hosting tunnelers establish local routes for the specified source addresses so binding will succeed",
 			},
-			"listenOptions": map[string]interface{}{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"connectTimeoutSeconds": map[string]interface{}{
-						"$ref":        "#/definitions/timeoutSeconds",
-						"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
-						"deprecated":  true,
-					},
-					"connectTimeout": map[string]interface{}{
-						"$ref":        "#/definitions/duration",
-						"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
-					},
-					"maxConnections": map[string]interface{}{
-						"type":        "integer",
-						"minimum":     1,
-						"description": "defaults to 3",
-					},
-					"identity": map[string]interface{}{
-						"type":        "string",
-						"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
-					},
-					"bindUsingEdgeIdentity": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
-					},
-					"cost": map[string]interface{}{
-						"type":        "integer",
-						"minimum":     0,
-						"maximum":     65535,
-						"description": "defaults to 0",
-					},
-					"precedence": map[string]interface{}{
-						"type":        "string",
-						"enum":        []interface{}{"default", "required", "failed"},
-						"description": "defaults to 'default'",
-					},
-				},
-			},
 			"proxy": map[string]interface{}{
 				"$ref":        "#/definitions/proxyConfiguration",
 				"description": "If defined, outgoing connections will be send through this proxy server",
 			},
 		},
+		listenOptions,
 	),
 	"additionalProperties": false,
 	"allOf": []interface{}{
@@ -532,7 +555,7 @@ var interceptV1ConfigType = &ConfigType{
 		"type":                 "object",
 		"additionalProperties": false,
 		"definitions":          tunnelDefinitions,
-		"properties": map[string]interface{}{
+		"properties": combine(dialOptions, map[string]interface{}{
 			"protocols": map[string]interface{}{
 				"allOf": []interface{}{
 					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
@@ -551,20 +574,6 @@ var interceptV1ConfigType = &ConfigType{
 					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/portRange"}},
 				},
 			},
-			"dialOptions": map[string]interface{}{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"identity": map[string]interface{}{
-						"type":        "string",
-						"description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
-					},
-					"connectTimeoutSeconds": map[string]interface{}{
-						"$ref":        "#/definitions/timeoutSeconds",
-						"description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified.",
-					},
-				},
-			},
 			"sourceIp": map[string]interface{}{
 				"type":        "string",
 				"description": "The source IP (and optional :port) to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity. '$src_ip' and '$src_port' resolve to the source IP / port of the originating client. '$dst_port' resolves to the port that the client is trying to connect.",
@@ -576,12 +585,60 @@ var interceptV1ConfigType = &ConfigType{
 				},
 				"description": "white list of source ips/cidrs that can be intercepted. all ips can be intercepted if this is not set.",
 			},
-		},
+		}),
 		"required": []interface{}{
 			"protocols",
 			"addresses",
 			"portRanges",
 		},
+	},
+}
+
+var l2HostV1ConfigType = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: "l2.host.v1"},
+	Name:          "l2.host.v1",
+	Schema: map[string]interface{}{
+		"$id":         "https://ziti-edge.netfoundry.io/schemas/l2.host.v1.schema.json",
+		"definitions": combine(healthCheckSchema["definitions"].(map[string]interface{}), tunnelDefinitions),
+		"type":        "object",
+		"properties": combine(listenOptions, map[string]interface{}{
+			"bridgeIfs": map[string]interface{}{
+				"allOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
+					map[string]interface{}{"items": map[string]interface{}{"type": "string"}},
+				},
+				"description": "Bridge the provided network interfaces with the tunneler's tap interface.",
+			},
+		}),
+		"additionalProperties": false,
+	},
+}
+
+var l2InterceptV1ConfigType = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: "l2.intercept.v1"},
+	Name:          "l2.intercept.v1",
+	Schema: map[string]interface{}{
+		"$id": "https://ziti-edge.netfoundry.io/schemas/l2.intercept.v1.schema.json",
+		"definitions": combine(tunnelDefinitions, map[string]interface{}{
+			"ethType": map[string]interface{}{
+				"type":    "string",
+				"pattern": "^0[xX][0-9a-fA-F]{4}$",
+			},
+		}),
+		"type": "object",
+		"properties": combine(dialOptions, map[string]interface{}{
+			"ethTypes": map[string]interface{}{
+				"allOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
+					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/ethType"}},
+				},
+				"description": "list of EtherTypes to forward. frames with an EtherType that is not in this list will be dropped.",
+			},
+		}),
+		"required": []interface{}{
+			"ethTypes",
+		},
+		"additionalProperties": false,
 	},
 }
 
