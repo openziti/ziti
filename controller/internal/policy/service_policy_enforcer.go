@@ -153,7 +153,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 			if session.Type == db.SessionTypeBind {
 				policyType = db.PolicyTypeBind
 			}
-			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType.Id(), session.ServiceId)
+			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = "%v" and anyOf(services) = "%v")`, identity.Id, policyType.String(), session.ServiceId)
 			_, count, err := enforcer.appEnv.GetStores().Identity.QueryIds(tx, query)
 			if err != nil {
 				return err
