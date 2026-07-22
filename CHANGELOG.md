@@ -898,5 +898,6 @@ Thanks to the community members who contributed to this release.
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3864](https://github.com/openziti/ziti/issues/3864) - e2ee: allow hosting SDK to return e2ee public key in the dial response
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
+    * [Issue #4138](https://github.com/openziti/ziti/issues/4138) - Add l2 service configuration types
 
 
