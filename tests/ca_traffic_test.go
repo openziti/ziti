@@ -9,9 +9,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +25,54 @@ import (
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/eid"
 )
+
+// clientDialResult carries the outcome of dialServiceForTest back to the test
+// goroutine so assertions run on the *testing.T that is actually still active,
+// instead of failing a *testing.T from a background goroutine (unsafe, and can
+// panic if the associated (sub)test has already completed).
+type clientDialResult struct {
+	data string
+	err  error
+}
+
+// dialServiceForTest connects, authenticates, and dials a service, returning the
+// result rather than asserting on it directly. Terminator creation on the hosting
+// side is asynchronous relative to the listener being reported as established, so a
+// dial can transiently race ahead of the terminator becoming visible to the
+// controller for circuit creation; retry briefly on that specific, known-transient
+// error.
+func dialServiceForTest(cfg *ziti.Config, serviceName string) clientDialResult {
+	clientContext, err := ziti.NewContext(cfg)
+	if err != nil {
+		return clientDialResult{err: err}
+	}
+	defer clientContext.Close()
+
+	if err = clientContext.Authenticate(); err != nil {
+		return clientDialResult{err: err}
+	}
+
+	var conn edge.Conn
+	for attempt := 0; attempt < 10; attempt++ {
+		conn, err = clientContext.Dial(serviceName)
+		if err == nil || !strings.Contains(err.Error(), "no terminators") {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	if err != nil {
+		return clientDialResult{err: err}
+	}
+	if conn == nil {
+		return clientDialResult{err: fmt.Errorf("dial of service %s returned a nil connection", serviceName)}
+	}
+
+	data, err := io.ReadAll(conn)
+	if err != nil {
+		return clientDialResult{err: err}
+	}
+	return clientDialResult{data: string(data)}
+}
 
 func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 	ctx := NewTestContext(t)
@@ -270,8 +320,8 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 
 			}()
 
-			doneClient1 := make(chan string)
-			doneClient2 := make(chan string)
+			doneClient1 := make(chan clientDialResult, 1)
+			doneClient2 := make(chan clientDialResult, 1)
 
 			go func() {
 				//connect client 1
@@ -287,26 +337,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					},
 					ConfigTypes: nil,
 				}
-				client1Context, err := ziti.NewContext(client1Config)
-				ctx.Req.NoError(err)
-
-				err = client1Context.Authenticate()
-				ctx.Req.NoError(err)
-
-				defer func() {
-					client1Context.Close()
-					close(doneClient1)
-				}()
-
-				conn, err := client1Context.Dial(service.Name)
-				ctx.Req.NoError(err)
-				ctx.Req.NotNil(conn)
-
-				bytes, err := io.ReadAll(conn)
-				ctx.Req.NoError(err)
-				ctx.Req.NotNil(bytes)
-
-				doneClient1 <- string(bytes)
+				doneClient1 <- dialServiceForTest(client1Config, service.Name)
 			}()
 
 			go func() {
@@ -323,42 +354,26 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					},
 					ConfigTypes: nil,
 				}
-
-				client2Context, err := ziti.NewContext(client2Config)
-				ctx.Req.NoError(err)
-
-				err = client2Context.Authenticate()
-				ctx.Req.NoError(err)
-
-				defer func() {
-					client2Context.Close()
-					close(doneClient2)
-				}()
-
-				conn, err := client2Context.Dial(service.Name)
-				ctx.Req.NoError(err)
-				ctx.Req.NotNil(conn)
-
-				bytes, err := io.ReadAll(conn)
-				ctx.Req.NoError(err)
-				ctx.Req.NotNil(bytes)
-
-				doneClient2 <- string(bytes)
+				doneClient2 <- dialServiceForTest(client2Config, service.Name)
 			}()
 
 			t.Run("wait for service data", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				select {
-				case resp := <-doneClient1:
-					ctx.Req.Equal("hello", resp)
-				case <-time.After(5 * time.Second):
+				case result := <-doneClient1:
+					ctx.Req.NoError(result.err)
+					ctx.Req.Equal("hello", result.data)
+				case <-time.After(10 * time.Second):
+					ctx.Req.Fail("timed out waiting for client 1 to receive service data")
 				}
 
 				select {
-				case resp := <-doneClient2:
-					ctx.Req.Equal("hello", resp)
-				case <-time.After(5 * time.Second):
+				case result := <-doneClient2:
+					ctx.Req.NoError(result.err)
+					ctx.Req.Equal("hello", result.data)
+				case <-time.After(10 * time.Second):
+					ctx.Req.Fail("timed out waiting for client 2 to receive service data")
 				}
 
 				close(done)
