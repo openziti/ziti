@@ -41,7 +41,21 @@ func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) e
 	}
 
 	mm := boltz.NewMigratorManager(db)
-	return mm.Migrate("edge", CurrentDbVersion, migrations.migrate)
+	if err := mm.Migrate("edge", CurrentDbVersion, migrations.migrate); err != nil {
+		return err
+	}
+
+	// l2 config types are needed in 2.0.x, but we don't want to increment the db version to add them,
+	// since doing so risks colliding with the db version range used by other branches. Since bumping
+	// the db version is what would normally trigger the migrator to invoke migrate() again, we instead
+	// ensure these config types exist on every startup, independent of the stored db version.
+	return db.Update(nil, func(ctx boltz.MutateContext) error {
+		step := &boltz.MigrationStep{Component: "edge", Ctx: ctx}
+		for _, cfgType := range []*ConfigType{l2HostV1ConfigType, l2InterceptV1ConfigType} {
+			migrations.createConfigType(step, cfgType)
+		}
+		return step.GetError()
+	})
 }
 
 func (m *Migrations) migrate(step *boltz.MigrationStep) int {
