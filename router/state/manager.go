@@ -98,6 +98,13 @@ type BindTerminator interface {
 	CloseForBindAccessLoss()
 }
 
+// PostureStateNotifier is an optional extension of ConnProvider. When implemented,
+// the connection wants to receive posture evaluation results after each posture
+// data update so it can push a PostureStateChange message to the SDK.
+type PostureStateNotifier interface {
+	SendPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData)
+}
+
 // ConnProvider is an interface used to abstract specific conn implementations from lower level packages
 // (such as xgress_edge) to avoid circular dependencies.
 type ConnProvider interface {
@@ -296,6 +303,15 @@ type Manager interface {
 	// the router's posture cache.
 	ProcessPostureResponses(ch channel.Channel, response *edge_client_pb.PostureResponses)
 
+	// SeedMfaFromApiSession establishes the MFA-passed posture baseline an OIDC api session
+	// token attests, so sessions that authenticated with TOTP pass MFA posture checks before
+	// any posture-response TOTP token arrives. No-op for legacy sessions.
+	SeedMfaFromApiSession(apiSession *ApiSessionToken)
+
+	// GetPostureData returns a snapshot of the current posture instance data for the
+	// given API session, or nil if no posture data has been received yet.
+	GetPostureData(apiSessionId string) *posture.InstanceData
+
 	// GetEnv returns the router environment instance.
 	GetEnv() env.RouterEnv
 
@@ -329,6 +345,12 @@ type ConnectionTracker interface {
 	GetChannels() map[string][]channel.Channel
 	GetChannelsByIdentityId(identityId string) []channel.Channel
 }
+
+// ErrServiceNotFound indicates a dial referenced a service id that is not in the router's data
+// model — the service does not exist or is not in the identity's view. Wrapped by
+// GetServiceSessionToken's id-lookup branch so denial classification can distinguish an unknown
+// service from an invalid session token.
+var ErrServiceNotFound = errors.New("service not found")
 
 var _ Manager = (*ManagerImpl)(nil)
 
@@ -472,6 +494,10 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		for _, t := range bindToClose {
 			t.CloseForBindAccessLoss()
 		}
+
+		if notifier, ok := edgeConn.(PostureStateNotifier); ok {
+			notifier.SendPostureStateChange(rdm, uint64(rdm.CurrentIndex()), data)
+		}
 	}
 }
 
@@ -485,7 +511,8 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 	instance := self.postureCache.GetInstance(apiSessionId)
 
 	if instance != nil {
-		data = &instance.InstanceData
+		snapshot := instance.Snapshot()
+		data = &snapshot
 	}
 
 	return posture.HasAccess(rdm, identityId, serviceId, data, policyType)
@@ -493,6 +520,28 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 
 func routerDataModelWorker(_ uint32, f func()) {
 	f()
+}
+
+// SeedMfaFromApiSession establishes the MFA-passed posture baseline attested by an OIDC api
+// session token (see posture.Cache.SeedMfaFromApiSession). Legacy sessions are unaffected: their
+// MFA enforcement remains controller-side.
+func (self *ManagerImpl) SeedMfaFromApiSession(apiSession *ApiSessionToken) {
+	if apiSession == nil || !apiSession.IsOidc() || apiSession.Claims == nil {
+		return
+	}
+	self.postureCache.SeedMfaFromApiSession(apiSession.IdentityId, apiSession.Claims.ApiSessionId, apiSession.Claims)
+}
+
+// GetPostureData returns a copy of the current posture instance data for the
+// given API session, or nil if no data has arrived yet. The copy is taken under the
+// instance lock so it cannot race concurrent posture writers.
+func (self *ManagerImpl) GetPostureData(apiSessionId string) *posture.InstanceData {
+	instance := self.postureCache.GetInstance(apiSessionId)
+	if instance == nil {
+		return nil
+	}
+	data := instance.Snapshot()
+	return &data
 }
 
 // HasBindAccess evaluates service binding authorization, determining if an
@@ -775,6 +824,11 @@ func (self *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSes
 		return fmt.Errorf("bearer token is of invalid type: expected %s, got: %s", common.TokenTypeAccess, newApiSession.Claims.Type)
 	}
 
+	// A refreshed token can be the first to attest TOTP (MFA completed mid-session via an auth
+	// query); seed the posture baseline. Seeding never moves an existing MFA-passed time, so a
+	// routine refresh cannot extend an MFA window.
+	self.SeedMfaFromApiSession(newApiSession)
+
 	channels := self.connectionTracker.GetChannelsByIdentityId(newApiSession.IdentityId)
 
 	for _, ch := range channels {
@@ -959,7 +1013,7 @@ func (self *ManagerImpl) GetServiceSessionToken(token string, apiSessionToken *A
 	service, ok := rdm.Services.Get(token)
 
 	if !ok {
-		return nil, fmt.Errorf("unable to get service token either by JWT parsing or id lookup")
+		return nil, fmt.Errorf("%w: unable to get service token either by JWT parsing or id lookup", ErrServiceNotFound)
 	}
 
 	return &ServiceSessionToken{

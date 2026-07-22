@@ -28,6 +28,8 @@ type PolicyAccessError struct {
 	Id     string
 	Name   string
 	Errors []error
+	// FailingCheckIds are the ids of the posture checks that failed for this policy.
+	FailingCheckIds []string
 }
 
 func (p *PolicyAccessError) Error() string {

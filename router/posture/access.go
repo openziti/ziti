@@ -49,11 +49,13 @@ func IsPassing(accessPolicies *common.AccessPolicies, data *InstanceData) (*comm
 
 			if !ok || postureCheck == nil {
 				policyErr.Errors = append(policyErr.Errors, fmt.Errorf("posture check id %s not found model", postureCheckId))
+				policyErr.FailingCheckIds = append(policyErr.FailingCheckIds, postureCheckId)
 				return
 			}
 
 			if err := EvaluatePostureCheck(postureCheck, data); err != nil {
 				policyErr.Errors = append(policyErr.Errors, err)
+				policyErr.FailingCheckIds = append(policyErr.FailingCheckIds, postureCheckId)
 			}
 		})
 

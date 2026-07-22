@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
@@ -192,11 +193,29 @@ func doTokenExchangeRequest(
 	csrPem string,
 	expectSessionCert bool,
 ) (newAccessToken string, newRefreshToken string, sessionCert string, statusCode int) {
+	return doTokenExchangeRequestForClient(ctx, accessToken, "", tlsCerts, csrPem, expectSessionCert)
+}
+
+// doTokenExchangeRequestForClient performs a token exchange grant, identifying the OAuth client
+// via client_id when clientID is non-empty (required for public clients when no other client
+// authentication is presented).
+func doTokenExchangeRequestForClient(
+	ctx *TestContext,
+	accessToken string,
+	clientID string,
+	tlsCerts []cryptoTls.Certificate,
+	csrPem string,
+	expectSessionCert bool,
+) (newAccessToken string, newRefreshToken string, sessionCert string, statusCode int) {
 	dst := map[string][]string{
 		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":      {accessToken},
 		"subject_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
 		"scope":              {"openid offline_access"},
+	}
+
+	if clientID != "" {
+		dst["client_id"] = []string{clientID}
 	}
 
 	if csrPem != "" {
@@ -882,6 +901,44 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 // A UPDB identity authenticated without a CSR has no z_cfs, so cert binding is not enforced.
 // Submitting a CSR during refresh transitions the token to having z_cfs, after which cert
 // binding is enforced.
+// Test_OIDC_TokenExchange_PreservesAuthTime locks in that a token minted via the token-exchange
+// grant carries the subject token's auth_time rather than the mint time. auth_time attests when
+// the user actually authenticated, and recency semantics hang off it (e.g. router-side MFA
+// posture baselines seeded from api session tokens), so an exchange that minted auth_time=now
+// would silently refresh authentication recency.
+func Test_OIDC_TokenExchange_PreservesAuthTime(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	clientHelper := ctx.NewEdgeClientApi(nil)
+
+	updbCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	updbCreds.CaPool = ctx.ControllerCaPool()
+
+	// No CSR: the token carries no cert binding, so the exchange needs no client TLS certs.
+	accessToken, _, _, _, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, "")
+	ctx.Req.NotEmpty(accessToken)
+
+	origClaims, err := parseAccessClaims(accessToken)
+	ctx.Req.NoError(err)
+	ctx.Req.NotZero(origClaims.AuthTime, "authentication must stamp auth_time")
+
+	// auth_time has second precision; step past the authentication second so a token minted now
+	// provably differs from it — otherwise the carry-over assertion passes vacuously when the
+	// whole flow runs within one second.
+	time.Sleep(1100 * time.Millisecond)
+
+	newAccess, _, _, statusCode := doTokenExchangeRequestForClient(ctx, accessToken, clientID, nil, "", false)
+	ctx.Req.Equal(http.StatusOK, statusCode)
+	ctx.Req.NotEmpty(newAccess)
+
+	newClaims, err := parseAccessClaims(newAccess)
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(origClaims.AuthTime, newClaims.AuthTime,
+		"auth_time must carry the subject token's original authentication time through the exchange, never the mint time")
+}
+
 func Test_OIDC_CSR_SpiffeFallback(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()

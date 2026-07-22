@@ -271,6 +271,12 @@ func (self *IdentitySubscription) notifyServiceChange(state *IdentityState, prev
 	}
 }
 
+func (self *IdentitySubscription) notifyBatchComplete(rdm *RouterDataModel, index uint64) {
+	for _, subscriber := range self.listeners.Value() {
+		subscriber.NotifyBatchComplete(rdm, index)
+	}
+}
+
 func (self *IdentitySubscription) initializeWithDenorm(rdm *RouterDataModel, identity *Identity) (*IdentityState, bool) {
 	self.Lock()
 	defer self.Unlock()
@@ -288,6 +294,7 @@ func (self *IdentitySubscription) initializeWithDenorm(rdm *RouterDataModel, ide
 
 func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	idx := rdm.CurrentIndex()
+	defer self.notifyBatchComplete(rdm, idx)
 	log := pfxlog.Logger().
 		WithField("index", idx).
 		WithField("identity", self.IdentityId)
@@ -381,25 +388,27 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	}
 	oldIdentity.lock.Unlock()
 
-	checksChanged := false
-	if len(oldChecks) != len(newChecks) {
-		checksChanged = true
-	} else {
-		for checkId, check := range oldChecks {
-			newCheck, ok := newChecks[checkId]
-			if !ok {
-				checksChanged = true
-				break
-			}
-			if check.index != newCheck.index {
-				checksChanged = true
-				break
-			}
+	changedChecks := map[string]PostureCheckChangeType{}
+	for checkId, check := range oldChecks {
+		newCheck, ok := newChecks[checkId]
+		if !ok {
+			changedChecks[checkId] = PostureCheckRemoved
+		} else if check.index != newCheck.index {
+			changedChecks[checkId] = PostureCheckUpdated
+		}
+	}
+	for checkId := range newChecks {
+		if _, ok := oldChecks[checkId]; !ok {
+			changedChecks[checkId] = PostureCheckAdded
 		}
 	}
 
-	if checksChanged {
-		self.notifyIdentityEvent(state, IdentityPostureChecksUpdatedEvent)
+	if len(changedChecks) > 0 {
+		// Notify on a copy: the shared state pointer was already handed to earlier notifications
+		// in this pass and may be retained by subscribers, so it must not be mutated here.
+		postureState := *state
+		postureState.ChangedPostureChecks = changedChecks
+		self.notifyIdentityEvent(&postureState, IdentityPostureChecksUpdatedEvent)
 	}
 }
 
@@ -460,6 +469,29 @@ const (
 	IdentityDeletedEvent              IdentityEventType = 9
 )
 
+// PostureCheckChangeType classifies how a posture check changed in a scan pass, relative to the
+// identity's previous view: newly applicable, definition edited, or no longer applicable.
+type PostureCheckChangeType byte
+
+const (
+	PostureCheckAdded PostureCheckChangeType = iota
+	PostureCheckUpdated
+	PostureCheckRemoved
+)
+
+func (self PostureCheckChangeType) String() string {
+	switch self {
+	case PostureCheckAdded:
+		return "added"
+	case PostureCheckUpdated:
+		return "updated"
+	case PostureCheckRemoved:
+		return "removed"
+	default:
+		return "unknown"
+	}
+}
+
 // IdentityState represents a snapshot of an identity's current state including the identity itself,
 // the posture checks that apply to it, and the services it has access to. This is passed to
 // subscribers when notifying them of identity changes.
@@ -467,14 +499,23 @@ type IdentityState struct {
 	Identity      *Identity
 	PostureChecks map[string]*PostureCheck
 	Services      map[string]*IdentityService
+
+	// ChangedPostureChecks carries the per-check delta of a scan pass, keyed by check id. It is
+	// populated only on the IdentityState delivered with IdentityPostureChecksUpdatedEvent, so
+	// subscribers pushing changes downstream (e.g. to external SDKs) know which check definitions
+	// to ship instead of just that something changed. Nil on all other notifications.
+	ChangedPostureChecks map[string]PostureCheckChangeType
 }
 
 // IdentityEventSubscriber is the interface that must be implemented to receive notifications
 // about changes to an identity's state or service access. Subscribers are notified when
 // the identity is created, updated, or deleted, and when services are added, removed, or modified.
+// NotifyBatchComplete is called once at the end of each RDM scan pass with the current index,
+// signalling that all per-service notifications for that pass have been delivered.
 type IdentityEventSubscriber interface {
 	NotifyIdentityEvent(state *IdentityState, eventType IdentityEventType)
 	NotifyServiceChange(state *IdentityState, previousService, service *IdentityService, eventType ServiceEventType)
+	NotifyBatchComplete(rdm *RouterDataModel, index uint64)
 }
 
 // RouterConfigEventSubscriber receives notifications about router-managed

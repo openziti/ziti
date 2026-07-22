@@ -51,9 +51,7 @@ func (self *subscriberTest) AddIdentity() {
 	self.handleEvent(event)
 	if self.rdm.subscriptions.Count() < self.maxSubscribers {
 		fmt.Printf("subscriber count < %d, adding subscriber %s\n", self.rdm.subscriptions.Count(), identityId)
-		if err := self.rdm.SubscribeToIdentityChanges(identityId, self, false); err != nil {
-			panic(err)
-		}
+		self.rdm.SubscribeToIdentityChanges(identityId, self, false)
 	}
 }
 
@@ -173,9 +171,7 @@ func (self *subscriberTest) RemoveSelectedIdentity(identity *Identity) {
 		_, identityRemoved := self.removedIdentities[id.Id]
 		if !self.rdm.subscriptions.Has(id.Id) && !identityRemoved {
 			fmt.Printf("subscriber count < %d, adding subscriber %s\n", self.rdm.subscriptions.Count(), id.Id)
-			if err := self.rdm.SubscribeToIdentityChanges(id.Id, self, false); err != nil {
-				panic(err)
-			}
+			self.rdm.SubscribeToIdentityChanges(id.Id, self, false)
 		}
 	}
 }
