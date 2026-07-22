@@ -10,6 +10,7 @@
     * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Fix router panic evaluating a process posture check when the client has reported no process/OS posture data
     * [Issue #3868](https://github.com/openziti/ziti/issues/3868) - [Backport-1.6] Tunneler skips iptables rules for services sharing an intercept hostname
     * [Issue #3957](https://github.com/openziti/ziti/issues/3957) - [Backport-1.6] Refcount wildcard-allocated intercept hostnames
+    * [Issue #4135](https://github.com/openziti/ziti/issues/4135) - [Backport-1.6] ziti tunnel ignores --dnsSvcIpRange
 
 # Release 1.6.17
 
