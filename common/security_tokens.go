@@ -142,6 +142,12 @@ type TokenIssuerCache interface {
 
 	// GetIssuerByKid returns the TokenIssuer that owns the given key ID
 	GetIssuerByKid(kid string) TokenIssuer
+
+	// GetControllerIssuerByKid returns the controller TokenIssuer that owns the given key ID,
+	// or nil if no controller issuer claims that kid. Controller issuers are keyed by their TLS
+	// certificate fingerprint, so this resolves controller-issued tokens by kid without consulting
+	// external signers.
+	GetControllerIssuerByKid(kid string) TokenIssuer
 }
 
 // SecurityToken is the result of verifying the primary security token presented on a request.
@@ -505,12 +511,20 @@ func (s *SecurityTokenCtx) processHeaders() error {
 					continue
 				}
 
+				// Bind controller-issued tokens first by kid. Controller issuers are keyed by their
+				// TLS certificate fingerprint, so their kids do not collide with external signers.
+				// This must precede the issuer-string lookup so an external signer configured with a
+				// controller's OIDC issuer URL cannot capture controller access tokens.
 				kid := bearerToken.Kid()
 
 				if kid != "" {
-					bearerToken.TokenIssuer = s.tokenIssuerCache.GetIssuerByKid(kid)
+					bearerToken.TokenIssuer = s.tokenIssuerCache.GetControllerIssuerByKid(kid)
 				}
 
+				// Otherwise bind external signers by their exact issuer claim. Binding by kid is not
+				// used as a fallback: external signers can share a kid (shared signing-key pools), so
+				// kid resolution is ambiguous, and binding a token whose issuer matches no configured
+				// signer to an unrelated signer that happens to share the kid would be incorrect.
 				if bearerToken.TokenIssuer == nil {
 					issuer := bearerToken.Issuer()
 					if issuer != "" {
