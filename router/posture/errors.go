@@ -2,6 +2,9 @@ package posture
 
 import (
 	"fmt"
+	"runtime/debug"
+
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 )
@@ -65,7 +68,24 @@ func (pae *PolicyAccessErrors) Error() string {
 	return fmt.Sprintf("%d policies failed: %s", len(*pae), subErr)
 }
 
-func EvaluatePostureCheck(postureCheck *edge_ctrl_pb.DataState_PostureCheck, cache *Cache) *CheckError {
+// EvaluatePostureCheck evaluates a single posture check against the supplied posture
+// state. It never panics: an evaluation panic is recovered and reported as a failed
+// check, denying access instead of crashing the router.
+func EvaluatePostureCheck(postureCheck *edge_ctrl_pb.DataState_PostureCheck, cache *Cache) (result *CheckError) {
+	defer func() {
+		if r := recover(); r != nil {
+			pfxlog.Logger().WithField("postureCheckId", postureCheck.Id).
+				WithField("postureCheckName", postureCheck.Name).
+				Errorf("posture check evaluation panicked, treating as failed: %v\n%s", r, debug.Stack())
+
+			result = &CheckError{
+				Id:    postureCheck.Id,
+				Name:  postureCheck.Name,
+				Cause: fmt.Errorf("posture check evaluation panicked: %v", r),
+			}
+		}
+	}()
+
 	check := CtrlCheckToLogic(postureCheck)
 	return check.Evaluate(cache)
 }
