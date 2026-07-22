@@ -42,11 +42,10 @@ const (
 )
 
 func newCommandManager(env Env, registry ioc.Registry) *CommandManager {
-	command.GetDefaultDecoders().Clear()
 	result := &CommandManager{
 		env:                      env,
 		registry:                 registry,
-		Decoders:                 command.GetDefaultDecoders(),
+		Decoders:                 env.GetCommandDispatcher().GetDecoders(),
 		backgroundDelayThreshold: env.GetConfig().Command.Background.DelayThreshold,
 		backgroundWorkTimer:      env.GetMetricsRegistry().Timer(backgroundQueueMetricsBase + ".work_timer"),
 	}
