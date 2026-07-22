@@ -193,10 +193,25 @@ enum FaultSubject {
   LinkDuplicate = 5;
 }
 
+// FaultReason explains why a Fault was emitted. Numbering is load-bearing: the proto3 zero
+// value (what an absent field or an old router that does not stamp it decodes to) MUST be a
+// teardown reason, never the Limbo-eligible one. Only ChannelClosed is Limbo-eligible.
+enum FaultReason {
+  ReasonUnspecified = 0;
+  // ChannelClosed: the SDK's edge channel dropped (transport loss); the only reason eligible
+  // for a Limbo hold and SDK-driven reroute.
+  ChannelClosed = 1;
+  // XgClose: the SDK explicitly closed the connection; a normal close, not resurrectable.
+  XgClose = 2;
+  // AccessLoss: policy/RDM revoked the identity's access; the circuit must not be resurrectable.
+  AccessLoss = 3;
+}
+
 message Fault {
   FaultSubject subject = 1;
   string id = 2;
   uint32 iteration = 3;
+  FaultReason reason = 4;
 }
 
 message Context {
