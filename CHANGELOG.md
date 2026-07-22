@@ -431,3 +431,4 @@ today and expand as packages are converted. The global `ziti agent set-log-level
     * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode
     * [Issue #4035](https://github.com/openziti/ziti/issues/4035) - Prometheus metrics endpoint emits per-router ctrl/link metrics as identical time series, causing dropped samples
     * [Issue #4137](https://github.com/openziti/ziti/issues/4137) - ziti tunnel ignores --dnsSvcIpRange
+    * [Issue #4138](https://github.com/openziti/ziti/issues/4138) - Add l2 service configuration types
