@@ -1,0 +1,57 @@
+v: 3
+
+# Controller 2 of the ha-3 config set. See ctrl1.yml for the set's description.
+cluster:
+  dataDir: testdata/ha-3-data/ctrl2
+
+identity:
+  cert: testdata/pki/ctrl2/certs/client.chain.pem
+  server_cert: testdata/pki/ctrl2/certs/server.chain.pem
+  key: testdata/pki/ctrl2/keys/client.key
+  server_key: testdata/pki/ctrl2/keys/server.key
+  ca: testdata/pki/root/certs/root.cert
+
+trustDomain: ziti.test
+
+ctrl:
+  listener: tls:127.0.0.1:6363
+  options:
+    advertiseAddress: tls:127.0.0.1:6363
+
+mgmt:
+  listener: tls:127.0.0.1:10001
+
+terminator:
+  validators:
+    edge: edge
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: 127.0.0.1:1282
+  enrollment:
+    signingCert:
+      cert: testdata/pki/signing2/certs/signing2.chain.pem
+      key: testdata/pki/signing2/keys/signing2.key
+      ca: testdata/pki/signing-root/certs/signing-bundle.pem
+    edgeIdentity:
+      duration: 20m
+    edgeRouter:
+      duration: 60m
+
+web:
+  - name: client-management-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1282
+        address: 127.0.0.1:1282
+    options: {}
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+      - binding: edge-oidc
+        options:
+          redirectURIs:
+            - "http://localhost:*/auth/callback"
+            - "http://127.0.0.1:*/auth/callback"

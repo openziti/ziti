@@ -42,12 +42,13 @@ import (
 
 const (
 	// New header IDs, starting at 2000 to avoid conflicts with channel base headers (0-12+)
-	PeerAddrHeader        = 2000
-	SigningCertHeader     = 2001
-	ApiAddressesHeader    = 2002
-	RaftConnIdHeader      = 2003
-	ClusterIdHeader       = 2004
-	PreferredLeaderHeader = 2005
+	PeerAddrHeader         = 2000
+	SigningCertHeader      = 2001
+	ApiAddressesHeader     = 2002
+	RaftConnIdHeader       = 2003
+	ClusterIdHeader        = 2004
+	PreferredLeaderHeader  = 2005
+	SigningCertChainHeader = 2006 // full signing cert chain, leaf first, as concatenated DER
 
 	// Legacy header IDs, used as fallback when reading from older peers
 	LegacyPeerAddrHeader     = 11
@@ -452,8 +453,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 	tlsCert := self.nodeId.ServerCert()
 	var serverCert []byte
+	var serverCertChain []byte
 	if len(tlsCert) != 0 && len(tlsCert[0].Certificate) != 0 {
 		serverCert = tlsCert[0].Certificate[0]
+		serverCertChain = ConcatDer(tlsCert[0].Certificate)
 	}
 
 	headers := map[int32][]byte{
@@ -463,6 +466,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		LegacyPeerAddrHeader:       []byte(self.raftAddr),
 		SigningCertHeader:          serverCert,
 		LegacySigningCertHeader:    serverCert,
+		SigningCertChainHeader:     serverCertChain,
 		ClusterIdHeader:            []byte(self.env.GetClusterId()),
 		LegacyClusterIdHeader:      []byte(self.env.GetClusterId()),
 	}
@@ -472,14 +476,16 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	// Check if a recent dial to this address failed (e.g., hello too large for an old peer).
-	// If so, strip the new signing cert header so only the legacy header is sent, allowing
+	// If so, strip the new signing cert headers so only the legacy header is sent, allowing
 	// the connection to succeed with old controllers that enforce the smaller hello limit.
 	self.lock.RLock()
 	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < RecentDialInterval {
 		if rec.peerVersion == nil {
 			delete(headers, SigningCertHeader)
+			delete(headers, SigningCertChainHeader)
 		} else if hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
 			delete(headers, SigningCertHeader)
+			delete(headers, SigningCertChainHeader)
 		}
 	}
 	self.lock.RUnlock()
@@ -544,7 +550,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		}
 
 		peer.Version = versionInfo
-		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+		peer.SigningCerts = signingCertsFromHeaders(peer.Channel.Underlay().Headers())
+		if len(peer.SigningCerts) == 0 {
+			peer.SigningCerts = underlay.Certificates()
+		}
 
 		self.lock.Lock()
 		if rec := self.dialRecords[address]; rec != nil {
@@ -881,13 +890,9 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		}
 
 		peer.Version = versionInfo
-		if certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader); found {
-			if cert, err := x509.ParseCertificate(certHeader); err == nil {
-				peer.SigningCerts = []*x509.Certificate{cert}
-			}
-		}
+		peer.SigningCerts = signingCertsFromHeaders(ch.Underlay().Headers())
 		if len(peer.SigningCerts) == 0 {
-			peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+			peer.SigningCerts = underlay.Certificates()
 		}
 
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
@@ -972,6 +977,33 @@ func headerWithFallback(headers map[int32][]byte, key int32, legacyKey int32) ([
 		return val, true
 	}
 	return nil, false
+}
+
+// ConcatDer concatenates DER-encoded certificates into a single byte slice, parseable
+// with x509.ParseCertificates.
+func ConcatDer(certs [][]byte) []byte {
+	var result []byte
+	for _, cert := range certs {
+		result = append(result, cert...)
+	}
+	return result
+}
+
+// signingCertsFromHeaders extracts a peer's signing certificates from hello headers,
+// preferring the full chain header (leaf first) over the older single-cert headers.
+// Returns nil when no header yields a certificate.
+func signingCertsFromHeaders(headers map[int32][]byte) []*x509.Certificate {
+	if chainHeader, found := headers[SigningCertChainHeader]; found {
+		if certs, err := x509.ParseCertificates(chainHeader); err == nil && len(certs) > 0 {
+			return certs
+		}
+	}
+	if certHeader, found := headerWithFallback(headers, SigningCertHeader, LegacySigningCertHeader); found {
+		if cert, err := x509.ParseCertificate(certHeader); err == nil {
+			return []*x509.Certificate{cert}
+		}
+	}
+	return nil
 }
 
 func getUint32HeaderWithFallback(m *channel.Message, key int32, legacyKey int32) (uint32, bool) {
