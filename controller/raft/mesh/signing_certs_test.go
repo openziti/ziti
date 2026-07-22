@@ -104,7 +104,7 @@ func Test_signingCertsFromHeaders(t *testing.T) {
 		req.True(certs[0].Equal(chain[0]))
 	})
 
-	t.Run("unparseable chain header falls back to the single-cert header", func(t *testing.T) {
+	t.Run("unparsable chain header falls back to the single-cert header", func(t *testing.T) {
 		req := require.New(t)
 		headers := map[int32][]byte{
 			SigningCertChainHeader: []byte("not a certificate"),
