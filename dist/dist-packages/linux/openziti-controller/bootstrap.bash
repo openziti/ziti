@@ -840,6 +840,17 @@ WorkingDirectory=${ZITI_HOME}
 # Leaf certs valid 365 days; timer fires monthly.
 ExecStart=/usr/bin/bash -c '${_renew_server}'
 ExecStart=/usr/bin/bash -c '${_renew_client}'
+
+# The running controller hot-reloads the renewed cert files (identity
+# WatchFiles) and begins signing JWTs with the new cert's kid, but the new
+# cert is never re-announced to raft peers or edge routers -- they only learn
+# a controller's cert when its cluster connection is (re)established. Without
+# a restart, routers reject every newly signed token with "public key not
+# found" until the controller is restarted, breaking all dials/binds in HA
+# deployments. Restart after renewal so the cluster propagates the new signer.
+# The '+' prefix runs this step with full privileges (the unit runs as
+# ${_svc_user}); try-restart only restarts the controller if it is running.
+ExecStartPost=+systemctl try-restart ziti-controller.service
 UNIT
 
   cat > "${_timer_unit}" <<UNIT
