@@ -23,6 +23,12 @@ upgrade() {
   # persistent account. Stop it first.
   if detectDynamicUserState && systemctl is-active --quiet "${SVC_USER}.service" 2>/dev/null; then
     systemctl stop "${SVC_USER}.service" || true
+    # createUser + migration below assume the transient DynamicUser is gone;
+    # if it's somehow still up, bail rather than migrate live state.
+    if systemctl is-active --quiet "${SVC_USER}.service" 2>/dev/null; then
+      echo "ERROR: could not stop ${SVC_USER}.service; aborting upgrade" >&2
+      exit 1
+    fi
     _MIGRATION_STOPPED_SERVICE=true
   fi
   createUser
