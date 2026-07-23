@@ -187,7 +187,7 @@ func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) ht
 		rc, err := self.ae.CreateRequestContext(rw, r)
 
 		if err != nil {
-			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
+			env.WriteHttpError(rw, err)
 			return
 		}
 
@@ -208,7 +208,7 @@ func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http
 		rc, err := self.ae.CreateRequestContext(rw, r)
 
 		if err != nil {
-			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
+			env.WriteHttpError(rw, err)
 			return
 		}
 

@@ -50,13 +50,13 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -64,6 +64,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/events"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -879,11 +880,27 @@ func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 	return signers[kid]
 }
 
-// CreateRequestContext creates a new request context for handling HTTP requests.
+// CreateRequestContext creates a new request context for handling HTTP requests. The request body
+// is buffered into memory before any authentication check, so bodies larger than
+// api.MaxRequestBodySize are rejected with a 413 ApiError instead of being buffered.
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) (*response.RequestContext, error) {
 	rid := eid.New()
 
-	body, _ := io.ReadAll(r.Body)
+	if r.ContentLength > api.MaxRequestBodySize {
+		return nil, apierror.NewRequestEntityTooLarge()
+	}
+
+	r.Body = http.MaxBytesReader(rw, r.Body, api.MaxRequestBodySize)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return nil, apierror.NewRequestEntityTooLarge()
+		}
+		return nil, apierror.NewCouldNotReadBody(err)
+	}
+
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	securityTokenCtx, err := common.NewSecurityTokenCtx(r, ae.TokenIssuerCache)
