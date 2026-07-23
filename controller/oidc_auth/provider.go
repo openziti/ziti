@@ -22,6 +22,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common"
+	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/pkg/errors"
@@ -98,6 +100,15 @@ func NewNativeOnlyOP(ctx context.Context, env model.Env, config Config) (http.Ha
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// OIDC endpoints buffer request bodies before authentication, so cap what an
+		// unauthenticated client can make the controller hold in memory
+		if r.ContentLength > api.MaxRequestBodySize {
+			renderJsonApiError(w, apierror.NewRequestEntityTooLarge())
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, api.MaxRequestBodySize)
+
 		for iss, handler := range handlers {
 			if err := iss.ValidFor(r.Host); err == nil {
 				handler.ServeHTTP(w, r)

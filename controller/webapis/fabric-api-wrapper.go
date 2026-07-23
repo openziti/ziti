@@ -29,7 +29,13 @@ func (self *fabricWrapper) WrapRequest(handler api_impl.RequestHandler, request 
 		rc, err := env.GetRequestContextFromHttpContext(request)
 
 		if rc == nil {
-			rc = self.ae.CreateRequestContext(writer, request)
+			var rcErr error
+			rc, rcErr = self.ae.CreateRequestContext(writer, request)
+
+			if rcErr != nil {
+				env.WriteHttpError(writer, rcErr)
+				return
+			}
 		}
 
 		rc.SetProducer(producer)
@@ -62,11 +68,16 @@ func (self *fabricWrapper) WrapHttpHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		rc := self.ae.CreateRequestContext(rw, r)
+		rc, err := self.ae.CreateRequestContext(rw, r)
+
+		if err != nil {
+			env.WriteHttpError(rw, err)
+			return
+		}
 
 		api.AddRequestContextToHttpContext(r, rc)
 
-		err := self.ae.FillRequestContext(rc)
+		err = self.ae.FillRequestContext(rc)
 		if err != nil {
 			rc.RespondWithError(err)
 			return
@@ -83,9 +94,14 @@ func (self *fabricWrapper) WrapHttpHandler(handler http.Handler) http.Handler {
 
 func (self *fabricWrapper) WrapWsHandler(handler http.Handler) http.Handler {
 	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rc := self.ae.CreateRequestContext(rw, r)
+		rc, err := self.ae.CreateRequestContext(rw, r)
 
-		err := self.ae.FillRequestContext(rc)
+		if err != nil {
+			env.WriteHttpError(rw, err)
+			return
+		}
+
+		err = self.ae.FillRequestContext(rc)
 		if err != nil {
 			rc.RespondWithError(err)
 			return

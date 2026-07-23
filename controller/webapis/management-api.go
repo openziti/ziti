@@ -133,11 +133,16 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 			r.URL.Path = ManagementRestApiBaseUrlLatest + VersionPath
 		}
 
-		rc := ae.CreateRequestContext(rw, r)
+		rc, err := ae.CreateRequestContext(rw, r)
+
+		if err != nil {
+			env.WriteHttpError(rw, err)
+			return
+		}
 
 		api.AddRequestContextToHttpContext(r, rc)
 
-		err := ae.FillRequestContext(rc)
+		err = ae.FillRequestContext(rc)
 		if err != nil {
 			rc.RespondWithError(err)
 			return

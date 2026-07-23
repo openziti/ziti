@@ -48,6 +48,16 @@ func NewCouldNotReadBody(err error) *errorz.ApiError {
 	}
 }
 
+// NewRequestEntityTooLarge returns the 413 ApiError raised when a request body exceeds the
+// maximum size the web APIs accept.
+func NewRequestEntityTooLarge() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    RequestEntityTooLargeCode,
+		Message: RequestEntityTooLargeMessage,
+		Status:  RequestEntityTooLargeStatus,
+	}
+}
+
 func NewInvalidAuth() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    InvalidAuthCode,
