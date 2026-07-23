@@ -15,10 +15,17 @@ install() {
 }
 
 upgrade() {
-  createUser
   # systemd needs to re-read the unit file before any systemctl calls,
   # otherwise commands in migrateDynamicUser trigger a stale-unit warning
   systemctl daemon-reload
+  # While a v1 DynamicUser=yes service is active, nss-systemd resolves a
+  # transient user of this name, so createUser would skip and leave no
+  # persistent account. Stop it first.
+  if detectDynamicUserState && systemctl is-active --quiet "${SVC_USER}.service" 2>/dev/null; then
+    systemctl stop "${SVC_USER}.service" || true
+    _MIGRATION_STOPPED_SERVICE=true
+  fi
+  createUser
   migrateDynamicUser
   commonActions
   # If migration stopped the service, restart it now that the unit file and
