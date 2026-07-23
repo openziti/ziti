@@ -779,10 +779,12 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 		}
 
 		for _, pk := range pks {
+			// Send the stored key as-is: rebuilding it field-by-field silently drops fields
+			// (this synthetic set bypasses router index checks and overwrites the full-sync copy).
 			peerEvent := &edge_ctrl_pb.DataState_Event{
 				Action: edge_ctrl_pb.DataState_Create,
 				Model: &edge_ctrl_pb.DataState_Event_PublicKey{
-					PublicKey: newPublicKey(pk.Data, pk.Format, pk.Usages),
+					PublicKey: pk,
 				},
 				IsSynthetic: true,
 			}
@@ -904,7 +906,11 @@ func (strategy *InstantStrategy) BuildServicePolicies(tx *bbolt.Tx, rdm *common.
 func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
 	serverTls := strategy.ae.HostController.Identity().ServerCert()
 
-	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages, serverTls[0].Certificate[1:]...)}
+	// Controller certs are published leaf-only: routers use them solely for JWT validation, which
+	// needs no chain, and a controller cert's kid is emitted by several paths (identity TLS chain
+	// here, controller store records below and on create/update events). Identical content keeps
+	// the sender and router models convergent under last-writer-wins by kid.
+	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages)}
 	newEvent := &edge_ctrl_pb.DataState_Event{
 		Action:      edge_ctrl_pb.DataState_Create,
 		Model:       newModel,
@@ -923,7 +929,7 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 		}
 		certs := nfPem.PemStringToCertificates(storeModel.CertPem)
 
-		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages, certsToRaw(certs[1:])...)}
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages)}
 		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action:      edge_ctrl_pb.DataState_Create,
 			Model:       newModel,
@@ -1946,12 +1952,12 @@ func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *
 
 func (strategy *InstantStrategy) ControllerCreate(index uint64, controller *db.Controller) {
 	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages, certsToRaw(certs[1:])...))
+	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
 }
 
 func (strategy *InstantStrategy) ControllerUpdate(index uint64, controller *db.Controller) {
 	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages, certsToRaw(certs[1:])...))
+	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
 }
 
 func (strategy *InstantStrategy) CaCreate(index uint64, ca *db.Ca) {
