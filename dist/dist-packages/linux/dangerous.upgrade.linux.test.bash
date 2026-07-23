@@ -244,9 +244,8 @@ log_section "Phase 3: Create test state"
 "${ZITI_BIN}" edge create service upgrade-test-svc --role-attributes 'upgrade-test'
 "${ZITI_BIN}" edge create service-edge-router-policy upgrade-test-serp --service-roles '#upgrade-test' --edge-router-roles '#all'
 
-# Stop services before upgrade (simulate how dpkg postinstall will find them)
-stop_service ziti-router.service
-stop_service ziti-controller.service
+# Leave both services running through the upgrade: apt/dnf do not stop the
+# service, so postinstall must handle a live v1 DynamicUser service.
 
 # ============================================================
 # Phase 4: Build and install v2 packages (triggers postinstall migration)
@@ -271,6 +270,8 @@ log_section "Phase 5: Verify migration"
 
 verify_state_dir ziti-controller ziti-controller ziti-controller
 verify_state_dir ziti-router ziti-router ziti-router
+verify_service_user ziti-controller
+verify_service_user ziti-router
 verify_symlink_resolved ziti-controller
 verify_symlink_resolved ziti-router
 
