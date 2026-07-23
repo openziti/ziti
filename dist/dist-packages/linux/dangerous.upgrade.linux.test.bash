@@ -263,6 +263,11 @@ _rtr_svc_env_md5="$(md5sum /opt/openziti/etc/router/service.env | awk '{print $1
 # and the admin's original bootstrap answers in bootstrap.env are preserved.
 upgrade_local_debs "${TMPDIR}"
 
+# postinstall must bring the services back itself; check before our own
+# explicit restarts below so a failed restart isn't masked.
+wait_for_service ziti-controller.service 30
+wait_for_service ziti-router.service 20
+
 # ============================================================
 # Phase 5: Verify migration
 # ============================================================
