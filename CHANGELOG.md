@@ -1,3 +1,14 @@
+# Release 2.0.2
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.1 -> v2.0.2](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
+  * [Issue #4136](https://github.com/openziti/ziti/issues/4136) - [Backport-2.0] ziti tunnel ignores --dnsSvcIpRange
+
 # Release 2.0.1
 
 ## What's New
