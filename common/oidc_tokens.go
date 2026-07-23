@@ -209,6 +209,26 @@ func (c *ServiceAccessClaims) HasAudience(targetAud string) bool {
 	return false
 }
 
+// InvalidTokenError indicates a token was rejected because of the token itself (bad signature or
+// parse, expiry, unexpected claims/audience/type, a mismatched api session, or revocation) rather
+// than an infrastructure failure (e.g. a datastore read) encountered while validating it. Callers
+// use it to distinguish a client that should discard and re-create its session from a transient
+// controller failure that must not invalidate otherwise-valid client state.
+type InvalidTokenError struct {
+	Err error
+}
+
+func (e *InvalidTokenError) Error() string {
+	if e.Err == nil {
+		return "invalid token"
+	}
+	return e.Err.Error()
+}
+
+func (e *InvalidTokenError) Unwrap() error {
+	return e.Err
+}
+
 type AccessClaims struct {
 	oidc.AccessTokenClaims
 	CustomClaims

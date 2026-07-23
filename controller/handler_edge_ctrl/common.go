@@ -11,7 +11,6 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -23,6 +22,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/sirupsen/logrus"
 )
@@ -314,10 +314,49 @@ func (self *baseSessionRequestContext) loadFromBolt(sessionToken string, apiSess
 		return
 	}
 
+	if !strings.HasPrefix(sessionToken, oidc_auth.JwtTokenPrefix) {
+		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(sessionToken)
+
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				self.err = InvalidSessionError{}
+			} else {
+				self.err = internalError(err)
+			}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithError(self.err).Errorf("invalid session")
+			return
+		}
+
+		if self.session.ApiSessionId != self.apiSession.Id {
+			self.err = InvalidSessionError{}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithField("sessionId", self.session.Id).
+				WithField("sessionApiSessionId", self.session.ApiSessionId).
+				WithField("apiSessionId", self.apiSession.Id).
+				WithError(self.err).Error("session does not belong to api session")
+		}
+		return
+	}
+
 	serviceAccessClaims, err := self.env.ValidateServiceAccessToken(sessionToken, &self.apiSession.Id)
 
 	if err != nil {
-		self.err = internalError(err)
+		// A token-level failure (bad/expired/mismatched/revoked token) means the client should discard
+		// and re-create its session, so return InvalidSession. An infrastructure failure (e.g. a
+		// revocation datastore read) must stay an internalError, otherwise a transient controller fault
+		// would make clients discard valid sessions and trigger a reauthentication storm.
+		var invalidToken *common.InvalidTokenError
+		if errors.As(err, &invalidToken) {
+			self.err = InvalidSessionError{}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithError(err).Error("service access token invalid; treating as invalid session")
+		} else {
+			self.err = internalError(err)
+		}
 		return
 	}
 
