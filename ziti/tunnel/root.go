@@ -131,6 +131,14 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	channel.SetLoggerFor(logging.For)
 
 	util.LogReleaseVersionCheck()
+
+	// Must happen before the subcommand's RunE/Run (e.g. tproxy's interceptor
+	// construction), which reads the DNS intercept IP range to install the
+	// local route on lo.
+	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
+	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
+		logrus.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
+	}
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {
@@ -171,10 +179,6 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	}
 
 	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
-	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
-	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
-		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
-	}
 
 	if idDir := cmd.Flag("identity-dir").Value.String(); idDir != "" {
 		files, err := os.ReadDir(idDir)
