@@ -941,27 +941,18 @@ func (self *ManagerImpl) getX509FromData(kid string, data []byte) (*x509.Certifi
 // certificate authorities, ensuring only properly signed certificates can
 // establish authenticated connections.
 func (self *ManagerImpl) VerifyClientCert(cert *x509.Certificate) error {
-
-	rootPool := x509.NewCertPool()
-
 	rdm := self.routerDataModel.Load()
 
-	for keysTuple := range rdm.PublicKeys.IterBuffered() {
-		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
-			cert, err := self.getX509FromData(keysTuple.Val.Kid, keysTuple.Val.GetData())
+	rootPool, publishedIntermediates, _ := buildClientCertRoots(rdm, self.getX509FromData)
 
-			if err != nil {
-				pfxlog.Logger().WithField("kid", keysTuple.Val.Kid).WithError(err).Error("could not parse x509 certificate data")
-				continue
-			}
-
-			rootPool.AddCert(cert)
-		}
+	intermediatePool := x509.NewCertPool()
+	for _, intermediate := range publishedIntermediates {
+		intermediatePool.AddCert(intermediate)
 	}
 
 	opts := x509.VerifyOptions{
 		Roots:         rootPool,
-		Intermediates: x509.NewCertPool(),
+		Intermediates: intermediatePool,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		CurrentTime:   cert.NotBefore,
 	}

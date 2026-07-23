@@ -120,6 +120,7 @@ type networkControllers struct {
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
+	closed                atomic.Bool
 }
 
 func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
@@ -215,6 +216,11 @@ func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_p
 func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.CtrlDetail) {
 	log := pfxlog.Logger().WithField("ctrlId", detail.Id).WithField("detail", detail)
 
+	if self.closed.Load() {
+		log.Info("network controllers closed, not dialing controller")
+		return
+	}
+
 	if len(detail.Endpoints) == 0 {
 		log.Error("controller has no endpoints, unable to connect")
 		return
@@ -232,6 +238,10 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 
 	idx := 0
 	operation := func() error {
+		if self.closed.Load() {
+			return backoff.Permanent(errors.New("network controllers closed"))
+		}
+
 		if detail.Id != "" && !self.idsBeingDialed.Has(detail.Id) {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
@@ -627,6 +637,7 @@ func (self *networkControllers) ForEach(f func(controllerId string, ch channel.C
 }
 
 func (self *networkControllers) Close() error {
+	self.closed.Store(true)
 	self.idsBeingDialed.Clear()
 	var errList []error
 	self.ForEach(func(_ string, ch channel.Channel) {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 // CertOrigin indicates whether a client certificate was issued by the internal (first-party) CA
@@ -35,23 +36,60 @@ const (
 	CertOriginThirdParty
 )
 
-// controllerRootCache caches the root CA extracted from a controller's cert chain.
+// controllerRootCache caches the root CAs extracted from a controller's cert chain.
 type controllerRootCache struct {
-	mu       sync.RWMutex
-	rootPool *x509.CertPool
-	inited   bool
+	mu     sync.RWMutex
+	roots  []*x509.Certificate
+	inited bool
 }
 
-// IsFirstPartyCert reports whether the leaf of peerCerts chains to a controller-trusted
-// root CA. peerCerts is a TLS peer chain with the leaf at index 0; remaining entries are
-// used as intermediates. Time validity is not checked; callers enforce expiry.
+// IsFirstPartyCert reports whether the leaf of peerCerts chains to a first-party trust
+// anchor: a router data model public key with the FirstPartyX509CertValidation usage, or
+// a root CA from the ctrl channel certificate chain (covers controllers that predate the
+// first-party usage). peerCerts is a TLS peer chain with the leaf at index 0; remaining
+// entries are used as intermediates, along with intermediates published on the data model
+// keys. Time validity is not checked; callers enforce expiry.
 func (self *ManagerImpl) IsFirstPartyCert(peerCerts []*x509.Certificate) bool {
 	if len(peerCerts) == 0 {
 		return false
 	}
 
-	pool := self.getControllerRootPool()
-	if pool == nil {
+	roots := x509.NewCertPool()
+	intermediates := x509.NewCertPool()
+	rootCount := 0
+
+	if rdm := self.routerDataModel.Load(); rdm != nil {
+		for keysTuple := range rdm.PublicKeys.IterBuffered() {
+			publicKey := keysTuple.Val
+			if !contains(publicKey.Usages, edge_ctrl_pb.DataState_PublicKey_FirstPartyX509CertValidation) {
+				continue
+			}
+
+			anchor, err := self.getX509FromData(publicKey.Kid, publicKey.GetData())
+			if err != nil {
+				pfxlog.Logger().WithField("kid", publicKey.Kid).WithError(err).Error("could not parse x509 certificate data for first party public key")
+				continue
+			}
+			roots.AddCert(anchor)
+			rootCount++
+
+			for _, intermediateDer := range publicKey.Intermediates {
+				intermediate, err := x509.ParseCertificate(intermediateDer)
+				if err != nil {
+					pfxlog.Logger().WithField("kid", publicKey.Kid).WithError(err).Error("could not parse intermediate certificate data for first party public key")
+					continue
+				}
+				intermediates.AddCert(intermediate)
+			}
+		}
+	}
+
+	for _, root := range self.getControllerRoots() {
+		roots.AddCert(root)
+		rootCount++
+	}
+
+	if rootCount == 0 {
 		return false
 	}
 
@@ -61,13 +99,12 @@ func (self *ManagerImpl) IsFirstPartyCert(peerCerts []*x509.Certificate) bool {
 	certCopy.NotBefore = time.Now().Add(-1 * time.Hour)
 	certCopy.NotAfter = time.Now().Add(1 * time.Hour)
 
-	intermediates := x509.NewCertPool()
 	for _, c := range peerCerts[1:] {
 		intermediates.AddCert(c)
 	}
 
 	opts := x509.VerifyOptions{
-		Roots:         pool,
+		Roots:         roots,
 		Intermediates: intermediates,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
@@ -79,12 +116,12 @@ func (self *ManagerImpl) IsFirstPartyCert(peerCerts []*x509.Certificate) bool {
 	return false
 }
 
-func (self *ManagerImpl) getControllerRootPool() *x509.CertPool {
+func (self *ManagerImpl) getControllerRoots() []*x509.Certificate {
 	self.ctrlRootCache.mu.RLock()
 	if self.ctrlRootCache.inited {
-		pool := self.ctrlRootCache.rootPool
+		roots := self.ctrlRootCache.roots
 		self.ctrlRootCache.mu.RUnlock()
-		return pool
+		return roots
 	}
 	self.ctrlRootCache.mu.RUnlock()
 
@@ -93,7 +130,7 @@ func (self *ManagerImpl) getControllerRootPool() *x509.CertPool {
 
 	// double-check after acquiring write lock
 	if self.ctrlRootCache.inited {
-		return self.ctrlRootCache.rootPool
+		return self.ctrlRootCache.roots
 	}
 
 	ctrls := self.env.GetNetworkControllers()
@@ -110,10 +147,10 @@ func (self *ManagerImpl) getControllerRootPool() *x509.CertPool {
 	}
 
 	// Walk the cert chain to find the root (self-signed) CA.
-	rootPool := x509.NewCertPool()
+	var roots []*x509.Certificate
 	for _, cert := range certs {
 		if identity.IsRootCa(cert) {
-			rootPool.AddCert(cert)
+			roots = append(roots, cert)
 		}
 	}
 
@@ -128,14 +165,13 @@ func (self *ManagerImpl) getControllerRootPool() *x509.CertPool {
 			}
 			if chains, err := certs[0].Verify(opts); err == nil {
 				for _, chain := range chains {
-					root := chain[len(chain)-1]
-					rootPool.AddCert(root)
+					roots = append(roots, chain[len(chain)-1])
 				}
 			}
 		}
 	}
 
 	self.ctrlRootCache.inited = true
-	self.ctrlRootCache.rootPool = rootPool
-	return rootPool
+	self.ctrlRootCache.roots = roots
+	return roots
 }

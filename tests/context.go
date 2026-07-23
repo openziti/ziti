@@ -123,6 +123,7 @@ type TestContext struct {
 	edgeRouterEntity    *edgeRouter
 	transitRouterEntity *transitRouter
 	routers             []*router.Router
+	peerControllers     []*peerController
 	testing             *testing.T
 	LogLevel            string
 	ControllerConfig    *config.Config
@@ -721,6 +722,7 @@ func (ctx *TestContext) RequireAdminClientApiLogin() {
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.shutdownRouters()
+	ctx.shutdownPeerControllers()
 	if ctx.EdgeController != nil {
 		ctx.EdgeController.Shutdown()
 		ctx.EdgeController = nil
@@ -815,6 +817,12 @@ func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthentic
 }
 
 func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthenticator {
+	return ctx.completeOttEnrollmentAtApiHost(identityId, ctx.ApiHost)
+}
+
+// completeOttEnrollmentAtApiHost completes an identity's OTT enrollment against the client API
+// at the given host, so cluster tests can enroll via a specific controller.
+func (ctx *TestContext) completeOttEnrollmentAtApiHost(identityId string, apiHost string) *certAuthenticator {
 	result := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 
 	tokenValue := result.Path("data.enrollment.ott.token")
@@ -836,11 +844,11 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 
 	csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
 
-	resp, err := ctx.newAnonymousClientApiRequest().
-		SetBody(csrPem).
+	resp, err := ctx.NewRestClientWithDefaults().R().
 		SetHeader("content-type", "application/x-pem-file").
 		SetHeader("accept", "application/json").
-		Post("enroll?token=" + token)
+		SetBody(csrPem).
+		Post("https://" + apiHost + EdgeClientApiPath + "/enroll?token=" + token)
 	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
 	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
