@@ -65,9 +65,10 @@ func (self *removeTerminatorsV2Handler) handleRemoveTerminators(ch channel.Chann
 
 	response := &ctrl_pb.RemoveTerminatorsV2Response{RequestId: request.RequestId}
 
-	toDelete := self.filterConfirmedAbsent(request)
+	toDelete := self.selectRemovableTerminators(request.TerminatorIds, request.CreateConfirmed)
 
-	// Everything was a confirmed no-op (already gone), so there's nothing to order through raft.
+	// Everything was either not owned by this router or a confirmed no-op (already gone), so there's
+	// nothing to order through raft.
 	if len(toDelete) == 0 {
 		response.Success = true
 		self.sendResponse(ch, response)
@@ -92,57 +93,6 @@ func (self *removeTerminatorsV2Handler) handleRemoveTerminators(ch channel.Chann
 	}
 
 	self.sendResponse(ch, response)
-}
-
-// filterConfirmedAbsent returns the terminator ids that must go through the ordered (raft) delete.
-// On the leader, where the applied state is current, it drops ids the router confirmed were created
-// (createConfirmed) but that no longer exist: those deletes are confirmed no-ops, so skipping them
-// keeps a storm of no-op retries from consuming the raft/command rate limiter. Ids that still exist,
-// or whose create the router did not confirm, are kept: an unconfirmed create may be committed but
-// not yet applied, so an absent id doesn't prove it's gone, and sending it through raft orders the
-// delete after any such create (ApplyDeleteBatch handles non-existent ids gracefully). Off the leader
-// every id is kept, since a lagging follower can't prove an id is gone.
-func (self *removeTerminatorsV2Handler) filterConfirmedAbsent(request *ctrl_pb.RemoveTerminatorsV2Request) []string {
-	kept, skipped := filterConfirmedAbsentTerminators(
-		request.TerminatorIds,
-		request.CreateConfirmed,
-		self.network.Dispatcher.IsLeader(),
-		self.network.Terminator.IsEntityPresent,
-	)
-
-	if skipped > 0 {
-		pfxlog.Logger().
-			WithField("requestId", request.RequestId).
-			WithField("skipped", skipped).
-			WithField("remaining", len(kept)).
-			Debug("leader fast-path skipped confirmed already-removed terminators")
-	}
-
-	return kept
-}
-
-// filterConfirmedAbsentTerminators implements the leader fast-path filter for filterConfirmedAbsent,
-// factored out so it can be unit tested without a live network. See filterConfirmedAbsent for the
-// rationale. createConfirmed is index-aligned with ids; a missing entry counts as false. isPresent is
-// only consulted for confirmed ids, and an error from it keeps the id (safe default).
-func filterConfirmedAbsentTerminators(ids []string, createConfirmed []bool, isLeader bool, isPresent func(string) (bool, error)) (kept []string, skipped int) {
-	if !isLeader {
-		return ids, 0
-	}
-
-	kept = make([]string, 0, len(ids))
-	for i, id := range ids {
-		confirmed := i < len(createConfirmed) && createConfirmed[i]
-		if confirmed {
-			if present, err := isPresent(id); err == nil && !present {
-				skipped++
-				continue
-			}
-		}
-		kept = append(kept, id)
-	}
-
-	return kept, skipped
 }
 
 func (self *removeTerminatorsV2Handler) sendResponse(ch channel.Channel, response *ctrl_pb.RemoveTerminatorsV2Response) {
