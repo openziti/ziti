@@ -458,6 +458,58 @@ func (helper *ClientHelperClient) GetCurrentApiSessionDetail() (*rest_model.Curr
 	return resp.Payload.Data, nil
 }
 
+// CreateCurrentApiSessionCertificate generates a new key and CSR, then submits it to
+// create an API session certificate for the currently authenticated API Session.
+func (helper *ClientHelperClient) CreateCurrentApiSessionCertificate() (*rest_model.CurrentAPISessionCertificateCreateResponse, error) {
+	request, err := certtools.NewCertRequest(map[string]string{
+		"C": "US", "O": "NetFoundry-API-Test", "CN": uuid.NewString(),
+	}, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create base CSR values: %w", err)
+	}
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate private key: %w", err)
+	}
+
+	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not create CSR: %w", err)
+	}
+
+	csrPem := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}))
+
+	params := &clientCurrentApiSession.CreateCurrentAPISessionCertificateParams{
+		SessionCertificate: &rest_model.CurrentAPISessionCertificateCreate{
+			Csr: &csrPem,
+		},
+	}
+
+	resp, err := helper.API.CurrentAPISession.CreateCurrentAPISessionCertificate(params, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create current api session certificate: %w", rest_util.WrapErr(err))
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// ListCurrentApiSessionCertificates returns the API session certificates visible to the
+// currently authenticated API Session.
+func (helper *ClientHelperClient) ListCurrentApiSessionCertificates() (rest_model.CurrentAPISessionCertificateList, error) {
+	params := &clientCurrentApiSession.ListCurrentAPISessionCertificatesParams{}
+
+	resp, err := helper.API.CurrentAPISession.ListCurrentAPISessionCertificates(params, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not list current api session certificates: %w", rest_util.WrapErr(err))
+	}
+
+	return resp.Payload.Data, nil
+}
+
 func (helper *ClientHelperClient) GetTotpMfa() (*rest_model.DetailMfa, error) {
 	params := &clientCurrentIdentity.DetailMfaParams{}
 
