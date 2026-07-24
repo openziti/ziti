@@ -332,12 +332,12 @@ var listenOptions = map[string]interface{}{
 		"properties": map[string]interface{}{
 			"connectTimeoutSeconds": map[string]interface{}{
 				"$ref":        "#/definitions/timeoutSeconds",
-				"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+				"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimeoutSeconds and connectTimeout are specified, connectTimeout will be used.",
 				"deprecated":  true,
 			},
 			"connectTimeout": map[string]interface{}{
 				"$ref":        "#/definitions/duration",
-				"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+				"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimeoutSeconds and connectTimeout are specified, connectTimeout will be used.",
 			},
 			"maxConnections": map[string]interface{}{
 				"type":        "integer",
