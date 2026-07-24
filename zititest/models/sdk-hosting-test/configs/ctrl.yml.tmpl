@@ -75,6 +75,10 @@ events:
       type: file
       format: json
       path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+      # Bound the event log so a long chaos run can't fill the disk. ~10G total
+      # (maxsizemb * (maxbackups + 1)); without maxbackups it defaults to unlimited.
+      maxsizemb: 100
+      maxbackups: 99
 
 healthChecks:
   boltCheck:
