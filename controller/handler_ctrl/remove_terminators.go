@@ -68,7 +68,7 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 	// are kept (not pre-filtered by presence): the create for a terminator may be in-flight in raft
 	// but not yet applied to the DB, so sending it through raft orders the delete after the create,
 	// and ApplyDeleteBatch handles non-existent ids gracefully.
-	toDelete := self.selectOwnedTerminators(request.TerminatorIds)
+	toDelete := self.selectRemovableTerminators(request.TerminatorIds, nil)
 	if len(toDelete) == 0 {
 		handler_common.SendSuccess(msg, ch, "")
 		return
