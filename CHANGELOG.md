@@ -405,6 +405,7 @@ today and expand as packages are converted. The global `ziti agent set-log-level
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.51](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.51)
 * github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - Upgrading a running 1.x controller/router to 2.x fails to create the service user
     * [Issue #3910](https://github.com/openziti/ziti/issues/3910) - Install slog and route agent log-level callbacks through common/logging
     * [Issue #3927](https://github.com/openziti/ziti/issues/3927) - Router does not enforce api-session or identity revocations on live connections; revoked OIDC sessions keep dialing/hosting until access-token expiry
     * [Issue #3906](https://github.com/openziti/ziti/issues/3906) - Add named-logger registry, logrus bridge, and pfxlog-shape JSON
