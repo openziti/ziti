@@ -18,13 +18,14 @@ import (
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/zitirest"
@@ -115,6 +116,11 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			err := m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.2xlarge" // need larger cpu for all the tls handshaking with 200 hosts
+				// Give controllers a larger root volume so a long chaos run's event and process
+				// logs have room to accumulate history without filling the disk and wedging the
+				// controller. The volume is only rendered by the ondemand_iops instance template.
+				host.InstanceResourceType = "ondemand_iops"
+				host.AWS.Volume = aws.EC2Volume{Type: "gp3", SizeGB: 40, IOPS: 3000}
 				return nil
 			})
 
@@ -124,6 +130,40 @@ var m = &model.Model{
 
 			err = m.ForEachHost("component.router", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			// Rotate the controller and router process (stdout) logs through "ziti ops log-pipe"
+			// instead of truncating them on restart, so recent history survives restarts while
+			// staying bounded. Footprint is maxSizeMb * (maxBackups + 1): ~10G per controller,
+			// ~3G per router (routers keep the default root disk, so their cap is smaller).
+			err = m.ForEachComponent(".ctrl", 1, func(c *model.Component) error {
+				if ct, ok := c.Type.(*zitilab.ControllerType); ok {
+					ct.LogConfig = zitilab.LogConfig{
+						Strategy:         zitilab.LogStrategyRotate,
+						RotateMaxSizeMb:  100,
+						RotateMaxBackups: 99,
+					}
+				}
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			err = m.ForEachComponent(".router", 1, func(c *model.Component) error {
+				if rt, ok := c.Type.(*zitilab.RouterType); ok {
+					rt.LogConfig = zitilab.LogConfig{
+						Strategy:         zitilab.LogStrategyRotate,
+						RotateMaxSizeMb:  100,
+						RotateMaxBackups: 29,
+					}
+				}
 				return nil
 			})
 
