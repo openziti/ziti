@@ -17,11 +17,13 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/controller/env"
 	"github.com/openziti/ziti/controller/internal/permissions"
 	"github.com/openziti/ziti/controller/model"
@@ -104,10 +106,17 @@ func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestC
 
 func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *response.RequestContext) {
 	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		query, err := queryOptions.getFullQuery(ae.GetStores().ApiSessionCertificate)
+		store := ae.GetStores().ApiSessionCertificate
+		query, err := queryOptions.getFullQuery(store)
 		if err != nil {
 			return nil, err
 		}
+
+		scopeQuery, err := ast.Parse(store, fmt.Sprintf(`apiSession = "%s"`, rc.ApiSession.Id))
+		if err != nil {
+			return nil, err
+		}
+		query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), scopeQuery.GetPredicate()))
 
 		result, err := ae.GetManagers().ApiSessionCertificate.BasePreparedList(query)
 		if err != nil {
