@@ -47,6 +47,7 @@ type ControllerType struct {
 	LocalPath      string
 	DNSNames       []string
 	Debug          bool
+	LogConfig
 }
 
 func (self *ControllerType) Label() string {
