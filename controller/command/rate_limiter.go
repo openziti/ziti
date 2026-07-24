@@ -438,6 +438,17 @@ func WasRateLimited(err error) bool {
 	return false
 }
 
+// WasLeaderless returns true if the given error indicates that a command could not be dispatched because the
+// cluster currently has no leader. This is a transient condition during membership changes; callers should
+// treat it like rate limiting and signal the requester to retry rather than fail permanently.
+func WasLeaderless(err error) bool {
+	var apiErr *errorz.ApiError
+	if errors.As(err, &apiErr) {
+		return apiErr.AppCode == apierror.ClusterHasNoLeaderCode
+	}
+	return false
+}
+
 // AdaptiveRateLimitTrackerConfig contains configuration values used to create a new AdaptiveRateLimitTracker
 type AdaptiveRateLimitTrackerConfig struct {
 	AdaptiveRateLimiterConfig
