@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 47
+	CurrentDbVersion = 48
 	FieldVersion     = "version"
 )
 
@@ -214,6 +214,11 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.backfillPolicyRoleAttributeIndexes(step) // migration 46
 		m.collapseEdgeServices(step)               // migration 47
 		m.createOrUpdateConfigType(step, routerLinkV1ConfigType)
+	}
+
+	if step.CurrentVersion < 48 {
+		m.createOrUpdateConfigType(step, l2HostV1ConfigType)
+		m.createOrUpdateConfigType(step, l2InterceptV1ConfigType)
 	}
 
 	// current version
