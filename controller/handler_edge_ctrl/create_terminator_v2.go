@@ -58,11 +58,6 @@ func (self *createTerminatorV2Handler) Label() string {
 }
 
 func (self *createTerminatorV2Handler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	if self.appEnv.GetCommandDispatcher().IsLeaderless() {
-		pfxlog.ContextLogger(ch.Label()).Error("cluster has no leader, unable to handle create terminator request")
-		return
-	}
-
 	req := &edge_ctrl_pb.CreateTerminatorV2Request{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorV2Request")
@@ -122,6 +117,12 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 			}, ctx.newChangeContext())
 
 			if err != nil {
+				// A rate-limited or leaderless dispatch is transient; reply busy so the router requeues
+				// promptly instead of treating it as a hard failure.
+				if command.WasRateLimited(err) || command.WasLeaderless(err) {
+					self.returnError(ctx, busyError(err), logger)
+					return
+				}
 				self.returnError(ctx, internalError(err), logger)
 				return
 			}
@@ -160,7 +161,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 					return
 				}
 			} else {
-				if command.WasRateLimited(err) {
+				if command.WasRateLimited(err) || command.WasLeaderless(err) {
 					self.returnError(ctx, busyError(err), logger)
 					return
 				}
