@@ -75,7 +75,9 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 			WithField("terminatorIds", request.TerminatorIds).
 			Info("removed terminators")
 		handler_common.SendSuccess(msg, ch, "")
-	} else if command.WasRateLimited(err) {
+	} else if command.WasRateLimited(err) || command.WasLeaderless(err) {
+		// A leaderless cluster (during a membership change) is transient; signal busy so the router retries
+		// rather than treating the removal as a permanent failure.
 		handler_common.SendServerBusy(msg, ch, "remove.terminators")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
