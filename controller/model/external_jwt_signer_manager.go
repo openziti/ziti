@@ -17,6 +17,9 @@
 package model
 
 import (
+	"strings"
+
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/common/pb/edge_cmd_pb"
@@ -33,6 +36,7 @@ import (
 func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 	manager := &ExternalJwtSignerManager{
 		baseEntityManager: newBaseEntityManager[*ExternalJwtSigner, *db.ExternalJwtSigner](env, env.GetStores().ExternalJwtSigner),
+		jwksFetchPolicy:   NewJwksFetchPolicy(JwksFetchConfig(env)),
 	}
 	manager.impl = manager
 
@@ -43,6 +47,10 @@ func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 
 type ExternalJwtSignerManager struct {
 	baseEntityManager[*ExternalJwtSigner, *db.ExternalJwtSigner]
+
+	// jwksFetchPolicy is used to reject a jwksEndpoint at create/update time that could never
+	// be fetched. The same policy governs the fetch itself.
+	jwksFetchPolicy *JwksFetchPolicy
 }
 
 func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {
@@ -50,6 +58,10 @@ func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {
 }
 
 func (self *ExternalJwtSignerManager) Create(entity *ExternalJwtSigner, ctx *change.Context) error {
+	if err := self.validateJwksEndpoint(entity); err != nil {
+		return err
+	}
+
 	return DispatchCreate[*ExternalJwtSigner](self, entity, ctx)
 }
 
@@ -59,7 +71,27 @@ func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityComma
 }
 
 func (self *ExternalJwtSignerManager) Update(entity *ExternalJwtSigner, checker fields.UpdatedFields, ctx *change.Context) error {
+	if err := self.validateJwksEndpoint(entity); err != nil {
+		return err
+	}
+
 	return DispatchUpdate[*ExternalJwtSigner](self, entity, checker, ctx)
+}
+
+// validateJwksEndpoint rejects a jwksEndpoint that the configured jwks fetch policy could
+// never fetch, so the operator finds out on create/update rather than on a failed fetch. An
+// endpoint that passes here can still be refused at fetch time, which is where the
+// authoritative check lives.
+func (self *ExternalJwtSignerManager) validateJwksEndpoint(entity *ExternalJwtSigner) error {
+	if entity.JwksEndpoint == nil || strings.TrimSpace(*entity.JwksEndpoint) == "" {
+		return nil
+	}
+
+	if err := self.jwksFetchPolicy.ValidateEndpoint(*entity.JwksEndpoint); err != nil {
+		return errorz.NewFieldApiError(errorz.NewFieldError(err.Error(), db.FieldExternalJwtSignerJwksEndpoint, *entity.JwksEndpoint))
+	}
+
+	return nil
 }
 
 func (self *ExternalJwtSignerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ExternalJwtSigner], ctx boltz.MutateContext) error {

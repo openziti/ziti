@@ -93,6 +93,10 @@ func (r *candidateResult) LogResult(logger *logrus.Entry, index int) {
 type AuthModuleExtJwt struct {
 	BaseAuthenticator
 	signers cmap.ConcurrentMap[string, *signerRecord]
+
+	// jwksResolver fetches JWKS endpoints for external jwt signers. It is shared by every
+	// signer so that they all fetch under the same configured constraints.
+	jwksResolver *HardenedJwksResolver
 }
 
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
@@ -101,7 +105,8 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 			method: AuthMethodExtJwt,
 			env:    env,
 		},
-		signers: cmap.New[*signerRecord](),
+		signers:      cmap.New[*signerRecord](),
+		jwksResolver: NewHardenedJwksResolver(JwksFetchConfig(env)),
 	}
 
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(ret.addSigner, boltz.EntityCreatedAsync)
@@ -472,7 +477,7 @@ func (a *AuthModuleExtJwt) addSigner(signer *db.ExternalJwtSigner) {
 
 	signerRec := &signerRecord{
 		externalJwtSigner: signer,
-		jwksResolver:      &jwks.HttpResolver{},
+		jwksResolver:      a.jwksResolver,
 		kidToPubKey:       map[string]pubKey{},
 	}
 
@@ -500,6 +505,21 @@ func (a *AuthModuleExtJwt) onExternalSignerDelete(signer *db.ExternalJwtSigner) 
 	a.signers.Remove(*signer.Issuer)
 }
 
+// reportBlockedJwksEndpoint logs an existing external JWT signer whose jwksEndpoint the current
+// [edge.externalJwtSigners.jwksFetch] configuration refuses. A configuration change can orphan a
+// signer that was created while its endpoint was still permitted, so this is reported at startup
+// rather than only when a fetch is attempted. Endpoints that resolve to a blocked address are not
+// visible here, as no name resolution is done; those are reported by the fetch itself.
+func (a *AuthModuleExtJwt) reportBlockedJwksEndpoint(signer *db.ExternalJwtSigner) {
+	if err := checkJwksEndpointAllowed(a.jwksResolver.policy, signer); err != nil {
+		pfxlog.Logger().WithFields(map[string]interface{}{
+			"id":           signer.Id,
+			"name":         signer.Name,
+			"jwksEndpoint": *signer.JwksEndpoint,
+		}).WithError(err).Error("external jwt signer jwks endpoint is not permitted by the current jwks fetch configuration, its keys cannot be resolved and authentication with this signer will fail")
+	}
+}
+
 func (a *AuthModuleExtJwt) loadExistingSigners() {
 	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
 		ids, _, err := a.env.GetStores().ExternalJwtSigner.QueryIds(tx, "")
@@ -513,6 +533,8 @@ func (a *AuthModuleExtJwt) loadExistingSigners() {
 			if err != nil {
 				return err
 			}
+
+			a.reportBlockedJwksEndpoint(signer)
 
 			a.addSigner(signer)
 		}

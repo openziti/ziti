@@ -76,6 +76,78 @@ Thanks to the community members who contributed to this release.
 
 * Security fixes (see Security Advisories below)
 * Bug fixes and dependency updates
+* [Hardened JWKS Endpoint Fetching](#hardened-jwks-endpoint-fetching) - The controller's fetch of an external JWT signer's `jwksEndpoint` is now bounded by hostname, address, timeout, and redirect policy, configured under `edge.externalJwtSigners.jwksFetch`
+
+## Hardened JWKS Endpoint Fetching
+
+An external JWT signer's `jwksEndpoint` is fetched by the controller, from the controller's own
+network position, using a URL supplied by whoever can write an external JWT signer. That fetch is
+now constrained (GHSA-whjr-3j94-gw3c): only `http` and `https` are accepted, and the fetch is bounded
+by a total timeout and a redirect cap.
+
+A new optional `edge.externalJwtSigners.jwksFetch` section configures where a fetch may go:
+
+```yaml
+edge:
+  externalJwtSigners:
+    jwksFetch:
+      deniedHostnames: []
+      allowedHostnames: []
+      blockPrivateAddresses: false
+      deniedIPs: []
+      allowedIPs: []
+      timeout: 5s
+      maxRedirects: 5
+```
+
+A fetch is allowed only if it passes two gates, and both gates are applied to the first request and
+to every redirect that is followed. Neither gate can authorize what the other refuses - hostname
+matching only ever narrows what may be fetched.
+
+The hostname gate is checked against the hostname in the URL:
+
+1. `deniedHostnames` - blocked.
+2. `allowedHostnames` - when non-empty, these are the only hostnames that may be fetched; anything else is
+   blocked.
+3. anything else - passes to the address gate.
+
+The address gate is checked against the resolved address at connection time, so a name that resolves
+to a blocked address is refused:
+
+1. built-in blocked addresses - cloud instance metadata (`169.254.169.254`, `169.254.170.2`,
+   `fd00:ec2::254`), link-local (`169.254.0.0/16`, `fe80::/10`), link-local multicast
+   (`224.0.0.0/24`, `ff02::/16`) and unspecified (`0.0.0.0`, `::`). Always blocked;
+   `allowedIPs` cannot override this tier.
+2. `deniedIPs` - blocked; `allowedIPs` cannot override.
+3. `allowedIPs` - allowed. This is a carve-out of tier 4 only.
+4. `blockPrivateAddresses`, when the address is private or loopback - blocked.
+5. anything else - allowed.
+
+The two kinds of list do not accept each other's values, and both are validated at startup.
+
+`deniedIPs` and `allowedIPs` take IP addresses only, either as a flat address (`192.168.5.5`,
+`fd00:1234::1`) matching that one address, or as a CIDR block (`10.10.0.0/16`, `fd00:1234::/64`)
+matching every address in it. IPv4 and IPv6 are accepted in either form. A hostname in one of these
+lists is a configuration error, because the address gate runs against the address being connected to.
+
+`deniedHostnames` and `allowedHostnames` take hostnames only, either as an exact hostname
+(`idp.example.com`) or as a `*.suffix` wildcard. A wildcard matches any subdomain of the suffix at any
+depth but never the suffix itself: `*.sub.host.com` matches `idp.sub.host.com` and `a.b.sub.host.com`,
+but not `sub.host.com` - list both entries to cover a domain and its subdomains. The `*` is only
+supported as the entire leading label; matching ignores case and a trailing dot, and a unicode hostname
+is compared in its punycode form. An IP address in one of these lists is a configuration error.
+
+Defaults are compatible with existing deployments: both hostname lists are empty and
+`blockPrivateAddresses` is `false`, so a signer whose IdP is on a private or loopback address keeps
+working. The built-in address tier applies regardless of configuration. For the strictest posture,
+list the IdP hostnames in `allowedHostnames`, set `blockPrivateAddresses: true`, and list any internal
+IdP address in `allowedIPs`.
+
+A `jwksEndpoint` that the policy could never fetch - a non-http scheme, a hostname the hostname gate
+refuses, or a URL host that is a literal blocked IP address - is now rejected when the external JWT
+signer is created or updated. Because tightening the configuration can orphan a signer that was created while
+its endpoint was still permitted, the controller also logs an error at startup for each existing
+external JWT signer whose `jwksEndpoint` the current configuration refuses.
 
 ## Security Advisories
 
