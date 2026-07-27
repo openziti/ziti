@@ -605,7 +605,6 @@ func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
 	opts1 := s.controllerUnderTest.NewTestLoginOpts()
 	opts1.CaCert = ""
 	opts1.Yes = true
-	opts1.IgnoreConfig = true
 	require.NoError(t, opts1.Run(), "untrusted-path login should succeed and cache the CA")
 	require.NotEmpty(t, opts1.ApiSession)
 	require.NotEmpty(t, opts1.CaCert, "untrusted path should cache and reference a CA file")
@@ -645,6 +644,5 @@ func (s *cliTestState) testTrustedServerCertUsesSystemStore(t *testing.T) {
 	opts3.Cmd = caCmd
 	opts3.CaCert = wrongCa
 	opts3.Yes = true
-	opts3.IgnoreConfig = true
 	require.Error(t, opts3.Run(), "login must fail when --ca cannot validate the server, even if the OS trusts it")
 }
