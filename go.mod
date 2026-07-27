@@ -29,12 +29,12 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-openapi/errors v0.22.8
 	github.com/go-openapi/jsonpointer v1.0.0
-	github.com/go-openapi/loads v0.24.0
+	github.com/go-openapi/loads v0.24.1
 	github.com/go-openapi/runtime v0.32.5
-	github.com/go-openapi/spec v0.22.6
+	github.com/go-openapi/spec v0.22.7
 	github.com/go-openapi/strfmt v0.27.0
-	github.com/go-openapi/swag v0.27.2
-	github.com/go-openapi/swag/jsonutils v0.27.2
+	github.com/go-openapi/swag v0.27.3
+	github.com/go-openapi/swag/jsonutils v0.27.3
 	github.com/go-openapi/validate v0.26.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -65,12 +65,12 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v5 v5.0.15
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.35.0
+	github.com/openziti/edge-api v0.35.2
 	github.com/openziti/foundation/v2 v2.0.99
 	github.com/openziti/identity v1.0.137
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/runzmd v1.0.90
+	github.com/openziti/runzmd v1.0.91
 	github.com/openziti/sdk-golang/v2 v2.0.0-pre3
 	github.com/openziti/secretstream v0.1.51
 	github.com/openziti/transport/v2 v2.0.216
@@ -140,17 +140,16 @@ require (
 	github.com/go-openapi/analysis v0.25.3 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.32.5 // indirect
-	github.com/go-openapi/swag/cmdutils v0.27.2 // indirect
-	github.com/go-openapi/swag/conv v0.27.2 // indirect
-	github.com/go-openapi/swag/fileutils v0.27.2 // indirect
-	github.com/go-openapi/swag/jsonname v0.27.2 // indirect
-	github.com/go-openapi/swag/loading v0.27.2 // indirect
-	github.com/go-openapi/swag/mangling v0.27.2 // indirect
-	github.com/go-openapi/swag/netutils v0.27.2 // indirect
-	github.com/go-openapi/swag/pools v0.27.2 // indirect
-	github.com/go-openapi/swag/stringutils v0.27.2 // indirect
-	github.com/go-openapi/swag/typeutils v0.27.2 // indirect
-	github.com/go-openapi/swag/yamlutils v0.27.2 // indirect
+	github.com/go-openapi/swag/cmdutils v0.27.3 // indirect
+	github.com/go-openapi/swag/conv v0.27.3 // indirect
+	github.com/go-openapi/swag/fileutils v0.27.3 // indirect
+	github.com/go-openapi/swag/loading v0.27.3 // indirect
+	github.com/go-openapi/swag/mangling v0.27.3 // indirect
+	github.com/go-openapi/swag/netutils v0.27.3 // indirect
+	github.com/go-openapi/swag/pools v0.27.3 // indirect
+	github.com/go-openapi/swag/stringutils v0.27.3 // indirect
+	github.com/go-openapi/swag/typeutils v0.27.3 // indirect
+	github.com/go-openapi/swag/yamlutils v0.27.3 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
