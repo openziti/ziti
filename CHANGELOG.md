@@ -14,6 +14,24 @@
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
+* [Security Advisories](#security-advisories) - Includes the two control-plane certificate validation fixes first released in 2.0.2
+
+## Security Advisories
+
+This release includes the two control-plane certificate and identity validation fixes first released in
+2.0.2 and 1.6.18. Anyone upgrading from 2.0.1 or earlier is picking them up here for the first time. See
+the linked GitHub Security Advisories for full details, impact, and affected versions.
+
+* [GHSA-mrpr-756c-xm47](https://github.com/openziti/ziti/security/advisories/GHSA-mrpr-756c-xm47) (Critical) - Improper peer certificate validation on the controller
+  cluster mesh, router links, and metrics endpoint. TLS peer checks accepted a connection when any presented
+  certificate chained to the trusted CA while taking the peer identity from the leaf certificate, allowing a
+  peer to be admitted under a forged identity without possessing a trusted key. On HA/clustered controllers
+  this allows joining the controller cluster as an arbitrary controller.
+* [GHSA-cc5m-7mhm-xh9f](https://github.com/openziti/ziti/security/advisories/GHSA-cc5m-7mhm-xh9f) (Medium) - Control-channel connections carrying a channel-type header
+  bypassed router certificate and identity verification, allowing an attacker that can reach the controller
+  control port to be admitted as an arbitrary router identity and manipulate that router's fabric terminators,
+  faults, and circuit routing. Impact is limited to router data model metadata (service and identity names) and
+  control-plane manipulation; it does not by itself grant access to the services the network protects.
 
 ## ZAC Bootstrapping CLI
 
