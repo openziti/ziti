@@ -225,6 +225,10 @@ web:
       - binding: fabric
         options: { }
       - binding: edge-oidc
+        # allowedHostnames (optional): a wildcard server-cert SAN serves OIDC only for the exact hostnames listed here.
+        # options:
+        #   allowedHostnames:
+        #     - ctrl.example.com
         options: { }
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}- binding: spa
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}  options:

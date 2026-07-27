@@ -389,6 +389,9 @@ web:
       - binding: edge-client
       - binding: edge-oidc
         options:
+          # allowedHostnames (optional): a wildcard server-cert SAN serves OIDC only for the exact hostnames listed here.
+          # allowedHostnames:
+          #   - ctrl.example.com
           redirectURIs:
             - "http://localhost:*/auth/callback"
             - "http://127.0.0.1:*/auth/callback"
