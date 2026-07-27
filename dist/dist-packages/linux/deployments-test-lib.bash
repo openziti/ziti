@@ -298,6 +298,19 @@ verify_state_dir() {
   fi
 }
 
+# Assert the persistent service account exists in the files database, not
+# merely as a transient nss-systemd (DynamicUser) entry.
+# verify_service_user <user>
+verify_service_user() {
+  local _user="$1"
+  if getent -s files passwd "${_user}" >/dev/null 2>&1; then
+    log_pass "service user ${_user} exists in files database"
+  else
+    log_fail "service user ${_user} missing from files database"
+    return 1
+  fi
+}
+
 # Assert that the state directory is NOT a symlink (post-migration)
 verify_symlink_resolved() {
   local _svc="$1"

@@ -8,6 +8,7 @@
 
 * github.com/openziti/ziti/v2: [v2.0.1 -> v2.0.2](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
   * [Issue #4136](https://github.com/openziti/ziti/issues/4136) - [Backport-2.0] ziti tunnel ignores --dnsSvcIpRange
+  * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - [Backport-2.0] Upgrading a running 1.x controller/router to 2.x fails to create the service user
 
 # Release 2.0.1
 
