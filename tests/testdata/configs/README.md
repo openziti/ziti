@@ -43,6 +43,14 @@ testdata/configs/
   the `edge:` section. Used to verify that the auto-binding behaviour is suppressed when the
   operator opts out, leaving OIDC absent from the running controller.
 
+- **`dual-oidc-servers`** (`DualOidcServers`) — Controller config with two web servers on different
+  ports, each hosting the `edge-oidc` API. Used by `Test_OidcDiscoveryEndpoints_DualServers` to verify the
+  OIDC discovery document returns endpoint URLs that reflect the port the client connected to.
+
+- **`wildcard-oidc-server`** (`WildcardOidcServer`) — Ordinary primary `server_cert` plus an
+  `alt_server_certs` entry whose only SAN is the wildcard `*.wildcard.test`, with the `edge-oidc` binding
+  setting `allowedHostnames: [ctrl.wildcard.test]`. Used by `Test_OidcDiscoveryEndpoints_WildcardIssuer`.
+
 ## Adding a New Config Set
 
 1. Create a subdirectory with a short, descriptive name (kebab-case).
