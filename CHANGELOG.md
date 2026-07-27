@@ -2,13 +2,31 @@
 
 ## What's New
 
+* Security fixes (see Security Advisories below)
 * Bug fixes
+
+## Security Advisories
+
+This release addresses two control-plane certificate and identity validation vulnerabilities. See the linked
+GitHub Security Advisories for full details, impact, and affected versions.
+
+* [GHSA-mrpr-756c-xm47](https://github.com/openziti/ziti/security/advisories/GHSA-mrpr-756c-xm47) (CVE pending) (Critical) - Improper peer certificate validation on the controller
+  cluster mesh, router links, and metrics endpoint. TLS peer checks accepted a connection when any presented
+  certificate chained to the trusted CA while taking the peer identity from the leaf certificate, allowing a
+  peer to be admitted under a forged identity without possessing a trusted key. On HA/clustered controllers
+  this allows joining the controller cluster as an arbitrary controller.
+* [GHSA-cc5m-7mhm-xh9f](https://github.com/openziti/ziti/security/advisories/GHSA-cc5m-7mhm-xh9f) (CVE pending) (Medium) - Control-channel connections carrying a channel-type header
+  bypassed router certificate and identity verification, allowing an attacker that can reach the controller
+  control port to be admitted as an arbitrary router identity and manipulate that router's fabric terminators,
+  faults, and circuit routing. Impact is limited to router data model metadata (service and identity names) and
+  control-plane manipulation; it does not by itself grant access to the services the network protects.
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.1 -> v2.0.2](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
   * [Issue #4136](https://github.com/openziti/ziti/issues/4136) - [Backport-2.0] ziti tunnel ignores --dnsSvcIpRange
   * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - [Backport-2.0] Upgrading a running 1.x controller/router to 2.x fails to create the service user
+  * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Fix controller panic / potential data corruption by copying terminator peer data, instance secret, and eventual event data out of bolt-managed memory
 
 # Release 2.0.1
 
