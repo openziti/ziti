@@ -29,6 +29,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/event"
 
@@ -672,18 +673,13 @@ func (self *impl) checkClusterIds(ch channel.Channel) error {
 }
 
 func (self *impl) checkCerts(ch channel.Channel) error {
-	certs := ch.Underlay().Certificates()
-	if len(certs) == 0 {
-		return errors.New("unable to validate peer connection, no certs presented")
+	// Peer identity is taken from certs[0] via ExtractSpiffeId, so certs[0] is the certificate that must
+	// chain to a trusted CA; VerifyLeafCertChain verifies that leaf specifically against the node's full
+	// trusted-CA pool.
+	if _, err := cert.VerifyLeafCertChain(self.env.GetNodeId().CA(), ch.Underlay().Certificates()); err != nil {
+		return fmt.Errorf("unable to validate peer connection: %w", err)
 	}
-
-	for _, cert := range ch.Underlay().Certificates() {
-		if _, err := self.env.GetNodeId().CaPool().VerifyToRoot(cert); err == nil {
-			return nil
-		}
-	}
-
-	return errors.New("unable to validate peer connection, no certs presented matched the CA for this node")
+	return nil
 }
 
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
