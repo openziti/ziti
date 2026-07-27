@@ -299,6 +299,18 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 	}()
 }
 
+// firstUnderlayHeaders returns a copy of the grouped-channel base headers marked with
+// IsFirstGroupConnection. Only the initial underlay carries this flag; additional underlays reuse the
+// unmarked base headers so the controller does not treat each of them as a new channel.
+func firstUnderlayHeaders(base channel.Headers) channel.Headers {
+	first := channel.Headers{}
+	for k, v := range base {
+		first[k] = v
+	}
+	first.PutBoolHeader(channel.IsFirstGroupConnection, true)
+	return first
+}
+
 func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
 	headers, err := self.dialEnv.GetChannelHeaders()
 	if err != nil {
@@ -311,10 +323,12 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		logrus.Debugf("Using local interface %s to dial controller", config.Ctrl.LocalBinding)
 	}
 
-	// Build headers for the initial dial, including grouped channel flags
+	// Base headers apply to every underlay of the grouped channel. IsFirstGroupConnection must NOT be
+	// set here: the dialer reuses these headers when creating additional (e.g. ctrl.high) underlays, and
+	// an inherited first-connection flag would make each additional underlay look like a new channel and
+	// trip the controller's already-connected guard.
 	headers.PutBoolHeader(channel.IsGroupedHeader, true)
 	headers.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
 
 	dialer := channel.NewClassicDialer(channel.DialerConfig{
 		Identity:     config.Id,
@@ -327,8 +341,11 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		},
 	})
 
+	// The initial underlay, and only it, carries IsFirstGroupConnection.
+	firstDialHeaders := firstUnderlayHeaders(headers)
+
 	// Dial initial underlay
-	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, headers)
+	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, firstDialHeaders)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
