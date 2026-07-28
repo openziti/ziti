@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -333,7 +334,7 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 				Id: peer.Id,
 			},
 			Name:              peer.ServerCert[0].Subject.CommonName,
-			CertPem:           nfpem.EncodeToString(peer.ServerCert[0]),
+			CertPem:           certChainPem(peer.ServerCert),
 			Fingerprint:       nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
 			CtrlAddress:       peer.Addr,
 			IsOnline:          true,
@@ -445,7 +446,7 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 			Id: peer.Id,
 		},
 		Name:              peer.ServerCert[0].Subject.CommonName,
-		CertPem:           nfpem.EncodeToString(peer.ServerCert[0]),
+		CertPem:           certChainPem(peer.ServerCert),
 		Fingerprint:       nfpem.FingerprintFromCertificate(peer.ServerCert[0]),
 		CtrlAddress:       peer.Addr,
 		IsOnline:          true,
@@ -474,6 +475,15 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 }
 
 // apiAddressFromPeer converts event.ClusterPeer API Addresses to model API Addresses
+// certChainPem encodes certs (leaf first) as concatenated PEM.
+func certChainPem(certs []*x509.Certificate) string {
+	sb := strings.Builder{}
+	for _, cert := range certs {
+		sb.WriteString(nfpem.EncodeToString(cert))
+	}
+	return sb.String()
+}
+
 func apiAddressesFromPeer(peer *event.ClusterPeer) map[string][]ApiAddress {
 	result := map[string][]ApiAddress{}
 

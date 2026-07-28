@@ -269,6 +269,14 @@ func (s *cliTestState) runCLIWithContext(ctx context.Context, cmdToRun string) (
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	// Drain the pipe while the command runs: pipe buffers are small (4KB on Windows), so a
+	// command producing more output than that deadlocks if reading is deferred until it exits.
+	outC := make(chan string, 1)
+	go func() {
+		outBytes, _ := io.ReadAll(r)
+		outC <- string(outBytes)
+	}()
+
 	v2 := cmd.NewRootCommand(os.Stdin, w, w)
 	v2.SetArgs(strings.Split(cmdToRun, " "))
 	v2.SetContext(ctx)
@@ -278,8 +286,7 @@ func (s *cliTestState) runCLIWithContext(ctx context.Context, cmdToRun string) (
 	_ = w.Close()
 	os.Stdout = orig
 
-	outBytes, _ := io.ReadAll(r)
-	return string(outBytes), err
+	return <-outC, err
 }
 
 func test(t *testing.T, name string, fn func(*testing.T)) {

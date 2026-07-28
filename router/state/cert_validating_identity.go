@@ -25,13 +25,14 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 // certValidatingIdentity wraps an identity.Identity to add client certificate chain verification
 // at the TLS level via a VerifyConnection callback. It dynamically builds a CA pool from the
-// router data model's PublicKeys with ClientX509CertValidation usage, ensuring the latest
-// trust anchors are always used.
+// router data model's client cert validation PublicKeys, ensuring the latest trust anchors
+// are always used.
 type certValidatingIdentity struct {
 	identity.Identity
 	stateManager Manager
@@ -57,6 +58,54 @@ func (self *certValidatingIdentity) ServerTLSConfig() *tls.Config {
 	return cfg
 }
 
+// buildClientCertRoots builds the trust anchor pool for client certificate verification
+// from the router data model's public keys. Keys with the FirstPartyX509CertValidation or
+// ThirdPartyX509CertValidation usage are trust anchors; when no key carries either usage
+// (controller predates the first/third-party split), keys with the deprecated
+// ClientX509CertValidation usage are used instead. Intermediates published on the selected
+// keys are returned separately so callers can add them to their intermediate pool.
+// parseCert converts a key's anchor data to a certificate, allowing callers to supply caching.
+func buildClientCertRoots(rdm *common.RouterDataModel, parseCert func(kid string, data []byte) (*x509.Certificate, error)) (roots *x509.CertPool, intermediates []*x509.Certificate, rootCount int) {
+	roots = x509.NewCertPool()
+
+	var anchors []*edge_ctrl_pb.DataState_PublicKey
+	var fallback []*edge_ctrl_pb.DataState_PublicKey
+	for keysTuple := range rdm.PublicKeys.IterBuffered() {
+		publicKey := keysTuple.Val
+		if contains(publicKey.Usages, edge_ctrl_pb.DataState_PublicKey_FirstPartyX509CertValidation) ||
+			contains(publicKey.Usages, edge_ctrl_pb.DataState_PublicKey_ThirdPartyX509CertValidation) {
+			anchors = append(anchors, publicKey)
+		} else if contains(publicKey.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
+			fallback = append(fallback, publicKey)
+		}
+	}
+
+	if len(anchors) == 0 {
+		anchors = fallback
+	}
+
+	for _, publicKey := range anchors {
+		anchor, err := parseCert(publicKey.Kid, publicKey.GetData())
+		if err != nil {
+			pfxlog.Logger().WithField("kid", publicKey.Kid).WithError(err).Error("could not parse x509 certificate data for client cert verification")
+			continue
+		}
+		roots.AddCert(anchor)
+		rootCount++
+
+		for _, intermediateDer := range publicKey.Intermediates {
+			intermediate, err := x509.ParseCertificate(intermediateDer)
+			if err != nil {
+				pfxlog.Logger().WithField("kid", publicKey.Kid).WithError(err).Error("could not parse intermediate certificate data for client cert verification")
+				continue
+			}
+			intermediates = append(intermediates, intermediate)
+		}
+	}
+
+	return roots, intermediates, rootCount
+}
+
 // verifyConnection is a TLS VerifyConnection callback that verifies client certificates against
 // the CA pool built from RDM PublicKeys.
 func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) error {
@@ -71,30 +120,24 @@ func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) 
 		return errors.New("router data model not yet available, cannot verify client certificate")
 	}
 
-	rootPool := x509.NewCertPool()
-	intermediatePool := x509.NewCertPool()
-	certCount := 0
-	for keysTuple := range rdm.PublicKeys.IterBuffered() {
-		if contains(keysTuple.Val.Usages, edge_ctrl_pb.DataState_PublicKey_ClientX509CertValidation) {
-			parsed, err := x509.ParseCertificate(keysTuple.Val.GetData())
-			if err != nil {
-				pfxlog.Logger().WithField("kid", keysTuple.Val.Kid).WithError(err).Error("could not parse x509 certificate data for TLS client verification")
-				continue
-			}
-			rootPool.AddCert(parsed)
-			certCount++
-		}
-	}
+	rootPool, publishedIntermediates, certCount := buildClientCertRoots(rdm, func(_ string, data []byte) (*x509.Certificate, error) {
+		return x509.ParseCertificate(data)
+	})
 
 	if certCount == 0 {
 		return errors.New("no trusted CA certificates available in router data model")
 	}
 
-	// Add the router identity's CA bundle as intermediates. The RDM PublicKeys typically
-	// contain only root CAs, but client certs may be signed by an intermediate CA that
-	// is part of the router's trust bundle.
+	// Start the intermediate pool from the router identity's CA bundle. The RDM anchors are
+	// typically root CAs, but client certs may be signed by an intermediate CA that is part
+	// of the router's trust bundle rather than published on an anchor.
+	intermediatePool := x509.NewCertPool()
 	if idCa := self.Identity.CA(); idCa != nil {
 		intermediatePool = idCa.Clone()
+	}
+
+	for _, intermediate := range publishedIntermediates {
+		intermediatePool.AddCert(intermediate)
 	}
 
 	// Also add any additional certs from the TLS peer chain as intermediates.
