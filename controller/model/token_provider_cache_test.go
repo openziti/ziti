@@ -37,6 +37,26 @@ func Test_resolveStringSliceClaimProperty(t *testing.T) {
 		req.Empty(vals)
 	})
 
+	t.Run("returns empty when the claim is present but null", func(t *testing.T) {
+		req := require.New(t)
+
+		vals, err := resolveStringSliceClaimProperty(jwt.MapClaims{"roles": nil}, "/roles")
+
+		req.NoError(err)
+		req.Empty(vals)
+	})
+
+	t.Run("returns empty when a nested claim is present but null", func(t *testing.T) {
+		req := require.New(t)
+
+		claims := jwt.MapClaims{"resource_access": map[string]any{"ziti": map[string]any{"roles": nil}}}
+
+		vals, err := resolveStringSliceClaimProperty(claims, "/resource_access/ziti/roles")
+
+		req.NoError(err)
+		req.Empty(vals)
+	})
+
 	t.Run("returns empty when the claim is present but an empty string", func(t *testing.T) {
 		req := require.New(t)
 
@@ -85,5 +105,6 @@ func Test_resolveStringSliceClaimProperty(t *testing.T) {
 		_, err := resolveStringSliceClaimProperty(claims, "/roles")
 
 		req.Error(err)
+		req.ErrorContains(err, "map[unexpected:object]")
 	})
 }
