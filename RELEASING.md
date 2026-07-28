@@ -77,6 +77,7 @@ release as not a prerelease makes it a stable release. There can be one stable r
 
 1. After an arbitrary burn-in period, unmark "prerelease" in GitHub Releases (`isPrerelease: false`). This will automatically promote and advertise the downstreams.
    Note: the downstreams workflow trigger ignores `isLatest`, can only be triggered once for a release, and waits for all other checks on the same revision.
+   Note: the wait-for-all-checks gate was removed on **main**, so promotion there is gated only on the tag being a stable semver. Release branches may still carry the old gate. See [Re-running Promotion](#re-running-promotion) for why the branch matters.
 
 ## Hotfixes
 
@@ -108,6 +109,40 @@ The downstream artifacts are named and handled as follows.
 - GitHub binary pre-release is marked "latest"
   - Linux packages for the release are copied from the "test" repos to the "stable" repos.
   - Container images' semver release tags are re-tagged as `:latest`.
+
+### Re-running Promotion
+
+The `released` event fires only once per release, so re-marking it stable will not promote again. Re-run `promote-downstreams.yml` with `workflow_dispatch` and the optional `tag` input instead. Promotion is idempotent: `jf rt copy` copies rather than moves, and re-tagging `:latest` with the same digest is a no-op.
+
+```bash
+gh workflow run promote-downstreams.yml --repo openziti/ziti --ref main -f tag=v2.0.1
+```
+
+The `--ref` matters. A `release` event runs the copy of the workflow that exists **on the release tag**, not the copy on the default branch, so a workflow fix merged to **main** does not apply to a release cut from a release branch that lacks it. Cherry-pick workflow fixes to the release branches, and dispatch with `--ref main` to promote using main's copy.
+
+The copy jobs use `--fail-no-op=true`, so promotion fails when a source file is missing or misnamed in the test repos. Note the naming asymmetry: `openziti` is per-arch, while the `openziti-controller` and `openziti-router` meta packages are `_all.deb` and `.noarch.rpm` under each arch directory. A 404 there means publishing, not promotion, is what needs fixing.
+
+### Verifying Promotion
+
+A green promotion run does not prove consumers can install the release. Files land in the stable pool immediately, but Artifactory rebuilds the APT and YUM indexes asynchronously afterward, and until it does the package is reachable by direct URL yet invisible to `apt` and `dnf`.
+
+```bash
+(set -euxo pipefail
+V=2.0.1
+
+# is it in the stable index that clients actually read? (distribution 'debian', component 'main')
+curl -s https://packages.openziti.org/zitipax-openziti-deb-stable/dists/debian/main/binary-amd64/Packages | grep -A1 '^Package: openziti$' | grep -F "${V}"
+
+# when was that index last rebuilt?
+curl -s https://packages.openziti.org/zitipax-openziti-deb-stable/dists/debian/Release | grep -i '^Date:'
+)
+```
+
+On a client, `apt install --only-upgrade openziti` reporting "already the newest version" is the expected symptom of a stale local cache, not of a failed promotion. Run `sudo apt update` first.
+
+### Release Notifications Never Block a Release
+
+The Mattermost notification workflows (`mattermost-channel-posts.yml`, `mattermost-webhook.yml`) post over a ziti overlay service that has been unreachable for long stretches, and neither action sets a client-side connect timeout. Both therefore set `continue-on-error: true` and `timeout-minutes`. Leave those in place, and never let a chat notification job gate a release: a failed chat post has already blocked a stable promotion end to end, because the notification jobs were unintentionally in scope for a wait-for-all-checks gate.
 
 ### Rolling Back Downstreams
 
@@ -169,11 +204,13 @@ V=1.5.4
 test -n "${V}"
 for A in x86_64 aarch64 armv7hl; do
   for P in openziti{,-controller,-router}; do
+    # openziti is built per arch; the controller and router meta packages are noarch
+    case "${P}" in openziti) RPM_ARCH="${A}" ;; *) RPM_ARCH=noarch ;; esac
     jf rt cp \
       --recursive=false \
       --flat=true \
       --fail-no-op=true \
-      zitipax-openziti-rpm-{test,stable}/redhat/${A}/${P}-${V}-1.${A}.rpm
+      zitipax-openziti-rpm-{test,stable}/redhat/${A}/${P}-${V}-1.${RPM_ARCH}.rpm
   done
 done
 )
@@ -191,11 +228,13 @@ test -n "${V}"
 
 for A in amd64 arm64 armhf; do
   for P in openziti{,-controller,-router}; do
+    # openziti is built per arch; the controller and router meta packages are arch-independent
+    case "${P}" in openziti) DEB_ARCH="${A}" ;; *) DEB_ARCH=all ;; esac
     jf rt cp \
       --recursive=false \
       --flat=true \
       --fail-no-op=true \
-      zitipax-openziti-deb-{test,stable}/pool/${P}/${A}/${P}_${V}_${A}.deb
+      zitipax-openziti-deb-{test,stable}/pool/${P}/${A}/${P}_${V}_${DEB_ARCH}.deb
   done
 done
 )

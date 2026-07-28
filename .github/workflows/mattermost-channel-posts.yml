@@ -21,9 +21,16 @@ jobs:
   send-notifications:
     runs-on: ubuntu-24.04
     name: POST Webhook with Python
+    # a chat notification must never fail the release: this job's status is reported as success even when the
+    # Mattermost webhook is unreachable, so workflows that gate on the checks for a revision aren't blocked by it
+    continue-on-error: true
+    # the webhook is dialed over the ziti overlay with no client-side connect timeout, so cap the job instead
+    timeout-minutes: 5
     if: github.actor != 'dependabot[bot]'
     steps:
+      # per-step too, so an unreachable webhook in the first post doesn't skip the second
       - uses: openziti/ziti-mattermost-action-py@v1
+        continue-on-error: true
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
@@ -35,6 +42,7 @@ jobs:
           senderUsername: "GitHubZ"
 
       - uses: openziti/ziti-mattermost-action-py@v1
+        continue-on-error: true
         if: |
           github.repository_owner == 'openziti'
           && ((github.event_name != 'pull_request_review')
