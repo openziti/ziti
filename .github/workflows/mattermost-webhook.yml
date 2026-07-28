@@ -14,6 +14,9 @@ on:
 jobs:
   mattermost-ziti-nodejs-webhook:
     continue-on-error: true
+    # the webhook is dialed over the ziti overlay with no client-side connect timeout; when the service is down this
+    # job has sat for hours, stalling anything that waits on the checks for a revision
+    timeout-minutes: 5
     runs-on: ubuntu-24.04
     name: POST Webhook with NodeJS
     if: github.repository_owner == 'openziti' && github.actor != 'dependabot[bot]'

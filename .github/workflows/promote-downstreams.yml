@@ -106,7 +106,9 @@ jobs:
     name: Promote ${{ matrix.package_name }}-${{ matrix.arch.rpm }}.${{ matrix.packager }}
     needs: parse_version
     strategy:
-      fail-fast: true
+      # each copy is independent and idempotent, so let the rest finish and report exactly which one failed instead of
+      # cancelling siblings and leaving an arbitrary subset of the packages promoted
+      fail-fast: false
       matrix:
         package_name:
           - openziti
@@ -130,7 +132,7 @@ jobs:
       ZITI_RPM_PROD_REPO: ${{ vars.ZITI_RPM_PROD_REPO || 'zitipax-openziti-rpm-stable' }}
     steps:
       - name: Configure jFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@v5
         env:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
