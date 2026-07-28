@@ -1230,9 +1230,9 @@ func Test_Authenticate_External_Jwt_Overlapping_Kids(t *testing.T) {
 			return err == nil && code == http.StatusOK
 		}, 10*time.Second, 100*time.Millisecond, "the enabled signer should become usable for primary authentication")
 
-		// Tokens are issued by the enabled signer. Kid-first binding without an enabled filter
-		// would bind some requests to the disabled signer, drop the token without falling back to
-		// issuer-string resolution, and fail authentication.
+		// Tokens are issued by the enabled signer. Kid-first binding resolves to the disabled signer,
+		// which suppresses issuer-string resolution and then fails primary authentication because
+		// disabled signers are not accepted. Binding by issuer claim avoids that entirely.
 		const attempts = 25
 		for i := 0; i < attempts; i++ {
 			code, err := authenticateWithSignedExtJwt(ctx, enabledIss, enabledAud, adminIdentityId, sharedKid, sharedKey)
