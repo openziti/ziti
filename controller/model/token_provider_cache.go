@@ -629,8 +629,9 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 }
 
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
-// Returns a string slice even if the claim is a single string value. An absent claim or unset selector
-// resolves to no values without error; only a malformed pointer or a present-but-wrong-type claim errors.
+// Returns a string slice even if the claim is a single string value. An unset selector, a pointer that does
+// not resolve against the claims, and a null claim all resolve to no values without error. A claim that is
+// present but neither a string nor an array of strings errors.
 func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]string, error) {
 	if property == "" {
 		return nil, nil
@@ -649,10 +650,18 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	val, _, err := jsonPointer.Get(claims)
 
 	if err != nil {
-		// Pointer syntax was already validated by jsonpointer.New above, so a Get
-		// failure means the path is simply not present in this token. The role
-		// attributes claim is optional, so an absent claim resolves to no attributes
-		// rather than an error, matching the unset-selector and empty-claim cases.
+		// The role attributes claim is optional, so a pointer that does not resolve against this
+		// token's claims yields no attributes rather than an error, matching the unset-selector and
+		// empty-claim cases. This covers an absent key as well as a traversal failure, such as
+		// indexing into a scalar.
+		pfxlog.Logger().WithError(err).WithField("selector", property).
+			Debug("attribute claim selector did not resolve, enrolling with no role attributes")
+		return nil, nil
+	}
+
+	if val == nil {
+		pfxlog.Logger().WithField("selector", property).
+			Warn("attribute claim selector resolved to a null claim, enrolling with no role attributes")
 		return nil, nil
 	}
 
@@ -668,7 +677,7 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	arrVals, ok := val.([]any)
 
 	if !ok {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, arrVals)
+		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, val)
 	}
 
 	var attributes []string
