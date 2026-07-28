@@ -1,61 +1,26 @@
 name: Promote Downstream Releases
 
-on: 
-  # may be triggered manually on a release tag that represents a prerelease to promote it to a release in the downstream package repositories and Docker Hub
+on:
+  # may be triggered manually to promote a release tag to stable in the downstream package repositories and Docker Hub.
+  # Dispatch from the tag itself, or from any branch and set the 'tag' input to the release tag to promote.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to promote, e.g. v2.0.0. Defaults to the ref the run was dispatched from; set this to promote a specific tag when dispatching from a branch.
+        required: false
+        type: string
   # GitHub release is marked stable, i.e., isPrerelease: false
   release:
     types: [released]  # this release event activity type excludes prereleases
 
-# cancel older, redundant runs of same workflow on same branch
+# cancel older, redundant runs of same workflow for the same tag (or dispatched ref)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  wait_for_release:
-    name: Wait for Release Builds to Succeed
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Debug action
-        uses: hmarr/debug-action@v3
-
-      - name: Wait for all checks on this rev
-        uses: lewagon/wait-on-check-action@v1.5.0
-        with:
-          ref: ${{ github.ref_name }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          # seconds between polling the checks api for job statuses
-          wait-interval: 30
-          # confusingly, this means "pause this step until all jobs from all workflows in same run have completed"
-          running-workflow-name: Wait for Release Builds to Succeed
-          # comma-separated list of check names (job.<id>.name) to ignore
-          ignore-checks: SDK Terminator Validation,Fablab HA Smoketest,POST Webhook,Release Quickstart Job,Parse Tag Regex
-
-      - name: Git Checkout
-        if: failure()
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Diagnose Failed "Wait for Release Builds to Succeed"
-        if: failure()
-        shell: bash
-        run: |
-          set -o pipefail
-          set -o xtrace
-
-          COMMIT_SHA=$(git rev-parse ${GITHUB_REF_NAME}^{commit})
-          for STATUS in cancelled failure
-          do
-            gh run list --repo "${GITHUB_REPOSITORY}" --status "${STATUS}" --commit "${COMMIT_SHA}"
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # the purpose of this job is to enforce that the Git ref promoted is a semver eligible for stable release, i.e., not having a semver pre-release suffix; the extracted version without the leading 'v' is passed to the docker job as the container image tag
   parse_version:
-    needs: wait_for_release
     name: Parse Tag Regex
     runs-on: ubuntu-24.04
     outputs:
@@ -65,11 +30,14 @@ jobs:
       - name: Validate the Release Tag is a Stable Release Ref
         id: validate
         shell: bash
+        env:
+          # the 'tag' input when dispatched from a branch, otherwise the ref the run fired on (the tag)
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=${GITHUB_REF_NAME#v}" | tee -a $GITHUB_OUTPUT
+          if [[ "${PROMOTE_REF}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=${PROMOTE_REF#v}" | tee -a $GITHUB_OUTPUT
           else
-            echo "${GITHUB_REF_NAME} is not a semver stable release ref" >&2
+            echo "${PROMOTE_REF} is not a semver stable release ref" >&2
             exit 1
           fi
 
@@ -96,14 +64,15 @@ jobs:
             | sort -V \
             | tail -1
           )
-          CURRENT_VERSION="${GITHUB_REF_NAME}"
-          
+          CURRENT_VERSION="${PROMOTE_REF}"
+
           if [[ "$CURRENT_VERSION" == "$HIGHEST_VERSION" ]]; then
             echo "highest=true" | tee -a $GITHUB_OUTPUT
           else
             echo "highest=false" | tee -a $GITHUB_OUTPUT
           fi
         env:
+          PROMOTE_REF: ${{ github.event.inputs.tag || github.ref_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   promote_docker:
@@ -137,7 +106,9 @@ jobs:
     name: Promote ${{ matrix.package_name }}-${{ matrix.arch.rpm }}.${{ matrix.packager }}
     needs: parse_version
     strategy:
-      fail-fast: true
+      # each copy is independent and idempotent, so let the rest finish and report exactly which one failed instead of
+      # cancelling siblings and leaving an arbitrary subset of the packages promoted
+      fail-fast: false
       matrix:
         package_name:
           - openziti
@@ -161,7 +132,7 @@ jobs:
       ZITI_RPM_PROD_REPO: ${{ vars.ZITI_RPM_PROD_REPO || 'zitipax-openziti-rpm-stable' }}
     steps:
       - name: Configure jFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@v5
         env:
           JF_ENV_1: ${{ secrets.ZITI_ARTIFACTORY_CLI_CONFIG_PACKAGE_UPLOAD }}
 
