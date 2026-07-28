@@ -299,6 +299,20 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 	}()
 }
 
+// firstUnderlayHeaders returns the hello headers for the initial underlay of a grouped control
+// channel, the only underlay that carries IsFirstGroupConnection. These are deliberately built fresh
+// rather than added to the dialer's base
+// headers: additional underlays reuse the base headers, and an inherited first-connection flag would
+// both spawn a new listener-side group and make each additional underlay look like a new channel to
+// the controller's already-connected guard.
+func firstUnderlayHeaders() channel.Headers {
+	first := channel.Headers{}
+	first.PutBoolHeader(channel.IsGroupedHeader, true)
+	first.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
+	first.PutBoolHeader(channel.IsFirstGroupConnection, true)
+	return first
+}
+
 func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
 	headers, err := self.dialEnv.GetChannelHeaders()
 	if err != nil {
@@ -322,13 +336,8 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		},
 	})
 
-	// Headers for the initial dial only: establish a new grouped channel as its first connection.
-	// These must NOT live on the dialer's base headers, or non-first (constraint/backoff/reconnect)
-	// dials would inherit IsFirstGroupConnection=true and spawn a new listener-side group.
-	firstDialHeaders := channel.Headers{}
-	firstDialHeaders.PutBoolHeader(channel.IsGroupedHeader, true)
-	firstDialHeaders.PutStringHeader(channel.TypeHeader, ctrlchan.ChannelTypeDefault)
-	firstDialHeaders.PutBoolHeader(channel.IsFirstGroupConnection, true)
+	// The initial underlay, and only it, carries IsFirstGroupConnection.
+	firstDialHeaders := firstUnderlayHeaders()
 
 	// Dial initial underlay
 	underlay, err := dialer.CreateWithHeaders(config.Ctrl.Options.ConnectTimeout, firstDialHeaders)

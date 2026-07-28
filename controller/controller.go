@@ -545,6 +545,16 @@ func (c *Controller) Run() error {
 		ctrlAcceptors[mesh.ChannelTypeMesh] = channel.AsHelloAcceptor(c.raftController.GetMesh())
 	}
 
+	// Channel types with a dedicated acceptor below validate their own peers; the connect handler
+	// must skip exactly those and validate everything else (which the routing acceptor sends to the
+	// default router control acceptor, including unrecognized types). Set this before the listener
+	// starts accepting connections.
+	separatelyValidatedTypes := map[string]struct{}{}
+	for chType := range ctrlAcceptors {
+		separatelyValidatedTypes[chType] = struct{}{}
+	}
+	c.ctrlConnectHandler.SetSeparatelyValidatedChannelTypes(separatelyValidatedTypes)
+
 	acceptor := &channel.TypeRoutingAcceptor{
 		Acceptors:       ctrlAcceptors,
 		DefaultAcceptor: ctrlAccepter.NewMultiListener(),
