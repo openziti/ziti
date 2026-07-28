@@ -131,13 +131,13 @@ jobs:
       # use github.ref so a human can dispatch from a feature branch to
       # test orchestrator changes.
       - name: Checkout Workflow Scripts (current branch)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || github.ref }}
           path: workflow-src
 
       - name: Checkout Release Snapshot
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-tag.outputs.sha }}
           path: release-src
@@ -203,7 +203,7 @@ jobs:
       # Single checkout at the release tag: python, routes.yml, and the
       # Jinja template all come from the release snapshot.
       - name: Checkout Workspace at Release Commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-tag.outputs.sha }}
 
