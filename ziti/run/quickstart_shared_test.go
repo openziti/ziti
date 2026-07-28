@@ -70,7 +70,9 @@ var zitiContext ziti.Context
 
 func Dial(_ context.Context, _ string, addr string) (net.Conn, error) {
 	s := strings.Split(addr, ":")[0] // will always get passed host:port
-	return zitiContext.Dial(s)
+	// The connect timeout is the budget for authentication, the initial service load and the
+	// edge router connect combined, so it needs slack beyond the SDK's 5s default.
+	return zitiContext.DialWithOptions(s, &ziti.DialOptions{ConnectTimeout: 10 * time.Second})
 }
 
 func createZitifiedHttpClient(idFile string) http.Client {
