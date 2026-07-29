@@ -202,9 +202,16 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
-	log.Info("accepted new router connection")
+	if err = self.network.ConnectRouter(r); err != nil {
+		if network.IsConnectRejected(err) {
+			log.Info("router connect rejected; another connection is already current, router will redial")
+		}
+		// Returning the error fails the bind, so NewChannel closes this channel's underlay without
+		// starting rx or registering it. That preserves the rx-gate for a rejected connection.
+		return err
+	}
 
-	self.network.ConnectRouter(r)
+	log.Info("accepted new router connection")
 
 	return nil
 }
