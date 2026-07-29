@@ -155,8 +155,12 @@ link latencies or none (gated on the one capability), a single bool is the right
 granularity, and the consumer check is one test rather than a per-link lookup
 against the gossip store. It does require adding the field to the `MetricsMessage`
 proto in openziti/metrics, next to the existing `doNotPropagate`; that ships with
-the gossip release. Once every router publishes latency over gossip, the latency
-block in `AcceptMetricsMsg` is removed and the flag is no longer read.
+the gossip release. The flag stays in use, and the routing-latency block in
+`AcceptMetricsMsg` stays in place, for as long as non-gossip routers are
+supported: the block is what derives routing latency for a router that does not
+gossip it. It can only be removed once support for non-gossip links is dropped
+(see rollout phase 3), not merely once a given cluster's routers all gossip
+latency.
 
 ## Store lifecycle and anti-entropy
 
@@ -266,9 +270,18 @@ transition is automatic; no operator action is required.
    message to the subscription controller only. Event emission becomes
    single-controller because only that controller receives the message; no
    propagation-logic change is needed. Validate the per-controller ingestion drop
-   and that routing is unchanged.
-3. Remove the latency block from `AcceptMetricsMsg` once all routers publish over
-   gossip. Cleanup.
+   and that routing is unchanged. **Done.**
+3. Remove the routing-latency derivation block in `network.AcceptMetricsMsg` (the
+   `SetSrcLatency`/`SetDstLatency` loop) and stop reading the `linkLatencyInGossip`
+   flag. This is dead-code cleanup of the *routing* path only; it does not touch
+   latency events, which flow through the separate event-dispatcher path and
+   continue to feed the aggregator. The block is backward-compat for routers that
+   do not publish latency over gossip: a non-gossip router leaves the flag unset,
+   and the controller must still derive its routing latency from the metrics
+   message. So the block has to stay as long as we support non-gossip links, which
+   will not be removed until we drop that support entirely, expected no sooner than
+   v4 (roughly two years out). Until then the `linkLatencyInGossip` flag already
+   short-circuits it per router, so there is nothing to do here now.
 
 ## Open items and tuning
 

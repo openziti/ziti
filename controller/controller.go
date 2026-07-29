@@ -546,6 +546,7 @@ func (c *Controller) Run() error {
 		// Override the default no-op gossip mesh with the raft peer mesh.
 		c.network.InitGossipStore(gossip.NewRaftMeshAdapter(raftMesh), true, c.raftController.IsLeader)
 		c.network.InitLinkGossip()
+		c.network.InitLinkMetricsGossip()
 		c.network.InitCanaryGossip()
 		c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(func(evt *event.ClusterEvent) {
 			for _, peer := range evt.Peers {

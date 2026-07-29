@@ -169,6 +169,14 @@ func (l *linkGossipListener) EntryChanged(key string, value *ctrl_pb.RouterLinks
 	}
 
 	if linkCreated {
+		// Reconcile latency from the link-metrics store for both ends. A metrics
+		// entry can arrive before the link-state entry that creates this link
+		// (the two stores replicate independently), so on create or iteration
+		// replace we pull the current latency from the store rather than wait for
+		// the next metrics publish. RouterReportedLink reports created for both a
+		// brand-new link and an iteration replacement, so this covers re-dials.
+		l.network.reconcileLinkMetricsForLink(link)
+
 		l.network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("gossip: link added")
 	} else {

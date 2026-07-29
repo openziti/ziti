@@ -153,8 +153,15 @@ Backup branch `gossip-links-v5-squash-checkpoint` retains the single squash comm
 - Phase 5 (router sets `linkLatencyInGossip`; `AcceptMetricsMsg` skips latency
   extraction when set): **WIP** (`d5e637a2f`) — must be reworked onto
   `servermetrics` during the integration (item 5 above).
-- Design rollout phase 2 (narrow metrics firehose to the subscription controller)
-  and phase 3 (remove the latency block from `AcceptMetricsMsg`): **future**.
+- Design rollout phase 2 (narrow metrics firehose to the subscription controller):
+  **done** (`2ee103205` product + `metrics.messages.received` counter; `4e7432147`
+  links-test `validateMetrics` validation).
+- Design rollout phase 3 (remove the routing-latency derivation block in
+  `network.AcceptMetricsMsg`): **deferred to v4**. It is dead-code cleanup of the
+  routing path only, not latency events, and the block is backward-compat for
+  non-gossip routers, so it stays until non-gossip link support is dropped
+  (~v4, roughly two years out). The `linkLatencyInGossip` flag already
+  short-circuits it per router, so nothing to do now.
 
 ## Key decisions
 

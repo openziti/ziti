@@ -255,6 +255,10 @@ func newGossipClient(routerId string, ctrls env.NetworkControllers, reg metrics.
 		ctrls:    ctrls,
 		stores: map[string]*gossipStore{
 			linkGossipStoreType: newGossipStore(&linkGossipSource{}),
+			linkMetricsGossipStoreType: newGossipStore(&linkMetricsGossipSource{
+				metricsRegistry: reg,
+				lastPublished:   map[string]publishedMetric{},
+			}),
 		},
 	}
 	g.staleCtrlIds.Store(map[string]bool{})
@@ -270,9 +274,11 @@ func (g *gossipClient) linkStore() *gossipStore {
 }
 
 // setLinkIterator wires the link registry's iterator into the link gossip
-// source. Called after the link registry is created.
+// sources (link state and link metrics). Called after the link registry is
+// created.
 func (g *gossipClient) setLinkIterator(fn func() <-chan xlink.Xlink) {
 	g.linkStore().source.(*linkGossipSource).linkIterator = fn
+	g.linkMetricsStore().source.(*linkMetricsGossipSource).linkIterator = fn
 }
 
 func (g *gossipClient) nextVersion() uint64 {
@@ -869,6 +875,12 @@ func (r *gossipRefresher) run() {
 			// Heal any stale advertised entries by re-deriving from the link
 			// registry. Independent of check()'s early returns above.
 			r.client.reconcileEntries()
+
+			// Publish per-link latency that changed meaningfully since the last
+			// tick (and force-publish any re-dialed link). Runs on the same tick so
+			// the publish cadence is naturally bounded to once per refresh interval
+			// per link.
+			r.client.publishLinkMetrics()
 
 			// Periodically reconcile the other direction too: ask every connected
 			// controller for its digest so HandleDigest can tombstone entries a

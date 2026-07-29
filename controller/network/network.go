@@ -103,6 +103,7 @@ type Network struct {
 
 	GossipStore      *gossip.Store
 	LinkGossipType   *gossip.StateType[*ctrl_pb.RouterLinks_RouterLink]
+	LinkMetricsType  *gossip.StateType[*ctrl_pb.LinkMetrics]
 	CanaryGossipType *gossip.StateType[*CanaryValue]
 	gossipTypes      map[string]gossip.StateTypeInfo // non-generic lookup by store type
 	canaryListener   *canaryGossipListener
@@ -228,6 +229,7 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	// HA controllers override this via InitGossipStore before starting.
 	network.InitGossipStore(gossip.NewNoopMesh(), false, nil)
 	network.InitLinkGossip()
+	network.InitLinkMetricsGossip()
 	network.InitCanaryGossip()
 
 	return network, nil
@@ -1497,6 +1499,13 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 		return
 	}
 
+	// When the reporting router publishes per-link latency over gossip, routing
+	// latency comes from the link-metrics store instead, so we skip deriving it
+	// from this message. The latency histograms still travel in the message and
+	// still feed observability events; they just stop feeding routing.
+	if metrics.LinkLatencyInGossip {
+		return
+	}
 
 	for _, link := range network.GetAllLinksForRouter(router.Id) {
 		metricId := "link." + link.Id + ".latency"

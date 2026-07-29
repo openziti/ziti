@@ -315,9 +315,10 @@ var m = &model.Model{
 			}
 			return nil
 		}),
-		"validateLinks": model.BindF(validateLinks),
+		"validateLinks":   model.BindF(validateLinks),
+		"validateMetrics": model.BindF(validateMetrics),
 		"testIteration": model.BindF(func(run model.Run) error {
-			return run.GetModel().Exec(run, "sowChaos", "validateUp", "validateLinks")
+			return run.GetModel().Exec(run, "sowChaos", "validateUp", "validateLinks", "validateMetrics")
 		}),
 	},
 

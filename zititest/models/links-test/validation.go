@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -680,4 +681,162 @@ func logLinkDiagnostics(logger *logrus.Entry, clients *zitirest.Clients, linkCou
 
 	logger.Infof("total links: %v, routers: %v, unique pairs: %v, duplicate pairs: %v, missing pairs: %v",
 		len(result.Payload.Data), len(routerIds), len(linksByPair), dupPairs, missingPairs)
+}
+
+const (
+	// metricsSampleWindow is how long we let metrics-message ingestion accumulate
+	// between the two samples whose delta gives the per-controller rate.
+	metricsSampleWindow = 30 * time.Second
+	// metricsValidateBudget bounds retries, so transient broadcasting while routers
+	// re-evaluate their subscription controller after chaos does not fail the run.
+	metricsValidateBudget = 3 * time.Minute
+	// metricsReportInterval must match reportInterval in configs/router.yml.tmpl. It
+	// sets the expected one-copy-per-router ingestion rate over a window.
+	metricsReportInterval = 15 * time.Second
+	// minIngestionFraction guards that metrics are actually flowing: total ingestion
+	// must be at least this fraction of the single-copy baseline.
+	minIngestionFraction = 0.5
+)
+
+// validateMetrics confirms the router metrics firehose has narrowed. Once every
+// controller is gossip-capable, each router sends its metrics message to just its
+// own subscription controller (leader-preferred, with a most-responsive fallback),
+// so total ingestion across all controllers is about one copy per router per
+// interval rather than one copy per controller per router. The subscription
+// controller is per-router, so in a multi-region cluster a leader-dominant but
+// distributed split is expected; the invariant is the total, not concentration on
+// one controller. It samples each controller's metrics.messages.received meter and
+// asserts the total is far below the broadcast baseline.
+func validateMetrics(run model.Run) error {
+	ctrlClients, err := chaos.NewCtrlClients(run, ".ctrl")
+	if err != nil {
+		return err
+	}
+	ctrls := run.GetModel().SelectComponents(".ctrl")
+	routerCount := len(run.GetModel().SelectComponents(".router"))
+	logger := tui.ValidationLogger()
+
+	// One copy per router over the window if narrowed; len(ctrls) copies if routers
+	// broadcast to every controller.
+	singleCopy := float64(routerCount) * float64(metricsSampleWindow) / float64(metricsReportInterval)
+
+	deadline := time.Now().Add(metricsValidateBudget)
+	var lastErr error
+	for {
+		lastErr = sampleAndValidateMetrics(ctrlClients, ctrls, singleCopy, logger)
+		if lastErr == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("metrics narrowing not validated within %s: %w", metricsValidateBudget, lastErr)
+		}
+		logger.WithError(lastErr).Info("metrics narrowing not yet validated, retrying")
+	}
+}
+
+func sampleAndValidateMetrics(ctrlClients *chaos.CtrlClients, ctrls []*model.Component, singleCopy float64, logger *logrus.Entry) error {
+	before, err := sampleMetricsReceived(ctrlClients, ctrls)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(metricsSampleWindow)
+
+	after, err := sampleMetricsReceived(ctrlClients, ctrls)
+	if err != nil {
+		return err
+	}
+
+	var total int64
+	for _, c := range ctrls {
+		delta := after[c.Id] - before[c.Id]
+		if delta < 0 {
+			delta = 0 // a controller restart resets the counter; ignore the dip
+		}
+		total += delta
+		logger.Infof("ctrl %s received %d metrics messages over %s", c.Id, delta, metricsSampleWindow)
+	}
+
+	broadcast := singleCopy * float64(len(ctrls))
+	// Narrowing makes total ingestion ~= one copy per router (singleCopy);
+	// broadcasting to every controller makes it ~= len(ctrls) copies. Accept the
+	// run as narrowed when the total is closer to single-copy than to broadcast
+	// (below the midpoint), which tolerates some routers transiently broadcasting.
+	ceiling := (singleCopy + broadcast) / 2
+
+	logger.Infof("total metrics ingestion %d over %s (single-copy ~%.0f, broadcast ~%.0f, narrowed ceiling ~%.0f)",
+		total, metricsSampleWindow, singleCopy, broadcast, ceiling)
+
+	if float64(total) < singleCopy*minIngestionFraction {
+		return fmt.Errorf("metrics ingestion too low (%d over %s, expected ~%.0f); metrics may not be flowing", total, metricsSampleWindow, singleCopy)
+	}
+	if float64(total) > ceiling {
+		return fmt.Errorf("metrics not narrowed: total ingestion %d over %s is %.1fx the single-copy baseline %.0f (broadcast to %d controllers would be ~%.0f)",
+			total, metricsSampleWindow, float64(total)/singleCopy, singleCopy, len(ctrls), broadcast)
+	}
+
+	logger.Infof("metrics narrowed: total ingestion %d ~= single-copy baseline %.0f (%.1fx), well below broadcast %.0f",
+		total, singleCopy, float64(total)/singleCopy, broadcast)
+	return nil
+}
+
+// sampleMetricsReceived reads the metrics.messages.received counter from every
+// controller via the "metrics" inspect value.
+func sampleMetricsReceived(ctrlClients *chaos.CtrlClients, ctrls []*model.Component) (map[string]int64, error) {
+	result := make(map[string]int64, len(ctrls))
+	for _, c := range ctrls {
+		resp, err := ctrlClients.Inspect(c.Id, c.Id, "metrics")
+		if err != nil {
+			return nil, fmt.Errorf("failed to inspect metrics on %s: %w", c.Id, err)
+		}
+		if resp.Success != nil && !*resp.Success {
+			return nil, fmt.Errorf("metrics inspection on %s failed: %v", c.Id, resp.Errors)
+		}
+		value, ok := ctrlClients.GetInspectValue(resp, c.Id, "metrics")
+		if !ok {
+			result[c.Id] = 0
+			continue
+		}
+		count, err := readReceivedMetricsCount(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read received-metrics count on %s: %w", c.Id, err)
+		}
+		result[c.Id] = count
+	}
+	return result, nil
+}
+
+// readReceivedMetricsCount extracts the metrics.messages.received meter count from
+// a "metrics" inspect value. The inspect framework returns the controller's
+// metrics as a JSON array of metric events; the meter appears as one event whose
+// "metric" is the meter name and whose "metrics" object carries the count. The
+// value may arrive as a JSON string or as a pre-parsed structure.
+func readReceivedMetricsCount(value any) (int64, error) {
+	var raw []byte
+	if s, ok := value.(string); ok {
+		raw = []byte(s)
+	} else {
+		b, err := json.Marshal(value)
+		if err != nil {
+			return 0, err
+		}
+		raw = b
+	}
+
+	var events []struct {
+		Metric  string `json:"metric"`
+		Metrics struct {
+			Count int64 `json:"count"`
+		} `json:"metrics"`
+	}
+	if err := json.Unmarshal(raw, &events); err != nil {
+		return 0, err
+	}
+	for _, e := range events {
+		if e.Metric == "metrics.messages.received" {
+			return e.Metrics.Count, nil
+		}
+	}
+	// meter not present yet (controller has received nothing) -> zero
+	return 0, nil
 }
