@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5/protobufs"
+	"github.com/openziti/ziti/v2/common/concurrency"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -38,9 +39,9 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -79,8 +80,9 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 
 type RouterManager struct {
 	baseEntityManager[*Router, *db.Router]
-	cache     cmap.ConcurrentMap[string, *Router]
-	connected cmap.ConcurrentMap[string, *Router]
+	cache        cmap.ConcurrentMap[string, *Router]
+	connected    cmap.ConcurrentMap[string, *Router]
+	connectLocks *concurrency.StripedIdLocker
 }
 
 func newRouterManager(env Env) *RouterManager {
@@ -89,6 +91,7 @@ func newRouterManager(env Env) *RouterManager {
 		baseEntityManager: newBaseEntityManager[*Router, *db.Router](env, routerStore),
 		cache:             cmap.New[*Router](),
 		connected:         cmap.New[*Router](),
+		connectLocks:      concurrency.NewStripedIdLocker(256),
 	}
 	result.impl = result
 
@@ -115,15 +118,27 @@ func (self *RouterManager) NewModelEntity() *Router {
 	return &Router{}
 }
 
-func (self *RouterManager) MarkConnected(r *Router) {
-	if router, _ := self.connected.Get(r.Id); router != nil {
-		if ch := router.Control; ch != nil {
-			if err := ch.Close(); err != nil {
-				pfxlog.Logger().WithError(err).Error("error closing control channel")
-			}
+// LockConnectFor acquires the per-router connect lock for the given router id and returns the unlock
+// function. It serializes a router's connect and disconnect processing so they cannot interleave. The
+// returned unlock is idempotent, so a caller may both defer it (as a leak-safety net across all exit
+// paths) and call it early (e.g. to release before closing a channel outside the lock) without
+// double-unlocking. The flag is unshared and only ever touched by the goroutine holding the lock, so it
+// needs no synchronization.
+func (self *RouterManager) LockConnectFor(id string) func() {
+	rawUnlock := self.connectLocks.LockFor(id)
+	unlocked := false
+	return func() {
+		if !unlocked {
+			unlocked = true
+			rawUnlock()
 		}
 	}
+}
 
+// MarkConnected publishes r as the current connection for its router id. Callers must serialize with
+// LockConnectFor and must have already ensured the slot is free (ConnectRouter rejects a busy slot rather
+// than taking over here), so this only records the connection; it does not close any prior channel.
+func (self *RouterManager) MarkConnected(r *Router) {
 	r.Connected.Store(true)
 	self.connected.Set(r.Id, r)
 }
