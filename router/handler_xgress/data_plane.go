@@ -26,6 +26,22 @@ import (
 	"github.com/openziti/ziti/v2/router/forwarder"
 )
 
+// fabricPath is the single path tag a router-side xgress uses. A router forwards into the fabric
+// forwarder, which is one logical destination per circuit, so there is exactly one path and no
+// pathless-hold/flush machinery (that is an SDK-side concern). It exists only to satisfy the
+// DataPlaneAdapter path-tag contract; per-path RTT/loss attribution is driven by the SDK, so the
+// Record* methods are no-ops.
+type fabricPath struct{}
+
+func (fabricPath) ID() string       { return "fabric" }
+func (fabricPath) RecordRtt(uint16) {}
+func (fabricPath) RecordLoss()      {}
+
+// theFabricPath is the shared non-nil tag returned for every completed forward on a router. It is
+// non-nil so the send buffer marks the payload sent (a router has no AddPath to flush an unsent
+// payload, so it relies on mark-sent plus retransmit-on-timeout, as it always has).
+var theFabricPath xgress.Path = fabricPath{}
+
 type dataPlaneAdapter struct {
 	acker           xgress.AckSender
 	forwarder       *forwarder.Forwarder
@@ -49,28 +65,31 @@ func NewXgressDataPlaneAdapter(cfg DataPlaneAdapterConfig) xgress.DataPlaneAdapt
 	}
 }
 
-func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgress.Xgress, _ context.Context) {
+func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgress.Xgress, _ context.Context) xgress.Path {
 	for {
 		if err := adapter.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
 				if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
 					pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Debug("unable to forward payload")
 				}
+				// No destination for the circuit (typically a transient reroute window): report the
+				// fault so the controller re-splices, and mark the payload sent so it retransmits
+				// once forwarding is restored, matching the router's long-standing behavior.
 				adapter.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
-				return
+				return theFabricPath
 			}
 		} else {
-			return
+			return theFabricPath
 		}
 	}
 }
 
-func (adapter *dataPlaneAdapter) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
+func (adapter *dataPlaneAdapter) RetransmitPayload(_ xgress.Path, srcAddr xgress.Address, payload *xgress.Payload) (xgress.Path, error) {
 	if err := adapter.forwarder.RetransmitPayload(srcAddr, payload); err != nil {
 		adapter.forwarder.ReportForwardingFault(payload.CircuitId, "")
-		return err
+		return nil, err
 	}
-	return nil
+	return theFabricPath, nil
 }
 
 func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
@@ -79,7 +98,9 @@ func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, 
 	}
 }
 
-func (adapter *dataPlaneAdapter) ForwardAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
+// ForwardAcknowledgement ignores the arrival-path tag: a router has a single fabric path, so there
+// is no per-path arrival affinity to honor.
+func (adapter *dataPlaneAdapter) ForwardAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address, _ xgress.Path) {
 	adapter.acker.SendAck(ack, address)
 }
 
