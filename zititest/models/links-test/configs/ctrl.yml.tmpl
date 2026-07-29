@@ -45,9 +45,10 @@ events:
       - type: edge.sessions
       - type: fabric.routers
       - type: fabric.terminators
-#      - type: metrics
-#        sourceFilter: .*
-#        metricFilter: .*egress.*m1_rate*
+      # Leadership and peer changes — pairs with per-controller CPU metrics so
+      # we can correlate "who's the leader" with the load disparity tracked in
+      # link-bugs.md #1.
+      - type: cluster
 #      - type: fabric.circuits
 #        include:
 #          - created
@@ -60,6 +61,32 @@ events:
       type: file
       format: json
       path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/event.log
+  # Metrics go to their own file so the post-run sweep can scan them without
+  # wading through entity/session events, and so file rotation/retention can
+  # be tuned independently.
+  #
+  # IMPORTANT: the metricFilter is an explicit allowlist. A wide-open ".*"
+  # filter once filled the controller disk in minutes by emitting per-link
+  # histograms (`link.<id>.latency`, `link.<id>.queue_time`) for every link
+  # on every router. The allowlist keeps the gossip/pool/host/process series
+  # the monitoring playbook expects and the controller-level ctrl.* counters,
+  # and explicitly drops the per-id histogram families.
+  metricsLogger:
+    subscriptions:
+      - type: metrics
+        sourceFilter: .*
+        metricFilter: ^(gossip\.|pool\.|host\.|process\.|ctrl\.).*
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/metrics.log
+
+# Process and host-level metrics (CPU, mem, load, disk, net, goroutines).
+# Off by default at the binary level; enabled here for links-test so the
+# monitoring playbook has the data it expects.
+network:
+  hostMetrics:
+    enabled: true
 
 healthChecks:
   boltCheck:

@@ -38,6 +38,7 @@ import (
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
@@ -60,9 +61,9 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeComponent {
-		return 20
+		return 10
 	}
-	return 5
+	return 10
 }
 
 var m = &model.Model{
@@ -70,6 +71,13 @@ var m = &model.Model{
 	Scope: model.Scope{
 		Defaults: model.Variables{
 			"environment": "links-test",
+			// Size-rotate component logs: long chaos runs restart components
+			// constantly, so logs must survive restarts (not truncate) without
+			// growing unbounded. See zitilab.LogStrategy. The rotate retention
+			// (maxSizeMb/maxBackups) keeps the 50x10 default here; router hosts
+			// override it lower in the router StructureFactory below, since they
+			// pack 10 routers onto a small disk while controllers have headroom.
+			"logStrategy": "rotate",
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -95,7 +103,17 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "c5.large"
+					host.InstanceType = "c5.xlarge"
+				}
+				// The default 6.8GB root volume fills under sustained metrics
+				// emission (long fablab runs rotate hundreds of metrics.log
+				// files). Bump controllers to 20GB so a multi-hour chaos run
+				// has headroom; routers keep the default.
+				host.InstanceResourceType = "ondemand_iops"
+				host.AWS.Volume = aws.EC2Volume{
+					Type:   "gp3",
+					SizeGB: 40,
+					IOPS:   1000,
 				}
 				return nil
 			})
@@ -103,24 +121,31 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.router", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
+				// Router hosts pack 10 routers onto the default ~6.8G disk, so
+				// cap rotate retention tightly: maxSizeMb*(maxBackups+1) = 20*6 =
+				// 120MB/router -> ~1.2G/host, well under disk while keeping recent
+				// history. The 50x10 default would allow 5.5G/host and fill it.
+				// Controllers keep the default (one component on a 40G disk).
+				host.GetScope().PutVariable("logRotateMaxSizeMb", 20)
+				host.GetScope().PutVariable("logRotateMaxBackups", 5)
 				return nil
 			})
 		}),
 	},
 	Factories: []model.Factory{
-		model.FactoryFunc(func(m *model.Model) error {
-			return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
-				if routerType, ok := c.Type.(*zitilab.RouterType); ok {
-					clone := *routerType
-					c.Type = &clone
-					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
-					if c.ScaleIndex >= 14 {
-						clone.Version = "v1.5.4"
-					}
-				}
-				return nil
-			})
-		}),
+		//model.FactoryFunc(func(m *model.Model) error {
+		//	return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
+		//		if routerType, ok := c.Type.(*zitilab.RouterType); ok {
+		//			clone := *routerType
+		//			c.Type = &clone
+		//			// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
+		//			if c.ScaleIndex >= 14 {
+		//				clone.Version = "v1.5.4"
+		//			}
+		//		}
+		//		return nil
+		//	})
+		//}),
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
@@ -234,6 +259,7 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(host.GroupExec("*", 500, "touch .hushlogin"))
+			workflow.AddAction(host.GroupExec("*", 500, "sudo sysctl -w net.ipv4.ip_local_port_range='10240 65535'"))
 			workflow.AddAction(component.StopInParallel("*", 500))
 			workflow.AddAction(host.GroupExec("*", 500, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
@@ -269,7 +295,7 @@ var m = &model.Model{
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(
-			component.StopInParallelHostExclusive("*", 15),
+			component.StopInParallelHostExclusive("*", 1000),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
 		"login":    model.Bind(edge.Login("#ctrl1")),
@@ -277,6 +303,9 @@ var m = &model.Model{
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 		"validateUp": model.BindF(func(run model.Run) error {
+			if err := unblockAllHosts(run); err != nil {
+				pfxlog.Logger().WithError(err).Warn("error unblocking all hosts")
+			}
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}

@@ -42,7 +42,6 @@ package ctrlchan
 
 import (
 	"io"
-
 	"sync/atomic"
 	"time"
 

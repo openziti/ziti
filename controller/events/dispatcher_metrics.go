@@ -158,25 +158,34 @@ func (self *Dispatcher) convertMetricsMsgToEvents(msg *metrics_pb.MetricsMessage
 	metricFilter *regexp.Regexp,
 	handler event.MetricsEventHandler) {
 
-	if sourceFilter != nil && !sourceFilter.Match([]byte(msg.SourceId)) {
+	if sourceFilter != nil && !sourceFilter.MatchString(msg.SourceId) {
 		return
 	}
 
 	parentEventId := uuid.NewString()
 
 	for name, value := range msg.IntValues {
+		if !self.anyFieldAllowed(metricFilter, name, singleValueKeys) {
+			continue
+		}
 		evt := self.newMetricEvent(msg, "intValue", name, parentEventId)
 		self.filterMetric(metricFilter, "", value, evt)
 		self.finishEvent(evt, handler)
 	}
 
 	for name, value := range msg.FloatValues {
+		if !self.anyFieldAllowed(metricFilter, name, singleValueKeys) {
+			continue
+		}
 		evt := self.newMetricEvent(msg, "floatValue", name, parentEventId)
 		self.filterMetric(metricFilter, "", value, evt)
 		self.finishEvent(evt, handler)
 	}
 
 	for name, value := range msg.Meters {
+		if !self.anyFieldAllowed(metricFilter, name, meterKeys) {
+			continue
+		}
 		evt := self.newMetricEvent(msg, "meter", name, parentEventId)
 		self.filterMetric(metricFilter, "count", value.Count, evt)
 		self.filterMetric(metricFilter, "mean_rate", value.MeanRate, evt)
@@ -187,6 +196,9 @@ func (self *Dispatcher) convertMetricsMsgToEvents(msg *metrics_pb.MetricsMessage
 	}
 
 	for name, value := range msg.Histograms {
+		if !self.anyFieldAllowed(metricFilter, name, histogramKeys) {
+			continue
+		}
 		evt := self.newMetricEvent(msg, "histogram", name, parentEventId)
 		self.filterMetric(metricFilter, "count", value.Count, evt)
 		self.filterMetric(metricFilter, "min", value.Min, evt)
@@ -204,6 +216,9 @@ func (self *Dispatcher) convertMetricsMsgToEvents(msg *metrics_pb.MetricsMessage
 	}
 
 	for name, value := range msg.Timers {
+		if !self.anyFieldAllowed(metricFilter, name, timerKeys) {
+			continue
+		}
 		evt := self.newMetricEvent(msg, "timer", name, parentEventId)
 		self.filterMetric(metricFilter, "count", value.Count, evt)
 
@@ -249,7 +264,37 @@ func (self *Dispatcher) finishEvent(event *event.MetricsEvent, handler event.Met
 }
 
 func (self *Dispatcher) metricNameMatches(metricFilter *regexp.Regexp, name string) bool {
-	return metricFilter == nil || metricFilter.Match([]byte(name))
+	return metricFilter == nil || metricFilter.MatchString(name)
+}
+
+// Field-key sets per metric type, matching the filterMetric calls in
+// convertMetricsMsgToEvents. anyFieldAllowed tests these against the filter to
+// decide whether to process a metric at all; keep them in sync with the
+// filterMetric calls below so a field can't be silently dropped.
+var (
+	singleValueKeys = []string{""}
+	meterKeys       = []string{"count", "mean_rate", "m1_rate", "m5_rate", "m15_rate"}
+	histogramKeys   = []string{"count", "min", "max", "mean", "std_dev", "variance", "p50", "p75", "p95", "p99", "p999", "p9999"}
+	timerKeys       = []string{"count", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "min", "max", "mean", "std_dev", "variance", "p50", "p75", "p95", "p99", "p999", "p9999"}
+)
+
+// anyFieldAllowed reports whether any "<name>.<key>" field of a metric passes
+// metricFilter. It tests only field names (no values), so callers can skip
+// building the MetricsEvent and running the metrics mappers (which include a
+// per-link network lookup) for a metric all of whose fields are filtered out.
+// This is the fast path that drops the high-volume per-link metric families
+// before any event allocation or value boxing. It is correct for arbitrary
+// filters, including ones that select individual subfields.
+func (self *Dispatcher) anyFieldAllowed(metricFilter *regexp.Regexp, name string, keys []string) bool {
+	if metricFilter == nil {
+		return true
+	}
+	for _, key := range keys {
+		if metricFilter.MatchString(name + "." + key) {
+			return true
+		}
+	}
+	return false
 }
 
 func (self *Dispatcher) NewFilteredMetricsAdapter(sourceFilter *regexp.Regexp, metricFilter *regexp.Regexp, handler event.MetricsEventHandler) event.MetricsMessageHandler {

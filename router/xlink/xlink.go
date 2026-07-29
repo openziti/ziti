@@ -30,8 +30,9 @@ import (
 
 // Registry contains known link instances and manages link de-duplication
 type Registry interface {
-	// UpdateLinkDest adds or updates the state of the given destination
-	UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
+	// UpdateLinkDest adds or updates the state of the given destination.
+	// ctrlId identifies which controller is reporting the state.
+	UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
 
 	// RemoveLinkDest removes the given link destination
 	RemoveLinkDest(id string)
@@ -59,6 +60,10 @@ type Registry interface {
 
 	// DebugForgetLink will remove the link from the registry to inject an error condition
 	DebugForgetLink(linkId string) bool
+
+	// NotifyLinkConnStateChanged notifies the registry that a link's underlying
+	// connection state has changed, triggering re-notification to controllers.
+	NotifyLinkConnStateChanged(link Xlink)
 
 	// GetLinkKey returns the link key for the given link parameters
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string

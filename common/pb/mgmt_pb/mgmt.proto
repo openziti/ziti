@@ -81,7 +81,11 @@ enum ContentType {
   ValidateControllerDialersResponseType = 10123;
   ValidateControllerDialersResultType = 10124;
 
-  // next id 10125
+  ValidateGossipRequestType = 10125;
+  ValidateGossipResponseType = 10126;
+  ValidateGossipResultType = 10127;
+
+  // next id 10128
 }
 
 enum Header {
@@ -275,6 +279,42 @@ message RouterLinkDetail {
   string destRouterId = 6;
   bool dialed = 7;
   repeated string messages = 8;
+  bool inGossipStore = 9;
+  uint64 gossipVersion = 10;
+  uint32 gossipIteration = 11;
+}
+
+message ValidateGossipRequest {
+  string filter = 1;
+  bool validateCtrl = 2;
+}
+
+message ValidateGossipResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 componentCount = 3;
+}
+
+message GossipValidationDetails {
+  string componentType = 1; // "router" or "controller"
+  string componentId = 2;
+  string componentName = 3;
+  bool validateSuccess = 4;
+  string message = 5;
+  repeated GossipLinkDetail linkDetails = 6;
+}
+
+message GossipLinkDetail {
+  string linkId = 1;
+  uint32 iteration = 2;
+  string destRouterId = 3;
+  bool dialed = 4;        // for a router component, this component owns/dialed the link
+  bool inSource = 5;      // present in the source of truth (router link registry / controller link manager)
+  bool inLocalGossip = 6; // present in this component's own gossip store
+  bool inCtrlGossip = 7;  // present in the validating controller's gossip store
+  uint64 gossipVersion = 8;
+  bool isValid = 9;
+  repeated string messages = 10;
 }
 
 message ValidateRouterSdkTerminatorsRequest {

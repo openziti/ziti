@@ -50,6 +50,28 @@ cluster:
   # running on the network.
   #
   cycleSeconds:         15
+
+  # Bounded pool for router connection setup (ConnectRouter).
+  #routerConnectPool:
+    #queueSize:  1
+    #maxWorkers: 200
+
+  # Bounded pool for router-originated gossip and canary message processing.
+  #gossipApplyPool:
+    #queueSize:  1024
+    #maxWorkers: 50
+
+  # Bounded pool for peer controller events (gossip deltas, digests).
+  #peerEventsPool:
+    #queueSize:  1
+    #maxWorkers: 10
+  #
+  # Bounded pool for outbound, blocking gossip network I/O (peer broadcasts and
+  # router digest sends). Best-effort; a full pool drops the send and anti-entropy
+  # / re-trigger recover.
+  #ioPool:
+    #queueSize:  1024
+    #maxWorkers: 32
   #
   #smart:
     #

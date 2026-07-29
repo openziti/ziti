@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -123,4 +124,12 @@ func (m *MockNetworkControllers) GetLeader() NetworkController {
 
 func (m *MockNetworkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	return nil
+}
+
+func (m *MockNetworkControllers) GetSubscriptionController() NetworkController {
+	return nil
+}
+
+func (m *MockNetworkControllers) AllControllersHaveCapability(cap capabilities.ControllerCapability) bool {
+	return false
 }

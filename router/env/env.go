@@ -70,6 +70,7 @@ type RouterEnv interface {
 	UpdateLeader(leaderId string)
 	GetXgressListeners() []xgress_router.Listener
 	GetInspectHandler() channel.ContentTypeReceiver
+	GetLinkGossipNotifier() LinkGossipNotifier
 }
 
 type Alerter interface {

@@ -110,8 +110,20 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 }
 
 func (self *impl) Close() error {
-	self.droppedMsgMeter.Dispose()
+	self.disposeMetrics()
 	return self.ch.GetChannel().Close()
+}
+
+// disposeMetrics releases every metric registered in Init. Keep this in sync
+// with Init: any meter created there but not disposed here leaks on every link
+// close, since the metrics registry has no other cleanup tied to a closed link.
+func (self *impl) disposeMetrics() {
+	if self.droppedMsgMeter != nil {
+		self.droppedMsgMeter.Dispose()
+		self.droppedXgMsgMeter.Dispose()
+		self.droppedRtxMsgMeter.Dispose()
+		self.droppedFwdMsgMeter.Dispose()
+	}
 }
 
 func (self *impl) CloseNotified() error {

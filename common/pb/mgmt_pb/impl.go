@@ -119,3 +119,15 @@ func (request *ValidateControllerDialersResponse) GetContentType() int32 {
 func (request *ControllerDialerDetails) GetContentType() int32 {
 	return int32(ContentType_ValidateControllerDialersResultType)
 }
+
+func (request *ValidateGossipRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateGossipRequestType)
+}
+
+func (request *ValidateGossipResponse) GetContentType() int32 {
+	return int32(ContentType_ValidateGossipResponseType)
+}
+
+func (request *GossipValidationDetails) GetContentType() int32 {
+	return int32(ContentType_ValidateGossipResultType)
+}

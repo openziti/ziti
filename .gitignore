@@ -48,3 +48,13 @@ simple-transfer-*/
 etc/endpoints
 etc/endpoints.yml
 .fablab-instance
+
+# local scratch / profiling / debug artifacts
+/r4.stack
+*.stack
+/issues.md
+/link-bugs.md
+/retx-stall-analysis.md
+*.results
+/ctrl*.pb.gz
+/ctrl*.stack

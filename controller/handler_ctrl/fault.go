@@ -22,7 +22,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
@@ -122,22 +121,12 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 			return
 		}
 
-		wasConnected := link.IsUsable()
-		h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
-		otherRouter := link.Src
-		if link.Src.Id == h.r.Id {
-			otherRouter = link.GetDest()
-		}
-
-		if wasConnected && otherRouter != nil {
-			fault.Subject = ctrl_pb.FaultSubject_LinkFault
-			if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
-				if err := protobufs.MarshalTyped(fault).Send(ctrl.GetDefaultSender()); err != nil {
-					log.WithField("routerId", otherRouter.Id).
-						WithError(err).Error("failed to forward link fault to other router")
-				}
-			}
-		}
+		// Tombstone the link in the gossip store. The tombstone propagates to
+		// every controller, and each controller forwards a LinkFault to whichever
+		// endpoint router is connected to it (see linkGossipListener.EntryRemoved).
+		// This handles the HA case where the link's peer is connected to a
+		// different controller than the one that received this fault.
+		h.network.LinkFaultedViaGossip(link)
 
 		log.Info("link fault")
 	} else {

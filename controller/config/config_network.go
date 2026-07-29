@@ -17,6 +17,7 @@
 package config
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -33,9 +34,17 @@ const (
 	DefaultOptionsMetricsReportInterval     = time.Minute
 	DefaultOptionsMinRouterCost             = 10
 	DefaultOptionsRouterConnectChurnLimit   = time.Minute
-	DefaultOptionsRouterMessagingMaxWorkers = 100
-	DefaultOptionsRouterMessagingQueueSize  = 100
-	DefaultOptionsRouteTimeout              = 10 * time.Second
+	DefaultOptionsRouterMessagingMaxWorkers  = 100
+	DefaultOptionsRouterMessagingQueueSize   = 100
+	DefaultOptionsRouterConnectPoolMaxWorkers = 200
+	DefaultOptionsRouterConnectPoolQueueSize  = 1
+	DefaultOptionsGossipApplyPoolMaxWorkers  = 50
+	DefaultOptionsGossipApplyPoolQueueSize   = 1024
+	DefaultOptionsPeerEventsPoolMaxWorkers    = 10
+	DefaultOptionsPeerEventsPoolQueueSize     = 1
+	DefaultOptionsIoPoolMaxWorkers            = 32
+	DefaultOptionsIoPoolQueueSize             = 1024
+	DefaultOptionsRouteTimeout               = 10 * time.Second
 
 	DefaultOptionsSmartRerouteCap          = 4
 	DefaultOptionsSmartRerouteFraction     = 0.02
@@ -55,7 +64,23 @@ type NetworkConfig struct {
 	PendingLinkTimeout      time.Duration
 	RouteTimeout            time.Duration
 	RouterConnectChurnLimit time.Duration
-	RouterComm              struct {
+	RouterComm struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	RouterConnectPool struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	GossipApplyPool struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	PeerEventsPool struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	IoPool struct {
 		QueueSize  uint32
 		MaxWorkers uint32
 	}
@@ -63,6 +88,9 @@ type NetworkConfig struct {
 		RerouteFraction float32
 		RerouteCap      uint32
 		MinCostDelta    uint32
+	}
+	HostMetrics struct {
+		Enabled bool
 	}
 }
 
@@ -80,6 +108,34 @@ func DefaultNetworkConfig() *NetworkConfig {
 		}{
 			QueueSize:  DefaultOptionsRouterMessagingQueueSize,
 			MaxWorkers: DefaultOptionsRouterMessagingMaxWorkers,
+		},
+		RouterConnectPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsRouterConnectPoolQueueSize,
+			MaxWorkers: DefaultOptionsRouterConnectPoolMaxWorkers,
+		},
+		GossipApplyPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsGossipApplyPoolQueueSize,
+			MaxWorkers: DefaultOptionsGossipApplyPoolMaxWorkers,
+		},
+		PeerEventsPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsPeerEventsPoolQueueSize,
+			MaxWorkers: DefaultOptionsPeerEventsPoolMaxWorkers,
+		},
+		IoPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsIoPoolQueueSize,
+			MaxWorkers: DefaultOptionsIoPoolMaxWorkers,
 		},
 		RouterConnectChurnLimit: DefaultOptionsRouterConnectChurnLimit,
 		RouteTimeout:            DefaultOptionsRouteTimeout,
@@ -188,6 +244,156 @@ func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) 
 			}
 		} else {
 			logrus.Errorf("invalid 'routerMessaging' stanza")
+		}
+	}
+
+	if value, found := src["routerConnectPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'routerConnectPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'routerConnectPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.RouterConnectPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'routerConnectPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'routerConnectPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'routerConnectPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.RouterConnectPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'routerConnectPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'routerConnectPool' stanza")
+		}
+	}
+
+	if value, found := src["gossipApplyPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.GossipApplyPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.GossipApplyPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'gossipApplyPool' stanza")
+		}
+	}
+
+	if value, found := src["peerEventsPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.PeerEventsPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.PeerEventsPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'peerEventsPool' stanza")
+		}
+	}
+
+	if value, found := src["ioPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'ioPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'ioPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.IoPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'ioPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.IoPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'ioPool' stanza")
+		}
+	}
+
+	if value, found := src["hostMetrics"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if v, found := submap["enabled"]; found {
+				if enabled, ok := v.(bool); ok {
+					options.HostMetrics.Enabled = enabled
+				} else {
+					return nil, errors.New("invalid value for 'hostMetrics.enabled', must be a boolean")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'hostMetrics' stanza")
 		}
 	}
 

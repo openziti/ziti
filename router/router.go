@@ -126,6 +126,7 @@ type Router struct {
 	alertReporter       *alert.Reporter
 	configRegistry      *managedconfig.Registry
 	inspectHandler      channel.ContentTypeReceiver
+	gossipClient        *gossipClient
 }
 
 func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
@@ -306,6 +307,10 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		headers[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)] = buf
 	}
 
+	if self.gossipClient != nil {
+		headers[int32(ctrl_pb.ControlHeaders_EpochHeader)] = self.gossipClient.epoch
+	}
+
 	return headers, nil
 }
 
@@ -327,6 +332,9 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	closeNotify := make(chan struct{})
 	metricsRegistry := createMetricsRegistry(cfg, closeNotify)
+	servermetrics.RegisterHostStats(metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: cfg.Metrics.HostMetrics.Enabled,
+	})
 
 	router := &Router{
 		xgRegistry:          env.NewRegistry(),
@@ -344,12 +352,14 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	router.ctrls = env.NewNetworkControllers(router, &cfg.Ctrl.Heartbeats)
+	router.gossipClient = newGossipClient(cfg.Id.Token, router.ctrls, metricsRegistry)
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
 	router.configRegistry = managedconfig.NewRegistry(nil)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
+	router.gossipClient.setLinkIterator(router.xlinkRegistry.Iter)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
@@ -524,6 +534,9 @@ func (self *Router) Start() error {
 		return err
 	}
 
+	go newCanaryEmitter(self.ctrls, self.gossipClient.epoch, self.gossipClient.GetMaxSentVersions, self.gossipClient.GetEntryHashes, self.gossipClient.GetEntryCounts, self.shutdownC).run()
+	go newGossipRefresher(self.gossipClient, self.shutdownC).run()
+
 	return nil
 }
 
@@ -694,6 +707,10 @@ func (self *Router) GetLinkDialerPool() goroutines.Pool {
 
 func (self *Router) GetRateLimiterPool() goroutines.Pool {
 	return self.rateLimiterPool
+}
+
+func (self *Router) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return self.gossipClient
 }
 
 func (self *Router) GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker {
@@ -1219,8 +1236,11 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 					RemoteAddr: addr.RemoteAddr,
 				}
 			}
-			latencyMetric := self.router.metricsRegistry.Histogram("link." + currentLink.Id() + ".latency")
-			if latencyMetric != nil {
+			// Use GetHistogram (non-registering): a closed link's latency metric has
+			// already been disposed, and the get-or-create Histogram() would re-create
+			// it here on this periodically-run health check, leaking it (nothing
+			// disposes it again).
+			if latencyMetric := self.router.metricsRegistry.GetHistogram("link." + currentLink.Id() + ".latency"); latencyMetric != nil {
 				latency := latencyMetric.(metrics2.Histogram).Mean()
 				detail.Latency = &latency
 			}

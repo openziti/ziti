@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
+	"github.com/openziti/ziti/v2/common/pb/gossip_pb"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
@@ -118,6 +119,12 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	channel.AddReceiveHandlers(binding, newFaultHandler(self.env.GetXlinkRegistry()))
 	channel.AddReceiveHandlers(binding, self.ctrlAddrChangeHandler)
 	channel.AddReceiveHandlers(binding, self.clusterLeaderChangeHandler)
+
+	if notifier := self.env.GetLinkGossipNotifier(); notifier != nil {
+		binding.AddReceiveHandlerF(gossip_pb.GossipDigestType, func(msg *channel.Message, ch channel.Channel) {
+			notifier.HandleDigest(msg, ch)
+		})
+	}
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 
