@@ -39,6 +39,10 @@ func (self *testConfig) RenderJsonConfig() (string, error) {
 func newTestConfig(ctx *model.TestContext) *testConfig {
 	options := config.DefaultNetworkConfig()
 	options.MinRouterCost = 0
+	// The production default router-connect queue is 1 (backpressure by design). Tests drive several
+	// connects back-to-back faster than the lazily-started pool workers drain the queue, so give the
+	// queue headroom to avoid spurious QueueOrError rejections unrelated to the connect decision logic.
+	options.RouterConnectPool.QueueSize = 64
 
 	closeNotify := make(chan struct{})
 	return &testConfig{
