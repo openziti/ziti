@@ -347,7 +347,39 @@ func (network *Network) ConnectedRouter(id string) bool {
 	return network.Router.IsConnected(id)
 }
 
-func (network *Network) ConnectRouter(r *model.Router) {
+// ErrConnectRejected indicates a router connect was rejected because another connection for the same
+// router is already current. It is returned by ConnectRouter and propagated out of the bind handler so
+// NewChannel closes the rejected connection's underlay without starting rx or registering it; the router
+// then redials.
+var ErrConnectRejected = errors.New("router connect rejected: another connection is already current")
+
+// IsConnectRejected reports whether err is (or wraps) ErrConnectRejected, so the accept path can log an
+// expected rejection at info rather than treating it as a bind failure.
+func IsConnectRejected(err error) bool {
+	return errors.Is(err, ErrConnectRejected)
+}
+
+// ConnectRouter registers r as the current connection for its router id, serialized per router. If the
+// slot is already held by a different connection it rejects this one (returning ErrConnectRejected) and
+// kicks the occupant closed so its normal teardown runs; the router redials into the freed slot. There is
+// at most one connection per router in the connected map at a time.
+func (network *Network) ConnectRouter(r *model.Router) error {
+	unlock := network.Router.LockConnectFor(r.Id)
+	defer unlock() // leak-safety net; idempotent, so the explicit unlocks below are the ones that matter
+
+	if cur := network.Router.GetConnected(r.Id); cur != nil && cur != r {
+		unlock()
+		// Kick the occupant outside the lock: its Close synchronously runs DisconnectRouter(cur), which
+		// acquires the stripe itself (we have released it), so there is no reentrant self-deadlock.
+		if ch := cur.Control; ch != nil {
+			if err := ch.Close(); err != nil {
+				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).
+					Error("error closing superseded control channel while rejecting connect")
+			}
+		}
+		return ErrConnectRejected
+	}
+
 	network.Link.BuildRouterLinks(r)
 	network.Router.MarkConnected(r)
 
@@ -358,7 +390,10 @@ func (network *Network) ConnectRouter(r *model.Router) {
 			go h.RouterConnected(r)
 		}
 	}
+	unlock()
+
 	go network.ValidateTerminators(r)
+	return nil
 }
 
 func (network *Network) ValidateTerminators(r *model.Router) {
@@ -461,7 +496,29 @@ func (n *Network) ValidateRouterErtTerminators(filter string, cb ErtTerminatorVa
 	return int64(len(result.Entities)), evalF, nil
 }
 
+// isCurrentConnection reports whether r is still the router's current, connected connection, by pointer
+// identity against the connected map (mirrors the check in NotifyExistingLink). A stale or superseded
+// connection returns false.
+func (network *Network) isCurrentConnection(r *model.Router) bool {
+	return network.Router.GetConnected(r.Id) == r && r.Connected.Load()
+}
+
 func (network *Network) DisconnectRouter(r *model.Router) {
+	// Lock-free pre-check: a stale/superseded disconnect (e.g. the old connection after a takeover) has
+	// nothing to tear down and must not touch the live connection's state; bail without blocking.
+	if !network.isCurrentConnection(r) {
+		return
+	}
+
+	unlock := network.Router.LockConnectFor(r.Id)
+	defer unlock()
+
+	// Re-check under the stripe: a newer connection may have taken over between the pre-check and the
+	// lock. The teardown is all-or-nothing and must not run against a superseded connection.
+	if !network.isCurrentConnection(r) {
+		return
+	}
+
 	// 1: remove Links for Router
 	for _, l := range r.GetLinks() {
 		wasConnected := l.CurrentState().Mode == model.Connected
