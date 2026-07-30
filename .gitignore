@@ -44,6 +44,7 @@ go.work.sum
 .github/workflows/localtest.yml
 doc/ha/pki
 doc/ha/data
+doc/unsettled/
 simple-transfer-*/
 etc/endpoints
 etc/endpoints.yml
