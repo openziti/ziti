@@ -1,0 +1,30 @@
+# A loop4 dialer that drives traffic through a co-located tunneler's local listener instead of
+# dialing a ziti service directly. The 'default' SDK connector is only used for sim control-plane
+# (scenario control + metrics); the workload runs over the 'viaTunnel' transport connector, which
+# connects to the tunneler's local TCP port. That port forwards through the tunneler client into the
+# ziti service and on to the loop4 backend, exercising the tunneler's client-side data path.
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: true
+      ha: {{ .Component.GetFlag "ha" }}
+      max_control_underlays: 1
+  viaTunnel:
+    transport:
+      address: {{ .Component.MustStringVariable "loopTunnelAddress" }}
+
+remoteControlled:
+  connector: default
+  service: sim-control
+
+metrics:
+  connector: default
+  service: metrics
+  interval: 5s
+  clientId: {{ .Component.Id }}
+
+workloads:
+  - name:      via-tunnel
+    connector: viaTunnel
+    {{ $.Model.MustVariable "livenessWorkload" }}

@@ -1,0 +1,42 @@
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      report_sdk_metrics: true
+      ha: {{ .Component.GetFlag "ha" }}
+      max_control_underlays: 1
+      test_service: loop-sdk
+
+remoteControlled:
+  connector: default
+  service: sim-control
+
+metrics:
+  connector: default
+  service: metrics
+  interval: 5s
+  clientId: {{ .Component.Id }}
+
+# One workload per hosting flavor. Each dials the ziti service that is hosted by the
+# corresponding host type (SDK, ERT, ZET, ziti-tunnel). A scenario run executes every
+# workload once, so a clean run means every flavor's data path is currently healthy.
+workloads:
+  - name:         loop-sdk
+    service_name: loop-sdk
+    connector:    default
+    {{ $.Model.MustVariable "livenessWorkload" }}
+
+  - name:         loop-ert
+    service_name: loop-ert
+    connector:    default
+    {{ $.Model.MustVariable "livenessWorkload" }}
+
+  - name:         loop-zet
+    service_name: loop-zet
+    connector:    default
+    {{ $.Model.MustVariable "livenessWorkload" }}
+
+  - name:         loop-ziti-tunnel
+    service_name: loop-ziti-tunnel
+    connector:    default
+    {{ $.Model.MustVariable "livenessWorkload" }}

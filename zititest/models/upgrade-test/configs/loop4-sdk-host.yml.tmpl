@@ -1,0 +1,13 @@
+# loop4 SDK listener: binds the loop-sdk ziti service directly via the Go SDK. Deployed as a pair
+# so one instance can be restarted (to observe OIDC re-auth) while the other keeps a terminator up.
+connectors:
+  default:
+    sdk:
+      identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
+      ha: {{ .Component.GetFlag "ha" }}
+      max_control_underlays: 1
+
+workloads:
+  - name:         loop-sdk
+    connector:    default
+    service_name: loop-sdk

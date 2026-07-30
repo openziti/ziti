@@ -44,9 +44,12 @@ type ControllerType struct {
 	ConfigSource   string
 	ConfigName     string
 	Version        string
-	LocalPath      string
-	DNSNames       []string
-	Debug          bool
+	// SourceRef, when set, is a git ref (branch, tag, or SHA) on openziti/ziti built from source and
+	// stamped as Version, instead of downloading the Version release. Use it to run an unreleased build.
+	SourceRef string
+	LocalPath string
+	DNSNames  []string
+	Debug     bool
 }
 
 func (self *ControllerType) Label() string {
@@ -114,7 +117,7 @@ func (self *ControllerType) StageFiles(r model.Run, c *model.Component) error {
 		return err
 	}
 
-	if err := stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath); err != nil {
+	if err := stageziti.StageZitiForComponentOnce(r, c, self.Version, self.SourceRef, self.LocalPath); err != nil {
 		return err
 	}
 

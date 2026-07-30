@@ -154,6 +154,8 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 	workloadStart := time.Now()
 
 	var result *Result
+	var lastDialErr error
+	succeeded := false
 	for i := int64(0); i < workload.Iterations || workload.Iterations == -1; i++ {
 		log = log.WithField("iteration", i+1)
 		if conn != nil {
@@ -170,6 +172,7 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 		if err != nil {
 			log.WithError(err).Error("failed to dial")
 			connectFailures.Mark(1)
+			lastDialErr = err
 			continue
 		}
 
@@ -233,6 +236,7 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 
 		active.Add(-1)
 		completed.Mark(1)
+		succeeded = true
 		log.Debug("completed iteration")
 		if scenario.ConnectionDelay > 0 {
 			time.Sleep(time.Duration(sim.scenario.ConnectionDelay) * time.Millisecond)
@@ -246,6 +250,17 @@ func (sim *Sim) RunWorkload(scenario *Scenario, workload *Workload, idx int, res
 
 	if sim.metricsReporter != nil {
 		sim.metricsReporter.Flush()
+	}
+
+	// A workload that completed no successful iteration is a failure, even when every failure was a
+	// dial failure (e.g. connection refused). Dial failures are otherwise swallowed by the retry
+	// loop above, so without this a service that can't be reached at all would report success.
+	if !succeeded {
+		if lastDialErr == nil {
+			lastDialErr = fmt.Errorf("workload %s completed no successful iterations", workload.Name)
+		}
+		sim.reportErr(resultCh, lastDialErr, "unknown")
+		return
 	}
 
 	resultCh <- &Result{
