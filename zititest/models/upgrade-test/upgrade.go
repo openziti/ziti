@@ -144,7 +144,7 @@ func upgradeRouters(run model.Run) error {
 const zetRestartWorkaroundMaxVersion = "v1.18.0"
 
 // zetNeedsRestartWorkaround reports whether zetVersion is old enough to need the post-upgrade ZET
-// restart workaround. An empty or unparseable version is treated as needing it, so an unknown build
+// restart workaround. An empty or unparsable version is treated as needing it, so an unknown build
 // is not silently left in the broken state.
 func zetNeedsRestartWorkaround(zetVersion string) bool {
 	v, err := versions.ParseSemVer(zetVersion)

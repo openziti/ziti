@@ -260,7 +260,7 @@ func (g *steadyStateGate) reconcileStaleTerminators(run model.Run) error {
 	return nil
 }
 
-// isPreV2 reports whether version is a pre-2.0 release (e.g. v1.x). Empty or unparseable versions are
+// isPreV2 reports whether version is a pre-2.0 release (e.g. v1.x). Empty or unparsable versions are
 // treated as not pre-2.0, so the stale-terminator workaround stays off unless we know it is needed.
 func isPreV2(version string) bool {
 	major, _, _ := strings.Cut(strings.TrimPrefix(strings.TrimSpace(version), "v"), ".")
