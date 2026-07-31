@@ -1,3 +1,14 @@
+# Release 1.6.19
+
+## What's New
+
+* Fixes a deadlock that can wedge the controller
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.18 -> v1.6.19](https://github.com/openziti/ziti/compare/v1.6.18...v1.6.19)
+    * [Issue #4208](https://github.com/openziti/ziti/issues/4208) - [Backport-1.6] Lock order inversion in ConnectionTracker deadlocks the controller
+
 # Release 1.6.18
 
 ## What's New
