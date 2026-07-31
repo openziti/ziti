@@ -192,6 +192,10 @@ type Manager interface {
 	// ensure token authenticity and proper scope for Ziti network access.
 	ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, error)
 
+	// ParseRerouteToken verifies a controller-signed SDK reroute token against the
+	// cluster's published keys and returns its validated claims.
+	ParseRerouteToken(jwtStr string) (*edge.RerouteClaims, error)
+
 	// GetApiSessionToken retrieves API session tokens from either JWT strings or
 	// legacy token lookups, abstracting the underlying token format from callers.
 	GetApiSessionToken(apiSessionToken string) *ApiSessionToken
@@ -978,6 +982,12 @@ func (self *ManagerImpl) ParseApiSessionJwt(jwtStr string) (*ApiSessionToken, er
 	}
 
 	return NewApiSessionTokenFromJwt(jwtToken, accessClaims)
+}
+
+// ParseRerouteToken verifies a controller-signed SDK reroute token against the cluster's published
+// keys (the same keys used for API-session tokens) and returns its validated claims.
+func (self *ManagerImpl) ParseRerouteToken(jwtStr string) (*edge.RerouteClaims, error) {
+	return edge.ParseRerouteToken(jwtStr, self.pubKeyLookup)
 }
 
 // pubKeyLookup retrieves public keys for JWT signature verification

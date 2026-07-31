@@ -94,6 +94,14 @@ func (self *Circuit) IsEndpointRouter(routerId string) bool {
 	return self.Path.Nodes[0].Id == routerId || self.Path.Nodes[len(self.Path.Nodes)-1].Id == routerId
 }
 
+// IsIngressRouter reports whether routerId is the circuit's current ingress (first path node).
+func (self *Circuit) IsIngressRouter(routerId string) bool {
+	if self == nil || self.Path == nil || len(self.Path.Nodes) == 0 {
+		return false
+	}
+	return self.Path.Nodes[0].Id == routerId
+}
+
 // RerouteState returns the circuit's current reroute state snapshot, or nil if the circuit is not
 // reroutable. The returned value is immutable and safe to read without holding any guard.
 func (self *Circuit) RerouteState() RerouteState {

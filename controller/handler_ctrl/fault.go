@@ -66,11 +66,24 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 		h.handleFaultedLink(log, fault)
 
 	case ctrl_pb.FaultSubject_IngressFault:
-		// A reroutable circuit whose SDK edge channel dropped (ChannelClosed) is held in Limbo so
-		// the SDK can reattach it via a different router, rather than being torn down. Every other
-		// reason (explicit close, access loss, or an unstamped/old fault that decodes to
-		// ReasonUnspecified) takes the existing teardown path.
-		if circuit, found := h.network.GetCircuit(fault.Id); found && circuit.IsReroutable() && fault.Reason == ctrl_pb.FaultReason_ChannelClosed {
+		// A stale ingress fault can arrive from a router that is no longer the circuit's ingress:
+		// once the SDK has taken the circuit over onto a new ingress, the old ingress may still
+		// report the dropped edge channel. Acting on it (Limbo or teardown) would poison the
+		// healthy, relocated circuit, so faults from a non-ingress router are ignored.
+		//
+		// This guard only distinguishes routers; a same-router takeover (the SDK reattaches to the
+		// same ingress via a fresh channel) can still deliver a superseded fault that looks
+		// current. Rejecting that requires a per-generation guard (stamp the circuit's iteration on
+		// the fault and drop older ones), which is deferred pending the iteration being plumbed to
+		// the router forwarder.
+		if circuit, found := h.network.GetCircuit(fault.Id); found && !circuit.IsIngressRouter(h.r.Id) {
+			log.Debugf("ignoring ingress fault for circuit (%s) from non-ingress router (%s)", fault.Id, h.r.Id)
+			return
+		} else if found && circuit.IsReroutable() && fault.Reason == ctrl_pb.FaultReason_ChannelClosed {
+			// A reroutable circuit whose SDK edge channel dropped (ChannelClosed) is held in Limbo
+			// so the SDK can reattach it via a different router, rather than being torn down. Every
+			// other reason (explicit close, access loss, or an unstamped/old fault that decodes to
+			// ReasonUnspecified) takes the existing teardown path.
 			log.Debugf("ingress channel closed for reroutable circuit (%s), entering limbo", fault.Id)
 			h.network.EnterLimbo(circuit)
 		} else if err := h.network.RemoveCircuit(fault.Id, false); err != nil {

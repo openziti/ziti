@@ -86,6 +86,7 @@ type Forwarder interface {
 	ReportForwardingFault(circuitId string, ctrlId string)
 	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
 	UnregisterDestination(circuitId string, address xgress.Address)
+	UnregisterDestinationIfMatches(circuitId string, address xgress.Address, destination Destination)
 	EndCircuit(circuitId string)
 }
 

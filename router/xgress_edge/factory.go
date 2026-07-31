@@ -170,6 +170,7 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_r
 
 	capMask := &big.Int{}
 	capMask.SetBit(capMask, edge.RouterCapabilityConnectV2, 1)
+	capMask.SetBit(capMask, edge.RouterCapabilitySDKReroute, 1)
 
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader:       versionHeader,

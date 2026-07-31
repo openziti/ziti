@@ -19,6 +19,7 @@ package forwarder
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -134,9 +135,16 @@ func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, dest
 	})
 }
 
+// linkDestinationToCircuit records that address hosts an endpoint of circuitId. It is idempotent:
+// re-linking an address already associated with the circuit (e.g. a same-router takeover that
+// re-registers the circuit's preserved ingress address) is a no-op, so the circuit's address list
+// never accumulates duplicates.
 func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
 	var addresses []xgress.Address
 	if i, found := dt.xgress.Get(circuitId); found {
+		if slices.Contains(i, address) {
+			return
+		}
 		addresses = i
 	} else {
 		addresses = make([]xgress.Address, 0)

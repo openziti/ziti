@@ -155,6 +155,23 @@ func (forwarder *Forwarder) UnregisterDestination(circuitId string, address xgre
 	}
 }
 
+// UnregisterDestinationIfMatches is like UnregisterDestination but only removes the destination if
+// the address is still registered to the given destination, and only fires Unrouted in that case.
+// This makes endpoint cleanup safe against a superseding registration: if a takeover has already
+// re-registered the same (preserved) address to a new forwarder, the old endpoint's late cleanup
+// must not remove the new forwarder or tear the relocated circuit down.
+func (forwarder *Forwarder) UnregisterDestinationIfMatches(circuitId string, address xgress.Address, destination env.Destination) {
+	log := routeLog.With("circuitId", circuitId, "address", address)
+	if existing, found := forwarder.destinations.getDestination(address); found && existing == destination {
+		log.Debug("unregistering single destination for circuit")
+		forwarder.destinations.removeDestinationIfMatches(address, destination)
+		forwarder.destinations.unlinkDestinationFromCircuit(circuitId, address)
+		go destination.(XgressDestination).Unrouted()
+	} else {
+		log.Debug("destination not removed; address unregistered or superseded")
+	}
+}
+
 func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 	_, found := forwarder.destinations.getDestination(address)
 	return found

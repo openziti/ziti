@@ -785,7 +785,11 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder,
 	// so it is equivalent to ending the circuit. For a single-router circuit (ingress and
 	// terminator on the same router), it preserves the co-located terminator endpoint that the
 	// other conn registered, instead of tearing the whole circuit down when one side closes.
-	self.forwarder.UnregisterDestination(circuitId, edgeForwarder.address)
+	//
+	// Match-aware: if a takeover has already re-registered this circuit's preserved ingress address
+	// to a new forwarder (SDK reattached to the same router via a fresh channel), this late cleanup
+	// of the old endpoint must not remove the new forwarder. Only remove if it is still ours.
+	self.forwarder.UnregisterDestinationIfMatches(circuitId, edgeForwarder.address, edgeForwarder)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault
@@ -1138,6 +1142,156 @@ func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh 
 		PeerData:  v3Resp.PeerData,
 		Tags:      v3Resp.Tags,
 	}, v3Resp.RerouteToken, nil
+}
+
+// processTakeoverCircuit handles an SDK's request to reattach a reroutable circuit's ingress to
+// this router. It verifies the reroute token, matches the authenticated identity, re-checks dial
+// authorization locally (policy + posture), pre-registers the reverse-direction forwarder at the
+// token's preserved ingress address, and dispatches the takeover to the owning controller. On
+// success it replies with a state_connected-equivalent so the SDK builds a path to this router; on
+// failure it tears down the speculative forwarder and replies with the takeover result code.
+func (self *edgeClientConn) processTakeoverCircuit(req *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithFields(sdkedge.GetLoggerFields(req)).
+		WithField("identityId", self.getIdentityId())
+
+	connId, found := req.GetUint32Header(sdkedge.ConnIdHeader)
+	if !found {
+		log.Error("connId not set, unable to process takeover circuit message")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, "connId not set, required")
+		return
+	}
+
+	tokenStr, found := req.GetStringHeader(sdkedge.RerouteTokenHeader)
+	if !found || tokenStr == "" {
+		log.Error("reroute token not set in takeover circuit request")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, "reroute token not set, required")
+		return
+	}
+
+	// Reroutable circuits are OIDC-only, same reasoning as connect-v2: local RDM authz/posture
+	// only exists for OIDC sessions.
+	if !self.apiSessionToken.IsOidc() {
+		log.Error("takeover requires an OIDC API session")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, "takeover requires an OIDC API session")
+		return
+	}
+
+	claims, err := self.listener.factory.stateManager.ParseRerouteToken(tokenStr)
+	if err != nil {
+		log.WithError(err).Error("invalid reroute token")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, "invalid reroute token")
+		return
+	}
+
+	// The token's bound identity must match the identity authenticated on this edge channel.
+	if claims.IdentityId != self.getIdentityId() {
+		log.Error("reroute token identity does not match authenticated identity")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, "reroute token identity mismatch")
+		return
+	}
+
+	// Authoritative dial-authorization check against local RDM state (policy + posture), before any
+	// controller round trip, exactly as connect-v2 does.
+	if err := self.checkAccess(claims.ServiceId, edge_ctrl_pb.PolicyType_DialPolicy); err != nil {
+		log.WithError(err).Error("access denied for takeover")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverTokenRejected, err.Error())
+		return
+	}
+
+	// Dispatch to the controller that owns the circuit.
+	ctrlCh := self.listener.factory.env.GetNetworkControllers().GetChannel(claims.OwnerControllerId)
+	if ctrlCh == nil {
+		log.WithField("ownerControllerId", claims.OwnerControllerId).Info("no channel to owning controller for takeover")
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverOwnerUnreachable, "no channel to owning controller")
+		return
+	}
+
+	// Pre-register the reverse-direction forwarder at the circuit's preserved ingress address
+	// before contacting the controller, so terminator-side payloads have a destination the instant
+	// the controller commits the new routes.
+	fwd := &xgEdgeForwarder{
+		edgeClientConn: self,
+		circuitId:      claims.CircuitId,
+		serviceId:      claims.ServiceId,
+		ctrlId:         claims.OwnerControllerId,
+		originator:     xgress.Initiator,
+		address:        xgress.Address(claims.XgressId),
+		connId:         connId,
+		metrics:        self.listener.factory.env.GetXgressMetrics(),
+	}
+	fwd.RegisterRouting()
+
+	ctrlReq := &ctrl_msg.TakeoverCircuitRequest{
+		Token:                   tokenStr,
+		AuthenticatedIdentityId: self.getIdentityId(),
+		ConnId:                  connId,
+	}
+	resp, err := self.sendTakeoverCircuitMsg(ctrlReq.ToMessage(), ctrlCh)
+	if err != nil {
+		log.WithError(err).Error("takeover request to controller failed")
+		fwd.UnregisterRouting()
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult_TakeoverRouteInstallFailed, err.Error())
+		return
+	}
+
+	if resp.ResultCode != int32(edge_client_pb.TakeoverResult_TakeoverSuccess) {
+		log.WithField("code", resp.ResultCode).WithField("error", resp.ErrorMsg).Info("controller rejected takeover")
+		fwd.UnregisterRouting()
+		self.sendTakeoverReject(req, edge_client_pb.TakeoverResult(resp.ResultCode), resp.ErrorMsg)
+		return
+	}
+
+	// Success: reply with a state_connected-equivalent so the SDK builds its path to this router.
+	// The forwarder was pre-registered above; the controller installed the new routes before
+	// replying.
+	msg := sdkedge.NewStateConnectedMsg(connId)
+	msg.ReplyTo(req)
+	msg.PutUint32Header(sdkedge.TakeoverResultCodeHeader, uint32(edge_client_pb.TakeoverResult_TakeoverSuccess))
+	msg.PutStringHeader(sdkedge.CircuitIdHeader, claims.CircuitId)
+	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
+	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, claims.OwnerControllerId)
+	msg.PutStringHeader(sdkedge.XgressAddressHeader, resp.XgressId)
+	if resp.RerouteToken != "" {
+		msg.PutStringHeader(sdkedge.RerouteTokenHeader, resp.RerouteToken)
+	}
+	self.mapResponsePeerData(resp.PeerData)
+	for k, v := range resp.PeerData {
+		msg.Headers[int32(k)] = v
+	}
+
+	log.WithField("circuitId", claims.CircuitId).Info("takeover succeeded, sending connected response")
+
+	if err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender()); err != nil {
+		log.WithError(err).Error("failed to send takeover connected response")
+	}
+}
+
+// sendTakeoverReject replies to a takeover request with the given result code and message so the
+// SDK can map the retryable/fatal disposition.
+func (self *edgeClientConn) sendTakeoverReject(req *channel.Message, code edge_client_pb.TakeoverResult, message string) {
+	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
+	msg := sdkedge.NewStateClosedMsg(connId, message)
+	msg.ReplyTo(req)
+	msg.PutUint32Header(sdkedge.TakeoverResultCodeHeader, uint32(code))
+	if err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender()); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to send takeover reject reply")
+	}
+}
+
+// sendTakeoverCircuitMsg sends a TakeoverCircuit request to the owning controller and decodes the
+// response.
+func (self *edgeClientConn) sendTakeoverCircuitMsg(msg *channel.Message, ctrlCh channel.Channel) (*ctrl_msg.TakeoverCircuitResponse, error) {
+	timeout := self.listener.options.Options.GetCircuitTimeout
+	reply, err := msg.WithTimeout(timeout).SendForReply(ctrlCh)
+	if err != nil {
+		return nil, err
+	}
+	if reply.ContentType != int32(edge_ctrl_pb.ContentType_TakeoverCircuitResponseType) {
+		return nil, errors.Errorf("unexpected response type %v to takeover request, expected %v",
+			reply.ContentType, edge_ctrl_pb.ContentType_TakeoverCircuitResponseType)
+	}
+	return ctrl_msg.DecodeTakeoverCircuitResponse(reply)
 }
 
 func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {

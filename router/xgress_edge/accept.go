@@ -85,6 +85,13 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	})
 
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type: sdkEdge.ContentTypeTakeoverCircuit,
+		Handler: func(m *channel.Message, ch channel.Channel) {
+			conn.processTakeoverCircuit(m, ch)
+		},
+	})
+
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeBind,
 		Handler: func(m *channel.Message, ch channel.Channel) {
 			conn.processBind(m, ch)
