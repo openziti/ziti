@@ -72,6 +72,13 @@ const (
 
 	ResultErrorRateLimited = 1
 
+	// ErrorRetryHintHeader carries an edge.RetryHint on ContentType_ErrorType replies from the
+	// controller, as a companion to the edge-layer ErrorCodeHeader, so a router can reconstruct
+	// the full error for an SDK client instead of guessing the hint. It is an error-reply header,
+	// not part of the CreateCircuitV3 request block below; its value is the next id unused
+	// elsewhere in this block.
+	ErrorRetryHintHeader = 18
+
 	CreateCircuitV3ReqIdentityIdHeader = 15
 	CreateCircuitV3ReqServiceIdHeader  = 16
 	CreateCircuitV3ReqCircuitIdHeader  = 17

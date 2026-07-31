@@ -66,7 +66,11 @@ func Test_TunnelerDataflowTcp(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8687")
 	ctx.Req.NoError(err)
 
-	time.Sleep(time.Second)
+	// wait for the tunneler to establish a terminator for the service before dialing, rather than
+	// racing a fixed sleep against the hosting settle delay and establishment round-trip
+	watcher := ctx.AdminManagementSession.newTerminatorWatcher(service.Id, 1)
+	watcher.waitForTerminators(10 * time.Second)
+	watcher.Close()
 
 	errC := make(chan error, 10)
 	go acceptConnections(l, errC)
@@ -195,7 +199,11 @@ func Test_TunnelerDataflowHalfClose(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8689")
 	ctx.Req.NoError(err)
 
-	time.Sleep(time.Second)
+	// wait for the tunneler to establish a terminator for the service before dialing, rather than
+	// racing a fixed sleep against the hosting settle delay and establishment round-trip
+	watcher := ctx.AdminManagementSession.newTerminatorWatcher(service.Id, 1)
+	watcher.waitForTerminators(10 * time.Second)
+	watcher.Close()
 
 	errC := make(chan error, 10)
 	go acceptConnectionsHalfClose(l, errC)

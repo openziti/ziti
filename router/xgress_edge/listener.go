@@ -1246,7 +1246,7 @@ func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh 
 		if circuitId, found := resp.GetStringHeader(sdkedge.CircuitIdHeader); found {
 			circuitResp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
 		}
-		return circuitResp, errors.New(errMsg)
+		return circuitResp, newEdgeErrorFromCtrlError(resp, errMsg)
 	}
 
 	if resp.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType) {
@@ -1291,7 +1291,7 @@ func (self *edgeClientConn) sendCreateCircuitRequest(req *ctrl_msg.CreateCircuit
 		if circuitId, found := msg.GetStringHeader(sdkedge.CircuitIdHeader); found {
 			resp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
 		}
-		return resp, errors.New(errMsg)
+		return resp, newEdgeErrorFromCtrlError(msg, errMsg)
 	}
 
 	if msg.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV2ResponseType) {
@@ -1771,15 +1771,32 @@ func (self *edgeClientConn) sendConnectedReply(req *channel.Message, response *c
 // sendStateClosedDenial replies with a state-closed carrying the structured denial (cause code
 // and, for posture denials, the failing check ids), so SDKs can present the failure's cause
 // instead of parsing message text.
-func (self *edgeClientConn) sendStateClosedDenial(edgeErr *EdgeError, req *channel.Message) {
+func (self *edgeClientConn) sendStateClosedDenial(edgeErr *EdgeError, req *channel.Message, headers ...channel.Headers) {
 	connId, _ := req.GetUint32Header(sdkedge.ConnIdHeader)
 	msg := sdkedge.NewStateClosedMsg(connId, edgeErr.Message)
 	msg.ReplyTo(req)
 	edgeErr.ApplyToMsg(msg)
 
+	for _, h := range headers {
+		for k, v := range h {
+			msg.Headers[k] = v
+		}
+	}
+
 	if err := msg.WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch.GetDefaultSender()); err != nil {
 		pfxlog.Logger().WithFields(sdkedge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 	}
+}
+
+// sendStateClosedForDialError replies to a failed dial. When the failure carries a structured
+// error it is passed through so the SDK can classify the refusal rather than parsing text.
+func (self *edgeClientConn) sendStateClosedForDialError(err error, req *channel.Message, headers ...channel.Headers) {
+	var edgeErr *EdgeError
+	if errors.As(err, &edgeErr) {
+		self.sendStateClosedDenial(edgeErr, req, headers...)
+		return
+	}
+	self.sendStateClosedReply(err.Error(), req, headers...)
 }
 
 func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message, headers ...channel.Headers) {
@@ -2716,7 +2733,7 @@ func (self *nonXgConnectHandler) FinishConnect(ctx *connectContext, response *ct
 			headers = channel.Headers{}
 			headers.PutStringHeader(sdkedge.CircuitIdHeader, response.CircuitId)
 		}
-		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req, headers)
+		ctx.SdkConn.sendStateClosedForDialError(err, ctx.Req, headers)
 		self.conn.close(false, "failed to dial fabric")
 		return
 	}
@@ -2890,7 +2907,7 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 			headers = channel.Headers{}
 			headers.PutStringHeader(sdkedge.CircuitIdHeader, response.CircuitId)
 		}
-		ctx.SdkConn.sendStateClosedReply(err.Error(), ctx.Req, headers)
+		ctx.SdkConn.sendStateClosedForDialError(err, ctx.Req, headers)
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/openziti/channel/v5"
 	sdk "github.com/openziti/sdk-golang/v2/ziti/edge"
+	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/router/posture"
 	"github.com/openziti/ziti/v2/router/state"
 )
@@ -105,4 +106,20 @@ func NewInvalidApiSessionTokenError(msg string) *EdgeError {
 // NewInvalidApiSessionType creates an EdgeError with the ErrorInvalidApiSessionType" code and the provided message.
 func NewInvalidApiSessionType(msg string) *EdgeError {
 	return &EdgeError{Message: msg, Code: sdk.ErrorCodeInvalidApiSessionType}
+}
+
+// newEdgeErrorFromCtrlError rebuilds a controller error reply as an EdgeError so the code and
+// retry hint reach the SDK, which otherwise sees only the message text and cannot classify the
+// failure. Returns a plain error if the reply carries no code, as older controllers may not.
+func newEdgeErrorFromCtrlError(msg *channel.Message, errMsg string) error {
+	code, found := msg.GetUint32Header(sdk.ErrorCodeHeader)
+	if !found {
+		return errors.New(errMsg)
+	}
+
+	edgeErr := &EdgeError{Message: errMsg, Code: code}
+	if retryHint, found := msg.GetUint32Header(ctrl_msg.ErrorRetryHintHeader); found {
+		edgeErr.RetryHint = sdk.RetryHint(retryHint)
+	}
+	return edgeErr
 }
