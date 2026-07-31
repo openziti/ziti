@@ -1047,6 +1047,14 @@ const (
 	IdentityStateUnknown IdentityOnlineState = 2
 )
 
+// identityConnections tracks which routers an identity is currently connected to, along
+// with the last connectivity state reported for it.
+//
+// Two locks protect the connection tracker: the shard lock inside the ConcurrentMap of
+// these, and the lock on each of these. They must always be acquired in that order,
+// shard lock first. The cmap Upsert and RemoveCb callbacks run with the shard lock held,
+// so taking this lock inside one of them is fine; taking the shard lock while already
+// holding this one is not, and will deadlock.
 type identityConnections struct {
 	sync.RWMutex
 	routers           map[string]channel.Channel
@@ -1139,17 +1147,34 @@ func (self *ConnectionTracker) ScanForDisconnectedRouters() {
 			}
 		}
 
-		entry.Val.Lock()
-		if len(entry.Val.routers) == 0 {
-			self.connections.RemoveCb(entry.Key, func(key string, v *identityConnections, exists bool) bool {
-				if v != nil {
-					return len(v.routers) == 0
-				}
-				return true
-			})
+		// This check is only a filter, so that we don't take the shard write lock for
+		// every identity on every scan. The entry lock must be released before calling
+		// removeIfEmpty, which takes the shard lock.
+		entry.Val.RLock()
+		empty := len(entry.Val.routers) == 0
+		entry.Val.RUnlock()
+
+		if empty {
+			self.removeIfEmpty(entry.Key)
 		}
-		entry.Val.Unlock()
 	}
+}
+
+// removeIfEmpty drops an identity's connection entry if it has no router connections.
+// The identity may have reconnected since the caller decided the entry was empty, so the
+// value currently in the map is what decides, not whatever the caller was looking at.
+//
+// This takes the shard lock, so it must not be called while holding an
+// identityConnections lock. See identityConnections for the lock ordering rules.
+func (self *ConnectionTracker) removeIfEmpty(identityId string) {
+	self.connections.RemoveCb(identityId, func(key string, v *identityConnections, exists bool) bool {
+		if v == nil {
+			return true
+		}
+		v.RLock()
+		defer v.RUnlock()
+		return len(v.routers) == 0
+	})
 }
 
 func (self *ConnectionTracker) MarkConnected(identityId string, ch channel.Channel) {
