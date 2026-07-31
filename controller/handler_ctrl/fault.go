@@ -66,7 +66,14 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 		h.handleFaultedLink(log, fault)
 
 	case ctrl_pb.FaultSubject_IngressFault:
-		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+		// A reroutable circuit whose SDK edge channel dropped (ChannelClosed) is held in Limbo so
+		// the SDK can reattach it via a different router, rather than being torn down. Every other
+		// reason (explicit close, access loss, or an unstamped/old fault that decodes to
+		// ReasonUnspecified) takes the existing teardown path.
+		if circuit, found := h.network.GetCircuit(fault.Id); found && circuit.IsReroutable() && fault.Reason == ctrl_pb.FaultReason_ChannelClosed {
+			log.Debugf("ingress channel closed for reroutable circuit (%s), entering limbo", fault.Id)
+			h.network.EnterLimbo(circuit)
+		} else if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
 			invalidCircuitErr := network.InvalidCircuitError{}
 			if errors.As(err, &invalidCircuitErr) {
 				log.Debugf("error handling ingress fault (%s)", err)

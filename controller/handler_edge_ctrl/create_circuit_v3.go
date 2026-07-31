@@ -74,7 +74,26 @@ func (self *createCircuitHandler) CreateCircuitV3Response(circuitInfo *model.Cir
 		Tags:      circuitInfo.Tags,
 	}
 
+	if state := circuitInfo.RerouteState(); state != nil {
+		token, err := self.mintRerouteToken(circuitInfo, state)
+		if err != nil {
+			// Fail closed: without a token the SDK cannot reroute, so clear the reroute state to
+			// keep the controller's view consistent with the SDK's (no token means not reroutable).
+			pfxlog.ContextLogger(self.ch.Label()).WithField("circuitId", circuitInfo.Id).
+				WithError(err).Error("failed to mint reroute token, circuit will not be reroutable")
+			circuitInfo.SetRerouteState(nil)
+		} else {
+			response.RerouteToken = token
+		}
+	}
+
 	return response.ToMessage(), nil
+}
+
+// mintRerouteToken produces a controller-signed reroute token for a reroutable circuit at its
+// current iteration. The owning controller is this controller (it created and holds the circuit).
+func (self *createCircuitHandler) mintRerouteToken(circuit *model.Circuit, state model.RerouteState) (string, error) {
+	return mintRerouteToken(self.appEnv, circuit.Id, circuit.ClientId, circuit.ServiceId, circuit.Path.IngressId, state.Iteration())
 }
 
 func (self *createCircuitHandler) createCircuitV3(ctx *createCircuitV3RequestContext, f createCircuitResponseFactory) {
@@ -94,6 +113,13 @@ func (self *createCircuitHandler) createCircuitV3(ctx *createCircuitV3RequestCon
 		}
 		self.returnError(ctx, ctx.err)
 		return
+	}
+
+	// The dialing SDK opts into reroutability (it saw the router advertise the capability); the
+	// router forwards that as RequestReroutable. Setting the active reroute state makes the circuit
+	// reroutable, and the response factory mints the reroute token for it.
+	if ctx.req.RequestReroutable {
+		circuitInfo.SetRerouteState(model.NewActiveRerouteState(0))
 	}
 
 	log := pfxlog.ContextLogger(self.ch.Label()).

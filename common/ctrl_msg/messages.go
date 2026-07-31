@@ -72,9 +72,12 @@ const (
 
 	ResultErrorRateLimited = 1
 
-	CreateCircuitV3ReqIdentityIdHeader = 15
-	CreateCircuitV3ReqServiceIdHeader  = 16
-	CreateCircuitV3ReqCircuitIdHeader  = 17
+	CreateCircuitV3ReqIdentityIdHeader        = 15
+	CreateCircuitV3ReqServiceIdHeader         = 16
+	CreateCircuitV3ReqCircuitIdHeader         = 17
+	CreateCircuitV3ReqRequestReroutableHeader = 18
+
+	CreateCircuitV3RespRerouteTokenHeader = 14
 )
 
 func NewCircuitSuccessMsg(sessionId, address string) *channel.Message {
@@ -217,6 +220,10 @@ type CreateCircuitV3Request struct {
 	TerminatorInstanceId string
 	PeerData             map[uint32][]byte
 	ApiSessionToken      string
+	// RequestReroutable indicates the dialing SDK asked for a reroutable circuit (it saw the
+	// router advertise the SDK-reroute capability). When set, the controller creates a
+	// reroutable circuit and returns a reroute token.
+	RequestReroutable bool
 }
 
 func (self *CreateCircuitV3Request) GetApiSessionToken() string {
@@ -248,6 +255,9 @@ func (self *CreateCircuitV3Request) ToMessage() *channel.Message {
 	msg.PutStringSliceHeader(CreateCircuitReqFingerprintsHeader, self.Fingerprints)
 	msg.PutStringHeader(CreateCircuitReqTerminatorInstanceIdHeader, self.TerminatorInstanceId)
 	msg.PutU32ToBytesMapHeader(CreateCircuitPeerDataHeader, self.PeerData)
+	if self.RequestReroutable {
+		msg.PutBoolHeader(CreateCircuitV3ReqRequestReroutableHeader, true)
+	}
 	return msg
 }
 
@@ -258,6 +268,9 @@ type CreateCircuitV3Response struct {
 	Address   string
 	PeerData  map[uint32][]byte
 	Tags      map[string]string
+	// RerouteToken is the controller-signed reroute token for a reroutable circuit; empty when
+	// the circuit is not reroutable.
+	RerouteToken string
 }
 
 func (self *CreateCircuitV3Response) ToMessage() *channel.Message {
@@ -266,6 +279,9 @@ func (self *CreateCircuitV3Response) ToMessage() *channel.Message {
 	msg.PutStringHeader(CreateCircuitRespAddress, self.Address)
 	msg.PutU32ToBytesMapHeader(CreateCircuitPeerDataHeader, self.PeerData)
 	msg.PutStringToStringMapHeader(CreateCircuitRespTagsHeader, self.Tags)
+	if self.RerouteToken != "" {
+		msg.PutStringHeader(CreateCircuitV3RespRerouteTokenHeader, self.RerouteToken)
+	}
 	return msg
 }
 
@@ -282,11 +298,14 @@ func DecodeCreateCircuitV3Response(m *channel.Message) (*CreateCircuitV3Response
 		return nil, fmt.Errorf("unable to get create circuit v3 response tags (%w)", err)
 	}
 
+	rerouteToken, _ := m.GetStringHeader(CreateCircuitV3RespRerouteTokenHeader)
+
 	return &CreateCircuitV3Response{
-		CircuitId: circuitId,
-		Address:   address,
-		PeerData:  peerData,
-		Tags:      tags,
+		CircuitId:    circuitId,
+		Address:      address,
+		PeerData:     peerData,
+		Tags:         tags,
+		RerouteToken: rerouteToken,
 	}, nil
 }
 
@@ -319,6 +338,8 @@ func DecodeCreateCircuitV3Request(m *channel.Message) (*CreateCircuitV3Request, 
 		return nil, fmt.Errorf("unable to get create circuit v3 request peer data (%w)", err)
 	}
 
+	requestReroutable, _ := m.GetBoolHeader(CreateCircuitV3ReqRequestReroutableHeader)
+
 	return &CreateCircuitV3Request{
 		IdentityId:           identityId,
 		ServiceId:            serviceId,
@@ -327,5 +348,95 @@ func DecodeCreateCircuitV3Request(m *channel.Message) (*CreateCircuitV3Request, 
 		TerminatorInstanceId: terminatorInstanceId,
 		PeerData:             peerData,
 		ApiSessionToken:      apiSessionToken,
+		RequestReroutable:    requestReroutable,
+	}, nil
+}
+
+const (
+	TakeoverReqTokenHeader                   = 20
+	TakeoverReqAuthenticatedIdentityIdHeader = 22
+	TakeoverReqConnIdHeader                  = 23
+
+	TakeoverRespResultCodeHeader   = 20
+	TakeoverRespXgressIdHeader     = 21
+	TakeoverRespRerouteTokenHeader = 22
+	TakeoverRespErrorHeader        = 23
+)
+
+// TakeoverCircuitRequest is sent from a router to the owning controller to reattach a reroutable
+// circuit's ingress to that router. The circuit/identity/service/iteration/owner and the ingress
+// xgress address are all signed claims inside Token (the router pre-registers its forwarder at the
+// token's ingress id, so it need not be sent separately). AuthenticatedIdentityId is the identity
+// the router authenticated on the edge channel, so the controller can re-check the token's identity
+// match defense-in-depth.
+type TakeoverCircuitRequest struct {
+	Token                   string
+	AuthenticatedIdentityId string
+	ConnId                  uint32
+}
+
+func (self *TakeoverCircuitRequest) ToMessage() *channel.Message {
+	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_TakeoverCircuitRequestType), nil)
+	msg.PutStringHeader(TakeoverReqTokenHeader, self.Token)
+	msg.PutStringHeader(TakeoverReqAuthenticatedIdentityIdHeader, self.AuthenticatedIdentityId)
+	msg.PutUint32Header(TakeoverReqConnIdHeader, self.ConnId)
+	return msg
+}
+
+func DecodeTakeoverCircuitRequest(m *channel.Message) (*TakeoverCircuitRequest, error) {
+	token, _ := m.GetStringHeader(TakeoverReqTokenHeader)
+	if token == "" {
+		return nil, errors.New("no reroute token provided in takeover circuit request")
+	}
+	authenticatedIdentityId, _ := m.GetStringHeader(TakeoverReqAuthenticatedIdentityIdHeader)
+	connId, _ := m.GetUint32Header(TakeoverReqConnIdHeader)
+	return &TakeoverCircuitRequest{
+		Token:                   token,
+		AuthenticatedIdentityId: authenticatedIdentityId,
+		ConnId:                  connId,
+	}, nil
+}
+
+// TakeoverCircuitResponse is the owning controller's reply to a TakeoverCircuitRequest. ResultCode
+// is an edge_client_pb.TakeoverResult value; on success it carries the (preserved) xgress id of the
+// taken-over endpoint, a fresh reroute token at the advanced iteration, and the circuit's peer
+// data. On failure ResultCode conveys the retryable/fatal disposition and ErrorMsg is diagnostic.
+// The owning controller id is not carried: the router derives it from the ctrl channel the response
+// arrived on, the same way it does for an initial dial.
+type TakeoverCircuitResponse struct {
+	ResultCode   int32
+	XgressId     string
+	RerouteToken string
+	PeerData     map[uint32][]byte
+	ErrorMsg     string
+}
+
+func (self *TakeoverCircuitResponse) ToMessage() *channel.Message {
+	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_TakeoverCircuitResponseType), nil)
+	msg.PutUint32Header(TakeoverRespResultCodeHeader, uint32(self.ResultCode))
+	msg.PutStringHeader(TakeoverRespXgressIdHeader, self.XgressId)
+	msg.PutStringHeader(TakeoverRespRerouteTokenHeader, self.RerouteToken)
+	msg.PutU32ToBytesMapHeader(CreateCircuitPeerDataHeader, self.PeerData)
+	if self.ErrorMsg != "" {
+		msg.PutStringHeader(TakeoverRespErrorHeader, self.ErrorMsg)
+	}
+	return msg
+}
+
+func DecodeTakeoverCircuitResponse(m *channel.Message) (*TakeoverCircuitResponse, error) {
+	resultCode, _ := m.GetUint32Header(TakeoverRespResultCodeHeader)
+	xgressId, _ := m.GetStringHeader(TakeoverRespXgressIdHeader)
+	rerouteToken, _ := m.GetStringHeader(TakeoverRespRerouteTokenHeader)
+	errorMsg, _ := m.GetStringHeader(TakeoverRespErrorHeader)
+	peerData, _, err := m.GetU32ToBytesMapHeader(CreateCircuitPeerDataHeader)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get takeover circuit response peer data (%w)", err)
+	}
+	return &TakeoverCircuitResponse{
+		ResultCode:   int32(resultCode),
+		XgressId:     xgressId,
+		RerouteToken: rerouteToken,
+		PeerData:     peerData,
+		ErrorMsg:     errorMsg,
 	}, nil
 }

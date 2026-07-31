@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/common/datastructures"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/orcaman/concurrent-map/v2"
 )
@@ -41,6 +41,10 @@ type Circuit struct {
 	PeerData   xt.PeerData
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// rerouteState holds the circuit's SDK-reroute state as an immutable snapshot, published
+	// atomically so it can be read race-free off the Rerouting guard. A nil state (nothing stored)
+	// means the circuit is not reroutable. Access via RerouteState/SetRerouteState.
+	rerouteState atomic.Pointer[RerouteState]
 }
 
 func (self *Circuit) GetId() string {
@@ -88,6 +92,35 @@ func (self *Circuit) IsEndpointRouter(routerId string) bool {
 		return false
 	}
 	return self.Path.Nodes[0].Id == routerId || self.Path.Nodes[len(self.Path.Nodes)-1].Id == routerId
+}
+
+// RerouteState returns the circuit's current reroute state snapshot, or nil if the circuit is not
+// reroutable. The returned value is immutable and safe to read without holding any guard.
+func (self *Circuit) RerouteState() RerouteState {
+	if p := self.rerouteState.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// SetRerouteState publishes a new immutable reroute state snapshot (pass nil to mark the circuit
+// non-reroutable). Callers must hold the circuit's Rerouting guard, which serializes reroute-state
+// transitions; the atomic store only makes the new snapshot visible to readers race-free.
+func (self *Circuit) SetRerouteState(state RerouteState) {
+	self.rerouteState.Store(&state)
+}
+
+// IsReroutable reports whether the circuit may be reattached by the SDK via a reroute token rather
+// than being torn down when its ingress is lost.
+func (self *Circuit) IsReroutable() bool {
+	return self != nil && self.RerouteState() != nil
+}
+
+// IsInLimbo reports whether the circuit is currently held in Limbo awaiting SDK reattach or
+// underlay recovery.
+func (self *Circuit) IsInLimbo() bool {
+	state := self.RerouteState()
+	return state != nil && state.InLimbo()
 }
 
 type CircuitManager struct {

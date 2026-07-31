@@ -713,16 +713,18 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	log.Debugf("closing")
 	self.listener.factory.hostedServices.cleanupServices(ch)
 	self.msgMux.Close()
-	self.cleanupXgressCircuits()
+	self.cleanupXgressCircuits(ctrl_pb.FaultReason_ChannelClosed)
 	self.listener.factory.stateManager.RouterDataModel().UnsubscribeFromIdentityChanges(self.getIdentityId(), self)
 	if self.removeApiSessionListener != nil {
 		self.removeApiSessionListener()
 	}
 }
 
-func (self *edgeClientConn) cleanupXgressCircuits() {
+// cleanupXgressCircuits cleans up every circuit on this conn with the given fault reason. It runs
+// on channel close, where the reason is ChannelClosed (the SDK's transport dropped).
+func (self *edgeClientConn) cleanupXgressCircuits(reason ctrl_pb.FaultReason) {
 	for entry := range self.xgCircuits.IterBuffered() {
-		self.cleanupXgressCircuit(entry.Val)
+		self.cleanupXgressCircuit(entry.Val, reason)
 	}
 }
 
@@ -746,10 +748,11 @@ func (self *edgeClientConn) CloseConn(connId uint32, reason string) error {
 		}
 	}
 
-	// Clean up circuits for this connection
+	// Clean up circuits for this connection. CloseConn is the explicit SDK-initiated close path, so
+	// the fault reason is XgClose (a normal close, not a candidate for reroute).
 	for _, edgeForwarder := range circuitsToCleanup {
 		log.WithField("circuitId", edgeForwarder.circuitId).Debug("cleaning up circuit for connection")
-		self.cleanupXgressCircuit(edgeForwarder)
+		self.cleanupXgressCircuit(edgeForwarder, ctrl_pb.FaultReason_XgClose)
 	}
 
 	// Remove connection from message multiplexer
@@ -770,7 +773,10 @@ func (self *edgeClientConn) CloseConn(connId uint32, reason string) error {
 	return nil
 }
 
-func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder) {
+// cleanupXgressCircuit retires this endpoint of a circuit and faults it to the controller. The
+// reason tells the controller why the endpoint closed: ChannelClosed (transport loss) lets a
+// reroutable circuit enter Limbo for SDK reattach, while XgClose and AccessLoss are teardowns.
+func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder, reason ctrl_pb.FaultReason) {
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
@@ -783,7 +789,7 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault
-	fault := &ctrl_pb.Fault{Id: circuitId}
+	fault := &ctrl_pb.Fault{Id: circuitId, Reason: reason}
 	switch edgeForwarder.originator {
 	case xgress.Initiator:
 		fault.Subject = ctrl_pb.FaultSubject_IngressFault
@@ -1070,6 +1076,8 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 
 	terminatorIdentity, _ := req.GetStringHeader(sdkedge.TerminatorIdentityHeader)
 
+	requestReroutable, _ := req.GetBoolHeader(sdkedge.RequestReroutableHeader)
+
 	request := &ctrl_msg.CreateCircuitV3Request{
 		IdentityId:           self.getIdentityId(),
 		ServiceId:            serviceId,
@@ -1077,21 +1085,30 @@ func (self *edgeClientConn) processConnectV2(req *channel.Message, ch channel.Ch
 		TerminatorInstanceId: terminatorIdentity,
 		PeerData:             peerData,
 		ApiSessionToken:      self.apiSessionToken.Token(),
+		RequestReroutable:    requestReroutable,
 	}
 
-	response, err := self.sendCreateCircuitV3Msg(request.ToMessage(), ctrlCh)
+	response, rerouteToken, err := self.sendCreateCircuitV3Msg(request.ToMessage(), ctrlCh)
+
+	// The reroute token is only meaningful to the xgress-to-SDK handler, which stamps it on the
+	// state_connected reply. Non-xgress connects are never reroutable and ignore it.
+	if xgFwd, ok := handler.(*xgEdgeForwarder); ok {
+		xgFwd.rerouteToken = rerouteToken
+	}
 
 	handler.FinishConnect(connectCtx, response, err)
 }
 
 // sendCreateCircuitV3Msg sends a CreateCircuitV3 message and decodes the response.
 // The V3 response is converted to a V2 response since they have the same fields and
-// the connectHandler interface uses CreateCircuitV2Response.
-func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitV2Response, error) {
+// the connectHandler interface uses CreateCircuitV2Response. The reroute token (V3-only, and
+// meaningful only to the xgress-to-SDK path) is returned separately rather than on the shared V2
+// response type; it is empty when the circuit is not reroutable.
+func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh ctrlchan.CtrlChannel) (*ctrl_msg.CreateCircuitV2Response, string, error) {
 	timeout := self.listener.options.Options.GetCircuitTimeout
 	resp, err := msg.WithTimeout(timeout).SendForReply(ctrlCh.GetHighPrioritySender())
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if resp.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
 		errMsg := string(resp.Body)
@@ -1102,17 +1119,17 @@ func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh 
 		if circuitId, found := resp.GetStringHeader(sdkedge.CircuitIdHeader); found {
 			circuitResp = &ctrl_msg.CreateCircuitV2Response{CircuitId: circuitId}
 		}
-		return circuitResp, errors.New(errMsg)
+		return circuitResp, "", errors.New(errMsg)
 	}
 
 	if resp.ContentType != int32(edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType) {
-		return nil, errors.Errorf("unexpected response type %v to request. expected %v",
+		return nil, "", errors.Errorf("unexpected response type %v to request. expected %v",
 			resp.ContentType, edge_ctrl_pb.ContentType_CreateCircuitV3ResponseType)
 	}
 
 	v3Resp, err := ctrl_msg.DecodeCreateCircuitV3Response(resp)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	return &ctrl_msg.CreateCircuitV2Response{
@@ -1120,7 +1137,7 @@ func (self *edgeClientConn) sendCreateCircuitV3Msg(msg *channel.Message, ctrlCh 
 		Address:   v3Resp.Address,
 		PeerData:  v3Resp.PeerData,
 		Tags:      v3Resp.Tags,
-	}, nil
+	}, v3Resp.RerouteToken, nil
 }
 
 func (self *edgeClientConn) mapResponsePeerData(m map[uint32][]byte) {
@@ -1744,7 +1761,7 @@ func (self *edgeClientConn) handleXgClose(msg *channel.Message, _ channel.Channe
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if edgeForwarder, ok := self.xgCircuits.Get(circuitId); ok {
 		log.Debug("received close request from sdk, closing sdk-xg circuit")
-		go self.cleanupXgressCircuit(edgeForwarder)
+		go self.cleanupXgressCircuit(edgeForwarder, ctrl_pb.FaultReason_XgClose)
 	} else {
 		log.Debug("received close request from sdk, but no edge forwarder found")
 	}
@@ -1938,6 +1955,9 @@ type xgEdgeForwarder struct {
 	metrics         env.XgressMetrics
 	tags            map[string]string
 	accessCheckDone atomic.Bool
+	// rerouteToken is the controller-signed reroute token for a reroutable circuit, stamped on the
+	// state_connected reply so the SDK can later reattach the circuit; empty when not reroutable.
+	rerouteToken string
 }
 
 func (self *xgEdgeForwarder) GetDestinationType() string {
@@ -1965,7 +1985,7 @@ func (self *xgEdgeForwarder) GetApiSessionId() string {
 }
 
 func (self *xgEdgeForwarder) CloseForAccessLoss(string) {
-	self.cleanupXgressCircuit(self)
+	self.cleanupXgressCircuit(self, ctrl_pb.FaultReason_AccessLoss)
 }
 
 // IsHostSide reports whether this forwarder is the hosting (terminator) side of
@@ -2101,6 +2121,9 @@ func (self *xgEdgeForwarder) FinishConnect(ctx *connectContext, response *ctrl_m
 	msg.PutBoolHeader(sdkedge.UseXgressToSdkHeader, true)
 	msg.PutStringHeader(sdkedge.XgressCtrlIdHeader, ctx.CtrlId)
 	msg.PutStringHeader(sdkedge.XgressAddressHeader, response.Address)
+	if self.rerouteToken != "" {
+		msg.PutStringHeader(sdkedge.RerouteTokenHeader, self.rerouteToken)
+	}
 
 	ctx.Log.WithField("circuitId", self.circuitId).
 		WithField("useXgress", true).

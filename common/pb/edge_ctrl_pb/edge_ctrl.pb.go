@@ -53,6 +53,8 @@ const (
 	ContentType_CreateTunnelCircuitV2ResponseType       ContentType = 20221
 	ContentType_CreateCircuitV3RequestType              ContentType = 20222
 	ContentType_CreateCircuitV3ResponseType             ContentType = 20223
+	ContentType_TakeoverCircuitRequestType              ContentType = 20224
+	ContentType_TakeoverCircuitResponseType             ContentType = 20225
 	ContentType_EnrollType                              ContentType = 20300
 	ContentType_EnrollmentCertsResponseType             ContentType = 20301
 	ContentType_EnrollmentExtendRouterRequestType       ContentType = 20302
@@ -111,6 +113,8 @@ var (
 		20221: "CreateTunnelCircuitV2ResponseType",
 		20222: "CreateCircuitV3RequestType",
 		20223: "CreateCircuitV3ResponseType",
+		20224: "TakeoverCircuitRequestType",
+		20225: "TakeoverCircuitResponseType",
 		20300: "EnrollType",
 		20301: "EnrollmentCertsResponseType",
 		20302: "EnrollmentExtendRouterRequestType",
@@ -166,6 +170,8 @@ var (
 		"CreateTunnelCircuitV2ResponseType":       20221,
 		"CreateCircuitV3RequestType":              20222,
 		"CreateCircuitV3ResponseType":             20223,
+		"TakeoverCircuitRequestType":              20224,
+		"TakeoverCircuitResponseType":             20225,
 		"EnrollType":                              20300,
 		"EnrollmentCertsResponseType":             20301,
 		"EnrollmentExtendRouterRequestType":       20302,
@@ -6002,7 +6008,7 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	"\n" +
 	"timelineId\x18\x04 \x01(\tR\n" +
 	"timelineId\x12&\n" +
-	"\x0esubscriptionId\x18\x05 \x01(\tR\x0esubscriptionId*\xf1\r\n" +
+	"\x0esubscriptionId\x18\x05 \x01(\tR\x0esubscriptionId*\xb6\x0e\n" +
 	"\vContentType\x12\b\n" +
 	"\x04Zero\x10\x00\x12\x15\n" +
 	"\x0fServerHelloType\x10\xa0\x9c\x01\x12\x15\n" +
@@ -6029,7 +6035,9 @@ const file_edge_ctrl_proto_rawDesc = "" +
 	" CreateTunnelCircuitV2RequestType\x10\xfc\x9d\x01\x12'\n" +
 	"!CreateTunnelCircuitV2ResponseType\x10\xfd\x9d\x01\x12 \n" +
 	"\x1aCreateCircuitV3RequestType\x10\xfe\x9d\x01\x12!\n" +
-	"\x1bCreateCircuitV3ResponseType\x10\xff\x9d\x01\x12\x10\n" +
+	"\x1bCreateCircuitV3ResponseType\x10\xff\x9d\x01\x12 \n" +
+	"\x1aTakeoverCircuitRequestType\x10\x80\x9e\x01\x12!\n" +
+	"\x1bTakeoverCircuitResponseType\x10\x81\x9e\x01\x12\x10\n" +
 	"\n" +
 	"EnrollType\x10̞\x01\x12!\n" +
 	"\x1bEnrollmentCertsResponseType\x10͞\x01\x12'\n" +

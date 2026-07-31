@@ -61,6 +61,14 @@ func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ ch
 func (self *circuitConfirmationHandler) checkCircuitMaxIdle(circuit *model.Circuit, confirm *ctrl_pb.CircuitConfirmation) {
 	log := logrus.WithField("routerId", self.r.Id).WithField("circuitId", circuit.Id)
 
+	// A Limbo circuit looks idle to every router on its surviving path because the dialer's xgress
+	// is gone. Its grace deadline is the only timeout allowed to retire it; skip the max-idle
+	// teardown so the terminator-side scanner does not kill it mid-recovery.
+	if circuit.IsInLimbo() {
+		log.Debug("circuit in limbo, skipping max idle check")
+		return
+	}
+
 	service, _ := self.n.Service.Read(circuit.ServiceId)
 	if service == nil {
 		log.Info("service for circuit gone, removing idle circuit")

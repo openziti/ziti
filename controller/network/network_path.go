@@ -139,6 +139,36 @@ func (network *Network) UpdatePath(path *model.Path) (*model.Path, error) {
 	return path2, nil
 }
 
+// BuildTakeoverPath computes the path for an SDK ingress-side takeover: it moves the ingress to
+// newIngress while preserving both endpoint xgress ids and the terminator side of oldPath. Both
+// IngressId and EgressId are preserved (the ingress id is fixed at creation and carried across
+// reroutes, and the new ingress router pre-registers its forwarder at it; the egress id is where
+// the terminator's forwarder is registered). Only the source router, nodes, and links change.
+// Terminator addresses carry over from oldPath; initiator addresses are left to be refreshed from
+// the new edge channel.
+func (network *Network) BuildTakeoverPath(oldPath *model.Path, newIngress *model.Router) (*model.Path, error) {
+	if oldPath == nil || len(oldPath.Nodes) == 0 {
+		return nil, errors.New("cannot build takeover path from an empty old path")
+	}
+	dstR := oldPath.Nodes[len(oldPath.Nodes)-1]
+	nodes, _, err := network.shortestPath(newIngress, dstR)
+	if err != nil {
+		return nil, err
+	}
+
+	newPath := &model.Path{
+		Nodes:                nodes,
+		IngressId:            oldPath.IngressId,
+		EgressId:             oldPath.EgressId,
+		TerminatorLocalAddr:  oldPath.TerminatorLocalAddr,
+		TerminatorRemoteAddr: oldPath.TerminatorRemoteAddr,
+	}
+	if err := network.setLinks(newPath); err != nil {
+		return nil, err
+	}
+	return newPath, nil
+}
+
 func (network *Network) shortestPath(srcR *model.Router, dstR *model.Router) ([]*model.Router, int64, error) {
 	if srcR == nil || dstR == nil {
 		return nil, 0, errors.New("not routable (!srcR||!dstR)")
