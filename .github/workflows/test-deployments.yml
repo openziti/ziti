@@ -36,7 +36,7 @@ jobs:
           - deb
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
@@ -189,7 +189,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
@@ -212,7 +212,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y mmdebstrap systemd-container
 
       - name: Cache nspawn OS rootfs
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /var/cache/openziti-test
           key: nspawn-base-${{ hashFiles('/etc/os-release') }}
@@ -240,7 +240,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
@@ -295,7 +295,7 @@ jobs:
       ZIGGY_UID: 1001  # let container EUID run-as GHA "runner" user to share cache, etc.
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
@@ -329,7 +329,7 @@ jobs:
       ZITI_NAMESPACE: zititest
     steps:
       - name: Shallow checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Go
         id: setup-go
