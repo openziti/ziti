@@ -243,19 +243,37 @@ func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId s
 	return list, err
 }
 
-func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId, edgeRouterId string) (bool, error) {
-	var result bool
+// EdgeRouterAccess reports which of the two policy links required for an identity to
+// reach a service through a given edge router are present. Access requires both.
+type EdgeRouterAccess struct {
+	// IdentityAllowed is true if an edge router policy links the identity to the edge router
+	IdentityAllowed bool
+
+	// ServiceAllowed is true if a service edge router policy links the service to the edge router
+	ServiceAllowed bool
+}
+
+// IsAllowed returns true only if both required policy links are present.
+func (self EdgeRouterAccess) IsAllowed() bool {
+	return self.IdentityAllowed && self.ServiceAllowed
+}
+
+// GetEdgeRouterAccess reports whether the identity and the service are each linked to the
+// given edge router by policy, so a caller can report which policy link is missing.
+func (self *EdgeRouterManager) GetEdgeRouterAccess(identityId, serviceId, edgeRouterId string) (EdgeRouterAccess, error) {
+	var result EdgeRouterAccess
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
 		serviceEdgeRouters := self.env.GetStores().Service.GetRefCountedLinkCollection(db.FieldEdgeRouters)
 
 		identityCount := identityEdgeRouters.GetLinkCount(tx, []byte(identityId), []byte(edgeRouterId))
 		serviceCount := serviceEdgeRouters.GetLinkCount(tx, []byte(serviceId), []byte(edgeRouterId))
-		result = identityCount != nil && *identityCount > 0 && serviceCount != nil && *serviceCount > 0
+		result.IdentityAllowed = identityCount != nil && *identityCount > 0
+		result.ServiceAllowed = serviceCount != nil && *serviceCount > 0
 		return nil
 	})
 	if err != nil {
-		return false, err
+		return EdgeRouterAccess{}, err
 	}
 	return result, nil
 }

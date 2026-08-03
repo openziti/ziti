@@ -147,6 +147,17 @@ func (InvalidEdgeRouterForSessionError) GetRetryHint() edge.RetryHint {
 	return edge.RetryStartOver
 }
 
+// edgeRouterAccessDenied reports that an edge router is not linked by policy to the identity
+// and/or the service it is trying to act on. It is used where no edge session is involved,
+// such as an edge router tunneler hosting or dialing a service on its own behalf.
+func edgeRouterAccessDenied(msg string) controllerError {
+	return &genericControllerError{
+		Message:   msg,
+		Code:      edge.ErrorCodeAccessDenied,
+		RetryHint: edge.RetryDefault,
+	}
+}
+
 type InvalidServiceError struct{}
 
 func (InvalidServiceError) Error() string {

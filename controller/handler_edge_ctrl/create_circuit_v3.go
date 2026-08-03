@@ -182,7 +182,7 @@ func (self *createCircuitV3RequestContext) verifyEdgeRouterAccessForIdentity() {
 	if self.err != nil {
 		return
 	}
-	self.verifyEdgeRouterAccess(self.req.IdentityId, self.service.Id)
+	self.verifyEdgeRouterAccess(self.req.IdentityId, self.service.Id, self.newEdgeRouterAccessDeniedError)
 }
 
 func (self *createCircuitV3RequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) model.CreateCircuitParams {

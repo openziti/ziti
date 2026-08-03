@@ -484,6 +484,7 @@ today and expand as packages are converted. The global `ziti agent set-log-level
 * github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4193](https://github.com/openziti/ziti/issues/4193) - ER/T terminator create reports "invalid edge router for session" with no router-side error and slow recovery
     * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - upgrading a running 1.x controller/router to 2.x fails to create the service user
     * [Issue #3990](https://github.com/openziti/ziti/issues/3990) - Expose service change subscriptions to external SDKs over protobuf
     * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Controller retains bbolt-managed memory past transaction (create-circuit response SIGSEGV)
@@ -495,6 +496,8 @@ today and expand as packages are converted. The global `ziti agent set-log-level
     * [Issue #4060](https://github.com/openziti/ziti/issues/4060) - support ext-jwt-signer in ziti verify traffic
     * [Issue #4036](https://github.com/openziti/ziti/issues/4036) - Own the metrics wire format (MetricsMessage) in ziti
     * [Issue #4137](https://github.com/openziti/ziti/issues/4137) - ziti tunnel ignores --dnsSvcIpRange <!-- keep -->
+    * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode <!-- keep -->
+    * [Issue #3972](https://github.com/openziti/ziti/issues/3972) - Support multiple LAN interfaces for tproxy mode <!-- keep -->
     * [Issue #4052](https://github.com/openziti/ziti/issues/4052) - ziti cli cached creds don't use refresh token
     * [Issue #3881](https://github.com/openziti/ziti/issues/3881) - Add Capability for DNSUPSTREAMS to be used in serial
     * [Issue #4035](https://github.com/openziti/ziti/issues/4035) - Controller /metrics endpoint produces duplicate TYPE declarations causing Prometheus to drop samples
