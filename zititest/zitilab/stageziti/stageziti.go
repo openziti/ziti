@@ -1,6 +1,7 @@
 package stageziti
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/sdk-golang/acquire"
 	"github.com/openziti/ziti/v2/common/getziti"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
@@ -70,6 +72,59 @@ func StageZiti(run model.Run, component *model.Component, version string, source
 	return StageExecutable(run, "ziti", component, version, source, func() error {
 		return getziti.InstallZiti(version, "linux", "amd64", run.GetBinDir(), false)
 	})
+}
+
+// StageZitiForComponentOnce stages the ziti binary for a component once per run. When sourceRef is set
+// it builds that git ref (branch, tag, or SHA) on openziti/ziti and stamps it as version; otherwise it
+// stages localPath or the released version, exactly as StageZitiOnce does. This lets any component
+// (controller, router, ziti-tunnel) run an unreleased build while reporting a chosen version.
+func StageZitiForComponentOnce(run model.Run, component *model.Component, version, sourceRef, localPath string) error {
+	if sourceRef != "" {
+		return StageZitiFromRefOnce(run, component, sourceRef, version, localPath)
+	}
+	return StageZitiOnce(run, component, version, localPath)
+}
+
+// StageZitiFromRefOnce is StageZitiFromRef guarded by run.DoOnce, keyed on the ref and stamped version
+// so distinct (ref, version) builds each run once while a repeated one is reused.
+func StageZitiFromRefOnce(run model.Run, component *model.Component, sourceRef, stampVersion, localPath string) error {
+	op := fmt.Sprintf("install.ziti-ref-%s-as-%s", sourceRef, stampVersion)
+	return run.DoOnce(op, func() error {
+		return StageZitiFromRef(run, component, sourceRef, stampVersion, localPath)
+	})
+}
+
+// StageZitiFromRef builds the ziti binary from sourceRef (a git ref on openziti/ziti), stamps it to
+// report stampVersion, and stages it under the ziti-<stampVersion> name so an in-place version swap can
+// pick it up. It always delegates to acquire, which resolves the ref to a commit and caches by that
+// immutable id, so an unchanged ref reuses the cached build while a changed ref (or a branch moved to a
+// new commit) rebuilds. It deliberately does not skip on an existing ziti-<stampVersion>: that would key
+// reuse on the version name and silently serve a stale binary when the ref changed under the same
+// stampVersion. If localPath is set it is staged directly instead of building, so a prebuilt binary
+// still wins. GITHUB_TOKEN, when set, raises the ref-resolution rate limit.
+func StageZitiFromRef(run model.Run, component *model.Component, sourceRef, stampVersion, localPath string) error {
+	fileName := "ziti-" + stampVersion
+	target := filepath.Join(run.GetBinDir(), fileName)
+
+	if localPath != "" {
+		logrus.Infof("[%s] => [%s]", localPath, target)
+		return util.CopyFile(localPath, target)
+	}
+
+	cacheDir, err := acquire.DefaultCacheDir()
+	if err != nil {
+		return err
+	}
+	cfg := acquire.Versions{Source: acquire.Source{Org: "openziti", Repo: "ziti"}}
+	src := acquire.NewGitHubReleaseSource(cfg.Source.Org, cfg.Source.Repo, os.Getenv("GITHUB_TOKEN"))
+
+	logrus.Infof("building ziti from ref %s (stamped %s) -> %s", sourceRef, stampVersion, target)
+	built, id, err := acquire.Ziti(context.Background(), sourceRef, cfg, src, cacheDir, acquire.WithVersion(stampVersion))
+	if err != nil {
+		return fmt.Errorf("building ziti from ref %q: %w", sourceRef, err)
+	}
+	logrus.Infof("built ziti from ref %s (commit %s) stamped %s", sourceRef, id.Tag, stampVersion)
+	return util.CopyFile(built, target)
 }
 
 func StageZrok(run model.Run, component *model.Component, version string, source string) error {

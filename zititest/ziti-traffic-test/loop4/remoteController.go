@@ -97,8 +97,11 @@ func (self *RemoteController) Close() error {
 }
 
 func (self *RemoteController) handleConnection(conn net.Conn) error {
+	// handleConnection owns conn: on success it is owned by the channel wrapping it (whose Close closes
+	// it), so every error path must close it here or the accepted conn and its circuit leak.
 	tokenId, err := GetSdkIdentity(self.client)
 	if err != nil {
+		_ = conn.Close()
 		return err
 	}
 	listener := channel.NewExistingConnListener(tokenId, conn, nil)
@@ -107,15 +110,58 @@ func (self *RemoteController) handleConnection(conn net.Conn) error {
 	var ch channel.Channel
 	ch, err = channel.NewSingleChannel("control", listener, channel.BindHandlerF(self.BindChannel), options)
 	if err != nil {
+		_ = conn.Close()
 		return fmt.Errorf("unable to establish connection from sim (%w)", err)
 	}
 
 	clientId := string(ch.Headers()[HeaderClientId])
-	self.clients.Set(clientId, ch)
+	// Install the new channel and capture any channel it supersedes. A reconnecting sim opens a new
+	// channel while its old one is still registered; without closing the old one it (and its underlying
+	// edge conn and fabric circuit) leaks, since nothing else ever closes it. A leaked circuit stays
+	// valid to the fabric forever, so the peer never receives a close and can block on it indefinitely.
+	// The old channel must be closed after Upsert returns, not inside the callback: Upsert holds the
+	// shard lock across the callback, and Close runs the close handler synchronously, which calls
+	// RemoveCb and would deadlock trying to re-acquire that same lock.
+	var superseded channel.Channel
+	self.clients.Upsert(clientId, ch, func(exists bool, oldCh channel.Channel, newCh channel.Channel) channel.Channel {
+		if exists && oldCh != nil && oldCh != newCh {
+			superseded = oldCh
+		}
+		return newCh
+	})
+	if superseded != nil {
+		_ = superseded.Close()
+	}
 
 	pfxlog.Logger().WithField("id", clientId).Info("new sim connection established")
 
+	self.resendPendingScenarios(clientId, ch)
+
 	return nil
+}
+
+// resendPendingScenarios re-sends the run request for every in-flight scenario that still expects a
+// result from this client. A sim that reconnects mid-scenario gets a fresh channel that never received
+// the original request; without re-sending, its result would never arrive and the scenario would block
+// until it timed out.
+func (self *RemoteController) resendPendingScenarios(clientId string, ch channel.Channel) {
+	for _, results := range self.resultsTracker.Items() {
+		if results.done.Load() || results.completed.Load() {
+			continue
+		}
+		if _, expected := results.expected[clientId]; !expected {
+			continue
+		}
+		if results.results.Has(clientId) {
+			continue
+		}
+		log := pfxlog.Logger().WithField("scenarioId", results.id).WithField("clientId", clientId)
+		if err := self.sendScenarioRequest(results.id, ch); err != nil {
+			log.WithError(err).Error("failed to re-send scenario request to reconnected sim")
+		} else {
+			log.Info("re-sent scenario request to reconnected sim")
+		}
+	}
 }
 
 func (self *RemoteController) BindChannel(binding channel.Binding) error {
@@ -125,8 +171,17 @@ func (self *RemoteController) BindChannel(binding channel.Binding) error {
 	}
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 		clientId := string(ch.Headers()[HeaderClientId])
-		pfxlog.Logger().WithField("id", clientId).Info("sim client channel closed, removing from clients map")
-		self.clients.Remove(clientId)
+		// Only remove the entry if it still points at this channel. A reconnecting sim registers
+		// its new channel before the old channel's close handler runs; removing unconditionally
+		// would evict the live replacement and make a healthy sim look disconnected.
+		removed := self.clients.RemoveCb(clientId, func(_ string, v channel.Channel, _ bool) bool {
+			return v == ch
+		})
+		if removed {
+			pfxlog.Logger().WithField("id", clientId).Info("sim client channel closed, removed from clients map")
+		} else {
+			pfxlog.Logger().WithField("id", clientId).Info("stale sim channel closed; superseded by newer connection, not removing")
+		}
 	}))
 	return nil
 }
@@ -144,6 +199,14 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 
 		clientId := string(ch.Headers()[HeaderClientId])
 
+		// Ignore results from clients that were not part of this scenario's dispatch set (e.g. a sim that
+		// connected after the scenario started). Counting them would corrupt the completion check.
+		if _, expected := results.expected[clientId]; !expected {
+			pfxlog.Logger().WithField("scenarioId", id).WithField("clientId", clientId).
+				Info("ignoring scenario result from client not in scenario's expected set")
+			return
+		}
+
 		success, _ := msg.GetBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess))
 
 		pfxlog.Logger().
@@ -157,7 +220,7 @@ func (self *RemoteController) handleScenarioResult(msg *channel.Message, ch chan
 			message: string(msg.Body),
 		}
 		results.results.Set(clientId, *result)
-		if results.results.Count() == results.expectedResults {
+		if results.results.Count() == len(results.expected) {
 			if results.completed.CompareAndSwap(false, true) {
 				close(results.complete)
 			}
@@ -197,25 +260,36 @@ func (self *RemoteController) StartSimScenarios() (*ScenarioResults, error) {
 	scenarioId := uuid.NewString()
 	log := pfxlog.Logger().WithField("scenarioId", scenarioId)
 
+	clients := self.clients.Items()
+	expected := make(map[string]struct{}, len(clients))
+	for clientId := range clients {
+		expected[clientId] = struct{}{}
+	}
+
 	results := &ScenarioResults{
-		id:              scenarioId,
-		results:         cmap.New[ScenarioResult](),
-		complete:        make(chan struct{}),
-		expectedResults: self.clients.Count(),
+		id:       scenarioId,
+		results:  cmap.New[ScenarioResult](),
+		complete: make(chan struct{}),
+		expected: expected,
 	}
 
 	self.resultsTracker.Set(scenarioId, results)
 
-	for _, client := range self.clients.Items() {
-		msg := channel.NewMessage(int32(loop4Pb.ContentType_RunScenarioRequestType), nil)
-		msg.PutStringHeader(int32(loop4Pb.HeaderType_ScenarioId), scenarioId)
-		if err := msg.WithTimeout(10 * time.Second).SendAndWaitForWire(client); err != nil {
+	for clientId, client := range clients {
+		if err := self.sendScenarioRequest(scenarioId, client); err != nil {
 			return nil, err
 		}
-		log.WithField("clientId", client.Id()).Info("scenario run request sent")
+		log.WithField("clientId", clientId).Info("scenario run request sent")
 	}
 
 	return results, nil
+}
+
+// sendScenarioRequest sends one run-scenario request for the given scenario to a single sim channel.
+func (self *RemoteController) sendScenarioRequest(scenarioId string, client channel.Channel) error {
+	msg := channel.NewMessage(int32(loop4Pb.ContentType_RunScenarioRequestType), nil)
+	msg.PutStringHeader(int32(loop4Pb.HeaderType_ScenarioId), scenarioId)
+	return msg.WithTimeout(10 * time.Second).SendAndWaitForWire(client)
 }
 
 type ScenarioResult struct {
@@ -224,14 +298,20 @@ type ScenarioResult struct {
 }
 
 type ScenarioResults struct {
-	id              string
-	results         cmap.ConcurrentMap[string, ScenarioResult]
-	complete        chan struct{}
-	completed       atomic.Bool
-	expectedResults int
+	id        string
+	results   cmap.ConcurrentMap[string, ScenarioResult]
+	complete  chan struct{}
+	completed atomic.Bool
+	// expected holds the client ids the scenario was dispatched to. It is populated before the results
+	// tracker is published and never mutated afterward, so it is safe for concurrent reads.
+	expected map[string]struct{}
+	// done marks the scenario as no longer awaited (GetResults has returned), so a reconnecting sim
+	// stops getting the run request re-sent for it.
+	done atomic.Bool
 }
 
 func (self *ScenarioResults) GetResults(timeout time.Duration) error {
+	defer self.done.Store(true)
 	start := time.Now()
 	var err error
 	select {

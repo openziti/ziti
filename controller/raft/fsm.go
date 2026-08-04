@@ -30,11 +30,11 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	bbolterrors "go.etcd.io/bbolt/errors"
@@ -437,7 +437,7 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		time.AfterFunc(5*time.Second, func() {
 			if self.restartSelf {
 				log.Info("restored snapshot to initialized system, restart required, restarting now")
-				if err = self.RestartController(); err != nil {
+				if err = RestartController(); err != nil {
 					log.WithError(err).Error("failed to restart controller, exiting now")
 					os.Exit(0)
 				}
@@ -458,7 +458,7 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 
 // RestartController starts a new controller process with the same parameters and exits the current process.
 // This is useful when the controller needs to be restarted after applying a snapshot or other configuration changes.
-func (self *BoltDbFsm) RestartController() error {
+func RestartController() error {
 	log := pfxlog.Logger()
 
 	// Get the current executable path

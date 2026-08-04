@@ -105,6 +105,10 @@ func (cmd *remoteControlledCmd) runRemoteControlled(_ *cobra.Command, args []str
 
 		if err = cmd.handleRemoteControlConn(sdkClient, conn); err != nil {
 			log.WithError(err).Error("unable to channelize remote controller connection")
+			// Close the dialed conn before retrying. Otherwise a failed channelize (e.g. a hello
+			// that times out during controller churn) leaves the edge conn and its fabric circuit
+			// open with no reader, leaking a circuit on every retry.
+			_ = conn.Close()
 			time.Sleep(1 * time.Second)
 			attempt++
 			continue

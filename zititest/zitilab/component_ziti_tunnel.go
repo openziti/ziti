@@ -52,8 +52,11 @@ func (self ZitiTunnelMode) String() string {
 }
 
 type ZitiTunnelType struct {
-	Mode                     ZitiTunnelMode
-	Version                  string
+	Mode    ZitiTunnelMode
+	Version string
+	// SourceRef, when set, is a git ref (branch, tag, or SHA) on openziti/ziti built from source and
+	// stamped as Version, instead of downloading the Version release. Use it to run an unreleased build.
+	SourceRef                string
 	LocalPath                string
 	ConfigPathF              func(c *model.Component) string
 	Count                    uint8
@@ -61,6 +64,9 @@ type ZitiTunnelType struct {
 	ControlRouterConnections uint8
 	EnableSdkFlowControl     bool
 	Verbose                  bool
+	// ProxyServices are "service:port" pairs passed to 'ziti tunnel proxy' so the tunneler opens a
+	// local TCP listener per service. Only used in proxy mode.
+	ProxyServices []string
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -110,7 +116,7 @@ func (self *ZitiTunnelType) Dump() any {
 }
 
 func (self *ZitiTunnelType) StageFiles(r model.Run, c *model.Component) error {
-	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
+	return stageziti.StageZitiForComponentOnce(r, c, self.Version, self.SourceRef, self.LocalPath)
 }
 
 func (self *ZitiTunnelType) InitializeHost(_ model.Run, c *model.Component) error {
@@ -205,8 +211,13 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		verbose = "-v"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), connectCfg, verbose, c.Id, configPath, logsPath)
+	proxyServices := ""
+	if mode == ZitiTunnelModeProxy && len(self.ProxyServices) > 0 {
+		proxyServices = strings.Join(self.ProxyServices, " ")
+	}
+
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
+		useSudo, binaryPath, mode.String(), proxyServices, connectCfg, verbose, c.Id, configPath, logsPath)
 
 	value, err := c.Host.ExecLogged(
 		"rm -f "+logsPath,
