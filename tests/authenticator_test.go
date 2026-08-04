@@ -144,6 +144,38 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		})
 	})
 
+	t.Run("tags can be set on create and retrieved", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityId := ctx.AdminManagementSession.requireCreateIdentity(eid.New(), false)
+
+		body := gabs.New()
+		_, _ = body.Set(identityId, "identityId")
+		_, _ = body.Set("updb", "method")
+		_, _ = body.Set(eid.New(), "username")
+		_, _ = body.Set(eid.New(), "password")
+		_, _ = body.Set("true", "tags", "managed")
+		networkId := uuid.NewString()
+		_, _ = body.Set(networkId, "tags", "network-id")
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Post("/authenticators")
+		ctx.Req.NoError(err)
+		standardJsonResponseTests(resp, http.StatusCreated, t)
+
+		createBody, err := gabs.ParseJSON(resp.Body())
+		ctx.Req.NoError(err)
+		authenticatorId, ok := createBody.Path("data.id").Data().(string)
+		ctx.Req.True(ok, "expected authenticator id to be a string")
+
+		detailEnv := &rest_model.DetailAuthenticatorEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(detailEnv).Get("/authenticators/" + authenticatorId)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		ctx.Req.NotNil(detailEnv.Data.Tags)
+		ctx.Req.Equal(rest_model.SubTags{"managed": "true", "network-id": networkId}, detailEnv.Data.Tags.SubTags)
+	})
+
 	t.Run("cannot create a updb authenticator for an identity with an existing updb authenticator", func(t *testing.T) {
 		ctx.testContextChanged(t)
 

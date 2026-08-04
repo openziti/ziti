@@ -484,6 +484,7 @@ today and expand as packages are converted. The global `ziti agent set-log-level
 * github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4124](https://github.com/openziti/ziti/issues/4124) - Tags are dropped when creating external JWT signers, transit routers and authenticators
     * [Issue #4193](https://github.com/openziti/ziti/issues/4193) - ER/T terminator create reports "invalid edge router for session" with no router-side error and slow recovery
     * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - upgrading a running 1.x controller/router to 2.x fails to create the service user
     * [Issue #3990](https://github.com/openziti/ziti/issues/3990) - Expose service change subscriptions to external SDKs over protobuf
