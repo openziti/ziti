@@ -24,7 +24,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -46,6 +48,16 @@ import (
 // and the post-establish inspect. Kept above normal latency so a healthy system won't trip it.
 const establishmentTimeout = 30 * time.Second
 
+const (
+	// minRetryBackoff and maxRetryBackoff bound the per-terminator backoff applied after the
+	// controller rejects an establish or remove (e.g. rate limited). Without this pacing a
+	// fast-failing (immediately rejected) operation gets retried in a tight loop, which under load
+	// becomes a self-sustaining request storm against the controller. The backoff ceiling starts at
+	// minRetryBackoff and doubles per consecutive rejection up to maxRetryBackoff.
+	minRetryBackoff = time.Second
+	maxRetryBackoff = 30 * time.Second
+)
+
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *hostedServiceRegistry {
 	result := &hostedServiceRegistry{
 		terminators:          cmap.New[*edgeTerminator](),
@@ -57,6 +69,7 @@ func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manag
 		deleteSet:            map[string]*edgeTerminator{},
 		notifyCloseSet:       map[string]*pendingSdkCloseNotification{},
 		postCreateInspectSet: map[string]*pendingPostCreateInspect{},
+		pendingRemoves:       map[string]*pendingRemoveBatch{},
 	}
 	go result.run()
 	return result
@@ -71,7 +84,20 @@ type hostedServiceRegistry struct {
 	deleteSet            map[string]*edgeTerminator
 	notifyCloseSet       map[string]*pendingSdkCloseNotification
 	postCreateInspectSet map[string]*pendingPostCreateInspect
+	pendingRemoves       map[string]*pendingRemoveBatch
 	triggerEvalC         chan struct{}
+}
+
+// pendingRemoveBatch tracks a batch of terminators whose asynchronous RemoveTerminatorsV2Request has
+// been sent but not yet answered. It holds the rate-limit control for the batch so it can be resolved
+// (Success, Backoff, or Failed) when the RemoveTerminatorsV2Response arrives. queuedAt is when the
+// request was sent, used to expire the entry if the response is lost (e.g. the control channel closed)
+// so the map doesn't grow without bound. It is owned by the registry event loop and must only be
+// accessed there.
+type pendingRemoveBatch struct {
+	rateLimitCtrl rate.RateLimitControl
+	terminators   []*edgeTerminator
+	queuedAt      time.Time
 }
 
 type terminatorEvent interface {
@@ -84,6 +110,11 @@ func (self *hostedServiceRegistry) run() {
 
 	quickTick := time.NewTicker(10 * time.Millisecond)
 	defer quickTick.Stop()
+
+	// Wakes the loop roughly every second so terminators whose retry backoff has elapsed get
+	// re-attempted promptly, without a busy tick, when nothing else is triggering evaluation.
+	retryTick := time.NewTicker(time.Second)
+	defer retryTick.Stop()
 
 	for {
 		var rateLimitedTick <-chan time.Time
@@ -98,6 +129,7 @@ func (self *hostedServiceRegistry) run() {
 		case <-longQueueCheckTicker.C:
 			self.scanForRetries()
 		case <-self.triggerEvalC:
+		case <-retryTick.C:
 		case <-rateLimitedTick:
 		}
 
@@ -162,6 +194,10 @@ func (self *hostedServiceRegistry) evaluateEstablishQueue() {
 			continue
 		}
 
+		if terminator.retryBackoffActive() {
+			continue // still within retry backoff after a prior rejection; leave queued and retry later
+		}
+
 		label := fmt.Sprintf("establish terminator %s", terminator.terminatorId)
 		rateLimitCtrl, err := self.env.GetCtrlRateLimiter().RunRateLimited(label)
 		if err != nil {
@@ -196,6 +232,10 @@ func (self *hostedServiceRegistry) evaluateDeleteQueue() {
 	var deleteList []*edgeTerminator
 
 	for terminatorId, terminator := range self.deleteSet {
+		if terminator.retryBackoffActive() {
+			continue // still within retry backoff after a prior rejection; leave queued and retry later
+		}
+
 		log := logrus.
 			WithField("terminatorId", terminator.terminatorId).
 			WithField("state", terminator.state.Load()).
@@ -240,8 +280,25 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 		return false
 	}
 
+	// Prefer the leader for removes: it's where the delete is applied anyway (so this avoids a forward
+	// hop) and it's the only node that can safely run the confirmed-absent fast-path against current
+	// state. Falls back to the most responsive controller if the leader is unavailable.
+	ctrlCh := self.env.GetNetworkControllers().GetModelUpdateCtrlChannel()
+	if ctrlCh == nil {
+		self.requeueForDeleteSync(terminators)
+		return false
+	}
+
 	for _, terminator := range terminators {
 		terminator.operationActive.Store(true)
+		terminator.lastAttempt = time.Now()
+	}
+
+	// Prefer asynchronous removal when the controller supports it: the router sends the request and
+	// resolves the batch when the RemoveTerminatorsV2Response arrives, rather than blocking a worker
+	// on a synchronous reply. Fall back to the synchronous path for older controllers.
+	if capabilities.IsCapable(ctrlCh.Underlay().Headers(), capabilities.ControllerAsyncTerminatorRemove) {
+		return self.removeTerminatorsV2(ctrlCh, terminators)
 	}
 
 	err := self.env.GetRateLimiterPool().QueueOrError(func() {
@@ -275,6 +332,7 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 			for _, terminator := range terminators {
 				pfxlog.Logger().WithError(err).WithField("terminatorId", terminator.terminatorId).
 					Error("remove terminator failed")
+				terminator.scheduleRetryBackoff()
 				self.requeueRemoveTerminatorAsync(terminator)
 			}
 		} else {
@@ -301,6 +359,58 @@ func (self *hostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*e
 		pfxlog.Logger().WithError(err).Error("unable to queue remove terminators operation")
 		self.requeueForDeleteSync(terminators)
 		return false
+	}
+
+	return true
+}
+
+// removeTerminatorsV2 sends an asynchronous RemoveTerminatorsV2Request for the batch and records it in
+// pendingRemoves so the outcome can be applied when the response arrives. It runs on the registry event
+// loop, so it accesses pendingRemoves directly. If a rate-limit slot can't be acquired or the send
+// fails, the batch is requeued for a later attempt.
+func (self *hostedServiceRegistry) removeTerminatorsV2(ctrlCh channel.Channel, terminators []*edgeTerminator) bool {
+	rateLimitCtrl, err := self.env.GetCtrlRateLimiter().RunRateLimited("remove terminator batch v2")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Debug("rate limiter hit, waiting for a slot to open before doing sdk terminator deletes")
+		self.requeueForDeleteSync(terminators)
+		return false
+	}
+
+	requestId := idgen.MustNewUUIDString()
+	terminatorIds := make([]string, 0, len(terminators))
+	createConfirmed := make([]bool, 0, len(terminators))
+	for _, terminator := range terminators {
+		terminatorIds = append(terminatorIds, terminator.terminatorId)
+		createConfirmed = append(createConfirmed, terminator.createConfirmed.Load())
+	}
+
+	request := &ctrl_pb.RemoveTerminatorsV2Request{
+		TerminatorIds:   terminatorIds,
+		RequestId:       requestId,
+		CreateConfirmed: createConfirmed,
+	}
+
+	queued, err := ctrlCh.TrySend(protobufs.MarshalTyped(request).ToSendable())
+	if err != nil || !queued {
+		// The send never left, so the controller won't reply. Resolve the slot as Failed (a local
+		// send problem, not controller congestion) and requeue for a later attempt.
+		rateLimitCtrl.Failed()
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("failed to send remove terminators v2 request")
+		} else {
+			pfxlog.Logger().Error("failed to send remove terminators v2 request, channel too busy")
+		}
+		for _, terminator := range terminators {
+			terminator.scheduleRetryBackoff()
+		}
+		self.requeueForDeleteSync(terminators)
+		return false
+	}
+
+	self.pendingRemoves[requestId] = &pendingRemoveBatch{
+		rateLimitCtrl: rateLimitCtrl,
+		terminators:   terminators,
+		queuedAt:      time.Now(),
 	}
 
 	return true
@@ -349,6 +459,86 @@ func (self *hostedServiceRegistry) RemoveTerminators(terminatorIds []string) err
 	}
 
 	return fmt.Errorf("failure deleting terminators (%s)", result.Message)
+}
+
+// HandleRemoveTerminatorsV2Response receives the controller's asynchronous reply to a
+// RemoveTerminatorsV2Request. It runs on the control channel's receive goroutine, so it only
+// unmarshals the response and queues an event; the outcome is applied on the registry event loop
+// where pendingRemoves is owned.
+func (self *hostedServiceRegistry) HandleRemoveTerminatorsV2Response(msg *channel.Message, _ channel.Channel) {
+	response := &ctrl_pb.RemoveTerminatorsV2Response{}
+	if err := proto.Unmarshal(msg.Body, response); err != nil {
+		pfxlog.Logger().WithError(err).Error("error unmarshalling remove terminators v2 response")
+		return
+	}
+
+	self.queue(&removeTerminatorsV2ResponseEvent{
+		requestId:      response.RequestId,
+		success:        response.Success,
+		wasRateLimited: response.WasRateLimited,
+		msg:            response.Msg,
+	})
+}
+
+type removeTerminatorsV2ResponseEvent struct {
+	requestId      string
+	success        bool
+	wasRateLimited bool
+	msg            string
+}
+
+func (self *removeTerminatorsV2ResponseEvent) handle(registry *hostedServiceRegistry) {
+	registry.handleRemoveTerminatorsV2Response(self)
+}
+
+func (self *hostedServiceRegistry) handleRemoveTerminatorsV2Response(event *removeTerminatorsV2ResponseEvent) {
+	defer self.triggerEvaluates()
+
+	log := pfxlog.Logger().WithField("requestId", event.requestId)
+
+	batch, found := self.pendingRemoves[event.requestId]
+	if !found {
+		// No pending batch: the response arrived after the rate-limit slot's timeout expired and
+		// scanForRetries requeued the terminators, or after a reconnect. Nothing to do.
+		log.Debug("no pending terminator removal batch for response, ignoring")
+		return
+	}
+	delete(self.pendingRemoves, event.requestId)
+
+	if event.success {
+		batch.rateLimitCtrl.Success()
+		for _, terminator := range batch.terminators {
+			terminator.operationActive.Store(false)
+			log.WithField("terminatorId", terminator.terminatorId).Info("remove terminator succeeded")
+			if !self.Remove(terminator, "controller delete success") {
+				// A new terminator with this ID was created while the old delete was in flight.
+				// The controller just deleted the ID, so we need to re-establish the replacement.
+				if current, exists := self.terminators.Get(terminator.terminatorId); exists {
+					log.WithField("terminatorId", terminator.terminatorId).
+						Info("terminator was replaced during delete, re-establishing replacement")
+					current.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "re-establishing after delete/create race")
+					self.queueEstablishTerminatorAsync(current)
+				}
+			}
+		}
+		return
+	}
+
+	// A rate-limit rejection signals controller congestion, so Backoff to shrink the window; any
+	// other failure is treated as neutral (Failed). Either way the terminators are requeued for a
+	// later attempt.
+	if event.wasRateLimited {
+		batch.rateLimitCtrl.Backoff()
+	} else {
+		batch.rateLimitCtrl.Failed()
+	}
+
+	for _, terminator := range batch.terminators {
+		log.WithField("terminatorId", terminator.terminatorId).WithField("msg", event.msg).
+			Error("remove terminator failed")
+		terminator.scheduleRetryBackoff()
+		self.requeueRemoveTerminatorSync(terminator)
+	}
 }
 
 type queueEstablishTerminator struct {
@@ -745,6 +935,17 @@ func (self *hostedServiceRegistry) scanForRetries() {
 			self.requeueRemoveTerminatorSync(terminator)
 		}
 	}
+
+	// Drop remove batches whose response never arrived (e.g. the control channel closed after the
+	// request was sent). Without this the entry, its terminators, and their connection graph would be
+	// retained forever, growing unbounded across reconnects. The terminators themselves are recovered
+	// by the retry scan above via their Deleting state; here we only free the abandoned correlation
+	// record. The rate-limit control is expired independently by the limiter's own timeout.
+	for requestId, batch := range self.pendingRemoves {
+		if time.Since(batch.queuedAt) > 2*establishmentTimeout {
+			delete(self.pendingRemoves, requestId)
+		}
+	}
 }
 
 func (self *hostedServiceRegistry) PutV1(serviceSessionToken *state.ServiceSessionToken, terminator *edgeTerminator) {
@@ -835,6 +1036,12 @@ func (self *hostedServiceRegistry) getRelatedTerminators(connId uint32, serviceS
 func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminator) error {
 	factory := terminator.edgeClientConn.listener.factory
 
+	// Reset the create confirmation for this attempt. A reconnect can re-establish an already-confirmed
+	// terminator; leaving the flag set would let a remove issued while this new create is still in flight
+	// advertise a stale confirmation, so the leader fast-path could skip the delete and let the create
+	// apply afterward, leaving an orphan. It's set true again only when this attempt is acknowledged.
+	terminator.createConfirmed.Store(false)
+
 	log := pfxlog.Logger().
 		WithField("routerId", factory.env.GetRouterId().Token).
 		WithField("terminatorId", terminator.terminatorId)
@@ -910,6 +1117,7 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		if rateLimitCallback := terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
 			rateLimitCallback.Backoff()
 		}
+		terminator.scheduleRetryBackoff()
 		self.queueEstablishTerminatorAsync(terminator)
 		return
 	}
@@ -950,6 +1158,8 @@ func (self *hostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	}
 
 	terminator.failureCount.Store(0)
+	terminator.clearRetryBackoff()
+	terminator.createConfirmed.Store(true)
 	self.markEstablished(terminator, "create notification received")
 
 	// notify the sdk that the terminator was established
