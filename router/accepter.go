@@ -81,6 +81,10 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 		return nil, err
 	}
 
+	// Only now is the channel fully bound: AcceptCtrlChannel registered it in the first bind handler, but
+	// a later one can still refuse it.
+	self.router.ctrls.MarkChannelEstablished()
+
 	self.router.NotifyOfReconnect(listenerCtrlChan)
 	return mc, nil
 }

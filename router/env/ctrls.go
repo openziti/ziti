@@ -72,6 +72,8 @@ type DialEnv interface {
 }
 
 type NetworkControllers interface {
+	MarkChannelEstablished()
+	EverConnected() bool
 	GetControllerDetails() map[string]*ctrl_pb.CtrlDetail
 	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
 	ConnectToInitialEndpoints(endpoints []string)
@@ -120,6 +122,26 @@ type networkControllers struct {
 	leaderId              concurrenz.AtomicValue[string]
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
+	// everConnected records that a control channel was established at some point. It is never cleared, so it
+	// answers whether the router has ever reached a controller rather than whether it is reachable now.
+	everConnected atomic.Bool
+}
+
+// MarkChannelEstablished records that a control channel was fully established. It must be called only
+// once the whole bind has succeeded, not when the registration is created: Add runs in the first of
+// several bind handlers, and a later one can still refuse the channel, at which point it is closed and
+// unregistered. Setting this from Add would mean a router that only ever reached a controller it cannot
+// talk to, an older one lacking a required capability for instance, counted as having connected, and so
+// never failed its startup check and never exited.
+func (self *networkControllers) MarkChannelEstablished() {
+	self.everConnected.Store(true)
+}
+
+// EverConnected reports whether this router has established a control channel to any controller since
+// starting. It stays true once set, so unlike the current controller count it is not affected by a router
+// being momentarily between channels.
+func (self *networkControllers) EverConnected() bool {
+	return self.everConnected.Load()
 }
 
 func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
@@ -430,6 +452,8 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 
 		return fmt.Errorf("error connecting ctrl (%w)", err)
 	}
+
+	self.MarkChannelEstablished()
 
 	// If there are multiple controllers we may have to catch up the controllers that connected later
 	// with things that have already happened because we had state from other controllers, such as

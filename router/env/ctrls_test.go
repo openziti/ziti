@@ -413,3 +413,49 @@ func TestAdd_ConcurrentForOneControllerRegistersOne(t *testing.T) {
 		require.Same(t, winner, nc.ctrls.Get("ctrl1"), "the registration must belong to the dial that took it")
 	}
 }
+
+// TestEverConnected_NotSetByRegistrationAlone guards the difference between registering a control channel
+// and having established one. Add runs in the first of several bind handlers, and a later one can still
+// refuse the channel, after which it is closed and unregistered. If registering were enough to count, a
+// router that only ever reached a controller it cannot talk to, an older one lacking a required capability
+// for instance, would pass its startup check and retry forever instead of exiting.
+func TestEverConnected_NotSetByRegistrationAlone(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	require.False(t, nc.EverConnected(), "a router that has not connected yet must report so")
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "first"}
+	ctrl, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	require.NoError(t, err)
+	require.False(t, nc.EverConnected(),
+		"a registration is not an established channel; the bind can still be refused after Add returns")
+
+	// Losing it without the bind ever completing must leave the router still having never connected, so
+	// the startup check can do its job.
+	nc.handleChannelClose("ctrl1", ctrl, 0)
+	require.False(t, nc.EverConnected(), "a channel that was never established must not count as one")
+}
+
+// TestEverConnected_StaysTrueAcrossLosingEveryController is the distinction the startup check depends on.
+// The check fires once, so asking whether a controller is reachable at that instant kills a router that
+// happens to be between control channels, which is routine rather than a failure to start. Asking whether
+// one was ever reached answers the question the check is actually for.
+func TestEverConnected_StaysTrueAcrossLosingEveryController(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "first"}
+	ctrl, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	require.NoError(t, err)
+
+	// What the dial and accept paths call once the whole bind has succeeded.
+	nc.MarkChannelEstablished()
+	require.True(t, nc.EverConnected())
+
+	// Lose it, leaving no controllers at all, which is what the instant-count check used to trip on.
+	nc.handleChannelClose("ctrl1", ctrl, 0)
+	require.Empty(t, nc.GetAll(), "no controllers should remain")
+	require.True(t, nc.EverConnected(),
+		"having reached a controller once must not be forgotten when the connection is lost")
+}
