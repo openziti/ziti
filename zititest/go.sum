@@ -102,8 +102,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.22 h1:dY4kWZiSaXIzxnKlj1
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.22/go.mod h1:KIpEUx0JuRZLO7U6cbV204cWAEco2iC3l061IxlwLtI=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.23 h1:FPXsW9+gMuIeKmz7j6ENWcWtBGTe1kH8r9thNt5Uxx4=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.23/go.mod h1:7J8iGMdRKk6lw2C+cMIphgAnT8uTwBwNOsGkyOCm80U=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.293.0 h1:dgdIaG/GCiXMo16HAdFwpjt9Vn34bD2WVH5SiZdwzUc=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.293.0/go.mod h1:2dMnUs1QzlGzsm46i9oBHAxVHQp7b6qF7PljWcgVEVE=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.296.2 h1:Ytu50ChAxCiDsOlBcBq8jbczXy6+QLb07T65DBJASRs=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.296.2/go.mod h1:R+2BNtUfTfhPY0RH18oL02q116bakeBWjanrbnVBqkM=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.8 h1:HtOTYcbVcGABLOVuPYaIihj6IlkqubBwFj10K5fxRek=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.8/go.mod h1:VsK9abqQeGlzPgUr+isNWzPlK2vKe9INMLWnY65f5Xs=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.22 h1:PUmZeJU6Y1Lbvt9WFuJ0ugUK2xn6hIWUBBbKuOWF30s=
@@ -617,8 +617,8 @@ github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQ
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/edge-api v0.35.0 h1:fjSBz11waMKFiZb8PosUbn2BGrhzn0zpN1K0dPE3H8I=
 github.com/openziti/edge-api v0.35.0/go.mod h1:wFExSB9pO7yEwVVuz4AatZeU++dgcjy9pkzeCFLXeno=
-github.com/openziti/fablab v0.6.16 h1:JVy5zQ/NXoHl2SxMZDKT7jPnUlZyBSKAZXhVD2vOMKQ=
-github.com/openziti/fablab v0.6.16/go.mod h1:TXrgrWWnE9yxXP5e6RYBgjgmJhT1LXBnOtfir6Av+Ko=
+github.com/openziti/fablab v0.6.20 h1:HgPeRbtXU5HN7kLqFH+Mu4ba5AfC9unSEql2e4GHgGI=
+github.com/openziti/fablab v0.6.20/go.mod h1:62ZQGHJz9R99UEP/Jy18yjF34hko+P3qJAk7bSkaj/4=
 github.com/openziti/foundation/v2 v2.0.99 h1:Yhhfv8Zl5Yu0S5EjM6dbJmyRVbEexLJ7iyZo41mvbxE=
 github.com/openziti/foundation/v2 v2.0.99/go.mod h1:yhdRzmEzrHxqG8frg2fMmSpR5+iZI1tL/teeaAoWl7U=
 github.com/openziti/go-term-markdown v1.0.1 h1:9uzMpK4tav6OtvRxRt99WwPTzAzCh+Pj9zWU2FBp3Qg=
