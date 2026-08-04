@@ -55,7 +55,9 @@ func (factory *AuthenticatorLinkFactoryImpl) Links(entity models.Entity) rest_mo
 
 func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.Authenticator, error) {
 	result := &model.Authenticator{
-		BaseEntity: models.BaseEntity{},
+		BaseEntity: models.BaseEntity{
+			Tags: TagsOrDefault(in.Tags),
+		},
 		Method:     stringz.OrEmpty(in.Method),
 		IdentityId: stringz.OrEmpty(in.IdentityID),
 		SubType:    nil,
