@@ -5,7 +5,10 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/model"
 	"net/http"
@@ -264,6 +267,40 @@ func Test_CA(t *testing.T) {
 			ctx.Req.NotNil(enrolledSession.AuthResponse)
 			ctx.Req.NotNil(enrolledSession.AuthResponse.IsCertExtendable)
 			ctx.Req.False(*enrolledSession.AuthResponse.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate authentication to be false")
+		})
+
+		t.Run("oidc auth from CA should not be extendable", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			clientHelper := ctx.NewEdgeClientApi(nil)
+			clientHelper.SetUseOidc(true)
+
+			certCreds := edge_apis.NewCertCredentials(clientAuthenticator.certs, clientAuthenticator.key)
+
+			apiSession, err := clientHelper.Authenticate(certCreds, nil)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(apiSession)
+
+			oidcSession, ok := apiSession.(*edge_apis.ApiSessionOidc)
+			ctx.Req.True(ok, "expected an OIDC api session, got %T", apiSession)
+
+			t.Run("access token reports the certificate as not extendable", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				accessClaims := &common.AccessClaims{}
+				_, _, err := jwt.NewParser().ParseUnverified(oidcSession.OidcTokens.AccessToken, accessClaims)
+				ctx.Req.NoError(err)
+				ctx.Req.False(accessClaims.IsCertExtendable, "expected the z_ice claim on 3rd party CA certificate OIDC authentication to be false")
+			})
+
+			t.Run("current api session reports the certificate as not extendable", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				currentSession, err := clientHelper.GetCurrentApiSessionDetail()
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(currentSession.IsCertExtendable)
+				ctx.Req.False(*currentSession.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate OIDC authentication to be false")
+			})
 		})
 
 		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {
