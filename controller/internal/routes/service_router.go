@@ -386,11 +386,11 @@ func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestConte
 	typeFilter := ""
 	if params.PolicyType != nil {
 		if strings.EqualFold(*params.PolicyType, db.PolicyTypeBind.String()) {
-			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeBind.Id())
+			typeFilter = fmt.Sprintf(` and type = "%s"`, db.PolicyTypeBind.String())
 		}
 
 		if strings.EqualFold(*params.PolicyType, db.PolicyTypeDial.String()) {
-			typeFilter = fmt.Sprintf(` and type = %d`, db.PolicyTypeDial.Id())
+			typeFilter = fmt.Sprintf(` and type = "%s"`, db.PolicyTypeDial.String())
 		}
 	}
 

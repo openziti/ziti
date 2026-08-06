@@ -24,6 +24,35 @@ func Test_ServicePolicyStore(t *testing.T) {
 	t.Run("test service policy evaluation", ctx.testServicePolicyRoleEvaluation)
 	t.Run("test update/delete referenced entities", ctx.testServicePolicyUpdateDeleteRefs)
 	t.Run("test filter service policies by type name", ctx.testServicePolicyFilterByTypeName)
+	t.Run("test service policy enforcer type query", ctx.testServicePolicyEnforcerTypeQuery)
+}
+
+// testServicePolicyEnforcerTypeQuery guards the predicate the ServicePolicyEnforcer uses to decide
+// whether a session's identity still has a covering policy. The policy type symbol is string-mapped
+// ("Dial"/"Bind"), so the predicate must filter on the string form; filtering on the numeric id
+// (type = 1) matches nothing against the string symbol, which previously made the enforcer delete
+// valid legacy sessions on startup.
+func (ctx *TestContext) testServicePolicyEnforcerTypeQuery(_ *testing.T) {
+	ctx.CleanupAll()
+
+	dialer := ctx.RequireNewIdentity(eid.New(), false)
+	service := newEdgeService(eid.New())
+	boltztest.RequireCreate(ctx, service)
+	ctx.requireNewServicePolicy(PolicyTypeDial, ss(entityRef(dialer.Id)), ss(entityRef(service.Id)))
+
+	ctx.NoError(ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		matched, _, err := ctx.stores.Identity.QueryIds(tx, fmt.Sprintf(
+			`id = "%v" and not isEmpty(from servicePolicies where type = "%v" and anyOf(services) = "%v")`,
+			dialer.Id, PolicyTypeDial.String(), service.Id))
+		ctx.NoError(err)
+		ctx.Contains(matched, dialer.Id, "string policy-type predicate must match the covering Dial policy")
+
+		numeric, _, _ := ctx.stores.Identity.QueryIds(tx, fmt.Sprintf(
+			`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`,
+			dialer.Id, PolicyTypeDial.Id(), service.Id))
+		ctx.NotContains(numeric, dialer.Id, "numeric policy-type predicate must not match the string-mapped symbol")
+		return nil
+	}))
 }
 
 func newServicePolicy(name string) *ServicePolicy {
