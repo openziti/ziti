@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_util"
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -71,11 +73,33 @@ func Test_CreateCircuitV3(t *testing.T) {
 
 	terminatorWatcher.waitForTerminators(5 * time.Second)
 
-	// Create a dialer identity (has dial access via dialerRole).
-	dialerIdentity := ctx.AdminManagementSession.requireNewIdentity(false, "dialerRole")
+	managementHelper := ctx.NewEdgeManagementApi(nil)
+	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	adminCreds.CaPool = ctx.ControllerCaPool()
+	_, err = managementHelper.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(rest_util.WrapErr(err))
 
-	// Create an identity with no dial access.
-	noAccessIdentity := ctx.AdminManagementSession.requireNewIdentity(false, "noAccessRole")
+	clientHelper := ctx.NewEdgeClientApi(nil)
+
+	// The controller takes the dialing identity from the API session token's claims, so
+	// each identity here needs a real, authenticated token rather than just an ID.
+	authenticateIdentity := func(roleAttributes ...string) (string, string) {
+		identityDetail, certCreds, err := managementHelper.CreateAndEnrollOttIdentity(false, roleAttributes...)
+		ctx.Req.NoError(err)
+		certCreds.CaPool = ctx.ControllerCaPool()
+
+		accessToken, claims, err := clientHelper.OidcAccessToken(certCreds)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(*identityDetail.ID, claims.Subject)
+
+		return *identityDetail.ID, accessToken
+	}
+
+	// A dialer identity, with dial access via dialerRole.
+	dialerIdentityId, dialerToken := authenticateIdentity("dialerRole")
+
+	// An identity with no dial access.
+	noAccessIdentityId, noAccessToken := authenticateIdentity("noAccessRole")
 
 	// Get the control channel from the edge router to the controller.
 	ctrlCh := edgeRouter.GetNetworkControllers().AnyCtrlChannel()
@@ -105,14 +129,22 @@ func Test_CreateCircuitV3(t *testing.T) {
 		return ctrl_msg.DecodeCreateCircuitV3Response(msg)
 	}
 
+	requireErrorCode := func(err error, code uint32) {
+		ctx.Req.Error(err)
+		circuitErr, ok := err.(*circuitV3Error)
+		ctx.Req.True(ok, "expected a controller error response, got %v", err)
+		ctx.Req.Equal(code, circuitErr.code, "unexpected error code, message was: %v", circuitErr.msg)
+	}
+
 	t.Run("successful circuit creation", func(t *testing.T) {
 		ctx.NextTest(t)
 
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: dialerIdentity.Id,
-			ServiceId:  svc.Id,
-			CircuitId:  uuid.NewString(),
-			PeerData:   map[uint32][]byte{},
+			IdentityId:      dialerIdentityId,
+			ServiceId:       svc.Id,
+			CircuitId:       uuid.NewString(),
+			ApiSessionToken: dialerToken,
+			PeerData:        map[uint32][]byte{},
 		}
 
 		resp, err := sendV3Request(req)
@@ -122,46 +154,80 @@ func Test_CreateCircuitV3(t *testing.T) {
 		ctx.Req.NotEmpty(resp.Address)
 	})
 
-	t.Run("invalid identity", func(t *testing.T) {
+	t.Run("missing api session token", func(t *testing.T) {
 		ctx.NextTest(t)
 
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: "bogus-identity-id",
+			IdentityId: dialerIdentityId,
 			ServiceId:  svc.Id,
 			CircuitId:  uuid.NewString(),
 			PeerData:   map[uint32][]byte{},
 		}
 
 		_, err := sendV3Request(req)
-		ctx.Req.Error(err)
+		requireErrorCode(err, edge.ErrorCodeInvalidApiSession)
+	})
+
+	t.Run("invalid api session token", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		req := &ctrl_msg.CreateCircuitV3Request{
+			IdentityId:      dialerIdentityId,
+			ServiceId:       svc.Id,
+			CircuitId:       uuid.NewString(),
+			ApiSessionToken: "not-a-valid-token",
+			PeerData:        map[uint32][]byte{},
+		}
+
+		_, err := sendV3Request(req)
+		requireErrorCode(err, edge.ErrorCodeInvalidApiSession)
+	})
+
+	// A router must not be able to dial on behalf of an identity other than the one
+	// whose API session token it presents, even when that identity has dial access.
+	t.Run("api session token for a different identity", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		req := &ctrl_msg.CreateCircuitV3Request{
+			IdentityId:      dialerIdentityId,
+			ServiceId:       svc.Id,
+			CircuitId:       uuid.NewString(),
+			ApiSessionToken: noAccessToken,
+			PeerData:        map[uint32][]byte{},
+		}
+
+		_, err := sendV3Request(req)
+		requireErrorCode(err, edge.ErrorCodeInvalidApiSession)
 	})
 
 	t.Run("invalid service", func(t *testing.T) {
 		ctx.NextTest(t)
 
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: dialerIdentity.Id,
-			ServiceId:  "bogus-service-id",
-			CircuitId:  uuid.NewString(),
-			PeerData:   map[uint32][]byte{},
+			IdentityId:      dialerIdentityId,
+			ServiceId:       "bogus-service-id",
+			CircuitId:       uuid.NewString(),
+			ApiSessionToken: dialerToken,
+			PeerData:        map[uint32][]byte{},
 		}
 
 		_, err := sendV3Request(req)
-		ctx.Req.Error(err)
+		requireErrorCode(err, edge.ErrorCodeInvalidService)
 	})
 
 	t.Run("identity without dial access", func(t *testing.T) {
 		ctx.NextTest(t)
 
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: noAccessIdentity.Id,
-			ServiceId:  svc.Id,
-			CircuitId:  uuid.NewString(),
-			PeerData:   map[uint32][]byte{},
+			IdentityId:      noAccessIdentityId,
+			ServiceId:       svc.Id,
+			CircuitId:       uuid.NewString(),
+			ApiSessionToken: noAccessToken,
+			PeerData:        map[uint32][]byte{},
 		}
 
 		_, err := sendV3Request(req)
-		ctx.Req.Error(err)
+		requireErrorCode(err, edge.ErrorCodeInvalidService)
 	})
 
 	t.Run("controller-generated circuit ID", func(t *testing.T) {
@@ -170,9 +236,10 @@ func Test_CreateCircuitV3(t *testing.T) {
 		// An empty CircuitId on the request tells the controller to generate one.
 		// This is the connect-v2 router path's default behavior.
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: dialerIdentity.Id,
-			ServiceId:  svc.Id,
-			PeerData:   map[uint32][]byte{},
+			IdentityId:      dialerIdentityId,
+			ServiceId:       svc.Id,
+			ApiSessionToken: dialerToken,
+			PeerData:        map[uint32][]byte{},
 		}
 
 		resp, err := sendV3Request(req)
@@ -188,10 +255,11 @@ func Test_CreateCircuitV3(t *testing.T) {
 		circuitId := uuid.NewString()
 
 		req := &ctrl_msg.CreateCircuitV3Request{
-			IdentityId: dialerIdentity.Id,
-			ServiceId:  svc.Id,
-			CircuitId:  circuitId,
-			PeerData:   map[uint32][]byte{},
+			IdentityId:      dialerIdentityId,
+			ServiceId:       svc.Id,
+			CircuitId:       circuitId,
+			ApiSessionToken: dialerToken,
+			PeerData:        map[uint32][]byte{},
 		}
 
 		resp, err := sendV3Request(req)

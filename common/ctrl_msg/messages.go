@@ -213,9 +213,11 @@ func DecodeCreateCircuitV2Response(m *channel.Message) (*CreateCircuitV2Response
 
 // CreateCircuitV3Request is sent from a router to the controller to create a circuit
 // without a service session token. The router has already authorized the dial locally
-// via RDM and provides the identity and service IDs directly. CircuitId may be left
-// empty, in which case the controller generates one (matching V1/V2 behavior); if the
-// router supplies a non-empty value it is honored.
+// via RDM and provides the identity and service IDs directly. ApiSessionToken is
+// required and must be the token of the dialing identity: the controller validates it
+// and treats its claims, rather than IdentityId, as the authoritative identity.
+// CircuitId may be left empty, in which case the controller generates one (matching
+// V1/V2 behavior); if the router supplies a non-empty value it is honored.
 type CreateCircuitV3Request struct {
 	IdentityId           string
 	ServiceId            string
