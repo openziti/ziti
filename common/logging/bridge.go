@@ -83,7 +83,8 @@ func (slogBridge) Fire(e *logrus.Entry) error {
 // (which drives both slog and logrus in lockstep), redirects logrus output to
 // io.Discard, replaces its formatter with a noop, enables ReportCaller so the
 // bridge can forward a real PC to slog, and registers the slogBridge hook so
-// every legacy log call routes through slog.
+// every legacy log call routes through slog. It also points stdlib
+// slog.Default() at the same sink so un-named slog output lands there too.
 //
 // Registering the hook replaces logrus's entire hook set, so any logrus hooks
 // added before Install are discarded. ziti adds none; a caller that does must
@@ -94,7 +95,22 @@ func (slogBridge) Fire(e *logrus.Entry) error {
 // output, formatter, or ReportCaller, or the bridge invariant breaks.
 func Install(handler slog.Handler, initialLevel slog.Level) {
 	InstallTo(logrus.StandardLogger(), handler, initialLevel)
+	// Point stdlib slog.Default() at the same sink, gated at the live global
+	// level, so un-named slog output - including libraries that log through
+	// slog.Default(), such as openziti/channel's internal loggers - lands in
+	// ziti's configured handler instead of slog's built-in stderr text handler.
+	// HandlerFor's namedHandler gates against the global level and forwards to
+	// the root Configure just installed, and binds no name attr of its own, so
+	// records that already carry a "channel" attr are not double-tagged.
+	slog.SetDefault(slog.New(HandlerFor(DefaultLoggerName)))
 }
+
+// DefaultLoggerName is the registry name whose level gates the stdlib
+// slog.Default() output that Install routes into the sink. Operators can adjust
+// it with "set-channel-log-level default <level>", which affects un-named slog
+// and any library that logs through slog.Default() (e.g. openziti/channel
+// internals).
+const DefaultLoggerName = "default"
 
 // InstallTo is the testable form of Install: it wires the given *logrus.Logger
 // instead of the global standard logger. Production code calls Install; tests
