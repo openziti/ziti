@@ -32,10 +32,10 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )
@@ -629,7 +629,9 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 }
 
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
-// Returns a string slice even if the claim is a single string value.
+// Returns a string slice even if the claim is a single string value. An unset selector, a pointer that does
+// not resolve against the claims, and a null claim all resolve to no values without error. A claim that is
+// present but neither a string nor an array of strings errors.
 func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]string, error) {
 	if property == "" {
 		return nil, nil
@@ -648,7 +650,19 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	val, _, err := jsonPointer.Get(claims)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: %w", property, err)
+		// The role attributes claim is optional, so a pointer that does not resolve against this
+		// token's claims yields no attributes rather than an error, matching the unset-selector and
+		// empty-claim cases. This covers an absent key as well as a traversal failure, such as
+		// indexing into a scalar.
+		pfxlog.Logger().WithError(err).WithField("selector", property).
+			Debug("attribute claim selector did not resolve, enrolling with no role attributes")
+		return nil, nil
+	}
+
+	if val == nil {
+		pfxlog.Logger().WithField("selector", property).
+			Warn("attribute claim selector resolved to a null claim, enrolling with no role attributes")
+		return nil, nil
 	}
 
 	strVal, ok := val.(string)
@@ -663,7 +677,7 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	arrVals, ok := val.([]any)
 
 	if !ok {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, arrVals)
+		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, val)
 	}
 
 	var attributes []string
