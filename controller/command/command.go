@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,6 +40,14 @@ type Command interface {
 
 	// Encode returns a serialized representation of the command
 	Encode() ([]byte, error)
+}
+
+// CriticalCommand marks commands that establish base state (e.g. a snapshot restore). A failed apply
+// of one must halt the node rather than log-and-advance the raft index, which would leave the node
+// caught up on index but missing data. Ordinary commands are logged and skipped on failure.
+type CriticalCommand interface {
+	Command
+	IsCriticalCommand()
 }
 
 // Validatable instances can be validated. Command instances which implement Validable will be validated
