@@ -53,7 +53,7 @@ type Listener struct {
 
 type ListenerOptions struct {
 	Advertise         string   `yaml:"advertise"`
-	ConnectTimeout    int      `yaml:"connectTimeoutMs"`
+	ConnectTimeout    string   `yaml:"connectTimeout"`
 	GetSessionTimeout int      `yaml:"getSessionTimeout"`
 	Mode              string   `yaml:"mode"`
 	Resolver          string   `yaml:"resolver"`
