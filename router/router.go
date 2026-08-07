@@ -270,7 +270,6 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
 			Address:      listener.GetAdvertisement(),
 			Protocol:     listener.GetLinkProtocol(),
-			CostTags:     listener.GetLinkCostTags(),
 			Groups:       listener.GetGroups(),
 			LocalBinding: listener.GetLocalBinding(),
 		})

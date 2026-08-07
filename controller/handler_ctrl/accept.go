@@ -161,7 +161,6 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				for _, listener := range listeners.Listeners {
 					log.WithField("address", listener.GetAddress()).
 						WithField("protocol", listener.GetProtocol()).
-						WithField("costTags", listener.GetCostTags()).
 						Debug("router listener")
 				}
 			}
