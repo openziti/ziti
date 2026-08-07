@@ -190,6 +190,7 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 	cmd := &command.SyncSnapshotCommand{
 		TimelineId:   msg.SnapshotId,
 		Snapshot:     msg.Snapshot,
+		ClusterId:    msg.ClusterId,
 		SnapshotSink: self.RestoreSnapshot,
 	}
 
@@ -1360,11 +1361,14 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 	if currentTimelineId != "" && currentTimelineId == cmd.TimelineId {
 		log.WithField("timelineId", cmd.TimelineId).Info("snapshot already current, skipping reload")
+		// DB already restored; ensure cluster id then raft index (index last, see main path).
+		if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+			return fmt.Errorf("failed to set cluster id for already-current snapshot (%w)", err)
+		}
+		if err = network.ensureRaftIndex(index); err != nil {
+			return fmt.Errorf("failed to set raft index for already-current snapshot (%w)", err)
+		}
 		return nil
-	}
-
-	if err != nil {
-		log.WithError(err).Error("unable to read current raft index before DB restore")
 	}
 
 	buf := bytes.NewBuffer(cmd.Snapshot)
@@ -1374,14 +1378,15 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	network.GetDb().RestoreFromReader(reader)
-	err = network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
-		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
-		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
-		return nil
-	})
 
-	if err != nil {
-		log.WithError(err).Errorf("failed to set index after restore")
+	// Write the cluster id before the raft index. The index is the completion gate on restart (the
+	// FSM skips entries at or below the stored index), so persist it last: any earlier failure then
+	// replays and retries instead of skipping the command with a blank cluster id.
+	if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+		return fmt.Errorf("failed to set cluster id after db restore (%w)", err)
+	}
+	if err = network.ensureRaftIndex(index); err != nil {
+		return fmt.Errorf("failed to set raft index after db restore (%w)", err)
 	}
 
 	time.AfterFunc(5*time.Second, func() {
@@ -1390,6 +1395,29 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	})
 
 	return nil
+}
+
+// ensureClusterId writes the cluster id if one is not already set (no-op when empty or matching).
+// The snapshot restore replaces the whole db, which carries no cluster id, so it must be set here.
+func (network *Network) ensureClusterId(clusterId string) error {
+	if clusterId == "" {
+		return nil
+	}
+	_, err := db.InitClusterId(network.GetDb(), nil, clusterId)
+	return err
+}
+
+// ensureRaftIndex records the raft index if the stored one is behind it, returning an error on
+// failure so a missed index update surfaces rather than being treated as success.
+func (network *Network) ensureRaftIndex(index uint64) error {
+	return network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
+		if db.LoadCurrentRaftIndex(ctx.Tx()) >= index {
+			return nil
+		}
+		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
+		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
+		return raftBucket.GetError()
+	})
 }
 
 func (network *Network) AddInspectTarget(target InspectTarget) {
