@@ -590,12 +590,22 @@ var m = &model.Model{
 		"validateCircuits": model.BindF(func(run model.Run) error {
 			return validations.ValidateCircuits(run, time.Minute, "limit none")
 		}),
+		// Once a scenario has finished there should be no sim circuits left. A circuit that
+		// outlives the traffic that created it is holding xgress instances, buffers and
+		// goroutines on both of its routers. The sim-services carry the model's own control
+		// and telemetry traffic and stay up for the life of the run.
+		"validateCircuitsDrained": model.BindF(func(run model.Run) error {
+			return validations.ValidateCircuitsDrained(run, time.Minute, func(serviceName string) bool {
+				return serviceName != "sim-control" && serviceName != "metrics"
+			})
+		}),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"enableMetrics",
 				"runSimScenario",
 				"validateSimMetrics",
 				"validateCircuits",
+				"validateCircuitsDrained",
 			)
 		}),
 	},
