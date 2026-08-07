@@ -82,6 +82,7 @@ func (o *PKICreateCAOptions) addPKICreateCAFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (o *PKICreateCAOptions) Run() error {
+	o.ResolveFlagsFromViper(o.Cmd)
 	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
