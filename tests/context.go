@@ -123,6 +123,7 @@ type TestContext struct {
 	edgeRouterEntity    *edgeRouter
 	transitRouterEntity *transitRouter
 	routers             []*router.Router
+	peerControllers     []*peerController
 	testing             *testing.T
 	LogLevel            string
 	ControllerConfig    *config.Config
@@ -438,14 +439,14 @@ func (ctx *TestContext) StartServer() *ControllerHelper {
 // single test override settings (e.g., OIDC token durations) without affecting
 // other tests that call StartServer with the shared default config.
 func (ctx *TestContext) StartServerWithConfigModifier(modifier func(*config.Config)) *ControllerHelper {
-	return ctx.startServerWith("testdata/default.db", true, modifier)
+	return ctx.startServerWith("testdata/default.db", true, modifier, false)
 }
 
 func (ctx *TestContext) StartServerFor(testDb string, clean bool) *ControllerHelper {
-	return ctx.startServerWith(testDb, clean, nil)
+	return ctx.startServerWith(testDb, clean, nil, false)
 }
 
-func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config)) *ControllerHelper {
+func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func(*config.Config), initAdminAfterRun bool) *ControllerHelper {
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -491,13 +492,13 @@ func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func
 
 	ctx.EdgeController.Initialize()
 
-	err = ctx.EdgeController.AppEnv.Managers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, eid.New())
-	if err != nil {
-		log.WithError(err).Warn("error during initialize admin")
+	// In raft/cluster mode the default admin is created after Run, mirroring `ziti agent cluster
+	// init` against a live controller: InitializeDefaultAdmin bootstraps raft and triggers self
+	// registration, which captures API addresses from the running xweb, so it must run once xweb is
+	// fully up. Non-raft controllers initialize the admin before Run as before.
+	if !initAdminAfterRun {
+		ctx.initializeDefaultAdmin()
 	}
-
-	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
-	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
 
 	ctx.EdgeController.Run()
 	go func() {
@@ -507,7 +508,23 @@ func (ctx *TestContext) startServerWith(testDb string, clean bool, modifier func
 	err = ctx.waitForRestAPIPort(time.Minute * 5)
 	ctx.Req.NoError(err)
 
+	if initAdminAfterRun {
+		ctx.initializeDefaultAdmin()
+	}
+
 	return &ControllerHelper{Controller: ctx.EdgeController}
+}
+
+// initializeDefaultAdmin creates the default admin identity. In raft mode this also bootstraps the
+// cluster (via Dispatcher.Bootstrap) and waits for leadership before the admin is created.
+func (ctx *TestContext) initializeDefaultAdmin() {
+	err := ctx.EdgeController.AppEnv.Managers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, eid.New())
+	if err != nil {
+		pfxlog.Logger().WithError(err).Warn("error during initialize admin")
+	}
+
+	logrus.Infof("default admin - username: %v", ctx.AdminAuthenticator.Username)
+	logrus.Infof("default admin - password: %v", ctx.AdminAuthenticator.Password)
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
@@ -695,6 +712,7 @@ func (ctx *TestContext) RequireAdminClientApiLogin() {
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.shutdownRouters()
+	ctx.shutdownPeerControllers()
 	if ctx.EdgeController != nil {
 		ctx.EdgeController.Shutdown()
 		ctx.EdgeController = nil
@@ -789,6 +807,12 @@ func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthentic
 }
 
 func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthenticator {
+	return ctx.completeOttEnrollmentAtApiHost(identityId, ctx.ApiHost)
+}
+
+// completeOttEnrollmentAtApiHost completes an identity's OTT enrollment against the client API
+// at the given host, so cluster tests can enroll via a specific controller.
+func (ctx *TestContext) completeOttEnrollmentAtApiHost(identityId string, apiHost string) *certAuthenticator {
 	result := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 
 	tokenValue := result.Path("data.enrollment.ott.token")
@@ -810,11 +834,11 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 
 	csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
 
-	resp, err := ctx.newAnonymousClientApiRequest().
-		SetBody(csrPem).
+	resp, err := ctx.NewRestClientWithDefaults().R().
 		SetHeader("content-type", "application/x-pem-file").
 		SetHeader("accept", "application/json").
-		Post("enroll?token=" + token)
+		SetBody(csrPem).
+		Post("https://" + apiHost + EdgeClientApiPath + "/enroll?token=" + token)
 	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
 	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
