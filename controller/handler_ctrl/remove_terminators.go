@@ -76,6 +76,11 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 		terminatorIds = request.TerminatorIds
 	}
 
+	// Drop ids this router doesn't own, so it can't remove another router's terminators. Ids that are
+	// absent are kept: a create may be in-flight but not yet applied, and sending the delete through
+	// orders it after that create.
+	terminatorIds = self.selectOwnedTerminators(terminatorIds)
+
 	if len(terminatorIds) == 0 {
 		log.
 			WithField("routerId", ch.Id()).
