@@ -588,12 +588,19 @@ var m = &model.Model{
 		"validateCircuits": model.BindF(func(run model.Run) error {
 			return validations.ValidateCircuits(run, time.Minute, "limit none")
 		}),
+		// sim-control and metrics carry the model's own traffic and stay up for the whole run.
+		"validateCircuitsDrained": model.BindF(func(run model.Run) error {
+			return validations.ValidateCircuitsDrained(run, time.Minute, func(serviceName string) bool {
+				return serviceName != "sim-control" && serviceName != "metrics"
+			})
+		}),
 		"testIteration": model.BindF(func(run model.Run) error {
 			return run.GetModel().Exec(run,
 				"enableMetrics",
 				"runSimScenario",
 				"validateSimMetrics",
 				"validateCircuits",
+				"validateCircuitsDrained",
 			)
 		}),
 	},
