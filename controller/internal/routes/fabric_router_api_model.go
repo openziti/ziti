@@ -134,7 +134,7 @@ func (FabricRouterModelMapper) ToApi(ae *env.AppEnv, _ *response.RequestContext,
 	}
 
 	if connected != nil {
-		for _, listener := range connected.Listeners {
+		for _, listener := range connected.GetLinkListeners() {
 			advAddr := listener.GetAddress()
 			linkProtocol := listener.GetProtocol()
 			ret.ListenerAddresses = append(ret.ListenerAddresses, &rest_model.RouterListener{
