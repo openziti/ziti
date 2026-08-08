@@ -690,3 +690,81 @@ func TestDialCtrlChannel_ReconnectCycle(t *testing.T) {
 		return len(multiCh.GetUnderlays()) > 0
 	}, 60*time.Second, 50*time.Millisecond, "channel should re-establish underlays after dropping to zero")
 }
+
+// TestReject_BindErrorNotEstablishedOrRxStarted validates the boundary that router-connect rejection
+// relies on: when the ctrl-channel bind handler returns an error (as CtrlAccepter.Bind does when
+// network.ConnectRouter rejects a busy slot), channel.NewChannel returns that error, the MultiListener
+// closes the underlay without registering the channel, and the receive loop never starts. This
+// no-rx / no-register outcome is the contract the fake-CtrlChannel unit tests cannot observe.
+func TestReject_BindErrorNotEstablishedOrRxStarted(t *testing.T) {
+	req := require.New(t)
+
+	listenerAddr := "tcp:127.0.0.1:40010"
+	id := &identity.TokenId{Token: "test-controller"}
+
+	var bindAttempts atomic.Int32
+	var established atomic.Int32
+	var rxFired atomic.Bool
+
+	multiListener := channel.NewMultiListener(
+		func(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
+			bindAttempts.Add(1)
+			listenerChannel := NewListenerCtrlChannel()
+			multiConfig := &channel.Config{
+				LogicalName:            "ctrl/" + underlay.ConnectionId(),
+				Options:                channel.DefaultOptions(),
+				Senders:                listenerChannel,
+				MessageSourceProvider:  listenerChannel,
+				UnderlayEventListeners: []channel.UnderlayEventListener{listenerChannel},
+				Constraints:            listenerChannel.GetConstraints(),
+				MinTotalUnderlays:      1,
+				Underlay:               underlay,
+				Binder: channel.MakeBinder(channel.BindHandlerF(func(binding channel.Binding) error {
+					// Would flip if the rx loop ever started for this (rejected) channel.
+					binding.AddReceiveHandlerF(echoContentType, func(*channel.Message, channel.Channel) {
+						rxFired.Store(true)
+					})
+					// Reject, as network.ConnectRouter does for a busy slot.
+					return fmt.Errorf("simulated router connect rejected (busy slot)")
+				})),
+			}
+
+			multiCh, err := channel.NewChannel(multiConfig)
+			if err != nil {
+				// Rejected: NewChannel closed the underlay and never started rx; do not register.
+				return nil, err
+			}
+			established.Add(1)
+			return multiCh, nil
+		},
+		func(underlay channel.Underlay) error {
+			return fmt.Errorf("ungrouped connections not supported")
+		},
+	)
+
+	bindAddr, err := transport.ParseAddress(listenerAddr)
+	req.NoError(err)
+	listenerConfig := channel.ListenerConfig{ConnectOptions: channel.DefaultOptions().ConnectOptions}
+	listener, err := channel.NewClassicListenerWithAcceptor(id, bindAddr, listenerConfig, multiListener)
+	req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	headers := channel.Headers{}
+	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+	headers.PutBoolHeader(channel.IsGroupedHeader, true)
+	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
+	dialer := channel.NewClassicDialer(channel.DialerConfig{Identity: id, Endpoint: bindAddr})
+	underlay, err := dialer.CreateWithHeaders(5*time.Second, headers)
+	req.NoError(err)
+	defer func() { _ = underlay.Close() }()
+
+	// The dial reaches the listener's bind (the hello is acked before the factory runs).
+	req.Eventually(func() bool { return bindAttempts.Load() >= 1 }, 5*time.Second, 10*time.Millisecond,
+		"listener bind should have run for the dialed connection")
+
+	// The rejected connection is never established, and its receive loop never starts. Give any spurious
+	// rx a moment to (not) happen.
+	req.Never(func() bool { return established.Load() != 0 || rxFired.Load() }, 500*time.Millisecond, 50*time.Millisecond,
+		"a rejected bind must not establish a channel or start its receive loop")
+}

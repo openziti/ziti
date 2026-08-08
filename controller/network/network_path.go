@@ -144,6 +144,16 @@ func (network *Network) shortestPath(srcR *model.Router, dstR *model.Router) ([]
 		return nil, 0, errors.New("not routable (!srcR||!dstR)")
 	}
 
+	// The graph below is pointer-keyed, so an endpoint held as a different instance of the same router is
+	// not a node in it and the search reports the router unroutable from itself. Callers legitimately hold
+	// other instances: each connection has its own, and the router cache holds a database-loaded one.
+	if connected := network.Router.GetConnected(srcR.Id); connected != nil {
+		srcR = connected
+	}
+	if connected := network.Router.GetConnected(dstR.Id); connected != nil {
+		dstR = connected
+	}
+
 	if srcR == dstR {
 		return []*model.Router{srcR}, 0, nil
 	}
