@@ -176,9 +176,9 @@ func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.C
 		}
 	}
 
-	// Start dialing new controllers that aren't already dialing or connected
+	// Start dialing new controllers that aren't already dialing or usably connected
 	for ctrlId, detail := range newIdSet {
-		if !self.idsBeingDialed.Has(ctrlId) && self.ctrls.Get(ctrlId) == nil {
+		if !self.idsBeingDialed.Has(ctrlId) && !isUsable(self.ctrls.Get(ctrlId)) {
 			log.WithField("ctrlId", ctrlId).WithField("endpoints", detail.Endpoints).Info("adding new ctrl")
 			changed = true
 			self.connectToControllerWithBackoff(detail)
@@ -236,8 +236,9 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
 
-		// Already connected by ID
-		if self.ctrls.Get(detail.Id) != nil {
+		// Already connected by id. An unusable registration is not a reason to stop: the dial displaces it,
+		// where treating it as connected would end the retries and leave the router holding nothing.
+		if isUsable(self.ctrls.Get(detail.Id)) {
 			log.Info("already connected to controller, exiting retry")
 			return nil
 		}
@@ -245,7 +246,7 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 		// Already connected by address
 		for _, ep := range detail.Endpoints {
 			for _, v := range self.ctrls.AsMap() {
-				if v.Address() == ep.Address {
+				if v.Address() == ep.Address && isUsable(v) {
 					log.WithField("endpoint", ep.Address).Info("already connected to controller by address, exiting retry")
 					return nil
 				}
@@ -279,6 +280,11 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 
 		err = self.connectToController(ep.Address, addr)
 		if err != nil {
+			if ctrlId, ok := self.duplicateResolved(err); ok {
+				log.WithField("endpoint", ep.Address).WithField("ctrlId", ctrlId).
+					Info("endpoint reached an already connected controller, exiting retry")
+				return nil
+			}
 			log.WithField("endpoint", ep.Address).WithError(err).Error("unable to connect controller")
 		}
 		return err
@@ -386,21 +392,13 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		// it alone would leave Channel() nil during that notification.
 		dialCtrlChan.InitChannel(binding.GetChannel())
 
-		if err = self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay); err != nil {
+		ctrl, err := self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay)
+		if err != nil {
 			return err
 		}
 
-		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-			ctrl := self.GetNetworkController(id)
-			self.ctrls.Delete(id)
-			if ctrl != nil {
-				self.notifyOfChange(ctrl, ControllerDisconnected)
-			}
-			if detail := self.getControllerDetail(id); detail != nil {
-				time.AfterFunc(time.Second, func() {
-					self.connectToControllerWithBackoff(detail)
-				})
-			}
+		binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
+			self.handleChannelClose(id, ctrl, time.Second)
 		}))
 
 		return nil
@@ -449,36 +447,132 @@ func (self *networkControllers) handleRouterDataModelIndexUpdate(m *channel.Mess
 	}
 }
 
-func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) error {
+// Add registers a newly established control channel and returns the entry created for it. The returned
+// entry is the identity a close handler must present to give the registration up again, so callers that
+// wire a close handler have to hold on to it.
+func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) (NetworkController, error) {
 	ctrl := newNetworkCtrl(ctrlCh, address, self.heartbeatOptions)
 
 	if versionValue, found := underlay.Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
 			ctrl.versionInfo = versionInfo
 		} else {
-			return fmt.Errorf("could not parse version info from controller hello, closing connection (%w)", err)
+			return nil, fmt.Errorf("could not parse version info from controller hello, closing connection (%w)", err)
 		}
 	} else {
-		return errors.New("no version header provided")
+		return nil, errors.New("no version header provided")
 	}
 
-	if existing := self.ctrls.Get(ch.Id()); existing != nil {
-		if !existing.Channel().IsClosed() && existing.IsConnected() {
-			// if an existing channel exists and is connected, reject the duplicate
-			return backoff.Permanent(fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id()))
-		}
-		// existing channel is closed or disconnected (0 underlays) — close it and accept new one
-		if !existing.Channel().IsClosed() {
-			if closeErr := existing.Channel().Close(); closeErr != nil {
-				pfxlog.Logger().WithError(closeErr).WithField("ch", existing.Channel().Label()).Error("error closing control channel")
-			}
+	log := pfxlog.Logger().
+		WithField("ctrlId", ch.Id()).
+		WithField("ch", ch.Label()).
+		WithField("address", address)
+
+	// Atomic against a concurrent Add for the same controller and against UpdateControllerDetails, which
+	// decides whether to dial from the same state. Two dials do race: initial endpoint dials carry no
+	// controller id, so idsBeingDialed cannot keep them apart.
+	self.lock.Lock()
+
+	existing := self.ctrls.Get(ch.Id())
+	if isUsable(existing) {
+		self.lock.Unlock()
+		return nil, &errDuplicateChannel{ctrlId: ch.Id()}
+	}
+
+	// Hand the registration over before closing what it displaced, so the displaced close handler finds
+	// itself superseded rather than observing an empty registration and racing this dial with a redial.
+	self.ctrls.Put(ch.Id(), ctrl)
+
+	self.lock.Unlock()
+
+	log.Info("controller registered")
+
+	// Closing a channel runs its close handlers on this goroutine, so it must happen outside the lock.
+	if existing != nil && !existing.Channel().IsClosed() {
+		if closeErr := existing.Channel().Close(); closeErr != nil {
+			log.WithError(closeErr).WithField("displacedCh", existing.Channel().Label()).
+				Error("error closing displaced control channel")
 		}
 	}
-	self.ctrls.Put(ch.Id(), ctrl)
 
 	self.notifyOfChange(ctrl, ControllerAdded)
 
-	return nil
+	return ctrl, nil
+}
+
+// errDuplicateChannel reports that a control channel was refused because the controller it reached is
+// already usably connected. It carries the controller's id because a dial started from a bare endpoint has
+// none of its own, so this is the only way the retry loop can learn which controller the endpoint resolved
+// to and stop dialing it.
+type errDuplicateChannel struct {
+	ctrlId string
+}
+
+func (self *errDuplicateChannel) Error() string {
+	return fmt.Sprintf("controller %v is already connected on another channel", self.ctrlId)
+}
+
+// duplicateResolved reports the controller id when err is a refusal by a controller whose registration is
+// still usable, meaning another channel already did what this dial set out to do. A dial that only reaches
+// an endpoint learns the controller's id here and nowhere else, which is why the refusal has to carry it.
+// The registration is rechecked because the channel that won the race may since have died, leaving the
+// dial's work to do after all.
+func (self *networkControllers) duplicateResolved(err error) (string, bool) {
+	var duplicate *errDuplicateChannel
+	if errors.As(err, &duplicate) && isUsable(self.ctrls.Get(duplicate.ctrlId)) {
+		return duplicate.ctrlId, true
+	}
+	return "", false
+}
+
+// isUsable reports whether a controller registration can still carry traffic. A registration whose channel
+// has been closed, or which has lost every underlay, satisfies a presence check while carrying nothing.
+// Every decision about whether the router is connected to a controller has to ask this rather than whether
+// a registration exists, or an entry left behind by a channel that died leaves the router believing it is
+// connected and suppresses the reconnect that would fix it.
+func isUsable(ctrl NetworkController) bool {
+	return ctrl != nil && !ctrl.CtrlChannel().IsClosed() && ctrl.IsConnected()
+}
+
+// removeIfCurrent gives up ctrl's registration for ctrlId, and reports whether it was still the
+// registered entry. Overlapping channels to one controller share its id, so removing by id alone lets a
+// superseded channel's close delete its replacement's registration. Nothing re-registers a channel that
+// is already established, so the surviving channel would stay unreachable through the map and the router
+// would be invisible to that controller until the channel happened to close.
+func (self *networkControllers) removeIfCurrent(ctrlId string, ctrl NetworkController) bool {
+	return self.ctrls.DeleteIf(func(key string, val NetworkController) bool {
+		return key == ctrlId && val == ctrl
+	})
+}
+
+// handleChannelClose releases ctrl's registration and starts reconnecting to the controller. It is a
+// no-op when ctrl is no longer the registered entry, either because a newer channel has taken over or
+// because the controller was removed from the cluster. Reconnects are delayed by redialDelay, which
+// paces a dial the controller rejects outright.
+func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkController, redialDelay time.Duration) {
+	log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("ch", ctrl.Channel().Label())
+
+	if !self.removeIfCurrent(ctrlId, ctrl) {
+		log.Info("superseded control channel closed, leaving the current registration in place")
+		return
+	}
+
+	log.Info("control channel closed, controller unregistered")
+	self.notifyOfChange(ctrl, ControllerDisconnected)
+
+	detail := self.getControllerDetail(ctrlId)
+	if detail == nil {
+		log.Info("controller is no longer known, not reconnecting")
+		return
+	}
+
+	if redialDelay > 0 {
+		time.AfterFunc(redialDelay, func() {
+			self.connectToControllerWithBackoff(detail)
+		})
+	} else {
+		self.connectToControllerWithBackoff(detail)
+	}
 }
 
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
@@ -488,19 +582,13 @@ func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlcha
 	// Record the channel before Add() fires ControllerAdded listeners (see the dial path).
 	ctrlCh.InitChannel(binding.GetChannel())
 
-	if err := self.Add(address, ctrlCh, binding.GetChannel(), underlay); err != nil {
+	ctrl, err := self.Add(address, ctrlCh, binding.GetChannel(), underlay)
+	if err != nil {
 		return err
 	}
 
-	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-		ctrl := self.GetNetworkController(id)
-		self.ctrls.Delete(id)
-		if ctrl != nil {
-			self.notifyOfChange(ctrl, ControllerDisconnected)
-		}
-		if detail := self.getControllerDetail(id); detail != nil {
-			self.connectToControllerWithBackoff(detail)
-		}
+	binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
+		self.handleChannelClose(id, ctrl, 0)
 	}))
 
 	return nil
