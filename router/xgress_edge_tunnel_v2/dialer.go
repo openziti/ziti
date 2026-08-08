@@ -89,6 +89,11 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 
 func (self *tunneler) Inspect(key string, timeout time.Duration) any {
 	if key == inspect.ErtTerminatorsKey {
+		// hostedServices is only wired when the router has a tunnel listener; a router that hosts no
+		// tunnel services has none to report, so avoid dereferencing a nil registry.
+		if self.hostedServices == nil {
+			return nil
+		}
 		return self.hostedServices.Inspect(timeout)
 	}
 	return nil
