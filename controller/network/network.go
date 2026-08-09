@@ -176,6 +176,9 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
+	servermetrics.RegisterHostStats(network.metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: config.GetOptions().HostMetrics.Enabled,
+	})
 	network.AddRouterPresenceHandler(network.RouterMessaging)
 	go network.RouterMessaging.run()
 
