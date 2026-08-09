@@ -7,6 +7,7 @@
 * [Verify Traffic with ext-jwt-signers](#verify-traffic-with-ext-jwt-signers) - `ziti ops verify traffic` can authenticate with an ext-jwt-signer (OIDC) to test the certless ephemeral-cert path
 * [Cluster Quorum Recovery](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
+* [Gossip-Based Link Propagation](#gossip-based-link-propagation) - Link state is propagated across the HA cluster via gossip so every controller has a consistent view of the topology
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
@@ -206,6 +207,13 @@ Lifecycle mirrors the single-node quickstart. Pass `--home` for a persistent clu
 again: restarting against an existing `--home` rejoins the existing cluster rather than re-initializing it,
 and the nodes start together to re-form a quorum. Omit `--home` to run from a temporary directory that is
 removed on a clean shutdown. Pressing Ctrl-C stops every node.
+
+## Gossip-Based Link Propagation
+
+Link state is now propagated between routers and controllers using a gossip protocol instead of
+each router reporting its links only to its connected controller. Every controller in an HA cluster
+ends up with a consistent view of the network's link topology, which improves routing decisions and
+speeds up convergence after a failover.
 
 ## Fully Connected Controller Mesh
 
@@ -533,6 +541,52 @@ the controller offers over the API, is defined by this repository, and is
 enumerated at `/enumerated-capabilities`. Build flags describe how the binary
 was built, are open-ended, and are enumerated nowhere.
 
+## Controller Gossip Pools
+
+Controller gossip work runs in several bounded worker pools, organized by kind of work so a flood
+or stall in one path cannot starve the others. Each is tunable under the controller `network`
+config (defaults shown).
+
+Inbound work is split into separate pools:
+
+- **`routerConnectPool`** handles `ConnectRouter` (link building, presence handlers, terminator
+  validation). The queue is kept tiny so that when it is full a connecting router is rejected fast
+  and retries via its normal backoff, rather than letting a burst of reconnects (for example a
+  chaos restart of many routers) drop gossip messages.
+- **`gossipApplyPool`** applies inbound gossip deltas, digests, and canaries from routers. Its queue
+  is generous because dropping gossip causes router and controller state to diverge and forces an
+  extra digest-exchange round trip to recover.
+- **`peerEventsPool`** handles gossip deltas, digests, and responses from peer controllers. Messages
+  are dropped when the pool is full; anti-entropy recovers them.
+
+```yaml
+network:
+  routerConnectPool:
+    queueSize:  1
+    maxWorkers: 200
+  gossipApplyPool:
+    queueSize:  1024
+    maxWorkers: 50
+  peerEventsPool:
+    queueSize:  1
+    maxWorkers: 10
+```
+
+Outbound peer broadcasts run on a dedicated `ioPool`, kept separate from `gossipApplyPool`: a slow
+or stalled peer send is blocking I/O and must not pin a worker that gossip apply depends on. Sends
+are best-effort, so when the pool is full the broadcast is dropped and anti-entropy recovers it.
+
+```yaml
+network:
+  ioPool:
+    queueSize:  1024
+    maxWorkers: 32
+```
+
+Each pool exposes goroutine-pool metrics (`current_size`, `busy_workers`, `work_timer`,
+`queue_size`) under a per-pool prefix: `pool.router.connect.*`, `pool.gossip.apply.*`,
+`pool.peer.events.*`, and `pool.io.*`.
+
 ## Deprecated Features
 
 Deprecated features still work, but are no longer recommended and will be removed
@@ -711,6 +765,8 @@ Thanks to the community members who contributed to this release.
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
     * [Issue #3864](https://github.com/openziti/ziti/issues/3864) - e2ee: allow hosting SDK to return e2ee public key in the dial response
+    * [Issue #3726](https://github.com/openziti/ziti/issues/3726) - Use gossip to propagate link data between routers and controllers
+    * [Issue #3746](https://github.com/openziti/ziti/issues/3746) - Fix connect events handler goroutine leak
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
 
 
