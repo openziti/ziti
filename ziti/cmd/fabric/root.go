@@ -142,6 +142,7 @@ func newValidateCommand(p common.OptionsProvider) *cobra.Command {
 	validateCmd.AddCommand(NewValidateCircuitsCmd(p))
 	validateCmd.AddCommand(NewValidateTerminatorsCmd(p))
 	validateCmd.AddCommand(NewValidateRouterLinksCmd(p))
+	validateCmd.AddCommand(NewValidateGossipCmd(p))
 	validateCmd.AddCommand(NewValidateRouterSdkTerminatorsCmd(p))
 	validateCmd.AddCommand(NewValidateRouterErtTerminatorsCmd(p))
 	validateCmd.AddCommand(NewValidateRouterDataModelCmd(p))
