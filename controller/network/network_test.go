@@ -13,18 +13,20 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type testConfig struct {
+	raftEnabled     bool
+	raftLeader      bool
 	ctx             *db.TestContext
 	options         *config.NetworkConfig
 	metricsRegistry metrics.Registry
@@ -82,6 +84,14 @@ func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 
 func (self *testConfig) GetCloseNotify() <-chan struct{} {
 	return self.closeNotify
+}
+
+func (self *testConfig) IsRaftEnabled() bool {
+	return self.raftEnabled
+}
+
+func (self *testConfig) IsRaftLeader() bool {
+	return self.raftLeader
 }
 
 func TestNetwork_parseServiceAndIdentity(t *testing.T) {
@@ -244,4 +254,26 @@ func (t testCreateCircuitParams) GetDeadline() time.Time {
 
 func (t testCreateCircuitParams) GetCircuitId() string {
 	return ""
+}
+
+// TestIsLeader: a controller without raft speaks for the cluster on its own; with raft, only the leader
+// does. Callers use this to pick one controller for work that must not be done by several, so a
+// non-raft deployment answering false would leave that work undone.
+func TestIsLeader(t *testing.T) {
+	ctx := model.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
+
+	network, err := NewNetwork(config, ctx)
+	require.NoError(t, err)
+
+	require.True(t, network.IsLeader(), "a controller without raft is always the leader")
+
+	config.raftEnabled = true
+	require.False(t, network.IsLeader(), "with raft, a follower is not the leader")
+
+	config.raftLeader = true
+	require.True(t, network.IsLeader(), "with raft, the raft leader is the leader")
 }
