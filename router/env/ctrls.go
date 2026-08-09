@@ -556,7 +556,8 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		return nil
 	})
 
-	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
+	// WithSlowHandlerDiagnostic is temporary - see handler_diagnostic.go for removal criteria.
+	combinedBindHandler := WithSlowHandlerDiagnostic(channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler()))
 
 	multiChannelConfig := &channel.Config{
 		LogicalName:            fmt.Sprintf("ctrl/%s", underlay.Id()),

@@ -180,7 +180,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
+	// WithSlowHandlerDiagnostic is temporary - see handler_diagnostic.go for removal criteria.
+	if err = WithSlowHandlerDiagnostic(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)).BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
 
