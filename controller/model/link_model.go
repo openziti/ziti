@@ -32,7 +32,7 @@ type Link struct {
 	DstLatency  int64
 	Cost        int64
 	Iteration   uint32
-	Src         *Router
+	Src         concurrenz.AtomicValue[*Router]
 	DstId       string
 	Dst         concurrenz.AtomicValue[*Router]
 	Protocol    string
@@ -68,6 +68,14 @@ func (link *Link) GetId() string {
 	return link.Id
 }
 
+// GetSrc returns the link's source router. Src is an AtomicValue (mirroring Dst)
+// because a link created from a gossiped entry may initially reference a
+// database-loaded source router and later be repointed to the connected router
+// object when that router connects, concurrently with readers.
+func (link *Link) GetSrc() *Router {
+	return link.Src.Load()
+}
+
 func (link *Link) GetDest() *Router {
 	return link.Dst.Load()
 }
@@ -84,6 +92,19 @@ func (link *Link) PointDestAt(dst *Router) bool {
 	}
 	link.Dst.Store(dst)
 	return true
+}
+
+// HasEndpoint reports whether the given router id is one of the link's two endpoints.
+//
+// Compared by id, not by router object, so it still answers when the destination router is not connected to
+// this controller and the link carries only its id. This is the authority check for anything a router claims
+// about a link: a link's fate is its endpoints' to report, and a router that is party to neither has no
+// standing to fault it.
+func (link *Link) HasEndpoint(routerId string) bool {
+	if src := link.GetSrc(); src != nil && src.Id == routerId {
+		return true
+	}
+	return link.DstId == routerId
 }
 
 func (link *Link) CurrentState() LinkState {

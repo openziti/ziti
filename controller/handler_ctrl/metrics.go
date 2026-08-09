@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -27,11 +28,17 @@ import (
 
 type metricsHandler struct {
 	dispatcher event.Dispatcher
+	received   metrics.Meter
 }
 
 func newMetricsHandler(network *network.Network) *metricsHandler {
 	return &metricsHandler{
 		dispatcher: network.GetEventDispatcher(),
+		// Counts metrics messages this controller ingests. Once link latency is in
+		// gossip, routers narrow the firehose to a single subscription controller,
+		// so every other controller's rate should fall to zero; this meter makes
+		// that per-controller ingestion drop observable.
+		received: network.GetMetricsRegistry().Meter("metrics.messages.received"),
 	}
 }
 
@@ -40,6 +47,7 @@ func (h *metricsHandler) ContentType() int32 {
 }
 
 func (h *metricsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	h.received.Mark(1)
 	metricsMsg := &metrics_pb.MetricsMessage{}
 	if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
 		h.dispatcher.AcceptMetricsMsg(metricsMsg)

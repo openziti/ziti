@@ -72,6 +72,9 @@ type DialEnv interface {
 }
 
 type NetworkControllers interface {
+	// Start begins the controller connection check, which reports on controllers the router is neither
+	// connected to nor dialing. Disabled unless configured on; see the implementation.
+	Start(closeNotify <-chan struct{})
 	MarkChannelEstablished()
 	EverConnected() bool
 	GetControllerDetails() map[string]*ctrl_pb.CtrlDetail
@@ -99,6 +102,8 @@ type NetworkControllers interface {
 	ControllersHaveMinVersion(version string) bool
 	GetLeader() NetworkController
 	AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error
+	GetSubscriptionController() NetworkController
+	AllControllersHaveCapability(cap capabilities.ControllerCapability) bool
 }
 
 type CtrlDialer func(address transport.Address, bindHandler channel.BindHandler) error
@@ -123,9 +128,19 @@ type networkControllers struct {
 	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
 	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
 	closed                atomic.Bool
+
+	// unusableSince records when a controller was first seen to be unreachable. Only the connection check
+	// touches it, and only from its own goroutine, so it needs no synchronization.
+	unusableSince map[string]unusableRegistration
 	// everConnected records that a control channel was established at some point. It is never cleared, so it
 	// answers whether the router has ever reached a controller rather than whether it is reachable now.
 	everConnected atomic.Bool
+	// capabilityState is the last answer given for each capability, so AllControllersHaveCapability can log
+	// when the answer changes rather than on every call. Guarded by its own lock, since it is written on the
+	// hot paths that ask and must not contend with registration. Created on first use, see
+	// capabilityAnswerChanged.
+	capabilityState     map[capabilities.ControllerCapability]bool
+	capabilityStateLock sync.Mutex
 }
 
 // MarkChannelEstablished records that a control channel was fully established. It must be called only
@@ -143,6 +158,14 @@ func (self *networkControllers) MarkChannelEstablished() {
 // being momentarily between channels.
 func (self *networkControllers) EverConnected() bool {
 	return self.everConnected.Load()
+}
+
+// unusableRegistration remembers which registration a grace period is being counted for, so that replacing
+// the registration restarts the clock instead of inheriting the time already served. A nil registration
+// counts the time a controller has had no registration at all.
+type unusableRegistration struct {
+	ctrl NetworkController
+	at   time.Time
 }
 
 func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
@@ -209,6 +232,114 @@ func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.C
 	}
 
 	return changed
+}
+
+// Start begins reporting, until closeNotify is closed, on controllers the router has neither reached nor is
+// trying to reach. Disabled unless ctrl.connectionCheckInterval is set to a positive duration.
+//
+// This reports; it takes no corrective action, so nothing depends on it and it is safe to leave off. It is
+// here to verify that the control channel recovery paths do what they claim: a run that reports nothing is
+// evidence they do, and anything it does report is a defect to fix at its source rather than here.
+//
+// A controller is reported only after ctrl.connectionCheckGracePeriod has passed since it was first seen
+// unreachable, so a reconnect in progress is not mistaken for one that is not happening.
+func (self *networkControllers) Start(closeNotify <-chan struct{}) {
+	config := self.dialEnv.GetConfig()
+	interval := config.Ctrl.ConnectionCheckInterval
+	grace := config.Ctrl.ConnectionCheckGracePeriod
+
+	if interval <= 0 {
+		pfxlog.Logger().Info("controller connection checks are disabled")
+		return
+	}
+
+	pfxlog.Logger().
+		WithField("interval", interval).
+		WithField("gracePeriod", grace).
+		Info("starting controller connection checks")
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-closeNotify:
+				return
+			case <-ticker.C:
+				self.checkConnections(grace)
+			}
+		}
+	}()
+}
+
+// checkConnections reports, and returns the ids of, controllers the router can neither reach nor is trying
+// to reach.
+//
+// This is a diagnostic and takes no corrective action. Recovery belongs to the paths that own it: a channel
+// closing gives up its registration and reconnects, and a channel whose peer stops answering heartbeats is
+// closed, which reaches the same place. Between them those cover every state in which the channel object
+// still exists. What they cannot cover is a registration outliving its channel, since the heartbeat loop
+// exits as soon as the channel is closed, or a lost connection that no reconnect followed.
+//
+// Reaching either of those means one of the recovery paths has a bug, so anything reported here is a defect
+// to be fixed at its source rather than worked around. If it never fires, it has served its purpose and can
+// go.
+//
+// It checks only the controllers the router has been told about, so it says nothing about a router that has
+// yet to learn of any. Failing to connect at all is what the startup timeout covers.
+func (self *networkControllers) checkConnections(grace time.Duration) []string {
+	var unreachable []string
+
+	for ctrlId := range self.controllerDetails.Load() {
+		ctrl := self.ctrls.Get(ctrlId)
+
+		// A dial in flight is the expected state between losing a connection and regaining it, whatever it
+		// leaves the registration looking like meanwhile.
+		if isUsable(ctrl) || self.idsBeingDialed.Has(ctrlId) {
+			delete(self.unusableSince, ctrlId)
+			continue
+		}
+
+		unreachableFor, expired := self.trackUnreachable(ctrlId, ctrl, grace)
+		if !expired {
+			continue
+		}
+
+		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("unreachableFor", unreachableFor)
+
+		if ctrl == nil {
+			log.Error("no connection to controller and no dial in flight, so the reconnect that should have " +
+				"followed losing it did not happen")
+		} else {
+			log.WithField("address", ctrl.Address()).
+				Error("control channel cannot carry traffic and has not been replaced, so neither its close " +
+					"nor its heartbeat did what should have replaced it")
+		}
+
+		unreachable = append(unreachable, ctrlId)
+	}
+
+	return unreachable
+}
+
+// trackUnreachable reports how long the router has been unable to reach a controller, and whether that
+// exceeds grace. The grace period covers the gap between losing a connection and a reconnect being recorded
+// as in flight, and lets a channel that has just lost its underlays dial new ones. A registration replaced
+// since the last check starts its own clock rather than inheriting its predecessor's.
+func (self *networkControllers) trackUnreachable(ctrlId string, ctrl NetworkController, grace time.Duration) (time.Duration, bool) {
+	if self.unusableSince == nil {
+		self.unusableSince = map[string]unusableRegistration{}
+	}
+
+	seen, found := self.unusableSince[ctrlId]
+	if !found || seen.ctrl != ctrl {
+		seen = unusableRegistration{ctrl: ctrl, at: time.Now()}
+		self.unusableSince[ctrlId] = seen
+	}
+
+	unreachableFor := time.Since(seen.at)
+	return unreachableFor, unreachableFor >= grace
 }
 
 func (self *networkControllers) ConnectToInitialEndpoints(endpoints []string) {
@@ -413,6 +544,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+		binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_CanaryStatusType), self.handleCanaryStatusUpdate)
 
 		// Record the channel before Add(), which fires ControllerAdded listeners that
 		// dereference Channel(). UnderlayAdded fires after the bind handler, so relying on
@@ -476,11 +608,99 @@ func (self *networkControllers) handleRouterDataModelIndexUpdate(m *channel.Mess
 	}
 }
 
+func (self *networkControllers) handleCanaryStatusUpdate(m *channel.Message, ch channel.Channel) {
+	if seq, ok := m.GetUint64Header(int32(ctrl_pb.ControlHeaders_CanarySeqHeader)); ok {
+		if ctrl := self.GetNetworkController(ch.Id()); ctrl != nil {
+			ctrl.updateCanarySeq(seq)
+		}
+	}
+}
+
+// GetSubscriptionController returns the controller that should receive canaries
+// and (when all controllers are gossip-capable) link reports. Selection prefers
+// the leader, then falls back to the most responsive controller.
+func (self *networkControllers) GetSubscriptionController() NetworkController {
+	var current NetworkController
+	for _, ctrl := range self.ctrls.AsMap() {
+		if !ctrl.IsConnected() || ctrl.IsUnresponsive() {
+			continue
+		}
+		if current == nil ||
+			(!self.isLeader(current) && self.isLeader(ctrl)) ||
+			(!self.isLeader(current) && ctrl.isMoreResponsive(current)) {
+			current = ctrl
+		}
+	}
+	return current
+}
+
+// AllControllersHaveCapability reports whether every connected controller advertises the given capability,
+// and false when none are connected.
+//
+// Callers use this to choose between a capability's path and the fallback for controllers that lack it, and
+// they ask on hot paths: every link dial, every fault batch, every notification cycle, every metrics report.
+// So the answer is not logged per call. Which path a router is taking still matters to an operator, and a
+// silent answer would leave it to be inferred, so transitions are logged instead: each change of answer once,
+// with the reason.
+func (self *networkControllers) AllControllersHaveCapability(cap capabilities.ControllerCapability) bool {
+	all := self.ctrls.AsMap()
+
+	if len(all) == 0 {
+		self.logCapabilityChange(cap, false, "no controllers are connected")
+		return false
+	}
+
+	for ctrlId, ctrl := range all {
+		if !ctrl.HasCapability(cap) {
+			self.logCapabilityChange(cap, false, "controller "+ctrlId+" does not advertise it")
+			return false
+		}
+	}
+
+	self.logCapabilityChange(cap, true, "")
+	return true
+}
+
+// logCapabilityChange logs a capability answer only when it differs from the previous answer for that
+// capability, so a decision taken per dial and per fault does not produce a log line per dial and per fault.
+func (self *networkControllers) logCapabilityChange(cap capabilities.ControllerCapability, have bool, reason string) {
+	if !self.capabilityAnswerChanged(cap, have) {
+		return
+	}
+
+	log := pfxlog.Logger().WithField("capability", cap)
+	if have {
+		log.Info("all connected controllers advertise capability, using its path")
+	} else {
+		log.WithField("reason", reason).Info("not all connected controllers advertise capability, using fallback path")
+	}
+}
+
+// capabilityAnswerChanged records the latest answer for a capability and reports whether it differs from the
+// previous one. The first answer for a capability counts as a change, so the path a router starts out on is
+// stated rather than left to be inferred from the absence of a later transition.
+func (self *networkControllers) capabilityAnswerChanged(cap capabilities.ControllerCapability, have bool) bool {
+	self.capabilityStateLock.Lock()
+	defer self.capabilityStateLock.Unlock()
+
+	if last, seen := self.capabilityState[cap]; seen && last == have {
+		return false
+	}
+	// Created on first use rather than at construction, since this is reached from paths that would panic on
+	// a nil map and networkControllers is built directly in places that do not run the constructor.
+	if self.capabilityState == nil {
+		self.capabilityState = map[capabilities.ControllerCapability]bool{}
+	}
+	self.capabilityState[cap] = have
+	return true
+}
+
 // Add registers a newly established control channel and returns the entry created for it. The returned
 // entry is the identity a close handler must present to give the registration up again, so callers that
 // wire a close handler have to hold on to it.
 func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) (NetworkController, error) {
 	ctrl := newNetworkCtrl(ctrlCh, address, self.heartbeatOptions)
+	ctrl.setCapabilities(capabilities.GetCapabilities[capabilities.ControllerCapability](underlay.Headers()))
 
 	if versionValue, found := underlay.Headers()[channel.HelloVersionHeader]; found {
 		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
@@ -582,7 +802,7 @@ func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkCo
 	log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("ch", ctrl.Channel().Label())
 
 	if !self.removeIfCurrent(ctrlId, ctrl) {
-		log.Info("superseded control channel closed, leaving the current registration in place")
+		log.Info("control channel closed without holding its registration, leaving the registration alone")
 		return
 	}
 
@@ -607,6 +827,7 @@ func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkCo
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	id := binding.GetChannel().Id()
 	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
+	binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_CanaryStatusType), self.handleCanaryStatusUpdate)
 
 	// Record the channel before Add() fires ControllerAdded listeners (see the dial path).
 	ctrlCh.InitChannel(binding.GetChannel())

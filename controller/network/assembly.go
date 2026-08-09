@@ -32,7 +32,7 @@ func (network *Network) NotifyLinkEvent(link *model.Link, eventType event.LinkEv
 		EventSrcId:  network.GetAppId(),
 		Timestamp:   time.Now(),
 		LinkId:      link.Id,
-		SrcRouterId: link.Src.Id,
+		SrcRouterId: link.GetSrc().Id,
 		DstRouterId: link.DstId,
 		Protocol:    link.Protocol,
 		Cost:        link.GetStaticCost(),

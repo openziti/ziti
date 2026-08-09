@@ -17,13 +17,17 @@
 package handler_ctrl
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
 )
+
+// routerLinkLog is the logger for the RouterLinks ctrl message handler. Its
+// channel name is "controller.link".
+var routerLinkLog = logging.For("controller.link")
 
 type routerLinkHandler struct {
 	r       *model.Router
@@ -39,7 +43,7 @@ func (h *routerLinkHandler) ContentType() int32 {
 }
 
 func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", h.r.Id)
+	log := routerLinkLog.With("ch", ch.Label(), "routerId", h.r.Id)
 
 	// Read once and report what was read: a reconnect can flip these between the decision and the log,
 	// leaving the warning naming a state that would not have discarded anything.
@@ -48,55 +52,55 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 	// A router announces its links once per reconnect and is never asked again, so a discard here leaves
 	// the controller with no links for that router until it reconnects. Do not drop it silently.
 	if !routerConnected || channelClosed {
-		log.WithField("routerConnected", routerConnected).
-			WithField("channelClosed", channelClosed).
+		log.With("routerConnected", routerConnected, "channelClosed", channelClosed).
 			Warn("discarding link report, this connection is not the router's current one")
 		return
 	}
 
 	link := &ctrl_pb.RouterLinks{}
 	if err := proto.Unmarshal(msg.Body, link); err != nil {
-		log.WithError(err).Error("failed to unmarshal link message")
+		log.Error("failed to unmarshal link message", "error", err)
 		return
 	}
 
-	log.WithField("linkCount", len(link.Links)).
-		WithField("fullRefresh", link.FullRefresh).
+	log.With("linkCount", len(link.Links), "fullRefresh", link.FullRefresh).
 		Info("received link report from router")
 
 	h.HandleLinks(link)
 }
 
+// HandleLinks processes link reports from old routers (those not using the gossip
+// protocol directly). In HA mode, only the raft leader writes to gossip — non-
+// leaders handle links locally. New routers bypass this handler entirely and send
+// GossipDelta messages directly.
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
-	if links.FullRefresh {
-		for _, link := range linksToPrune(h.r.Id, h.network.Link.LinksForRouter(h.r.Id), links.Links) {
-			h.network.LinkFaulted(link, false)
-			pfxlog.Logger().WithField("linkId", link.Id).Info("removed link not present in full reported set")
-		}
-	}
-
-	for _, link := range links.Links {
-		h.network.NotifyExistingLink(h.r, link)
+	if h.network.IsLeader() {
+		h.handleLinksAsLeader(links)
+	} else {
+		h.handleLinksAsNonLeader(links)
 	}
 }
 
-// linksToPrune returns the links a full refresh implies are gone: those routerId is the source of that the
-// report does not list. current may also hold links routerId only accepts; those are the dialing router's to
-// report, so an omission here says nothing about them.
-func linksToPrune(routerId string, current []*model.Link, reported []*ctrl_pb.RouterLinks_RouterLink) []*model.Link {
-	reportedIds := make(map[string]struct{}, len(reported))
-	for _, link := range reported {
-		reportedIds[link.Id] = struct{}{}
+// handleLinksAsLeader is the designated gossip writer path. Translates old-router
+// link reports into gossip entries using the controller's Lamport clock.
+func (h *routerLinkHandler) handleLinksAsLeader(links *ctrl_pb.RouterLinks) {
+	if links.FullRefresh {
+		keyMap := map[string]struct{}{}
+		for _, link := range links.Links {
+			keyMap[network.LinkGossipKey(link.Id, link.Iteration)] = struct{}{}
+		}
+		h.network.ReconcileLinksViaGossip(h.r.Id, keyMap)
 	}
 
-	var toRemove []*model.Link
-	for _, link := range current {
-		if link.Src.Id != routerId {
-			continue
-		}
-		if _, ok := reportedIds[link.Id]; !ok {
-			toRemove = append(toRemove, link)
-		}
+	for _, link := range links.Links {
+		h.network.NotifyLinkViaGossip(h.r, link)
 	}
-	return toRemove
+}
+
+// handleLinksAsNonLeader handles links locally without writing to gossip. The
+// leader will receive the same reports from the old router and gossip them.
+func (h *routerLinkHandler) handleLinksAsNonLeader(links *ctrl_pb.RouterLinks) {
+	for _, link := range links.Links {
+		h.network.NotifyExistingLink(h.r, link)
+	}
 }

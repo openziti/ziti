@@ -48,6 +48,11 @@ type RouterEnv interface {
 	RenderJsonConfig() (string, error)
 	GetHeartbeatOptions() HeartbeatOptions
 	GetRateLimiterPool() goroutines.Pool
+	// GetRxPool returns the pool for work lifted off a control channel's receive goroutine. Distinct from
+	// the rate limiter pool, whose workers park waiting for controller send capacity: sharing that pool
+	// would make receiving depend on the very back-pressure that lifting work off the receive goroutine is
+	// meant to survive.
+	GetRxPool() goroutines.Pool
 	GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker
 	GetVersionInfo() versions.VersionProvider
 	GetRouterDataModel() *common.RouterDataModel
@@ -70,6 +75,7 @@ type RouterEnv interface {
 	UpdateLeader(leaderId string)
 	GetXgressListeners() []xgress_router.Listener
 	GetInspectHandler() channel.ContentTypeReceiver
+	GetLinkGossipNotifier() LinkGossipNotifier
 }
 
 type Alerter interface {

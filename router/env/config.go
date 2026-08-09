@@ -149,6 +149,13 @@ type Config struct {
 		StartupTimeout        time.Duration
 		RateLimit             command.AdaptiveRateLimitTrackerConfig
 		Listeners             []*CtrlListenerConfig
+		// ConnectionCheckInterval is how often the router reports on controllers it can neither reach nor is
+		// trying to reach. The check reports and takes no corrective action. Zero, the default, disables it.
+		ConnectionCheckInterval time.Duration
+		// ConnectionCheckGracePeriod is how long a controller may be unreachable before the check reports it.
+		// It covers the gap between losing a connection and a reconnect being recorded as in flight, and
+		// lets a control channel that has just lost its underlays dial new ones.
+		ConnectionCheckGracePeriod time.Duration
 	}
 	Link struct {
 		Listeners              []map[interface{}]interface{}
@@ -166,6 +173,9 @@ type Config struct {
 		MessageQueueSize      int
 		EventQueueSize        int
 		EnableDataDelayMetric bool
+		HostMetrics           struct {
+			Enabled bool
+		}
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -211,6 +221,16 @@ const (
 
 	DefaultLinkPayloadSenderQueueSize = 128
 	DefaultLinkAckSenderQueueSize     = 64
+
+	// DefaultCtrlConnectionCheckInterval disables the check. It reports rather than corrects, so it is
+	// opt-in; set a positive interval to turn it on, which bounds how long a controller the router can
+	// neither reach nor is trying to reach goes unreported. 30s is a reasonable value when enabling it.
+	DefaultCtrlConnectionCheckInterval = time.Duration(0)
+
+	// DefaultCtrlConnectionCheckGracePeriod is long enough for a reconnect to get under way, and for a
+	// control channel that lost its underlays to dial new ones, including under the latency and loss where
+	// that matters most.
+	DefaultCtrlConnectionCheckGracePeriod = 30 * time.Second
 )
 
 // CreateBackup will attempt to use the current path value to create a backup of
@@ -476,6 +496,8 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	cfg.Ctrl.Options = channel.DefaultOptions()
 	cfg.Ctrl.Heartbeats = *NewDefaultHeartbeatOptions()
 	cfg.Ctrl.StartupTimeout = 30 * time.Second
+	cfg.Ctrl.ConnectionCheckInterval = DefaultCtrlConnectionCheckInterval
+	cfg.Ctrl.ConnectionCheckGracePeriod = DefaultCtrlConnectionCheckGracePeriod
 
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -547,6 +569,18 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 				var err error
 				if cfg.Ctrl.StartupTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.startupTimeout")
+				}
+			}
+			if value, found := submap["connectionCheckInterval"]; found {
+				var err error
+				if cfg.Ctrl.ConnectionCheckInterval, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.connectionCheckInterval")
+				}
+			}
+			if value, found := submap["connectionCheckGracePeriod"]; found {
+				var err error
+				if cfg.Ctrl.ConnectionCheckGracePeriod, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.connectionCheckGracePeriod")
 				}
 			}
 			if value, found := submap["endpointsFile"]; found {
@@ -734,6 +768,19 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			}
 			if value, found := submap["enableDataDelayMetric"]; found {
 				cfg.Metrics.EnableDataDelayMetric = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+			if value, found := submap["hostMetrics"]; found {
+				if hostMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := hostMap["enabled"]; found {
+						if enabled, ok := v.(bool); ok {
+							cfg.Metrics.HostMetrics.Enabled = enabled
+						} else {
+							return nil, errors.New("invalid value for metrics.hostMetrics.enabled, must be a boolean")
+						}
+					}
+				} else {
+					return nil, errors.New("invalid value for metrics.hostMetrics")
+				}
 			}
 		}
 	}

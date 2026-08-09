@@ -59,7 +59,7 @@ func (self *linkMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *e
 			for k, v := range sourceTags {
 				event.Tags[k] = v
 			}
-			event.Tags["sourceRouterId"] = link.Src.Id
+			event.Tags["sourceRouterId"] = link.GetSrc().Id
 			event.Tags["targetRouterId"] = link.DstId
 		}
 	}

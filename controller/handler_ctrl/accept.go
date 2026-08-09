@@ -188,12 +188,20 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
-	if err = self.network.ConnectRouter(r); err != nil {
+	// Check the router's epoch for stale entry cleanup. If the epoch changed
+	// (router restarted), delete old-epoch link gossip entries before creating
+	// new links in ConnectRouter.
+	if epoch, found := ch.Underlay().Headers()[int32(ctrl_pb.ControlHeaders_EpochHeader)]; found && len(epoch) > 0 {
+		self.network.HandleRouterEpoch(r.Id, epoch)
+	}
+
+	if err = self.network.QueueRouterConnect(r); err != nil {
 		if network.IsConnectRejected(err) {
 			log.Info("router connect rejected; another connection is already current, router will redial")
 		}
 		// Returning the error fails the bind, so NewChannel closes this channel's underlay without
-		// starting rx or registering it. That preserves the rx-gate for a rejected connection.
+		// starting rx or registering it (rejected connect) — and a full connect pool likewise makes the
+		// router redial. Either way the rx-gate is preserved for a connection that was not accepted.
 		return err
 	}
 
