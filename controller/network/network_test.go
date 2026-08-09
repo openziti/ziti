@@ -13,12 +13,12 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,6 +78,12 @@ func (self *testConfig) GetDb() boltz.Db {
 
 func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 	return self.versionProvider
+}
+
+// GetGossipPeering reports no peers: the tests run a single controller, so gossip has nowhere to send and
+// nothing to reconcile against.
+func (self *testConfig) GetGossipPeering() GossipPeering {
+	return GossipPeering{}
 }
 
 func (self *testConfig) GetCloseNotify() <-chan struct{} {

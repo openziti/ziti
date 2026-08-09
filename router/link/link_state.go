@@ -22,7 +22,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
@@ -50,6 +49,9 @@ func newLinkDest(destId string) *linkDest {
 		healthy:     true,
 		unhealthyAt: time.Time{},
 		linkMap:     map[string]*linkState{},
+		// A brand new destination is treated as just affirmed, so it gets the full grace period before it
+		// can be considered abandoned rather than being eligible for removal the moment it appears.
+		lastAffirmedAt: time.Now(),
 	}
 }
 
@@ -59,6 +61,12 @@ type linkDest struct {
 	healthy     bool
 	unhealthyAt time.Time
 	linkMap     map[string]*linkState
+	ctrlHealth  map[string]bool // per-controller health reports
+	// lastAffirmedAt is the last time a controller the router was connected to said this destination was up.
+	// It drives removal of an abandoned destination, which healthy cannot: healthy is a sticky union over
+	// every report ever received, so a controller that said "up" and then went away holds it true forever.
+	// See affirmedBy for why removal asks a different question than the dial backoff does.
+	lastAffirmedAt time.Time
 
 	// listeners caches the most recent listener set advertised by this
 	// destination router. Stored so we can re-evaluate matches when the
@@ -67,16 +75,56 @@ type linkDest struct {
 	listeners []*ctrl_pb.Listener
 }
 
-func (self *linkDest) update(update *linkDestUpdate) {
-	if self.healthy && !update.healthy {
-		self.unhealthyAt = time.Now()
+// updateHealthFromCtrl records a health report from a specific controller.
+func (self *linkDest) updateHealthFromCtrl(ctrlId string, healthy bool) {
+	if self.ctrlHealth == nil {
+		self.ctrlHealth = map[string]bool{}
 	}
+	self.ctrlHealth[ctrlId] = healthy
+}
 
-	self.healthy = update.healthy
-
-	if update.healthy {
-		self.version.Store(update.version)
+// isHealthy returns true if any controller reports the destination as healthy.
+func (self *linkDest) isHealthy() bool {
+	for _, healthy := range self.ctrlHealth {
+		if healthy {
+			return true
+		}
 	}
+	return false
+}
+
+// affirmedBy reports whether any of the given controllers says this destination is up. It exists so that
+// deciding a destination has been abandoned can ignore reports from controllers the router is no longer
+// connected to, which isHealthy deliberately does not.
+//
+// The two want different answers. The dial backoff reads isHealthy, and treating a controller outage as
+// "nobody says this is up" would switch every destination to the unhealthy backoff, whose retry interval
+// starts at a minute and multiplies by ten toward an hour; a controller restart would then stall re-dialing
+// links that are perfectly fine. Removal has no such problem, because the caller only acts once a destination
+// has gone unaffirmed for far longer than any outage lasts.
+func (self *linkDest) affirmedBy(ctrlIds map[string]struct{}) bool {
+	for ctrlId, healthy := range self.ctrlHealth {
+		if healthy {
+			if _, ok := ctrlIds[ctrlId]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// abandoned reports whether the router should stop tracking this destination: either there is nothing left to
+// dial, or nothing established to it and no controller has affirmed it in long enough that the notification
+// saying it was deleted must have been missed.
+//
+// An established link keeps a destination regardless of affirmation. Affirmation lapses on a controller
+// outage, and a link that is up is better evidence that the destination is there than a controller's silence
+// is that it is not.
+func (self *linkDest) abandoned(hasEstablishedLinks bool, now time.Time) bool {
+	if len(self.linkMap) == 0 {
+		return true
+	}
+	return !hasEstablishedLinks && now.Sub(self.lastAffirmedAt) > destAbandonedAfter
 }
 
 type linkFault struct {
@@ -104,14 +152,14 @@ type linkState struct {
 
 func (self *linkState) updateStatus(status linkStatus) {
 	if self.status != status {
-		log := pfxlog.Logger().
-			WithField("key", self.linkKey).
-			WithField("oldState", self.status).
-			WithField("newState", status).
-			WithField("linkId", self.linkId).
-			WithField("iteration", self.dialAttempts.Load())
+		oldState := self.status
 		self.status = status
-		log.Info("status updated")
+		linkLog.Info("status updated",
+			"key", self.linkKey,
+			"oldState", oldState,
+			"newState", status,
+			"linkId", self.linkId,
+			"iteration", self.dialAttempts.Load())
 		if self.status != StatusEstablished {
 			self.link = nil
 		}
@@ -147,15 +195,14 @@ func (self *linkState) GetIteration() uint32 {
 }
 
 func (self *linkState) addPendingLinkFault(linkId string, iteration uint32) {
-	log := pfxlog.Logger().WithField("linkId", linkId).WithField("iteration", iteration)
 	for idx, fault := range self.linkFaults {
 		if fault.linkId == linkId {
 			if fault.iteration < iteration {
-				log.Info("updating link fault")
+				linkLog.Info("updating link fault", "linkId", linkId, "iteration", iteration)
 				// note 'fault' is not a pointer, so it's a copy and if we update it, the entry in the slice won't change
 				self.linkFaults[idx].iteration = iteration
 			} else {
-				log.Info("link fault covered by existing link fault")
+				linkLog.Info("link fault covered by existing link fault", "linkId", linkId, "iteration", iteration)
 			}
 			return
 		}

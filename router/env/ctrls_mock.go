@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -28,6 +29,8 @@ import (
 // MockNetworkControllers implements env.NetworkControllers for testing
 type MockNetworkControllers struct {
 	Channel channel.Channel
+	// All is what GetAll reports, so a test can stand up a set of connected controllers.
+	All map[string]NetworkController
 }
 
 func (m *MockNetworkControllers) AnyChannel() channel.Channel {
@@ -50,6 +53,7 @@ func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.
 	return false
 }
 
+func (m *MockNetworkControllers) Start(<-chan struct{})   {}
 func (m *MockNetworkControllers) MarkChannelEstablished() {}
 func (m *MockNetworkControllers) EverConnected() bool     { return true }
 
@@ -60,7 +64,7 @@ func (m *MockNetworkControllers) UpdateLeader(leaderId string) {
 }
 
 func (m *MockNetworkControllers) GetAll() map[string]NetworkController {
-	return nil
+	return m.All
 }
 
 func (m *MockNetworkControllers) GetNetworkController(ctrlId string) NetworkController {
@@ -126,4 +130,12 @@ func (m *MockNetworkControllers) GetLeader() NetworkController {
 
 func (m *MockNetworkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {
 	return nil
+}
+
+func (m *MockNetworkControllers) GetSubscriptionController() NetworkController {
+	return nil
+}
+
+func (m *MockNetworkControllers) AllControllersHaveCapability(cap capabilities.ControllerCapability) bool {
+	return false
 }

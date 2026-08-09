@@ -27,6 +27,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -109,13 +110,42 @@ func newTestUnderlay(t *testing.T) channel.Underlay {
 	return &ctrlsTestUnderlay{headers: channel.Headers{channel.HelloVersionHeader: encoded}}
 }
 
-// newTestNetworkControllers builds a networkControllers with no DialEnv. Tests using it must not reach a
-// path that dials, which for these tests means leaving controllerDetails empty so no reconnect is started.
+// ctrlsTestDialEnv is a DialEnv double that refuses to dial, so a test that unexpectedly reaches the dial
+// path fails there rather than reaching the network.
+type ctrlsTestDialEnv struct {
+	DialEnv
+}
+
+func (self *ctrlsTestDialEnv) GetChannelHeaders() (channel.Headers, error) {
+	return nil, errors.New("test dial env does not dial")
+}
+
+// newTestNetworkControllers builds a networkControllers whose dials fail immediately.
 func newTestNetworkControllers() *networkControllers {
 	return &networkControllers{
+		dialEnv:          &ctrlsTestDialEnv{},
 		heartbeatOptions: NewDefaultHeartbeatOptions(),
 		idsBeingDialed:   cmap.New[struct{}](),
 	}
+}
+
+// testDetail is a controller detail as the router would have been given one.
+func testDetail(ctrlId string) *ctrl_pb.CtrlDetail {
+	return &ctrl_pb.CtrlDetail{
+		Id:        ctrlId,
+		Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:127.0.0.1:6262"}},
+	}
+}
+
+// withDetails tells the controllers which cluster they belong to, which is what the connection check works
+// from.
+func withDetails(t *testing.T, nc *networkControllers, details ...*ctrl_pb.CtrlDetail) {
+	t.Helper()
+	byId := map[string]*ctrl_pb.CtrlDetail{}
+	for _, detail := range details {
+		byId[detail.Id] = detail
+	}
+	nc.controllerDetails.Store(byId)
 }
 
 // newTestNetworkCtrl returns a registration and the test channel backing it, so tests can drive the
@@ -243,6 +273,120 @@ func TestRemoveIfCurrent_LeavesOtherControllers(t *testing.T) {
 	require.Same(t, ctrl2, nc.ctrls.Get("ctrl2"))
 
 	require.False(t, nc.removeIfCurrent("ctrl1", ctrl1), "removing an absent registration must report no match")
+}
+
+// TestCheck_ReportsStrandedRegistration covers the state neither recovery path can reach. A channel closing
+// gives up its registration and reconnects; a channel whose peer stops answering heartbeats is closed, which
+// reaches the same place. Between them those cover every state in which the channel object still exists, so a
+// registration left behind by one that is gone means one of them has a bug. The check reports it and nothing
+// more, because the fix belongs at the source.
+func TestCheck_ReportsStrandedRegistration(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"))
+	drain := collectCtrlEvents(nc)
+
+	stranded, strandedCh := newTestNetworkCtrl(nc, "ctrl1", "stranded")
+	strandedCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", stranded)
+
+	require.Equal(t, []string{"ctrl1"}, nc.checkConnections(0))
+
+	// The check is a diagnostic, so it must leave recovery to the paths that own it.
+	require.Same(t, stranded, nc.ctrls.Get("ctrl1"), "the check must not discard the registration")
+	require.False(t, strandedCh.IsClosed(), "the check must not close the channel")
+	require.False(t, nc.idsBeingDialed.Has("ctrl1"), "the check must not dial")
+	require.Never(t, func() bool { return len(drain()) > 0 }, 100*time.Millisecond, 10*time.Millisecond,
+		"the check must not report controller changes it did not make")
+}
+
+// TestCheck_ReportsMissingConnection covers the other state no heartbeat can: there is no channel to
+// heartbeat on, and no dial that would produce one.
+func TestCheck_ReportsMissingConnection(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"))
+
+	require.Equal(t, []string{"ctrl1"}, nc.checkConnections(0))
+	require.False(t, nc.idsBeingDialed.Has("ctrl1"), "the check must not dial")
+}
+
+// TestCheck_SilentWhileDialInFlight: a dial in flight is the expected state between losing a connection and
+// regaining it, whatever it leaves the registration looking like meanwhile.
+func TestCheck_SilentWhileDialInFlight(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"))
+	nc.idsBeingDialed.Set("ctrl1", struct{}{})
+
+	require.Empty(t, nc.checkConnections(0), "a controller being dialed must not be reported")
+
+	stranded, strandedCh := newTestNetworkCtrl(nc, "ctrl1", "stranded")
+	strandedCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", stranded)
+
+	require.Empty(t, nc.checkConnections(0),
+		"a registration a dial is about to displace must not be reported")
+}
+
+// TestCheck_HonorsGracePeriod: the gap between losing a connection and a reconnect being recorded as in
+// flight is normal, as is a channel briefly having no underlay, and neither is worth reporting.
+func TestCheck_HonorsGracePeriod(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"))
+
+	recovering, recoveringCh := newTestNetworkCtrl(nc, "ctrl1", "recovering")
+	recoveringCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", recovering)
+
+	require.Empty(t, nc.checkConnections(time.Hour), "a controller within its grace period must not be reported")
+
+	// The clock is already running, so it is reported once the grace period is up.
+	require.Equal(t, []string{"ctrl1"}, nc.checkConnections(0))
+}
+
+// TestCheck_GraceClockRestartsForANewRegistration: a replacement gets its own grace period rather than
+// inheriting the time its predecessor served, which would have it reported immediately.
+func TestCheck_GraceClockRestartsForANewRegistration(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"))
+
+	first, firstCh := newTestNetworkCtrl(nc, "ctrl1", "first")
+	firstCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", first)
+
+	require.Empty(t, nc.checkConnections(time.Hour))
+
+	replacement, replacementCh := newTestNetworkCtrl(nc, "ctrl1", "replacement")
+	replacementCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", replacement)
+
+	require.Empty(t, nc.checkConnections(time.Hour),
+		"a replacement registration must start its own grace period")
+}
+
+// TestCheck_SilentWhenUsable: the check must be invisible to a router whose connections are working, which is
+// every router that is behaving.
+func TestCheck_SilentWhenUsable(t *testing.T) {
+	nc := newTestNetworkControllers()
+	withDetails(t, nc, testDetail("ctrl1"), testDetail("ctrl2"))
+
+	for _, ctrlId := range []string{"ctrl1", "ctrl2"} {
+		ctrl, _ := newTestNetworkCtrl(nc, ctrlId, ctrlId)
+		nc.ctrls.Put(ctrlId, ctrl)
+	}
+
+	require.Empty(t, nc.checkConnections(0))
+}
+
+// TestCheck_IgnoresControllersItHasNotBeenToldAbout: the check works from the known cluster, so it says
+// nothing about a router that has yet to learn of any controller. Failing to connect at all is what the
+// startup timeout covers.
+func TestCheck_IgnoresControllersItHasNotBeenToldAbout(t *testing.T) {
+	nc := newTestNetworkControllers()
+
+	stranded, strandedCh := newTestNetworkCtrl(nc, "ctrl1", "stranded")
+	strandedCh.underlaysLost.Store(true)
+	nc.ctrls.Put("ctrl1", stranded)
+
+	require.Empty(t, nc.checkConnections(0))
 }
 
 // TestIsUsable covers what counts as being connected to a controller. A registration is not evidence of
@@ -551,4 +695,83 @@ func TestNotifyOfConnectivityChange_ReportsEachEdgeOnce(t *testing.T) {
 	require.Never(t, func() bool { return len(drain()) > 0 }, 100*time.Millisecond, 10*time.Millisecond,
 		"each edge must be reported once")
 	require.Equal(t, 1, reconnectNotifications)
+}
+
+// TestCapabilityAnswerChanged covers what limits capability logging to transitions. The answer is consulted
+// per link dial, per fault batch, per notification cycle and per metrics report, so logging it on every call
+// buries the log in a decision that has not changed. Only a change is worth a line.
+func TestCapabilityAnswerChanged(t *testing.T) {
+	nc := newTestNetworkControllers()
+
+	// The first answer for a capability counts as a change, so the path a router starts out on is stated.
+	require.True(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, false))
+	require.False(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, false),
+		"repeating an answer is not a transition")
+	require.False(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, false))
+
+	require.True(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, true),
+		"gaining the capability is a transition")
+	require.False(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, true))
+
+	require.True(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, false),
+		"losing it again is a transition")
+
+	// Capabilities are tracked separately, so one flapping does not silence another.
+	require.True(t, nc.capabilityAnswerChanged(capabilities.ControllerRouterDataModel, false))
+	require.False(t, nc.capabilityAnswerChanged(capabilities.ControllerRouterDataModel, false))
+	require.False(t, nc.capabilityAnswerChanged(capabilities.ControllerLinkGossip, false),
+		"the other capability's answer must be unaffected")
+}
+
+// TestAllControllersHaveCapability covers the answer itself, which the transition tracking must not disturb.
+func TestAllControllersHaveCapability(t *testing.T) {
+	cap := capabilities.ControllerLinkGossip
+
+	withCapability := func() *capabilities.ControllerCapabilityMask {
+		mask := capabilities.NewMask[capabilities.ControllerCapability]()
+		mask.Set(cap)
+		return mask
+	}
+
+	t.Run("no controllers connected", func(t *testing.T) {
+		nc := newTestNetworkControllers()
+		require.False(t, nc.AllControllersHaveCapability(cap),
+			"a router with no controllers cannot know that all of them support anything")
+	})
+
+	t.Run("every controller advertises it", func(t *testing.T) {
+		nc := newTestNetworkControllers()
+		for _, ctrlId := range []string{"ctrl1", "ctrl2"} {
+			ctrl, _ := newTestNetworkCtrl(nc, ctrlId, ctrlId)
+			ctrl.setCapabilities(withCapability())
+			nc.ctrls.Put(ctrlId, ctrl)
+		}
+		require.True(t, nc.AllControllersHaveCapability(cap))
+	})
+
+	t.Run("one controller is missing it", func(t *testing.T) {
+		nc := newTestNetworkControllers()
+		capable, _ := newTestNetworkCtrl(nc, "ctrl1", "ctrl1")
+		capable.setCapabilities(withCapability())
+		nc.ctrls.Put("ctrl1", capable)
+
+		lacking, _ := newTestNetworkCtrl(nc, "ctrl2", "ctrl2")
+		lacking.setCapabilities(capabilities.NewMask[capabilities.ControllerCapability]())
+		nc.ctrls.Put("ctrl2", lacking)
+
+		require.False(t, nc.AllControllersHaveCapability(cap))
+	})
+
+	// Repeated calls must keep answering, not just the first one: the transition tracking is only about
+	// logging, and a caller asking again on the next dial has to get the same answer.
+	t.Run("the answer is stable across calls", func(t *testing.T) {
+		nc := newTestNetworkControllers()
+		ctrl, _ := newTestNetworkCtrl(nc, "ctrl1", "ctrl1")
+		ctrl.setCapabilities(withCapability())
+		nc.ctrls.Put("ctrl1", ctrl)
+
+		for i := 0; i < 3; i++ {
+			require.True(t, nc.AllControllersHaveCapability(cap))
+		}
+	})
 }

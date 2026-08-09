@@ -51,6 +51,7 @@ func (m *mockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.
 	return changed
 }
 
+func (m *mockNetworkControllers) Start(<-chan struct{})   {}
 func (m *mockNetworkControllers) MarkChannelEstablished() {}
 func (m *mockNetworkControllers) EverConnected() bool     { return true }
 
@@ -101,6 +102,9 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				StartupTimeout        time.Duration
 				RateLimit             command.AdaptiveRateLimitTrackerConfig
 				Listeners             []*env.CtrlListenerConfig
+
+				ConnectionCheckInterval    time.Duration
+				ConnectionCheckGracePeriod time.Duration
 			}{
 				EndpointsFile:    filepath.Join(tmpDir, "endpoints"),
 				InitialEndpoints: []*env.UpdatableAddress{env.NewUpdatableAddress(addr)},
@@ -141,6 +145,9 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 			StartupTimeout        time.Duration
 			RateLimit             command.AdaptiveRateLimitTrackerConfig
 			Listeners             []*env.CtrlListenerConfig
+
+			ConnectionCheckInterval    time.Duration
+			ConnectionCheckGracePeriod time.Duration
 		}{
 			EndpointsFile:         filepath.Join(tmpDir, "endpoints"),
 			InitialEndpoints:      []*env.UpdatableAddress{env.NewUpdatableAddress(addr), env.NewUpdatableAddress(addr2)},

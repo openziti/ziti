@@ -102,6 +102,7 @@ type Router struct {
 	xgressListeners     []xgress_router.Listener
 	linkDialerPool      goroutines.Pool
 	rateLimiterPool     goroutines.Pool
+	rxPool              goroutines.Pool
 	ctrlRateLimiter     rate.AdaptiveRateLimitTracker
 	metricsRegistry     servermetrics.UsageRegistry
 	shutdownC           chan struct{}
@@ -124,6 +125,7 @@ type Router struct {
 	alertReporter       *alert.Reporter
 	configRegistry      *managedconfig.Registry
 	inspectHandler      channel.ContentTypeReceiver
+	gossipClient        *gossipClient
 }
 
 func (self *Router) NotifyOfReconnect(ch ctrlchan.CtrlChannel) {
@@ -298,6 +300,10 @@ func (self *Router) GetChannelHeaders() (channel.Headers, error) {
 		headers[int32(ctrl_pb.ControlHeaders_CtrlChanListenersHeader)] = buf
 	}
 
+	if self.gossipClient != nil {
+		headers[int32(ctrl_pb.ControlHeaders_EpochHeader)] = self.gossipClient.epoch
+	}
+
 	return headers, nil
 }
 
@@ -336,6 +342,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	}
 
 	router.ctrls = env.NewNetworkControllers(router, &cfg.Ctrl.Heartbeats)
+	router.gossipClient = newGossipClient(cfg.Id.Token, router.ctrls, metricsRegistry)
 	router.stateManager = state.NewManager(router)
 	router.certManager = state.NewCertExpirationChecker(router, true)
 	router.alertReporter = alert.NewAlertReporter(router.ctrls, cfg.Id.Token, 1000, 10)
@@ -344,6 +351,7 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 	router.linkSubsystem.SetConfigurationChangeHandler(router.onLinkSubsystemChanged)
 
 	router.xlinkRegistry = link.NewLinkRegistry(router)
+	router.gossipClient.setLinkIterator(router.xlinkRegistry.Iter)
 	router.faulter = forwarder.NewFaulter(router, cfg.Forwarder.FaultTxInterval)
 	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, cfg.Forwarder, closeNotify)
 	router.forwarder.StartScanner(router.ctrls)
@@ -554,6 +562,9 @@ func (self *Router) Start() error {
 		return err
 	}
 
+	go newCanaryEmitter(self.ctrls, self.gossipClient.epoch, self.gossipClient.GetMaxSentVersions, self.gossipClient.GetEntryHashes, self.gossipClient.GetEntryCounts, self.shutdownC).run()
+	go newGossipRefresher(self.gossipClient, self.shutdownC).run()
+
 	return nil
 }
 
@@ -659,6 +670,14 @@ func (self *Router) initGoroutinePools() error {
 		return err
 	}
 
+	if err := self.initRxPool(); err != nil {
+		return err
+	}
+
+	// Handled here rather than where the gossip client is built, since the pool does not exist yet at that
+	// point. Until this runs, digests are handled on the receive goroutine.
+	self.gossipClient.setPool(self.rxPool)
+
 	return nil
 }
 
@@ -722,8 +741,43 @@ func (self *Router) GetLinkDialerPool() goroutines.Pool {
 	return self.linkDialerPool
 }
 
+// initRxPool builds the pool for work lifted off a control channel's receive goroutine. It is deliberately
+// separate from the rate limiter pool: that pool's workers park waiting for controller send capacity, so
+// sharing it would leave receiving to compete with, and be starved by, the back-pressure that moving work
+// off the receive goroutine exists to survive.
+func (self *Router) initRxPool() error {
+	rxPoolConfig := goroutines.PoolConfig{
+		QueueSize:   env.DefaultRxPoolQueueLength,
+		MinWorkers:  0,
+		MaxWorkers:  env.DefaultRxPoolWorkerCount,
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during control channel receive processing")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&rxPoolConfig, self.GetMetricsRegistry(), "pool.router.rx")
+
+	rxPool, err := goroutines.NewPool(rxPoolConfig)
+	if err != nil {
+		return errors.Wrap(err, "error creating control channel receive pool")
+	}
+
+	self.rxPool = rxPool
+	return nil
+}
+
+func (self *Router) GetRxPool() goroutines.Pool {
+	return self.rxPool
+}
+
 func (self *Router) GetRateLimiterPool() goroutines.Pool {
 	return self.rateLimiterPool
+}
+
+func (self *Router) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return self.gossipClient
 }
 
 func (self *Router) GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker {
@@ -974,6 +1028,10 @@ func (self *Router) startControlPlane() error {
 	} else {
 		self.ctrls.ConnectToInitialEndpoints(endpoints)
 	}
+
+	// TEMPORARY DIAGNOSTIC CODE - remove this call along with the connection check itself. See
+	// NetworkControllers.Start in router/env/ctrls.go for what it is and when it should go.
+	self.ctrls.Start(self.GetCloseNotify())
 
 	self.metricsReporter = NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
@@ -1297,8 +1355,11 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 					RemoteAddr: addr.RemoteAddr,
 				}
 			}
-			latencyMetric := self.router.metricsRegistry.Histogram("link." + currentLink.Id() + ".latency")
-			if latencyMetric != nil {
+			// Use GetHistogram (non-registering): a closed link's latency metric has
+			// already been disposed, and the get-or-create Histogram() would re-create
+			// it here on this periodically-run health check, leaking it (nothing
+			// disposes it again).
+			if latencyMetric := self.router.metricsRegistry.GetHistogram("link." + currentLink.Id() + ".latency"); latencyMetric != nil {
 				latency := latencyMetric.(metrics2.Histogram).Mean()
 				detail.Latency = &latency
 			}

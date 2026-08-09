@@ -189,6 +189,40 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 			result = append(result, status)
 		}
 		ctx.handleLocalJsonResponse(name, result)
+	} else if lc == "link-conn-states" {
+		// The connection state a controller holds for a link is otherwise invisible, which leaves a
+		// disagreement between it and what a router reports with no way to tell which of the two is wrong,
+		// or which end of the link the controller's copy came from.
+		var result []map[string]any
+		for _, l := range ctx.network.Link.All() {
+			state := map[string]any{}
+			state["linkId"] = l.Id
+			state["linkIteration"] = l.Iteration
+			state["dstRouterId"] = l.DstId
+			// Whether the link references the destination router, as opposed to merely naming it. A link that
+			// does not is skipped by path computation, so it carries no adjacency, and the id above is present
+			// either way.
+			state["dstRouterResolved"] = l.GetDest() != nil
+			if src := l.GetSrc(); src != nil {
+				state["srcRouterId"] = src.Id
+			}
+
+			connState := l.GetConnsState()
+			state["connStateIteration"] = connState.GetStateIteration()
+
+			var conns []map[string]any
+			for _, c := range connState.GetConns() {
+				conns = append(conns, map[string]any{
+					"type":       c.Type,
+					"localAddr":  c.LocalAddr,
+					"remoteAddr": c.RemoteAddr,
+				})
+			}
+			state["conns"] = conns
+
+			result = append(result, state)
+		}
+		ctx.handleLocalJsonResponse(name, result)
 	} else if lc == "connected-peers" {
 		if raftController, ok := ctx.network.Dispatcher.(*raft.Controller); ok {
 			members, err := raftController.ListMembers()
@@ -223,6 +257,14 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 	} else if lc == inspect.RouterIdentityConnectionStatusesKey {
 		result := ctx.network.env.GetManagers().Identity.GetConnectionTracker().Inspect()
 		ctx.handleLocalJsonResponse(name, result)
+	} else if lc == "gossip-links" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipLinks())
+	} else if lc == "gossip-link-metrics" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipLinkMetrics())
+	} else if lc == "gossip-store" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipStore())
+	} else if lc == "gossip-canaries" {
+		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipCanaries())
 	} else {
 		for _, inspectTarget := range ctx.network.inspectionTargets.Value() {
 			if handled, val, err := inspectTarget(lc); handled {

@@ -19,17 +19,25 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"google.golang.org/protobuf/proto"
 )
 
 type faultHandler struct {
 	xlinkRegistry xlink.Registry
+	env           env.RouterEnv
+	poolFallbacks metrics.Meter
 }
 
-func newFaultHandler(registry xlink.Registry) *faultHandler {
-	return &faultHandler{xlinkRegistry: registry}
+func newFaultHandler(routerEnv env.RouterEnv) *faultHandler {
+	return &faultHandler{
+		xlinkRegistry: routerEnv.GetXlinkRegistry(),
+		env:           routerEnv,
+		poolFallbacks: routerEnv.GetMetricsRegistry().Meter("link.fault.rx_pool_fallback"),
+	}
 }
 
 func (self *faultHandler) ContentType() int32 {
@@ -45,7 +53,19 @@ func (self *faultHandler) HandleReceive(msg *channel.Message, ch channel.Channel
 		return
 	}
 
-	go self.handleFault(msg, ch, fault)
+	handle := func() { self.handleFault(msg, ch, fault) }
+
+	// Bounded while the receive pool has room, unbounded when it does not. Spawning is the fallback rather
+	// than the default because a dropped fault leaves a dead link marked up with no repair loop behind it,
+	// and because waiting for pool capacity would put the burst on this goroutine, which also carries every
+	// other default priority message on this underlay. The pool is resolved here rather than at construction
+	// since handlers are built before the pools exist.
+	if pool := self.env.GetRxPool(); pool != nil && pool.QueueOrError(handle) == nil {
+		return
+	}
+
+	self.poolFallbacks.Mark(1)
+	go handle()
 }
 
 func (self *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
