@@ -325,6 +325,9 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	closeNotify := make(chan struct{})
 	metricsRegistry := createMetricsRegistry(cfg, closeNotify)
+	servermetrics.RegisterHostStats(metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: cfg.Metrics.HostMetrics.Enabled,
+	})
 
 	router := &Router{
 		xgRegistry:          env.NewRegistry(),
