@@ -51,7 +51,7 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 	listenerCtrlChan := ctrlchan.NewListenerCtrlChannel()
 	address := underlay.GetRemoteAddr().String()
 
-	bindHandler := channel.BindHandlers(
+	bindHandler := self.router.GetConfig().SlowHandlerDetector().Wrap(channel.BindHandlers(
 		channel.BindHandlerF(func(binding channel.Binding) error {
 			binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 				closeCallback()
@@ -59,7 +59,7 @@ func (self *ctrlChannelAcceptor) HandleGroupedUnderlay(underlay channel.Underlay
 			return self.router.ctrls.AcceptCtrlChannel(address, listenerCtrlChan, binding, underlay)
 		}),
 		self.router.ctrlBindhandler,
-	)
+	))
 
 	multiConfig := &channel.Config{
 		LogicalName:            "ctrl/" + underlay.Id(),

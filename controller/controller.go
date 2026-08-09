@@ -561,7 +561,8 @@ func (c *Controller) Run() error {
 
 	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
 
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options,
+		c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler, c.config.SlowHandlers)
 
 	ctrlAcceptors := map[string]channel.HelloAcceptor{}
 	if c.raftController != nil {

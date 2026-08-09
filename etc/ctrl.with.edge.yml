@@ -71,6 +71,27 @@ profile:
 #  memory:
 #    path: ctrl.memprof
 
+# Opt-in instrumentation, off unless enabled here. Intended for a test run or an investigation rather
+# than for production: when enabled, every control channel receive handler is timed, and one that has
+# not returned by stackDumpThreshold triggers a snapshot of every goroutine.
+#diagnostics:
+#  slowHandlers:
+#    enabled:            false
+#    # logged once a handler returns, if it took at least this long
+#    warnThreshold:      100ms
+#    # stacks are captured while a handler is still running, once it passes this. Lower it to catch lock
+#    # contention; the default catches handlers that are stuck.
+#    stackDumpThreshold: 500ms
+#    # a snapshot briefly stops the world, so this bounds how often one is taken, process-wide
+#    stackDumpInterval:  10m
+#    # how many distinct situations this process will write a file for. Repeats are counted, not rewritten.
+#    # This times maxStackDumpBytes is the ceiling on disk used.
+#    maxStackDumps:      10
+#    # how many goroutines must share a stack for it to count toward a dump's signature
+#    minGoroutineGroup:  5
+#    maxStackDumpBytes:  8388608
+#    stackDumpDir:       logs
+
 db: ${ZITI_DATA}/db/ctrl.db
 
 identity:

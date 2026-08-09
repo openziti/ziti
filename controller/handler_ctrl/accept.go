@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
+	"github.com/openziti/ziti/v2/common/diagnostics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -36,19 +37,22 @@ type CtrlAccepter struct {
 	options          *channel.Options
 	heartbeatOptions *channel.HeartbeatOptions
 	traceHandler     *channel.TraceHandler
+	slowHandlers     *diagnostics.SlowHandlerDetector
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
 	options *channel.Options,
 	heartbeatOptions *channel.HeartbeatOptions,
-	traceHandler *channel.TraceHandler) *CtrlAccepter {
+	traceHandler *channel.TraceHandler,
+	slowHandlers diagnostics.SlowHandlerConfig) *CtrlAccepter {
 	return &CtrlAccepter{
 		network:          network,
 		xctrls:           xctrls,
 		options:          options,
 		heartbeatOptions: heartbeatOptions,
 		traceHandler:     traceHandler,
+		slowHandlers:     diagnostics.NewSlowHandlerDetector("ctrl", slowHandlers),
 	}
 }
 
@@ -180,7 +184,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	if err = newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls).BindChannel(binding); err != nil {
+	bindHandler := self.slowHandlers.Wrap(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls))
+	if err = bindHandler.BindChannel(binding); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
 

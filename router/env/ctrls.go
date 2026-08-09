@@ -563,7 +563,8 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		return nil
 	})
 
-	combinedBindHandler := channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler())
+	combinedBindHandler := config.SlowHandlerDetector().Wrap(
+		channel.BindHandlers(bindHandler, self.dialEnv.GetCtrlChannelBindHandler()))
 
 	multiChannelConfig := &channel.Config{
 		LogicalName:            fmt.Sprintf("ctrl/%s", underlay.Id()),
