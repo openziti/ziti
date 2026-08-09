@@ -507,6 +507,9 @@ func (self *Router) Start() error {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
 		return err
 	}
+	if err := self.config.SlowHandlerDetector().CheckDumpDir(); err != nil {
+		return err
+	}
 	self.showOptions()
 
 	// Initialize pools and profiling
