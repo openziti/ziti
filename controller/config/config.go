@@ -34,15 +34,16 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/xgress"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/transport/v2"
 	transporttls "github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/config"
+	"github.com/openziti/ziti/v2/common/diagnostics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -146,7 +147,9 @@ type Config struct {
 			Path string
 		}
 	}
-	Ctrl struct {
+	// SlowHandlers configures opt-in slow control channel handler detection. Off unless configured on.
+	SlowHandlers diagnostics.SlowHandlerConfig
+	Ctrl         struct {
 		Listener transport.Address
 		Options  *CtrlOptions
 		Dialer   CtrlDialerConfig
@@ -1075,6 +1078,10 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	controllerConfig.Edge = edgeConfig
+
+	if controllerConfig.SlowHandlers, err = diagnostics.LoadConfig(cfgmap); err != nil {
+		return nil, err
+	}
 
 	return controllerConfig, nil
 }
