@@ -8,6 +8,11 @@ network:
   # Defaults to 1 minute
   routerConnectChurnLimit: 1m
 
+  # Reports host CPU, memory, load, disk and network usage, and the process's goroutine count, with the controller's
+  # other metrics. Intended for testing and investigations. Linux only. Defaults to off
+  #hostMetrics:
+  #  enabled: true
+
 # `trustDomain` is used to name and uniquely identify a network. Its main use is as a trust domain in SPIFFE ids.
 # Defining it here is only for single controller environments that are not configured for high
 # availability. Deployments with high availability MUST be configured via x509 certificate URI SANs.
