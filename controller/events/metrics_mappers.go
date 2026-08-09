@@ -24,14 +24,44 @@ import (
 	"github.com/openziti/ziti/v2/controller/network"
 )
 
+// splitMetricName returns the name a metric is emitted under and the entity id its raw name carries.
+//
+// Pure string work, deliberately: it is what the built-in mappers use to rewrite a name, and also what the
+// metric filter's fast path asks so it can tell what a filter written against emitted names would see. That
+// path runs for every metric in every message, so it cannot afford the per-link lookup the link mapper's tag
+// enrichment does, and does not need it.
+func splitMetricName(raw string) (string, string) {
+	if strings.HasPrefix(raw, "ctrl.") {
+		if parts := strings.Split(raw, ":"); len(parts) > 1 {
+			return parts[0], parts[1]
+		}
+		return raw, ""
+	}
+
+	if strings.HasPrefix(raw, "link.") {
+		if parts := strings.Split(raw, ":"); len(parts) == 2 {
+			return parts[0], parts[1]
+		}
+		if strings.HasSuffix(raw, "latency") || strings.HasSuffix(raw, "queue_time") {
+			return ExtractId(raw, "link.", 1)
+		}
+		return ExtractId(raw, "link.", 2)
+	}
+
+	return raw, ""
+}
+
+// mapMetricName returns the name a metric is emitted under, for callers that do not need the entity id.
+func mapMetricName(raw string) string {
+	name, _ := splitMetricName(raw)
+	return name
+}
+
 type ctrlChannelMetricsMapper struct{}
 
 func (ctrlChannelMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *event.MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "ctrl.") {
-		if parts := strings.Split(event.Metric, ":"); len(parts) > 1 {
-			event.Metric = parts[0]
-			event.SourceEntityId = parts[1]
-		}
+		event.Metric, event.SourceEntityId = splitMetricName(event.Metric)
 	}
 }
 
@@ -41,15 +71,7 @@ type linkMetricsMapper struct {
 
 func (self *linkMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *event.MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "link.") {
-		var name, linkId string
-		if parts := strings.Split(event.Metric, ":"); len(parts) == 2 {
-			name = parts[0]
-			linkId = parts[1]
-		} else if strings.HasSuffix(event.Metric, "latency") || strings.HasSuffix(event.Metric, "queue_time") {
-			name, linkId = ExtractId(event.Metric, "link.", 1)
-		} else {
-			name, linkId = ExtractId(event.Metric, "link.", 2)
-		}
+		name, linkId := splitMetricName(event.Metric)
 		event.Metric = name
 		event.SourceEntityId = linkId
 
