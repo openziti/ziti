@@ -29,6 +29,18 @@ identity:
 #  cpu:
 #    path:               001.cpuprof
 
+# Opt-in instrumentation, off unless enabled here. See the controller config for the full set of keys.
+# When enabled, every control channel receive handler is timed, and one that has not returned by
+# stackDumpThreshold triggers a snapshot of every goroutine.
+#diagnostics:
+#  slowHandlers:
+#    enabled:            false
+#    warnThreshold:      100ms
+#    stackDumpThreshold: 500ms
+#    stackDumpInterval:  10m
+#    maxStackDumps:      10
+#    minGoroutineGroup:  5
+
 ctrl:
   endpoint:             tls:127.0.0.1:6262
 #  rateLimiter:
