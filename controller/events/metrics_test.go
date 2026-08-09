@@ -20,11 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/servermetrics"
+	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/stretchr/testify/require"
 )
@@ -56,6 +58,52 @@ func Test_ExtractId(t *testing.T) {
 	name, entityId = ExtractId(name, "ctrl.", 2)
 	req.Equal(name, "ctrl.tx.bytesrate")
 	req.Equal(entityId, ".tO.kK.D.")
+}
+
+// Test_FilterMetrics_GroupGate guards the anyFieldAllowed fast path in
+// convertMetricsMsgToEvents: a metric whose fields are all filtered out must be
+// skipped (no event), while a metric matched only on a tail field (here a
+// histogram's p9999) must still be emitted. The latter catches the hazard of the
+// per-type key lists drifting out of sync with the filterMetric calls.
+func Test_FilterMetrics_GroupGate(t *testing.T) {
+	req := require.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+	dispatcher := NewDispatcher(closeNotify)
+	dispatcher.ctrlId = "ctrl1"
+
+	eventC := make(chan *event.MetricsEvent, 8)
+	filter, err := regexp.Compile("p9999$")
+	req.NoError(err)
+	adapter := dispatcher.NewFilteredMetricsAdapter(nil, filter, event.MetricsEventHandlerF(func(evt *event.MetricsEvent) {
+		eventC <- evt
+	}))
+	dispatcher.AddMetricsMessageHandler(adapter)
+
+	go func() {
+		registry := metrics.NewRegistry("test", nil)
+		registry.Histogram("some.histogram").Update(100) // only p9999 (a tail field) matches the filter
+		registry.Meter("other.meter").Mark(1)            // no field matches -> must be skipped entirely
+		dispatcher.AcceptMetricsMsg(servermetrics.Poll(registry))
+	}()
+
+	var evt *event.MetricsEvent
+	select {
+	case evt = <-eventC:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for histogram event")
+	}
+
+	req.Equal("some.histogram", evt.Metric)
+	req.Equal(1, len(evt.Metrics))
+	req.NotNil(evt.Metrics["p9999"])
+
+	select {
+	case extra := <-eventC:
+		t.Fatalf("expected no further events, got one for %s", extra.Metric)
+	case <-time.After(250 * time.Millisecond):
+	}
 }
 
 func Test_FilterMetrics(t *testing.T) {
@@ -218,4 +266,135 @@ func Test_MetricsFormat(t *testing.T) {
 	req.True(ok)
 
 	req.Equal(float64(1), nestedJson["count"])
+}
+
+// Test_FilterMetrics_MappedNames guards the interaction between the anyFieldAllowed fast path and the metrics
+// mappers. The mappers rewrite a metric's name after that gate runs, and filterMetric then matches against the
+// rewritten name, so a filter has to be written against the emitted one: an operator cannot write
+// link.<id>.latency.p99, since the link id is not known in advance. Testing only the raw name at the gate
+// rejects such a filter and takes the whole family with it.
+func Test_FilterMetrics_MappedNames(t *testing.T) {
+	tests := []struct {
+		name        string
+		filter      string
+		rawMetric   string
+		expectEvent bool
+		expectName  string
+	}{
+		{
+			name:        "a link filter written against the emitted name",
+			filter:      `^link\.latency\.p99$`,
+			rawMetric:   "link.abc123.latency",
+			expectEvent: true,
+			expectName:  "link.latency",
+		},
+		{
+			name:        "a ctrl filter written against the emitted name",
+			filter:      `^ctrl\.latency\.p99$`,
+			rawMetric:   "ctrl.latency:router1",
+			expectEvent: true,
+			expectName:  "ctrl.latency",
+		},
+		{
+			// A raw-name filter selects nothing, as it did before this gate existed: the per-field gate has
+			// always matched against the emitted name, so such a filter never chose any field and the event was
+			// discarded for having none. Failing here reaches the same outcome without the wasted work.
+			name:        "a link filter written against the raw name",
+			filter:      `^link\.abc123\.latency\.p99$`,
+			rawMetric:   "link.abc123.latency",
+			expectEvent: false,
+		},
+		{
+			// The fast path still has to drop what matches neither, or it stops being a fast path.
+			name:        "a filter matching neither name",
+			filter:      `^something\.else\.p99$`,
+			rawMetric:   "link.abc123.latency",
+			expectEvent: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := require.New(t)
+
+			closeNotify := make(chan struct{})
+			defer close(closeNotify)
+			dispatcher := NewDispatcher(closeNotify)
+			dispatcher.ctrlId = "ctrl1"
+			// The link mapper's tag enrichment needs a network, which this test has none of, so only its name
+			// rewrite is stood in for. That is all the filter fast path depends on.
+			dispatcher.addMetricsMapper(ctrlChannelMetricsMapper{}.mapMetrics)
+			dispatcher.addMetricsMapper(func(_ *metrics_pb.MetricsMessage, evt *event.MetricsEvent) {
+				if strings.HasPrefix(evt.Metric, "link.") {
+					evt.Metric, evt.SourceEntityId = splitMetricName(evt.Metric)
+				}
+			})
+
+			eventC := make(chan *event.MetricsEvent, 8)
+			filter, err := regexp.Compile(test.filter)
+			req.NoError(err)
+			adapter := dispatcher.NewFilteredMetricsAdapter(nil, filter, event.MetricsEventHandlerF(func(evt *event.MetricsEvent) {
+				eventC <- evt
+			}))
+			dispatcher.AddMetricsMessageHandler(adapter)
+
+			go func() {
+				registry := metrics.NewRegistry("test", nil)
+				registry.Histogram(test.rawMetric).Update(100)
+				dispatcher.AcceptMetricsMsg(servermetrics.Poll(registry))
+			}()
+
+			if !test.expectEvent {
+				select {
+				case evt := <-eventC:
+					t.Fatalf("expected the family to be dropped, got an event for %s", evt.Metric)
+				case <-time.After(250 * time.Millisecond):
+				}
+				return
+			}
+
+			select {
+			case evt := <-eventC:
+				req.Equal(test.expectName, evt.Metric)
+				req.NotNil(evt.Metrics["p99"], "the matched field must be present")
+			case <-time.After(time.Second):
+				t.Fatalf("timed out waiting for an event")
+			}
+		})
+	}
+}
+
+// Test_splitMetricName_matchesTheMappers guards against the shared name rewrite drifting from what the mappers
+// actually emit, which would make the filter fast path test for a name no metric is ever emitted under.
+//
+// This is the whole safety net for that fast path, now that registering a mapper is internal to the package: a
+// new mapper means teaching splitMetricName its rewrite and adding a name for it here.
+func Test_splitMetricName_matchesTheMappers(t *testing.T) {
+	raws := []string{
+		"link.abc123.latency",
+		"link.abc123.queue_time",
+		"link.abc123.tx.bytesrate",
+		"link.dropped_msgs:abc123",
+		"ctrl.latency:router1",
+		"ctrl.router1.tx.bytesrate",
+		"pool.router.rx.queue_size",
+	}
+
+	for _, raw := range raws {
+		t.Run(raw, func(t *testing.T) {
+			req := require.New(t)
+
+			viaMapper := &event.MetricsEvent{Metric: raw}
+			ctrlChannelMetricsMapper{}.mapMetrics(nil, viaMapper)
+			if strings.HasPrefix(raw, "link.") {
+				name, linkId := splitMetricName(raw)
+				viaMapper.Metric = name
+				viaMapper.SourceEntityId = linkId
+			}
+
+			name, entityId := splitMetricName(raw)
+			req.Equal(viaMapper.Metric, name, "emitted name")
+			req.Equal(viaMapper.SourceEntityId, entityId, "entity id")
+		})
+	}
 }
