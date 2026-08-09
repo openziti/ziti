@@ -110,8 +110,20 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 }
 
 func (self *impl) Close() error {
-	self.droppedMsgMeter.Dispose()
+	self.disposeMetrics()
 	return self.ch.GetChannel().Close()
+}
+
+// disposeMetrics releases every metric registered in Init. Keep this in sync
+// with Init: any meter created there but not disposed here leaks on every link
+// close, since the metrics registry has no other cleanup tied to a closed link.
+func (self *impl) disposeMetrics() {
+	if self.droppedMsgMeter != nil {
+		self.droppedMsgMeter.Dispose()
+		self.droppedXgMsgMeter.Dispose()
+		self.droppedRtxMsgMeter.Dispose()
+		self.droppedFwdMsgMeter.Dispose()
+	}
 }
 
 func (self *impl) CloseNotified() error {
@@ -165,6 +177,14 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 }
 
 func (self *impl) GetLinkConnState() *ctrl_pb.LinkConnState {
+	// Read the iteration before collecting the connections, not after. A controller only accepts a state
+	// whose iteration is higher than the one it holds, so a snapshot labelled newer than the connections it
+	// actually describes is never superseded: an underlay arriving mid-collection would otherwise produce
+	// the new iteration alongside the old connection set, and every later report of the true set would
+	// carry that same iteration and be refused. Reading it first can only understate the iteration, which
+	// the next report corrects.
+	stateIteration := self.ch.GetConnStateIteration()
+
 	var connections []*ctrl_pb.LinkConn
 	for _, u := range self.ch.GetChannel().GetUnderlays() {
 		localAddr := u.GetLocalAddr()
@@ -180,7 +200,7 @@ func (self *impl) GetLinkConnState() *ctrl_pb.LinkConnState {
 		})
 	}
 	return &ctrl_pb.LinkConnState{
-		StateIteration: self.ch.GetConnStateIteration(),
+		StateIteration: stateIteration,
 		Conns:          connections,
 	}
 }
