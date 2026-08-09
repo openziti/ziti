@@ -229,6 +229,9 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
+	servermetrics.RegisterHostStats(network.metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: config.GetOptions().HostMetrics.Enabled,
+	})
 
 	// ctrl.is_leader is 1 on the raft leader, 0 otherwise (always 1 in non-HA).
 	// Lets the metrics timeseries correlate per-controller load with leadership,
