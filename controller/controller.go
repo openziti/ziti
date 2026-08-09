@@ -44,6 +44,7 @@ import (
 	"github.com/openziti/ziti/v2/common/bindpoints"
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/concurrency"
+	"github.com/openziti/ziti/v2/common/diagnostics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/profiler"
 	"github.com/openziti/ziti/v2/common/servermetrics"
@@ -513,6 +514,11 @@ func (c *Controller) ensureOidcOnClientApiServer(instanceConfig *xweb.InstanceCo
 func (c *Controller) Run() error {
 	c.startProfiling()
 
+	slowHandlers := diagnostics.NewSlowHandlerDetector("ctrl", c.config.SlowHandlers)
+	if err := slowHandlers.CheckDumpDir(); err != nil {
+		return err
+	}
+
 	if err := c.registerComponents(); err != nil {
 		return fmt.Errorf("error registering component: %s", err)
 	}
@@ -547,7 +553,8 @@ func (c *Controller) Run() error {
 
 	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
 
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options,
+		c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler, slowHandlers)
 
 	ctrlAcceptors := map[string]channel.HelloAcceptor{}
 	if c.raftController != nil {
