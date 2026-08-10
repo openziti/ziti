@@ -1,6 +1,7 @@
 package handler_link
 
 import (
+	"crypto/x509"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -110,14 +111,18 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 }
 
 func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
-	var fingerprints []string
-	for _, cert := range ch.Certificates() {
-		fingerprints = append(fingerprints, nfpem.FingerprintFromCertificate(cert))
+	// Fingerprint only the leaf certificate whose key the TLS handshake proved possession of
+	// (certs[0]). Fingerprinting the rest of the presented chain would let a peer present a victim
+	// router's certificate as filler and be admitted under the victim's id, since the controller
+	// accepts the link if any presented fingerprint matches the claimed router's enrolled one.
+	fingerprint, err := leafFingerprint(ch.Certificates())
+	if err != nil {
+		return errors.Wrapf(err, "unable to verify router for link %v", l.Id())
 	}
 
 	verifyLink := &ctrl_pb.VerifyRouter{
 		RouterId:     l.DestinationId(),
-		Fingerprints: fingerprints,
+		Fingerprints: []string{fingerprint},
 	}
 
 	ctrlCh := self.ctrl.AnyChannel()
@@ -143,6 +148,17 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 	}
 
 	return errors.Errorf("unable to verify link [%v]", result.Message)
+}
+
+// leafFingerprint returns the fingerprint of the leaf certificate whose key the TLS handshake proved
+// possession of (certs[0]). Only the leaf is fingerprinted: fingerprinting the rest of the presented
+// chain would let a peer present a victim router's certificate as filler and be admitted under the
+// victim's id.
+func leafFingerprint(certs []*x509.Certificate) (string, error) {
+	if len(certs) == 0 {
+		return "", errors.New("no certificates presented")
+	}
+	return nfpem.FingerprintFromCertificate(certs[0]), nil
 }
 
 type heartbeatCallback struct {
