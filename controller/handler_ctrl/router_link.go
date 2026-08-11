@@ -39,17 +39,27 @@ func (h *routerLinkHandler) ContentType() int32 {
 }
 
 func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", h.r.Id)
+
+	// A router announces its links once per reconnect and is not asked again, so a report dropped here
+	// leaves the controller with no links for a router that believes it announced them, with nothing on
+	// either side to re-offer or re-ask. Say so rather than dropping it silently.
 	if !h.r.Connected.Load() || ch.IsClosed() {
+		log.WithField("routerConnected", h.r.Connected.Load()).
+			WithField("channelClosed", ch.IsClosed()).
+			Warn("discarding link report, this connection is not the router's current one")
 		return
 	}
-
-	log := pfxlog.ContextLogger(ch.Label())
 
 	link := &ctrl_pb.RouterLinks{}
 	if err := proto.Unmarshal(msg.Body, link); err != nil {
 		log.WithError(err).Error("failed to unmarshal link message")
 		return
 	}
+
+	log.WithField("linkCount", len(link.Links)).
+		WithField("fullRefresh", link.FullRefresh).
+		Info("received link report from router")
 
 	h.HandleLinks(link)
 }

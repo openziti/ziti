@@ -376,3 +376,87 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 		}
 	}
 }
+
+// TestRouterReportedLink_RepairsDestConnectedMidReport drives the interleave that leaves a link with no
+// destination router. Both paths that establish the pairing miss it: the report resolves the destination
+// before the link is in the table, and the destination's own link build runs before the link lands there. The
+// link is then skipped by path computation while every operator-facing view still calls it healthy.
+//
+// The destination connects through ConnectRouter rather than by calling its steps here, so the test cannot
+// disagree with production about the order they run in. That order is load-bearing: the repair re-reads the
+// connected map, so it only helps if registration precedes the link build.
+func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: dst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+
+	// The reporting path resolves the destination first, and finds it absent.
+	resolved := network.Router.GetConnected(dst.Id)
+	require.Nil(t, resolved)
+
+	// The destination connects in the gap. Its link build finds nothing, because the link being reported is
+	// not in the table yet.
+	require.NoError(t, network.ConnectRouter(dst))
+	require.Empty(t, dst.GetLinks(), "the destination's link build must have found nothing")
+
+	// Only now does the report land, still carrying the resolution that was accurate when it was taken.
+	link, created := network.Link.RouterReportedLink(report, src, resolved)
+	require.True(t, created)
+	require.NotNil(t, link)
+
+	require.Same(t, dst, link.GetDest(),
+		"the link must be pointed at the destination router that connected while the report was in flight")
+
+	// The consequence that matters: path computation can see the adjacency.
+	neighbors := network.Link.ConnectedNeighborsOfRouter(src)
+	require.Len(t, neighbors, 1, "the link must carry adjacency")
+	require.Equal(t, dst.Id, neighbors[0].Id)
+
+	// Indexed on the destination exactly once. The index is a slice that does not deduplicate, and the
+	// destination's own link build is entitled to run again.
+	require.Len(t, dst.GetLinks(), 1)
+	network.Link.BuildRouterLinks(dst)
+	require.Len(t, dst.GetLinks(), 1, "a second link build must not index the link again")
+}
+
+// TestConnectRouter_RepairsLinkAlreadyMissingItsDest covers the other half of the pairing: a link already in
+// the table holding no destination must be repaired when that destination connects. Together with the report
+// side above, whichever of the two arrives second fixes what the first missed.
+func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+
+	// A link recorded while its destination was not connected, so it points at nothing.
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: dst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+	link, created := network.Link.RouterReportedLink(report, src, nil)
+	require.True(t, created)
+	require.Nil(t, link.GetDest(), "the destination was not connected when the link was recorded")
+
+	require.NoError(t, network.ConnectRouter(dst))
+
+	require.Same(t, dst, link.GetDest(), "connecting the destination must repair the link")
+	require.Len(t, dst.GetLinks(), 1, "and index it on the destination")
+
+	neighbors := network.Link.ConnectedNeighborsOfRouter(src)
+	require.Len(t, neighbors, 1, "the link must carry adjacency once repaired")
+	require.Equal(t, dst.Id, neighbors[0].Id)
+}
