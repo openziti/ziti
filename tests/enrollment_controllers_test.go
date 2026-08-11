@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"crypto/x509"
 	"fmt"
 	"testing"
 	"time"
@@ -93,13 +94,15 @@ func Test_EnrollmentControllerList(t *testing.T) {
 		newIdentityLoc, err := adminManClient.CreateIdentity(eid.New(), false)
 		ctx.Req.NoError(err)
 
-		testCa := newTestCa()
-		newCaLoc, err := adminManClient.CreateCa(testCa)
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		newCaLoc, err := adminManClient.CreateCa(NewCaCreate(caPem))
 		ctx.Req.NoError(err)
 
 		newCa, err := adminManClient.GetCa(newCaLoc.ID)
 		ctx.Req.NoError(err)
-		err = adminManClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), testCa.publicCert, testCa.privateKey)
+		err = adminManClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), caCert, caKey)
 		ctx.Req.NoError(err)
 
 		expiresAt := time.Now().Add(10 * time.Minute).UTC()
@@ -110,8 +113,10 @@ func Test_EnrollmentControllerList(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		clientApi := ctx.NewEdgeClientApi(nil)
-		certAuth := testCa.CreateSignedCert(eid.New())
-		_, controllers, err := clientApi.CompleteOttCaEnrollmentWithControllers(*enrollment.Token, certAuth.certs, certAuth.key)
+		clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+		ctx.Req.NoError(err)
+
+		_, controllers, err := clientApi.CompleteOttCaEnrollmentWithControllers(*enrollment.Token, []*x509.Certificate{clientCert}, clientKey)
 		ctx.Req.NoError(err)
 		ctx.Req.NoError(assertEnrollmentControllers(expected, controllers))
 	})

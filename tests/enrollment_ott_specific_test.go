@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"crypto/x509"
 	"errors"
 	"io"
 	"testing"
@@ -390,9 +391,10 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newIdentity)
 
-		testCa := newTestCa()
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
 
-		newCaLoc, err := managementApiClient.CreateCa(testCa)
+		newCaLoc, err := managementApiClient.CreateCa(NewCaCreate(caPem))
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newCaLoc)
 		ctx.Req.NotEmpty(newCaLoc.ID)
@@ -402,7 +404,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.NotNil(newCa)
 		ctx.NotEmpty(newCa.VerificationToken)
 
-		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), testCa.publicCert, testCa.privateKey)
+		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), caCert, caKey)
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(10 * time.Minute).UTC()
@@ -440,9 +442,10 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 
 			clientApiClient := ctx.NewEdgeClientApi(nil)
 
-			certAuth := testCa.CreateSignedCert(eid.New())
+			clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+			ctx.Req.NoError(err)
 
-			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, certAuth.certs, certAuth.key)
+			_, err = clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, []*x509.Certificate{clientCert}, clientKey)
 			ctx.Req.NoError(err)
 
 		})
@@ -468,9 +471,10 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newIdentity)
 
-		testCa := newTestCa()
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
 
-		newCaLoc, err := managementApiClient.CreateCa(testCa)
+		newCaLoc, err := managementApiClient.CreateCa(NewCaCreate(caPem))
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newCaLoc)
 		ctx.Req.NotEmpty(newCaLoc.ID)
@@ -480,7 +484,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.NotNil(newCa)
 		ctx.NotEmpty(newCa.VerificationToken)
 
-		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), testCa.publicCert, testCa.privateKey)
+		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), caCert, caKey)
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Second).UTC()
@@ -505,9 +509,10 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 
 			clientApiClient := ctx.NewEdgeClientApi(nil)
 
-			certAuth := testCa.CreateSignedCert(eid.New())
+			clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+			ctx.Req.NoError(err)
 
-			_, err := clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, certAuth.certs, certAuth.key)
+			_, err = clientApiClient.CompleteOttCaEnrollment(*newEnrollment.Token, []*x509.Certificate{clientCert}, clientKey)
 			ctx.Req.Error(err)
 		})
 	})
@@ -532,9 +537,10 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newIdentity)
 
-		testCa := newTestCa()
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
 
-		newCaLoc, err := managementApiClient.CreateCa(testCa)
+		newCaLoc, err := managementApiClient.CreateCa(NewCaCreate(caPem))
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(newCaLoc)
 		ctx.Req.NotEmpty(newCaLoc.ID)
@@ -544,7 +550,7 @@ func Test_EnrollmentOttSpecific(t *testing.T) {
 		ctx.NotNil(newCa)
 		ctx.NotEmpty(newCa.VerificationToken)
 
-		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), testCa.publicCert, testCa.privateKey)
+		err = managementApiClient.VerifyCa(*newCa.ID, newCa.VerificationToken.String(), caCert, caKey)
 		ctx.Req.NoError(err)
 
 		newEnrollmentExpiresAt := time.Now().Add(5 * time.Hour).UTC()

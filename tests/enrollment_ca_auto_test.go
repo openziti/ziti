@@ -42,13 +42,13 @@ func Test_EnrollmetnCaAuto(t *testing.T) {
 		t.Run("setup CA", func(t *testing.T) {
 			testCa := newTestCa()
 
-			testCa.externalIdClaim = &externalIdClaim{
-				location:        rest_model.ExternalIDClaimLocationCOMMONNAME,
-				matcher:         rest_model.ExternalIDClaimMatcherALL,
-				matcherCriteria: "",
-				parser:          rest_model.ExternalIDClaimParserNONE,
-				parserCriteria:  "",
-				index:           0,
+			testCa.externalIdClaim = &rest_model.ExternalIDClaim{
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+				Index:           ToPtr[int64](0),
 			}
 
 			testCa.identityNameFormat = "[requestedName]"

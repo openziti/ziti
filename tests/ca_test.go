@@ -1,17 +1,38 @@
 //go:build apitests
 
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package tests
 
 import (
+	"crypto"
+	"crypto/x509"
 	"fmt"
-	"net/http"
-	"sort"
 	"testing"
+	"time"
 
-	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge-api/rest_util"
+	"github.com/openziti/foundation/v2/errorz"
+	edgeApis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func Test_CA(t *testing.T) {
@@ -20,127 +41,268 @@ func Test_CA(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
+	mgmtClient := ctx.NewEdgeManagementApi(nil)
+	_, err := mgmtClient.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
+
 	t.Run("identity attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
+
 		role1 := eid.New()
 		role2 := eid.New()
-		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-		ctx.AdminManagementSession.validateEntityWithQuery(ca)
-		ctx.AdminManagementSession.validateEntityWithLookup(ca)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{role1, role2}
+
+		created, err := mgmtClient.CreateCa(caCreate)
+		ctx.Req.NoError(err)
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+
+		ctx.Req.Equal(*caCreate.Name, *detail.Name)
+		ctx.Req.ElementsMatch([]string{role1, role2}, detail.IdentityRoles)
+		ctx.Req.Equal(caPem, *detail.CertPem)
+		ctx.Req.Equal(caCreate.IdentityNameFormat, *detail.IdentityNameFormat)
+		ctx.Req.Equal(*caCreate.IsAuthEnabled, *detail.IsAuthEnabled)
+		ctx.Req.Equal(*caCreate.IsAutoCaEnrollmentEnabled, *detail.IsAutoCaEnrollmentEnabled)
+		ctx.Req.Equal(*caCreate.IsOttCaEnrollmentEnabled, *detail.IsOttCaEnrollmentEnabled)
 	})
 
 	t.Run("identity attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
+
 		role1 := eid.New()
 		role2 := eid.New()
-		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-
 		role3 := eid.New()
-		ca.identityRoles = []string{role2, role3}
-		ctx.AdminManagementSession.requireUpdateEntity(ca)
-		ctx.AdminManagementSession.validateEntityWithLookup(ca)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{role1, role2}
+
+		created, err := mgmtClient.CreateCa(caCreate)
+		ctx.Req.NoError(err)
+
+		update := newCaUpdate(caCreate)
+		update.IdentityRoles = []string{role2, role3}
+
+		ctx.Req.NoError(mgmtClient.UpdateCa(created.ID, update))
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.ElementsMatch([]string{role2, role3}, detail.IdentityRoles)
+	})
+
+	t.Run("create with a # prefixed identity role should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{"#badrole"}
+
+		_, err = mgmtClient.CreateCa(caCreate)
+
+		requireIdentityRolesFieldError(ctx, err, "#badrole")
+	})
+
+	t.Run("create with an @ prefixed identity role should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{"@badrole"}
+
+		_, err = mgmtClient.CreateCa(caCreate)
+
+		requireIdentityRolesFieldError(ctx, err, "@badrole")
+	})
+
+	t.Run("update with a # prefixed identity role should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{eid.New()}
+
+		created, err := mgmtClient.CreateCa(caCreate)
+		ctx.Req.NoError(err)
+
+		update := newCaUpdate(caCreate)
+		update.IdentityRoles = []string{"#badrole"}
+
+		err = mgmtClient.UpdateCa(created.ID, update)
+
+		requireIdentityRolesFieldError(ctx, err, "#badrole")
+	})
+
+	t.Run("patch with a # prefixed identity role should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		created, err := mgmtClient.CreateCa(NewCaCreate(caPem))
+		ctx.Req.NoError(err)
+
+		err = mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{IdentityRoles: []string{"#badrole"}})
+
+		requireIdentityRolesFieldError(ctx, err, "#badrole")
+	})
+
+	t.Run("patch of an unrelated field should not validate existing identity roles", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		// Role validation is gated on the roles field actually being patched, so a CA carrying a
+		// role from before validation existed can still be renamed.
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		created, err := mgmtClient.CreateCa(NewCaCreate(caPem))
+		ctx.Req.NoError(err)
+
+		newName := eid.New()
+		ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{Name: ToPtr(newName)}))
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(newName, *detail.Name)
+	})
+
+	t.Run("a ca holding prefixed identity roles can still be verified", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		// Role validation must respect the field checker. Verification writes only isVerified, so a
+		// stored role it never touches must not block it.
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		created, err := mgmtClient.CreateCa(NewCaCreate(caPem))
+		ctx.Req.NoError(err)
+
+		seedCaIdentityRoles(ctx, created.ID, []string{"#badrole"})
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+
+		ctx.Req.NoError(mgmtClient.VerifyCa(created.ID, detail.VerificationToken.String(), caCert, caKey))
+
+		verified, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.True(*verified.IsVerified)
+	})
+
+	t.Run("enrollment through a ca holding prefixed identity roles fails without panicking", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caId, err := mgmtClient.CreateAndVerifyCa(NewCaCreate(caPem), caCert, caKey)
+		ctx.Req.NoError(err)
+
+		seedCaIdentityRoles(ctx, caId, []string{"#badrole"})
+
+		clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+		ctx.Req.NoError(err)
+
+		clientApi := ctx.NewEdgeClientApi(nil)
+		err = clientApi.CompleteCaAutoEnrollment([]*x509.Certificate{clientCert}, clientKey, "")
+
+		ctx.Req.Error(err, "enrollment through a ca with an invalid identity role must fail")
+
+		var apiErr *rest_util.APIFormattedError
+		ctx.Req.ErrorAs(err, &apiErr, "enrollment must fail with a well formed api error, not a truncated response")
+		ctx.Req.NotEmpty(apiErr.Code)
 	})
 
 	t.Run("identityNameFormat should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := eid.New()
-		role2 := eid.New()
-		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		ca.identityNameFormat = "123"
-		ctx.AdminManagementSession.requireUpdateEntity(ca)
-		ctx.AdminManagementSession.validateEntityWithLookup(ca)
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caCreate := NewCaCreate(caPem)
+		created, err := mgmtClient.CreateCa(caCreate)
+		ctx.Req.NoError(err)
+
+		update := newCaUpdate(caCreate)
+		update.IdentityNameFormat = ToPtr("123")
+
+		ctx.Req.NoError(mgmtClient.UpdateCa(created.ID, update))
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal("123", *detail.IdentityNameFormat)
 	})
 
 	t.Run("identity name format should default if not specified", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := eid.New()
-		role2 := eid.New()
-		ca := newTestCa(role1, role2)
 
-		ca.identityNameFormat = ""
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
+		_, _, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
 
-		//set to default for verification
-		ca.identityNameFormat = model.DefaultCaIdentityNameFormat
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityNameFormat = ""
 
-		ctx.AdminManagementSession.validateEntityWithQuery(ca)
-		ctx.AdminManagementSession.validateEntityWithLookup(ca)
+		created, err := mgmtClient.CreateCa(caCreate)
+		ctx.Req.NoError(err)
+
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(model.DefaultCaIdentityNameFormat, *detail.IdentityNameFormat)
 	})
 
 	t.Run("identities from auto enrollment inherit CA identity roles", func(t *testing.T) {
 		ctx.testContextChanged(t)
+
 		role1 := eid.New()
 		role2 := eid.New()
-		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-		verificationToken := caValues.Path("data.verificationToken").Data().(string)
-
-		ctx.Req.NotEmpty(verificationToken)
-
-		validationAuth := ca.CreateSignedCert(verificationToken)
-
-		clientAuthenticator := ca.CreateSignedCert(eid.New())
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-			SetHeader("content-type", "text/plain").
-			SetBody(validationAuth.certPem).
-			Post("cas/" + ca.id + "/verify")
-
-		ctx.Req.NoError(err)
-		ctx.logJson(resp.Body())
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		ctx.completeOttCaEnrollment(clientAuthenticator)
-
-		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
-
+		caCert, caKey, caPem, err := newCaKeyPair()
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
-		sort.Strings(ca.identityRoles)
-		ctx.pathEqualsStringSlice(identity, ca.identityRoles, path("data", "roleAttributes"))
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityRoles = []string{role1, role2}
+
+		_, err = mgmtClient.CreateAndVerifyCa(caCreate, caCert, caKey)
+		ctx.Req.NoError(err)
+
+		apiSession := requireCaAutoEnrollment(ctx, caCert, caKey, "")
+
+		identity, err := mgmtClient.GetIdentity(apiSession.GetIdentityId())
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(identity.RoleAttributes)
+		ctx.Req.ElementsMatch([]string{role1, role2}, *identity.RoleAttributes)
 	})
 
 	t.Run("identities from auto enrollment use identity name format for naming", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ca := newTestCa()
 
 		expectedName := "singular.name.not.great"
-		ca.identityNameFormat = expectedName
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-		verificationToken := caValues.Path("data.verificationToken").Data().(string)
-
-		ctx.Req.NotEmpty(verificationToken)
-
-		validationAuth := ca.CreateSignedCert(verificationToken)
-
-		clientAuthenticator := ca.CreateSignedCert(eid.New())
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-			SetHeader("content-type", "text/plain").
-			SetBody(validationAuth.certPem).
-			Post("cas/" + ca.id + "/verify")
-
-		ctx.Req.NoError(err)
-		ctx.logJson(resp.Body())
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		ctx.completeOttCaEnrollment(clientAuthenticator)
-
-		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
-
+		caCert, caKey, caPem, err := newCaKeyPair()
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
-		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityNameFormat = expectedName
+
+		_, err = mgmtClient.CreateAndVerifyCa(caCreate, caCert, caKey)
+		ctx.Req.NoError(err)
+
+		apiSession := requireCaAutoEnrollment(ctx, caCert, caKey, "")
+
+		identity, err := mgmtClient.GetIdentity(apiSession.GetIdentityId())
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(expectedName, *identity.Name)
 	})
 
 	t.Run("identities from auto enrollment identity name collisions add numbers to the end", func(t *testing.T) {
@@ -149,544 +311,326 @@ func Test_CA(t *testing.T) {
 		firstExpectedName := "some.static.name.no.replacements"
 		secondExpectedName := "some.static.name.no.replacements000001"
 
-		//create CA
-		ca := newTestCa()
-		ca.identityNameFormat = firstExpectedName
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-
-		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-		verificationToken := caValues.Path("data.verificationToken").Data().(string)
-
-		ctx.Req.NotEmpty(verificationToken)
-
-		//validate CA
-		validationAuth := ca.CreateSignedCert(verificationToken)
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-			SetHeader("content-type", "text/plain").
-			SetBody(validationAuth.certPem).
-			Post("cas/" + ca.id + "/verify")
-
-		ctx.Req.NoError(err)
-		ctx.logJson(resp.Body())
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-
-		//first firstIdentity, no issues
-		firstClientAuthenticator := ca.CreateSignedCert(eid.New())
-		ctx.completeOttCaEnrollment(firstClientAuthenticator)
-
-		firstEnrolledSession, err := firstClientAuthenticator.AuthenticateClientApi(ctx)
-
+		caCert, caKey, caPem, err := newCaKeyPair()
 		ctx.Req.NoError(err)
 
-		firstIdentity := ctx.AdminManagementSession.requireQuery("identities/" + *firstEnrolledSession.AuthResponse.IdentityID)
-		ctx.Req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityNameFormat = firstExpectedName
 
-		//second firstIdentity that collides, becomes
-		secondClientAuthenticator := ca.CreateSignedCert(eid.New())
-		ctx.completeOttCaEnrollment(secondClientAuthenticator)
-
-		secondEnrolledSession, err := secondClientAuthenticator.AuthenticateClientApi(ctx)
-
+		_, err = mgmtClient.CreateAndVerifyCa(caCreate, caCert, caKey)
 		ctx.Req.NoError(err)
 
-		secondIdentity := ctx.AdminManagementSession.requireQuery("identities/" + *secondEnrolledSession.AuthResponse.IdentityID)
-		ctx.Req.Equal(secondExpectedName, secondIdentity.Path("data.name").Data().(string))
+		firstSession := requireCaAutoEnrollment(ctx, caCert, caKey, "")
+
+		firstIdentity, err := mgmtClient.GetIdentity(firstSession.GetIdentityId())
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(firstExpectedName, *firstIdentity.Name)
+
+		secondSession := requireCaAutoEnrollment(ctx, caCert, caKey, "")
+
+		secondIdentity, err := mgmtClient.GetIdentity(secondSession.GetIdentityId())
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(secondExpectedName, *secondIdentity.Name)
 	})
 
 	t.Run("identities from auto enrollment use identity name format for naming with replacements", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ca := newTestCa()
-		ca.identityNameFormat = "[caName] - [caId] - [commonName] - [requestedName] - [identityId]"
 
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-
-		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-		verificationToken := caValues.Path("data.verificationToken").Data().(string)
-
-		ctx.Req.NotEmpty(verificationToken)
-
-		validationAuth := ca.CreateSignedCert(verificationToken)
-
-		clientAuthenticator := ca.CreateSignedCert(eid.New())
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-			SetHeader("content-type", "text/plain").
-			SetBody(validationAuth.certPem).
-			Post("cas/" + ca.id + "/verify")
-
+		caCert, caKey, caPem, err := newCaKeyPair()
 		ctx.Req.NoError(err)
-		ctx.logJson(resp.Body())
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
+		caCreate := NewCaCreate(caPem)
+		caCreate.IdentityNameFormat = "[caName] - [caId] - [commonName] - [requestedName] - [identityId]"
+
+		caId, err := mgmtClient.CreateAndVerifyCa(caCreate, caCert, caKey)
+		ctx.Req.NoError(err)
+
+		commonName := eid.New()
 		requestedName := "bobby"
-		ctx.completeCaAutoEnrollmentWithName(clientAuthenticator, requestedName)
 
-		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
-
+		clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, commonName)
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
-		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.certs[0].Subject.CommonName, requestedName, *enrolledSession.AuthResponse.IdentityID)
+		clientApi := ctx.NewEdgeClientApi(nil)
+		ctx.Req.NoError(clientApi.CompleteCaAutoEnrollment([]*x509.Certificate{clientCert}, clientKey, requestedName))
 
-		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
+		apiSession, err := clientApi.Authenticate(edgeApis.NewCertCredentials([]*x509.Certificate{clientCert}, clientKey), nil)
+		ctx.Req.NoError(err)
+
+		identity, err := mgmtClient.GetIdentity(apiSession.GetIdentityId())
+		ctx.Req.NoError(err)
+
+		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s",
+			*caCreate.Name, caId, commonName, requestedName, apiSession.GetIdentityId())
+		ctx.Req.Equal(expectedName, *identity.Name)
 	})
 
 	t.Run("CAs with auth enabled can authenticate", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ca := newTestCa()
 
-		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-
-		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-		verificationToken := caValues.Path("data.verificationToken").Data().(string)
-		ctx.Req.NotEmpty(verificationToken)
-
-		validationAuth := ca.CreateSignedCert(verificationToken)
-		clientAuthenticator := ca.CreateSignedCert(eid.New())
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-			SetHeader("content-type", "text/plain").
-			SetBody(validationAuth.certPem).
-			Post("cas/" + ca.id + "/verify")
-
+		caCert, caKey, caPem, err := newCaKeyPair()
 		ctx.Req.NoError(err)
-		ctx.logJson(resp.Body())
-		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		ctx.completeOttCaEnrollment(clientAuthenticator)
-
-		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
-
+		caId, err := mgmtClient.CreateAndVerifyCa(NewCaCreate(caPem), caCert, caKey)
 		ctx.Req.NoError(err)
-		ctx.Req.NotEmpty(enrolledSession)
+
+		clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+		ctx.Req.NoError(err)
+
+		enrollClientApi := ctx.NewEdgeClientApi(nil)
+		ctx.Req.NoError(enrollClientApi.CompleteCaAutoEnrollment([]*x509.Certificate{clientCert}, clientKey, ""))
+
+		certCreds := edgeApis.NewCertCredentials([]*x509.Certificate{clientCert}, clientKey)
+
+		clientApi := ctx.NewEdgeClientApi(nil)
+		apiSession, err := clientApi.Authenticate(certCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(apiSession)
 
 		t.Run("auth from CA should not be extendable", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.Req.NotNil(enrolledSession.AuthResponse)
-			ctx.Req.NotNil(enrolledSession.AuthResponse.IsCertExtendable)
-			ctx.Req.False(*enrolledSession.AuthResponse.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate authentication to be false")
+
+			sessionDetail, err := clientApi.GetCurrentApiSessionDetail()
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(sessionDetail.IsCertExtendable)
+			ctx.Req.False(*sessionDetail.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate authentication to be false")
 		})
 
 		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ca.isAuthEnabled = false
-			resp := ctx.AdminManagementSession.patchEntity(ca, "isAuthEnabled")
-			ctx.Req.NotEmpty(resp)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.NoError(mgmtClient.PatchCa(caId, &rest_model.CaPatch{IsAuthEnabled: ToPtr(false)}))
+
+			deniedApi := ctx.NewEdgeClientApi(nil)
+			deniedSession, err := deniedApi.Authenticate(certCreds, nil)
 
 			ctx.Req.Error(err)
-			ctx.Req.Empty(enrolledSession)
+			ctx.Req.Nil(deniedSession)
 		})
 
 		t.Run("CAs with auth re-enabled an authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ca.isAuthEnabled = true
-			resp := ctx.AdminManagementSession.patchEntity(ca, "isAuthEnabled")
-			ctx.Req.NotEmpty(resp)
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.NoError(mgmtClient.PatchCa(caId, &rest_model.CaPatch{IsAuthEnabled: ToPtr(true)}))
+
+			allowedApi := ctx.NewEdgeClientApi(nil)
+			allowedSession, err := allowedApi.Authenticate(certCreds, nil)
 
 			ctx.Req.NoError(err)
-			ctx.Req.NotEmpty(enrolledSession)
+			ctx.Req.NotNil(allowedSession)
 		})
 
 		t.Run("deleting a CA no longer allows authentication", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.AdminManagementSession.requireDeleteEntity(ca)
 
-			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.NoError(mgmtClient.DeleteCa(caId))
+
+			deletedApi := ctx.NewEdgeClientApi(nil)
+			deletedSession, err := deletedApi.Authenticate(certCreds, nil)
 
 			ctx.Req.Error(err)
-			ctx.Req.Empty(enrolledSession)
+			ctx.Req.Nil(deletedSession)
 		})
 	})
 
-	t.Run("deleting a CA should", func(t *testing.T) {
+	t.Run("deleting a CA should clean up outstanding enrollments", func(t *testing.T) {
+		ctx.testContextChanged(t)
 
-		t.Run("clean up outstanding enrollments", func(t *testing.T) {
+		caCert, caKey, caPem, err := newCaKeyPair()
+		ctx.Req.NoError(err)
+
+		caId, err := mgmtClient.CreateAndVerifyCa(NewCaCreate(caPem), caCert, caKey)
+		ctx.Req.NoError(err)
+
+		createdIdentity, err := mgmtClient.CreateIdentity(eid.New(), false)
+		ctx.Req.NoError(err)
+
+		createdEnrollment, err := mgmtClient.CreateEnrollmentOttCa(ToPtr(createdIdentity.ID), ToPtr(caId), ToPtr(time.Now().Add(time.Hour)))
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(createdEnrollment.ID)
+
+		ctx.Req.NoError(mgmtClient.DeleteCa(caId))
+
+		t.Run("enrollment should have been removed", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			//shared across tests
-			enrollmentId := ""
-			var unenrolledOttCaIdentity *identity
-			var unenrolledOttCaIdentityContainer *gabs.Container
+			_, err := mgmtClient.GetEnrollment(createdEnrollment.ID)
+			ctx.Req.Error(err, "expected enrollment to not be found")
+		})
 
-			ca := newTestCa()
+		t.Run("identities with previous enrollments tied to deleted CAs should not error on list", func(t *testing.T) {
+			ctx.testContextChanged(t)
 
-			ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
-
-			caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
-			verificationToken := caValues.Path("data.verificationToken").Data().(string)
-			ctx.Req.NotEmpty(verificationToken)
-
-			validationAuth := ca.CreateSignedCert(verificationToken)
-
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
-				SetHeader("content-type", "text/plain").
-				SetBody(validationAuth.certPem).
-				Post("cas/" + ca.id + "/verify")
-
+			identities, err := mgmtClient.ListIdentitiesByFilter(fmt.Sprintf(`id="%s"`, createdIdentity.ID))
 			ctx.Req.NoError(err)
-			ctx.logJson(resp.Body())
-			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Len(identities, 1)
+		})
 
-			unenrolledOttCaIdentity = ctx.AdminManagementSession.RequireNewIdentityWithCaOtt(false, ca.id)
+		t.Run("identities with previous enrollments tied to deleted CAs should not error on detail", func(t *testing.T) {
+			ctx.testContextChanged(t)
 
-			unenrolledOttCaIdentityContainer = ctx.AdminManagementSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
-
-			ctx.Req.True(unenrolledOttCaIdentityContainer.ExistsP("data.enrollment.ottca.id"), "expected ottca to have an enrollment id")
-
-			enrollmentId = unenrolledOttCaIdentityContainer.Path("data.enrollment.ottca.id").Data().(string)
-			ctx.Req.NotEmpty(enrollmentId, "enrollment id should not be empty string")
-
-			ctx.AdminManagementSession.requireDeleteEntity(ca)
-
-			t.Run("enrollment should have been removed", func(t *testing.T) {
-				ctx.testContextChanged(t)
-
-				status, _ := ctx.AdminManagementSession.query("enrollments/" + enrollmentId)
-
-				ctx.Req.Equal(http.StatusNotFound, status, "expected enrollment to not be found")
-
-			})
-
-			t.Run("identities with previous enrollments tied to deleted CAs should not error on list", func(t *testing.T) {
-				ctx.testContextChanged(t)
-
-				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
-				_ = ctx.AdminManagementSession.requireQuery(fmt.Sprintf(`identities?filter=id="%s"`, unenrolledOttCaIdentity.Id))
-			})
-
-			t.Run("identities with previous enrollments tied to deleted CAs should not error on detail", func(t *testing.T) {
-				ctx.testContextChanged(t)
-
-				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
-				_ = ctx.AdminManagementSession.requireQuery("identities/" + unenrolledOttCaIdentity.Id)
-			})
+			identity, err := mgmtClient.GetIdentity(createdIdentity.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(createdIdentity.ID, *identity.ID)
 		})
 	})
 
 	t.Run("can create a CA with externalIdClaim in common name, all, no parsing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem: ToPtr(caPEM.String()),
-			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           ToPtr[int64](0),
-				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
-				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
-				MatcherCriteria: ToPtr(""),
-				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  ToPtr(""),
-			},
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
+		claim := &rest_model.ExternalIDClaim{
+			Index:           ToPtr[int64](0),
+			Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+			Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+			MatcherCriteria: ToPtr(""),
+			Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+			ParserCriteria:  ToPtr(""),
 		}
 
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-		ctx.NotNil(caCreateResult)
-		ctx.NotNil(caCreateResult.Data)
-		ctx.NotEmpty(caCreateResult.Data.ID)
+		created, err := createCaWithClaim(ctx, mgmtClient, claim)
+		ctx.Req.NoError(err)
 
 		t.Run("created ca values are correct", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			caGetResult := &rest_model.DetailCaEnvelope{}
+			detail, err := mgmtClient.GetCa(created.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(detail.ExternalIDClaim)
 
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-			ctx.NotNil(caGetResult, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-
-			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
-			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
-			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
-			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
-			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
-			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
-
+			requireClaimEquals(ctx, claim, detail.ExternalIDClaim)
 		})
 	})
 
 	t.Run("can create a CA with externalIdClaim in san uri, scheme, no parsing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem: ToPtr(caPEM.String()),
-			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           ToPtr[int64](0),
-				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
-				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: ToPtr("spiffe"),
-				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  ToPtr(""),
-			},
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
+		claim := &rest_model.ExternalIDClaim{
+			Index:           ToPtr[int64](0),
+			Location:        ToPtr(rest_model.ExternalIDClaimLocationSANURI),
+			Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+			MatcherCriteria: ToPtr("spiffe"),
+			Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+			ParserCriteria:  ToPtr(""),
 		}
 
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-		ctx.NotNil(caCreateResult)
-		ctx.NotNil(caCreateResult.Data)
-		ctx.NotEmpty(caCreateResult.Data.ID)
+		created, err := createCaWithClaim(ctx, mgmtClient, claim)
+		ctx.Req.NoError(err)
 
 		t.Run("created ca values are correct", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			caGetResult := &rest_model.DetailCaEnvelope{}
+			detail, err := mgmtClient.GetCa(created.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(detail.ExternalIDClaim)
 
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-			ctx.NotNil(caGetResult, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-
-			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
-			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
-			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
-			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
-			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
-			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
-
+			requireClaimEquals(ctx, claim, detail.ExternalIDClaim)
 		})
 	})
 
 	t.Run("can create a CA with externalIdClaim in email, suffix, no parsing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem: ToPtr(caPEM.String()),
-			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           ToPtr[int64](0),
-				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
-				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSUFFIX),
-				MatcherCriteria: ToPtr("@example.org"),
-				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  ToPtr(""),
-			},
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
+		claim := &rest_model.ExternalIDClaim{
+			Index:           ToPtr[int64](0),
+			Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
+			Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSUFFIX),
+			MatcherCriteria: ToPtr("@example.org"),
+			Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+			ParserCriteria:  ToPtr(""),
 		}
 
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-		ctx.NotNil(caCreateResult)
-		ctx.NotNil(caCreateResult.Data)
-		ctx.NotEmpty(caCreateResult.Data.ID)
+		created, err := createCaWithClaim(ctx, mgmtClient, claim)
+		ctx.Req.NoError(err)
 
 		t.Run("created ca values are correct", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			caGetResult := &rest_model.DetailCaEnvelope{}
+			detail, err := mgmtClient.GetCa(created.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(detail.ExternalIDClaim)
 
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-			ctx.NotNil(caGetResult, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-
-			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
-			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
-			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
-			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
-			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
-			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
-
+			requireClaimEquals(ctx, claim, detail.ExternalIDClaim)
 		})
 	})
 
 	t.Run("can create a CA with no externalIdClaim", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, privKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem:                   ToPtr(caPEM.String()),
-			ExternalIDClaim:           nil,
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
-		}
-
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		created, err := createCaWithClaim(ctx, mgmtClient, nil)
+		ctx.Req.NoError(err)
 
 		t.Run("created ca values are correct", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			caGetResult := &rest_model.DetailCaEnvelope{}
-
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-			ctx.NotNil(caGetResult, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data, string(resp.Body()))
-			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
-			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
-			ctx.Nil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-			ctx.Equal(caCreate.ExternalIDClaim, caGetResult.Data.ExternalIDClaim)
-
+			detail, err := mgmtClient.GetCa(created.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Nil(detail.ExternalIDClaim)
 		})
 	})
 
 	t.Run("can not create a CA with externalIdClaim in email, scheme, no parsing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+		_, err := createCaWithClaim(ctx, mgmtClient, &rest_model.ExternalIDClaim{
+			Index:           ToPtr[int64](0),
+			Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
+			Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+			MatcherCriteria: ToPtr("@example.org"),
+			Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+			ParserCriteria:  ToPtr(""),
+		})
 
-		caCreate := &rest_model.CaCreate{
-			CertPem: ToPtr(caPEM.String()),
-			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           ToPtr[int64](0),
-				Location:        ToPtr(rest_model.ExternalIDClaimLocationSANEMAIL),
-				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: ToPtr("@example.org"),
-				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  ToPtr(""),
-			},
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
-		}
-
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		requireBadRequest(ctx, err)
 	})
 
 	t.Run("can not create a CA with externalIdClaim with missing location", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+		_, err := createCaWithClaim(ctx, mgmtClient, &rest_model.ExternalIDClaim{
+			Index:           ToPtr[int64](0),
+			Location:        nil,
+			Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+			MatcherCriteria: ToPtr("@example.org"),
+			Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+			ParserCriteria:  ToPtr(""),
+		})
 
-		caCreate := &rest_model.CaCreate{
-			CertPem: ToPtr(caPEM.String()),
-			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           ToPtr[int64](0),
-				Location:        nil,
-				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
-				MatcherCriteria: ToPtr("@example.org"),
-				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-				ParserCriteria:  ToPtr(""),
-			},
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
-		}
-
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		requireBadRequest(ctx, err)
 	})
 
 	t.Run("can update a CA with externalIdClaim with a CN location, no parsing, all matcher", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem:                   ToPtr(caPEM.String()),
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
-		}
-
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		created, err := createCaWithClaim(ctx, mgmtClient, nil)
+		ctx.Req.NoError(err)
 
 		t.Run("can patch externalIdClaim", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			caPatch := &rest_model.CaPatch{
-				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
-					Index:           ToPtr[int64](0),
-					Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
-					Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
-					MatcherCriteria: ToPtr(""),
-					Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-					ParserCriteria:  ToPtr(""),
-				},
+
+			claimPatch := &rest_model.ExternalIDClaimPatch{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			}
 
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{ExternalIDClaim: claimPatch}))
 
 			t.Run("patched ca values are correct", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				caGetResult := &rest_model.DetailCaEnvelope{}
+				detail, err := mgmtClient.GetCa(created.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(detail.ExternalIDClaim)
 
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-				ctx.NoError(err)
-				ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-				ctx.NotNil(caGetResult, string(resp.Body()))
-				ctx.NotNil(caGetResult.Data, string(resp.Body()))
-				ctx.Equal(caCreateResult.Data.ID, *caGetResult.Data.ID, string(resp.Body()))
-				ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-
-				ctx.Equal(*caPatch.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
-				ctx.Equal(*caPatch.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
-				ctx.Equal(*caPatch.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
-				ctx.Equal(caPatch.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
-				ctx.Equal(*caPatch.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
-				ctx.Equal(caPatch.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+				ctx.Req.Equal(*claimPatch.Index, *detail.ExternalIDClaim.Index)
+				ctx.Req.Equal(*claimPatch.Location, *detail.ExternalIDClaim.Location)
+				ctx.Req.Equal(*claimPatch.Matcher, *detail.ExternalIDClaim.Matcher)
+				ctx.Req.Equal(claimPatch.MatcherCriteria, detail.ExternalIDClaim.MatcherCriteria)
+				ctx.Req.Equal(*claimPatch.Parser, *detail.ExternalIDClaim.Parser)
+				ctx.Req.Equal(claimPatch.ParserCriteria, detail.ExternalIDClaim.ParserCriteria)
 			})
 		})
 	})
@@ -694,59 +638,36 @@ func Test_CA(t *testing.T) {
 	t.Run("can update a CA with externalIdClaim with SAN location, SCHEME matcher, spiffe scheme, no parsing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
-
-		caCreate := &rest_model.CaCreate{
-			CertPem:                   ToPtr(caPEM.String()),
-			IdentityRoles:             []string{},
-			IsAuthEnabled:             ToPtr(true),
-			IsAutoCaEnrollmentEnabled: ToPtr(true),
-			IsOttCaEnrollmentEnabled:  ToPtr(true),
-			Name:                      ToPtr(eid.New()),
-		}
-
-		caCreateResult := &rest_model.CreateEnvelope{}
-
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-		ctx.NoError(err)
-		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		created, err := createCaWithClaim(ctx, mgmtClient, nil)
+		ctx.Req.NoError(err)
 
 		t.Run("can patch externalIdClaim", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			caPatch := &rest_model.CaPatch{
-				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
-					Index:           ToPtr[int64](0),
-					Location:        ToPtr(rest_model.ExternalIDClaimPatchLocationSANURI),
-					Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
-					MatcherCriteria: ToPtr("spiffe"),
-					Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
-					ParserCriteria:  ToPtr(""),
-				},
+
+			claimPatch := &rest_model.ExternalIDClaimPatch{
+				Index:           ToPtr[int64](0),
+				Location:        ToPtr(rest_model.ExternalIDClaimPatchLocationSANURI),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: ToPtr("spiffe"),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
 			}
 
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{ExternalIDClaim: claimPatch}))
 
 			t.Run("patched ca values are correct", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				caGetResult := &rest_model.DetailCaEnvelope{}
+				detail, err := mgmtClient.GetCa(created.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(detail.ExternalIDClaim)
 
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
-				ctx.NoError(err)
-				ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-				ctx.NotNil(caGetResult, string(resp.Body()))
-				ctx.NotNil(caGetResult.Data, string(resp.Body()))
-				ctx.Equal(caCreateResult.Data.ID, *caGetResult.Data.ID, string(resp.Body()))
-				ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
-
-				ctx.Equal(*caPatch.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
-				ctx.Equal(*caPatch.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
-				ctx.Equal(*caPatch.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
-				ctx.Equal(caPatch.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
-				ctx.Equal(*caPatch.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
-				ctx.Equal(caPatch.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+				ctx.Req.Equal(*claimPatch.Index, *detail.ExternalIDClaim.Index)
+				ctx.Req.Equal(*claimPatch.Location, *detail.ExternalIDClaim.Location)
+				ctx.Req.Equal(*claimPatch.Matcher, *detail.ExternalIDClaim.Matcher)
+				ctx.Req.Equal(claimPatch.MatcherCriteria, detail.ExternalIDClaim.MatcherCriteria)
+				ctx.Req.Equal(*claimPatch.Parser, *detail.ExternalIDClaim.Parser)
+				ctx.Req.Equal(claimPatch.ParserCriteria, detail.ExternalIDClaim.ParserCriteria)
 			})
 		})
 	})
@@ -760,6 +681,10 @@ func Test_CA_ExternalIdClaim_Validation(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
+
+	mgmtClient := ctx.NewEdgeManagementApi(nil)
+	_, err := mgmtClient.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
 
 	invalidClaims := []struct {
 		name  string
@@ -837,21 +762,9 @@ func Test_CA_ExternalIdClaim_Validation(t *testing.T) {
 		t.Run("can not create a CA with "+tc.name, func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			_, _, caPEM := newTestCaCert()
+			_, err := createCaWithClaim(ctx, mgmtClient, tc.claim)
 
-			caCreate := &rest_model.CaCreate{
-				CertPem:                   ToPtr(caPEM.String()),
-				ExternalIDClaim:           tc.claim,
-				IdentityRoles:             []string{},
-				IsAuthEnabled:             ToPtr(true),
-				IsAutoCaEnrollmentEnabled: ToPtr(true),
-				IsOttCaEnrollmentEnabled:  ToPtr(true),
-				Name:                      ToPtr(eid.New()),
-			}
-
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).Post("/cas")
-			ctx.NoError(err)
-			ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+			requireBadRequest(ctx, err)
 		})
 	}
 
@@ -859,24 +772,10 @@ func Test_CA_ExternalIdClaim_Validation(t *testing.T) {
 		t.Run("can not patch a CA to "+tc.name, func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			_, _, caPEM := newTestCaCert()
+			created, err := createCaWithClaim(ctx, mgmtClient, nil)
+			ctx.Req.NoError(err)
 
-			caCreate := &rest_model.CaCreate{
-				CertPem:                   ToPtr(caPEM.String()),
-				IdentityRoles:             []string{},
-				IsAuthEnabled:             ToPtr(true),
-				IsAutoCaEnrollmentEnabled: ToPtr(true),
-				IsOttCaEnrollmentEnabled:  ToPtr(true),
-				Name:                      ToPtr(eid.New()),
-			}
-
-			caCreateResult := &rest_model.CreateEnvelope{}
-
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
-			ctx.NoError(err)
-			ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-
-			caPatch := &rest_model.CaPatch{
+			err = mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{
 				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
 					Index:           tc.claim.Index,
 					Location:        tc.claim.Location,
@@ -885,41 +784,11 @@ func Test_CA_ExternalIdClaim_Validation(t *testing.T) {
 					Parser:          tc.claim.Parser,
 					ParserCriteria:  tc.claim.ParserCriteria,
 				},
-			}
+			})
 
-			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+			requireBadRequest(ctx, err)
 		})
 	}
-}
-
-// createTestCaWithClaim creates a CA carrying the given externalIdClaim (nil for none) and returns its id.
-func createTestCaWithClaim(ctx *TestContext, claim *rest_model.ExternalIDClaim) string {
-	_, _, caPEM := newTestCaCert()
-	caCreate := &rest_model.CaCreate{
-		CertPem:                   ToPtr(caPEM.String()),
-		ExternalIDClaim:           claim,
-		IdentityRoles:             []string{},
-		IsAuthEnabled:             ToPtr(true),
-		IsAutoCaEnrollmentEnabled: ToPtr(true),
-		IsOttCaEnrollmentEnabled:  ToPtr(true),
-		Name:                      ToPtr(eid.New()),
-	}
-	result := &rest_model.CreateEnvelope{}
-	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(result).Post("/cas")
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-	return result.Data.ID
-}
-
-// getTestCaClaim returns the stored externalIdClaim for a CA, or nil if it has none.
-func getTestCaClaim(ctx *TestContext, id string) *rest_model.ExternalIDClaim {
-	result := &rest_model.DetailCaEnvelope{}
-	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(result).Get("/cas/" + id)
-	ctx.Req.NoError(err)
-	ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
-	return result.Data.ExternalIDClaim
 }
 
 // Test_CA_ExternalIdClaim_PatchMerge covers PATCH merge semantics for externalIdClaim. A PATCH
@@ -932,6 +801,10 @@ func Test_CA_ExternalIdClaim_PatchMerge(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
+
+	mgmtClient := ctx.NewEdgeManagementApi(nil)
+	_, err := mgmtClient.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
 
 	// A valid stored starting point: extract the common name prefixed with "acme:".
 	baseClaim := func() *rest_model.ExternalIDClaim {
@@ -949,78 +822,174 @@ func Test_CA_ExternalIdClaim_PatchMerge(t *testing.T) {
 		ctx.testContextChanged(t)
 		// Old CLIs always send "externalIdClaim": {} even for a rename. It must preserve the
 		// stored claim, not be validated as an incomplete (location-less) claim.
-		id := createTestCaWithClaim(ctx, baseClaim())
+		created, err := createCaWithClaim(ctx, mgmtClient, baseClaim())
+		ctx.Req.NoError(err)
 
-		caPatch := &rest_model.CaPatch{
+		ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{
 			Name:            ToPtr(eid.New()),
 			ExternalIDClaim: &rest_model.ExternalIDClaimPatch{},
-		}
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + id)
-		ctx.NoError(err)
-		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		}))
 
-		claim := getTestCaClaim(ctx, id)
-		ctx.Req.NotNil(claim)
-		ctx.Equal("acme:", *claim.MatcherCriteria, "stored claim should be unchanged")
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(detail.ExternalIDClaim)
+		ctx.Req.Equal("acme:", *detail.ExternalIDClaim.MatcherCriteria, "stored claim should be unchanged")
 	})
 
 	t.Run("a supplied subfield merges with stored values", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		// Patching only matcherCriteria leaves location/matcher/parser as stored.
-		id := createTestCaWithClaim(ctx, baseClaim())
+		created, err := createCaWithClaim(ctx, mgmtClient, baseClaim())
+		ctx.Req.NoError(err)
 
-		caPatch := &rest_model.CaPatch{
+		ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{
 			ExternalIDClaim: &rest_model.ExternalIDClaimPatch{MatcherCriteria: ToPtr("widget:")},
-		}
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + id)
-		ctx.NoError(err)
-		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		}))
 
-		claim := getTestCaClaim(ctx, id)
-		ctx.Req.NotNil(claim)
-		ctx.Equal("widget:", *claim.MatcherCriteria)
-		ctx.Equal(rest_model.ExternalIDClaimLocationCOMMONNAME, *claim.Location, "location should be retained")
-		ctx.Equal(rest_model.ExternalIDClaimMatcherPREFIX, *claim.Matcher, "matcher should be retained")
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(detail.ExternalIDClaim)
+		ctx.Req.Equal("widget:", *detail.ExternalIDClaim.MatcherCriteria)
+		ctx.Req.Equal(rest_model.ExternalIDClaimLocationCOMMONNAME, *detail.ExternalIDClaim.Location, "location should be retained")
+		ctx.Req.Equal(rest_model.ExternalIDClaimMatcherPREFIX, *detail.ExternalIDClaim.Matcher, "matcher should be retained")
 	})
 
 	t.Run("a subfield patch producing an invalid merged claim is rejected", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		// SCHEME is invalid for COMMON_NAME; the merged result must be validated and rejected.
-		id := createTestCaWithClaim(ctx, baseClaim())
+		created, err := createCaWithClaim(ctx, mgmtClient, baseClaim())
+		ctx.Req.NoError(err)
 
-		caPatch := &rest_model.CaPatch{
+		err = mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{
 			ExternalIDClaim: &rest_model.ExternalIDClaimPatch{Matcher: ToPtr(rest_model.ExternalIDClaimMatcherSCHEME)},
-		}
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + id)
-		ctx.NoError(err)
-		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		})
+
+		requireBadRequest(ctx, err)
 	})
 
 	t.Run("empty claim object on a CA with no claim is a no-op", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		// Same old-CLI path against a CA that never had a claim: must not 400.
-		id := createTestCaWithClaim(ctx, nil)
+		created, err := createCaWithClaim(ctx, mgmtClient, nil)
+		ctx.Req.NoError(err)
 
-		caPatch := &rest_model.CaPatch{
+		ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{
 			Name:            ToPtr(eid.New()),
 			ExternalIDClaim: &rest_model.ExternalIDClaimPatch{},
-		}
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + id)
-		ctx.NoError(err)
-		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		}))
 	})
 
 	t.Run("omitting the claim clears it", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		// A patch with no externalIdClaim key removes the stored claim (delete-on-nil). This is the
 		// signal the new --clear-external-id-claim CLI flag sends.
-		id := createTestCaWithClaim(ctx, baseClaim())
+		created, err := createCaWithClaim(ctx, mgmtClient, baseClaim())
+		ctx.Req.NoError(err)
 
-		caPatch := &rest_model.CaPatch{Name: ToPtr(eid.New())}
-		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + id)
-		ctx.NoError(err)
-		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.NoError(mgmtClient.PatchCa(created.ID, &rest_model.CaPatch{Name: ToPtr(eid.New())}))
 
-		ctx.Req.Nil(getTestCaClaim(ctx, id), "claim should be cleared")
+		detail, err := mgmtClient.GetCa(created.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Nil(detail.ExternalIDClaim, "claim should be cleared")
 	})
+}
+
+// newCaUpdate builds a full CA update body carrying the create body's values. Update replaces every
+// field, so a test that varies one has to send the rest unchanged.
+func newCaUpdate(caCreate *rest_model.CaCreate) *rest_model.CaUpdate {
+	return &rest_model.CaUpdate{
+		IdentityNameFormat:        ToPtr(caCreate.IdentityNameFormat),
+		IdentityRoles:             caCreate.IdentityRoles,
+		IsAuthEnabled:             caCreate.IsAuthEnabled,
+		IsAutoCaEnrollmentEnabled: caCreate.IsAutoCaEnrollmentEnabled,
+		IsOttCaEnrollmentEnabled:  caCreate.IsOttCaEnrollmentEnabled,
+		Name:                      caCreate.Name,
+	}
+}
+
+// createCaWithClaim creates a CA carrying the supplied externalIdClaim, nil for none, returning the
+// create result and any API error so the caller can assert on either.
+func createCaWithClaim(ctx *TestContext, mgmtClient *ManagementHelperClient, claim *rest_model.ExternalIDClaim) (*rest_model.CreateLocation, error) {
+	ctx.T().Helper()
+
+	_, _, caPem, err := newCaKeyPair()
+	ctx.Req.NoError(err)
+
+	caCreate := NewCaCreate(caPem)
+	caCreate.ExternalIDClaim = claim
+
+	return mgmtClient.CreateCa(caCreate)
+}
+
+// requireCaAutoEnrollment mints a client certificate from the supplied CA, enrolls it, and returns
+// the authenticated api session for the identity enrollment created.
+func requireCaAutoEnrollment(ctx *TestContext, caCert *x509.Certificate, caKey crypto.Signer, requestedName string) edgeApis.ApiSession {
+	ctx.T().Helper()
+
+	clientCert, clientKey, err := generateCaSignedClientCert(caCert, caKey, eid.New())
+	ctx.Req.NoError(err)
+
+	clientApi := ctx.NewEdgeClientApi(nil)
+	ctx.Req.NoError(clientApi.CompleteCaAutoEnrollment([]*x509.Certificate{clientCert}, clientKey, requestedName))
+
+	apiSession, err := clientApi.Authenticate(edgeApis.NewCertCredentials([]*x509.Certificate{clientCert}, clientKey), nil)
+	ctx.Req.NoError(err)
+
+	return apiSession
+}
+
+// seedCaIdentityRoles writes identity roles straight into a CA's entity bucket, bypassing
+// PersistEntity. It stands in for a CA stored before the prefixes were validated, which the API can
+// no longer create.
+func seedCaIdentityRoles(ctx *TestContext, caId string, roles []string) {
+	ctx.T().Helper()
+
+	appEnv := ctx.EdgeController.AppEnv
+	err := appEnv.GetDb().Update(nil, func(mc boltz.MutateContext) error {
+		bucket := appEnv.GetStores().Ca.GetEntityBucket(mc.Tx(), []byte(caId))
+		if bucket == nil {
+			return fmt.Errorf("no ca entity bucket for %v", caId)
+		}
+		bucket.SetStringList(db.FieldIdentityRoles, roles, nil)
+		return bucket.GetError()
+	})
+	ctx.Req.NoError(err)
+}
+
+// requireIdentityRolesFieldError asserts err is the 400 field error the API returns for an identity
+// role carrying a reserved policy prefix.
+func requireIdentityRolesFieldError(ctx *TestContext, err error, expectedValue string) {
+	ctx.T().Helper()
+
+	ctx.Req.Error(err)
+
+	var apiErr *rest_util.APIFormattedError
+	ctx.Req.ErrorAs(err, &apiErr)
+	ctx.Req.Equal(errorz.CouldNotValidateCode, apiErr.Code)
+	ctx.Req.NotNil(apiErr.Cause)
+	ctx.Req.Equal("identityRoles", apiErr.Cause.Field)
+	ctx.Req.Equal(expectedValue, apiErr.Cause.Value)
+}
+
+// requireBadRequest asserts err carries an API error with a 400 status.
+func requireBadRequest(ctx *TestContext, err error) {
+	ctx.T().Helper()
+
+	ctx.Req.Error(err)
+
+	var apiErr *rest_util.APIFormattedError
+	ctx.Req.ErrorAs(err, &apiErr)
+	ctx.Req.NotEmpty(apiErr.Code)
+}
+
+// requireClaimEquals asserts a stored externalIdClaim matches the one supplied at create time.
+func requireClaimEquals(ctx *TestContext, expected *rest_model.ExternalIDClaim, actual *rest_model.ExternalIDClaim) {
+	ctx.T().Helper()
+
+	ctx.Req.Equal(*expected.Index, *actual.Index)
+	ctx.Req.Equal(*expected.Location, *actual.Location)
+	ctx.Req.Equal(*expected.Matcher, *actual.Matcher)
+	ctx.Req.Equal(expected.MatcherCriteria, actual.MatcherCriteria)
+	ctx.Req.Equal(*expected.Parser, *actual.Parser)
+	ctx.Req.Equal(expected.ParserCriteria, actual.ParserCriteria)
 }

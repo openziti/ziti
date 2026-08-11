@@ -236,17 +236,8 @@ func (helper *ManagementHelperClient) GetEnrollment(enrollmentId string) (*rest_
 	return resp.Payload.Data, nil
 }
 
-func (helper *ManagementHelperClient) CreateCa(testCa *ca) (*rest_model.CreateLocation, error) {
-	caCreate := &rest_model.CaCreate{
-		CertPem:                   &testCa.certPem,
-		IdentityNameFormat:        testCa.identityNameFormat,
-		IdentityRoles:             testCa.identityRoles,
-		IsAuthEnabled:             &testCa.isAuthEnabled,
-		IsAutoCaEnrollmentEnabled: &testCa.isAutoCaEnrollmentEnabled,
-		IsOttCaEnrollmentEnabled:  &testCa.isOttCaEnrollmentEnabled,
-		Name:                      &testCa.name,
-	}
-
+// CreateCa creates a CA.
+func (helper *ManagementHelperClient) CreateCa(caCreate *rest_model.CaCreate) (*rest_model.CreateLocation, error) {
 	createParams := &certificate_authority.CreateCaParams{
 		Ca: caCreate,
 	}
@@ -258,6 +249,84 @@ func (helper *ManagementHelperClient) CreateCa(testCa *ca) (*rest_model.CreateLo
 	}
 
 	return resp.Payload.Data, nil
+}
+
+// NewCaCreate returns a CA create body with working defaults for the supplied CA certificate PEM.
+// Callers override whatever the test varies.
+func NewCaCreate(caPem string) *rest_model.CaCreate {
+	return &rest_model.CaCreate{
+		CertPem:                   ToPtr(caPem),
+		IdentityNameFormat:        "[caName]-[commonName]-[requestedName]",
+		IdentityRoles:             []string{},
+		IsAuthEnabled:             ToPtr(true),
+		IsAutoCaEnrollmentEnabled: ToPtr(true),
+		IsOttCaEnrollmentEnabled:  ToPtr(true),
+		Name:                      ToPtr(eid.New()),
+	}
+}
+
+// CreateAndVerifyCa creates a CA and completes its verification challenge, returning the new CA's
+// id. caCert and caKey must be the pair the create body's certPem came from. Auto enrollment only
+// works against a verified CA.
+func (helper *ManagementHelperClient) CreateAndVerifyCa(caCreate *rest_model.CaCreate, caCert *x509.Certificate, caKey crypto.Signer) (string, error) {
+	created, err := helper.CreateCa(caCreate)
+
+	if err != nil {
+		return "", err
+	}
+
+	detail, err := helper.GetCa(created.ID)
+
+	if err != nil {
+		return "", err
+	}
+
+	if err = helper.VerifyCa(created.ID, detail.VerificationToken.String(), caCert, caKey); err != nil {
+		return "", err
+	}
+
+	return created.ID, nil
+}
+
+// UpdateCa replaces a CA with the supplied values.
+func (helper *ManagementHelperClient) UpdateCa(id string, update *rest_model.CaUpdate) error {
+	updateParams := &certificate_authority.UpdateCaParams{
+		ID: id,
+		Ca: update,
+	}
+
+	if _, err := helper.API.CertificateAuthority.UpdateCa(updateParams, nil); err != nil {
+		return rest_util.WrapErr(err)
+	}
+
+	return nil
+}
+
+// PatchCa applies a partial update to a CA, leaving unsupplied fields untouched.
+func (helper *ManagementHelperClient) PatchCa(id string, patch *rest_model.CaPatch) error {
+	patchParams := &certificate_authority.PatchCaParams{
+		ID: id,
+		Ca: patch,
+	}
+
+	if _, err := helper.API.CertificateAuthority.PatchCa(patchParams, nil); err != nil {
+		return rest_util.WrapErr(err)
+	}
+
+	return nil
+}
+
+// DeleteCa removes a CA and any enrollments that reference it.
+func (helper *ManagementHelperClient) DeleteCa(id string) error {
+	deleteParams := &certificate_authority.DeleteCaParams{
+		ID: id,
+	}
+
+	if _, err := helper.API.CertificateAuthority.DeleteCa(deleteParams, nil); err != nil {
+		return rest_util.WrapErr(err)
+	}
+
+	return nil
 }
 
 func (helper *ManagementHelperClient) CreateEnrollmentOttCa(identityId *string, caId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {

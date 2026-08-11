@@ -46,13 +46,13 @@ func Test_EnrollmentCaAuto_EmptyExternalIdClaim(t *testing.T) {
 	testCa := newTestCa()
 	// PREFIX trimming the entire common name leaves an empty claim. The configuration is valid
 	// (COMMON_NAME supports PREFIX), but the extracted externalId is empty for this certificate.
-	testCa.externalIdClaim = &externalIdClaim{
-		location:        rest_model.ExternalIDClaimLocationCOMMONNAME,
-		matcher:         rest_model.ExternalIDClaimMatcherPREFIX,
-		matcherCriteria: commonName,
-		parser:          rest_model.ExternalIDClaimParserNONE,
-		parserCriteria:  "",
-		index:           0,
+	testCa.externalIdClaim = &rest_model.ExternalIDClaim{
+		Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+		Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherPREFIX),
+		MatcherCriteria: ToPtr(commonName),
+		Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+		ParserCriteria:  ToPtr(""),
+		Index:           ToPtr[int64](0),
 	}
 	testCa.identityNameFormat = "[requestedName]"
 
@@ -103,13 +103,13 @@ func Test_EnrollmetnCaAutoSpecific(t *testing.T) {
 		t.Run("setup CA", func(t *testing.T) {
 			testCa := newTestCa()
 
-			testCa.externalIdClaim = &externalIdClaim{
-				location:        rest_model.ExternalIDClaimLocationCOMMONNAME,
-				matcher:         rest_model.ExternalIDClaimMatcherALL,
-				matcherCriteria: "",
-				parser:          rest_model.ExternalIDClaimParserNONE,
-				parserCriteria:  "",
-				index:           0,
+			testCa.externalIdClaim = &rest_model.ExternalIDClaim{
+				Location:        ToPtr(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         ToPtr(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: ToPtr(""),
+				Parser:          ToPtr(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  ToPtr(""),
+				Index:           ToPtr[int64](0),
 			}
 
 			testCa.identityNameFormat = "[requestedName]"

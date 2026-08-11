@@ -7,9 +7,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -116,16 +116,29 @@ func (self *roleAttributeChangeContext) notifyOfPolicyChangeEvent(
 	}
 }
 
-func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
+// ValidateRoleAttributePrefixes returns a field error for the first attribute carrying a '#' or '@'
+// prefix, which are reserved for policy role references and are not valid in a stored attribute
+// value. fieldName names the entity's API field so the error points at what the caller sent.
+// Returns nil when every attribute is acceptable.
+func ValidateRoleAttributePrefixes(fieldName string, attributes []string) *errorz.FieldError {
 	for _, attr := range attributes {
-		if strings.HasPrefix(attr, "#") {
-			holder.SetError(errorz.NewFieldError("role attributes may not be prefixed with #", "roleAttributes", attr))
-			return
+		if strings.HasPrefix(attr, RolePrefix) {
+			return errorz.NewFieldError("role attributes may not be prefixed with "+RolePrefix, fieldName, attr)
 		}
-		if strings.HasPrefix(attr, "@") {
-			holder.SetError(errorz.NewFieldError("role attributes may not be prefixed with @", "roleAttributes", attr))
-			return
+		if strings.HasPrefix(attr, EntityPrefix) {
+			return errorz.NewFieldError("role attributes may not be prefixed with "+EntityPrefix, fieldName, attr)
 		}
+	}
+	return nil
+}
+
+func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
+	store.validateRoleAttributesField(FieldRoleAttributes, attributes, holder)
+}
+
+func (store *baseStore[E]) validateRoleAttributesField(fieldName string, attributes []string, holder errorz.ErrorHolder) {
+	if err := ValidateRoleAttributePrefixes(fieldName, attributes); err != nil {
+		holder.SetError(err)
 	}
 }
 

@@ -177,6 +177,10 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 }
 
 func (self *IdentityManager) CreateWithAuthenticators(identity *Identity, authenticators []*Authenticator, ctx *change.Context) (string, []string, error) {
+	if len(authenticators) == 0 {
+		return "", nil, errors.New("cannot create an identity with no authenticators")
+	}
+
 	if identity.Id == "" {
 		identity.Id = eid.New()
 	}
@@ -213,7 +217,7 @@ func (self *IdentityManager) CreateWithAuthenticators(identity *Identity, authen
 	err = self.Dispatch(cmd)
 
 	if err != nil {
-		return "", nil, nil
+		return "", nil, err
 	}
 
 	return identity.Id, authenticatorIds, nil

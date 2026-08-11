@@ -259,18 +259,16 @@ func (helper *ClientHelperClient) CompleteOttGenericEnrollment(enrollmentToken s
 	}, nil
 }
 
-func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, error) {
-	creds, _, err := helper.CompleteOttCaEnrollmentWithControllers(enrollmentToken, clientCert, clientKey)
-	return creds, err
-}
-
-// CompleteOttCaEnrollmentWithControllers performs an OTTCA enrollment and additionally returns the list
-// of controllers carried in the enrollment response.
-func (helper *ClientHelperClient) CompleteOttCaEnrollmentWithControllers(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, rest_model.ControllersList, error) {
-	token := enrollmentToken
-
+// setClientCerts installs clientCert/clientKey as the TLS client certificate for all subsequent
+// requests from this helper.
+//
+// The transport is replaced rather than mutated, and idle connections are closed, so no previously
+// established connection lacking the client certificate is reused. That would otherwise race with
+// the background version-caching goroutine, which may open a connection before the certificate is
+// configured.
+func (helper *ClientHelperClient) setClientCerts(clientCert []*x509.Certificate, clientKey crypto.PrivateKey) error {
 	if len(clientCert) == 0 {
-		return nil, nil, fmt.Errorf("no client certificates returned from enrollment")
+		return errors.New("no client certificates supplied")
 	}
 
 	var rawCerts [][]byte
@@ -287,12 +285,6 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollmentWithControllers(enrollm
 		},
 	}
 
-	// Replace the TLS config with a new one that includes the client certs.
-	// We must also close idle connections and replace the transport on the
-	// HttpClient to ensure no previously established TLS connections (which
-	// lack the client cert) are reused. This avoids a race with the background
-	// doOnceCacheVersionInfo goroutine which may have opened a connection
-	// before the client cert was configured.
 	oldTlsConfig := helper.TlsAwareTransport.GetTlsClientConfig()
 	newTlsConfig := oldTlsConfig.Clone()
 	newTlsConfig.Certificates = tlsCerts
@@ -301,6 +293,46 @@ func (helper *ClientHelperClient) CompleteOttCaEnrollmentWithControllers(enrollm
 	newTransport.SetTlsClientConfig(newTlsConfig)
 	helper.TlsAwareTransport = newTransport
 	helper.HttpClient.Transport = newTransport
+
+	return nil
+}
+
+// CompleteCaAutoEnrollment performs a 3rd party CA auto enrollment, authenticating with the supplied
+// client certificate. No enrollment token is involved: the CA the certificate chains to must exist,
+// be verified, and have auto enrollment enabled. requestedName may be empty, in which case the CA's
+// identity name format decides the name on its own.
+func (helper *ClientHelperClient) CompleteCaAutoEnrollment(clientCert []*x509.Certificate, clientKey crypto.PrivateKey, requestedName string) error {
+	if err := helper.setClientCerts(clientCert, clientKey); err != nil {
+		return err
+	}
+
+	params := clientEnroll.NewEnrollParams()
+	params.Method = ToPtr("ca")
+
+	if requestedName != "" {
+		params.Body = &rest_model.GenericEnroll{Name: requestedName}
+	}
+
+	if _, err := helper.API.Enroll.Enroll(params); err != nil {
+		return rest_util.WrapErr(err)
+	}
+
+	return nil
+}
+
+func (helper *ClientHelperClient) CompleteOttCaEnrollment(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, error) {
+	creds, _, err := helper.CompleteOttCaEnrollmentWithControllers(enrollmentToken, clientCert, clientKey)
+	return creds, err
+}
+
+// CompleteOttCaEnrollmentWithControllers performs an OTTCA enrollment and additionally returns the list
+// of controllers carried in the enrollment response.
+func (helper *ClientHelperClient) CompleteOttCaEnrollmentWithControllers(enrollmentToken string, clientCert []*x509.Certificate, clientKey crypto.PrivateKey) (*edgeApis.CertCredentials, rest_model.ControllersList, error) {
+	token := enrollmentToken
+
+	if err := helper.setClientCerts(clientCert, clientKey); err != nil {
+		return nil, nil, err
+	}
 
 	if IsJwt(token) {
 		jwtParser := jwt.NewParser()
@@ -668,6 +700,53 @@ func (helper *ClientHelperClient) RawLegacyAuthRequest(credentials edgeApis.Cred
 	return helper.API.Authentication.Authenticate(params, func(operation *runtime.ClientOperation) {
 		operation.AuthInfo = credentials
 	})
+}
+
+// newCaKeyPair generates a self-signed CA certificate and its signing key, returning the
+// certificate, the key, and the certificate in PEM form for a rest_model.CaCreate. Pair it with
+// generateCaSignedClientCert to mint certificates that chain to this CA.
+func newCaKeyPair() (*x509.Certificate, crypto.Signer, string, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("could not generate ca key: %w", err)
+	}
+
+	serial, err := rand.Int(rand.Reader, big.NewInt(100000000000000000))
+
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("could not generate ca serial: %w", err)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber: serial,
+		Subject: pkix.Name{
+			CommonName:   "apiTestCa-" + uuid.NewString(),
+			Organization: []string{"Ziti API Test Generated CA"},
+		},
+		NotBefore:             time.Now().AddDate(0, 0, -1),
+		NotAfter:              time.Now().AddDate(0, 0, 1),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("could not create ca certificate: %w", err)
+	}
+
+	caCert, err := x509.ParseCertificate(der)
+
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("could not parse ca certificate: %w", err)
+	}
+
+	caPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+
+	return caCert, key, string(caPem), nil
 }
 
 func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer, commonName string) (*x509.Certificate, crypto.Signer, error) {

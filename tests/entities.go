@@ -14,6 +14,17 @@
 	limitations under the License.
 */
 
+// Package-local fixture types for the pre-2024 test style.
+//
+// DEPRECATED FILE. Everything here exists to serve the legacy ctx/session helpers —
+// AdminManagementSession.requireCreateEntity, requireQuery, validateEntityWithLookup and friends —
+// which drive the API through resty and gabs. The types shadow the generated rest_model bodies with
+// lowercase twins, and the toJson/validate methods are what those helpers consume.
+//
+// Do not use anything in this file in new tests, and do not pass these types to the typed API
+// clients. New tests build rest_model types directly and call ManagementHelperClient /
+// ClientHelperClient. For CA key material, use newCaKeyPair and generateCaSignedClientCert in
+// api_client_client.go rather than the ca fixture. See tests/README.md.
 package tests
 
 import (
@@ -47,6 +58,7 @@ func derefOrNil[T any](p *T) interface{} {
 	return *p
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type entity interface {
 	getId() string
 	setId(string)
@@ -55,11 +67,13 @@ type entity interface {
 	validate(ctx *TestContext, c *gabs.Container)
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type loadableEntity interface {
 	entity
 	fromJson(ctx *TestContext, c *gabs.Container)
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type postureCheck struct {
 	id             string
 	name           string
@@ -95,6 +109,7 @@ func (p *postureCheck) toJson(create bool, ctx *TestContext, fields ...string) s
 
 func (p postureCheck) validate(ctx *TestContext, c *gabs.Container) {}
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type postureCheckDomain struct {
 	postureCheck
 	domains []string
@@ -140,6 +155,7 @@ func (entity *postureCheckDomain) validate(ctx *TestContext, c *gabs.Container) 
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type service struct {
 	Id                 string
 	Name               string
@@ -193,6 +209,7 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEqualsStringSlice(c, entity.permissions, path("permissions"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type terminator struct {
 	id         string
 	serviceId  string
@@ -253,6 +270,7 @@ func (entity *terminator) fromJson(ctx *TestContext, c *gabs.Container) {
 	entity.cost = ctx.requireInt(c, "cost")
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 	return &identity{
 		name:           eid.New(),
@@ -262,6 +280,7 @@ func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type identity struct {
 	Id                        string
 	name                      string
@@ -369,6 +388,7 @@ func (entity *identity) fromJson(ctx *TestContext, c *gabs.Container) {
 	entity.roleAttributes = ctx.requireStringSlice(c, "roleAttributes")
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newTestEdgeRouter(roleAttributes ...string) *edgeRouter {
 	return &edgeRouter{
 		name:           eid.New(),
@@ -376,6 +396,7 @@ func newTestEdgeRouter(roleAttributes ...string) *edgeRouter {
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type edgeRouter struct {
 	id                string
 	name              string
@@ -430,6 +451,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newEdgeRouterPolicy(semantic string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
 	return &edgeRouterPolicy{
 		name:            eid.New(),
@@ -439,6 +461,7 @@ func newEdgeRouterPolicy(semantic string, edgeRouterRoles, identityRoles []strin
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type edgeRouterPolicy struct {
 	id              string
 	name            string
@@ -492,6 +515,7 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newServiceEdgeRouterPolicy(semantic string, edgeRouterRoles, serviceRoles []string) *serviceEdgeRouterPolicy {
 	return &serviceEdgeRouterPolicy{
 		name:            eid.New(),
@@ -501,6 +525,7 @@ func newServiceEdgeRouterPolicy(semantic string, edgeRouterRoles, serviceRoles [
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type serviceEdgeRouterPolicy struct {
 	id              string
 	name            string
@@ -548,6 +573,7 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newServicePolicy(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
 	return &servicePolicy{
 		name:              eid.New(),
@@ -559,6 +585,7 @@ func newServicePolicy(policyType string, semantic string, serviceRoles, identity
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type servicePolicy struct {
 	id                string
 	name              string
@@ -613,6 +640,7 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type Config struct {
 	Id           string
 	ConfigTypeId string
@@ -655,6 +683,7 @@ func (entity *Config) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type configType struct {
 	Id     string
 	Name   string
@@ -694,6 +723,7 @@ func (entity *configType) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type configValidatingService struct {
 	*service
 	configs map[string]*Config
@@ -713,12 +743,14 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newTestTransitRouter() *transitRouter {
 	return &transitRouter{
 		name: eid.New(),
 	}
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type transitRouter struct {
 	id                string
 	name              string
@@ -766,6 +798,7 @@ func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 type ca struct {
 	id                        string
 	name                      string
@@ -776,21 +809,13 @@ type ca struct {
 	identityRoles             []string
 	identityNameFormat        string
 	tags                      map[string]interface{}
-	externalIdClaim           *externalIdClaim
+	externalIdClaim           *rest_model.ExternalIDClaim
 
 	privateKey crypto.Signer     //utility property, not used in API calls
 	publicCert *x509.Certificate //utility property, not used in API calls
 }
 
-type externalIdClaim struct {
-	location        string
-	matcher         string
-	matcherCriteria string
-	parser          string
-	parserCriteria  string
-	index           int64
-}
-
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -833,6 +858,7 @@ func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
 	return caCert, key, caPEM
 }
 
+// Deprecated: legacy ctx/session fixture. New tests build rest_model types and call the typed API clients. See the file header.
 func newTestCa(identityRoles ...string) *ca {
 	caCert, key, caPEM := newTestCaCert()
 
@@ -876,13 +902,27 @@ func (entity *ca) toJson(create bool, ctx *TestContext, fields ...string) string
 	ctx.setValue(entityData, entity.tags, fields, "tags")
 	ctx.setValue(entityData, entity.identityNameFormat, fields, "identityNameFormat")
 
-	if entity.externalIdClaim != nil {
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.location, fields, "externalIdClaim", "externalIdClaim", "location")
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.index, fields, "externalIdClaim", "externalIdClaim", "index")
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.matcher, fields, "externalIdClaim", "externalIdClaim", "matcher")
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.matcherCriteria, fields, "externalIdClaim", "externalIdClaim", "matcherCriteria")
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.parser, fields, "externalIdClaim", "externalIdClaim", "parser")
-		ctx.setValueWithPath(entityData, entity.externalIdClaim.parserCriteria, fields, "externalIdClaim", "externalIdClaim", "parserCriteria")
+	// Only non-nil subfields are emitted, so a test can distinguish an absent key from an empty
+	// value. Several claim validation cases turn on exactly that difference.
+	if claim := entity.externalIdClaim; claim != nil {
+		if claim.Location != nil {
+			ctx.setValueWithPath(entityData, *claim.Location, fields, "externalIdClaim", "externalIdClaim", "location")
+		}
+		if claim.Index != nil {
+			ctx.setValueWithPath(entityData, *claim.Index, fields, "externalIdClaim", "externalIdClaim", "index")
+		}
+		if claim.Matcher != nil {
+			ctx.setValueWithPath(entityData, *claim.Matcher, fields, "externalIdClaim", "externalIdClaim", "matcher")
+		}
+		if claim.MatcherCriteria != nil {
+			ctx.setValueWithPath(entityData, *claim.MatcherCriteria, fields, "externalIdClaim", "externalIdClaim", "matcherCriteria")
+		}
+		if claim.Parser != nil {
+			ctx.setValueWithPath(entityData, *claim.Parser, fields, "externalIdClaim", "externalIdClaim", "parser")
+		}
+		if claim.ParserCriteria != nil {
+			ctx.setValueWithPath(entityData, *claim.ParserCriteria, fields, "externalIdClaim", "externalIdClaim", "parserCriteria")
+		}
 	}
 
 	if create {

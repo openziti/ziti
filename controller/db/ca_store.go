@@ -159,6 +159,9 @@ func (store *caStoreImpl) PersistEntity(entity *Ca, ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldCaIsAutoCaEnrollmentEnabled, entity.IsAutoCaEnrollmentEnabled)
 	ctx.SetBool(FieldCaIsOttCaEnrollmentEnabled, entity.IsOttCaEnrollmentEnabled)
 	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
+	if ctx.ProceedWithSet(FieldIdentityRoles) {
+		store.validateRoleAttributesField(FieldIdentityRoles, entity.IdentityRoles, ctx.Bucket)
+	}
 	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
 	ctx.SetString(FieldCaIdentityNameFormat, entity.IdentityNameFormat)
 

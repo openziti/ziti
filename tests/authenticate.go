@@ -359,6 +359,14 @@ func (sess *session) logout() error {
 	return nil
 }
 
+// authenticatedRequests is the pre-2024 REST helper: resty responses, gabs path navigation, and
+// untyped request bodies.
+//
+// Deprecated: use the typed API clients for anything under test — ManagementHelperClient via
+// TestContext.NewEdgeManagementApi and ClientHelperClient via TestContext.NewEdgeClientApi, with
+// the generated rest_model types. These helpers remain acceptable for quickly building fixtures a
+// test depends on but does not assert against. New reusable REST operations belong on the helper
+// clients in the api_client_*.go files, not here. See tests/README.md.
 type authenticatedRequests struct {
 	testContext *TestContext
 	session     *session

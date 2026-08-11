@@ -27,14 +27,14 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -295,6 +295,9 @@ func (self *CaManager) NewModelEntity() *Ca {
 }
 
 func (self *CaManager) Create(entity *Ca, ctx *change.Context) error {
+	if err := db.ValidateRoleAttributePrefixes(db.FieldIdentityRoles, entity.IdentityRoles); err != nil {
+		return err
+	}
 	return DispatchCreate[*Ca](self, entity, ctx)
 }
 
@@ -305,6 +308,11 @@ func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca], ctx bo
 }
 
 func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields, ctx *change.Context) error {
+	if checker == nil || checker.IsUpdated(db.FieldIdentityRoles) {
+		if err := db.ValidateRoleAttributePrefixes(db.FieldIdentityRoles, entity.IdentityRoles); err != nil {
+			return err
+		}
+	}
 	if checker != nil {
 		checker.RemoveFields(db.FieldCaIsVerified)
 	}

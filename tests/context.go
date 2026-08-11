@@ -107,18 +107,25 @@ func ST(t time.Time) *strfmt.DateTime {
 
 type TestContext struct {
 	*CustomAssertions
-	ApiHost                string
-	AdminAuthenticator     *updbAuthenticator
-	Managers               *ManagerHelpers
+	ApiHost            string
+	AdminAuthenticator *updbAuthenticator
+	Managers           *ManagerHelpers
+
+	// Deprecated: use NewEdgeManagementApi for anything under test. This session carries the
+	// pre-2024 resty/gabs helpers, which remain acceptable only for building fixtures.
 	AdminManagementSession *session
-	AdminClientSession     *session
-	RestClients            *zitirest.Clients
-	fabricController       *controller.Controller
-	EdgeController         *server.Controller
-	Req                    *CustomAssertions
-	clientApiClient        *resty.Client
-	managementApiClient    *resty.Client
-	enabledJsonLogging     bool
+
+	// Deprecated: use NewEdgeClientApi for anything under test. This session carries the
+	// pre-2024 resty/gabs helpers, which remain acceptable only for building fixtures.
+	AdminClientSession *session
+
+	RestClients         *zitirest.Clients
+	fabricController    *controller.Controller
+	EdgeController      *server.Controller
+	Req                 *CustomAssertions
+	clientApiClient     *resty.Client
+	managementApiClient *resty.Client
+	enabledJsonLogging  bool
 
 	edgeRouterEntity    *edgeRouter
 	transitRouterEntity *transitRouter
@@ -780,6 +787,7 @@ func (ctx *TestContext) completeUpdbEnrollment(identityId string, password strin
 	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 }
 
+// Deprecated: use ClientHelperClient.CompleteCaAutoEnrollment.
 func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 	trans := ctx.NewTransport()
 
@@ -789,25 +797,6 @@ func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
 
 	resp, err := client.NewRequest().
-		Post("enroll?method=ca")
-	ctx.Req.NoError(err)
-	ctx.logJson(resp.Body())
-	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-}
-
-func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthenticator, name string) {
-	trans := ctx.NewTransport()
-	trans.TLSClientConfig.Certificates = certAuth.TLSCertificates()
-
-	client := resty.NewWithClient(ctx.NewHttpClient(trans))
-	client.SetHostURL("https://" + ctx.ApiHost + EdgeClientApiPath)
-
-	body := gabs.New()
-	_, _ = body.SetP(name, "name")
-
-	resp, err := client.NewRequest().
-		SetHeader("content-type", "application/json").
-		SetBody(body.String()).
 		Post("enroll?method=ca")
 	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
