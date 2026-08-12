@@ -61,6 +61,7 @@ type ZitiTunnelType struct {
 	ControlRouterConnections uint8
 	EnableSdkFlowControl     bool
 	Verbose                  bool
+	LogConfig
 }
 
 func (self *ZitiTunnelType) Label() string {
@@ -110,7 +111,12 @@ func (self *ZitiTunnelType) Dump() any {
 }
 
 func (self *ZitiTunnelType) StageFiles(r model.Run, c *model.Component) error {
-	return stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath)
+	if err := stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath); err != nil {
+		return err
+	}
+	// The rotate log strategy runs "ops log-pipe" from the component's ziti binary (Version);
+	// stage a different one when LogConfig.PipeBinaryVersion overrides it.
+	return stageLogPipeBinary(r, c, self.Version)
 }
 
 func (self *ZitiTunnelType) InitializeHost(_ model.Run, c *model.Component) error {
@@ -205,12 +211,19 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 		verbose = "-v"
 	}
 
-	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s > %s 2>&1 &",
-		useSudo, binaryPath, mode.String(), connectCfg, verbose, c.Id, configPath, logsPath)
+	redirect := logRedirect(c, logsPath, binaryPath)
 
-	value, err := c.Host.ExecLogged(
-		"rm -f "+logsPath,
-		serviceCmd)
+	serviceCmd := fmt.Sprintf("%s %s tunnel %s %s %s --cli-agent-alias %s --log-formatter json -i %s %s &",
+		useSudo, binaryPath, mode.String(), connectCfg, verbose, c.Id, configPath, redirect)
+
+	// Only clear prior history for truncate; append and rotate must preserve it.
+	var cmds []string
+	if resolveLogStrategy(c) == LogStrategyTruncate {
+		cmds = append(cmds, "rm -f "+logsPath)
+	}
+	cmds = append(cmds, serviceCmd)
+
+	value, err := c.Host.ExecLogged(cmds...)
 	if err != nil {
 		return err
 	}

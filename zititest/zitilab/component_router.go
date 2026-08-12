@@ -48,6 +48,7 @@ type RouterType struct {
 	Version   string
 	LocalPath string
 	Debug     bool
+	LogConfig
 }
 
 func (self *RouterType) Label() string {
