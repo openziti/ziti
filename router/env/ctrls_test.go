@@ -459,3 +459,88 @@ func TestEverConnected_StaysTrueAcrossLosingEveryController(t *testing.T) {
 	require.True(t, nc.EverConnected(),
 		"having reached a controller once must not be forgotten when the connection is lost")
 }
+
+// TestNotifyOfConnectivityChange_ReconnectReportsBothHalves guards the reconnect half of a
+// grouped control channel losing every underlay and getting one back. The registration
+// survives that, so nothing else reports it: a reconnect that re-offers state without
+// emitting ControllerReconnected leaves every listener keyed on connectivity believing the
+// controller is still gone.
+func TestNotifyOfConnectivityChange_ReconnectReportsBothHalves(t *testing.T) {
+	nc := newTestNetworkControllers()
+	drain := collectCtrlEvents(nc)
+
+	ctrl, _ := newTestNetworkCtrl(nc, "ctrl1", "current")
+	nc.ctrls.Put("ctrl1", ctrl)
+
+	var wasDisconnected atomic.Bool
+	var reconnectNotifications int
+	notifyReconnect := func() { reconnectNotifications++ }
+
+	// Last underlay lost, then one back.
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
+
+	var events []CtrlEvent
+	require.Eventually(t, func() bool {
+		events = append(events, drain()...)
+		return len(events) >= 2
+	}, time.Second, 10*time.Millisecond, "expected a disconnect and a reconnect event, got %v", events)
+
+	require.Len(t, events, 2)
+	require.Equal(t, ControllerDisconnected, events[0].Type)
+	require.Equal(t, ControllerReconnected, events[1].Type,
+		"regaining an underlay must report the controller as reconnected")
+	require.Same(t, ctrl, events[1].Controller)
+	require.Equal(t, 1, reconnectNotifications, "the reconnect must also re-offer state to the controller")
+}
+
+// TestNotifyOfConnectivityChange_ReportsEachEdgeOnce covers underlays coming and going
+// without connectivity changing. Only the edges are transitions; every other change is
+// noise that listeners must not see as a reconnect.
+func TestNotifyOfConnectivityChange_ReportsEachEdgeOnce(t *testing.T) {
+	nc := newTestNetworkControllers()
+	drain := collectCtrlEvents(nc)
+
+	ctrl, _ := newTestNetworkCtrl(nc, "ctrl1", "current")
+	nc.ctrls.Put("ctrl1", ctrl)
+
+	var wasDisconnected atomic.Bool
+	var reconnectNotifications int
+	notifyReconnect := func() { reconnectNotifications++ }
+
+	// A second underlay arriving and leaving while one remains is not a transition.
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 2, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
+
+	require.Never(t, func() bool { return len(drain()) > 0 }, 100*time.Millisecond, 10*time.Millisecond,
+		"underlay churn that never cost connectivity must not be reported")
+	require.Zero(t, reconnectNotifications)
+
+	// Two reports of the count reaching zero are one disconnect.
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
+
+	var events []CtrlEvent
+	require.Eventually(t, func() bool {
+		events = append(events, drain()...)
+		return len(events) >= 1
+	}, time.Second, 10*time.Millisecond, "expected a disconnect event")
+
+	// Same for the count coming back.
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 2, notifyReconnect)
+
+	require.Eventually(t, func() bool {
+		events = append(events, drain()...)
+		return len(events) >= 2
+	}, time.Second, 10*time.Millisecond, "expected a reconnect event")
+
+	require.Never(t, func() bool {
+		events = append(events, drain()...)
+		return len(events) > 2
+	}, 100*time.Millisecond, 10*time.Millisecond, "each edge must be reported once, got %v", events)
+
+	require.Equal(t, ControllerDisconnected, events[0].Type)
+	require.Equal(t, ControllerReconnected, events[1].Type)
+	require.Equal(t, 1, reconnectNotifications)
+}
