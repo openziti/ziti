@@ -25,7 +25,7 @@ import (
 	"golang.org/x/term"
 )
 
-// Environment variables that force non-JSON (pfxlog) output when the
+// Environment variables that force non-JSON (pretty) output when the
 // --log-formatter flag is unset. EnvNoJson is the current name; EnvNoJsonLegacy
 // is the pfxlog-era name, still honored so existing deployments and test
 // harnesses keep working.
@@ -38,11 +38,11 @@ const (
 // value and output destination.
 //
 // An explicit, non-empty flagValue always wins and is returned unchanged. When
-// the flag is unset, the format is chosen the way pfxlog historically chose it:
-// ZITI_LOG_NO_JSON (or the deprecated PFXLOG_NO_JSON) forces pfxlog (pretty)
-// output; otherwise a terminal out gets pfxlog output and a non-terminal
-// (piped or redirected) out gets JSON, so production processes default to the
-// machine-parseable shape.
+// the flag is unset, the format is chosen by terminal detection, the way ziti
+// has historically chosen it: ZITI_LOG_NO_JSON (or the deprecated
+// PFXLOG_NO_JSON) forces pretty output; otherwise a terminal out gets pretty
+// output and a non-terminal (piped or redirected) out gets JSON, so production
+// processes default to the machine-parseable shape.
 //
 // out is the writer the handler will target (os.Stderr for ziti binaries). A
 // nil out, or one whose fd is not a terminal, counts as non-terminal.

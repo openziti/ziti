@@ -191,7 +191,8 @@ func TestBuildHandlerForFormatSelectsLeaf(t *testing.T) {
 		mustNotHave []string
 	}{
 		{"empty-defaults-to-pretty", "", []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
-		{"pfxlog-explicit", FormatPretty, []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
+		{"pretty-explicit", FormatPretty, []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
+		{"pfxlog-alias-maps-to-pretty", FormatPrettyAlias, []string{"INFO", "hello"}, []string{"level=info", `"msg"`}},
 		{"text", FormatText, []string{"level=info", "msg=hello"}, []string{"INFO", `"msg"`}},
 		{"json", FormatJSON, []string{`"level":"info"`, `"msg":"hello"`}, []string{"level=info"}},
 	}

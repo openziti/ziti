@@ -634,7 +634,7 @@ func NewControllerCmd() *cobra.Command {
 			}
 
 			switch logFormatter {
-			case "pfxlog":
+			case "pretty", "pfxlog":
 				pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 			case "json":
 				pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
@@ -652,7 +652,7 @@ func NewControllerCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
 	cmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
-	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]")
 
 	runCtrlCmd := run.NewRunControllerCmd()
 	runCtrlCmd.Use = "run <config>"
@@ -691,7 +691,7 @@ func NewRouterCmd() *cobra.Command {
 			}
 
 			switch logFormatter {
-			case "pfxlog":
+			case "pretty", "pfxlog":
 				pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 			case "json":
 				pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
@@ -709,7 +709,7 @@ func NewRouterCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&cliAgentEnabled, "cliagent", true, "Enable/disabled CLI Agent (enabled by default)")
 	cmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	cmd.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
-	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]")
 
 	runRouterCmd := run.NewRunRouterCmd()
 	runRouterCmd.Use = "run <config>"

@@ -156,9 +156,15 @@ func BuildPrettyHandler(out io.Writer, opts AsyncOptions, prettyOpts *PrettyOpti
 // Recognised values for the --log-formatter flag. "" is treated as
 // FormatPretty so unconfigured binaries match the pre-slog default look.
 const (
-	FormatPretty = "pfxlog"
+	FormatPretty = "pretty"
 	FormatJSON   = "json"
 	FormatText   = "text"
+
+	// FormatPrettyAlias is the historical name for FormatPretty, accepted for
+	// backward compatibility with existing configs and scripts. It is not
+	// advertised in flag help. The name predates removing pfxlog and describes
+	// its origin, not its behavior.
+	FormatPrettyAlias = "pfxlog"
 )
 
 // BuildHandlerForFormat picks the production handler chain by name. Unknown
@@ -170,7 +176,7 @@ func BuildHandlerForFormat(out io.Writer, opts AsyncOptions, format string) (*As
 		return BuildHandler(out, opts)
 	case FormatText:
 		return BuildTextHandler(out, opts)
-	case "", FormatPretty:
+	case "", FormatPretty, FormatPrettyAlias:
 		return BuildPrettyHandler(out, opts, nil)
 	default:
 		return nil, fmt.Errorf("logging: unknown formatter %q (want %q, %q, or %q)", format, FormatPretty, FormatJSON, FormatText)

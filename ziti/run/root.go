@@ -42,7 +42,7 @@ type Options struct {
 
 func (self *Options) BindFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&self.Verbose, "verbose", "v", false, "Enable verbose logging")
-	cmd.PersistentFlags().StringVar(&self.LogFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]; default is pfxlog on a terminal and json when redirected (ZITI_LOG_NO_JSON forces pfxlog)")
+	cmd.PersistentFlags().StringVar(&self.LogFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]; default is pretty on a terminal and json when redirected (ZITI_LOG_NO_JSON forces pretty)")
 
 	cmd.PersistentFlags().BoolVarP(&self.CliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
 	cmd.PersistentFlags().StringVar(&self.CliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")

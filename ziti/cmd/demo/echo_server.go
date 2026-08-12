@@ -81,7 +81,7 @@ func newEchoServerCmd() *cobra.Command {
 	cmd.Flags().Uint16VarP(&server.port, "port", "p", 0, "Specify the port to listen on. If not specified the TCP listener won't be started")
 	cmd.Flags().StringVar(&server.healthCheckAddr, "health-check-addr", "", "Specify the ip:port on which to serve the health check endpoint. If not specified, a health check endpoint will not be started")
 	cmd.Flags().BoolVarP(&server.verbose, "verbose", "v", false, "Enable verbose logging")
-	cmd.Flags().StringVar(&server.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.Flags().StringVar(&server.logFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]")
 	cmd.Flags().StringVarP(&server.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().StringVarP(&server.service, "service", "s", "echo", "Ziti service to bind. Defaults to 'echo'")
 	cmd.Flags().BoolVar(&server.bindWithIdentity, "addressable", false, "Specify if this application should be addressable by the edge identity")
@@ -104,7 +104,7 @@ func (self *echoServer) initLogging() {
 	pfxlog.GlobalInit(logLevel, options)
 
 	switch self.logFormatter {
-	case "pfxlog":
+	case "pretty", "pfxlog":
 		pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 	case "json":
 		pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})

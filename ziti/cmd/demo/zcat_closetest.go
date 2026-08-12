@@ -51,7 +51,7 @@ func newZcatCloseTestCmd() *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&action.verbose, "verbose", "v", false, "Enable verbose logging")
-	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]")
 	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().SetInterspersed(true)
 
@@ -68,7 +68,7 @@ func (self *zcatCloseTestAction) initLogging() {
 	pfxlog.GlobalInit(logLevel, options)
 
 	switch self.logFormatter {
-	case "pfxlog":
+	case "pretty", "pfxlog":
 		pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 	case "json":
 		pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
