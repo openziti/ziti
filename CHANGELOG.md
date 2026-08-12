@@ -2,6 +2,7 @@
 
 ## What's New
 
+* Security fixes (see Security Advisories below)
 * Bug fixes
 * Controller read throughput under load: this release picks up bbolt v1.5.0, which removes a linear
   scan over all open read transactions that ran while holding bbolt's single global transaction
@@ -17,6 +18,17 @@ Thanks to the community members who contributed to this release.
 * [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
   [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
   production workload.
+
+## Security Advisories
+
+This release addresses a router-to-router link identity-spoofing vulnerability. See the linked GitHub
+Security Advisory for full details, impact, and affected versions.
+
+* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (CVE pending) (Medium) - When accepting an incoming router-to-router link, a
+  router verified the dialing router's identity against the whole presented certificate chain instead of the
+  leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
+  present another router's certificate as filler and be admitted on a link under that router's identity,
+  letting it intercept, inject, drop, or strand the circuits routed over that link.
 
 ## Component Updates and Bug Fixes
 
