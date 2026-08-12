@@ -386,19 +386,14 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 
 	// Track connectivity transitions for reconnect/disconnect notifications
 	var wasDisconnected atomic.Bool
-	changeCallback := func(ch *ctrlchan.DialCtrlChannel, oldCount, newCount uint32) {
+	changeCallback := func(ch *ctrlchan.DialCtrlChannel, _, newCount uint32) {
 		multiCh := ch.GetChannel()
 		if multiCh == nil || multiCh.IsClosed() {
 			return
 		}
-		if wasDisconnected.Load() && newCount > 0 {
+		self.notifyOfConnectivityChange(ch.PeerId(), &wasDisconnected, newCount, func() {
 			self.dialEnv.NotifyOfReconnect(ch)
-			wasDisconnected.Store(false)
-		} else if newCount == 0 {
-			if wasDisconnected.CompareAndSwap(false, true) {
-				self.NotifyOfDisconnect(ch.PeerId())
-			}
-		}
+		})
 	}
 
 	dialCtrlChan := ctrlchan.NewDialCtrlChannel(ctrlchan.DialCtrlChannelConfig{
@@ -608,6 +603,29 @@ func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlcha
 	}))
 
 	return nil
+}
+
+// notifyOfConnectivityChange reports a control channel losing and regaining its last
+// underlay. A grouped channel survives losing every underlay, so the registration stays
+// and neither Add nor the close handler runs: these notifications are the only thing that
+// tells anything the channel went away and came back.
+//
+// Both halves of the reconnect matter and are easy to confuse. notifyReconnect re-offers
+// the state a controller may have missed while the channel was down, while the
+// ControllerReconnected ctrl event is what listeners keyed on connectivity wait for.
+// Sending only the first leaves those listeners believing the controller is still gone.
+//
+// wasDisconnected belongs to the one channel and is swapped rather than stored, so each
+// edge is reported exactly once however many underlays come or go at the same moment.
+func (self *networkControllers) notifyOfConnectivityChange(ctrlId string, wasDisconnected *atomic.Bool, newCount uint32, notifyReconnect func()) {
+	if newCount > 0 {
+		if wasDisconnected.CompareAndSwap(true, false) {
+			notifyReconnect()
+			self.NotifyOfReconnect(ctrlId)
+		}
+	} else if wasDisconnected.CompareAndSwap(false, true) {
+		self.NotifyOfDisconnect(ctrlId)
+	}
 }
 
 func (self *networkControllers) NotifyOfDisconnect(ctrlId string) {
