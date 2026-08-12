@@ -437,6 +437,15 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Removed Features
+
+* **Link `costTags`** - The `costTags` option on router link listeners has been
+  removed. It was parsed from router config, advertised to the controller, and
+  stored on the router model, but was never used for path selection or any other
+  behavior. Routers ignore the setting if it is still present in config, and the
+  corresponding protobuf fields are now reserved, so no migration is required
+  beyond optionally deleting the setting.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/channel/v5: [v4.3.11 -> v5.0.15](https://github.com/openziti/channel/compare/v4.3.11...v5.0.15)

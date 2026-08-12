@@ -74,10 +74,6 @@ func (self *listener) GetLinkProtocol() string {
 	return self.config.linkProtocol
 }
 
-func (self *listener) GetLinkCostTags() []string {
-	return self.config.linkCostTags
-}
-
 func (self *listener) GetGroups() []string {
 	return self.config.groups
 }

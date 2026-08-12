@@ -174,7 +174,8 @@ message RouterLinks {
     string id = 1;
     string destRouterId = 2;
     string linkProtocol = 3;
-    repeated string linkCostTags = 4;
+    reserved 4; // formerly linkCostTags, removed as unused
+    reserved "linkCostTags";
     string dialAddress = 5;
     uint32 iteration = 6;
     LinkConnState connState = 7;
@@ -259,7 +260,8 @@ message VerifyRouter {
 message Listener {
   string address = 1;
   string protocol = 2;
-  repeated string costTags = 3;
+  reserved 3; // formerly costTags, removed as unused
+  reserved "costTags";
   repeated string groups = 4;
   string localBinding = 5;
 }
