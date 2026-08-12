@@ -55,6 +55,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/controller/xt"
@@ -113,6 +114,10 @@ type Network struct {
 	serviceMisconfiguredTerminatorCounter     servermetrics.IntervalCounter
 
 	config Config
+
+	// restartSelfOnSnapshot, when true, restarts this controller in place after a snapshot restore
+	// (e.g. a node joining the cluster) instead of exiting and relying on an external process manager.
+	restartSelfOnSnapshot bool
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
@@ -1494,7 +1499,15 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	time.AfterFunc(5*time.Second, func() {
-		log.Info("database restore requires controller restart. exiting...")
+		if network.restartSelfOnSnapshot {
+			log.Info("database restore requires controller restart, restarting...")
+			// RestartController returns only when the restart failed; on success it replaces this
+			// process and never comes back.
+			err := raft.RestartController()
+			log.WithError(err).Error("failed to restart controller after snapshot restore, exiting...")
+		} else {
+			log.Info("database restore requires controller restart. exiting...")
+		}
 		os.Exit(0)
 	})
 
@@ -1522,6 +1535,13 @@ func (network *Network) ensureRaftIndex(index uint64) error {
 		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
 		return raftBucket.GetError()
 	})
+}
+
+// SetRestartSelfOnSnapshot controls whether the controller restarts itself after a snapshot restore
+// (true) or exits expecting an external restart (false). It mirrors the raft restartSelfOnSnapshot
+// setting and is applied by the owning controller after construction.
+func (network *Network) SetRestartSelfOnSnapshot(v bool) {
+	network.restartSelfOnSnapshot = v
 }
 
 func (network *Network) AddInspectTarget(target InspectTarget) {

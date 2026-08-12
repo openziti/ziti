@@ -44,8 +44,11 @@ const (
 )
 
 type RouterType struct {
-	Configs   map[string]Config
-	Version   string
+	Configs map[string]Config
+	Version string
+	// SourceRef, when set, is a git ref (branch, tag, or SHA) on openziti/ziti built from source and
+	// stamped as Version, instead of downloading the Version release. Use it to run an unreleased build.
+	SourceRef string
 	LocalPath string
 	Debug     bool
 	LogConfig
@@ -105,7 +108,7 @@ func (self *RouterType) StageFiles(r model.Run, c *model.Component) error {
 		}
 	}
 
-	if err := stageziti.StageZitiOnce(r, c, self.Version, self.LocalPath); err != nil {
+	if err := stageziti.StageZitiForComponentOnce(r, c, self.Version, self.SourceRef, self.LocalPath); err != nil {
 		return err
 	}
 

@@ -59,6 +59,14 @@ func ValidateTerminators(run model.Run, timeout time.Duration, countOk func(int6
 }
 
 func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time.Time, countOk func(int64) bool, validationType TerminatorValidationType) error {
+	return ValidateTerminatorsForCtrlWithFilters(run, c, deadline, countOk, validationType, "limit none", "limit none")
+}
+
+// ValidateTerminatorsForCtrlWithFilters is like ValidateTerminatorsForCtrl but restricts the SDK and
+// ERT terminator validations to the routers matching sdkFilter and ertFilter respectively. Use it to
+// skip routers that do not host the terminator type being validated, for example inspecting the ERT
+// terminators only on edge-router tunnelers.
+func ValidateTerminatorsForCtrlWithFilters(run model.Run, c *model.Component, deadline time.Time, countOk func(int64) bool, validationType TerminatorValidationType, sdkFilter, ertFilter string) error {
 	logger := tui.ValidationLogger().WithField("ctrl", c.Id)
 
 	var clients *zitirest.Clients
@@ -101,10 +109,14 @@ func ValidateTerminatorsForCtrl(run model.Run, c *model.Component, deadline time
 
 	var validators []validatorEntry
 	if validationType&ValidateSdkTerminators != 0 {
-		validators = append(validators, validatorEntry{name: "sdk", validate: ValidateRouterSdkTerminators})
+		validators = append(validators, validatorEntry{name: "sdk", validate: func(id string, cl *zitirest.Clients) (int, error) {
+			return ValidateRouterSdkTerminatorsWithFilter(id, cl, sdkFilter)
+		}})
 	}
 	if validationType&ValidateErtTerminators != 0 {
-		validators = append(validators, validatorEntry{name: "ert", validate: ValidateRouterErtTerminators})
+		validators = append(validators, validatorEntry{name: "ert", validate: func(id string, cl *zitirest.Clients) (int, error) {
+			return ValidateRouterErtTerminatorsWithFilter(id, cl, ertFilter)
+		}})
 	}
 
 	for _, v := range validators {
@@ -158,7 +170,85 @@ func GetTerminatorCount(clients *zitirest.Clients) (int64, error) {
 	return count, nil
 }
 
+// FixInvalidTerminators asks the controller to validate the terminators matching filter against their
+// routers and delete the ones the routers no longer host, returning the number fixed (deleted). Scope
+// the filter (e.g. binding="edge") to the terminator types whose routers can be inspected safely.
+// timeout bounds how long to wait for the per-terminator results after validation starts.
+func FixInvalidTerminators(clients *zitirest.Clients, filter string, timeout time.Duration) (int, error) {
+	logger := tui.ValidationLogger()
+
+	closeNotify := make(chan struct{})
+	eventNotify := make(chan *mgmt_pb.TerminatorDetail, 16)
+
+	bindHandler := func(binding channel.Binding) error {
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_ValidateTerminatorResultType), func(msg *channel.Message, _ channel.Channel) {
+			detail := &mgmt_pb.TerminatorDetail{}
+			if err := proto.Unmarshal(msg.Body, detail); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to unmarshal terminator detail")
+				return
+			}
+			eventNotify <- detail
+		})
+		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+			close(closeNotify)
+		}))
+		return nil
+	}
+
+	ch, err := clients.NewWsMgmtChannel(channel.BindHandlerF(bindHandler))
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		_ = ch.Close()
+	}()
+
+	request := &mgmt_pb.ValidateTerminatorsRequest{
+		TerminatorsFilter: filter,
+		FixInvalid:        true,
+	}
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(30 * time.Second).SendForReply(ch)
+
+	response := &mgmt_pb.ValidateTerminatorsResponse{}
+	if err = protobufs.TypedResponse(response).Unmarshall(responseMsg, err); err != nil {
+		return 0, err
+	}
+
+	if !response.Success {
+		return 0, fmt.Errorf("failed to start terminator validation: %s", response.Message)
+	}
+
+	// A router that stops answering mid-validation lets the controller-side request time out without
+	// emitting a detail or closing this channel, while the response count still includes its
+	// terminators, so bound the wait instead of blocking forever on details that will never arrive.
+	expiredC := time.After(timeout)
+
+	fixed := 0
+	for expected := response.TerminatorCount; expected > 0; expected-- {
+		select {
+		case <-closeNotify:
+			return fixed, errors.New("unexpected close of mgmt channel during terminator fix")
+		case <-expiredC:
+			return fixed, fmt.Errorf("timed out after %s waiting for terminator details, %d of %d not received",
+				timeout, expected, response.TerminatorCount)
+		case detail := <-eventNotify:
+			if detail.Fixed {
+				fixed++
+				logger.Infof("fixed invalid terminator %s (service=%s router=%s state=%s)",
+					detail.TerminatorId, detail.ServiceName, detail.RouterName, detail.State)
+			}
+		}
+	}
+	return fixed, nil
+}
+
 func ValidateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, error) {
+	return ValidateRouterSdkTerminatorsWithFilter(id, clients, "limit none")
+}
+
+// ValidateRouterSdkTerminatorsWithFilter validates the SDK terminators on the routers matching filter,
+// returning the number found invalid.
+func ValidateRouterSdkTerminatorsWithFilter(id string, clients *zitirest.Clients, filter string) (int, error) {
 	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
@@ -191,7 +281,7 @@ func ValidateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, er
 	}()
 
 	request := &mgmt_pb.ValidateRouterSdkTerminatorsRequest{
-		Filter: "limit none",
+		Filter: filter,
 	}
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(10 * time.Second).SendForReply(ch)
 
@@ -235,6 +325,13 @@ func ValidateRouterSdkTerminators(id string, clients *zitirest.Clients) (int, er
 }
 
 func ValidateRouterErtTerminators(id string, clients *zitirest.Clients) (int, error) {
+	return ValidateRouterErtTerminatorsWithFilter(id, clients, "limit none")
+}
+
+// ValidateRouterErtTerminatorsWithFilter validates the ERT terminators on the routers matching filter,
+// returning the number found invalid. Restricting the filter to edge-router tunnelers avoids inspecting
+// routers that host no ERT terminators.
+func ValidateRouterErtTerminatorsWithFilter(id string, clients *zitirest.Clients, filter string) (int, error) {
 	logger := tui.ValidationLogger().WithField("ctrl", id)
 
 	closeNotify := make(chan struct{})
@@ -267,7 +364,7 @@ func ValidateRouterErtTerminators(id string, clients *zitirest.Clients) (int, er
 	}()
 
 	request := &mgmt_pb.ValidateRouterErtTerminatorsRequest{
-		Filter: "limit none",
+		Filter: filter,
 	}
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(10 * time.Second).SendForReply(ch)
 

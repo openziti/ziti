@@ -96,9 +96,14 @@ func (self *Loop4SimType) GetConfigName(c *model.Component) string {
 	return configName
 }
 
-func (self *Loop4SimType) getProcessFilter() func(string) bool {
+func (self *Loop4SimType) getProcessFilter(c *model.Component) func(string) bool {
+	// Match on the component's config file (which contains the component id) in addition to the
+	// binary name, so multiple loop4 instances can run on the same host and still be identified
+	// individually. Single-instance hosts continue to match, since the running process always
+	// includes its own config path.
+	configFile := fmt.Sprintf("%s.yml", c.Id)
 	return func(s string) bool {
-		return strings.Contains(s, "ziti-traffic-test")
+		return strings.Contains(s, "ziti-traffic-test") && strings.Contains(s, configFile)
 	}
 }
 
@@ -107,7 +112,7 @@ func (self *Loop4SimType) GetConfigPath(c *model.Component) string {
 }
 
 func (self *Loop4SimType) IsRunning(_ model.Run, c *model.Component) (bool, error) {
-	pids, err := c.GetHost().FindProcesses(self.getProcessFilter())
+	pids, err := c.GetHost().FindProcesses(self.getProcessFilter(c))
 	if err != nil {
 		return false, err
 	}
@@ -139,5 +144,5 @@ func (self *Loop4SimType) Start(_ model.Run, c *model.Component) error {
 }
 
 func (self *Loop4SimType) Stop(_ model.Run, c *model.Component) error {
-	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter())
+	return c.GetHost().KillProcesses("-TERM", self.getProcessFilter(c))
 }

@@ -1,0 +1,11 @@
+# Plain-TCP loop4 listener that sits behind a ZET or ziti-tunnel host. The tunneler binds
+# the ziti service (loop-zet / loop-ziti-tunnel) and forwards it to localhost:3456, where
+# this listener speaks the loop4 protocol back to the remote dialer.
+connectors:
+  backend:
+    transport:
+      address: tcp:127.0.0.1:3456
+
+workloads:
+  - name:      loop-backend
+    connector: backend

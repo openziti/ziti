@@ -301,6 +301,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	if n, err := network.NewNetwork(c, appEnv); err == nil {
 		c.network = n
+		n.SetRestartSelfOnSnapshot(c.config.Raft != nil && c.config.Raft.RestartSelf)
 	} else {
 		return nil, err
 	}

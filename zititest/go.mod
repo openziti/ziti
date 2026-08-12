@@ -23,6 +23,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.100
 	github.com/openziti/identity v1.0.140
 	github.com/openziti/metrics v1.4.5
+	github.com/openziti/sdk-golang/acquire v0.3.0
 	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
 	github.com/openziti/transport/v2 v2.0.220
 	github.com/openziti/ziti/v2 v2.0.3
@@ -236,6 +237,7 @@ require (
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260820142414-ca536658362e // indirect
+	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
