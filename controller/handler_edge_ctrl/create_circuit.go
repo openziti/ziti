@@ -71,7 +71,7 @@ func (self *createCircuitHandler) HandleReceiveCreateCircuitV1(msg *channel.Mess
 	}
 
 	ctx := &CreateCircuitRequestContext{
-		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg, env: self.appEnv},
 		req:                       req,
 	}
 
