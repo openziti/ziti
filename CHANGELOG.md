@@ -448,7 +448,11 @@ today and expand as packages are converted. The global `ziti agent set-log-level
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.15](https://github.com/openziti/channel/compare/v4.3.11...v5.0.15)
+* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.22](https://github.com/openziti/channel/compare/v4.3.11...v5.0.22)
+    * [Issue #280](https://github.com/openziti/channel/issues/280) - MultiListener: no way to decline a grouped channel without stranding the dialer
+    * [Issue #275](https://github.com/openziti/channel/issues/275) - Multi-listener attaches reconnecting underlays to a closing channel under churn
+    * [Issue #271](https://github.com/openziti/channel/issues/271) - Treat MinTotalUnderlays as a first-class multi-underlay signal
+    * [Issue #274](https://github.com/openziti/channel/issues/274) - Add configurable reconnect jitter to BackoffDialPolicy
     * [Issue #258](https://github.com/openziti/channel/issues/258) - Add a hook to inject hello headers derived from the peer's certificate
     * [Issue #267](https://github.com/openziti/channel/issues/267) - NewSingleChannelWithUnderlay panics on underlays with nil headers (e.g. websocket)
     * [Issue #269](https://github.com/openziti/channel/issues/269) - Make channel logging pluggable via injectable slog.Logger
@@ -467,13 +471,19 @@ today and expand as packages are converted. The global `ziti agent set-log-level
 * github.com/openziti/edge-api: [v0.31.0 -> v0.35.2](https://github.com/openziti/edge-api/compare/v0.31.0...v0.35.2)
     * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
 
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.99](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.99)
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.100](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.100)
+    * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
     * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
     * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
 
-* github.com/openziti/identity: [v1.0.129 -> v1.0.137](https://github.com/openziti/identity/compare/v1.0.129...v1.0.137)
-* github.com/openziti/runzmd: [v1.0.90 -> v1.0.91](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.91)
+* github.com/openziti/identity: [v1.0.129 -> v1.0.140](https://github.com/openziti/identity/compare/v1.0.129...v1.0.140)
+    * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
+    * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
+
+* github.com/openziti/runzmd: [v1.0.90 -> v1.0.92](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.92)
+    * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
+
 * github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre3](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre3)
     * [Issue #958](https://github.com/openziti/sdk-golang/issues/958) - ConnectV2 xgress client conn not marked closed on router-initiated teardown
     * [Issue #967](https://github.com/openziti/sdk-golang/issues/967) - Move RouterCapabilityConnectV2 constant into edge_client.proto
@@ -489,12 +499,21 @@ today and expand as packages are converted. The global `ziti agent set-log-level
     * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
-* github.com/openziti/secretstream: [v0.1.49 -> v0.1.51](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.51)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
+* github.com/openziti/secretstream: [v0.1.49 -> v0.1.52](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.52)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.218](https://github.com/openziti/transport/compare/v2.0.215...v2.0.218)
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
-    * [Issue #4124](https://github.com/openziti/ziti/issues/4124) - Tags are dropped when creating external JWT signers, transit routers and authenticators
+    * [Issue #4204](https://github.com/openziti/ziti/issues/4204) - ziti run/tunnel ignore PFXLOG_NO_JSON and lost the terminal-aware log-format default
+    * [Issue #4234](https://github.com/openziti/ziti/issues/4234) - Ensure terminator operations are scoped by source router
+    * [Issue #4240](https://github.com/openziti/ziti/issues/4240) - Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+    * [Issue #4232](https://github.com/openziti/ziti/issues/4232) - logging.Install should route stdlib slog.Default() into ziti's sink
+    * [Issue #4141](https://github.com/openziti/ziti/issues/4141) - Service-policy enforcer deletes valid legacy sessions; type= queries use numeric id against the string-mapped symbol
+    * [Issue #4118](https://github.com/openziti/ziti/issues/4118) - Overlapping JWKS kids across ext-jwt-signers cause intermittent primary auth failures (GetIssuerByKid collision)
+    * [Issue #4063](https://github.com/openziti/ziti/issues/4063) - External JWT enrollment fails when a configured role attributes claims selector is absent from the JWT
+    * [Issue #4124](https://github.com/openziti/ziti/issues/4124) - Managed-auth External JWT Signer created without network-id/managed tags on OpenZiti v2.0.0 controllers
+    * [Issue #4206](https://github.com/openziti/ziti/issues/4206) - Lock order inversion in ConnectionTracker deadlocks the controller
     * [Issue #4193](https://github.com/openziti/ziti/issues/4193) - ER/T terminator create reports "invalid edge router for session" with no router-side error and slow recovery
+    * [Issue #4079](https://github.com/openziti/ziti/issues/4079) - DisconnectRouter reroutes circuits before marking the router disconnected
     * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - upgrading a running 1.x controller/router to 2.x fails to create the service user
     * [Issue #3990](https://github.com/openziti/ziti/issues/3990) - Expose service change subscriptions to external SDKs over protobuf
     * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Controller retains bbolt-managed memory past transaction (create-circuit response SIGSEGV)
