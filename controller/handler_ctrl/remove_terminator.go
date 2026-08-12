@@ -64,6 +64,16 @@ func (self *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message
 		return
 	}
 
+	if !self.ownsTerminator(terminator) {
+		log.
+			WithField("routerId", self.router.Id).
+			WithField("terminator", request.TerminatorId).
+			WithField("terminatorRouterId", terminator.Router).
+			Warn("router attempted to remove a terminator it does not own; rejected")
+		handler_common.SendFailure(msg, ch, "terminator not owned by requesting router")
+		return
+	}
+
 	if err := self.network.Terminator.Delete(request.TerminatorId, self.newChangeContext(ch, "fabric.remove.terminator")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
