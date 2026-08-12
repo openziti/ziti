@@ -34,6 +34,13 @@ func (self *baseHandler) newChangeContext(ch channel.Channel, method string) *ch
 	return change.NewControlChannelChange(self.router.Id, self.router.Name, method, ch)
 }
 
+// ownsTerminator reports whether terminator belongs to the router on the other end of this handler's
+// control channel. Terminator operations arriving on the fabric control channel are scoped to the
+// requesting router, mirroring the edge control channel's verifyTerminator.
+func (self *baseHandler) ownsTerminator(terminator *model.Terminator) bool {
+	return terminator.Router == self.router.Id
+}
+
 // lookupTerminatorOwner returns the id of the router that owns terminator id and whether the
 // terminator currently exists. A not-found terminator returns ("", false, nil); other read errors
 // are returned so the caller can default to keeping the id rather than acting on incomplete state.

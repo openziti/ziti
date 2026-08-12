@@ -20,6 +20,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,5 +69,24 @@ func Test_filterOwnedTerminators(t *testing.T) {
 		kept, rejected := filterOwnedTerminators([]string{"mine", "other", "gone", "err"}, me, lookup)
 		req.Equal([]string{"mine", "gone", "err"}, kept)
 		req.Equal(1, rejected)
+	})
+}
+
+// Test_ownsTerminator covers the single-terminator check used by the remove and update handlers,
+// which reject outright rather than filtering.
+func Test_ownsTerminator(t *testing.T) {
+	handler := &baseHandler{router: &model.Router{BaseEntity: models.BaseEntity{Id: "router-me"}}}
+
+	t.Run("owned by the requesting router", func(t *testing.T) {
+		require.True(t, handler.ownsTerminator(&model.Terminator{Router: "router-me"}))
+	})
+
+	t.Run("owned by a different router", func(t *testing.T) {
+		require.False(t, handler.ownsTerminator(&model.Terminator{Router: "router-other"}))
+	})
+
+	t.Run("unset owner", func(t *testing.T) {
+		require.False(t, handler.ownsTerminator(&model.Terminator{}),
+			"a terminator with no owner must not be treated as owned by the requester")
 	})
 }
