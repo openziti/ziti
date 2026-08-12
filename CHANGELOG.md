@@ -15,13 +15,20 @@
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
-* [Security Advisories](#security-advisories) - Includes the two control-plane certificate validation fixes first released in 2.0.2
+* [Security Advisories](#security-advisories) - Addresses a router-to-router link identity-spoofing vulnerability, and includes the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
 
-This release includes the two control-plane certificate and identity validation fixes first released in
-2.0.2 and 1.6.18. Anyone upgrading from 2.0.1 or earlier is picking them up here for the first time. See
-the linked GitHub Security Advisories for full details, impact, and affected versions.
+This release addresses a router-to-router link identity-spoofing vulnerability. It also includes the two
+control-plane certificate and identity validation fixes first released in 2.0.2 and 1.6.18; anyone upgrading
+from 2.0.1 or earlier is picking those up here for the first time. See the linked GitHub Security Advisories
+for full details, impact, and affected versions.
+
+* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (Medium) - When accepting an incoming router-to-router link, a router
+  verified the dialing router's identity against the whole presented certificate chain instead of the leaf
+  certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
+  present another router's certificate as filler and be admitted on a link under that router's identity,
+  letting it intercept, inject, drop, or strand the circuits routed over that link.
 
 * [GHSA-mrpr-756c-xm47](https://github.com/openziti/ziti/security/advisories/GHSA-mrpr-756c-xm47) (Critical) - Improper peer certificate validation on the controller
   cluster mesh, router links, and metrics endpoint. TLS peer checks accepted a connection when any presented
