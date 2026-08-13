@@ -68,6 +68,14 @@ func (request *RemoveTerminatorsRequest) GetContentType() int32 {
 	return int32(ContentType_RemoveTerminatorsRequestType)
 }
 
+func (request *RemoveTerminatorsV2Request) GetContentType() int32 {
+	return int32(ContentType_RemoveTerminatorsV2RequestType)
+}
+
+func (response *RemoveTerminatorsV2Response) GetContentType() int32 {
+	return int32(ContentType_RemoveTerminatorsV2ResponseType)
+}
+
 func (request *InspectRequest) GetContentType() int32 {
 	return int32(ContentType_InspectRequestType)
 }

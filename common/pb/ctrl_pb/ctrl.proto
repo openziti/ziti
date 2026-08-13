@@ -51,6 +51,9 @@ enum ContentType {
 
   AlertsType = 1054;
   RequestClusterMembers = 1055;
+
+  RemoveTerminatorsV2RequestType = 1056;
+  RemoveTerminatorsV2ResponseType = 1057;
 }
 
 enum ControlHeaders {
@@ -114,6 +117,32 @@ message RemoveTerminatorRequest {
 
 message RemoveTerminatorsRequest {
   repeated string terminatorIds = 1;
+}
+
+// RemoveTerminatorsV2Request asks the controller to remove a batch of terminators. Unlike
+// RemoveTerminatorsRequest, it is answered asynchronously with a RemoveTerminatorsV2Response
+// rather than a synchronous result, so the router does not block a request slot waiting for the
+// reply. requestId correlates the response back to the sending batch.
+message RemoveTerminatorsV2Request {
+  repeated string terminatorIds = 1;
+  string requestId = 2;
+  // createConfirmed is index-aligned with terminatorIds: entry i is true when the router received
+  // the create acknowledgement for terminatorIds[i], meaning its create is committed. The controller
+  // uses this to safely skip (as a confirmed no-op) a delete for a terminator it no longer has;
+  // absent or false entries force the normal ordered delete, since an unconfirmed create may be
+  // committed but not yet applied. Older routers omit it, which decodes as empty (all false).
+  repeated bool createConfirmed = 3;
+}
+
+// RemoveTerminatorsV2Response reports the outcome of a RemoveTerminatorsV2Request. requestId echoes
+// the request's id so the router can match it to the originating batch. wasRateLimited is set when
+// the removal was rejected because the controller was too busy, so the router should back off and
+// retry rather than treat it as a hard failure.
+message RemoveTerminatorsV2Response {
+  string requestId = 1;
+  bool success = 2;
+  bool wasRateLimited = 3;
+  string msg = 4;
 }
 
 message Terminator {

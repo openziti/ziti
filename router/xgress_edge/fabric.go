@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -68,6 +69,9 @@ type edgeTerminator struct {
 	lock                sync.Mutex
 	rateLimitCallback   rate.RateLimitControl
 	failureCount        atomic.Uint32
+	retryAfter          time.Time     // guarded by lock; earliest time to re-attempt after a rate-limit rejection
+	retryBackoff        time.Duration // guarded by lock; current backoff ceiling, doubles per consecutive rejection
+	createConfirmed     atomic.Bool   // set once the controller acknowledges the create; lets a later remove use the leader fast-path
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -85,6 +89,7 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	operationActive := other.operationActive.Load()
 	createTime := other.createTime
 	lastAttempt := other.lastAttempt
+	createConfirmed := other.createConfirmed.Load()
 	other.lock.Unlock()
 
 	self.lock.Lock()
@@ -94,6 +99,9 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	self.operationActive.Store(operationActive)
 	self.createTime = createTime
 	self.lastAttempt = lastAttempt
+	// Carry over the create confirmation: the adopted terminator's id is already established on the
+	// controller, so a later remove can still use the confirmed-absent fast-path without a re-create.
+	self.createConfirmed.Store(createConfirmed)
 	self.lock.Unlock()
 }
 
@@ -270,6 +278,46 @@ func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl
 	result := self.rateLimitCallback
 	self.rateLimitCallback = nil
 	return result
+}
+
+// scheduleRetryBackoff pushes out the terminator's next establish/remove attempt after the controller
+// rejected the previous one (e.g. rate limited). The backoff ceiling doubles on each consecutive
+// rejection, from minRetryBackoff up to maxRetryBackoff, and the actual delay is jittered within the
+// upper half of that ceiling so a fleet of terminators backing off together doesn't retry in lockstep.
+// This is what keeps a fast-failing (rate-limited) operation from being retried in a tight loop.
+func (self *edgeTerminator) scheduleRetryBackoff() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	next := self.retryBackoff * 2
+	if next < minRetryBackoff {
+		next = minRetryBackoff
+	}
+	if next > maxRetryBackoff {
+		next = maxRetryBackoff
+	}
+	self.retryBackoff = next
+
+	// equal jitter: delay in [next/2, next]
+	delay := next/2 + time.Duration(rand.Int63n(int64(next/2)+1))
+	self.retryAfter = time.Now().Add(delay)
+}
+
+// clearRetryBackoff resets the retry backoff after an attempt succeeds, so the next time work is
+// needed it starts from a clean slate rather than an inflated backoff.
+func (self *edgeTerminator) clearRetryBackoff() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.retryBackoff = 0
+	self.retryAfter = time.Time{}
+}
+
+// retryBackoffActive reports whether the terminator is still within its retry backoff window and so
+// should be skipped by the establish/delete evaluation loops for now.
+func (self *edgeTerminator) retryBackoffActive() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return time.Now().Before(self.retryAfter)
 }
 
 const (
