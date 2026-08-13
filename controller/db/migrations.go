@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 47
+	CurrentDbVersion = 48
 	FieldVersion     = "version"
 )
 
@@ -214,6 +214,15 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.backfillPolicyRoleAttributeIndexes(step) // migration 46
 		m.collapseEdgeServices(step)               // migration 47
 		m.createOrUpdateConfigType(step, routerLinkV1ConfigType)
+	}
+
+	if step.CurrentVersion < 48 {
+		// Refresh router.link.v1: its channelOptions minimums were relaxed so a
+		// managed config can express an unbuffered queue, matching what a local
+		// YAML config and the channel loader already accept. Controllers created
+		// at version 47 stored the stricter schema and are not covered by the
+		// block above, so they need their own refresh.
+		m.createOrUpdateConfigType(step, routerLinkV1ConfigType) // migration 48
 	}
 
 	// current version

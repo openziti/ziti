@@ -111,6 +111,14 @@ func (self *RouterMessaging) RouterDeleted(routerId string) {
 	self.routerChanged(routerId, false)
 }
 
+// RouterListenersUpdated is called when a connected router publishes a
+// new set of link listeners mid-session (via UpdateLinkListeners). The
+// router stays connected; peers receive a PeerStateChange carrying the
+// updated Listeners slice and re-evaluate their dial decisions.
+func (self *RouterMessaging) RouterListenersUpdated(r *model.Router) {
+	self.routerChanged(r.Id, true)
+}
+
 func (self *RouterMessaging) TerminatorCreated(terminator *db.Terminator) {
 	self.queueEvent(&terminatorCreatedEvent{
 		terminator: terminator,
@@ -212,7 +220,7 @@ func (self *RouterMessaging) syncStates() {
 					Id:        routerId,
 					Version:   router.VersionInfo.Version,
 					State:     ctrl_pb.PeerState_Healthy,
-					Listeners: router.Listeners,
+					Listeners: router.GetLinkListeners(),
 				})
 			} else {
 				exists, err := self.managers.Router.Exists(routerId)

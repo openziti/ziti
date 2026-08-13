@@ -73,9 +73,9 @@ func (s ConfigSource) String() string {
 }
 
 // AlertCallback is invoked when the registry encounters a non-recoverable
-// outcome (Apply fails AND rollback fails, or Remove fails). Phase 3c will
-// wire this to a controller-alerting transport; the default implementation
-// logs.
+// outcome (Apply fails AND rollback fails, or Remove fails). A
+// controller-alerting transport can be installed here; the default
+// implementation logs.
 type AlertCallback func(baseType, detail string)
 
 // ErrHandlerAlreadyRegistered is returned by Register when a handler is
@@ -126,11 +126,12 @@ type localEntry struct {
 	data    string
 }
 
-// handlerEntry binds a registered handler with the per-handler pool that
-// serializes reconciles for that handler family, the set of currently-known
-// data versions, and the currently-applied state. All fields except `pool`
-// are guarded by Registry.mu; pool is set once at registration and read-only
-// thereafter (it has its own internal synchronization).
+// handlerEntry binds a registered handler with the per-handler pool that runs
+// its async reconciles, the per-handler lock that serializes reconcile
+// execution, the set of currently-known data versions, and the currently-applied
+// state. All fields except `pool` and `lock` are guarded by Registry.mu; pool is
+// set once at registration and read-only thereafter (it has its own internal
+// synchronization), and lock guards reconcile execution.
 //
 // Controller data can carry multiple versions simultaneously (e.g. v1 and v2
 // both flowing during a rollout). Local data is always at most one
@@ -143,11 +144,17 @@ type handlerEntry struct {
 	local              *localEntry    // nil means no local config set
 	applied            appliedState
 
-	// pool runs this handler's reconciles. It has one worker, so reconciles for
-	// the handler never overlap, and a queue of one, so a burst of events
-	// collapses to at most one running plus one pending pass (further
-	// submissions are dropped, since each pass reads the latest state). Handlers
-	// have independent pools and reconcile in parallel.
+	// lock serializes reconcile execution for this handler. The pool's single
+	// worker already serializes async reconciles, but ApplyLocalSync runs a
+	// reconcile inline (off the pool), so the lock keeps the sync and async
+	// paths from overlapping.
+	lock sync.Mutex
+
+	// pool runs this handler's async reconciles. It has one worker, so reconciles
+	// for the handler never overlap, and a queue of one, so a burst of events
+	// collapses to at most one running plus one pending pass (further submissions
+	// are dropped, since each pass reads the latest state). Handlers have
+	// independent pools and reconcile in parallel.
 	pool goroutines.Pool
 }
 
@@ -340,6 +347,33 @@ func (self *Registry) ApplyLocal(configType string, data string) error {
 	return nil
 }
 
+// ApplyLocalSync records the local config file's data for configType and
+// reconciles the owning handler inline, returning any error from the handler's
+// Apply. Unlike ApplyLocal, the handler runs on the calling goroutine, so an
+// invalid local config (bad bind address, port in use, unknown binding, etc.)
+// is surfaced to the caller rather than only alerted. Used at startup so bad
+// local config fails fast. Panics if called pre-Seal.
+func (self *Registry) ApplyLocalSync(configType string, data string) error {
+	if !self.sealed.Load() {
+		panic("managedconfig.Registry.ApplyLocalSync called before Seal")
+	}
+	base, version, err := ParseConfigType(configType)
+	if err != nil {
+		return err
+	}
+
+	self.mu.Lock()
+	entry, ok := self.handlers[base]
+	if !ok {
+		self.mu.Unlock()
+		return fmt.Errorf("%w: %s", ErrNoHandlerRegistered, base)
+	}
+	entry.local = &localEntry{version: version, data: data}
+	self.mu.Unlock()
+
+	return self.reconcile(entry)
+}
+
 // RemoveLocal clears the local config for the given base. Takes a base type
 // rather than a configType because the version is meaningless for local
 // removal — there's at most one local entry per base, regardless of which
@@ -412,13 +446,28 @@ func (self *Registry) snapshotPools() []goroutines.Pool {
 // submissions return QueueFullError and are dropped, which is safe because the
 // queued pass reads the latest state when it runs. A PoolStoppedError means
 // Close has run. Either way there's nothing more to do, so the error is ignored.
+// Apply/Remove failures are alerted inside reconcile; the async path has no
+// caller to return them to.
 func (self *Registry) queueReconcile(entry *handlerEntry) {
 	_ = entry.pool.QueueOrError(func() {
-		self.reconcile(entry)
+		_ = self.reconcile(entry)
 	})
 }
 
-func (self *Registry) reconcile(entry *handlerEntry) {
+// reconcile brings the handler's applied state in line with its effective
+// config. It alerts on Apply/Remove failures per the rollback contract, and
+// also returns an error when the requested effective config could not be
+// applied so synchronous callers (e.g. the startup local-config apply via
+// ApplyLocalSync) can surface it. Holds the handler's lock, which serializes it
+// against the handler's pool-driven async reconciles.
+func (self *Registry) reconcile(entry *handlerEntry) error {
+	entry.lock.Lock()
+	defer entry.lock.Unlock()
+
+	if self.closed.Load() {
+		return nil
+	}
+
 	handler := entry.handler
 
 	self.mu.Lock()
@@ -439,20 +488,20 @@ func (self *Registry) reconcile(entry *handlerEntry) {
 				self.alert(base, fmt.Sprintf("v%d (%s) initial apply failed and Remove also failed: %v", nextVersion, nextSource, rmErr))
 			}
 			self.setApplied(entry, appliedState{})
-			return
+			return fmt.Errorf("apply %s v%d (%s): %w", base, nextVersion, nextSource, err)
 		}
 		self.setApplied(entry, appliedState{source: nextSource, version: nextVersion, data: nextData})
 
 	case prev.version != 0 && !hasNext:
 		if err := handler.Remove(); err != nil {
 			self.alert(base, fmt.Sprintf("v%d (%s) Remove failed: %v; subsystem state unchanged", prev.version, prev.source, err))
-			return
+			return fmt.Errorf("remove %s v%d (%s): %w", base, prev.version, prev.source, err)
 		}
 		self.setApplied(entry, appliedState{})
 
 	case prev.version != 0 && hasNext:
 		if prev.source == nextSource && prev.version == nextVersion && prev.data == nextData {
-			return
+			return nil
 		}
 		if err := handler.Apply(nextVersion, nextData); err != nil {
 			self.alert(base, fmt.Sprintf("v%d (%s) apply failed (%v); rolling back to v%d (%s)", nextVersion, nextSource, err, prev.version, prev.source))
@@ -462,13 +511,13 @@ func (self *Registry) reconcile(entry *handlerEntry) {
 					self.alert(base, fmt.Sprintf("Remove also failed: %v; subsystem state unknown", rmErr))
 				}
 				self.setApplied(entry, appliedState{})
-				return
 			}
-			// rollback succeeded; applied stays at prev
-			return
+			// whether or not rollback succeeded, the requested config was not applied
+			return fmt.Errorf("apply %s v%d (%s): %w", base, nextVersion, nextSource, err)
 		}
 		self.setApplied(entry, appliedState{source: nextSource, version: nextVersion, data: nextData})
 	}
+	return nil
 }
 
 // findEffectiveLocked computes the effective config for the handler.

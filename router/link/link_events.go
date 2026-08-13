@@ -81,9 +81,37 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 		}
 	}
 	dest.update(self)
+	// Cache the latest listener set so the registry's local dialer
+	// rescan path (localDialersChangedEvent) can re-evaluate matches
+	// without an upstream listener event.
+	dest.listeners = self.listeners
 
 	if self.healthy {
 		self.ApplyListenerChanges(registry, dest, becameHealthy)
+	}
+}
+
+// localDialersChangedEvent triggers a re-evaluation of every known
+// healthy linkDest against the current local dialer set. Used when the
+// router's own dialer configuration changes (managed-config Apply, local
+// YAML reload). Synthesizes a linkDestUpdate per destination using the
+// destination's cached listener set; ApplyListenerChanges then iterates
+// each listener × current local dialer and creates linkStates for any
+// newly-possible matches.
+type localDialersChangedEvent struct{}
+
+func (localDialersChangedEvent) Handle(registry *linkRegistryImpl) {
+	for _, dest := range registry.destinations {
+		if !dest.healthy || len(dest.listeners) == 0 {
+			continue
+		}
+		synthetic := &linkDestUpdate{
+			id:        dest.id,
+			version:   dest.version.Load(),
+			healthy:   true,
+			listeners: dest.listeners,
+		}
+		synthetic.ApplyListenerChanges(registry, dest, false)
 	}
 }
 
@@ -132,6 +160,7 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 						}
 					}
 					existingLinkState.listener = listener // even if the key is the same, the address could have changed
+					existingLinkState.dialer = dialer     // dialer details (backoff, options, max connections) can change while the key stays the same
 
 					// if link isn't established, try establishing now
 					if becameHealthy && existingLinkState.status != StatusEstablished {

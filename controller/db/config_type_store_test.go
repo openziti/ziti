@@ -129,7 +129,7 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 			},
 			"dialers": []interface{}{
 				map[string]interface{}{
-					"binding":              "transport",
+					"binding":               "transport",
 					"maxDefaultConnections": 4,
 					"healthyDialBackoff": map[string]interface{}{
 						"retryBackoffFactor": 2,
@@ -231,7 +231,29 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 				"listeners": []interface{}{
 					map[string]interface{}{
 						"bind":    "tls:0.0.0.0:6262",
-						"options": map[string]interface{}{"maxQueuedConnects": 0},
+						"options": map[string]interface{}{"maxQueuedConnects": -1},
+					},
+				},
+			},
+		},
+		{
+			name: "channelOptions.outQueueSize below minimum",
+			payload: map[string]interface{}{
+				"listeners": []interface{}{
+					map[string]interface{}{
+						"bind":    "tls:0.0.0.0:6262",
+						"options": map[string]interface{}{"outQueueSize": -1},
+					},
+				},
+			},
+		},
+		{
+			name: "channelOptions.maxOutstandingConnects below minimum",
+			payload: map[string]interface{}{
+				"listeners": []interface{}{
+					map[string]interface{}{
+						"bind":    "tls:0.0.0.0:6262",
+						"options": map[string]interface{}{"maxOutstandingConnects": 0},
 					},
 				},
 			},
@@ -248,6 +270,24 @@ func Test_RouterLinkV1Builtin(t *testing.T) {
 			ctx.False(result.Valid(), "expected payload to be rejected")
 		})
 	}
+
+	// Zero sizes an unbuffered channel and the channel loader accepts it, so a
+	// managed config must be able to express what a local one can.
+	t.Run("accepts zero queue sizes", func(t *testing.T) {
+		ctx.NextTest(t)
+		result := validate(map[string]interface{}{
+			"listeners": []interface{}{
+				map[string]interface{}{
+					"bind": "tls:0.0.0.0:6262",
+					"options": map[string]interface{}{
+						"outQueueSize":      0,
+						"maxQueuedConnects": 0,
+					},
+				},
+			},
+		})
+		ctx.True(result.Valid(), "expected zero queue sizes to be accepted: %v", result.Errors())
+	})
 }
 
 func (ctx *TestContext) testConfigTypeTargetImmutability(*testing.T) {

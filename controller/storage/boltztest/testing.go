@@ -18,14 +18,13 @@ package boltztest
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"math/rand"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -34,7 +33,7 @@ import (
 type TestContext interface {
 	GetDb() boltz.Db
 	GetStoreForEntity(entity boltz.Entity) boltz.Store
-	NextTest(t *testing.T)
+	NextTest(t require.TestingT)
 	Require() *require.Assertions
 	GetReferenceTime() time.Time
 }
@@ -43,24 +42,28 @@ type StoreFunc func(entity boltz.Entity) boltz.Store
 
 type BaseTestContext struct {
 	require.Assertions
-	t             testing.TB
 	ReferenceTime time.Time
 	dbFile        *os.File
 	db            boltz.Db
 	storeF        StoreFunc
 }
 
-func NewTestContext(t testing.TB, storeF StoreFunc) *BaseTestContext {
+// NewTestContext builds a context bound to the given test's assertions.
+//
+// t is a require.TestingT rather than a testing.TB so that this file,
+// which is a normal build-included source file, does not import
+// "testing". *testing.T satisfies it, so callers are unaffected.
+func NewTestContext(t require.TestingT, storeF StoreFunc) *BaseTestContext {
 	return &BaseTestContext{
 		Assertions:    *require.New(t),
-		t:             t,
 		ReferenceTime: time.Now(),
 		storeF:        storeF,
 	}
 }
 
-func (ctx *BaseTestContext) NextTest(t *testing.T) {
-	ctx.t = t
+// NextTest rebinds the context's assertions to a new test, so a context
+// shared across subtests reports failures against the running one.
+func (ctx *BaseTestContext) NextTest(t require.TestingT) {
 	ctx.Assertions = *require.New(t)
 }
 
