@@ -19,12 +19,12 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"testing"
 	"time"
 
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/stretchr/testify/require"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -204,7 +204,13 @@ func (self *TestContext) GetCommandDispatcher() command.Dispatcher {
 
 func (self *TestContext) AddRouterPresenceHandler(RouterPresenceHandler) {}
 
-func NewTestContext(t testing.TB) *TestContext {
+// NewTestContext builds a model-layer test context bound to the given
+// test's assertions.
+//
+// t is a require.TestingT rather than a testing.TB so that this file,
+// which is a normal build-included source file, does not import
+// "testing". *testing.T satisfies it, so callers are unaffected.
+func NewTestContext(t require.TestingT) *TestContext {
 	fabricTestContext := db.NewTestContext(t)
 	ctx := &TestContext{
 		TestContext:     fabricTestContext,
