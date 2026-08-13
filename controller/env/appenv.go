@@ -254,19 +254,19 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	parsedToken, err := jwt.ParseWithClaims(token, serviceAccessClaims, ae.JwtSignerKeyFunc)
 
 	if err != nil {
-		return nil, err
+		return nil, &common.InvalidTokenError{Err: err}
 	}
 
 	if !parsedToken.Valid {
-		return nil, errors.New("service access token is invalid")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token is invalid")}
 	}
 
 	if !serviceAccessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !serviceAccessClaims.HasAudience(common.ClaimLegacyNative) {
-		return nil, fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, serviceAccessClaims.Audience)
+		return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, serviceAccessClaims.Audience)}
 	}
 
 	if serviceAccessClaims.TokenType != common.TokenTypeServiceAccess {
-		return nil, fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeServiceAccess, serviceAccessClaims.Type)
+		return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeServiceAccess, serviceAccessClaims.Type)}
 	}
 
 	if apiSessionId != nil {
@@ -275,10 +275,12 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		}
 
 		if serviceAccessClaims.ApiSessionId != *apiSessionId {
-			return nil, fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
+			return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)}
 		}
 	}
 
+	// Revocation.Read failures below are infrastructure errors and are returned raw (not wrapped as
+	// InvalidTokenError), so a transient datastore failure does not make callers discard valid sessions.
 	tokenRevocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.ID)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
@@ -286,7 +288,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	}
 
 	if tokenRevocation != nil {
-		return nil, errors.New("service access token has been revoked by id")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token has been revoked by id")}
 	}
 
 	revocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.IdentityId)
@@ -296,7 +298,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	}
 
 	if revocation != nil && revocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
-		return nil, errors.New("service access token has been revoked by identity")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token has been revoked by identity")}
 	}
 
 	return serviceAccessClaims, nil
