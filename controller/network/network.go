@@ -392,8 +392,11 @@ func (network *Network) ConnectRouter(r *model.Router) error {
 		return ErrConnectChannelClosed
 	}
 
-	network.Link.BuildRouterLinks(r)
+	// Register first: LinkManager.repairDest re-reads the connected map once a link is in the table, so a
+	// router whose own link build ran too early has to be registered by then, or neither path pairs the
+	// link with its destination.
 	network.Router.MarkConnected(r)
+	network.Link.BuildRouterLinks(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {

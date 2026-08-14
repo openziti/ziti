@@ -72,6 +72,23 @@ func (link *Link) GetDest() *Router {
 	return link.Dst.Load()
 }
 
+// PointDestAt points the link at dst, reporting whether that changed which object it pointed at.
+//
+// Two paths discover that a link's destination is connected, and either can be the one that misses: the report
+// that records the link resolves the destination itself, and BuildRouterLinks repairs links already recorded
+// when a router connects. Both call this, and the false return is what keeps the loser from indexing the link
+// on the router a second time, since that index is a slice that does not deduplicate.
+func (link *Link) PointDestAt(dst *Router) bool {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+
+	if link.Dst.Load() == dst {
+		return false
+	}
+	link.Dst.Store(dst)
+	return true
+}
+
 func (link *Link) CurrentState() LinkState {
 	link.lock.Lock()
 	defer link.lock.Unlock()

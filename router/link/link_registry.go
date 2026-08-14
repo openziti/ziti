@@ -464,15 +464,21 @@ func (self *linkRegistryImpl) sendFullRefresh(ch channel.Channel) bool {
 		}
 	}
 
+	// Log the count on both sides of this exchange: the controller records what it received, and a router
+	// gets exactly one chance to announce, so a mismatch between the two is the only evidence that a
+	// reconnect lost links.
+	log := logrus.WithField("ctrlId", ch.Id()).WithField("linkCount", len(routerLinks.Links))
+
 	// SendAndWaitForWire, not Send: Send returns once the message is queued, and the deadline stays live, so
 	// the tx loop discards it if the queue drains too slowly. Nothing is told, since a plain send's listener
 	// ignores the error, and this would report success and mark the links synchronized for an announcement
 	// that never left. Matches how the periodic path sends.
 	if err := protobufs.MarshalTyped(routerLinks).WithTimeout(self.fullRefreshSendTimeout).SendAndWaitForWire(ch); err != nil {
-		logrus.WithError(err).WithField("ctrlId", ch.Id()).Error("failed to send router links on reconnect")
+		log.WithError(err).Error("failed to send router links on reconnect")
 		return false
 	}
 
+	log.Info("sent router links on reconnect")
 	for _, f := range onComplete {
 		f()
 	}
