@@ -209,6 +209,13 @@ func (self *RouterMessaging) syncStates() {
 			continue
 		}
 
+		// Sending on a closed channel fails immediately, so keeping these queued retries as fast as the
+		// event loop spins. Reconnecting resyncs everything, so discard them.
+		if ch := notifyRouter.Control; ch == nil || ch.IsClosed() {
+			delete(self.routerUpdates, k)
+			continue
+		}
+
 		if v.sendInProgress.Load() {
 			continue
 		}
@@ -251,15 +258,15 @@ func (self *RouterMessaging) syncStates() {
 
 		currentStatesVersion := updates.version
 		queueErr := self.routerCommPool.QueueOrError(func() {
-			ch := notifyRouter.Control
-			if ch == nil {
-				return
-			}
-
-			success := true
-			if err := protobufs.MarshalTyped(changes).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
-				pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send peer state changes to router")
-				success = false
+			// The done event must be queued on every path, including a missing channel: it is what clears
+			// sendInProgress, and without it this router's updates would never be attempted again.
+			success := false
+			if ch := notifyRouter.Control; ch != nil {
+				if err := protobufs.MarshalTyped(changes).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
+					pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send peer state changes to router")
+				} else {
+					success = true
+				}
 			}
 
 			self.queueEvent(&routerPeerChangesSendDone{
