@@ -19,7 +19,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/controller/rest_client/inspect"
 	"github.com/openziti/ziti/v2/controller/rest_model"
-	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"gopkg.in/yaml.v3"
 )
 

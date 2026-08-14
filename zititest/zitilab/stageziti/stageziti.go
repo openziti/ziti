@@ -9,6 +9,7 @@ import (
 
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/v2/common/getziti"
+	c "github.com/openziti/ziti/v2/ziti/constants"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -135,6 +136,28 @@ func StageExecutable(run model.Run, executable string, component *model.Componen
 	logrus.Infof("%s not present, attempting to fetch", target)
 
 	return fallbackF()
+}
+
+func StageZitiProxCOnce(run model.Run, component *model.Component, version string, source string) error {
+	op := "install.ziti-prox-c-"
+	if version == "" {
+		op += "local"
+	} else {
+		op += version
+	}
+
+	return run.DoOnce(op, func() error {
+		return StageZitiProxC(run, component, version, source)
+	})
+}
+
+func StageZitiProxC(run model.Run, component *model.Component, version string, source string) error {
+	return StageExecutable(run, "ziti-prox-c", component, version, source, func() error {
+		return getziti.FindVersionAndInstallGitHubRelease(
+			c.OpenZitiOrg, "ziti-prox-c", c.ZitiSdkCGithub,
+			"linux", "amd64", run.GetBinDir(), version, false,
+		)
+	})
 }
 
 func StageZitiEdgeTunnel(run model.Run, component *model.Component, version string, source string) error {
