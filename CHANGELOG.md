@@ -4,12 +4,26 @@
 
 * Bug fixes
 
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.2 -> v2.0.3](https://github.com/openziti/ziti/compare/v2.0.2...v2.0.3)
-  * [Issue #4203](https://github.com/openziti/ziti/issues/4203) - [Backport-2.0] Controller cluster bootstrapping fixes
+  * [Issue #4269](https://github.com/openziti/ziti/issues/4269) - [Backport-2.0] Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
+  * [Issue #4242](https://github.com/openziti/ziti/issues/4242) - [Backport-2.0] Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+  * [Issue #4236](https://github.com/openziti/ziti/issues/4236) - [Backport-2.0] Ensure terminator operations are scoped by source router
   * [Issue #4207](https://github.com/openziti/ziti/issues/4207) - [Backport-2.0] Lock order inversion in ConnectionTracker deadlocks the controller
+  * [Issue #4203](https://github.com/openziti/ziti/issues/4203) - [Backport-2.0] Controller cluster bootstrapping fixes
   * [Issue #4166](https://github.com/openziti/ziti/issues/4166) - [Backport-2.0] Fabric terminator remove handlers don't verify the terminator belongs to the requesting router
+  * [Issue #4161](https://github.com/openziti/ziti/issues/4161) - [Backport-2.0] Leaderless controller strands terminator operations during cluster membership changes
+  * [Issue #4146](https://github.com/openziti/ziti/issues/4146) - [Backport-2.0] Upgraded controller rejects legacy clients' existing sessions and gives no recovery signal for invalid service tokens
+  * [Issue #4142](https://github.com/openziti/ziti/issues/4142) - [Backport-2.0] Service-policy enforcer deletes valid legacy sessions; type= queries use numeric id against the string-mapped symbol
   * [Issue #4052](https://github.com/openziti/ziti/issues/4052) - [Backport-2.0] The `ziti` CLI now refreshes an expired access token using the cached refresh token
 
 # Release 2.0.2
