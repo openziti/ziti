@@ -43,13 +43,14 @@ type splitImpl struct {
 	// establishment. Key() returns its canonical string form (the
 	// registry map key); individual components are used by the
 	// stale-link check to compare against the current configuration.
-	linkKey xlink.LinkKey
-	closed        atomic.Bool
-	faultsSent    atomic.Bool
-	dialed        bool
-	iteration     uint32
-	dupsRejected  uint32
-	lock          sync.Mutex
+	linkKey      xlink.LinkKey
+	closed       atomic.Bool
+	faultsSent   atomic.Bool
+	dialed       bool
+	iteration    uint32
+	dupsRejected uint32
+	lock         sync.Mutex
+	heartbeatControl
 
 	droppedMsgMeter    metrics.Meter
 	droppedXgMsgMeter  metrics.Meter
