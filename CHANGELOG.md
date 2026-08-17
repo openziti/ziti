@@ -4,10 +4,22 @@
 
 * Fixes a router panic on routers which aren't hosting tunnel services
 
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.19 -> v1.6.20](https://github.com/openziti/ziti/compare/v1.6.19...v1.6.20)
+    * [Issue #4270](https://github.com/openziti/ziti/issues/4270) - [Backport-1.6] Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4114](https://github.com/openziti/ziti/issues/4114) - Router panics on ERT-terminator inspect when it hosts no tunnel services (1.6.x)
+    * [Issue #4237](https://github.com/openziti/ziti/issues/4237) - [Backport-1.6] Ensure terminator operations are scoped by source router
+    * [Issue #4243](https://github.com/openziti/ziti/issues/4243) - [Backport-1.6] Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+
 
 # Release 1.6.19
 
