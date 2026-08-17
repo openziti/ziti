@@ -81,7 +81,11 @@ enum ContentType {
   ValidateControllerDialersResponseType = 10123;
   ValidateControllerDialersResultType = 10124;
 
-  // next id 10125
+  ValidateStaleLinksRequestType = 10125;
+  ValidateStaleLinksResponseType = 10126;
+  ValidateStaleLinksResultType = 10127;
+
+  // next id 10128
 }
 
 enum Header {
@@ -275,6 +279,55 @@ message RouterLinkDetail {
   string destRouterId = 6;
   bool dialed = 7;
   repeated string messages = 8;
+}
+
+// StaleLinkMatchMode controls when an established link is considered
+// stale. See ctrl_pb.StaleLinkMatchMode — duplicated here to avoid a
+// cross-protobuf import on the mgmt plane.
+enum StaleLinkMatchMode {
+  StaleLinkMatchChanged = 0;
+  StaleLinkMatchOrphaned = 1;
+}
+
+message ValidateStaleLinksRequest {
+  string filter = 1;
+  StaleLinkMatchMode mode = 2;
+  // gc, when true, causes the controller to call RemoveLink (fanning
+  // out LinkFault) for each link confirmed stale by both endpoints.
+  // Links with only partial responses (one endpoint offline) are not
+  // GC'd even when gc=true — would need both endpoints' confirmation.
+  bool gc = 3;
+}
+
+message ValidateStaleLinksResponse {
+  bool success = 1;
+  string message = 2;
+  uint64 expectedLinkCount = 3;
+}
+
+// StaleVerdict is the per-endpoint verdict on a link's staleness. UNKNOWN
+// applies when the endpoint's router didn't respond (offline or timed
+// out); the link is "partial" in that case.
+enum StaleVerdict {
+  StaleVerdictUnknown = 0;
+  StaleVerdictNotStale = 1;
+  StaleVerdictStale = 2;
+}
+
+// StaleLinkResult is streamed back to the mgmt client, one per link in
+// the controller's link map. Stale is true when either endpoint
+// reports stale; partial is true when at least one endpoint's verdict
+// is Unknown.
+message StaleLinkResult {
+  string linkId = 1;
+  string srcRouterId = 2;
+  string dstRouterId = 3;
+  bool stale = 4;
+  bool partial = 5;
+  StaleVerdict dialerVerdict = 6;
+  StaleVerdict listenerVerdict = 7;
+  repeated string reasons = 8;
+  bool gcApplied = 9;
 }
 
 message ValidateRouterSdkTerminatorsRequest {

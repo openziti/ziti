@@ -17,6 +17,7 @@
 package link
 
 import (
+	"container/heap"
 	"fmt"
 	"math"
 	"sync"
@@ -147,7 +148,7 @@ func (self *testLink) Key() string {
 	return self.key
 }
 
-func (self *testLink) Init(metricsRegistry metrics.Registry) error {
+func (self *testLink) Init(metrics.Registry) error {
 	panic("implement me")
 }
 
@@ -175,7 +176,11 @@ func (self *testLink) DialAddress() string {
 	panic("implement me")
 }
 
-func (self *testLink) CloseOnce(f func()) {
+func (self *testLink) LinkKey() xlink.LinkKey {
+	return xlink.LinkKey{}
+}
+
+func (self *testLink) CloseOnce(func()) {
 	panic("implement me")
 }
 
@@ -630,4 +635,141 @@ func Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure(t *testing.T) 
 
 	require.Equal(t, int32(fullRefreshSendAttempts), ch.sends.Load(),
 		"an announcement accepted into the queue but never written must count as a failure and be retried")
+}
+
+func Test_LinkRegistry_RescanDetachesRemovedDialerPairing(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	// A matching dialer + listener produces a linkState.
+	destId := "peer-router-3"
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
+	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+	})
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) == 1
+	}, 2*time.Second, 25*time.Millisecond, "matching dialer → one linkState")
+
+	// Removing the dialer and rescanning must detach the now-orphaned pairing so
+	// it can't later redial through the removed dialer.
+	tenv.setDialers(nil)
+	reg.RescanForDialOpportunities()
+
+	req.Equal(0, destLinkCount(reg, destId), "orphaned pairing detached after its dialer is removed")
+}
+
+func Test_ApplyListenerChanges_ClosesOrphansOnlyOnPeerUpdate(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+	// No local dialers, so any existing pairing is orphaned by ApplyListenerChanges.
+	tenv.setDialers(nil)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	newDestWithEstablishedLink := func() (*linkDest, *stubXlink) {
+		dest := newLinkDest("peer")
+		xl := &stubXlink{id: "l1"}
+		dest.linkMap["k"] = &linkState{
+			linkKey:  "k",
+			status:   StatusEstablished,
+			dest:     dest,
+			listener: &ctrl_pb.Listener{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+			link:     xl,
+		}
+		return dest, xl
+	}
+
+	// Local dialer rescan (closeOrphans=false): detach the orphaned pairing so
+	// it can't redial, but leave the established link open for the stale-link GC.
+	rescanDest, rescanXl := newDestWithEstablishedLink()
+	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, rescanDest, false, false)
+	req.NotContains(rescanDest.linkMap, "k", "orphan detached so it can't redial")
+	req.False(rescanXl.closed, "local rescan must not close the established link")
+
+	// Peer listener update (closeOrphans=true): detach and close, since the peer
+	// no longer advertises the listener.
+	peerDest, peerXl := newDestWithEstablishedLink()
+	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, peerDest, false, true)
+	req.NotContains(peerDest.linkMap, "k", "orphan detached")
+	req.True(peerXl.closed, "peer update closes the vanished listener's link")
+}
+
+// recordingDialer records whether Dial was invoked.
+type recordingDialer struct {
+	stubDialer
+	dialed bool
+}
+
+func (d *recordingDialer) Dial(xlink.Dial) (xlink.Xlink, error) {
+	d.dialed = true
+	return nil, fmt.Errorf("recordingDialer should not be dialed")
+}
+
+// newPassiveRegistry builds a linkRegistryImpl without starting its run loop, so
+// a test can drive queue/event methods directly without racing the loop.
+func newPassiveRegistry(tenv *testEnv) *linkRegistryImpl {
+	return &linkRegistryImpl{
+		linkMap:        map[string]xlink.Xlink{},
+		linkByIdMap:    map[string]xlink.Xlink{},
+		ctrls:          tenv.GetNetworkControllers(),
+		events:         make(chan event, 16),
+		env:            tenv,
+		destinations:   map[string]*linkDest{},
+		linkStateQueue: &linkStateHeap{},
+		triggerNotifyC: make(chan struct{}, 1),
+	}
+}
+
+func Test_evaluateLinkStateQueue_SkipsDetachedState(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := newPassiveRegistry(tenv)
+	dest := newLinkDest("peer")
+	reg.destinations["peer"] = dest
+
+	removed := &recordingDialer{}
+	detached := &linkState{
+		linkKey:      "detached",
+		status:       StatusPending,
+		dest:         dest,
+		dialer:       removed,
+		listener:     &ctrl_pb.Listener{Address: "tls:peer:6000", Protocol: "tls"},
+		nextDial:     time.Now().Add(-time.Second), // due
+		allowedDials: -1,
+	}
+	// Queued but not the live linkMap entry for its key: simulates a state a
+	// rescan detached (deleted) while a retry was still queued.
+	heap.Push(reg.linkStateQueue, detached)
+
+	reg.evaluateLinkStateQueue()
+
+	req.False(removed.dialed, "detached queued state must not dial through its removed dialer")
+	req.Equal(StatusPending, detached.status, "detached queued state should be dropped, not evaluated")
+}
+
+func Test_updateLinkStatusForLink_ReportsFaultWhenStateMissing(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := newPassiveRegistry(tenv)
+	// stubXlink.DestinationId() returns "", so key the dest to match; the link's
+	// key is absent from linkMap, modeling a detached-then-closed preserved link.
+	dest := newLinkDest("")
+	reg.destinations[""] = dest
+
+	link := &stubXlink{id: "l1", dialed: true}
+	handler := &updateLinkStatusForLink{link: link, status: StatusLinkFailed}
+
+	// Must not panic and must not resurrect a state; the fault is reported
+	// directly (best-effort) since no state remains to carry it.
+	req.NotPanics(func() { handler.Handle(reg) })
+	req.Empty(dest.linkMap, "no state should be created for a missing-state link close")
 }
