@@ -455,6 +455,14 @@ in a future release. Plan to migrate off them.
   corresponding protobuf fields are now reserved, so no migration is required
   beyond optionally deleting the setting.
 
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/channel/v5: [v4.3.11 -> v5.0.22](https://github.com/openziti/channel/compare/v4.3.11...v5.0.22)
@@ -512,6 +520,7 @@ in a future release. Plan to migrate off them.
 * github.com/openziti/transport/v2: [v2.0.215 -> v2.0.218](https://github.com/openziti/transport/compare/v2.0.215...v2.0.218)
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4184](https://github.com/openziti/ziti/issues/4184) - Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4204](https://github.com/openziti/ziti/issues/4204) - ziti run/tunnel ignore PFXLOG_NO_JSON and lost the terminal-aware log-format default
     * [Issue #4234](https://github.com/openziti/ziti/issues/4234) - Ensure terminator operations are scoped by source router
     * [Issue #4240](https://github.com/openziti/ziti/issues/4240) - Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
