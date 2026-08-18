@@ -180,7 +180,7 @@ func (c *Controller) IsRaftLeader() bool {
 }
 
 func (c *Controller) GetRaftIndex() uint64 {
-	return c.raftController.Raft.LastIndex()
+	return c.raftController.GetAppliedIndex()
 }
 
 func (c *Controller) GetStartRaftIndex() uint64 {

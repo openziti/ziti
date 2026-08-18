@@ -2116,7 +2116,13 @@ func (strategy *InstantStrategy) inspect(val string) (bool, *string, error) {
 		return marshalResult(data)
 	}
 	if val == "data-model-index" {
-		idx := strategy.indexProvider.CurrentIndex()
+		// the index provider only advances on RDM-relevant stores, so raft mode reports the applied raft index instead
+		var idx uint64
+		if strategy.ae.HostController.IsRaftEnabled() {
+			idx = strategy.ae.HostController.GetRaftIndex()
+		} else {
+			idx = strategy.indexProvider.CurrentIndex()
+		}
 		data := map[string]any{
 			"timeline": strategy.ae.TimelineId(),
 			"index":    idx,
