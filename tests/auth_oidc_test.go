@@ -202,10 +202,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				time.Sleep(time.Second)
-				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
-
-				ctx.Req.NoError(err)
+				identityDetail := requireIdentitySdkInfoUpdated(ctx, managementHelper, accessClaims.Subject, payload.SdkInfo.AppID)
 
 				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
 				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
@@ -320,9 +317,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
-
-				ctx.Req.NoError(err)
+				identityDetail := requireIdentitySdkInfoUpdated(ctx, managementHelper, accessClaims.Subject, payload.SdkInfo.AppID)
 
 				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
 				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
@@ -698,4 +693,18 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 		})
 
 	})
+}
+
+// requireIdentitySdkInfoUpdated polls the management API until the identity reports the given SDK app id and
+// returns the identity as read, failing the test if it doesn't appear within 10 seconds. The controller may apply
+// sdk/env info updates on a background queue, so they are not guaranteed to be visible when authentication returns.
+func requireIdentitySdkInfoUpdated(ctx *TestContext, managementHelper *ManagementHelperClient, identityId string, appId string) *rest_model.IdentityDetail {
+	var identityDetail *rest_model.IdentityDetail
+	ctx.Req.Eventually(func() bool {
+		var err error
+		identityDetail, err = managementHelper.GetIdentity(identityId)
+		return err == nil && identityDetail.SdkInfo != nil && identityDetail.SdkInfo.AppID == appId
+	}, 10*time.Second, 50*time.Millisecond, "identity %s sdk info was not updated", identityId)
+
+	return identityDetail
 }
