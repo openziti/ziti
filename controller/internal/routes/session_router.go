@@ -188,6 +188,19 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 	}
 
 	entity := MapCreateSessionToModel(identity.Id, apiSession.Id, params.Session)
+
+	// Legacy sessions are backed by a durable record, and the JWT must be signed with that
+	// record's id. Create must run before CreateJwt: its dedup can resolve entity.Id to a
+	// pre-existing session for the same (api-session, type, service) rather than the freshly
+	// generated id. Signing first would mint a token whose id has no backing session, so every
+	// subsequent create-circuit/create-terminator would fail to load the session.
+	if rc.HasLegacySecurityToken() {
+		if _, err = ae.Managers.Session.Create(entity, rc.NewChangeContext()); err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+	}
+
 	jwtStr, err := ae.Managers.Session.CreateJwt(entity, rc.HasLegacySecurityToken())
 
 	if err != nil {
@@ -215,14 +228,6 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 			Type:         &sessionType,
 		},
 		Meta: &rest_model.Meta{},
-	}
-
-	if rc.HasLegacySecurityToken() {
-		_, err = ae.Managers.Session.Create(entity, rc.NewChangeContext())
-		if err != nil {
-			rc.RespondWithError(err)
-			return
-		}
 	}
 
 	rc.Respond(newSessionEnvelope, http.StatusCreated)
