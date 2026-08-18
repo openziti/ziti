@@ -69,7 +69,6 @@ type Factory struct {
 	tunneler          *tunneler
 	metricsRegistry   metrics.UsageRegistry
 	env               env.RouterEnv
-	hostedServices    *HostedServiceRegistry
 	dialerInitialized atomic.Bool
 }
 
@@ -81,12 +80,17 @@ func (self *Factory) Enabled() bool {
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.hostedServices.HandleCreateTerminatorResponse)
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseV2Type), self.HandleCreateTunnelTerminatorResponse)
 	return nil
 }
 
+// HandleCreateTunnelTerminatorResponse routes a create tunnel terminator response to the hosted
+// service registry. Responses are ignored if the router isn't hosting tunnel services, since it
+// can't have requested a terminator.
 func (self *Factory) HandleCreateTunnelTerminatorResponse(msg *channel.Message, ch channel.Channel) {
-	self.hostedServices.HandleCreateTerminatorResponse(msg, ch)
+	if hostedServices := self.tunneler.hostedServices.Load(); hostedServices != nil {
+		hostedServices.HandleCreateTerminatorResponse(msg, ch)
+	}
 }
 
 func (self *Factory) Run(env env.RouterEnv) error {
@@ -123,13 +127,13 @@ func NewFactory(env env.RouterEnv, stateManager state.Manager) *Factory {
 func (self *Factory) CreateListener(optionsData xgress.OptionsData) (xgress_router.Listener, error) {
 	self.env.MarkRouterDataModelRequired()
 
-	self.hostedServices = newHostedServicesRegistry(self.env, self.stateManager)
-	self.tunneler.hostedServices = self.hostedServices
+	hostedServices := newHostedServicesRegistry(self.env, self.stateManager)
+	self.tunneler.hostedServices.Store(hostedServices)
 
 	if fabricProviderFunc := fabricProviderF.Load(); fabricProviderFunc != nil {
-		self.tunneler.fabricProvider = fabricProviderFunc(self.env, self.hostedServices)
+		self.tunneler.fabricProvider = fabricProviderFunc(self.env, hostedServices)
 	} else {
-		self.tunneler.fabricProvider = NewTunnelFabricProvider(self.env, self.hostedServices)
+		self.tunneler.fabricProvider = NewTunnelFabricProvider(self.env, hostedServices)
 	}
 
 	options := &Options{}
