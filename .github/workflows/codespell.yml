@@ -14,5 +14,5 @@ jobs:
       - name: Run code spelling check
         uses: codespell-project/actions-codespell@v2
         with:
-          ignore_words_list: allos,ans,dne,noe,referr,ssudo,te,tranfer,ue
+          ignore_words_list: actieve,allos,ans,dne,noe,referr,ssudo,te,tranfer,ue
           skip: go.*,zititest/go.*,./controller/storage/zitiql/zitiql_parser.go,*.pem,*.cert,*.key
