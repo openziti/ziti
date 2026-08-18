@@ -10,6 +10,7 @@
   * [Issue #4203](https://github.com/openziti/ziti/issues/4203) - [Backport-2.0] Controller cluster bootstrapping fixes
   * [Issue #4207](https://github.com/openziti/ziti/issues/4207) - [Backport-2.0] Lock order inversion in ConnectionTracker deadlocks the controller
   * [Issue #4166](https://github.com/openziti/ziti/issues/4166) - [Backport-2.0] Fabric terminator remove handlers don't verify the terminator belongs to the requesting router
+  * [Issue #4052](https://github.com/openziti/ziti/issues/4052) - [Backport-2.0] The `ziti` CLI now refreshes an expired access token using the cached refresh token
 
 # Release 2.0.2
 
