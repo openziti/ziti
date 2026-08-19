@@ -2,7 +2,16 @@
 
 ## What's New
 
+* Fixes a router circuit/goroutine leak that can lead to a router OOM
 * Fixes a router panic on routers which aren't hosting tunnel services
+* Fixes a controller crash on legacy v1 create-circuit requests with JWT-prefixed tokens
+* Scopes terminator operations to the requesting router
+* Controller read throughput under load: this release picks up bbolt v1.5.0, which removes a linear
+  scan over all open read transactions that ran while holding bbolt's single global transaction
+  mutex. Every controller read transaction takes that mutex twice, on open and on close, so the scan
+  cost grew with read concurrency and could put a controller serving a high rate of service-list and
+  policy queries into a lock convoy: many goroutines waiting on one mutex, a machine that looks
+  fully busy while little work completes, and timeouts unexplained by the actual workload.
 
 ## Contributors
 
