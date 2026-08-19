@@ -57,18 +57,6 @@ Thanks to the community members who contributed to this release.
   [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
   production workload.
 
-## Security Advisories
-
-This release addresses a control-plane authorization vulnerability. See the linked GitHub Security Advisory
-for full details, impact, and affected versions.
-
-* [GHSA-7868-235p-7497](https://github.com/openziti/ziti/security/advisories/GHSA-7868-235p-7497) (CVE pending) (Medium) - The controller did not validate the API session
-  token when creating a circuit via `CreateCircuitV3`, taking the dialing identity from a router-supplied
-  header instead. An attacker holding enrolled router credentials could create circuits on behalf of any
-  identity permitted to dial the service through that router, without that identity having authenticated,
-  yielding data-plane access under an impersonated identity. The same gap meant expired and revoked API
-  sessions were not caught at circuit creation.
-
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.2 -> v2.0.3](https://github.com/openziti/ziti/compare/v2.0.2...v2.0.3)
