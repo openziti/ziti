@@ -179,6 +179,7 @@ func (c *Controller) IsRaftLeader() bool {
 	return c.raftController.IsLeader()
 }
 
+// GetRaftIndex implements env.HostController.
 func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.GetAppliedIndex()
 }

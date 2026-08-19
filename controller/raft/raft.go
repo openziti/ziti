@@ -235,8 +235,8 @@ func (self *Controller) GetRaft() *raft.Raft {
 	return self.Raft
 }
 
-// GetAppliedIndex returns the last command index applied to the local bolt store. Deliberately not
-// Raft.AppliedIndex(), which advances when a commit is handed to the FSM, not when the FSM has finished it.
+// GetAppliedIndex returns the last raft command or configuration index durably recorded by the local Bolt FSM.
+// It deliberately differs from Raft.AppliedIndex(), which advances before the FSM finishes applying the entry.
 func (self *Controller) GetAppliedIndex() uint64 {
 	return self.indexTracker.Index()
 }

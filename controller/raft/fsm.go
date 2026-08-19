@@ -203,7 +203,7 @@ func (self *BoltDbFsm) loadServers() error {
 	return err
 }
 
-func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Server) {
+func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Server) bool {
 	err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
 		if err := self.updateIndexInTx(ctx.Tx(), index); err != nil {
 			return err
@@ -213,7 +213,9 @@ func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Ser
 	if err != nil {
 		pfxlog.Logger().WithField("index", index).WithField("servers", servers).
 			WithError(err).Error("failed to store current raft configuration")
+		return false
 	}
+	return true
 }
 func (self *BoltDbFsm) storeServers(tx *bbolt.Tx, servers []raft.Server) error {
 	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
@@ -241,13 +243,15 @@ func (self *BoltDbFsm) updateIndexInTx(tx *bbolt.Tx, index uint64) error {
 	return raftBucket.GetError()
 }
 
-func (self *BoltDbFsm) updateIndex(index uint64) {
+func (self *BoltDbFsm) updateIndex(index uint64) bool {
 	err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
 		return self.updateIndexInTx(ctx.Tx(), index)
 	})
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to update raft index in database")
+		return false
 	}
+	return true
 }
 
 func (self *BoltDbFsm) GetCurrentState(r *raft.Raft) *ServersWithIndex {
@@ -295,7 +299,7 @@ func (self *BoltDbFsm) initializeCurrentState(raft *raft.Raft) {
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
 	current := self.currentState.Load()
 	if current == nil || current.Index < index {
-		self.storeConfigurationInRaft(index, configuration.Servers)
+		indexPersisted := self.storeConfigurationInRaft(index, configuration.Servers)
 		serversWithIndex := &ServersWithIndex{
 			Servers: configuration.Servers,
 			Index:   index,
@@ -311,14 +315,15 @@ func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Confi
 			})
 		}
 		self.eventDispatcher.AcceptClusterEvent(evt)
+		if indexPersisted {
+			self.indexTracker.NotifyOfIndex(index)
+		}
 	}
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 	logger := pfxlog.Logger().WithField("index", log.Index)
 	if log.Type == raft.LogCommand {
-		defer self.indexTracker.NotifyOfIndex(log.Index)
-
 		if log.Index <= self.index {
 			logger.Debug("skipping replay of command")
 			return nil
@@ -354,9 +359,12 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 				}
 				logger.WithError(err).Error("applying log resulted in error")
 				// apply rolled back the in-tx index update; persist it here since raft advances regardless
-				self.updateIndex(log.Index)
+				if !self.updateIndex(log.Index) {
+					return err
+				}
 			}
 
+			self.indexTracker.NotifyOfIndex(log.Index)
 			return err
 		} else {
 			return fmt.Errorf("log data contained invalid message type. data: %+v", log.Data)

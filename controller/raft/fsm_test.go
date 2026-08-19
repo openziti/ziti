@@ -19,6 +19,7 @@ package raft
 import (
 	"testing"
 
+	hraft "github.com/hashicorp/raft"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
@@ -48,4 +49,51 @@ func TestBoltDbFsm_GetStartIndex_AfterRestart(t *testing.T) {
 	req.NoError(fsm2.Init())
 	req.Equal(persistedIndex, fsm2.GetStartIndex(), "GetStartIndex should reflect the persisted raft index after restart")
 	req.NoError(fsm2.Close())
+}
+
+// TestBoltDbFsm_AppliedIndex_AfterConfigurationAndRestart verifies that live and reloaded progress
+// use the same persisted index.
+func TestBoltDbFsm_AppliedIndex_AfterConfigurationAndRestart(t *testing.T) {
+	req := require.New(t)
+	dataDir := t.TempDir()
+
+	tracker := NewIndexTracker()
+	fsm := NewFsm(dataDir, false, command.GetDefaultDecoders(), tracker, event.DispatcherMock{})
+	req.NoError(fsm.Init())
+
+	const configurationIndex uint64 = 42
+	fsm.StoreConfiguration(configurationIndex, hraft.Configuration{})
+	req.Equal(configurationIndex, tracker.Index())
+	req.NoError(fsm.Close())
+
+	reloadedTracker := NewIndexTracker()
+	reloadedFsm := NewFsm(dataDir, false, command.GetDefaultDecoders(), reloadedTracker, event.DispatcherMock{})
+	req.NoError(reloadedFsm.Init())
+	req.Equal(configurationIndex, reloadedTracker.Index())
+	req.NoError(reloadedFsm.Close())
+}
+
+// TestBoltDbFsm_AppliedIndex_DoesNotAdvanceForRejectedCommand verifies that unpersisted progress is
+// not exposed as applied.
+func TestBoltDbFsm_AppliedIndex_DoesNotAdvanceForRejectedCommand(t *testing.T) {
+	req := require.New(t)
+	dataDir := t.TempDir()
+	tracker := NewIndexTracker()
+	fsm := NewFsm(dataDir, false, command.GetDefaultDecoders(), tracker, event.DispatcherMock{})
+	req.NoError(fsm.Init())
+
+	result := fsm.Apply(&hraft.Log{
+		Index: 42,
+		Type:  hraft.LogCommand,
+		Data:  []byte{1},
+	})
+	req.Error(result.(error))
+	req.Zero(tracker.Index())
+	req.NoError(fsm.Close())
+
+	reloadedTracker := NewIndexTracker()
+	reloadedFsm := NewFsm(dataDir, false, command.GetDefaultDecoders(), reloadedTracker, event.DispatcherMock{})
+	req.NoError(reloadedFsm.Init())
+	req.Zero(reloadedTracker.Index())
+	req.NoError(reloadedFsm.Close())
 }
