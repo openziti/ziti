@@ -121,6 +121,21 @@ func (helper *ManagementHelperClient) GetIdentity(identityId string) (*rest_mode
 	return resp.Payload.Data, nil
 }
 
+// RequireIdentitySdkInfoUpdated polls until the identity reports appId as its SDK app id, returning the
+// identity as read and failing the test if it does not appear within 10 seconds. The controller applies
+// sdk/env info updates on a background queue, so they are not guaranteed to be visible by the time
+// authentication returns.
+func (helper *ManagementHelperClient) RequireIdentitySdkInfoUpdated(identityId string, appId string) *rest_model.IdentityDetail {
+	var identityDetail *rest_model.IdentityDetail
+	helper.testCtx.Req.Eventually(func() bool {
+		var err error
+		identityDetail, err = helper.GetIdentity(identityId)
+		return err == nil && identityDetail.SdkInfo != nil && identityDetail.SdkInfo.AppID == appId
+	}, 10*time.Second, 50*time.Millisecond, "identity %s sdk info was not updated", identityId)
+
+	return identityDetail
+}
+
 func (helper *ManagementHelperClient) CreateEnrollmentOtt(identityId *string, expiresAt *time.Time) (*rest_model.CreateLocation, error) {
 	var expAt *strfmt.DateTime
 
