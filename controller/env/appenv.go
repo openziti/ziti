@@ -558,6 +558,7 @@ type HostController interface {
 	GetCommandDispatcher() command.Dispatcher
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
+	// GetRaftIndex returns the last raft command or configuration index durably recorded by the local Bolt FSM.
 	GetRaftIndex() uint64
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
