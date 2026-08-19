@@ -235,6 +235,12 @@ func (self *Controller) GetRaft() *raft.Raft {
 	return self.Raft
 }
 
+// GetAppliedIndex returns the last command index applied to the local bolt store. Deliberately not
+// Raft.AppliedIndex(), which advances when a commit is handed to the FSM, not when the FSM has finished it.
+func (self *Controller) GetAppliedIndex() uint64 {
+	return self.indexTracker.Index()
+}
+
 // GetMesh returns the related Mesh instance
 func (self *Controller) GetMesh() mesh.Mesh {
 	return self.Mesh
