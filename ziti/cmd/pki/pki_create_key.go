@@ -96,7 +96,10 @@ func (options *PKICreateKeyOptions) Run() error {
 		return fmt.Errorf("%s", err)
 	}
 
-	template := options.ObtainPKIRequestTemplate("")
+	template, err := options.ObtainPKIRequestTemplate("")
+	if err != nil {
+		return err
+	}
 	var signer *certificate.Bundle
 
 	signer, err = options.Flags.PKI.GetCA(caName)

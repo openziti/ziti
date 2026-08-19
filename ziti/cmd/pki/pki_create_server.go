@@ -114,7 +114,10 @@ func (o *PKICreateServerOptions) Run() error {
 	}
 
 	filename := o.ObtainFileName(serverCertFile, commonName)
-	template := o.ObtainPKIRequestTemplate(commonName)
+	template, err := o.ObtainPKIRequestTemplate(commonName)
+	if err != nil {
+		return err
+	}
 
 	template.IsCA = false
 	template.IPAddresses = IPs
