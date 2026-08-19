@@ -21,12 +21,12 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -144,20 +144,31 @@ func (broker *Broker) RouterConnected(router *model.Router) {
 
 	log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
 
+	// Defense in depth: a control channel is not accepted unless the router is enrolled and the
+	// fingerprint of its verified leaf certificate matches the stored one, so this should not happen.
 	if fingerprint == "" {
 		log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
 		return
 	}
 
-	if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+	// Read by id, as RouterDisconnected and the data model subscribe path do. A fingerprint query
+	// can resolve to an entity other than the router that connected; an id read cannot, and the two
+	// lookups disagreeing would classify the same router as edge on one path and transit on another.
+	edgeRouter, err := broker.ae.Managers.EdgeRouter.Read(router.Id)
+	if edgeRouter != nil {
 		log.Infof("broker detected edge router with id %s connecting", router.Id)
-		broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+		broker.routerSyncStrategy.RouterConnected(router)
 		if edgeRouter.IsTunnelerEnabled {
 			// note: may be better to send a connect event from the router for itself, rather than special casing this here
 			//       however, the special casing also makes it more reactive, specifically for disconnect
 			broker.ae.Managers.Identity.GetConnectionTracker().MarkConnected(edgeRouter.Id, router.Control)
 		}
 	} else {
+		// Not-found is the normal transit-router result. Anything else means the edge router store
+		// could not answer, and the router is about to be treated as transit on a guess.
+		if err != nil && !boltz.IsErrNotFoundErr(err) {
+			log.WithError(err).Error("could not determine edge-router membership for connecting router, treating as non-edge")
+		}
 		log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
 	}
 }
