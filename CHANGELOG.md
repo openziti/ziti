@@ -2,12 +2,33 @@
 
 ## What's New
 
+* Fixes a router circuit/goroutine leak that can lead to a router OOM
 * Fixes a router panic on routers which aren't hosting tunnel services
+* Fixes a controller crash on legacy v1 create-circuit requests with JWT-prefixed tokens
+* Scopes terminator operations to the requesting router
+* Controller read throughput under load: this release picks up bbolt v1.5.0, which removes a linear
+  scan over all open read transactions that ran while holding bbolt's single global transaction
+  mutex. Every controller read transaction takes that mutex twice, on open and on close, so the scan
+  cost grew with read concurrency and could put a controller serving a high rate of service-list and
+  policy queries into a lock convoy: many goroutines waiting on one mutex, a machine that looks
+  fully busy while little work completes, and timeouts unexplained by the actual workload.
+
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.19 -> v1.6.20](https://github.com/openziti/ziti/compare/v1.6.19...v1.6.20)
+    * [Issue #4270](https://github.com/openziti/ziti/issues/4270) - [Backport-1.6] Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4114](https://github.com/openziti/ziti/issues/4114) - Router panics on ERT-terminator inspect when it hosts no tunnel services (1.6.x)
+    * [Issue #4237](https://github.com/openziti/ziti/issues/4237) - [Backport-1.6] Ensure terminator operations are scoped by source router
+    * [Issue #4243](https://github.com/openziti/ziti/issues/4243) - [Backport-1.6] Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+
 
 # Release 1.6.19
 
