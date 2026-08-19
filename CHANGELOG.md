@@ -11,6 +11,44 @@
   policy queries into a lock convoy: many goroutines waiting on one mutex, a machine that looks
   fully busy while little work completes, and timeouts unexplained by the actual workload.
 
+## Security Advisories
+
+This release addresses eight security advisories. See the linked GitHub Security Advisories for full
+details, impact, and affected versions.
+
+* [GHSA-q8g9-jc4c-jp6q](https://github.com/openziti/ziti/security/advisories/GHSA-q8g9-jc4c-jp6q) (CVE pending) (High) - The controller buffered the entire body of every
+  inbound request before any authentication check and with no size cap, so an unauthenticated client could
+  exhaust controller memory, and crash it, by sending parallel large-body requests to endpoints such as
+  enrollment.
+* [GHSA-j952-6x8x-jmj6](https://github.com/openziti/ziti/security/advisories/GHSA-j952-6x8x-jmj6) (CVE pending) (High) - The unauthenticated legacy enrollment path buffered
+  the request body a second time, allocating twice the memory per request and roughly halving the bandwidth
+  needed to drive the controller out of memory. Amplifies GHSA-q8g9-jc4c-jp6q.
+* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (CVE pending) (Medium) - When accepting an incoming router-to-router link, a
+  router verified the dialing router's identity against the whole presented certificate chain instead of the
+  leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
+  present another router's certificate as filler and be admitted on a link under that router's identity,
+  letting it intercept, inject, drop, or strand the circuits routed over that link.
+* [GHSA-7868-235p-7497](https://github.com/openziti/ziti/security/advisories/GHSA-7868-235p-7497) (CVE pending) (Medium) - The controller did not validate the API session
+  token when creating a circuit via CreateCircuitV3, taking the dialing identity from a router-supplied
+  header instead. An attacker holding enrolled router credentials could create circuits on behalf of any
+  identity permitted to dial the service through that router, without that identity having authenticated,
+  yielding data-plane access under an impersonated identity. The same gap meant expired and revoked API
+  sessions were not caught at circuit creation.
+* [GHSA-4h58-w989-xgg4](https://github.com/openziti/ziti/security/advisories/GHSA-4h58-w989-xgg4) (CVE pending) (Medium) - The token-based enrollment endpoint skipped
+  audience and issuer validation when the request carried a `ziti-token-issuer-id` header, so an attacker
+  holding any unexpired JWT signed by a configured external JWT signer, even one minted for a different
+  audience, could enroll a new identity onto the network.
+* [GHSA-6v5r-p2wr-q492](https://github.com/openziti/ziti/security/advisories/GHSA-6v5r-p2wr-q492) (CVE pending) (Medium) - The current-api-session certificates endpoint
+  performed an unscoped list, so any authenticated user could read the API session certificates (subject
+  DNs, fingerprints, and full PEM chains) of all identities, not just their own.
+* [GHSA-whjr-3j94-gw3c](https://github.com/openziti/ziti/security/advisories/GHSA-whjr-3j94-gw3c) (CVE pending) (Medium) - A JWKS endpoint URL configured on an external JWT
+  signer was fetched server-side with no timeout, private-range blocking, or allowlist, letting a caller with
+  external-jwt-signer management access make the controller issue requests to arbitrary internal URLs,
+  including cloud metadata endpoints (SSRF).
+* [GHSA-354c-gpg9-j988](https://github.com/openziti/ziti/security/advisories/GHSA-354c-gpg9-j988) (CVE pending) (Low) - With promptOnWake or promptOnUnlock enabled on an MFA
+  posture check, the edge router dereferenced a nil wake/unlock timestamp while locally evaluating an
+  authorized client's dial or bind, panicking and crashing the router (data-plane denial of service).
+
 ## Contributors
 
 Thanks to the community members who contributed to this release.
@@ -18,17 +56,6 @@ Thanks to the community members who contributed to this release.
 * [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
   [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
   production workload.
-
-## Security Advisories
-
-This release addresses a router-to-router link identity-spoofing vulnerability. See the linked GitHub
-Security Advisory for full details, impact, and affected versions.
-
-* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (CVE pending) (Medium) - When accepting an incoming router-to-router link, a
-  router verified the dialing router's identity against the whole presented certificate chain instead of the
-  leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
-  present another router's certificate as filler and be admitted on a link under that router's identity,
-  letting it intercept, inject, drop, or strand the circuits routed over that link.
 
 ## Component Updates and Bug Fixes
 
