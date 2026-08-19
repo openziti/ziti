@@ -253,6 +253,15 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			// next time return EOF
 			return nil, nil, io.EOF
 		}
+
+		// This conn has no half-close, so a read EOF means the local side is finished for
+		// good and will never signal anything further. Report a full close rather than a bare
+		// io.EOF, which Xgress.rx() would treat as a half-close, leaving the xgress waiting on
+		// an end-of-circuit that cannot arrive.
+		//
+		// The liveness probe above cannot catch this: conns without half-close include the
+		// datagram ones, and udp_vconn implements deadlines as no-ops that always succeed.
+		return nil, nil, xgress.ErrPeerClosed
 	}
 
 	return buffer, nil, err
