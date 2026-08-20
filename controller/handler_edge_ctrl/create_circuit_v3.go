@@ -23,20 +23,22 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/sirupsen/logrus"
 )
 
 // NewCreateCircuitV3Handler creates a handler for CreateCircuitV3 requests. These requests
 // come from routers that have already authorized the dial locally via RDM, so no service
-// session token is required. Instead, the request carries identity ID, service ID, and
-// a pre-assigned circuit ID.
+// session token is required. An API session token is still required: it proves the dial is
+// being made on behalf of an authenticated identity, and the controller uses its claims,
+// not the request's identity ID, as the authoritative dialing identity. The request also
+// carries the service ID and a pre-assigned circuit ID.
 func NewCreateCircuitV3Handler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	handler := &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
@@ -80,6 +82,7 @@ func (self *createCircuitHandler) createCircuitV3(ctx *createCircuitV3RequestCon
 	if !ctx.loadRouter() {
 		return
 	}
+	ctx.validateApiSession()
 	ctx.setupLogContext()
 	ctx.loadServiceByIdForDial()
 	ctx.verifyEdgeRouterAccessForIdentity()
@@ -96,7 +99,7 @@ func (self *createCircuitHandler) createCircuitV3(ctx *createCircuitV3RequestCon
 	}
 
 	log := pfxlog.ContextLogger(self.ch.Label()).
-		WithField("identityId", ctx.req.IdentityId).
+		WithField("identityId", ctx.identityId()).
 		WithField("serviceId", ctx.req.ServiceId).
 		WithField("circuitId", circuitInfo.Id)
 
@@ -124,17 +127,69 @@ func (self *createCircuitV3RequestContext) UpdateResponse(m *channel.Message) {
 	}
 }
 
+// validateApiSession validates the API session token accompanying the request and
+// establishes the dialing identity from its claims. Connect-v2 routers authorize the dial
+// locally against their data model, but the identity ID in the request is router-supplied,
+// so the controller validates the token itself. This both proves the dial is being made on
+// behalf of an authenticated identity and re-checks expiration and revocation, which the
+// router may not have seen yet.
+func (self *createCircuitV3RequestContext) validateApiSession() {
+	if self.err != nil {
+		return
+	}
+
+	log := logrus.WithField("routerId", self.sourceRouter.Id).
+		WithField("operation", self.handler.Label()).
+		WithField("requestedIdentityId", self.req.IdentityId).
+		WithField("serviceId", self.req.ServiceId)
+
+	if self.req.ApiSessionToken == "" {
+		self.err = InvalidApiSessionError{}
+		log.Error("no api session token provided in create circuit v3 request")
+		return
+	}
+
+	claims, err := self.env.ValidateAccessToken(self.req.ApiSessionToken)
+	if err != nil {
+		self.err = InvalidApiSessionError{}
+		log.WithError(err).Error("invalid api session token in create circuit v3 request")
+		return
+	}
+
+	// The token is authoritative for identity. A mismatch means the router asked for a
+	// circuit on behalf of an identity other than the one that authenticated.
+	if claims.Subject != self.req.IdentityId {
+		self.err = InvalidApiSessionError{}
+		log.WithField("apiSessionIdentityId", claims.Subject).
+			WithField("apiSessionId", claims.ApiSessionId).
+			Error("create circuit v3 request identity does not match api session identity")
+		return
+	}
+
+	self.accessClaims = claims
+}
+
+// identityId returns the identity the circuit is being created for, taken from the
+// validated API session token claims. Only valid once validateApiSession has succeeded.
+func (self *createCircuitV3RequestContext) identityId() string {
+	if self.accessClaims == nil {
+		return ""
+	}
+	return self.accessClaims.Subject
+}
+
 func (self *createCircuitV3RequestContext) setupLogContext() {
 	if self.err != nil {
 		return
 	}
 
 	self.logContext = logcontext.NewContext()
-	traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(self.req.IdentityId)
+	traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(self.identityId())
 	if traceSpec != nil && time.Now().Before(traceSpec.Until) {
 		self.logContext.SetChannelsMask(traceSpec.ChannelMask)
 		self.logContext.WithField("traceId", traceSpec.TraceId)
 	}
+	self.logContext.WithField("apiSessionId", self.accessClaims.ApiSessionId)
 }
 
 func (self *createCircuitV3RequestContext) loadServiceByIdForDial() {
@@ -157,11 +212,11 @@ func (self *createCircuitV3RequestContext) loadServiceByIdForDial() {
 		return
 	}
 
-	dialable, err := self.handler.getAppEnv().Managers.EdgeService.IsDialableByIdentity(self.req.ServiceId, self.req.IdentityId)
+	dialable, err := self.handler.getAppEnv().Managers.EdgeService.IsDialableByIdentity(self.req.ServiceId, self.identityId())
 	if err != nil {
 		self.err = internalError(err)
 		logrus.WithField("serviceId", self.req.ServiceId).
-			WithField("identityId", self.req.IdentityId).
+			WithField("identityId", self.identityId()).
 			WithField("operation", self.handler.Label()).
 			WithError(err).
 			Error("unable to verify dial access to service")
@@ -171,7 +226,7 @@ func (self *createCircuitV3RequestContext) loadServiceByIdForDial() {
 	if !dialable {
 		self.err = InvalidServiceError{}
 		logrus.WithField("serviceId", self.req.ServiceId).
-			WithField("identityId", self.req.IdentityId).
+			WithField("identityId", self.identityId()).
 			WithField("operation", self.handler.Label()).
 			Error("identity does not have dial access to service")
 	}
@@ -181,16 +236,16 @@ func (self *createCircuitV3RequestContext) verifyEdgeRouterAccessForIdentity() {
 	if self.err != nil {
 		return
 	}
-	self.verifyEdgeRouterAccess(self.req.IdentityId, self.service.Id)
+	self.verifyEdgeRouterAccess(self.identityId(), self.service.Id)
 }
 
 func (self *createCircuitV3RequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) model.CreateCircuitParams {
 	return &connectV3CircuitParams{
 		circuitId:    self.req.CircuitId,
 		serviceId:    serviceId,
-		identityId:   self.req.IdentityId,
+		identityId:   self.identityId(),
 		sourceRouter: self.sourceRouter,
-		clientId:     &identity.TokenId{Token: self.req.IdentityId, Data: peerData},
+		clientId:     &identity.TokenId{Token: self.identityId(), Data: peerData},
 		logCtx:       self.logContext,
 		deadline:     time.Now().Add(self.handler.getAppEnv().GetHostController().GetNetwork().GetOptions().RouteTimeout),
 	}
