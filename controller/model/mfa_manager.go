@@ -310,9 +310,18 @@ func (self *MfaManager) Unmarshall(bytes []byte) (*Mfa, error) {
 
 // DeleteAllForIdentity is meant for administrators to remove all MFAs (enrolled or not) from an identity
 func (self *MfaManager) DeleteAllForIdentity(id string, ctx *change.Context) error {
-	return self.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
-		return self.Store.DeleteWhere(ctx, fmt.Sprintf("identity = \"%s\"", id))
-	})
+	result, err := self.Query(fmt.Sprintf(`identity = "%s"`, id))
+	if err != nil {
+		return err
+	}
+
+	for _, mfa := range result.Mfas {
+		if err = self.Delete(mfa.Id, ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (self *MfaManager) CompleteTotpEnrollment(identityId string, code string, changeCtx *change.Context) error {
