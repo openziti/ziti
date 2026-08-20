@@ -49,11 +49,11 @@ func (m *MfaCheck) Evaluate(state *Cache) *CheckError {
 		}
 	}
 
-	if m.PromptOnWake {
+	if m.PromptOnWake && state.Woken != nil {
 		wokenAt := state.Woken.Time.AsTime()
 		wokenGraceEndsAt := wokenAt.Add(PromptGracePeriod)
 
-		if now.After(wokenGraceEndsAt) {
+		if wokenAt.After(*state.PassedMfaAt) && now.After(wokenGraceEndsAt) {
 			return &CheckError{
 				Id:    m.Id,
 				Name:  m.Name,
@@ -62,11 +62,11 @@ func (m *MfaCheck) Evaluate(state *Cache) *CheckError {
 		}
 	}
 
-	if m.PromptOnUnlock {
+	if m.PromptOnUnlock && state.Unlocked != nil {
 		unlockedAt := state.Unlocked.Time.AsTime()
 		unlockedGraceEndsAt := unlockedAt.Add(PromptGracePeriod)
 
-		if now.After(unlockedGraceEndsAt) {
+		if unlockedAt.After(*state.PassedMfaAt) && now.After(unlockedGraceEndsAt) {
 			return &CheckError{
 				Id:    m.Id,
 				Name:  m.Name,
