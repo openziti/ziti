@@ -36,6 +36,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/pkg/errors"
+	"golang.org/x/net/idna"
 )
 
 const (
@@ -71,6 +72,17 @@ const (
 
 	DefaultIdentityOnlineStatusUnknownTimeout = 5 * time.Minute
 	DefaultIdentityOnlineStatusSource         = IdentityStatusSourceHybrid
+
+	// DefaultJwksFetchBlockPrivateAddresses leaves private and loopback addresses reachable by
+	// default so that deployments using an internal IdP keep working. Metadata and link-local
+	// addresses are blocked regardless of this setting.
+	DefaultJwksFetchBlockPrivateAddresses = false
+
+	// DefaultJwksFetchTimeout bounds the total time spent fetching a JWKS endpoint.
+	DefaultJwksFetchTimeout = 5 * time.Second
+
+	// DefaultJwksFetchMaxRedirects bounds how many redirects a JWKS fetch will follow.
+	DefaultJwksFetchMaxRedirects = 5
 )
 
 type Enrollment struct {
@@ -127,6 +139,67 @@ type Oidc struct {
 	RevocationEnforcerFrequency time.Duration
 }
 
+// ExternalJwtSigners holds settings that govern how the controller interacts with
+// external JWT signers.
+type ExternalJwtSigners struct {
+	JwksFetch JwksFetch
+}
+
+// JwksFetch controls the server-side fetch of an external JWT signer's jwksEndpoint.
+// The endpoint URL is supplied by an operator, so the fetch is constrained to keep it
+// from being pointed at addresses the controller can reach but a caller should not.
+//
+// A hop is fetched only if it passes two independent gates. Neither gate can authorize what
+// the other refuses, and both are applied to the initial request and to every redirect.
+//
+// The host gate is applied to the URL's hostname:
+//
+//  1. DeniedHostnames - blocked
+//  2. AllowedHostnames, when non-empty and the host does not match - blocked
+//  3. otherwise - passes
+//
+// The address gate is applied to the resolved address being connected to, first-match-wins,
+// deny before allow:
+//
+//  1. built-in blocked addresses (cloud metadata, link-local, link-local multicast,
+//     unspecified) - always blocked, AllowedIPs cannot override
+//  2. DeniedIPs - blocked, AllowedIPs cannot override
+//  3. AllowedIPs - allowed; a carve-out of tier 4 only
+//  4. BlockPrivateAddresses and the address is private or loopback - blocked
+//  5. everything else - allowed
+type JwksFetch struct {
+	// BlockPrivateAddresses blocks private and loopback addresses (address gate tier 4).
+	// Defaults to false so deployments with an internal IdP keep working; tier 1 applies
+	// regardless.
+	BlockPrivateAddresses bool
+
+	// DeniedIPs are CIDRs that are always blocked (address gate tier 2), above
+	// AllowedIPs.
+	DeniedIPs []*net.IPNet
+
+	// AllowedIPs are CIDRs that carve an exception out of BlockPrivateAddresses
+	// (address gate tier 3). They do not override tier 1 or DeniedIPs.
+	AllowedIPs []*net.IPNet
+
+	// DeniedHostnames are normalized hostname patterns that are blocked (hostname gate tier 1). Host
+	// matching only ever narrows what may be fetched: it cannot authorize an address the
+	// address gate blocks, and a caller can still reach the same target under another name,
+	// so the address gate remains the boundary.
+	DeniedHostnames []string
+
+	// AllowedHostnames are normalized hostname patterns that, when non-empty, are the only hosts that
+	// may be fetched (hostname gate tier 2). Entries are an exact hostname (idp.example.com) or a
+	// wildcard suffix (*.example.com), which matches any subdomain but not the suffix itself.
+	AllowedHostnames []string
+
+	// Timeout bounds the total time spent on a single JWKS fetch, including redirects.
+	Timeout time.Duration
+
+	// MaxRedirects bounds how many redirects a JWKS fetch will follow. Every hop is
+	// address-checked. Zero disables redirects.
+	MaxRedirects int
+}
+
 type EdgeConfig struct {
 	Enabled              bool
 	Api                  Api
@@ -140,6 +213,7 @@ type EdgeConfig struct {
 	caCerts              []*x509.Certificate
 	caCertPool           *x509.CertPool
 	DisablePostureChecks bool
+	ExternalJwtSigners   ExternalJwtSigners
 }
 
 type HttpTimeouts struct {
@@ -173,10 +247,24 @@ type IdentityStatusConfig struct {
 	UnknownTimeout time.Duration
 }
 
+// DefaultJwksFetch returns the default JWKS fetch settings. The defaults are deliberately
+// compatible with existing deployments: only the non-disableable built-in blocked addresses
+// are refused.
+func DefaultJwksFetch() JwksFetch {
+	return JwksFetch{
+		BlockPrivateAddresses: DefaultJwksFetchBlockPrivateAddresses,
+		Timeout:               DefaultJwksFetchTimeout,
+		MaxRedirects:          DefaultJwksFetchMaxRedirects,
+	}
+}
+
 func NewEdgeConfig() *EdgeConfig {
 	return &EdgeConfig{
 		Enabled: false,
 		caPems:  bytes.NewBuffer(nil),
+		ExternalJwtSigners: ExternalJwtSigners{
+			JwksFetch: DefaultJwksFetch(),
+		},
 	}
 }
 
@@ -684,6 +772,250 @@ func (c *EdgeConfig) loadIdentityStatusConfig(cfgmap map[interface{}]interface{}
 	return nil
 }
 
+// loadExternalJwtSignersSection loads [edge.externalJwtSigners]. Every value is optional;
+// absent values keep the defaults from DefaultJwksFetch.
+func (c *EdgeConfig) loadExternalJwtSignersSection(edgeConfigMap map[any]any) error {
+	c.ExternalJwtSigners.JwksFetch = DefaultJwksFetch()
+
+	value, found := edgeConfigMap["externalJwtSigners"]
+
+	if !found || value == nil {
+		return nil
+	}
+
+	extJwtSignersMap, ok := value.(map[any]any)
+
+	if !ok {
+		return errors.Errorf("invalid type %T for [edge.externalJwtSigners], must be a map", value)
+	}
+
+	value, found = extJwtSignersMap["jwksFetch"]
+
+	if !found || value == nil {
+		return nil
+	}
+
+	jwksFetchMap, ok := value.(map[any]any)
+
+	if !ok {
+		return errors.Errorf("invalid type %T for [edge.externalJwtSigners.jwksFetch], must be a map", value)
+	}
+
+	jwksFetch := &c.ExternalJwtSigners.JwksFetch
+
+	if val, found := jwksFetchMap["blockPrivateAddresses"]; found && val != nil {
+		switch typedVal := val.(type) {
+		case bool:
+			jwksFetch.BlockPrivateAddresses = typedVal
+		case string:
+			boolVal, err := strconv.ParseBool(typedVal)
+			if err != nil {
+				return errors.Errorf("invalid value %q for [edge.externalJwtSigners.jwksFetch.blockPrivateAddresses], must be a boolean", typedVal)
+			}
+			jwksFetch.BlockPrivateAddresses = boolVal
+		default:
+			return errors.Errorf("invalid type %T for [edge.externalJwtSigners.jwksFetch.blockPrivateAddresses], must be a boolean", val)
+		}
+	}
+
+	if val, found := jwksFetchMap["deniedIPs"]; found && val != nil {
+		addresses, err := parseCidrList(val, "edge.externalJwtSigners.jwksFetch.deniedIPs")
+		if err != nil {
+			return err
+		}
+		jwksFetch.DeniedIPs = addresses
+	}
+
+	if val, found := jwksFetchMap["allowedIPs"]; found && val != nil {
+		addresses, err := parseCidrList(val, "edge.externalJwtSigners.jwksFetch.allowedIPs")
+		if err != nil {
+			return err
+		}
+		jwksFetch.AllowedIPs = addresses
+	}
+
+	if val, found := jwksFetchMap["deniedHostnames"]; found && val != nil {
+		hosts, err := parseHostnameList(val, "edge.externalJwtSigners.jwksFetch.deniedHostnames")
+		if err != nil {
+			return err
+		}
+		jwksFetch.DeniedHostnames = hosts
+	}
+
+	if val, found := jwksFetchMap["allowedHostnames"]; found && val != nil {
+		hosts, err := parseHostnameList(val, "edge.externalJwtSigners.jwksFetch.allowedHostnames")
+		if err != nil {
+			return err
+		}
+		jwksFetch.AllowedHostnames = hosts
+	}
+
+	if val, found := jwksFetchMap["timeout"]; found && val != nil {
+		strVal, ok := val.(string)
+
+		if !ok {
+			return errors.Errorf("invalid type %T for [edge.externalJwtSigners.jwksFetch.timeout], must be a string duration", val)
+		}
+
+		durationVal, err := time.ParseDuration(strVal)
+
+		if err != nil {
+			return errors.Errorf("error parsing [edge.externalJwtSigners.jwksFetch.timeout], invalid duration string %s, cannot parse as duration (e.g. 5s): %v", strVal, err)
+		}
+
+		if durationVal <= 0 {
+			return errors.Errorf("invalid value %s for [edge.externalJwtSigners.jwksFetch.timeout], must be greater than zero", strVal)
+		}
+
+		jwksFetch.Timeout = durationVal
+	}
+
+	if val, found := jwksFetchMap["maxRedirects"]; found && val != nil {
+		intVal, ok := val.(int)
+
+		if !ok {
+			return errors.Errorf("invalid type %T for [edge.externalJwtSigners.jwksFetch.maxRedirects], must be an integer", val)
+		}
+
+		if intVal < 0 {
+			return errors.Errorf("invalid value %v for [edge.externalJwtSigners.jwksFetch.maxRedirects], must not be negative", intVal)
+		}
+
+		jwksFetch.MaxRedirects = intVal
+	}
+
+	return nil
+}
+
+// parseCidrList parses a list of CIDRs, accepting a bare IP address as a single address CIDR
+// (/32 for IPv4, /128 for IPv6). Hostnames are rejected: the address check happens at dial
+// time against the resolved IP, so a hostname entry could never be matched reliably.
+func parseCidrList(value any, field string) ([]*net.IPNet, error) {
+	values, ok := value.([]any)
+
+	if !ok {
+		return nil, errors.Errorf("invalid type %T for [%s], must be a list of CIDRs", value, field)
+	}
+
+	var result []*net.IPNet
+
+	for _, entry := range values {
+		strVal, ok := entry.(string)
+
+		if !ok {
+			return nil, errors.Errorf("invalid type %T for an entry in [%s], must be a string CIDR", entry, field)
+		}
+
+		ipNet, err := parseCidrOrIp(strings.TrimSpace(strVal))
+
+		if err != nil {
+			return nil, errors.Errorf("invalid value %q in [%s]: %v", strVal, field, err)
+		}
+
+		result = append(result, ipNet)
+	}
+
+	return result, nil
+}
+
+// parseHostnameList parses a list of hostname patterns, returning them normalized for comparison
+// against a URL's hostname.
+func parseHostnameList(value any, field string) ([]string, error) {
+	values, ok := value.([]any)
+
+	if !ok {
+		return nil, errors.Errorf("invalid type %T for [%s], must be a list of hostnames", value, field)
+	}
+
+	var result []string
+
+	for _, entry := range values {
+		strVal, ok := entry.(string)
+
+		if !ok {
+			return nil, errors.Errorf("invalid type %T for an entry in [%s], must be a string hostname", entry, field)
+		}
+
+		pattern, err := parseHostnamePattern(strings.TrimSpace(strVal))
+
+		if err != nil {
+			return nil, errors.Errorf("invalid value %q in [%s]: %v", strVal, field, err)
+		}
+
+		result = append(result, pattern)
+	}
+
+	return result, nil
+}
+
+// parseHostnamePattern validates a host entry and returns it normalized. An entry is either an
+// exact host (idp.example.com) or a wildcard suffix (*.example.com), which matches any
+// subdomain of that suffix but not the suffix itself. IP addresses are rejected: matching an
+// address by name comparison would not be an address check.
+func parseHostnamePattern(value string) (string, error) {
+	if value == "" {
+		return "", errors.New("must not be empty")
+	}
+
+	host := strings.TrimPrefix(value, "*.")
+	isWildcard := host != value
+
+	if net.ParseIP(strings.Trim(host, "[]")) != nil {
+		return "", errors.New("must be a hostname, use deniedIPs or allowedIPs for IP addresses")
+	}
+
+	if host == "" {
+		return "", errors.New("must include a hostname after the leading \"*.\"")
+	}
+
+	if strings.ContainsAny(host, "*/:@ \t") {
+		return "", errors.New("must be a bare host name, without a scheme, port or path, and a wildcard is only supported as a leading \"*.\"")
+	}
+
+	normalized := NormalizeHostname(host)
+
+	if normalized == "" {
+		return "", errors.New("must be a valid host name")
+	}
+
+	if isWildcard {
+		return "*." + normalized, nil
+	}
+
+	return normalized, nil
+}
+
+// NormalizeHostname returns a host in the form used for comparison: lower-cased, without a
+// trailing dot, and converted to punycode when it contains non-ASCII labels. Config entries
+// and request hosts are both normalized this way so that they compare consistently.
+func NormalizeHostname(host string) string {
+	host = strings.TrimSuffix(strings.TrimSpace(host), ".")
+
+	if ascii, err := idna.Lookup.ToASCII(host); err == nil {
+		host = ascii
+	}
+
+	return strings.ToLower(host)
+}
+
+// parseCidrOrIp parses a CIDR or a bare IP address into a *net.IPNet. A bare IP address
+// becomes a single address CIDR.
+func parseCidrOrIp(value string) (*net.IPNet, error) {
+	if _, ipNet, err := net.ParseCIDR(value); err == nil {
+		return ipNet, nil
+	}
+
+	if ip := net.ParseIP(value); ip != nil {
+		if ip4 := ip.To4(); ip4 != nil {
+			return &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}, nil
+		}
+
+		return &net.IPNet{IP: ip.To16(), Mask: net.CIDRMask(128, 128)}, nil
+	}
+
+	return nil, errors.New("must be a CIDR (e.g. 10.0.0.0/8) or an IP address, hostnames are not supported")
+}
+
 func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, error) {
 	edgeConfig := NewEdgeConfig()
 
@@ -726,6 +1058,10 @@ func LoadEdgeConfigFromMap(configMap map[interface{}]interface{}) (*EdgeConfig, 
 	}
 
 	if err = edgeConfig.loadIdentityStatusConfig(edgeConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err = edgeConfig.loadExternalJwtSignersSection(edgeConfigMap); err != nil {
 		return nil, err
 	}
 

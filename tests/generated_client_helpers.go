@@ -19,6 +19,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
@@ -723,4 +724,34 @@ func (helper *ManagementHelperClient) GetCurrentApiSessionDetailResponse() (*man
 		return nil, fmt.Errorf("could not get current api session detail: %w", rest_util.WrapErr(err))
 	}
 	return resp, nil
+}
+
+// CreateExtJwtSigner creates an external JWT signer and returns its detail.
+func (helper *ManagementHelperClient) CreateExtJwtSigner(extJwtSigner *rest_model.ExternalJWTSignerCreate) (*rest_model.ExternalJWTSignerDetail, error) {
+	params := external_jwt_signer.NewCreateExternalJWTSignerParams()
+
+	params.ExternalJWTSigner = extJwtSigner
+
+	resp, err := helper.API.ExternalJWTSigner.CreateExternalJWTSigner(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return helper.GetExtJwtSigner(resp.Payload.Data.ID)
+}
+
+// GetExtJwtSigner returns the detail for an existing external JWT signer.
+func (helper *ManagementHelperClient) GetExtJwtSigner(id string) (*rest_model.ExternalJWTSignerDetail, error) {
+	params := external_jwt_signer.NewDetailExternalJWTSignerParams()
+
+	params.ID = id
+
+	resp, err := helper.API.ExternalJWTSigner.DetailExternalJWTSigner(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
 }
