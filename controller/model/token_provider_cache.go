@@ -619,6 +619,10 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 		return result
 	}
 
+	if result.Error = r.verifyIssuerAndAudience(claims); result.Error != nil {
+		return result
+	}
+
 	result.IdClaimValue, result.Error = resolveStringClaimSelector(claims, r.IdentityIdClaimsSelector())
 
 	if result.Error != nil {
@@ -626,6 +630,43 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 	}
 
 	return result
+}
+
+// verifyIssuerAndAudience confirms the token's issuer and audience claims match this signer's
+// configured values. Signature verification alone resolves the signing key by kid, which is not
+// sufficient: a signer that shares keys across audiences (for example a common JWKS) would
+// otherwise accept a validly-signed token minted for a different audience or issuer. Callers must
+// invoke this only after the signature has been verified.
+func (r *TokenIssuerExtJwt) verifyIssuerAndAudience(claims jwt.MapClaims) error {
+	issuer, err := claims.GetIssuer()
+
+	if err != nil {
+		return fmt.Errorf("could not retrieve issuer claim from token: %w", err)
+	}
+
+	if issuer == "" {
+		return errors.New("token claims did not contain an issuer")
+	}
+
+	if issuer != r.ExpectedIssuer() {
+		return fmt.Errorf("token issuer [%s] does not match expected issuer [%s]", issuer, r.ExpectedIssuer())
+	}
+
+	audiences, err := claims.GetAudience()
+
+	if err != nil {
+		return fmt.Errorf("could not retrieve audience claim from token: %w", err)
+	}
+
+	if len(audiences) == 0 {
+		return errors.New("token claims did not contain an audience")
+	}
+
+	if !stringz.Contains(audiences, r.ExpectedAudience()) {
+		return fmt.Errorf("token audience %v does not match expected audience [%s]", audiences, r.ExpectedAudience())
+	}
+
+	return nil
 }
 
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
