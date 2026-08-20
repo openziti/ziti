@@ -54,6 +54,10 @@ type TokenIssuerCache struct {
 	// due to xweb API address binds
 	controllerIssuers cmap.ConcurrentMap[string, common.TokenIssuer]
 
+	// jwksResolver fetches JWKS endpoints for external issuers. It is shared by every
+	// external issuer so that they all fetch under the same configured constraints.
+	jwksResolver *HardenedJwksResolver
+
 	env Env
 }
 
@@ -64,6 +68,7 @@ func NewTokenIssuerCache(env Env) *TokenIssuerCache {
 		env:               env,
 		externalIssuers:   cmap.New[common.TokenIssuer](),
 		controllerIssuers: cmap.New[common.TokenIssuer](),
+		jwksResolver:      NewHardenedJwksResolver(JwksFetchConfig(env)),
 	}
 
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(result.onExtJwtCreate, boltz.EntityCreatedAsync)
@@ -172,7 +177,7 @@ func (a *TokenIssuerCache) onExtJwtCreate(signer *db.ExternalJwtSigner) {
 
 	signerRec := &TokenIssuerExtJwt{
 		externalJwtSigner: signer,
-		jwksResolver:      &jwks.HttpResolver{},
+		jwksResolver:      a.jwksResolver,
 		kidToPubKey:       map[string]common.IssuerPublicKey{},
 	}
 
@@ -219,6 +224,21 @@ func (a *TokenIssuerCache) onExtJwtDelete(signer *db.ExternalJwtSigner) {
 	a.externalIssuers.Remove(*signer.Issuer)
 }
 
+// reportBlockedJwksEndpoint logs an existing external JWT signer whose jwksEndpoint the current
+// [edge.externalJwtSigners.jwksFetch] configuration refuses. A configuration change can orphan a
+// signer that was created while its endpoint was still permitted, so this is reported at startup
+// rather than only when a fetch is attempted. Endpoints that resolve to a blocked address are not
+// visible here, as no name resolution is done; those are reported by the fetch itself.
+func (a *TokenIssuerCache) reportBlockedJwksEndpoint(signer *db.ExternalJwtSigner) {
+	if err := checkJwksEndpointAllowed(a.jwksResolver.policy, signer); err != nil {
+		pfxlog.Logger().WithFields(map[string]interface{}{
+			"id":           signer.Id,
+			"name":         signer.Name,
+			"jwksEndpoint": *signer.JwksEndpoint,
+		}).WithError(err).Error("external jwt signer jwks endpoint is not permitted by the current jwks fetch configuration, its keys cannot be resolved and authentication with this signer will fail")
+	}
+}
+
 // loadExisting loads all external JWT signers and controllers during initialization.
 func (a *TokenIssuerCache) loadExisting() {
 	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
@@ -234,6 +254,8 @@ func (a *TokenIssuerCache) loadExisting() {
 				pfxlog.Logger().WithError(err).WithField("extJwtId", id).Error("error loading external jwt as token issuer")
 				continue
 			}
+
+			a.reportBlockedJwksEndpoint(signer)
 
 			a.onExtJwtCreate(signer)
 		}
