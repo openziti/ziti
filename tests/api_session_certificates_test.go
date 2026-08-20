@@ -306,6 +306,132 @@ func Test_Api_Session_Certs(t *testing.T) {
 	})
 }
 
+// Test_Api_Session_Certs_Scoped_To_Api_Session locks in that listing the current API Session's
+// certificates only ever returns certificates belonging to the requesting API Session. The list
+// was previously unscoped, so any authenticated identity could read every other identity's API
+// session certificates.
+func Test_Api_Session_Certs_Scoped_To_Api_Session(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	adminManagementClient := ctx.NewEdgeManagementApi(nil)
+	adminCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+
+	adminApiSession, err := adminManagementClient.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(err)
+	ctx.Req.NotNil(adminApiSession)
+
+	// the admin's own api session certificate is a cert that must never show up in another
+	// api session's list
+	adminClient := ctx.NewEdgeClientApi(nil)
+	_, err = adminClient.Authenticate(adminCreds, nil)
+	ctx.Req.NoError(err)
+
+	adminCert, err := adminClient.CreateCurrentApiSessionCertificate()
+	ctx.Req.NoError(err)
+	ctx.Req.NotEmpty(adminCert.ID)
+
+	t.Run("another identity's api session certificates are not listed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, firstCreds, err := adminManagementClient.CreateAndEnrollOttIdentity(false)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(firstCreds)
+
+		_, secondCreds, err := adminManagementClient.CreateAndEnrollOttIdentity(false)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(secondCreds)
+
+		firstClient := ctx.NewEdgeClientApi(nil)
+		firstApiSession, err := firstClient.Authenticate(firstCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(firstApiSession)
+
+		secondClient := ctx.NewEdgeClientApi(nil)
+		secondApiSession, err := secondClient.Authenticate(secondCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(secondApiSession)
+
+		firstCert, err := firstClient.CreateCurrentApiSessionCertificate()
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(firstCert.ID)
+
+		secondCert, err := secondClient.CreateCurrentApiSessionCertificate()
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(secondCert.ID)
+
+		firstList, err := firstClient.ListCurrentApiSessionCertificates()
+		ctx.Req.NoError(err)
+
+		firstIds := apiSessionCertificateIds(firstList)
+		ctx.Req.Contains(firstIds, firstCert.ID, "expected the api session's own certificate to be listed")
+		ctx.Req.NotContains(firstIds, secondCert.ID, "expected another identity's api session certificate to not be listed")
+		ctx.Req.NotContains(firstIds, adminCert.ID, "expected the admin's api session certificate to not be listed")
+
+		secondList, err := secondClient.ListCurrentApiSessionCertificates()
+		ctx.Req.NoError(err)
+
+		secondIds := apiSessionCertificateIds(secondList)
+		ctx.Req.Contains(secondIds, secondCert.ID, "expected the api session's own certificate to be listed")
+		ctx.Req.NotContains(secondIds, firstCert.ID, "expected another identity's api session certificate to not be listed")
+		ctx.Req.NotContains(secondIds, adminCert.ID, "expected the admin's api session certificate to not be listed")
+	})
+
+	t.Run("a second api session for the same identity does not list the first api session's certificates", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, idCreds, err := adminManagementClient.CreateAndEnrollOttIdentity(false)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(idCreds)
+
+		firstClient := ctx.NewEdgeClientApi(nil)
+		firstApiSession, err := firstClient.Authenticate(idCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(firstApiSession)
+
+		secondClient := ctx.NewEdgeClientApi(nil)
+		secondApiSession, err := secondClient.Authenticate(idCreds, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(secondApiSession)
+
+		firstCert, err := firstClient.CreateCurrentApiSessionCertificate()
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(firstCert.ID)
+
+		secondCert, err := secondClient.CreateCurrentApiSessionCertificate()
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(secondCert.ID)
+
+		ctx.Req.NotEqual(firstCert.ID, secondCert.ID)
+
+		firstList, err := firstClient.ListCurrentApiSessionCertificates()
+		ctx.Req.NoError(err)
+
+		// scoping is per api session, not per identity, so the same identity's other
+		// api session certificate must not appear
+		firstIds := apiSessionCertificateIds(firstList)
+		ctx.Req.Contains(firstIds, firstCert.ID, "expected the api session's own certificate to be listed")
+		ctx.Req.NotContains(firstIds, secondCert.ID, "expected the same identity's other api session certificate to not be listed")
+
+		secondList, err := secondClient.ListCurrentApiSessionCertificates()
+		ctx.Req.NoError(err)
+
+		secondIds := apiSessionCertificateIds(secondList)
+		ctx.Req.Contains(secondIds, secondCert.ID, "expected the api session's own certificate to be listed")
+		ctx.Req.NotContains(secondIds, firstCert.ID, "expected the same identity's other api session certificate to not be listed")
+	})
+}
+
+// apiSessionCertificateIds returns the ids of the given API session certificates.
+func apiSessionCertificateIds(certs rest_model.CurrentAPISessionCertificateList) []string {
+	var ids []string
+	for _, cert := range certs {
+		ids = append(ids, *cert.ID)
+	}
+	return ids
+}
+
 func generateCsr() ([]byte, crypto.PrivateKey, error) {
 	p384 := elliptic.P384()
 	pfxlog.Logger().Infof("generating %s EC key", p384.Params().Name)
