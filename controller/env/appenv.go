@@ -54,6 +54,7 @@ import (
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/common/eid"
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/apierror"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/db"
@@ -271,7 +272,7 @@ func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
 	}
-	
+
 	return rootSigner
 }
 
@@ -1087,11 +1088,27 @@ func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 	return signers[kid]
 }
 
-// CreateRequestContext creates a new request context for handling HTTP requests.
-func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
+// CreateRequestContext creates a new request context for handling HTTP requests. The request body
+// is buffered into memory before any authentication check, so bodies larger than
+// api.MaxRequestBodySize are rejected with a 413 ApiError instead of being buffered.
+func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) (*response.RequestContext, error) {
 	rid := eid.New()
 
-	body, _ := io.ReadAll(r.Body)
+	if r.ContentLength > api.MaxRequestBodySize {
+		return nil, apierror.NewRequestEntityTooLarge()
+	}
+
+	r.Body = http.MaxBytesReader(rw, r.Body, api.MaxRequestBodySize)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return nil, apierror.NewRequestEntityTooLarge()
+		}
+		return nil, apierror.NewCouldNotReadBody(err)
+	}
+
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	requestContext := &response.RequestContext{
@@ -1107,7 +1124,33 @@ func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) 
 
 	requestContext.Responder = response.NewResponder(requestContext)
 
-	return requestContext
+	return requestContext, nil
+}
+
+// WriteHttpApiError is meant to be used in situations where no request context is available to provide responses.
+func WriteHttpApiError(w http.ResponseWriter, apiError *errorz.ApiError) {
+	producer := runtime.JSONProducer()
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(apiError.Status)
+	_ = producer.Produce(w, apiError)
+}
+
+// WriteHttpError is meant to be used in situations where no request context is available to provide responses.
+func WriteHttpError(w http.ResponseWriter, err error) {
+	if err == nil {
+		err = errors.New("unknown error")
+	}
+
+	var apiErr *errorz.ApiError
+	ok := errors.As(err, &apiErr)
+
+	if ok && apiErr != nil {
+		WriteHttpApiError(w, apiErr)
+		return
+	}
+
+	apiErr = errorz.NewUnhandled(err)
+	WriteHttpApiError(w, apiErr)
 }
 
 func GetRequestContextFromHttpContext(r *http.Request) (*response.RequestContext, error) {
@@ -1153,7 +1196,13 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 		rc, err := GetRequestContextFromHttpContext(request)
 
 		if rc == nil {
-			rc = ae.CreateRequestContext(writer, request)
+			var rcErr error
+			rc, rcErr = ae.CreateRequestContext(writer, request)
+
+			if rcErr != nil {
+				WriteHttpError(writer, rcErr)
+				return
+			}
 		}
 
 		rc.SetProducer(producer)

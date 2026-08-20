@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/controller/apierror"
 	"net/http"
 )
 
@@ -92,7 +93,13 @@ func renderJsonApiError(w http.ResponseWriter, err *errorz.ApiError) {
 
 func errorToRestApiError(err error) (*rest_model.APIError, int) {
 	var typedErr *errorz.ApiError
+	var maxBytesErr *http.MaxBytesError
 	switch {
+	case errors.As(err, &maxBytesErr):
+		return &rest_model.APIError{
+			Code:    apierror.RequestEntityTooLargeCode,
+			Message: apierror.RequestEntityTooLargeMessage,
+		}, http.StatusRequestEntityTooLarge
 	case errors.As(err, &typedErr):
 		restErr := &rest_model.APIError{
 			Code:    typedErr.Code,
