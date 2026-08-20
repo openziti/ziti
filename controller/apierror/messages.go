@@ -31,6 +31,10 @@ const (
 	CouldNotReadBodyMessage string = "The body of the request could not be read"
 	CouldNotReadBodyStatus  int    = http.StatusInternalServerError
 
+	RequestEntityTooLargeCode    string = "REQUEST_ENTITY_TOO_LARGE"
+	RequestEntityTooLargeMessage string = "The request body exceeds the maximum accepted size"
+	RequestEntityTooLargeStatus  int    = http.StatusRequestEntityTooLarge
+
 	InvalidUuidCode    string = "INVALID_UUID"
 	InvalidUuidMessage string = "The supplied UUID is invalid"
 	InvalidUuidStatus  int    = http.StatusBadRequest
