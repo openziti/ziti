@@ -525,7 +525,7 @@ Thanks to the community members who contributed to this release.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.25](https://github.com/openziti/channel/compare/v4.3.11...v5.0.25)
+* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.27](https://github.com/openziti/channel/compare/v4.3.11...v5.0.27)
     * [Issue #288](https://github.com/openziti/channel/issues/288) - Remove unused reconnecting and memory implementations
     * [Issue #285](https://github.com/openziti/channel/issues/285) - Version negotiation responses are never recognized, so the protocol version can never be renegotiated
     * [Issue #287](https://github.com/openziti/channel/issues/287) - Dialer retries a hello when the retry cannot change the outcome
@@ -564,7 +564,10 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/runzmd: [v1.0.90 -> v1.0.92](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.92)
     * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
 
-* github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre3](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre3)
+* github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre4](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre4)
+    * [Issue #999](https://github.com/openziti/sdk-golang/issues/999) - Dial for an unknown edge conn id is dropped silently, costing the client its full connect timeout
+    * [Issue #991](https://github.com/openziti/sdk-golang/issues/991) - Read deadline on ReadAdapter permanently closes the peer's send buffer
+    * [Issue #987](https://github.com/openziti/sdk-golang/issues/987) - LinkSendBuffer leaks goroutines after send-half close
     * [Issue #958](https://github.com/openziti/sdk-golang/issues/958) - ConnectV2 xgress client conn not marked closed on router-initiated teardown
     * [Issue #967](https://github.com/openziti/sdk-golang/issues/967) - Move RouterCapabilityConnectV2 constant into edge_client.proto
     * [Issue #951](https://github.com/openziti/sdk-golang/issues/951) - Add an SDK acceptance-test framework
@@ -580,7 +583,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.52](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.52)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.219](https://github.com/openziti/transport/compare/v2.0.215...v2.0.219)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.220](https://github.com/openziti/transport/compare/v2.0.215...v2.0.220)
     * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
@@ -608,7 +611,6 @@ Thanks to the community members who contributed to this release.
     * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - upgrading a running 1.x controller/router to 2.x fails to create the service user
     * [Issue #3990](https://github.com/openziti/ziti/issues/3990) - Expose service change subscriptions to external SDKs over protobuf
     * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Controller retains bbolt-managed memory past transaction (create-circuit response SIGSEGV)
-    * [Issue #4104](https://github.com/openziti/ziti/issues/4104) - Controller cluster bootstrapping fixes
     * [Issue #4067](https://github.com/openziti/ziti/issues/4067) - JWKS peer signer kid is undecodable raw bytes (should be hex) -- %s vs %x on sha1.Sum in oidc_auth/storage.go KeySet()
     * [Issue #4071](https://github.com/openziti/ziti/issues/4071) - Unify router capabilities into a single shared bitmask across control and edge channels
     * [Issue #3998](https://github.com/openziti/ziti/issues/3998) - Add router-side managed configuration registry
@@ -624,6 +626,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #4035](https://github.com/openziti/ziti/issues/4035) - Controller /metrics endpoint produces duplicate TYPE declarations causing Prometheus to drop samples
     * [Issue #4045](https://github.com/openziti/ziti/issues/4045) - Reduce controller link/router management lock contention under high link churn
     * [Issue #3884](https://github.com/openziti/ziti/issues/3884) - Implement Connect-V2: sessionless SDK dial
+    * [Issue #3929](https://github.com/openziti/ziti/issues/3929) - [Backport-2.0] Router does not enforce api-session or identity revocations on live connections
     * [Issue #3841](https://github.com/openziti/ziti/issues/3841) - Controller Cluster - new controllers must be able to be dialed by the leader in order to join successfully
     * [Issue #3933](https://github.com/openziti/ziti/issues/3933) - edge enrollment: add the list of controllers to successful enrollment response
     * [Issue #3992](https://github.com/openziti/ziti/issues/3992) - Overlay edge-oidc listener panics when its redirect_uri is not in the redirectURIs allow-list
