@@ -25,6 +25,7 @@ import (
 	"github.com/dgryski/dgoogauth"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -50,6 +51,7 @@ func NewMfaManager(env Env) *MfaManager {
 	manager.impl = manager
 
 	RegisterManagerDecoder[*Mfa](env, manager)
+	RegisterCommand(env, &RemoveMfaForIdentityCmd{}, &edge_cmd_pb.RemoveMfaForIdentityCmd{})
 
 	return manager
 }
@@ -310,18 +312,17 @@ func (self *MfaManager) Unmarshall(bytes []byte) (*Mfa, error) {
 
 // DeleteAllForIdentity is meant for administrators to remove all MFAs (enrolled or not) from an identity
 func (self *MfaManager) DeleteAllForIdentity(id string, ctx *change.Context) error {
-	result, err := self.Query(fmt.Sprintf(`identity = "%s"`, id))
-	if err != nil {
-		return err
-	}
+	return self.Dispatch(&RemoveMfaForIdentityCmd{
+		manager:    self,
+		identityId: id,
+		ctx:        ctx,
+	})
+}
 
-	for _, mfa := range result.Mfas {
-		if err = self.Delete(mfa.Id, ctx); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (self *MfaManager) ApplyRemoveMfaForIdentityCommand(cmd *RemoveMfaForIdentityCmd, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		return self.Store.DeleteWhere(ctx, fmt.Sprintf(`identity = "%s"`, cmd.identityId))
+	})
 }
 
 func (self *MfaManager) CompleteTotpEnrollment(identityId string, code string, changeCtx *change.Context) error {
@@ -371,4 +372,33 @@ func (result *MfaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *
 		result.Mfas = append(result.Mfas, Mfa)
 	}
 	return nil
+}
+
+type RemoveMfaForIdentityCmd struct {
+	ctx        *change.Context
+	manager    *MfaManager
+	identityId string
+}
+
+func (self *RemoveMfaForIdentityCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyRemoveMfaForIdentityCommand(self, ctx)
+}
+
+func (self *RemoveMfaForIdentityCmd) Encode() ([]byte, error) {
+	cmd := &edge_cmd_pb.RemoveMfaForIdentityCmd{
+		Ctx:        ContextToProtobuf(self.ctx),
+		IdentityId: self.identityId,
+	}
+	return cmd_pb.EncodeProtobuf(cmd)
+}
+
+func (self *RemoveMfaForIdentityCmd) Decode(env Env, msg *edge_cmd_pb.RemoveMfaForIdentityCmd) error {
+	self.ctx = ProtobufToContext(msg.Ctx)
+	self.manager = env.GetManagers().Mfa
+	self.identityId = msg.IdentityId
+	return nil
+}
+
+func (self *RemoveMfaForIdentityCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }
