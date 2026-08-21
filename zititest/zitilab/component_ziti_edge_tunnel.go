@@ -105,7 +105,11 @@ func (self *ZitiEdgeTunnelType) StageFiles(r model.Run, c *model.Component) erro
 
 func (self *ZitiEdgeTunnelType) getProcessFilter(c *model.Component) func(string) bool {
 	return func(s string) bool {
-		return strings.Contains(s, self.getBinaryName()) &&
+		// Match on the version-agnostic base binary name, not getBinaryName() (which includes the
+		// version): the component's config file uniquely identifies its process, and matching the
+		// versioned name would fail to find a running instance after a version change, leaving the
+		// old-version process alive on stop/restart.
+		return strings.Contains(s, "ziti-edge-tunnel") &&
 			strings.Contains(s, fmt.Sprintf("%s.json", c.Id)) &&
 			!strings.Contains(s, "sudo ")
 	}

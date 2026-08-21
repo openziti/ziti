@@ -18,6 +18,7 @@ package zitilib_runlevel_5_operation
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -43,6 +44,7 @@ const (
 func NewSimServices(hostSelectorF func(string) string) *SimServices {
 	return &SimServices{
 		idToSelectorMapper: hostSelectorF,
+		connectTimeout:     60 * time.Second,
 	}
 }
 
@@ -53,6 +55,9 @@ type SimServices struct {
 	lock               sync.Mutex
 	zitiContext        ziti.Context
 	metricsStarted     atomic.Bool
+	// connectTimeout bounds establishing the sim-controller ziti context, so an unreachable
+	// controller fails fast instead of hanging on the SDK's unbounded version-info retry.
+	connectTimeout time.Duration
 
 	remoteController *loop4.RemoteController
 }
@@ -90,10 +95,34 @@ func (self *SimServices) GetZitiContext(run model.Run) (ziti.Context, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Authenticate up front with a deadline so an unreachable controller fails fast. The SDK's
+		// version-info caching retries forever with no timeout (openziti/sdk-golang#976), so the first
+		// Listen/Dial would otherwise block indefinitely and hang the caller (e.g. the steady-state gate).
+		if err = authenticateWithTimeout(context, self.connectTimeout); err != nil {
+			context.Close()
+			return nil, err
+		}
+
 		self.zitiContext = context
 	}
 
 	return self.zitiContext, nil
+}
+
+// authenticateWithTimeout runs context.Authenticate() with a deadline so an unreachable controller
+// surfaces an error instead of blocking indefinitely on the SDK's unbounded version-info retry. If
+// Authenticate is wedged in that retry, its goroutine can outlive the timeout; that is acceptable
+// here since the run is failing anyway.
+func authenticateWithTimeout(context ziti.Context, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() { done <- context.Authenticate() }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out after %s establishing sim controller connection; controller unreachable?", timeout)
+	}
 }
 
 func (self *SimServices) CollectSimMetrics(run model.Run, service string) error {
@@ -231,4 +260,27 @@ func (self *SimServices) GetSimController(run model.Run, service string, callbac
 	}
 
 	return self.remoteController, nil
+}
+
+// Reset tears down the cached sim-controller context, remote controller, and metrics listener so a
+// subsequent GetZitiContext/GetSimController/CollectSimMetrics rebuilds them. Use it after the
+// controller has been re-bootstrapped (e.g. resetting a test between iterations), where the cached
+// api session and sim-controller enrollment are stale and would otherwise be reused.
+func (self *SimServices) Reset() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.remoteController != nil {
+		_ = self.remoteController.Close()
+		self.remoteController = nil
+	}
+	if self.listener != nil {
+		_ = self.listener.Close()
+		self.listener = nil
+	}
+	if self.zitiContext != nil {
+		self.zitiContext.Close()
+		self.zitiContext = nil
+	}
+	self.metricsStarted.Store(false)
 }

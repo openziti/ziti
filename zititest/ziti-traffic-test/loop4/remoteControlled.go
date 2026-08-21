@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -41,15 +42,122 @@ func init() {
 	loop4Cmd.AddCommand(newRemoteControlledCmd())
 }
 
+// scenarioResultSendTimeout bounds how long a finished scenario keeps trying to report its result
+// while the sim is reconnecting. Past it the controller's own scenario timeout takes over.
+const scenarioResultSendTimeout = 60 * time.Second
+
+// completedScenarioCacheSize is how many finished scenarios are remembered for replay. The controller
+// runs one scenario at a time, so a resend more than a handful of scenarios stale cannot occur.
+const completedScenarioCacheSize = 16
+
 type remoteControlledCmd struct {
 	*Sim
 	notifyClose chan struct{}
+
+	// controlCh is the live channel to the sim controller. A reconnect replaces it, so anything
+	// reporting to the controller must read it at send time rather than capture it: a scenario often
+	// outlives the channel its run request arrived on.
+	controlCh concurrenz.AtomicValue[channel.Channel]
+
+	scenarioLock sync.Mutex
+	// runningScenarioId is the scenario currently being run, empty when idle.
+	runningScenarioId string
+	// completed holds recent scenario outcomes for replay, oldest first in completedIds.
+	completed    map[string]scenarioOutcome
+	completedIds []string
+}
+
+// scenarioOutcome is a scenario run's reportable result.
+type scenarioOutcome struct {
+	success bool
+	message string
+}
+
+// scenarioAction is what to do with an incoming run request.
+type scenarioAction int
+
+const (
+	// actionRun means the sim is claimed for the scenario and the caller should run it.
+	actionRun scenarioAction = iota
+	// actionIgnore means this scenario is already running and will report on its own.
+	actionIgnore
+	// actionReplay means this scenario already finished; answer from its recorded outcome.
+	actionReplay
+	// actionReject means a different scenario holds the sim.
+	actionReject
+)
+
+// scenarioDecision resolves one run request. runningId is set for actionReject, outcome for
+// actionReplay.
+type scenarioDecision struct {
+	action    scenarioAction
+	runningId string
+	outcome   scenarioOutcome
+}
+
+// decideScenario resolves a run request for scenarioId, claiming the sim when it returns actionRun.
+//
+// Only one scenario runs at a time: two would reset and record the same sim-wide metrics and drive the
+// same workloads, so their results would interfere.
+func (cmd *remoteControlledCmd) decideScenario(scenarioId string) scenarioDecision {
+	cmd.scenarioLock.Lock()
+	defer cmd.scenarioLock.Unlock()
+
+	if cmd.runningScenarioId == scenarioId {
+		return scenarioDecision{action: actionIgnore}
+	}
+	// Ahead of the busy check on purpose: a resend for a scenario that already finished has to be
+	// answered from the cache even when a later scenario now holds the sim, or it reruns work the
+	// controller has already accepted and then fails the scenario that follows it.
+	if outcome, found := cmd.completed[scenarioId]; found {
+		return scenarioDecision{action: actionReplay, outcome: outcome}
+	}
+	if cmd.runningScenarioId != "" {
+		// Recorded here, under the lock that saw the conflict, so the rejection is terminal. Left
+		// unrecorded, a resend of this scenario would find the sim idle and start it, and the run would
+		// still be going when the controller moved on, rejecting the scenario after it in turn.
+		outcome := scenarioOutcome{
+			success: false,
+			message: fmt.Sprintf("sim is busy running scenario %s", cmd.runningScenarioId),
+		}
+		cmd.recordOutcome(scenarioId, outcome)
+		return scenarioDecision{action: actionReject, runningId: cmd.runningScenarioId, outcome: outcome}
+	}
+	cmd.runningScenarioId = scenarioId
+	return scenarioDecision{action: actionRun}
+}
+
+// recordOutcome caches scenarioId's terminal outcome, evicting the oldest entry when full. The first
+// outcome recorded for a scenario wins. Callers must hold scenarioLock.
+func (cmd *remoteControlledCmd) recordOutcome(scenarioId string, outcome scenarioOutcome) {
+	if _, found := cmd.completed[scenarioId]; found {
+		return
+	}
+	cmd.completed[scenarioId] = outcome
+	cmd.completedIds = append(cmd.completedIds, scenarioId)
+	if len(cmd.completedIds) > completedScenarioCacheSize {
+		delete(cmd.completed, cmd.completedIds[0])
+		cmd.completedIds = cmd.completedIds[1:]
+	}
+}
+
+// finishScenario releases the sim and records scenarioId's outcome, so a resend that crosses with the
+// result is replayed rather than run again.
+func (cmd *remoteControlledCmd) finishScenario(scenarioId string, outcome scenarioOutcome) {
+	cmd.scenarioLock.Lock()
+	defer cmd.scenarioLock.Unlock()
+
+	if cmd.runningScenarioId == scenarioId {
+		cmd.runningScenarioId = ""
+	}
+	cmd.recordOutcome(scenarioId, outcome)
 }
 
 func newRemoteControlledCmd() *cobra.Command {
 	dialer := &remoteControlledCmd{
 		Sim:         NewSim(),
 		notifyClose: make(chan struct{}, 1),
+		completed:   map[string]scenarioOutcome{},
 	}
 
 	cmd := &cobra.Command{
@@ -105,6 +213,10 @@ func (cmd *remoteControlledCmd) runRemoteControlled(_ *cobra.Command, args []str
 
 		if err = cmd.handleRemoteControlConn(sdkClient, conn); err != nil {
 			log.WithError(err).Error("unable to channelize remote controller connection")
+			// Close the dialed conn before retrying. Otherwise a failed channelize (e.g. a hello
+			// that times out during controller churn) leaves the edge conn and its fabric circuit
+			// open with no reader, leaking a circuit on every retry.
+			_ = conn.Close()
 			time.Sleep(1 * time.Second)
 			attempt++
 			continue
@@ -139,6 +251,9 @@ func (cmd *remoteControlledCmd) handleRemoteControlConn(sdk ziti.Context, conn n
 }
 
 func (cmd *remoteControlledCmd) BindChannel(binding channel.Binding) error {
+	// Publish the channel before any handler can fire, so a request arriving immediately still has a
+	// channel to answer on.
+	cmd.controlCh.Store(binding.GetChannel())
 	binding.AddReceiveHandlerF(int32(loop4Pb.ContentType_RunScenarioRequestType), cmd.HandleRunScenario)
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 		select {
@@ -149,33 +264,100 @@ func (cmd *remoteControlledCmd) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-func (cmd *remoteControlledCmd) HandleRunScenario(msg *channel.Message, ch channel.Channel) {
+// HandleRunScenario starts a scenario on request. The channel the request arrived on is deliberately
+// unused: results go to whatever channel is live when the run finishes, which a reconnect may change.
+//
+// Nothing here sends a result inline. This runs on the channel's receive loop, and sendScenarioResult
+// retries for up to a minute, which would stall every read on that channel, heartbeats included, and
+// so risk killing the connection the result still has to go out on. The replay and reject paths are
+// reached during reconnect and resend handling, which is exactly when that channel is least able to
+// absorb it.
+func (cmd *remoteControlledCmd) HandleRunScenario(msg *channel.Message, _ channel.Channel) {
 	scenarioId, _ := msg.GetStringHeader(int32(loop4Pb.HeaderType_ScenarioId))
-	go cmd.runRemoteScenario(scenarioId, cmd.scenario, ch)
+	if scenarioId == "" {
+		pfxlog.Logger().Error("run scenario request missing scenario id, ignoring")
+		return
+	}
+	log := pfxlog.Logger().WithField("scenarioId", scenarioId)
+
+	switch decision := cmd.decideScenario(scenarioId); decision.action {
+	case actionIgnore:
+		// A re-send after this sim reconnected. The run already in progress reports for it, over
+		// whatever channel is live when it finishes.
+		log.Info("scenario already running, ignoring duplicate run request")
+		return
+	case actionReplay:
+		log.Info("scenario already finished, replaying its result")
+		go cmd.sendScenarioResult(scenarioId, decision.outcome)
+		return
+	case actionReject:
+		// Answer instead of running. Staying silent would leave the controller waiting out its
+		// scenario timeout for a result that is never coming.
+		log.WithField("runningScenarioId", decision.runningId).
+			Info("another scenario is running, rejecting run request")
+		go cmd.sendScenarioResult(scenarioId, decision.outcome)
+		return
+	}
+
+	go func() {
+		cmd.finishScenario(scenarioId, cmd.runRemoteScenario(scenarioId, cmd.scenario))
+	}()
 }
 
-func (cmd *remoteControlledCmd) sendScenarioResult(ch channel.Channel, id string, success bool, result string) {
+// sendScenarioResult reports a scenario's outcome, retrying over whatever control channel is current
+// while the sim reconnects.
+//
+// A scenario routinely outlives the channel its run request arrived on: the controller replaces that
+// channel when the sim reconnects and closes the old one. Reporting to the original channel would put
+// the result nowhere, leaving the controller to wait out its scenario timeout for a run that had in
+// fact finished.
+func (cmd *remoteControlledCmd) sendScenarioResult(id string, outcome scenarioOutcome) {
 	log := pfxlog.Logger().WithField("scenarioId", id)
 
-	msg := channel.NewMessage(int32(loop4Pb.ContentType_RunScenarioResultType), []byte(result))
-	msg.PutStringHeader(int32(loop4Pb.HeaderType_ScenarioId), id)
-	msg.PutBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess), success)
-	if err := msg.WithTimeout(10 * time.Second).Send(ch); err != nil {
-		log.WithError(err).Error("unable to send scenario run result message")
-	} else {
-		log.Info("scenario result successfully reported")
+	deadline := time.Now().Add(scenarioResultSendTimeout)
+	for {
+		msg := channel.NewMessage(int32(loop4Pb.ContentType_RunScenarioResultType), []byte(outcome.message))
+		msg.PutStringHeader(int32(loop4Pb.HeaderType_ScenarioId), id)
+		msg.PutBoolHeader(int32(loop4Pb.HeaderType_ScenarioSuccess), outcome.success)
+
+		err := cmd.sendToController(msg)
+		if err == nil {
+			log.Info("scenario result successfully reported")
+			return
+		}
+		if time.Now().After(deadline) {
+			log.WithError(err).Errorf("giving up reporting scenario result after %s", scenarioResultSendTimeout)
+			return
+		}
+		log.WithError(err).Info("unable to report scenario result, retrying on the current channel")
+		time.Sleep(time.Second)
 	}
 }
 
-func (cmd *remoteControlledCmd) sendDiagnosticRequest(ch channel.Channel, requestId string) {
+func (cmd *remoteControlledCmd) sendDiagnosticRequest(requestId string) {
 	log := pfxlog.Logger().WithField("requestId", requestId)
 	msg := channel.NewMessage(int32(loop4Pb.ContentType_RequestDiagnostic), nil)
 	msg.PutStringHeader(int32(loop4Pb.HeaderType_RequestIdHeader), requestId)
-	if err := msg.WithTimeout(10 * time.Second).Send(ch); err != nil {
+	if err := cmd.sendToController(msg); err != nil {
 		log.WithError(err).Error("unable to send diagnostic request message")
 	} else {
 		log.Info("diagnostic successfully requested")
 	}
+}
+
+// sendToController sends msg over the control channel that is live now, rather than one captured
+// earlier, which a reconnect may since have replaced.
+func (cmd *remoteControlledCmd) sendToController(msg *channel.Message) error {
+	ch := cmd.controlCh.Load()
+	if ch == nil {
+		return errors.New("no control channel established")
+	}
+	if ch.IsClosed() {
+		return errors.New("control channel is closed")
+	}
+	// Wait for the wire, not just the send queue: a queued result on a channel that then dies would be
+	// reported as delivered, and the scenario retired as reported.
+	return msg.WithTimeout(10 * time.Second).SendAndWaitForWire(ch)
 }
 
 var triggerInspectAtomic concurrenz.AtomicValue[func(circuitId string)]
@@ -189,11 +371,11 @@ func triggerInspect(circuitId string) {
 	cb(circuitId)
 }
 
-func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *Scenario, ch channel.Channel) {
+func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *Scenario) scenarioOutcome {
 	log := pfxlog.Logger()
 
 	triggerInspectAtomic.Store(func(circuitId string) {
-		cmd.sendDiagnosticRequest(ch, circuitId)
+		cmd.sendDiagnosticRequest(circuitId)
 	})
 
 	// reset metrics
@@ -209,17 +391,16 @@ func (cmd *remoteControlledCmd) runRemoteScenario(scenarioId string, scenario *S
 
 	err := cmd.runScenario(scenario)
 
-	runSucceeded := true
-	resultMsg := "success"
+	outcome := scenarioOutcome{success: true, message: "success"}
 	if err != nil {
-		runSucceeded = false
-		resultMsg = err.Error()
+		outcome = scenarioOutcome{success: false, message: err.Error()}
 		log.WithError(err).Errorf("scenario run unsuccessful")
 	} else {
 		log.Info("scenario run successful")
 	}
 
-	cmd.sendScenarioResult(ch, scenarioId, runSucceeded, resultMsg)
+	cmd.sendScenarioResult(scenarioId, outcome)
+	return outcome
 }
 
 func GetSdkIdentity(sdk ziti.Context) (*identity.TokenId, error) {
