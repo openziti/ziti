@@ -87,6 +87,7 @@ func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (o *PKICreateClientOptions) Run() error {
+	o.ResolveFlagsFromViper(o.Cmd)
 	pkiRoot, err := o.ObtainPKIRoot()
 	if err != nil {
 		return err
