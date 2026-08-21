@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -68,16 +67,6 @@ func newJwksServer(certificates []*x509.Certificate) *jwksServer {
 	srv.server = &http.Server{
 		Handler: mux,
 	}
-	return srv
-}
-
-// newTlsJwksServer returns a jwksServer that serves its JWKS over HTTPS using tlsCert as its
-// server certificate. Callers must ensure the controller trusts tlsCert (see the root CA added
-// to http.DefaultTransport in the overlapping-kid test) for the controller's JWKS fetch to succeed.
-func newTlsJwksServer(tlsCert *tls.Certificate, certificates []*x509.Certificate) *jwksServer {
-	srv := newJwksServer(certificates)
-	srv.tlsCert = tlsCert
-	srv.server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{*tlsCert}}
 	return srv
 }
 
@@ -1071,26 +1060,10 @@ func Test_Authenticate_External_Jwt_Overlapping_Kids(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
-	// The controller fetches JWKS over the default HTTP transport. Trust the test PKI root so the
-	// controller accepts the HTTPS JWKS providers below, which serve using the controller's own
-	// server certificate. Restore the prior transport config when the test completes.
-	rootPem, err := os.ReadFile("testdata/pki/root/certs/root.cert")
-	ctx.Req.NoError(err)
-
-	rootPool, err := x509.SystemCertPool()
-	if err != nil || rootPool == nil {
-		rootPool = x509.NewCertPool()
-	}
-	ctx.Req.True(rootPool.AppendCertsFromPEM(rootPem), "expected the test root CA to be added to the trust pool")
-
-	httpTransport := http.DefaultTransport.(*http.Transport)
-	priorTlsConfig := httpTransport.TLSClientConfig
-	httpTransport.TLSClientConfig = &tls.Config{RootCAs: rootPool}
-	defer func() { httpTransport.TLSClientConfig = priorTlsConfig }()
-
-	serverTlsCert, err := tls.LoadX509KeyPair("testdata/pki/ctrl1/certs/server.chain.pem", "testdata/pki/ctrl1/keys/server.key")
-	ctx.Req.NoError(err)
-
+	// The JWKS providers below serve over plain HTTP on loopback. The hardened JWKS resolver builds
+	// its own transport and validates TLS against the system roots, so it does not honor a custom CA
+	// injected into http.DefaultTransport; loopback HTTP is the supported way to exercise a local JWKS
+	// server in tests. Transport is orthogonal to the kid/issuer disambiguation this test covers.
 	adminIdentityId := *ctx.AdminManagementSession.AuthResponse.IdentityID
 
 	t.Run("two enabled signers sharing a kid authenticate deterministically by issuer", func(t *testing.T) {
@@ -1101,11 +1074,11 @@ func Test_Authenticate_External_Jwt_Overlapping_Kids(t *testing.T) {
 		sharedCert, sharedKey := newSelfSignedCert("shared-jwks-pool-" + uuid.NewString())
 		sharedKid := sharedCert.Subject.CommonName
 
-		jwksServer1 := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		jwksServer1 := newJwksServer([]*x509.Certificate{sharedCert})
 		ctx.Req.NoError(jwksServer1.Start())
 		defer func() { _ = jwksServer1.Stop() }()
 
-		jwksServer2 := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		jwksServer2 := newJwksServer([]*x509.Certificate{sharedCert})
 		ctx.Req.NoError(jwksServer2.Start())
 		defer func() { _ = jwksServer2.Stop() }()
 
@@ -1176,11 +1149,11 @@ func Test_Authenticate_External_Jwt_Overlapping_Kids(t *testing.T) {
 		sharedCert, sharedKey := newSelfSignedCert("shared-disabled-poison-" + uuid.NewString())
 		sharedKid := sharedCert.Subject.CommonName
 
-		enabledJwksServer := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		enabledJwksServer := newJwksServer([]*x509.Certificate{sharedCert})
 		ctx.Req.NoError(enabledJwksServer.Start())
 		defer func() { _ = enabledJwksServer.Stop() }()
 
-		disabledJwksServer := newTlsJwksServer(&serverTlsCert, []*x509.Certificate{sharedCert})
+		disabledJwksServer := newJwksServer([]*x509.Certificate{sharedCert})
 		ctx.Req.NoError(disabledJwksServer.Start())
 		defer func() { _ = disabledJwksServer.Stop() }()
 
