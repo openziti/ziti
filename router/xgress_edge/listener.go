@@ -58,9 +58,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// CryptoMethodHeader is deliberately absent. The Go and C SDKs encode it differently under the same
+// header id, a numeric enum byte versus a string method id, so handing a client's value to a host
+// running the other SDK fails that host's method check. Unmapped, each end keeps its own default.
+// Restore it once the SDKs agree on one encoding.
 var peerHeaderRequestMappings = map[uint32]uint32{
 	uint32(sdkedge.PublicKeyHeader):        uint32(sdkedge.PublicKeyHeader),
-	uint32(sdkedge.CryptoMethodHeader):     uint32(sdkedge.CryptoMethodHeader),
 	uint32(sdkedge.CallerIdHeader):         uint32(sdkedge.CallerIdHeader),
 	uint32(sdkedge.AppDataHeader):          uint32(sdkedge.AppDataHeader),
 	uint32(sdkedge.ConnectionMarkerHeader): uint32(sdkedge.ConnectionMarkerHeader),

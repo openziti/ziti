@@ -180,7 +180,6 @@ controller and add new peers normally with `ziti ops cluster add`.
 
 ### End-to-End Encryption (e2ee) Improvements
 
-* Add support for negotiating e2ee scheme during Dial/Accept handshake
 * Allow hosting-side crypto material to be generated on per connection basis (instead of per terminator)
 
 
