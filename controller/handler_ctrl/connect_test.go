@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,4 +176,39 @@ func Test_ConnectHandler_HandleConnection_SkipsSeparatelyValidated(t *testing.T)
 
 	req.NoError(handler.HandleConnection(helloWithType(meshChannelType), []*x509.Certificate{forged.cert}),
 		"mesh-typed connection is validated by its own acceptor and must be skipped here")
+}
+
+// Test_withinChurnLimit pins the admission policy that decides whether an already-connected router's
+// channel may be displaced by a new connection.
+//
+// It is the only thing rate-limiting displacement. Network.ConnectRouter always displaces an occupant it
+// does not recognise, so without this a spurious first-connection hello would tear down a healthy control
+// channel and force the router to redial. Uniqueness itself is guaranteed under the per-router lock in
+// ConnectRouter, not here, so this check exists purely to protect a working connection from churn.
+func Test_withinChurnLimit(t *testing.T) {
+	connectedAt := func(d time.Duration) *model.Router {
+		r := &model.Router{ConnectTime: time.Now().Add(-d)}
+		r.Id = "r1"
+		return r
+	}
+
+	tests := []struct {
+		name       string
+		since      time.Duration
+		churnLimit time.Duration
+		protected  bool
+	}{
+		{"a connection just established is protected", 0, time.Minute, true},
+		{"still protected part way through the window", 30 * time.Second, time.Minute, true},
+		{"displaceable once the window has passed", 2 * time.Minute, time.Minute, false},
+		// A zero limit is a supported setting and means "always allow takeover", which is what the option
+		// existed to make configurable in the first place.
+		{"a zero limit protects nothing", 0, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.protected, withinChurnLimit(connectedAt(tt.since), tt.churnLimit))
+		})
+	}
 }

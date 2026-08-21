@@ -46,14 +46,22 @@ const (
 )
 
 type NetworkConfig struct {
-	CreateCircuitRetries    uint32
-	CycleSeconds            uint32
-	InitialLinkLatency      time.Duration
-	IntervalAgeThreshold    time.Duration
-	MetricsReportInterval   time.Duration
-	MinRouterCost           uint16
-	PendingLinkTimeout      time.Duration
-	RouteTimeout            time.Duration
+	CreateCircuitRetries  uint32
+	CycleSeconds          uint32
+	InitialLinkLatency    time.Duration
+	IntervalAgeThreshold  time.Duration
+	MetricsReportInterval time.Duration
+	MinRouterCost         uint16
+	PendingLinkTimeout    time.Duration
+	RouteTimeout          time.Duration
+	// RouterConnectChurnLimit is how long an established router control channel is protected from being
+	// displaced by a new connection for the same router. A new connection arriving inside the window is
+	// refused; after it, the established connection is displaced and the router redials into the freed
+	// slot. Zero always allows takeover.
+	//
+	// This is churn policy, not the guarantee that a router has one connection: that is enforced under the
+	// per-router lock in Network.ConnectRouter. Its purpose is to stop a flapping router from repeatedly
+	// tearing down a working channel, since displacement is not free.
 	RouterConnectChurnLimit time.Duration
 	RouterComm              struct {
 		QueueSize  uint32
