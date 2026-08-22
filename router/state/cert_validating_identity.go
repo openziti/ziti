@@ -31,7 +31,8 @@ import (
 // certValidatingIdentity wraps an identity.Identity to add client certificate chain verification
 // at the TLS level via a VerifyConnection callback. It dynamically builds a CA pool from the
 // router data model's PublicKeys with ClientX509CertValidation usage, ensuring the latest
-// trust anchors are always used.
+// trust anchors are always used. Verification is skipped for TLS layers that don't require a
+// client certificate.
 type certValidatingIdentity struct {
 	identity.Identity
 	stateManager Manager
@@ -51,18 +52,38 @@ func WrapIdentityWithCertValidation(id *identity.TokenId, stateManager Manager) 
 	}
 }
 
+// ServerTLSConfig returns a tls.Config which validates client certificate chains against the
+// router data model CA pool, unless the config is later set to not require a client certificate.
 func (self *certValidatingIdentity) ServerTLSConfig() *tls.Config {
 	cfg := self.Identity.ServerTLSConfig()
-	cfg.VerifyConnection = self.verifyConnection
+	if cfg == nil {
+		return nil
+	}
+
+	// ClientAuth is read at verification time rather than here because transport listeners may
+	// change it after this call. The wss listener sets NoClientCert on the outer TLS layer and
+	// requires the client certificate on the inner TLS layer established over the websocket.
+	cfg.VerifyConnection = func(state tls.ConnectionState) error {
+		if len(state.PeerCertificates) == 0 && !requiresClientCert(cfg.ClientAuth) {
+			return nil
+		}
+		return self.verifyConnection(state)
+	}
 	return cfg
+}
+
+// requiresClientCert reports whether the given client auth type makes a handshake fail when the
+// client presents no certificate.
+func requiresClientCert(clientAuth tls.ClientAuthType) bool {
+	return clientAuth == tls.RequireAnyClientCert || clientAuth == tls.RequireAndVerifyClientCert
 }
 
 // verifyConnection is a TLS VerifyConnection callback that verifies client certificates against
 // the CA pool built from RDM PublicKeys.
 func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) error {
 	if len(state.PeerCertificates) == 0 {
-		// No client cert presented. The edge listener requires a cert (RequireAnyClientCert),
-		// so this should not happen. Reject to be safe.
+		// The listener requires a client cert, so the handshake should not have gotten this far
+		// without one. Reject to be safe.
 		return errors.New("no client certificate presented")
 	}
 
