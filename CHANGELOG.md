@@ -7,6 +7,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
+  * [Issue #4294](https://github.com/openziti/ziti/issues/4294) - [Backport-2.0] Admin MFA removal doesn't replicate across HA cluster members
   * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
 
 # Release 2.0.4
