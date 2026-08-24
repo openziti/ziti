@@ -22,6 +22,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 
 	"github.com/openziti/channel/v4"
@@ -185,9 +186,16 @@ func NewDefaultHeartbeatOptions() *HeartbeatOptions {
 	}
 }
 
+// NewHeartbeatOptions returns the control channel heartbeat options described by options, overlaying
+// this package's unresponsiveAfter setting. It rejects a cadence that cannot keep the channel up,
+// since CheckHeartBeat tears the channel down once CloseUnresponsiveTimeout passes without a
+// response.
 func NewHeartbeatOptions(options *channel.HeartbeatOptions) (*HeartbeatOptions, error) {
 	unresponsiveAfter, err := options.GetDuration("unresponsiveAfter")
 	if err != nil {
+		return nil, err
+	}
+	if err := config.ValidateHeartbeatOptions(options); err != nil {
 		return nil, err
 	}
 	result := NewDefaultHeartbeatOptions()
