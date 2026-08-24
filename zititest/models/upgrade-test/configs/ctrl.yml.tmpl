@@ -1,0 +1,113 @@
+v: 3
+
+{{if .Component.GetFlag "cluster"}}
+cluster:
+  dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+  # the standalone->HA migration seeds raft from the source db via a snapshot, which requires a
+  # controller restart to apply; restart ourselves so no external restart is needed.
+  restartSelfOnSnapshot: true
+{{if .Component.GetFlag "migrateDb"}}
+# migrate the existing standalone bbolt db into raft on first cluster start (bootstrap node only)
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+{{end}}
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+routerDataModel:
+  enabled: true
+{{end}}
+
+identity:
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}-server.chain.pem
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.chain.pem
+
+trustDomain: upgrade-test
+
+# the endpoint that routers will connect to the controller over.
+ctrl:
+  listener: tls:0.0.0.0:6262
+  options:
+    advertiseAddress: tls:{{ .Host.PublicIp }}:6262
+
+events:
+  entityChangeEventsLogger:
+    subscriptions:
+      - type: entityChange
+        propagateAlways: true
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/entity-change.log
+
+  circuitEventsLogger:
+    subscriptions:
+      - type: circuit
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/circuits.log
+
+  linkEventsLogger:
+    subscriptions:
+      - type: link
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/links.log
+
+  routerEventsLogger:
+    subscriptions:
+      - type: router
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/router.log
+
+  # api-session events carry the session type (legacy vs jwt), keyed by identity and source IP.
+  # The upgrade test reads this log to confirm a restarted client re-authenticated via OIDC (jwt).
+  apiSessionEventsLogger:
+    subscriptions:
+      - type: apiSession
+    handler:
+      type: file
+      format: json
+      path: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/logs/api-sessions.log
+
+healthChecks:
+  boltCheck:
+    interval: 30s
+    timeout: 15s
+    initialDelay: 15s
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: {{ .Host.PublicIp }}:1280
+  enrollment:
+    signingCert:
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/certs/{{ .Component.Id }}.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/{{ .Component.Id }}/keys/{{ .Component.Id }}.key
+    edgeIdentity:
+      duration: 5m
+    edgeRouter:
+      duration: 5m
+
+web:
+  - name: all-apis-localhost
+    bindPoints:
+      - interface: 0.0.0.0:1280
+        address: {{ .Host.PublicIp }}:1280
+    options:
+      idleTimeout: 5000ms
+      readTimeout: 5000ms
+      writeTimeout: 100000ms
+      minTLSVersion: TLS1.2
+      maxTLSVersion: TLS1.3
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+{{if .Component.GetFlag "oidc"}}
+      - binding: edge-oidc
+{{end}}
