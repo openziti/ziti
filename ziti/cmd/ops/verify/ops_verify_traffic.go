@@ -530,19 +530,28 @@ func (t *traffic) doBoth() error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	ctx, cancel := context.WithCancel(context.Background())
+	var serverErr, clientErr error
 	go func() {
 		defer wg.Done()
-		if err := t.doServer(ctx, false); err != nil {
-			log.Error(err)
+		if serverErr = t.doServer(ctx, false); serverErr != nil {
+			log.Error(serverErr)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		if err := t.doClient(cancel); err != nil {
-			log.Error(err)
+		if clientErr = t.doClient(cancel); clientErr != nil {
+			log.Error(clientErr)
 		}
 	}()
 	wg.Wait()
+	// the client's outcome is authoritative; the server returning context.Canceled is the
+	// expected result of the client tearing it down after a successful exchange
+	if clientErr != nil {
+		return clientErr
+	}
+	if serverErr != nil && !errors.Is(serverErr, context.Canceled) {
+		return serverErr
+	}
 	return nil
 }
 
@@ -571,6 +580,9 @@ func (t *traffic) doClient(cancel context.CancelFunc) error {
 	if t.extJwtSigner != "" {
 		return t.doClientExtJwt(cancel)
 	}
+
+	// stop the server on every exit path; a failed dial must not leave it blocked in Accept
+	defer cancel()
 
 	clientCfg, err := t.configureClient()
 	if err != nil {
@@ -626,24 +638,33 @@ func (t *traffic) doBothExtJwt() error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	ctx, cancel := context.WithCancel(context.Background())
+	var serverErr, clientErr error
 	go func() {
 		defer wg.Done()
 		log.Infof("binding %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
-		if err := t.startServer(ctx, t.svcName, serverCfg); err != nil {
-			log.Errorf("ext-jwt server error: %v", err)
+		if serverErr = t.startServer(ctx, t.svcName, serverCfg); serverErr != nil {
+			log.Errorf("ext-jwt server error: %v", serverErr)
 		}
 	}()
 	go func() {
 		defer wg.Done()
+		defer cancel() // end the server on every exit path
 		log.Infof("dialing %s as certless ext-jwt identity (signer %q)", t.svcName, t.extJwtSigner)
-		if err := t.startClient(t.client, t.svcName, clientCfg); err != nil {
-			log.Errorf("ext-jwt client error: %v", err)
+		if clientErr = t.startClient(t.client, t.svcName, clientCfg); clientErr != nil {
+			log.Errorf("ext-jwt client error: %v", clientErr)
+			return
 		}
 		cancel() // end the server
 		time.Sleep(1 * time.Second)
 		log.Info("client complete")
 	}()
 	wg.Wait()
+	if clientErr != nil {
+		return clientErr
+	}
+	if serverErr != nil && !errors.Is(serverErr, context.Canceled) {
+		return serverErr
+	}
 	return nil
 }
 
