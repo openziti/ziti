@@ -1,3 +1,14 @@
+# Release 2.0.4
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
+  * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
+
 # Release 2.0.3
 
 ## What's New
