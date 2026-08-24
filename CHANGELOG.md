@@ -60,6 +60,7 @@ Thanks to the community members who contributed to this release.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.2 -> v2.0.3](https://github.com/openziti/ziti/compare/v2.0.2...v2.0.3)
+  * [Issue #4294](https://github.com/openziti/ziti/issues/4294) - [Backport-2.0] Admin MFA removal doesn't replicate across HA cluster members
   * [Issue #4269](https://github.com/openziti/ziti/issues/4269) - [Backport-2.0] Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
   * [Issue #4242](https://github.com/openziti/ziti/issues/4242) - [Backport-2.0] Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
   * [Issue #4236](https://github.com/openziti/ziti/issues/4236) - [Backport-2.0] Ensure terminator operations are scoped by source router
