@@ -17,7 +17,6 @@
 package xgress_edge
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1385,8 +1384,8 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
 	cost := uint16(0)
-	if costBytes, hasCost := req.Headers[sdkedge.CostHeader]; hasCost {
-		cost = binary.LittleEndian.Uint16(costBytes)
+	if costVal, hasCost := req.GetUint16Header(sdkedge.CostHeader); hasCost {
+		cost = costVal
 	}
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
