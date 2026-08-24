@@ -1,3 +1,14 @@
+# Release 1.6.21
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
+  * [Issue #4299](https://github.com/openziti/ziti/issues/4299) - [Backport-1.6] Bind message with a short cost header panics the router
+
 # Release 1.6.20
 
 ## What's New
