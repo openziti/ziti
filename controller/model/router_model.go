@@ -45,6 +45,9 @@ type Router struct {
 	Control           ctrlchan.CtrlChannel
 	Connected         atomic.Bool
 	ConnectTime       time.Time
+	// VersionInfo is reported in the router's hello and is not persisted, so it is only populated on the
+	// instance built for a control-channel connection. It is nil on an instance loaded from the database.
+	// Read it from GetConnected rather than from whatever instance is to hand.
 	VersionInfo       *versions.VersionInfo
 	routerLinks       RouterLinks
 	Cost              uint16
