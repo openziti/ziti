@@ -18,7 +18,9 @@ package common
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/openziti/ziti/v2/common/build"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +38,10 @@ func NewVersionCmd() *cobra.Command {
 				fmt.Printf("Build Date:   %s\n", version.GetBuildDate())
 				fmt.Printf("Go Version:   %s\n", version.GetGoVersion())
 				fmt.Printf("OS/Arch:      %s/%s\n", version.GetOS(), version.GetArchitecture())
+
+				if buildFlags := build.GetBuildFlags(); len(buildFlags) > 0 {
+					fmt.Printf("Build Flags:  %s\n", strings.Join(buildFlags, ", "))
+				}
 			} else {
 				fmt.Println(version.GetVersion())
 			}

@@ -105,6 +105,7 @@ func (ir *VersionRouter) buildVersions(ae *env.AppEnv) *rest_model.Version {
 		Version:        buildInfo.Version(),
 		APIVersions:    map[string]map[string]rest_model.APIVersion{},
 		Capabilities:   []string{},
+		BuildFlags:     build.GetBuildFlags(),
 	}
 
 	for apiBinding, apiVersionToPathMap := range webapis.AllApiBindingVersions {
