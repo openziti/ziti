@@ -16,6 +16,7 @@
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
+* [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -495,6 +496,36 @@ or `pfxlog.ChannelLogger(...)` continue to follow the global level, so because
 most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
+
+## Build Flags
+
+A controller binary can now carry a list of build flags: short names for the
+build time choices it was made with. The `/version` endpoint returns them in a
+new `buildFlags` field, and `ziti version -v` prints them, so a client or an
+operator can tell what a running controller was built to do without asking the
+person who built it.
+
+Flags are set with the Go linker at build time. There is one symbol, and one
+build owner composes the whole list:
+
+```
+go build -ldflags "-X github.com/openziti/ziti/v2/common/build.buildFlags=ALPHA,BRAVO_MODE" ./ziti
+```
+
+Names are uppercase letters, digits, and underscores. Anything else in the list
+is dropped rather than served. A second `-X` against the same symbol replaces
+the first rather than adding to it, and the linker silently ignores an `-X`
+whose symbol path it cannot resolve, so a typo in that path yields a binary with
+no flags rather than a build error.
+
+Releases from this repository set no flags, so `buildFlags` is empty and `ziti
+version -v` prints no build flags line. The names themselves are defined by
+whoever produced the build; a client should ignore any it does not recognize.
+
+Build flags are not capabilities. `capabilities` on `/version` describes what
+the controller offers over the API, is defined by this repository, and is
+enumerated at `/enumerated-capabilities`. Build flags describe how the binary
+was built, are open-ended, and are enumerated nowhere.
 
 ## Deprecated Features
 
