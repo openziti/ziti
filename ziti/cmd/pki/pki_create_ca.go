@@ -104,7 +104,10 @@ func (o *PKICreateCAOptions) Run() error {
 	commonName := o.Flags.CAName
 
 	filename := o.ObtainFileName(caFile, commonName)
-	template := o.ObtainPKIRequestTemplate(commonName)
+	template, err := o.ObtainPKIRequestTemplate(commonName)
+	if err != nil {
+		return err
+	}
 
 	template.IsCA = true
 

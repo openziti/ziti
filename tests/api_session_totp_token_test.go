@@ -160,7 +160,9 @@ func Test_API_Session_TOTP_Tokens(t *testing.T) {
 
 			code := adminTotpProvider.Code()
 
+			beforeTotpCreate := time.Now()
 			totpToken, err := adminManagementClient.GetTotpToken(code)
+			afterTotpCreate := time.Now()
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(totpToken)
 			ctx.Req.NotNil(totpToken.Token)
@@ -191,8 +193,8 @@ func Test_API_Session_TOTP_Tokens(t *testing.T) {
 				ctx.NoError(err)
 				ctx.NotNil(issuedAt)
 
-				delta := issuedAt.Time.UTC().Sub(accessClaims.IssuedAt.AsTime().UTC()).Abs()
-				ctx.True(delta < 2*time.Millisecond)
+				// The serialized iat truncates to whole seconds, so the lower bound must too.
+				ctx.Req.WithinRange(issuedAt.Time, beforeTotpCreate.Truncate(time.Second), afterTotpCreate)
 
 				ctx.Equal(accessClaims.ApiSessionId, totpClaims.ApiSessionId)
 
