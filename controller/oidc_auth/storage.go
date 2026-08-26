@@ -455,7 +455,6 @@ func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, confi
 
 		if certAuth != nil {
 			authRequest.IsCertExtendable = certAuth.IsIssuedByNetwork
-			authRequest.IsCertExtendable = true
 			authRequest.IsCertKeyRollRequested = certAuth.IsKeyRollRequested
 			authRequest.ImproperClientCertChain = result.ImproperClientCertChain()
 		}
