@@ -29,6 +29,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/event"
 
 	"github.com/hashicorp/raft"
@@ -42,12 +43,13 @@ import (
 
 const (
 	// New header IDs, starting at 2000 to avoid conflicts with channel base headers (0-12+)
-	PeerAddrHeader        = 2000
-	SigningCertHeader     = 2001
-	ApiAddressesHeader    = 2002
-	RaftConnIdHeader      = 2003
-	ClusterIdHeader       = 2004
-	PreferredLeaderHeader = 2005
+	PeerAddrHeader         = 2000
+	SigningCertHeader      = 2001
+	ApiAddressesHeader     = 2002
+	RaftConnIdHeader       = 2003
+	ClusterIdHeader        = 2004
+	PreferredLeaderHeader  = 2005
+	SigningCertChainHeader = 2006 // full signing cert chain, leaf first, as concatenated DER
 
 	// Legacy header IDs, used as fallback when reading from older peers
 	LegacyPeerAddrHeader     = 11
@@ -70,11 +72,12 @@ type Peer struct {
 	Id              raft.ServerID
 	Address         string
 	Channel         channel.Channel
-	RaftConns       concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
+	ClusterId       string
 	Version         *versions.VersionInfo
 	SigningCerts    []*x509.Certificate
 	ApiAddresses    map[string][]event.ApiAddress
 	PreferredLeader bool
+	RaftConns       concurrenz.CopyOnWriteMap[uint32, *raftPeerConn]
 	raftPeerIdGen   uint32
 }
 
@@ -323,6 +326,10 @@ type Mesh interface {
 	RegisterClusterStateHandler(f func(state ClusterState))
 	Init(bindHandler channel.BindHandler)
 	CleanupDialRecords()
+
+	// RevalidatePeerClusterIds drops connected peers whose cluster id no longer matches the local
+	// cluster id. It is called when the local node acquires or changes its cluster id.
+	RevalidatePeerClusterIds()
 }
 
 func New(env Env, raftAddr raft.ServerAddress, helloHeaderProviders []HeaderProvider) Mesh {
@@ -452,8 +459,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 	tlsCert := self.nodeId.ServerCert()
 	var serverCert []byte
+	var serverCertChain []byte
 	if len(tlsCert) != 0 && len(tlsCert[0].Certificate) != 0 {
 		serverCert = tlsCert[0].Certificate[0]
+		serverCertChain = ConcatDer(tlsCert[0].Certificate)
 	}
 
 	headers := map[int32][]byte{
@@ -463,6 +472,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		LegacyPeerAddrHeader:       []byte(self.raftAddr),
 		SigningCertHeader:          serverCert,
 		LegacySigningCertHeader:    serverCert,
+		SigningCertChainHeader:     serverCertChain,
 		ClusterIdHeader:            []byte(self.env.GetClusterId()),
 		LegacyClusterIdHeader:      []byte(self.env.GetClusterId()),
 	}
@@ -472,14 +482,16 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	// Check if a recent dial to this address failed (e.g., hello too large for an old peer).
-	// If so, strip the new signing cert header so only the legacy header is sent, allowing
+	// If so, strip the new signing cert headers so only the legacy header is sent, allowing
 	// the connection to succeed with old controllers that enforce the smaller hello limit.
 	self.lock.RLock()
 	if rec := self.dialRecords[address]; rec != nil && time.Since(rec.lastAttempt) < RecentDialInterval {
 		if rec.peerVersion == nil {
 			delete(headers, SigningCertHeader)
+			delete(headers, SigningCertChainHeader)
 		} else if hasMin, _ := rec.peerVersion.HasMinimumVersion("v2.0.0"); !hasMin {
 			delete(headers, SigningCertHeader)
+			delete(headers, SigningCertChainHeader)
 		}
 	}
 	self.lock.RUnlock()
@@ -514,6 +526,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
+		peer.ClusterId = getPeerClusterId(peer.Channel)
 
 		underlay := binding.GetChannel().Underlay()
 		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
@@ -544,7 +557,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		}
 
 		peer.Version = versionInfo
-		peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+		peer.SigningCerts = signingCertsFromHeaders(peer.Channel.Underlay().Headers())
+		if len(peer.SigningCerts) == 0 {
+			peer.SigningCerts = underlay.Certificates()
+		}
 
 		self.lock.Lock()
 		if rec := self.dialRecords[address]; rec != nil {
@@ -589,27 +605,63 @@ func (self *impl) validateConnection(ch channel.Channel) error {
 }
 
 func (self *impl) checkClusterIds(ch channel.Channel) error {
-	clusterIdBytes, _ := headerWithFallback(ch.Underlay().Headers(), ClusterIdHeader, LegacyClusterIdHeader)
-	clusterId := string(clusterIdBytes)
+	clusterId := getPeerClusterId(ch)
 	if clusterId != "" && self.env.GetClusterId() != "" && clusterId != self.env.GetClusterId() {
 		return fmt.Errorf("local cluster id %s doesn't match peer cluster id %s", self.env.GetClusterId(), clusterId)
 	}
 	return nil
 }
 
-func (self *impl) checkCerts(ch channel.Channel) error {
-	certs := ch.Underlay().Certificates()
-	if len(certs) == 0 {
-		return errors.New("unable to validate peer connection, no certs presented")
-	}
+// getPeerClusterId returns the cluster id the peer advertised, or "" if none (a blank node not yet
+// joined or bootstrapped).
+func getPeerClusterId(ch channel.Channel) string {
+	clusterIdBytes, _ := headerWithFallback(ch.Underlay().Headers(), ClusterIdHeader, LegacyClusterIdHeader)
+	return string(clusterIdBytes)
+}
 
-	for _, cert := range ch.Underlay().Certificates() {
-		if _, err := self.env.GetNodeId().CaPool().VerifyToRoot(cert); err == nil {
-			return nil
+// RevalidatePeerClusterIds drops connected peers whose known cluster id differs from the local one.
+// The bind-time check runs once and skips empty ids, so a node that connected while blank and later
+// acquired a different id would otherwise stay cross-connected. Called when the local id is set.
+func (self *impl) RevalidatePeerClusterIds() {
+	localId := self.env.GetClusterId()
+	for _, peer := range peersWithMismatchedClusterId(localId, self.GetPeers()) {
+		pfxlog.Logger().
+			WithField("peerId", string(peer.Id)).
+			WithField("peerAddress", peer.Address).
+			WithField("peerClusterId", peer.ClusterId).
+			WithField("localClusterId", localId).
+			Error("dropping peer connection with mismatched cluster id")
+		if err := peer.Channel.Close(); err != nil {
+			pfxlog.Logger().WithError(err).
+				WithField("peerId", string(peer.Id)).
+				Error("error closing peer channel with mismatched cluster id")
 		}
 	}
+}
 
-	return errors.New("unable to validate peer connection, no certs presented matched the CA for this node")
+// peersWithMismatchedClusterId returns peers whose known cluster id differs from localId. Peers with
+// an empty id (legitimate blank joiners) are never returned, nor is anything when localId is empty.
+func peersWithMismatchedClusterId(localId string, peers map[string]*Peer) []*Peer {
+	if localId == "" {
+		return nil
+	}
+	var mismatched []*Peer
+	for _, peer := range peers {
+		if peer.ClusterId != "" && peer.ClusterId != localId {
+			mismatched = append(mismatched, peer)
+		}
+	}
+	return mismatched
+}
+
+func (self *impl) checkCerts(ch channel.Channel) error {
+	// Peer identity is taken from certs[0] via ExtractSpiffeId, so certs[0] is the certificate that must
+	// chain to a trusted CA; VerifyLeafCertChain verifies that leaf specifically against the node's full
+	// trusted-CA pool.
+	if _, err := cert.VerifyLeafCertChain(self.env.GetNodeId().CA(), ch.Underlay().Certificates()); err != nil {
+		return fmt.Errorf("unable to validate peer connection: %w", err)
+	}
+	return nil
 }
 
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
@@ -701,6 +753,12 @@ func ExtractSpiffeId(certs []*x509.Certificate) (string, error) {
 
 func (self *impl) PeerConnected(peer *Peer, dial bool) error {
 	self.lock.Lock()
+	// Re-check the cluster id under the lock: the bind-time check can race a local-id change that
+	// lands before the peer is registered, which RevalidatePeerClusterIds would then miss.
+	if localId := self.env.GetClusterId(); localId != "" && peer.ClusterId != "" && peer.ClusterId != localId {
+		self.lock.Unlock()
+		return fmt.Errorf("peer %v cluster id %s does not match local cluster id %s", peer.Id, peer.ClusterId, localId)
+	}
 	if self.Peers[peer.Address] != nil {
 		defer self.lock.Unlock()
 		return fmt.Errorf("connection from peer %v @ %v already present", peer.Id, peer.Address)
@@ -879,15 +937,12 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		if err = self.validateConnection(peer.Channel); err != nil {
 			return err
 		}
+		peer.ClusterId = getPeerClusterId(peer.Channel)
 
 		peer.Version = versionInfo
-		if certHeader, found := headerWithFallback(ch.Underlay().Headers(), SigningCertHeader, LegacySigningCertHeader); found {
-			if cert, err := x509.ParseCertificate(certHeader); err == nil {
-				peer.SigningCerts = []*x509.Certificate{cert}
-			}
-		}
+		peer.SigningCerts = signingCertsFromHeaders(ch.Underlay().Headers())
 		if len(peer.SigningCerts) == 0 {
-			peer.SigningCerts = []*x509.Certificate{underlay.Certificates()[0]}
+			peer.SigningCerts = underlay.Certificates()
 		}
 
 		binding.AddReceiveHandlerF(RaftDataType, peer.handleReceiveData)
@@ -972,6 +1027,33 @@ func headerWithFallback(headers map[int32][]byte, key int32, legacyKey int32) ([
 		return val, true
 	}
 	return nil, false
+}
+
+// ConcatDer concatenates DER-encoded certificates into a single byte slice, parseable
+// with x509.ParseCertificates.
+func ConcatDer(certs [][]byte) []byte {
+	var result []byte
+	for _, der := range certs {
+		result = append(result, der...)
+	}
+	return result
+}
+
+// signingCertsFromHeaders extracts a peer's signing certificates from hello headers,
+// preferring the full chain header (leaf first) over the older single-cert headers.
+// Returns nil when no header yields a certificate.
+func signingCertsFromHeaders(headers map[int32][]byte) []*x509.Certificate {
+	if chainHeader, found := headers[SigningCertChainHeader]; found {
+		if certs, err := x509.ParseCertificates(chainHeader); err == nil && len(certs) > 0 {
+			return certs
+		}
+	}
+	if certHeader, found := headerWithFallback(headers, SigningCertHeader, LegacySigningCertHeader); found {
+		if signingCert, err := x509.ParseCertificate(certHeader); err == nil {
+			return []*x509.Certificate{signingCert}
+		}
+	}
+	return nil
 }
 
 func getUint32HeaderWithFallback(m *channel.Message, key int32, legacyKey int32) (uint32, bool) {

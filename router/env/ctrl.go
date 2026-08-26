@@ -20,7 +20,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 
 	"github.com/openziti/channel/v4"
@@ -47,7 +49,10 @@ func newNetworkCtrl(ch ctrlchan.CtrlChannel, address string, heartbeatOptions *H
 		address:          address,
 		heartbeatOptions: heartbeatOptions,
 	}
-	result.lastContact.Store(time.Now().UnixMilli())
+	// Seed the response time so a channel is not judged unresponsive before its first heartbeat has had a
+	// chance to be answered.
+	result.lastRx = time.Now().UnixMilli()
+	result.lastContact.Store(result.lastRx)
 	return result
 }
 
@@ -149,6 +154,25 @@ func (self *networkCtrl) CheckHeartBeat() {
 	} else {
 		self.unresponsive.Store(false)
 	}
+
+	// Unresponsive alone only deprioritizes. A channel whose underlays are dead but undetected keeps its
+	// group and dials only additional underlays, which the controller refuses once its side is gone, so
+	// nothing re-establishes the group until the OS abandons the connection minutes later.
+	if timeout := self.heartbeatOptions.CloseUnresponsiveTimeout; timeout > 0 && self.timeSinceLastResponse() > timeout {
+		log := pfxlog.Logger().
+			WithField("address", self.address).
+			WithField("timeSinceLastResponse", self.timeSinceLastResponse())
+		log.Error("no heartbeat response from controller in time, closing control channel")
+		if err := self.ch.Close(); err != nil {
+			log.WithError(err).Error("error closing unresponsive control channel")
+		}
+	}
+}
+
+// timeSinceLastResponse reports how long it has been since the controller last answered a heartbeat. It is
+// only read on the heartbeat goroutine, which is also the only writer of lastRx.
+func (self *networkCtrl) timeSinceLastResponse() time.Duration {
+	return time.Duration(time.Now().UnixMilli()-self.lastRx) * time.Millisecond
 }
 
 func (self *networkCtrl) IsConnected() bool {
@@ -162,9 +186,16 @@ func NewDefaultHeartbeatOptions() *HeartbeatOptions {
 	}
 }
 
+// NewHeartbeatOptions returns the control channel heartbeat options described by options, overlaying
+// this package's unresponsiveAfter setting. It rejects a cadence that cannot keep the channel up,
+// since CheckHeartBeat tears the channel down once CloseUnresponsiveTimeout passes without a
+// response.
 func NewHeartbeatOptions(options *channel.HeartbeatOptions) (*HeartbeatOptions, error) {
 	unresponsiveAfter, err := options.GetDuration("unresponsiveAfter")
 	if err != nil {
+		return nil, err
+	}
+	if err := config.ValidateHeartbeatOptions(options); err != nil {
 		return nil, err
 	}
 	result := NewDefaultHeartbeatOptions()

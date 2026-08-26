@@ -41,7 +41,6 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -53,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/peermsg"
 	"github.com/openziti/ziti/v2/controller/raft/mesh"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
 )
@@ -138,6 +138,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		clusterEvents:   make(chan raft.Observation, 16),
 		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
 		errorMappers:    map[string]func(map[string]any) error{},
+		decoders:        command.NewDecoders(),
 	}
 	result.initErrorMappers()
 	return result
@@ -157,10 +158,18 @@ type Controller struct {
 	indexTracker               IndexTracker
 	migrationMgr               MigrationManager
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
+	clusterStateChangeLock     sync.Mutex
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
 	raftRateLimiter            rate.AdaptiveRateLimitTracker
 	errorMappers               map[string]func(map[string]any) error
+	decoders                   command.Decoders
+}
+
+// GetDecoders returns the command decoder registry this controller's raft FSM uses to decode
+// replicated log entries. It is per-controller so multiple in-process controllers stay isolated.
+func (self *Controller) GetDecoders() command.Decoders {
+	return self.decoders
 }
 
 func (self *Controller) GetNodeId() *identity.TokenId {
@@ -199,6 +208,9 @@ func (self *Controller) GetListenerHeaders() map[int32][]byte {
 	if self.Config.PreferredLeader {
 		headers[mesh.PreferredLeaderHeader] = []byte{1}
 	}
+	if serverCerts := self.env.GetId().ServerCert(); len(serverCerts) > 0 && len(serverCerts[0].Certificate) > 0 {
+		headers[mesh.SigningCertChainHeader] = mesh.ConcatDer(serverCerts[0].Certificate)
+	}
 	return headers
 }
 
@@ -208,6 +220,10 @@ func (self *Controller) initErrorMappers() {
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState, leaderId string)) {
+	// Hold the lock across the leader check and append so a leadership transition cannot slip
+	// between them, which would leave the handler seeing neither the immediate call nor the event.
+	self.clusterStateChangeLock.Lock()
+	defer self.clusterStateChangeLock.Unlock()
 	if self.isLeader.Load() {
 		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()), self.env.GetId().Token)
 	}
@@ -215,12 +231,8 @@ func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, s
 }
 
 func (self *Controller) InitEnv(env model.Env) error {
+	// The cluster id is loaded earlier, in Init, so it is set before raft and the mesh start.
 	model.RegisterCommand(env, &InitClusterIdCmd{}, &cmd_pb.InitClusterIdCommand{})
-	clusterId, err := db.LoadClusterId(env.GetDb())
-	if err != nil {
-		return err
-	}
-	self.clusterId.Store(clusterId)
 	return nil
 }
 
@@ -634,11 +646,19 @@ func (self *Controller) Init() error {
 		self.clusterEvents <- obs
 	})
 
-	self.Fsm = NewFsm(raftConfig.DataDir, raftConfig.RestartSelf, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
+	self.Fsm = NewFsm(raftConfig.DataDir, raftConfig.RestartSelf, self.decoders, self.indexTracker, self.env.GetEventDispatcher())
 
 	if err = self.Fsm.Init(); err != nil {
 		return fmt.Errorf("failed to init FSM (%w)", err)
 	}
+
+	// Load the cluster id before raft (and the mesh) start, so this node never presents an empty id
+	// that the mesh empty-id bypass would let pair with a different cluster.
+	clusterId, err := db.LoadClusterId(self.Fsm.GetDb())
+	if err != nil {
+		return fmt.Errorf("failed to load cluster id (%w)", err)
+	}
+	self.clusterId.Store(clusterId)
 
 	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
 
@@ -682,6 +702,7 @@ func (self *Controller) StartEventGeneration() {
 	self.addEventsHandlers()
 	go self.eventLoop()
 	self.setupPreferredLeaderTransfer()
+	self.setupClusterIdBackfill()
 }
 
 func (self *Controller) setupPreferredLeaderTransfer() {
@@ -760,6 +781,38 @@ func (self *Controller) transferToPreferredLeader() {
 	}
 
 	log.Warn("no preferred leader peers are connected, retaining leadership")
+}
+
+// setupClusterIdBackfill backfills a cluster id on leadership when the cluster has none, letting a
+// cluster migrated on an older build (which came up with no cluster id) self-heal. If a cluster
+// hasn't been bootstrapped yet, this isn't needed
+func (self *Controller) setupClusterIdBackfill() {
+	if self.Raft.LastIndex() == 0 {
+		return
+	}
+	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState, leaderId string) {
+		if evt == ClusterEventLeadershipGained {
+			go self.backfillClusterId()
+		}
+	})
+}
+
+// backfillClusterId sets a cluster id if this leader finds none; a no-op otherwise, so it is safe to
+// run on every leadership change. The current timeline id is passed through unchanged.
+func (self *Controller) backfillClusterId() {
+	if !self.IsLeader() || self.GetClusterId() != "" {
+		return
+	}
+	clusterId := uuid.NewString()
+	log := pfxlog.Logger().WithField("clusterId", clusterId)
+	log.Info("cluster has no cluster id; backfilling one on leadership acquisition")
+	if err := self.Dispatch(&InitClusterIdCmd{
+		ClusterId:      clusterId,
+		TimelineId:     self.env.TimelineId(),
+		raftController: self,
+	}); err != nil {
+		log.WithError(err).Error("failed to backfill cluster id")
+	}
 }
 
 func (self *Controller) Configure(ctrlConfig *config.RaftConfig, conf *raft.Config) {
@@ -855,6 +908,9 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 	pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), eventState.isReadWrite)
 
 	if raftState, ok := observation.Data.(raft.RaftState); ok {
+		// Serialize the leadership swap and dispatch with RegisterClusterEventHandler so a handler
+		// registered during a transition is not missed by both the immediate call and the event.
+		self.clusterStateChangeLock.Lock()
 		if raftState == raft.Leader {
 			if wasLeader := self.isLeader.Swap(true); !wasLeader {
 				self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
@@ -862,6 +918,7 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 		} else if wasLeader := self.isLeader.Swap(false); wasLeader {
 			self.handleClusterStateChange(ClusterEventLeadershipLost, eventState)
 		}
+		self.clusterStateChangeLock.Unlock()
 	}
 
 	if state, ok := observation.Data.(mesh.ClusterState); ok {
@@ -904,6 +961,17 @@ func (self *Controller) Bootstrap() error {
 		logrus.Info("raft already bootstrapped")
 		self.bootstrapped.Store(true)
 	} else {
+		// Already connected to peers means this node belongs to an existing cluster; founding a new
+		// one here would fork a divergent cluster.
+		if peers := self.Mesh.GetPeers(); len(peers) > 0 {
+			addrs := make([]string, 0, len(peers))
+			for addr := range peers {
+				addrs = append(addrs, addr)
+			}
+			return fmt.Errorf("refusing to bootstrap a new cluster: node is already connected to %d cluster peer(s) %v; "+
+				"this node should join the existing cluster (e.g. 'ziti agent cluster add' from a current member), not initialize a new one", len(peers), addrs)
+		}
+
 		if err := self.migrationMgr.ValidateMigrationEnvironment(); err != nil {
 			return err
 		}
@@ -1097,14 +1165,19 @@ type MigrationManager interface {
 	InitializeRaftFromBoltDb(srcDb string) error
 }
 
+var _ command.CriticalCommand = (*InitClusterIdCmd)(nil)
+
 type InitClusterIdCmd struct {
 	ClusterId      string `json:"clusterId"`
 	TimelineId     string `json:"timelineId"`
 	raftController *Controller
 }
 
+// IsCriticalCommand marks InitClusterIdCmd as base state: it establishes the cluster id, which is
+// not otherwise replayed, so a failed apply must halt rather than advance. Its writes are idempotent.
+func (self *InitClusterIdCmd) IsCriticalCommand() {}
+
 func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
-	self.raftController.clusterId.Store(self.ClusterId)
 	_, err := self.raftController.Fsm.GetDb().GetTimelineId(boltz.TimelineModeForceReset, func() (string, error) {
 		return self.TimelineId, nil
 	})
@@ -1115,7 +1188,21 @@ func (self *InitClusterIdCmd) Apply(ctx boltz.MutateContext) error {
 	if self.raftController.env.TimelineId() != self.TimelineId {
 		self.raftController.env.InitTimelineId(self.TimelineId)
 	}
-	return db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
+
+	// Persist before publishing in memory. InitClusterId returns the effective id (an existing id
+	// wins), so a redundant command cannot diverge memory from disk.
+	effectiveClusterId, err := db.InitClusterId(self.raftController.Fsm.GetDb(), ctx, self.ClusterId)
+	if err != nil {
+		return err
+	}
+
+	// Publish and revalidate only after persisting. Revalidation drops peers from a different
+	// cluster that connected while this node was blank; off the apply path so it does not stall raft.
+	self.raftController.clusterId.Store(effectiveClusterId)
+	if mesh := self.raftController.Mesh; mesh != nil {
+		go mesh.RevalidatePeerClusterIds()
+	}
+	return nil
 }
 
 func (self *InitClusterIdCmd) Encode() ([]byte, error) {

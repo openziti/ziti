@@ -1,0 +1,60 @@
+v: 3
+
+# Controller 1 of the ha-3 config set: a three-controller raft cluster whose edge signing CA
+# root (pki/signing-root) is distinct from the ctrl-channel root CA (pki/root). Each controller
+# signs identity certs with its own intermediate under the shared signing root. The dataDir is
+# cleaned by StartHaCluster before each run.
+cluster:
+  dataDir: testdata/ha-3-data/ctrl1
+
+identity:
+  cert: testdata/pki/ctrl1/certs/client.chain.pem
+  server_cert: testdata/pki/ctrl1/certs/server.chain.pem
+  key: testdata/pki/ctrl1/keys/client.key
+  server_key: testdata/pki/ctrl1/keys/server.key
+  ca: testdata/pki/root/certs/root.cert
+
+trustDomain: ziti.test
+
+ctrl:
+  listener: tls:127.0.0.1:6262
+  options:
+    advertiseAddress: tls:127.0.0.1:6262
+
+mgmt:
+  listener: tls:127.0.0.1:10000
+
+terminator:
+  validators:
+    edge: edge
+
+edge:
+  api:
+    sessionTimeout: 30m
+    address: 127.0.0.1:1281
+  enrollment:
+    signingCert:
+      cert: testdata/pki/signing1/certs/signing1.chain.pem
+      key: testdata/pki/signing1/keys/signing1.key
+      ca: testdata/pki/signing-root/certs/signing-bundle.pem
+    edgeIdentity:
+      duration: 20m
+    edgeRouter:
+      duration: 60m
+
+web:
+  - name: client-management-localhost
+    bindPoints:
+      - interface: 127.0.0.1:1281
+        address: 127.0.0.1:1281
+    options: {}
+    apis:
+      - binding: health-checks
+      - binding: fabric
+      - binding: edge-management
+      - binding: edge-client
+      - binding: edge-oidc
+        options:
+          redirectURIs:
+            - "http://localhost:*/auth/callback"
+            - "http://127.0.0.1:*/auth/callback"

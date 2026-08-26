@@ -1,4 +1,4 @@
-# Release 2.0.2
+# Release 2.0.4
 
 ## What's New
 
@@ -6,10 +6,116 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti/v2: [v2.0.1 -> v2.0.2](https://github.com/openziti/ziti/compare/v2.0.0...v2.0.1)
+* github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
+  * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
+  * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
+
+# Release 2.0.3
+
+## What's New
+
+* Security fixes (see Security Advisories below)
+* Bug fixes
+* Controller read throughput under load: this release picks up bbolt v1.5.0, which removes a linear
+  scan over all open read transactions that ran while holding bbolt's single global transaction
+  mutex. Every controller read transaction takes that mutex twice, on open and on close, so the scan
+  cost grew with read concurrency and could put a controller serving a high rate of service-list and
+  policy queries into a lock convoy: many goroutines waiting on one mutex, a machine that looks
+  fully busy while little work completes, and timeouts unexplained by the actual workload.
+
+## Security Advisories
+
+This release addresses eight security advisories. See the linked GitHub Security Advisories for full
+details, impact, and affected versions.
+
+* [GHSA-q8g9-jc4c-jp6q](https://github.com/openziti/ziti/security/advisories/GHSA-q8g9-jc4c-jp6q) (CVE pending) (High) - The controller buffered the entire body of every
+  inbound request before any authentication check and with no size cap, so an unauthenticated client could
+  exhaust controller memory, and crash it, by sending parallel large-body requests to endpoints such as
+  enrollment.
+* [GHSA-j952-6x8x-jmj6](https://github.com/openziti/ziti/security/advisories/GHSA-j952-6x8x-jmj6) (CVE pending) (High) - The unauthenticated legacy enrollment path buffered
+  the request body a second time, allocating twice the memory per request and roughly halving the bandwidth
+  needed to drive the controller out of memory. Amplifies GHSA-q8g9-jc4c-jp6q.
+* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (CVE pending) (Medium) - When accepting an incoming router-to-router link, a
+  router verified the dialing router's identity against the whole presented certificate chain instead of the
+  leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
+  present another router's certificate as filler and be admitted on a link under that router's identity,
+  letting it intercept, inject, drop, or strand the circuits routed over that link.
+* [GHSA-7868-235p-7497](https://github.com/openziti/ziti/security/advisories/GHSA-7868-235p-7497) (CVE pending) (Medium) - The controller did not validate the API session
+  token when creating a circuit via CreateCircuitV3, taking the dialing identity from a router-supplied
+  header instead. An attacker holding enrolled router credentials could create circuits on behalf of any
+  identity permitted to dial the service through that router, without that identity having authenticated,
+  yielding data-plane access under an impersonated identity. The same gap meant expired and revoked API
+  sessions were not caught at circuit creation.
+* [GHSA-4h58-w989-xgg4](https://github.com/openziti/ziti/security/advisories/GHSA-4h58-w989-xgg4) (CVE pending) (Medium) - The token-based enrollment endpoint skipped
+  audience and issuer validation when the request carried a `ziti-token-issuer-id` header, so an attacker
+  holding any unexpired JWT signed by a configured external JWT signer, even one minted for a different
+  audience, could enroll a new identity onto the network.
+* [GHSA-6v5r-p2wr-q492](https://github.com/openziti/ziti/security/advisories/GHSA-6v5r-p2wr-q492) (CVE pending) (Medium) - The current-api-session certificates endpoint
+  performed an unscoped list, so any authenticated user could read the API session certificates (subject
+  DNs, fingerprints, and full PEM chains) of all identities, not just their own.
+* [GHSA-whjr-3j94-gw3c](https://github.com/openziti/ziti/security/advisories/GHSA-whjr-3j94-gw3c) (CVE pending) (Medium) - A JWKS endpoint URL configured on an external JWT
+  signer was fetched server-side with no timeout, private-range blocking, or allowlist, letting a caller with
+  external-jwt-signer management access make the controller issue requests to arbitrary internal URLs,
+  including cloud metadata endpoints (SSRF).
+* [GHSA-354c-gpg9-j988](https://github.com/openziti/ziti/security/advisories/GHSA-354c-gpg9-j988) (CVE pending) (Low) - With promptOnWake or promptOnUnlock enabled on an MFA
+  posture check, the edge router dereferenced a nil wake/unlock timestamp while locally evaluating an
+  authorized client's dial or bind, panicking and crashing the router (data-plane denial of service).
+
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.2 -> v2.0.3](https://github.com/openziti/ziti/compare/v2.0.2...v2.0.3)
+  * [Issue #4269](https://github.com/openziti/ziti/issues/4269) - [Backport-2.0] Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
+  * [Issue #4242](https://github.com/openziti/ziti/issues/4242) - [Backport-2.0] Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+  * [Issue #4236](https://github.com/openziti/ziti/issues/4236) - [Backport-2.0] Ensure terminator operations are scoped by source router
+  * [Issue #4207](https://github.com/openziti/ziti/issues/4207) - [Backport-2.0] Lock order inversion in ConnectionTracker deadlocks the controller
+  * [Issue #4203](https://github.com/openziti/ziti/issues/4203) - [Backport-2.0] Controller cluster bootstrapping fixes
+  * [Issue #4166](https://github.com/openziti/ziti/issues/4166) - [Backport-2.0] Fabric terminator remove handlers don't verify the terminator belongs to the requesting router
+  * [Issue #4161](https://github.com/openziti/ziti/issues/4161) - [Backport-2.0] Leaderless controller strands terminator operations during cluster membership changes
+  * [Issue #4146](https://github.com/openziti/ziti/issues/4146) - [Backport-2.0] Upgraded controller rejects legacy clients' existing sessions and gives no recovery signal for invalid service tokens
+  * [Issue #4142](https://github.com/openziti/ziti/issues/4142) - [Backport-2.0] Service-policy enforcer deletes valid legacy sessions; type= queries use numeric id against the string-mapped symbol
+  * [Issue #4139](https://github.com/openziti/ziti/issues/4139) - [Backport-2.0] Add l2 service configuration types
+  * [Issue #4126](https://github.com/openziti/ziti/issues/4126) - [Backport-2.0] Legacy create-session signs service JWT with a mismatched session id after dedup
+  * [Issue #4063](https://github.com/openziti/ziti/issues/4063) - External JWT enrollment fails when a configured role attributes claims selector is absent from the JWT
+  * [Issue #4052](https://github.com/openziti/ziti/issues/4052) - [Backport-2.0] The `ziti` CLI now refreshes an expired access token using the cached refresh token
+
+# Release 2.0.2
+
+## What's New
+
+* Security fixes (see Security Advisories below)
+* Bug fixes
+
+## Security Advisories
+
+This release addresses two control-plane certificate and identity validation vulnerabilities. See the linked
+GitHub Security Advisories for full details, impact, and affected versions.
+
+* [GHSA-mrpr-756c-xm47](https://github.com/openziti/ziti/security/advisories/GHSA-mrpr-756c-xm47) (CVE pending) (Critical) - Improper peer certificate validation on the controller
+  cluster mesh, router links, and metrics endpoint. TLS peer checks accepted a connection when any presented
+  certificate chained to the trusted CA while taking the peer identity from the leaf certificate, allowing a
+  peer to be admitted under a forged identity without possessing a trusted key. On HA/clustered controllers
+  this allows joining the controller cluster as an arbitrary controller.
+* [GHSA-cc5m-7mhm-xh9f](https://github.com/openziti/ziti/security/advisories/GHSA-cc5m-7mhm-xh9f) (CVE pending) (Medium) - Control-channel connections carrying a channel-type header
+  bypassed router certificate and identity verification, allowing an attacker that can reach the controller
+  control port to be admitted as an arbitrary router identity and manipulate that router's fabric terminators,
+  faults, and circuit routing. Impact is limited to router data model metadata (service and identity names) and
+  control-plane manipulation; it does not by itself grant access to the services the network protects.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.1 -> v2.0.2](https://github.com/openziti/ziti/compare/v2.0.1...v2.0.2)
   * [Issue #4136](https://github.com/openziti/ziti/issues/4136) - [Backport-2.0] ziti tunnel ignores --dnsSvcIpRange
   * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - [Backport-2.0] Upgrading a running 1.x controller/router to 2.x fails to create the service user
-  * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
+  * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Fix controller panic / potential data corruption by copying terminator peer data, instance secret, and eventual event data out of bolt-managed memory
+
 
 # Release 2.0.1
 

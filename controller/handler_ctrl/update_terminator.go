@@ -66,6 +66,16 @@ func (self *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message
 		return
 	}
 
+	if !self.ownsTerminator(terminator) {
+		log.
+			WithField("routerId", self.router.Id).
+			WithField("terminator", request.TerminatorId).
+			WithField("terminatorRouterId", terminator.Router).
+			Warn("router attempted to update a terminator it does not own; rejected")
+		handler_common.SendFailure(msg, ch, "terminator not owned by requesting router")
+		return
+	}
+
 	if !request.UpdateCost && !request.UpdatePrecedence {
 		// nothing to do
 		handler_common.SendSuccess(msg, ch, "")

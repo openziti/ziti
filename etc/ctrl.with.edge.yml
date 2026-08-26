@@ -262,6 +262,141 @@ edge:
     # database. Only runs on the raft leader.
     # revocationEnforcerFrequency: 1m
 
+  # externalJwtSigners - optional
+  # Settings that govern how the controller interacts with external JWT signers.
+  externalJwtSigners:
+    # jwksFetch - optional
+    # Controls the controller's fetch of an external JWT signer's jwksEndpoint. That fetch is
+    # made by the controller, from the controller's own network position, to a URL supplied by
+    # whoever can write an external JWT signer. These settings constrain where it may go.
+    #
+    # A fetch is allowed only if it passes TWO GATES, and both gates are applied to the first
+    # request AND to every redirect that is followed:
+    #
+    #   the HOSTNAME gate - checked against the hostname in the URL
+    #   the ADDRESS gate  - checked against the resolved address at connection time, so a
+    #                       hostname that resolves to a blocked address is still blocked
+    #
+    # NEITHER GATE CAN AUTHORIZE WHAT THE OTHER REFUSES. Hostname matching only ever narrows what
+    # may be fetched: allowedHostnames does not make a blocked address reachable, and
+    # allowedIPs does not make a blocked hostname reachable.
+    #
+    # HOSTNAME gate, first-match-wins. DENY WINS OVER ALLOW:
+    #
+    #   1. deniedHostnames  - blocked
+    #   2. allowedHostnames - when set, ONLY these hostnames may be fetched; anything else is
+    #                         blocked
+    #   3. anything else    - passes to the address gate
+    #
+    # ADDRESS gate, first-match-wins. DENY WINS OVER ALLOW:
+    #
+    #   1. built-in blocked addresses - always blocked, allowedIPs CANNOT override:
+    #        cloud instance metadata (169.254.169.254, 169.254.170.2, fd00:ec2::254)
+    #        link-local              (169.254.0.0/16, fe80::/10)
+    #        link-local multicast    (224.0.0.0/24, ff02::/16)
+    #        unspecified             (0.0.0.0, ::)
+    #   2. deniedIPs  - blocked, allowedIPs CANNOT override
+    #   3. allowedIPs - allowed; this is a carve-out of tier 4 ONLY
+    #   4. blockPrivateAddresses, and the address is private or loopback - blocked
+    #   5. anything else    - allowed
+    #
+    # ENTRY FORMS. The two kinds of list do not accept each other's values.
+    #
+    # deniedIPs and allowedIPs take IP addresses only, in either of two forms:
+    #
+    #   a flat IP address  - 192.168.5.5    or  fd00:1234::1
+    #                        matches that one address only (the same as /32 or /128)
+    #   a CIDR block       - 10.10.0.0/16   or  fd00:1234::/64
+    #                        matches every address in the block
+    #
+    # Both IPv4 and IPv6 are accepted in either form. A hostname in one of these lists is a
+    # configuration error and the controller will not start: the address gate runs against the
+    # address actually being connected to, so there is no hostname there to compare against.
+    #
+    # deniedHostnames and allowedHostnames take hostnames only, in either of two forms:
+    #
+    #   an exact hostname  - idp.example.com
+    #                        matches that hostname only
+    #   a wildcard suffix  - '*.example.com'
+    #                        matches any subdomain of example.com, AT ANY DEPTH, but NEVER
+    #                        example.com itself
+    #
+    # Wildcard matching, spelled out, because the last part surprises people:
+    #
+    #   '*.sub.host.com'   MATCHES      idp.sub.host.com
+    #                      MATCHES      a.b.sub.host.com   (any depth below the suffix)
+    #                      DOES NOT     sub.host.com       (the suffix itself is NOT matched)
+    #                      DOES NOT     other.host.com
+    #                      DOES NOT     xsub.host.com      (a whole label must be replaced)
+    #
+    # To cover both a domain and its subdomains, list them both:
+    #
+    #   - sub.host.com
+    #   - '*.sub.host.com'
+    #
+    # The '*' is only supported as the entire leading label, written exactly as '*.'. Anything
+    # else (idp.*.example.com, *idp.example.com, a bare *) is a configuration error. Quote any
+    # entry that starts with '*', or YAML will reject it as an alias. Matching ignores case and
+    # a trailing dot, and a unicode hostname is compared in its punycode form. An IP address in
+    # one of these lists is a configuration error - use deniedIPs or allowedIPs.
+    jwksFetch:
+      # deniedHostnames - optional, default empty
+      # Tier 1 of the HOSTNAME gate: hostnames that may not be fetched. Takes exact hostnames
+      # and '*.suffix' wildcards, per ENTRY FORMS above.
+      # This narrows only, it is not a boundary on its own: the same target can be reached
+      # under a different name or as a literal IP, which is what the address gate is for.
+      # deniedHostnames:
+      #   - old-idp.example.com
+      #   - '*.internal.example.com'
+
+      # allowedHostnames - optional, default empty
+      # Tier 2 of the HOSTNAME gate: when this list is non-empty, these are the ONLY hostnames that
+      # may be fetched, on the first request and on every redirect hop. Same entry forms as
+      # deniedHostnames, and deniedHostnames still wins. It cannot widen the address gate: a listed
+      # hostname whose address is blocked stays blocked. Note that while this list is set, an
+      # endpoint written as a literal IP address can never satisfy it.
+      # allowedHostnames:
+      #   - idp.example.com
+      #   - '*.idp.example.org'
+
+      # blockPrivateAddresses - optional, default false
+      # Tier 4 of the ADDRESS gate: blocks private and loopback addresses
+      # (127.0.0.0/8, ::1, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7). Defaults to
+      # false so a deployment whose IdP is on an internal address keeps working. Tier 1 is
+      # blocked either way, so the metadata service is never reachable. For the strictest
+      # posture set this to true, list any internal IdP address in allowedIPs, and list
+      # the IdP hostnames in allowedHostnames.
+      # blockPrivateAddresses: false
+
+      # deniedIPs - optional, default empty
+      # Tier 2 of the ADDRESS gate: addresses that are always blocked. Takes flat IP addresses
+      # and CIDR blocks, per ENTRY FORMS above. Nothing in allowedIPs or allowedHostnames can
+      # re-enable an address listed here, so this is the right place for internal ranges that
+      # must never be fetched.
+      # deniedIPs:
+      #   - 10.10.0.0/16       # a CIDR block
+      #   - 192.168.5.5        # a flat IP address
+      #   - fd00:1234::/64     # IPv6 is accepted in either form
+
+      # allowedIPs - optional, default empty
+      # Tier 3 of the ADDRESS gate: a carve-out of tier 4 ONLY. Same entry forms as deniedIPs.
+      # Listing an address here allows it despite blockPrivateAddresses; it does NOT override
+      # tier 1 or deniedIPs, and it does NOT satisfy the hostname gate. Use it to reach a
+      # specific internal IdP while blockPrivateAddresses is true.
+      # allowedIPs:
+      #   - 10.20.30.0/24
+      #   - 10.20.40.7
+
+      # timeout - optional, default 5s
+      # The total time allowed for a single JWKS fetch, including any redirects. Must be
+      # greater than zero.
+      # timeout: 5s
+
+      # maxRedirects - optional, default 5
+      # How many redirects a JWKS fetch will follow. Every hop passes through both gates. Set
+      # to 0 to refuse to follow redirects at all.
+      # maxRedirects: 5
+
   # Set to true to disable posture check functionality
   disablePostureChecks: false
 

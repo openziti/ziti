@@ -18,14 +18,15 @@ package command
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,6 +41,14 @@ type Command interface {
 
 	// Encode returns a serialized representation of the command
 	Encode() ([]byte, error)
+}
+
+// CriticalCommand marks commands that establish base state (e.g. a snapshot restore). A failed apply
+// of one must halt the node rather than log-and-advance the raft index, which would leave the node
+// caught up on index but missing data. Ordinary commands are logged and skipped on failure.
+type CriticalCommand interface {
+	Command
+	IsCriticalCommand()
 }
 
 // Validatable instances can be validated. Command instances which implement Validable will be validated
@@ -59,12 +68,27 @@ type Dispatcher interface {
 	GetRateLimiter() rate.RateLimiter
 	Bootstrap() error
 	CtrlAddresses() (uint64, []string, []*ctrl_pb.CtrlDetail)
+
+	// GetDecoders returns the command decoder registry used to decode commands dispatched
+	// through this dispatcher. Each dispatcher owns its own registry so multiple controllers
+	// in one process don't decode each other's commands.
+	GetDecoders() Decoders
 }
 
 // LocalDispatcher should be used when running a non-clustered system
 type LocalDispatcher struct {
 	EncodeDecodeCommands bool
 	Limiter              rate.RateLimiter
+
+	decodersInit sync.Once
+	decoders     Decoders
+}
+
+func (self *LocalDispatcher) GetDecoders() Decoders {
+	self.decodersInit.Do(func() {
+		self.decoders = NewDecoders()
+	})
+	return self.decoders
 }
 
 func (self *LocalDispatcher) Bootstrap() error {
@@ -117,7 +141,7 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		cmd, err := GetDefaultDecoders().Decode(bytes)
+		cmd, err := self.GetDecoders().Decode(bytes)
 		if err != nil {
 			return err
 		}
