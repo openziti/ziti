@@ -34,13 +34,24 @@ import (
 // how the node's TLS configuration establishes trust. No extended-key-usage restriction is applied:
 // certificates issued by an external PKI with arbitrary or absent EKUs are accepted as long as the leaf
 // chains to a trusted CA.
-func VerifyLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate) (*x509.Certificate, error) {
+//
+// additionalRoots are trust anchors the caller trusts for this check but which are not in the node's TLS
+// pool, such as a CA the node itself issues peer certificates from. They are added to a copy of roots, so
+// the caller's pool - which the identity shares with its live tls.Configs - is never modified.
+func VerifyLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate, additionalRoots ...*x509.Certificate) (*x509.Certificate, error) {
 	if roots == nil {
 		return nil, errors.New("no ca pool provided")
 	}
 
 	if len(certs) == 0 {
 		return nil, errors.New("no certificates presented")
+	}
+
+	if len(additionalRoots) > 0 {
+		roots = roots.Clone()
+		for _, additionalRoot := range additionalRoots {
+			roots.AddCert(additionalRoot)
+		}
 	}
 
 	intermediates := x509.NewCertPool()

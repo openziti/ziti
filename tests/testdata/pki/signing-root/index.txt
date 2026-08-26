@@ -1,0 +1,4 @@
+V	360717203902Z		3B87C2F4998E4F147C9B17A09A3928A0	signing-root.cert	/C=US/O=NetFoundry/OU=ADV-DEV/L=Charlotte/CN=Ziti Test Edge Signing Root CA
+V	360717203912Z		B7F4FFFF0F1124C93D28FB1FAB1FB1F3	signing1.cert	/C=US/O=NetFoundry/OU=ADV-DEV/L=Charlotte/CN=Controller One Edge Signing Cert
+V	360717203925Z		697438320D95080B2FD7D6F235000003	signing2.cert	/C=US/O=NetFoundry/OU=ADV-DEV/L=Charlotte/CN=Controller Two Edge Signing Cert
+V	360717203941Z		08252B39FA6BFF5F4A5C9713247987A0	signing3.cert	/C=US/O=NetFoundry/OU=ADV-DEV/L=Charlotte/CN=Controller Three Edge Signing Cert

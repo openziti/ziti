@@ -137,6 +137,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		clusterEvents:   make(chan raft.Observation, 16),
 		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
 		errorMappers:    map[string]func(map[string]any) error{},
+		decoders:        command.NewDecoders(),
 	}
 	result.initErrorMappers()
 	return result
@@ -161,6 +162,13 @@ type Controller struct {
 	clusterEvents              chan raft.Observation
 	raftRateLimiter            rate.AdaptiveRateLimitTracker
 	errorMappers               map[string]func(map[string]any) error
+	decoders                   command.Decoders
+}
+
+// GetDecoders returns the command decoder registry this controller's raft FSM uses to decode
+// replicated log entries. It is per-controller so multiple in-process controllers stay isolated.
+func (self *Controller) GetDecoders() command.Decoders {
+	return self.decoders
 }
 
 func (self *Controller) GetNodeId() *identity.TokenId {
@@ -204,6 +212,9 @@ func (self *Controller) GetListenerHeaders() map[int32][]byte {
 	}
 	if self.Config.PreferredLeader {
 		headers[mesh.PreferredLeaderHeader] = []byte{1}
+	}
+	if serverCerts := self.env.GetId().ServerCert(); len(serverCerts) > 0 && len(serverCerts[0].Certificate) > 0 {
+		headers[mesh.SigningCertChainHeader] = mesh.ConcatDer(serverCerts[0].Certificate)
 	}
 	return headers
 }
@@ -651,7 +662,7 @@ func (self *Controller) Init() error {
 		self.clusterEvents <- obs
 	})
 
-	self.Fsm = NewFsm(raftConfig.DataDir, raftConfig.RestartSelf, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
+	self.Fsm = NewFsm(raftConfig.DataDir, raftConfig.RestartSelf, self.decoders, self.indexTracker, self.env.GetEventDispatcher())
 
 	if err = self.Fsm.Init(); err != nil {
 		return fmt.Errorf("failed to init FSM (%w)", err)

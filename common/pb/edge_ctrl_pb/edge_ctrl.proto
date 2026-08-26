@@ -268,10 +268,13 @@ message DataState {
     string kid = 2; //key id/fingerprint
     repeated Usage usages = 3; // what the public key in data is used for
     Format format = 4; //the format of the public key in data and chain
+    repeated bytes intermediates = 5; //intermediate CA certs chaining to the anchor in data, same format
 
     enum Usage {
       JWTValidation = 0;
-      ClientX509CertValidation = 1;
+      ClientX509CertValidation = 1 [deprecated = true]; //superseded by FirstPartyX509CertValidation and ThirdPartyX509CertValidation
+      FirstPartyX509CertValidation = 2; //network-internal CAs: controller certs, edge signing CA roots
+      ThirdPartyX509CertValidation = 3; //externally registered CAs
     }
 
     enum Format {
