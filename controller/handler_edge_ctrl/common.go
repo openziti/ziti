@@ -11,8 +11,8 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/ctrl_msg"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/sirupsen/logrus"
 )
@@ -67,6 +68,7 @@ func (self *baseRequestHandler) getChannel() channel.Channel {
 func (self *baseRequestHandler) returnError(ctx requestContext, err controllerError) {
 	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), []byte(err.Error()))
 	responseMsg.PutUint32Header(edge.ErrorCodeHeader, err.ErrorCode())
+	responseMsg.PutUint32Header(ctrl_msg.ErrorRetryHintHeader, uint32(err.GetRetryHint()))
 	responseMsg.ReplyTo(ctx.GetMessage())
 	logger := pfxlog.
 		ContextLogger(self.ch.Label()).
@@ -314,10 +316,49 @@ func (self *baseSessionRequestContext) loadFromBolt(sessionToken string, apiSess
 		return
 	}
 
+	if !strings.HasPrefix(sessionToken, oidc_auth.JwtTokenPrefix) {
+		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(sessionToken)
+
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				self.err = InvalidSessionError{}
+			} else {
+				self.err = internalError(err)
+			}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithError(self.err).Errorf("invalid session")
+			return
+		}
+
+		if self.session.ApiSessionId != self.apiSession.Id {
+			self.err = InvalidSessionError{}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithField("sessionId", self.session.Id).
+				WithField("sessionApiSessionId", self.session.ApiSessionId).
+				WithField("apiSessionId", self.apiSession.Id).
+				WithError(self.err).Error("session does not belong to api session")
+		}
+		return
+	}
+
 	serviceAccessClaims, err := self.env.ValidateServiceAccessToken(sessionToken, &self.apiSession.Id)
 
 	if err != nil {
-		self.err = internalError(err)
+		// A token-level failure (bad/expired/mismatched/revoked token) means the client should discard
+		// and re-create its session, so return InvalidSession. An infrastructure failure (e.g. a
+		// revocation datastore read) must stay an internalError, otherwise a transient controller fault
+		// would make clients discard valid sessions and trigger a reauthentication storm.
+		var invalidToken *common.InvalidTokenError
+		if errors.As(err, &invalidToken) {
+			self.err = InvalidSessionError{}
+			logrus.
+				WithField("operation", self.handler.Label()).
+				WithError(err).Error("service access token invalid; treating as invalid session")
+		} else {
+			self.err = internalError(err)
+		}
 		return
 	}
 
@@ -355,7 +396,10 @@ func (self *baseSessionRequestContext) checkSessionType(sessionType string) {
 
 func (self *baseSessionRequestContext) verifyIdentityEdgeRouterAccess() {
 	if self.err == nil {
-		self.verifyEdgeRouterAccess(self.session.IdentityId, self.session.ServiceId)
+		self.verifyEdgeRouterAccess(self.session.IdentityId, self.session.ServiceId,
+			func(string, model.EdgeRouterAccess) controllerError {
+				return InvalidEdgeRouterForSessionError{}
+			})
 	}
 }
 
@@ -384,17 +428,36 @@ func (self *baseSessionRequestContext) verifyServiceBindAccess(identityId string
 	}
 }
 
+// verifyRouterEdgeRouterAccess checks that the requesting router may act on the service on its
+// own behalf, as an edge router tunneler does. No edge session is involved, so denials are
+// reported with the missing policy link rather than as a session error.
 func (self *baseSessionRequestContext) verifyRouterEdgeRouterAccess() {
 	if self.err == nil {
-		self.verifyEdgeRouterAccess(self.sourceRouter.Id, self.service.Id)
+		self.verifyEdgeRouterAccess(self.sourceRouter.Id, self.service.Id, self.newEdgeRouterAccessDeniedError)
 	}
 }
 
-func (self *baseSessionRequestContext) verifyEdgeRouterAccess(identityId string, serviceId string) {
+// newEdgeRouterAccessDeniedError builds a denial message naming the policy that would need to be
+// added to permit the identity to reach the service through this edge router.
+func (self *baseSessionRequestContext) newEdgeRouterAccessDeniedError(identityId string, access model.EdgeRouterAccess) controllerError {
+	var reason string
+	if !access.IdentityAllowed && !access.ServiceAllowed {
+		reason = "no edge router policy links the identity to the edge router and no service edge router policy links the service to the edge router"
+	} else if !access.IdentityAllowed {
+		reason = "no edge router policy links the identity to the edge router"
+	} else {
+		reason = "no service edge router policy links the service to the edge router"
+	}
+
+	return edgeRouterAccessDenied(fmt.Sprintf("edge router %s may not be used for service %s by identity %s: %s",
+		self.sourceRouter.Name, self.service.Name, identityId, reason))
+}
+
+func (self *baseSessionRequestContext) verifyEdgeRouterAccess(identityId string, serviceId string, newDeniedError func(identityId string, access model.EdgeRouterAccess) controllerError) {
 	if self.err == nil {
 		// validate edge router
 		erMgr := self.handler.getAppEnv().Managers.EdgeRouter
-		edgeRouterAllowed, err := erMgr.IsAccessToEdgeRouterAllowed(identityId, serviceId, self.sourceRouter.Id)
+		access, err := erMgr.GetEdgeRouterAccess(identityId, serviceId, self.sourceRouter.Id)
 		if err != nil {
 			self.err = internalError(err)
 			logrus.
@@ -406,8 +469,8 @@ func (self *baseSessionRequestContext) verifyEdgeRouterAccess(identityId string,
 			return
 		}
 
-		if !edgeRouterAllowed {
-			self.err = InvalidEdgeRouterForSessionError{}
+		if !access.IsAllowed() {
+			self.err = newDeniedError(identityId, access)
 		}
 	}
 }

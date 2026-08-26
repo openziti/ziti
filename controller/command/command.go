@@ -43,6 +43,14 @@ type Command interface {
 	Encode() ([]byte, error)
 }
 
+// CriticalCommand marks commands that establish base state (e.g. a snapshot restore). A failed apply
+// of one must halt the node rather than log-and-advance the raft index, which would leave the node
+// caught up on index but missing data. Ordinary commands are logged and skipped on failure.
+type CriticalCommand interface {
+	Command
+	IsCriticalCommand()
+}
+
 // Validatable instances can be validated. Command instances which implement Validable will be validated
 // before Command.Apply is called
 type Validatable interface {

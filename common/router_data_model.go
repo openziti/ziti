@@ -2153,12 +2153,15 @@ func (rdm *RouterDataModel) withPostureCheck(postureCheckId string, f func(Postu
 	}
 }
 
-func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, isRouterIdentity bool) error {
+// SubscribeToIdentityChanges registers subscriber for the identity's change events. When the
+// identity is already in the model, the subscriber is immediately sent an IdentityFullState
+// notification. When it is not yet known (e.g. an SDK connects before the identity has synced to
+// this router), the subscription registers as pending: the identity-created event initializes it
+// and delivers the IdentityFullState notification once the identity arrives (see
+// checkSubsForNewIdentity).
+func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscriber IdentityEventSubscriber, isRouterIdentity bool) {
 	pfxlog.Logger().WithField("identityId", identityId).Debug("subscribing to changes for identity")
-	identity, ok := rdm.Identities.Get(identityId)
-	if !ok && !isRouterIdentity {
-		return fmt.Errorf("identity %s not found", identityId)
-	}
+	identity, _ := rdm.Identities.Get(identityId)
 
 	rdm.EnableServiceAccessTracking(identityId)
 
@@ -2176,12 +2179,17 @@ func (rdm *RouterDataModel) SubscribeToIdentityChanges(identityId string, subscr
 		return result
 	})
 
+	if identity == nil {
+		// The identity may have arrived between the lookup above and the subscription
+		// registration, before queueNewIdentitySubCheck could see the subscription. Re-check so
+		// that window cannot leave the subscription uninitialized until the identity next changes.
+		identity, _ = rdm.Identities.Get(identityId)
+	}
+
 	if identity != nil {
 		state, _ := subscription.initialize(rdm, identity)
 		subscriber.NotifyIdentityEvent(state, IdentityFullState)
 	}
-
-	return nil
 }
 
 func (rdm *RouterDataModel) UnsubscribeFromIdentityChanges(identityId string, subscriber IdentityEventSubscriber) {
@@ -2361,19 +2369,29 @@ func (rdm *RouterDataModel) loadServicePostureChecks(identity *Identity, policy 
 }
 
 func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *IdentityService) {
-	log := pfxlog.Logger().
-		WithField("identityId", identity.Id).
-		WithField("serviceId", svc.Service.Id)
+	svc.Configs = rdm.GetIdentityServiceConfigs(identity, svc.Service.Id)
+}
 
+// GetIdentityServiceConfigs returns the resolved config set for the given identity and service,
+// keyed by config type name. It merges the service's base configs with the identity's per-service
+// config overrides, so the result is the effective config that identity should use for that
+// service. Returns nil if the service is unknown.
+func (rdm *RouterDataModel) GetIdentityServiceConfigs(identity *Identity, serviceId string) map[string]*IdentityConfig {
+	svc, ok := rdm.Services.Get(serviceId)
+	if !ok {
+		return nil
+	}
+
+	log := pfxlog.Logger().WithField("identityId", identity.Id).WithField("serviceId", serviceId)
 	result := map[string]*IdentityConfig{}
 
-	for _, configId := range svc.Service.Configs {
+	for _, configId := range svc.Configs {
 		if identityConfig := rdm.loadIdentityConfig(configId, log); identityConfig != nil {
 			result[identityConfig.TypeName] = identityConfig
 		}
 	}
 
-	if serviceConfigs, hasOverride := identity.ServiceConfigs[svc.Service.Id]; hasOverride {
+	if serviceConfigs, hasOverride := identity.ServiceConfigs[serviceId]; hasOverride {
 		for _, configId := range serviceConfigs.Configs {
 			if identityConfig := rdm.loadIdentityConfig(configId, log); identityConfig != nil {
 				result[identityConfig.TypeName] = identityConfig
@@ -2381,7 +2399,7 @@ func (rdm *RouterDataModel) loadServiceConfigs(identity *Identity, svc *Identity
 		}
 	}
 
-	svc.Configs = result
+	return result
 }
 
 func (rdm *RouterDataModel) loadIdentityConfig(configId string, log *logrus.Entry) *IdentityConfig {

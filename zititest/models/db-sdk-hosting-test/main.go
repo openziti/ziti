@@ -18,8 +18,8 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -171,9 +171,9 @@ func (d dbStrategy) CreateIdentityHosts(tx *bbolt.Tx, m *model.Model, builder *z
 			var tunnelType model.ComponentType
 			if TunnelType == "zet" {
 				tunnelType = &zitilab.ZitiEdgeTunnelType{
-					Version:     TargetZitiEdgeTunnelVersion,
-					LogConfig:   "'2;bind.c=6'",
-					ConfigPathF: getConfigPath,
+					Version:      TargetZitiEdgeTunnelVersion,
+					LogVerbosity: "'2;bind.c=6'",
+					ConfigPathF:  getConfigPath,
 				}
 			} else {
 				tunnelType = &zitilab.ZitiTunnelType{

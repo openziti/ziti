@@ -51,6 +51,9 @@ func (m *mockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.
 	return changed
 }
 
+func (m *mockNetworkControllers) MarkChannelEstablished() {}
+func (m *mockNetworkControllers) EverConnected() bool     { return true }
+
 func (m *mockNetworkControllers) ConnectToInitialEndpoints(endpoints []string) {
 	for _, ep := range endpoints {
 		m.endpoints[ep] = struct{}{}

@@ -45,9 +45,7 @@ func NewFabric(env env.RouterEnv, options *xgress.Options) (Fabric, error) {
 	}
 
 	env.MarkRouterDataModelRequired()
-	if err := env.GetRouterDataModel().SubscribeToIdentityChanges(env.GetRouterId().Token, result, true); err != nil {
-		return nil, err
-	}
+	env.GetRouterDataModel().SubscribeToIdentityChanges(env.GetRouterId().Token, result, true)
 
 	return result, nil
 }
@@ -79,6 +77,8 @@ func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventTy
 		}
 	}
 }
+
+func (self *fabricImpl) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
 
 func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, oldService, newService *common.IdentityService, eventType common.ServiceEventType) {
 	self.updateIdentityState(state)

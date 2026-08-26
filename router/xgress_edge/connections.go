@@ -603,6 +603,10 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 
 	edgeConn.apiSessionToken = apiSession
 
+	// A session that authenticated with TOTP has already passed MFA; seed the posture baseline
+	// so MFA posture checks pass before any posture-response TOTP token arrives.
+	handler.stateManager.SeedMfaFromApiSession(apiSession)
+
 	leafCert := certificates[0]
 	now := time.Now()
 	certExpired := now.Before(leafCert.NotBefore) || now.After(leafCert.NotAfter)

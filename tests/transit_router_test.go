@@ -154,6 +154,29 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.Req.Equal(listeners, detailResp.Payload.Data.CtrlChanListeners)
 	})
 
+	t.Run("tags can be set on create and retrieved", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		tags := rest_model.SubTags{
+			"managed":    "true",
+			"network-id": eid.New(),
+		}
+
+		createResp, err := mgmtClient.API.Router.CreateRouter(&router.CreateRouterParams{
+			Router: &rest_model.RouterCreate{
+				Name: util.Ptr(eid.New()),
+				Tags: &rest_model.Tags{SubTags: tags},
+			},
+		}, nil)
+		ctx.Req.NoError(err)
+
+		detailResp, err := mgmtClient.API.Router.DetailRouter(&router.DetailRouterParams{
+			ID: createResp.Payload.Data.ID,
+		}, nil)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(detailResp.Payload.Data.Tags)
+		ctx.Req.Equal(tags, detailResp.Payload.Data.Tags.SubTags)
+	})
+
 	t.Run("ctrlChanListeners can be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		name := eid.New()

@@ -148,7 +148,9 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 					return
 				}
 			} else {
-				if command.WasRateLimited(err) {
+				// A rate-limited or leaderless dispatch is transient; reply busy so the router requeues
+				// promptly instead of treating it as a hard failure.
+				if command.WasRateLimited(err) || command.WasLeaderless(err) {
 					self.returnError(ctx, busyError(err), logger)
 					return
 				}

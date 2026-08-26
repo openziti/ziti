@@ -17,6 +17,10 @@
 package link
 
 import (
+	"fmt"
+	"math"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,6 +37,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,6 +46,16 @@ type testEnv struct {
 	closeNotify     chan struct{}
 	ctrls           env.NetworkControllers
 	config          *env.Config
+	dialerPool      goroutines.Pool
+
+	dialersMu sync.Mutex
+	dialers   []xlink.Dialer
+}
+
+func (self *testEnv) setDialers(d []xlink.Dialer) {
+	self.dialersMu.Lock()
+	defer self.dialersMu.Unlock()
+	self.dialers = d
 }
 
 func (self *testEnv) GetRouterId() *identity.TokenId {
@@ -75,7 +90,11 @@ func (self *testEnv) GetNetworkControllers() env.NetworkControllers {
 }
 
 func (self *testEnv) GetXlinkDialers() []xlink.Dialer {
-	panic("implement me")
+	self.dialersMu.Lock()
+	defer self.dialersMu.Unlock()
+	out := make([]xlink.Dialer, len(self.dialers))
+	copy(out, self.dialers)
+	return out
 }
 
 func (self *testEnv) GetCloseNotify() <-chan struct{} {
@@ -83,7 +102,7 @@ func (self *testEnv) GetCloseNotify() <-chan struct{} {
 }
 
 func (self *testEnv) GetLinkDialerPool() goroutines.Pool {
-	panic("implement me")
+	return self.dialerPool
 }
 
 func (self *testEnv) GetRateLimiterPool() goroutines.Pool {
@@ -213,6 +232,20 @@ func newTestEnv() *testEnv {
 
 	testEnv.config.Ctrl.DefaultRequestTimeout = time.Second
 	testEnv.ctrls = env.NewNetworkControllers(testEnv, env.NewDefaultHeartbeatOptions())
+
+	pool, err := goroutines.NewPool(goroutines.PoolConfig{
+		QueueSize:      32,
+		MinWorkers:     0,
+		MaxWorkers:     2,
+		IdleTime:       10 * time.Second,
+		CloseNotify:    closeNotify,
+		PanicHandler:   func(err interface{}) {},
+		WorkerFunction: func(_ uint32, f func()) { f() },
+	})
+	if err != nil {
+		panic(err)
+	}
+	testEnv.dialerPool = pool
 	return testEnv
 }
 
@@ -361,4 +394,240 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId2, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId5, getRegistryMetrics())
+}
+
+// stubDialer is a minimal xlink.Dialer for tests. Only the accessors the
+// link registry consults during match evaluation are needed.
+type stubDialer struct {
+	binding string
+	groups  []string
+}
+
+func (d *stubDialer) Dial(xlink.Dial) (xlink.Xlink, error) {
+	return nil, fmt.Errorf("stubDialer never actually dials")
+}
+func (d *stubDialer) GetGroups() []string { return d.groups }
+func (d *stubDialer) GetBinding() string  { return d.binding }
+
+// Return a non-nil backoff like the real transport dialer does; dialFailed
+// reads the backoff on every failed dial and would nil-panic otherwise.
+func (d *stubDialer) GetHealthyBackoffConfig() xlink.BackoffConfig   { return stubBackoff{} }
+func (d *stubDialer) GetUnhealthyBackoffConfig() xlink.BackoffConfig { return stubBackoff{} }
+func (d *stubDialer) AdoptBinding(xlink.Listener)                    {}
+
+// stubBackoff is a minimal xlink.BackoffConfig for tests, with sane retry
+// values so dialFailed's backoff math has something to work with.
+type stubBackoff struct{}
+
+func (stubBackoff) GetMinRetryInterval() time.Duration { return time.Second }
+func (stubBackoff) GetMaxRetryInterval() time.Duration { return 10 * time.Second }
+func (stubBackoff) GetRetryBackoffFactor() float64     { return 2 }
+
+// destLinkCountProbe is a synchronized event that snapshots the linkMap
+// count of a given destination by piggybacking on the registry's event
+// loop. Avoids races between the test reader and the run() goroutine.
+type destLinkCountProbe struct {
+	destId string
+	out    chan int
+}
+
+func (p destLinkCountProbe) Handle(reg *linkRegistryImpl) {
+	if d, ok := reg.destinations[p.destId]; ok {
+		p.out <- len(d.linkMap)
+		return
+	}
+	p.out <- 0
+}
+
+func destLinkCount(reg *linkRegistryImpl, destId string) int {
+	probe := destLinkCountProbe{destId: destId, out: make(chan int, 1)}
+	reg.queueEvent(probe)
+	select {
+	case n := <-probe.out:
+		return n
+	case <-time.After(2 * time.Second):
+		return -1
+	}
+}
+
+func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	// Peer destination advertises a listener in group "a". Local has no
+	// matching dialer yet, so the listener doesn't produce a linkState.
+	destId := "peer-router-1"
+	tenv.setDialers(nil)
+	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+	})
+
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) == 0
+	}, 2*time.Second, 25*time.Millisecond, "no dialer → no linkState")
+
+	// Add a local dialer that matches group "a". Without the rescan,
+	// nothing notices — the peer's listener already arrived and won't
+	// re-trigger the match. Call RescanForDialOpportunities and assert a
+	// linkState is created.
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
+	reg.RescanForDialOpportunities()
+
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) == 1
+	}, 2*time.Second, 25*time.Millisecond, "rescan should discover the now-possible match")
+}
+
+func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	// Peer listener in group "a"; local dialer in group "b". Rescan
+	// shouldn't create a state because there's no group intersection.
+	destId := "peer-router-2"
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
+	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
+	})
+
+	// Let the initial update settle. destLinkCount goes through the
+	// event-loop probe, so it both serializes the read and waits for
+	// the linkDestUpdate to land.
+	req.Eventually(func() bool {
+		return destLinkCount(reg, destId) >= 0
+	}, time.Second, 25*time.Millisecond)
+
+	reg.RescanForDialOpportunities()
+
+	// Probe again; the rescan probe ordered after the rescan event must
+	// observe no matches (groups didn't intersect).
+	req.Equal(0, destLinkCount(reg, destId), "rescan should not produce matches when groups don't intersect")
+}
+
+// flakySendChannel is a channel.Channel double whose sends fail a set number of times before succeeding. It
+// embeds the interface, so any method these tests do not exercise panics rather than returning a zero value.
+type flakySendChannel struct {
+	channel.Channel
+	failures    int
+	sends       atomic.Int32
+	closed      atomic.Bool
+	closeNotify chan struct{}
+}
+
+func newFlakySendChannel(failures int) *flakySendChannel {
+	return &flakySendChannel{failures: failures, closeNotify: make(chan struct{})}
+}
+
+func (self *flakySendChannel) Id() string     { return "ctrl1" }
+func (self *flakySendChannel) Label() string  { return "ctrl1" }
+func (self *flakySendChannel) IsClosed() bool { return self.closed.Load() }
+
+func (self *flakySendChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+
+func (self *flakySendChannel) Send(s channel.Sendable) error {
+	if int(self.sends.Add(1)) <= self.failures {
+		return errors.New("timeout waiting for space in send queue")
+	}
+	// What the tx loop does once the message is actually written.
+	s.SendListener().NotifyAfterWrite()
+	return nil
+}
+
+// newReconnectTestRegistry builds a registry with no links and no event loop. An empty link set is a case
+// worth covering rather than avoiding: the reconnect announcement is the only message that prunes, so a
+// router with nothing to report still has to send one to clear stale controller state.
+func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
+	t.Helper()
+	routerEnv := newTestEnv()
+	t.Cleanup(func() { close(routerEnv.closeNotify) })
+
+	return &linkRegistryImpl{
+		env:            routerEnv,
+		ctrls:          routerEnv.ctrls,
+		destinations:   map[string]*linkDest{},
+		linkMap:        map[string]xlink.Xlink{},
+		triggerNotifyC: make(chan struct{}, 1),
+		// Production's pacing is not this test's concern; the timeout has to stay reachable, though, since it
+		// is what distinguishes a discarded message from a delivered one.
+		fullRefreshSendTimeout: 20 * time.Millisecond,
+		fullRefreshRetryDelay:  0,
+	}, routerEnv
+}
+
+// Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands covers the retry. A router announces its full link
+// set once per controller reconnect and nothing re-asks, so an announcement lost to send-queue back-pressure
+// leaves that controller unable to route over the router's links, and unable to prune the ones it should have
+// dropped, until the next reconnect.
+func Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(2)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(3), ch.sends.Load(),
+		"the announcement should have been retried until it reached the wire")
+}
+
+// Test_NotifyOfReconnect_GivesUpAfterItsAttempts: the retry is bounded, so a channel that never drains does
+// not hold a goroutine indefinitely.
+func Test_NotifyOfReconnect_GivesUpAfterItsAttempts(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(math.MaxInt32)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(fullRefreshSendAttempts), ch.sends.Load(),
+		"the retry must stop after its attempts rather than looping")
+}
+
+// Test_NotifyOfReconnect_StopsWhenTheChannelCloses: a closed channel cannot be re-announced to, and whatever
+// replaces it announces again, so retrying against it only delays the goroutine's exit.
+func Test_NotifyOfReconnect_StopsWhenTheChannelCloses(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(math.MaxInt32)
+	ch.closed.Store(true)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(1), ch.sends.Load(),
+		"a closed channel should be abandoned after the first failure, not retried")
+}
+
+// acceptThenDiscardChannel models what a real channel does to a message queued behind a backlog: the send is
+// accepted, and the message is dropped when its deadline expires before the queue drains. Nothing calls back,
+// because a plain send's listener ignores the error.
+type acceptThenDiscardChannel struct {
+	channel.Channel
+	sends       atomic.Int32
+	closeNotify chan struct{}
+}
+
+func (self *acceptThenDiscardChannel) Id() string                   { return "ctrl1" }
+func (self *acceptThenDiscardChannel) Label() string                { return "ctrl1" }
+func (self *acceptThenDiscardChannel) IsClosed() bool               { return false }
+func (self *acceptThenDiscardChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+
+func (self *acceptThenDiscardChannel) Send(channel.Sendable) error {
+	self.sends.Add(1)
+	return nil // queued, and never written
+}
+
+// Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure is the guard on how the announcement is sent.
+// A plain Send returns once the message is queued, and the deadline stays live afterwards, so the tx loop can
+// drop it with nobody told: a plain send's listener ignores the error. Reporting that as success marks the
+// links announced and leaves the controller permanently without them.
+func Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := &acceptThenDiscardChannel{closeNotify: make(chan struct{})}
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(fullRefreshSendAttempts), ch.sends.Load(),
+		"an announcement accepted into the queue but never written must count as a failure and be retried")
 }

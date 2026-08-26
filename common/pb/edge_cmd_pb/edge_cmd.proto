@@ -17,6 +17,7 @@ enum CommandType {
   CreateIdentityWithAuthenticatorsType = 1007;
   DeleteRevocationsBatchType = 1008;
   CreateRevocationsBatchType = 1009;
+  RemoveMfaForIdentityType = 1010;
 }
 
 message ChangeContext {
@@ -232,6 +233,8 @@ message EdgeRouter {
   repeated Interface interfaces = 16;
   map<string, CtrlChanListenerDetail> ctrlChanListeners = 17;
   repeated string configs = 18;
+  int64 capabilitiesMask = 19;
+  string version = 20;
 }
 
 message ReEnrollEdgeRouterCmd {
@@ -379,6 +382,12 @@ message Mfa {
   string identityId = 4;
   string secret = 5;
   repeated string recoveryCodes = 6;
+}
+
+message RemoveMfaForIdentityCmd {
+  string identityId = 1;
+
+  ChangeContext ctx = 2;
 }
 
 // Posture Checks

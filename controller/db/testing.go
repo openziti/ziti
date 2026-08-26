@@ -2,7 +2,6 @@ package db
 
 import (
 	"sort"
-	"testing"
 
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/errorz"
@@ -14,10 +13,17 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 )
 
-func NewTestContext(t testing.TB) *TestContext {
+// NewTestContext builds a db-backed test context bound to the given
+// test's assertions.
+//
+// t is a require.TestingT rather than a testing.TB so that this file,
+// which is a normal build-included source file, does not import
+// "testing". *testing.T satisfies it, so callers are unaffected.
+func NewTestContext(t require.TestingT) *TestContext {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 
 	context := &TestContext{

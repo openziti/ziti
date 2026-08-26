@@ -32,10 +32,10 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/jwks"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 )
@@ -54,6 +54,10 @@ type TokenIssuerCache struct {
 	// due to xweb API address binds
 	controllerIssuers cmap.ConcurrentMap[string, common.TokenIssuer]
 
+	// jwksResolver fetches JWKS endpoints for external issuers. It is shared by every
+	// external issuer so that they all fetch under the same configured constraints.
+	jwksResolver *HardenedJwksResolver
+
 	env Env
 }
 
@@ -64,6 +68,7 @@ func NewTokenIssuerCache(env Env) *TokenIssuerCache {
 		env:               env,
 		externalIssuers:   cmap.New[common.TokenIssuer](),
 		controllerIssuers: cmap.New[common.TokenIssuer](),
+		jwksResolver:      NewHardenedJwksResolver(JwksFetchConfig(env)),
 	}
 
 	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(result.onExtJwtCreate, boltz.EntityCreatedAsync)
@@ -172,7 +177,7 @@ func (a *TokenIssuerCache) onExtJwtCreate(signer *db.ExternalJwtSigner) {
 
 	signerRec := &TokenIssuerExtJwt{
 		externalJwtSigner: signer,
-		jwksResolver:      &jwks.HttpResolver{},
+		jwksResolver:      a.jwksResolver,
 		kidToPubKey:       map[string]common.IssuerPublicKey{},
 	}
 
@@ -219,6 +224,21 @@ func (a *TokenIssuerCache) onExtJwtDelete(signer *db.ExternalJwtSigner) {
 	a.externalIssuers.Remove(*signer.Issuer)
 }
 
+// reportBlockedJwksEndpoint logs an existing external JWT signer whose jwksEndpoint the current
+// [edge.externalJwtSigners.jwksFetch] configuration refuses. A configuration change can orphan a
+// signer that was created while its endpoint was still permitted, so this is reported at startup
+// rather than only when a fetch is attempted. Endpoints that resolve to a blocked address are not
+// visible here, as no name resolution is done; those are reported by the fetch itself.
+func (a *TokenIssuerCache) reportBlockedJwksEndpoint(signer *db.ExternalJwtSigner) {
+	if err := checkJwksEndpointAllowed(a.jwksResolver.policy, signer); err != nil {
+		pfxlog.Logger().WithFields(map[string]interface{}{
+			"id":           signer.Id,
+			"name":         signer.Name,
+			"jwksEndpoint": *signer.JwksEndpoint,
+		}).WithError(err).Error("external jwt signer jwks endpoint is not permitted by the current jwks fetch configuration, its keys cannot be resolved and authentication with this signer will fail")
+	}
+}
+
 // loadExisting loads all external JWT signers and controllers during initialization.
 func (a *TokenIssuerCache) loadExisting() {
 	err := a.env.GetDb().View(func(tx *bbolt.Tx) error {
@@ -234,6 +254,8 @@ func (a *TokenIssuerCache) loadExisting() {
 				pfxlog.Logger().WithError(err).WithField("extJwtId", id).Error("error loading external jwt as token issuer")
 				continue
 			}
+
+			a.reportBlockedJwksEndpoint(signer)
 
 			a.onExtJwtCreate(signer)
 		}
@@ -485,15 +507,30 @@ func (a *TokenIssuerCache) IterateControllerIssuers(f func(issuer common.TokenIs
 	})
 }
 
-// GetIssuerByKid searches both external JWT signers and controller issuers for the one
-// that owns the given key ID. Returns nil if no issuer claims that kid.
+// GetIssuerByKid searches enabled external JWT signers and then controller issuers for the one
+// that owns the given key ID. Disabled external signers are skipped. Returns nil if no issuer
+// claims that kid.
+//
+// External signers can share a kid when they draw from a common signing-key pool, so an external
+// match is ambiguous and does not identify a token's issuer. Callers needing a definitive binding
+// must resolve by issuer claim instead.
 func (a *TokenIssuerCache) GetIssuerByKid(kid string) common.TokenIssuer {
 	for _, issuer := range a.externalIssuers.Items() {
+		if !issuer.IsEnabled() {
+			continue
+		}
 		if pubKey, ok := issuer.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return issuer
 		}
 	}
 
+	return a.GetControllerIssuerByKid(kid)
+}
+
+// GetControllerIssuerByKid returns the controller TokenIssuer that owns the given key ID, or nil if
+// no controller issuer claims that kid. A controller issuer's key ID is the fingerprint of its TLS
+// certificate, so this resolves controller-issued tokens by kid without consulting external signers.
+func (a *TokenIssuerCache) GetControllerIssuerByKid(kid string) common.TokenIssuer {
 	for _, controller := range a.controllerIssuers.Items() {
 		if pubKey, ok := controller.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return controller
@@ -619,6 +656,10 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 		return result
 	}
 
+	if result.Error = r.verifyIssuerAndAudience(claims); result.Error != nil {
+		return result
+	}
+
 	result.IdClaimValue, result.Error = resolveStringClaimSelector(claims, r.IdentityIdClaimsSelector())
 
 	if result.Error != nil {
@@ -628,8 +669,47 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 	return result
 }
 
+// verifyIssuerAndAudience confirms the token's issuer and audience claims match this signer's
+// configured values. Signature verification alone resolves the signing key by kid, which is not
+// sufficient: a signer that shares keys across audiences (for example a common JWKS) would
+// otherwise accept a validly-signed token minted for a different audience or issuer. Callers must
+// invoke this only after the signature has been verified.
+func (r *TokenIssuerExtJwt) verifyIssuerAndAudience(claims jwt.MapClaims) error {
+	issuer, err := claims.GetIssuer()
+
+	if err != nil {
+		return fmt.Errorf("could not retrieve issuer claim from token: %w", err)
+	}
+
+	if issuer == "" {
+		return errors.New("token claims did not contain an issuer")
+	}
+
+	if issuer != r.ExpectedIssuer() {
+		return fmt.Errorf("token issuer [%s] does not match expected issuer [%s]", issuer, r.ExpectedIssuer())
+	}
+
+	audiences, err := claims.GetAudience()
+
+	if err != nil {
+		return fmt.Errorf("could not retrieve audience claim from token: %w", err)
+	}
+
+	if len(audiences) == 0 {
+		return errors.New("token claims did not contain an audience")
+	}
+
+	if !stringz.Contains(audiences, r.ExpectedAudience()) {
+		return fmt.Errorf("token audience %v does not match expected audience [%s]", audiences, r.ExpectedAudience())
+	}
+
+	return nil
+}
+
 // resolveStringSliceClaimProperty extracts a string or string array from JWT claims using a JSON pointer.
-// Returns a string slice even if the claim is a single string value.
+// Returns a string slice even if the claim is a single string value. An unset selector, a pointer that does
+// not resolve against the claims, and a null claim all resolve to no values without error. A claim that is
+// present but neither a string nor an array of strings errors.
 func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]string, error) {
 	if property == "" {
 		return nil, nil
@@ -648,7 +728,19 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	val, _, err := jsonPointer.Get(claims)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: %w", property, err)
+		// The role attributes claim is optional, so a pointer that does not resolve against this
+		// token's claims yields no attributes rather than an error, matching the unset-selector and
+		// empty-claim cases. This covers an absent key as well as a traversal failure, such as
+		// indexing into a scalar.
+		pfxlog.Logger().WithError(err).WithField("selector", property).
+			Debug("attribute claim selector did not resolve, enrolling with no role attributes")
+		return nil, nil
+	}
+
+	if val == nil {
+		pfxlog.Logger().WithField("selector", property).
+			Warn("attribute claim selector resolved to a null claim, enrolling with no role attributes")
+		return nil, nil
 	}
 
 	strVal, ok := val.(string)
@@ -663,7 +755,7 @@ func resolveStringSliceClaimProperty(claims jwt.MapClaims, property string) ([]s
 	arrVals, ok := val.([]any)
 
 	if !ok {
-		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, arrVals)
+		return nil, fmt.Errorf("could not resolve json pointer: %s: value is not a string or an array of strings, got: %v", property, val)
 	}
 
 	var attributes []string

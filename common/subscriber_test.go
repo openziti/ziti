@@ -124,7 +124,9 @@ func (self *subscriberTest) NotifyIdentityEvent(state *IdentityState, eventType 
 	}
 }
 
-func (self *subscriberTest) NotifyServiceChange(state *IdentityState, service *IdentityService, eventType ServiceEventType) {
+func (self *subscriberTest) NotifyBatchComplete(_ *RouterDataModel, _ uint64) {}
+
+func (self *subscriberTest) NotifyServiceChange(state *IdentityState, _ *IdentityService, service *IdentityService, eventType ServiceEventType) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 

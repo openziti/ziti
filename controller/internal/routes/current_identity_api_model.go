@@ -159,6 +159,8 @@ func MapCurrentIdentityEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeR
 			Name:               &router.Name,
 			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatus,
+			Capabilities:       renderRouterCapabilities(router.CapabilitiesMask),
+			Version:            router.Version,
 		},
 	}
 

@@ -86,6 +86,8 @@ func (self *testSubscriber) NotifyServiceChange(state *common.IdentityState, _, 
 	}
 }
 
+func (self *testSubscriber) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+
 func (self *testSubscriber) getNextIdentityEvent(eventType common.IdentityEventType) *identityEvent {
 	select {
 	case evt := <-self.identityEvents:
@@ -175,7 +177,7 @@ func Test_RouterDataModel_ServicePolicies(t *testing.T) {
 	identityRole2 := eid.New()
 
 	testIdentity, _ := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false, identityRole1, identityRole2)
-	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
+	router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false)
 
 	// test that initial event shows up
 	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
@@ -253,7 +255,7 @@ func Test_RouterDataModel_Configs(t *testing.T) {
 	identityRole2 := eid.New()
 
 	testIdentity, _ := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false, identityRole1, identityRole2)
-	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
+	router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false)
 
 	// test that initial event shows up
 	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
@@ -370,7 +372,7 @@ func Test_RouterDataModel_PostureChecks(t *testing.T) {
 	identityRole2 := eid.New()
 
 	testIdentity, _ := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false, identityRole1, identityRole2)
-	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
+	router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false)
 
 	// test that initial event shows up
 	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)
@@ -525,7 +527,7 @@ func Test_RouterDataModel_DataModelReplacement(t *testing.T) {
 	identityRole2 := eid.New()
 
 	testIdentity, _ := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false, identityRole1, identityRole2)
-	ctx.Req.NoError(router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false))
+	router.GetRouterDataModel().SubscribeToIdentityChanges(testIdentity.Id, sub, false)
 
 	// test that initial event shows up
 	idEvent := sub.getNextIdentityEvent(common.IdentityFullState)

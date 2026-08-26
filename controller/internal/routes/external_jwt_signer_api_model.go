@@ -110,7 +110,9 @@ func MapCreateExternalJwtSignerToModelForManagement(signer *rest_model.ExternalJ
 	}
 
 	ret := &model.ExternalJwtSigner{
-		BaseEntity:                    models.BaseEntity{},
+		BaseEntity: models.BaseEntity{
+			Tags: TagsOrDefault(signer.Tags),
+		},
 		Name:                          *signer.Name,
 		Enabled:                       *signer.Enabled,
 		ExternalAuthUrl:               signer.ExternalAuthURL,
@@ -139,11 +141,6 @@ func MapCreateExternalJwtSignerToModelForManagement(signer *rest_model.ExternalJ
 }
 
 func MapUpdateExternalJwtSignerToModelForManagement(id string, signer *rest_model.ExternalJWTSignerUpdate) *model.ExternalJwtSigner {
-	var tags map[string]interface{}
-	if signer.Tags != nil && signer.Tags.SubTags != nil {
-		tags = signer.Tags.SubTags
-	}
-
 	targetToken := string(rest_model.TargetTokenACCESS)
 
 	if signer.TargetToken != nil {
@@ -156,7 +153,7 @@ func MapUpdateExternalJwtSignerToModelForManagement(id string, signer *rest_mode
 	ret := &model.ExternalJwtSigner{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
-			Tags:     tags,
+			Tags:     TagsOrDefault(signer.Tags),
 			IsSystem: false,
 		},
 		Name:                          *signer.Name,
@@ -187,11 +184,6 @@ func MapUpdateExternalJwtSignerToModelForManagement(id string, signer *rest_mode
 }
 
 func MapPatchExternalJwtSignerToModelForManagement(id string, signer *rest_model.ExternalJWTSignerPatch) *model.ExternalJwtSigner {
-	var tags map[string]interface{}
-	if signer.Tags != nil && signer.Tags.SubTags != nil {
-		tags = signer.Tags.SubTags
-	}
-
 	targetToken := string(rest_model.TargetTokenACCESS)
 
 	if signer.TargetToken != nil {
@@ -204,7 +196,7 @@ func MapPatchExternalJwtSignerToModelForManagement(id string, signer *rest_model
 	ret := &model.ExternalJwtSigner{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
-			Tags:     tags,
+			Tags:     TagsOrDefault(signer.Tags),
 			IsSystem: false,
 		},
 		Name:                          stringz.OrEmpty(signer.Name),

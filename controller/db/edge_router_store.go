@@ -35,6 +35,8 @@ const (
 	FieldEdgeRouterIsVerified            = "isVerified"
 	FieldEdgeRouterIsTunnelerEnabled     = "isTunnelerEnabled"
 	FieldEdgeRouterAppData               = "appData"
+	FieldEdgeRouterCapabilitiesMask      = "capabilitiesMask"
+	FieldEdgeRouterVersion               = "version"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -56,6 +58,11 @@ type EdgeRouter struct {
 	RoleAttributes        []string               `json:"roleAttributes"`
 	IsTunnelerEnabled     bool                   `json:"isTunnelerEnabled"`
 	AppData               map[string]interface{} `json:"appData"`
+	// CapabilitiesMask is the router-reported capabilities bitmask. Zero until the router has
+	// connected and reported its capabilities.
+	CapabilitiesMask int64 `json:"capabilitiesMask"`
+	// Version is the router-reported binary version. Empty until the router has connected.
+	Version string `json:"version"`
 }
 
 func (entity *EdgeRouter) GetName() string {
@@ -181,6 +188,8 @@ func (store *edgeRouterStoreImpl) FillEntity(entity *EdgeRouter, bucket *boltz.T
 
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.AppData = bucket.GetMap(FieldEdgeRouterAppData)
+	entity.CapabilitiesMask = bucket.GetInt64WithDefault(FieldEdgeRouterCapabilitiesMask, 0)
+	entity.Version = bucket.GetStringWithDefault(FieldEdgeRouterVersion, "")
 }
 
 func (store *edgeRouterStoreImpl) PersistEntity(entity *EdgeRouter, ctx *boltz.PersistContext) {
@@ -195,6 +204,9 @@ func (store *edgeRouterStoreImpl) PersistEntity(entity *EdgeRouter, ctx *boltz.P
 
 	ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
 	ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
+
+	ctx.SetInt64(FieldEdgeRouterCapabilitiesMask, entity.CapabilitiesMask)
+	ctx.SetString(FieldEdgeRouterVersion, entity.Version)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {

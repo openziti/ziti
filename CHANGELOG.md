@@ -2,9 +2,10 @@
 
 ## What's New
 
+* [Connect-V2: Sessionless SDK Dial](#connect-v2-sessionless-sdk-dial) - SDKs can dial services without a per-service controller session; the router authorizes the dial locally against the Router Data Model
 * [ZAC Bootstrapping CLI](#zac-bootstrapping-cli) - CLI commands to download, configure, and serve the Ziti Admin Console without hand-editing YAML
 * [Verify Traffic with ext-jwt-signers](#verify-traffic-with-ext-jwt-signers) - `ziti ops verify traffic` can authenticate with an ext-jwt-signer (OIDC) to test the certless ephemeral-cert path
-* [Cluster Quorum Recover](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
+* [Cluster Quorum Recovery](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
 * [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
@@ -13,7 +14,79 @@
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
+* [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
+* [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
+* [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
+
+## Security Advisories
+
+This release addresses eight security advisories. It also includes the two control-plane certificate and
+identity validation fixes first released in 2.0.2 and 1.6.18; anyone upgrading from 2.0.1 or earlier is
+picking those up here for the first time. See the linked GitHub Security Advisories for full details, impact,
+and affected versions.
+
+* [GHSA-q8g9-jc4c-jp6q](https://github.com/openziti/ziti/security/advisories/GHSA-q8g9-jc4c-jp6q) (High) - The controller buffered the entire body of every
+  inbound request before any authentication check and with no size cap, so an unauthenticated client could
+  exhaust controller memory, and crash it, by sending parallel large-body requests to endpoints such as
+  enrollment.
+* [GHSA-j952-6x8x-jmj6](https://github.com/openziti/ziti/security/advisories/GHSA-j952-6x8x-jmj6) (High) - The unauthenticated legacy enrollment path buffered
+  the request body a second time, allocating twice the memory per request and roughly halving the bandwidth
+  needed to drive the controller out of memory. Amplifies GHSA-q8g9-jc4c-jp6q.
+* [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (Medium) - When accepting an incoming router-to-router link, a
+  router verified the dialing router's identity against the whole presented certificate chain instead of the
+  leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
+  present another router's certificate as filler and be admitted on a link under that router's identity,
+  letting it intercept, inject, drop, or strand the circuits routed over that link.
+* [GHSA-7868-235p-7497](https://github.com/openziti/ziti/security/advisories/GHSA-7868-235p-7497) (Medium) - The controller did not validate the API session
+  token when creating a circuit via CreateCircuitV3, taking the dialing identity from a router-supplied
+  header instead. An attacker holding enrolled router credentials could create circuits on behalf of any
+  identity permitted to dial the service through that router, without that identity having authenticated,
+  yielding data-plane access under an impersonated identity. The same gap meant expired and revoked API
+  sessions were not caught at circuit creation.
+* [GHSA-4h58-w989-xgg4](https://github.com/openziti/ziti/security/advisories/GHSA-4h58-w989-xgg4) (Medium) - The token-based enrollment endpoint skipped
+  audience and issuer validation when the request carried a `ziti-token-issuer-id` header, so an attacker
+  holding any unexpired JWT signed by a configured external JWT signer, even one minted for a different
+  audience, could enroll a new identity onto the network.
+* [GHSA-6v5r-p2wr-q492](https://github.com/openziti/ziti/security/advisories/GHSA-6v5r-p2wr-q492) (Medium) - The current-api-session certificates endpoint
+  performed an unscoped list, so any authenticated user could read the API session certificates (subject
+  DNs, fingerprints, and full PEM chains) of all identities, not just their own.
+* [GHSA-whjr-3j94-gw3c](https://github.com/openziti/ziti/security/advisories/GHSA-whjr-3j94-gw3c) (Medium) - A JWKS endpoint URL configured on an external JWT
+  signer was fetched server-side with no timeout, private-range blocking, or allowlist, letting a caller with
+  external-jwt-signer management access make the controller issue requests to arbitrary internal URLs,
+  including cloud metadata endpoints (SSRF).
+* [GHSA-354c-gpg9-j988](https://github.com/openziti/ziti/security/advisories/GHSA-354c-gpg9-j988) (Low) - With promptOnWake or promptOnUnlock enabled on an MFA
+  posture check, the edge router dereferenced a nil wake/unlock timestamp while locally evaluating an
+  authorized client's dial or bind, panicking and crashing the router (data-plane denial of service).
+* [GHSA-mrpr-756c-xm47](https://github.com/openziti/ziti/security/advisories/GHSA-mrpr-756c-xm47) (Critical) - Improper peer certificate validation on the controller
+  cluster mesh, router links, and metrics endpoint. TLS peer checks accepted a connection when any presented
+  certificate chained to the trusted CA while taking the peer identity from the leaf certificate, allowing a
+  peer to be admitted under a forged identity without possessing a trusted key. On HA/clustered controllers
+  this allows joining the controller cluster as an arbitrary controller.
+* [GHSA-cc5m-7mhm-xh9f](https://github.com/openziti/ziti/security/advisories/GHSA-cc5m-7mhm-xh9f) (Medium) - Control-channel connections carrying a channel-type header
+  bypassed router certificate and identity verification, allowing an attacker that can reach the controller
+  control port to be admitted as an arbitrary router identity and manipulate that router's fabric terminators,
+  faults, and circuit routing. Impact is limited to router data model metadata (service and identity names) and
+  control-plane manipulation; it does not by itself grant access to the services the network protects.
+
+## Connect-V2: Sessionless SDK Dial
+
+Ziti SDKs built on sdk-golang v2 can now dial a service without first obtaining a
+per-service session token from the controller. With Connect-V2 the router authorizes the
+dial locally against its copy of the Router Data Model, the same policy and posture data
+the controller already distributes. Dropping the per-dial session round-trip to the
+controller lowers dial latency and controller load, most noticeably for identities that
+dial many services.
+
+There is nothing to configure. Connect-V2 is negotiated automatically: a router advertises
+the capability, an SDK that supports it uses the new path, and older SDKs transparently
+continue to use the session-based dial. Policy and posture checks are still enforced on
+every dial; they simply run against the Router Data Model on the router instead of during
+session creation on the controller.
+
+Connect-V2 requires both a router and an SDK from this release (or newer). Mixed networks
+are fine: a dial uses Connect-V2 only when both ends support it, and otherwise falls back
+to the session-based path.
 
 ## ZAC Bootstrapping CLI
 
@@ -108,7 +181,6 @@ controller and add new peers normally with `ziti ops cluster add`.
 
 ### End-to-End Encryption (e2ee) Improvements
 
-* Add support for negotiating e2ee scheme during Dial/Accept handshake
 * Allow hosting-side crypto material to be generated on per connection basis (instead of per terminator)
 
 
@@ -240,6 +312,15 @@ The CLI has been updated to support the new field:
 * `ziti fabric create router` accepts `--config <id>` (repeatable)
 * `ziti fabric update router` accepts `--config <id>` to replace the router's config list
 
+**Status: in progress.** The `target` field, the router `configs` field, and the built-in
+`router.link.v1` config type together establish the data model and distribution path:
+config types can be targeted at routers, configs can be attached to routers, and the
+controller distributes router-targeted configs to the affected routers through the Router
+Data Model, where a router-side registry receives them. Routers do not yet consume these
+configs to drive their runtime behavior, so controller-managed router configuration is not
+ready for production use in this release. See `doc/design/ctrl-managed-router-config.md`
+for the overall design.
+
 ## Multiple LAN Interfaces for tproxy
 
 The `lanIf` option in `xgress_edge_tunnel` tproxy configs now accepts either a
@@ -336,6 +417,32 @@ ziti tunnel run --dnsUpstreamMode serial \
   --dnsUpstream tcp://8.8.8.8:53
 ```
 
+## Controller Read Throughput Under Load
+
+This release picks up bbolt v1.5.0, which removes a scalability limit that could
+stall a controller serving a high rate of reads.
+
+Every controller read - a service list, a policy or posture check, a service
+lookup during circuit creation - runs in a bbolt read transaction, and bbolt
+guards transaction bookkeeping with a single global mutex that each transaction
+takes twice, once on open and once on close. In earlier versions, closing a
+transaction held that mutex while linearly scanning the list of all open read
+transactions to find itself. The cost of that scan grew with the number of
+concurrent readers, so as read concurrency rose the lock was held longer, which
+in turn let more readers pile up behind it. Under sustained load the result is a
+convoy: thousands of goroutines waiting on one mutex, a machine that looks fully
+busy while little work completes, and request timeouts that are not explained by
+the amount of actual work being asked of the controller.
+
+bbolt v1.5.0 drops the scan and tracks the open-transaction count directly, so
+the critical section no longer grows with concurrency. Controllers most likely to
+notice are those with many identities refreshing sessions at once, where the
+service-list and policy query rate spikes.
+
+The same release also coalesces contiguous page ranges when a transaction's freed
+pages are merged back into the freelist, instead of merging one page at a time.
+This mostly benefits transactions that free a large amount of data at once.
+
 ## Logging Now Uses slog with an Async Handler
 
 The controller, router, and `ziti tunnel` now log through Go's standard
@@ -390,42 +497,203 @@ most call sites are not yet migrated, per-channel overrides have limited reach
 today and expand as packages are converted. The global `ziti agent set-log-level
 <level>` still affects everything.
 
+## Build Flags
+
+A controller binary can now carry a list of build flags: short names for the
+build time choices it was made with. The `/version` endpoint returns them in a
+new `buildFlags` field, and `ziti version -v` prints them, so a client or an
+operator can tell what a running controller was built to do without asking the
+person who built it.
+
+Flags are set with the Go linker at build time. There is one symbol, and one
+build owner composes the whole list:
+
+```
+go build -ldflags "-X github.com/openziti/ziti/v2/common/build.buildFlags=ALPHA,BRAVO_MODE" ./ziti
+```
+
+Names are uppercase letters, digits, and underscores. Anything else in the list
+is dropped rather than served. A second `-X` against the same symbol replaces
+the first rather than adding to it, and the linker silently ignores an `-X`
+whose symbol path it cannot resolve, so a typo in that path yields a binary with
+no flags rather than a build error.
+
+Releases from this repository set no flags, so `buildFlags` is empty and `ziti
+version -v` prints no build flags line. The names themselves are defined by
+whoever produced the build; a client should ignore any it does not recognize.
+
+Build flags are not capabilities. `capabilities` on `/version` describes what
+the controller offers over the API, is defined by this repository, and is
+enumerated at `/enumerated-capabilities`. Build flags describe how the binary
+was built, are open-ended, and are enumerated nowhere.
+
+## Deprecated Features
+
+Deprecated features still work, but are no longer recommended and will be removed
+in a future release. Plan to migrate off them.
+
+* **Legacy sessions** - The legacy session model, both API sessions and service
+  sessions, is deprecated and will be removed in OpenZiti 3.0, along with the
+  supporting infrastructure built around it.
+
+## Removed Features
+
+* **Link `costTags`** - The `costTags` option on router link listeners has been
+  removed. It was parsed from router config, advertised to the controller, and
+  stored on the router model, but was never used for path selection or any other
+  behavior. Routers ignore the setting if it is still present in config, and the
+  corresponding protobuf fields are now reserved, so no migration is required
+  beyond optionally deleting the setting.
+
+## Contributors
+
+Thanks to the community members who contributed to this release.
+
+* [@msbusk](https://github.com/msbusk) diagnosed the circuit leak in
+  [#4184](https://github.com/openziti/ziti/issues/4184) and validated the fix against a
+  production workload.
+
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge-api: [v0.31.0 -> v0.31.1](https://github.com/openziti/edge-api/compare/v0.31.0...v0.31.1)
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.95](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.95)
-* github.com/openziti/identity: [v1.0.129 -> v1.0.133](https://github.com/openziti/identity/compare/v1.0.129...v1.0.133)
-* github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.0](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.0)
-    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
-    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
-    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.27](https://github.com/openziti/channel/compare/v4.3.11...v5.0.27)
+    * [Issue #288](https://github.com/openziti/channel/issues/288) - Remove unused reconnecting and memory implementations
+    * [Issue #285](https://github.com/openziti/channel/issues/285) - Version negotiation responses are never recognized, so the protocol version can never be renegotiated
+    * [Issue #287](https://github.com/openziti/channel/issues/287) - Dialer retries a hello when the retry cannot change the outcome
+    * [Issue #280](https://github.com/openziti/channel/issues/280) - MultiListener: no way to decline a grouped channel without stranding the dialer
+    * [Issue #275](https://github.com/openziti/channel/issues/275) - Multi-listener attaches reconnecting underlays to a closing channel under churn
+    * [Issue #271](https://github.com/openziti/channel/issues/271) - Treat MinTotalUnderlays as a first-class multi-underlay signal
+    * [Issue #274](https://github.com/openziti/channel/issues/274) - Add configurable reconnect jitter to BackoffDialPolicy
+    * [Issue #258](https://github.com/openziti/channel/issues/258) - Add a hook to inject hello headers derived from the peer's certificate
+    * [Issue #267](https://github.com/openziti/channel/issues/267) - NewSingleChannelWithUnderlay panics on underlays with nil headers (e.g. websocket)
+    * [Issue #269](https://github.com/openziti/channel/issues/269) - Make channel logging pluggable via injectable slog.Logger
+    * [Issue #264](https://github.com/openziti/channel/issues/264) - Multi-underlay group reconnect can reject-storm under load
+    * [Issue #265](https://github.com/openziti/channel/issues/265) - Support reconfiguring heartbeat intervals on a running channel
+    * [Issue #261](https://github.com/openziti/channel/issues/261) - Add ContentTypeReceiver, a self-describing receive handler
+    * [Issue #250](https://github.com/openziti/channel/issues/250) - BackoffDialPolicy cannot (re)establish a grouped channel: never sets IsFirstGroupConnection
+    * [Issue #252](https://github.com/openziti/channel/issues/252) - BackoffDialPolicy misclassifies multi-underlay constraint fill as short-lived/flapping
+    * [Issue #247](https://github.com/openziti/channel/issues/247) - Config.Binder exposes unexported `*channelImpl` in its public signature
+    * [Issue #255](https://github.com/openziti/channel/issues/255) - Flaky Test_MultiUnderlayChannels: CloseRandom can close the last required underlay
+    * [Issue #253](https://github.com/openziti/channel/issues/253) - Multi-underlay channel delays below-Min closure when a dial/backoff is in progress
+    * [Issue #246](https://github.com/openziti/channel/issues/246) - classic_dialer leaks underlay FD when hello handshake fails
+    * [Issue #241](https://github.com/openziti/channel/issues/241) - Allow calling LoadOptions on an Options instance
+    * [Issue #238](https://github.com/openziti/channel/issues/238) - Channelv5
+
+* github.com/openziti/edge-api: [v0.31.0 -> v0.35.2](https://github.com/openziti/edge-api/compare/v0.31.0...v0.35.2)
+    * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
+
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.100](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.100)
+    * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
+    * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
+    * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
+    * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
+
+* github.com/openziti/identity: [v1.0.129 -> v1.0.140](https://github.com/openziti/identity/compare/v1.0.129...v1.0.140)
+    * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
+    * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
+
+* github.com/openziti/runzmd: [v1.0.90 -> v1.0.92](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.92)
+    * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
+
+* github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre4](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre4)
+    * [Issue #999](https://github.com/openziti/sdk-golang/issues/999) - Dial for an unknown edge conn id is dropped silently, costing the client its full connect timeout
+    * [Issue #991](https://github.com/openziti/sdk-golang/issues/991) - Read deadline on ReadAdapter permanently closes the peer's send buffer
+    * [Issue #987](https://github.com/openziti/sdk-golang/issues/987) - LinkSendBuffer leaks goroutines after send-half close
+    * [Issue #958](https://github.com/openziti/sdk-golang/issues/958) - ConnectV2 xgress client conn not marked closed on router-initiated teardown
+    * [Issue #967](https://github.com/openziti/sdk-golang/issues/967) - Move RouterCapabilityConnectV2 constant into edge_client.proto
+    * [Issue #951](https://github.com/openziti/sdk-golang/issues/951) - Add an SDK acceptance-test framework
+    * [Issue #952](https://github.com/openziti/sdk-golang/issues/952) - xgress client half-close not delivered to legacy edge hosts
+    * [Issue #936](https://github.com/openziti/sdk-golang/issues/936) - Implement Connect-V2: sessionless SDK dial
+    * [Issue #945](https://github.com/openziti/sdk-golang/issues/945) - Migrate to channel/v5
+    * [Issue #948](https://github.com/openziti/sdk-golang/issues/948) - AddControllerUrlsUpdateListener remover unsubscribes the wrong event
+    * [Issue #941](https://github.com/openziti/sdk-golang/issues/941) - Prep for channel v5: explicit receive handler registration, drop send priorities
     * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
+    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
+    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
-* github.com/openziti/secretstream: [v0.1.49 -> v0.1.51](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.51)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.216](https://github.com/openziti/transport/compare/v2.0.215...v2.0.216)
+* github.com/openziti/secretstream: [v0.1.49 -> v0.1.52](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.52)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.220](https://github.com/openziti/transport/compare/v2.0.215...v2.0.220)
+    * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
+
+* github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4184](https://github.com/openziti/ziti/issues/4184) - Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
+    * [Issue #4278](https://github.com/openziti/ziti/issues/4278) - fabric inspect data-model-index doesn't move for writes outside the router data model
+    * [Issue #4196](https://github.com/openziti/ziti/issues/4196) - Router control-channel connect/disconnect race can leave a reconnected router de-registered
+    * [Issue #4247](https://github.com/openziti/ziti/issues/4247) - Router never closes a control channel whose controller stops answering heartbeats, leaving recovery to a ~15 minute TCP timeout
+    * [Issue #4248](https://github.com/openziti/ziti/issues/4248) - Router startup check samples the controller count at a single instant and kills a router that is momentarily between control channels
+    * [Issue #4004](https://github.com/openziti/ziti/issues/4004) - Manage router link configuration via the controller
+    * [Issue #4145](https://github.com/openziti/ziti/issues/4145) - Upgraded controller rejects legacy clients' existing sessions and gives no recovery signal for invalid service tokens
+    * [Issue #4125](https://github.com/openziti/ziti/issues/4125) - Legacy create-session signs service JWT with a mismatched session id after dedup
+    * [Issue #4160](https://github.com/openziti/ziti/issues/4160) - Leaderless controller strands terminator operations during cluster membership changes
+    * [Issue #4204](https://github.com/openziti/ziti/issues/4204) - ziti run/tunnel ignore PFXLOG_NO_JSON and lost the terminal-aware log-format default
+    * [Issue #4234](https://github.com/openziti/ziti/issues/4234) - Ensure terminator operations are scoped by source router
+    * [Issue #4240](https://github.com/openziti/ziti/issues/4240) - Legacy v1 create-circuit handler crashes the controller on JWT-prefixed tokens
+    * [Issue #4232](https://github.com/openziti/ziti/issues/4232) - logging.Install should route stdlib slog.Default() into ziti's sink
+    * [Issue #4141](https://github.com/openziti/ziti/issues/4141) - Service-policy enforcer deletes valid legacy sessions; type= queries use numeric id against the string-mapped symbol
+    * [Issue #4118](https://github.com/openziti/ziti/issues/4118) - Overlapping JWKS kids across ext-jwt-signers cause intermittent primary auth failures (GetIssuerByKid collision)
+    * [Issue #4063](https://github.com/openziti/ziti/issues/4063) - External JWT enrollment fails when a configured role attributes claims selector is absent from the JWT
+    * [Issue #4124](https://github.com/openziti/ziti/issues/4124) - Managed-auth External JWT Signer created without network-id/managed tags on OpenZiti v2.0.0 controllers
+    * [Issue #4206](https://github.com/openziti/ziti/issues/4206) - Lock order inversion in ConnectionTracker deadlocks the controller
+    * [Issue #4193](https://github.com/openziti/ziti/issues/4193) - ER/T terminator create reports "invalid edge router for session" with no router-side error and slow recovery
+    * [Issue #4079](https://github.com/openziti/ziti/issues/4079) - DisconnectRouter reroutes circuits before marking the router disconnected
+    * [Issue #4149](https://github.com/openziti/ziti/issues/4149) - upgrading a running 1.x controller/router to 2.x fails to create the service user
+    * [Issue #3990](https://github.com/openziti/ziti/issues/3990) - Expose service change subscriptions to external SDKs over protobuf
+    * [Issue #4108](https://github.com/openziti/ziti/issues/4108) - Controller retains bbolt-managed memory past transaction (create-circuit response SIGSEGV)
+    * [Issue #4067](https://github.com/openziti/ziti/issues/4067) - JWKS peer signer kid is undecodable raw bytes (should be hex) -- %s vs %x on sha1.Sum in oidc_auth/storage.go KeySet()
+    * [Issue #4071](https://github.com/openziti/ziti/issues/4071) - Unify router capabilities into a single shared bitmask across control and edge channels
+    * [Issue #3998](https://github.com/openziti/ziti/issues/3998) - Add router-side managed configuration registry
+    * [Issue #4069](https://github.com/openziti/ziti/issues/4069) - Controller can cache empty apiAddresses forever due to startup race between raft mesh and xweb config load
+    * [Issue #4066](https://github.com/openziti/ziti/issues/4066) - bootstrap zac for controller with quickstart
+    * [Issue #4060](https://github.com/openziti/ziti/issues/4060) - support ext-jwt-signer in ziti verify traffic
+    * [Issue #4036](https://github.com/openziti/ziti/issues/4036) - Own the metrics wire format (MetricsMessage) in ziti
+    * [Issue #4137](https://github.com/openziti/ziti/issues/4137) - ziti tunnel ignores --dnsSvcIpRange <!-- keep -->
+    * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode <!-- keep -->
+    * [Issue #3972](https://github.com/openziti/ziti/issues/3972) - Support multiple LAN interfaces for tproxy mode <!-- keep -->
+    * [Issue #4052](https://github.com/openziti/ziti/issues/4052) - ziti cli cached creds don't use refresh token
+    * [Issue #3881](https://github.com/openziti/ziti/issues/3881) - Add Capability for DNSUPSTREAMS to be used in serial
+    * [Issue #4035](https://github.com/openziti/ziti/issues/4035) - Controller /metrics endpoint produces duplicate TYPE declarations causing Prometheus to drop samples
+    * [Issue #4045](https://github.com/openziti/ziti/issues/4045) - Reduce controller link/router management lock contention under high link churn
+    * [Issue #3884](https://github.com/openziti/ziti/issues/3884) - Implement Connect-V2: sessionless SDK dial
+    * [Issue #3929](https://github.com/openziti/ziti/issues/3929) - [Backport-2.0] Router does not enforce api-session or identity revocations on live connections
+    * [Issue #3841](https://github.com/openziti/ziti/issues/3841) - Controller Cluster - new controllers must be able to be dialed by the leader in order to join successfully
+    * [Issue #3933](https://github.com/openziti/ziti/issues/3933) - edge enrollment: add the list of controllers to successful enrollment response
+    * [Issue #3992](https://github.com/openziti/ziti/issues/3992) - Overlay edge-oidc listener panics when its redirect_uri is not in the redirectURIs allow-list
+    * [Issue #4039](https://github.com/openziti/ziti/issues/4039) - cryptic x509 error when cached CA is stale
+    * [Issue #4010](https://github.com/openziti/ziti/issues/4010) - Non-admin identity with `enrollment` entity permission can create enrollments for any identity including admins, achieving full privilege escalation to admin
+    * [Issue #4011](https://github.com/openziti/ziti/issues/4011) - Router deletes terminators ~12m after creation when host SDK replies with wrong inspect content type
+    * [Issue #4002](https://github.com/openziti/ziti/issues/4002) - make quickstart easier - ZAC
+    * [Issue #4007](https://github.com/openziti/ziti/issues/4007) - add cluster option to ziti run quickstart
+    * [Issue #3983](https://github.com/openziti/ziti/issues/3983) - Migrate to channel/v5
+    * [Issue #3916](https://github.com/openziti/ziti/issues/3916) - Convert router/forwarder to slog
+    * [Issue #3976](https://github.com/openziti/ziti/issues/3976) - Distribute routers and router-target configs through the RDM
+    * [Issue #3974](https://github.com/openziti/ziti/issues/3974) - Add router.link.v1 config type
+    * [Issue #3994](https://github.com/openziti/ziti/issues/3994) - support additional addresses in deployments
+    * [Issue #3934](https://github.com/openziti/ziti/issues/3934) - Consolidate the fabric and edge services data stores
     * [Issue #3910](https://github.com/openziti/ziti/issues/3910) - Install slog and route agent log-level callbacks through common/logging
     * [Issue #3927](https://github.com/openziti/ziti/issues/3927) - Router does not enforce api-session or identity revocations on live connections; revoked OIDC sessions keep dialing/hosting until access-token expiry
     * [Issue #3906](https://github.com/openziti/ziti/issues/3906) - Add named-logger registry, logrus bridge, and pfxlog-shape JSON
     * [Issue #3904](https://github.com/openziti/ziti/issues/3904) - Add slog AsyncHandler in preparation for moving to slog for logging
     * [Issue #3902](https://github.com/openziti/ziti/issues/3902) - Add agent IPC capability discovery and channel-based log-level commands
-    * [Issue #3894](https://github.com/openziti/ziti/issues/3894) - Consolidate duplicated agent channel-upgrade code into common/agent
     * [Issue #3893](https://github.com/openziti/ziti/issues/3893) - Import openziti/agent library into common/agent
+    * [Issue #3894](https://github.com/openziti/ziti/issues/3894) - Consolidate duplicated agent channel-upgrade code into common/agent
     * [Issue #3952](https://github.com/openziti/ziti/issues/3952) - externalIdClaim on CA returns HTTP 500 with empty body for most matcher/parser combinations
+    * [Issue #3908](https://github.com/openziti/ziti/issues/3908) - Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
     * [Issue #3780](https://github.com/openziti/ziti/issues/3780) - Add configs field to routers
+    * [Issue #3961](https://github.com/openziti/ziti/issues/3961) - Router panics evaluating an AnyOf process posture check when client reports no process/OS data
     * [Issue #1593](https://github.com/openziti/ziti/issues/1593) - Expanded attribute query support in management API; add policy attribute support and usage count
-    * [Issue #3867](https://github.com/openziti/ziti/issues/3867) - Tunneler skips iptables rules for services sharing an intercept hostname
     * [Issue #3949](https://github.com/openziti/ziti/issues/3949) - DeleteById swallows errors when firing change events
+    * [Issue #3867](https://github.com/openziti/ziti/issues/3867) - Tunneler skips iptables rules for services sharing an intercept hostname
+    * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - oidc auth fails with wildcard server-cert SANs
+    * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - ziti login fails with oidc + wildcard certs
+    * [Issue #3938](https://github.com/openziti/ziti/issues/3938) - Carry the link id in a link header instead of only in the channel identity token
     * [Issue #3945](https://github.com/openziti/ziti/issues/3945) - Increase certificate serial number namespace to 159 bits
     * [Issue #3942](https://github.com/openziti/ziti/issues/3942) - Prep for channel v5: bind handler invocation, send priorities
-    * [Issue #3938](https://github.com/openziti/ziti/issues/3938) - Carry the link id in a link header instead of only in the channel identity token
-    * [Issue #3908](https://github.com/openziti/ziti/issues/3908) - Router posture-data updates don't revoke SDK-hosted xgress circuits or hosted terminators
-    * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - ziti login fails with oidc + wildcard certs
-    * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - oidc auth fails with wildcard server-cert SANs
+    * [Issue #3920](https://github.com/openziti/ziti/issues/3920) - ziti pki create csr ignores --key-name flag
     * [Issue #3744](https://github.com/openziti/ziti/issues/3744) - Add a target field to config type
     * [Issue #3684](https://github.com/openziti/ziti/issues/3684) - Keep controller mesh fully connected, as much as possible
+    * [Issue #3864](https://github.com/openziti/ziti/issues/3864) - e2ee: allow hosting SDK to return e2ee public key in the dial response
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
-    * [Issue #3972](https://github.com/openziti/ziti/issues/3972) - Support multiple LAN interfaces for tproxy mode
-    * [Issue #3988](https://github.com/openziti/ziti/issues/3988) - Support multiple resolver addresses for tproxy mode
-    * [Issue #4035](https://github.com/openziti/ziti/issues/4035) - Prometheus metrics endpoint emits per-router ctrl/link metrics as identical time series, causing dropped samples
+
+

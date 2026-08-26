@@ -736,6 +736,10 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 			claims.AccessTokenClaims.Scopes = subjectClaims.CustomClaims.Scopes
 		}
 		claims.CustomClaims = subjectClaims.CustomClaims
+		// auth_time attests when the subject actually authenticated; carry it through the
+		// exchange rather than leaving the mint-time default, which would falsely refresh
+		// authentication-recency semantics (e.g. router-side MFA posture baselines).
+		claims.AuthTime = subjectClaims.AuthTime
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.GetClientID()
 

@@ -61,3 +61,24 @@ func (h *EdgeRouterHelper) WaitForRevocationGone(id string, timeout time.Duratio
 	}
 	return false
 }
+
+// WaitForIdentityWithServices polls the router's RDM until the identity with the given id
+// has at least one service policy matched, which means the controller has fully distributed
+// the identity → service-policy relationships. Returns true if found within the timeout.
+func (h *EdgeRouterHelper) WaitForIdentityWithServices(identityId string, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		rdm := h.GetRouterDataModel()
+		if identity, ok := rdm.Identities.Get(identityId); ok {
+			found := false
+			identity.IterateServicePolicies(func(_ string) {
+				found = true
+			})
+			if found {
+				return true
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}

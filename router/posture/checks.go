@@ -67,7 +67,23 @@ func (cache *Cache) saveHistory(data *InstanceData) {
 //   - apiSessionId: The API session ID for this posture instance
 //   - response: The posture response containing device state information
 func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edge_client_pb.PostureResponses) {
-	instance := cache.apiSessionInstances.Upsert(apiSessionId, nil, func(exist bool, valueInMap *Instance, newValue *Instance) *Instance {
+	instance := cache.getOrCreateInstance(identityId, apiSessionId)
+
+	updated := false
+	for _, response := range responses.Responses {
+		next := instance.Apply(response, cache.totpParser)
+		updated = updated || next
+	}
+
+	if updated {
+		instance.emitUpdated()
+	}
+}
+
+// getOrCreateInstance returns the posture instance for an API session, creating and registering
+// it if none exists yet.
+func (cache *Cache) getOrCreateInstance(identityId, apiSessionId string) *Instance {
+	return cache.apiSessionInstances.Upsert(apiSessionId, nil, func(exist bool, valueInMap *Instance, newValue *Instance) *Instance {
 		if !exist {
 			valueInMap = newInstance()
 			valueInMap.ApiSessionId = apiSessionId
@@ -77,14 +93,29 @@ func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edg
 
 		return valueInMap
 	})
+}
 
-	updated := false
-	for _, response := range responses.Responses {
-		next := instance.Apply(response, cache.totpParser)
-		updated = updated || next
+// SeedMfaFromApiSession records the MFA-passed baseline an api session token attests: when the
+// token's authentication methods include TOTP, the identity passed MFA during authentication, so
+// MFA posture checks pass from that moment without requiring a posture-response TOTP token. The
+// baseline is auth_time (when TOTP was part of authentication); a token without auth_time seeds
+// nothing — iat is never used, because it moves on every refresh and a router seeing the session
+// for the first time would seed a baseline newer than the actual TOTP pass, extending the MFA
+// window. The controller mints all OpenZiti OIDC tokens and always sets auth_time. The baseline
+// is set only when no MFA-passed time is known — a refreshed token must never extend an existing
+// MFA window — while posture-response TOTP tokens advance the time monotonically and always win.
+func (cache *Cache) SeedMfaFromApiSession(identityId, apiSessionId string, claims *common.AccessClaims) {
+	if claims == nil || !claims.TotpComplete() || claims.AuthTime == 0 {
+		return
 	}
 
-	if updated {
+	passedAt := claims.AuthTime.AsTime()
+	if passedAt.IsZero() || passedAt.Unix() <= 0 {
+		return
+	}
+
+	instance := cache.getOrCreateInstance(identityId, apiSessionId)
+	if instance.SeedPassedMfaAt(passedAt) {
 		instance.emitUpdated()
 	}
 }
@@ -247,10 +278,33 @@ func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.P
 	return false
 }
 
-func (instance *Instance) emitUpdated() {
-	instance.Time = time.Now()
+// SeedPassedMfaAt establishes the MFA-passed baseline if none is known yet, returning true when
+// the baseline was applied. An existing MFA-passed time is never moved.
+func (instance *Instance) SeedPassedMfaAt(passedAt time.Time) bool {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
 
+	if instance.PassedMfaAt != nil {
+		return false
+	}
+	instance.PassedMfaAt = &passedAt
+	return true
+}
+
+// Snapshot returns a copy of the instance's posture data taken under the instance lock, so
+// readers on other goroutines (posture push, access evaluation) never race writers
+// (Apply, SeedPassedMfaAt).
+func (instance *Instance) Snapshot() InstanceData {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	return instance.InstanceData
+}
+
+func (instance *Instance) emitUpdated() {
+	instance.lock.Lock()
+	instance.Time = time.Now()
 	instanceFieldCopy := instance.InstanceData
+	instance.lock.Unlock()
 
 	for _, listener := range instance.updatedListeners {
 		listener(&instanceFieldCopy)

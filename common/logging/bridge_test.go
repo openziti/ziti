@@ -187,6 +187,40 @@ func TestInstallToFiltersBelowLevel(t *testing.T) {
 	require.Equal(t, "passed", rec.snapshot()[0].Message)
 }
 
+// TestInstallSetsSlogDefault proves Install points stdlib slog.Default() at the
+// configured sink and gates it at the global level, so un-named slog output
+// (and libraries that log through slog.Default()) reaches ziti's handler and
+// respects the operator's level. Global logrus/slog state is saved and restored
+// so this test does not leak into others.
+func TestInstallSetsSlogDefault(t *testing.T) {
+	resetDefaultForTest()
+	rec := &recordingHandler{}
+	async, err := NewAsyncHandler(rec, DefaultOptions())
+	require.NoError(t, err)
+
+	prevDefault := slog.Default()
+	std := logrus.StandardLogger()
+	prevOut, prevFmt, prevLevel, prevHooks := std.Out, std.Formatter, std.Level, std.Hooks
+	t.Cleanup(func() {
+		slog.SetDefault(prevDefault)
+		std.SetOutput(prevOut)
+		std.SetFormatter(prevFmt)
+		std.SetLevel(prevLevel)
+		std.ReplaceHooks(prevHooks)
+	})
+
+	Install(async, slog.LevelInfo)
+
+	slog.Default().Debug("dropped-below-global")
+	slog.Default().Info("kept")
+
+	require.NoError(t, async.Close())
+	<-async.drainDone
+
+	require.Equal(t, 1, rec.count(), "Debug must be gated at the global level, Info must reach the sink")
+	require.Equal(t, "kept", rec.snapshot()[0].Message)
+}
+
 // TestSyncEmitFallsBackForNonAsyncRoot proves SyncEmit handles a Registry
 // whose root is not an *AsyncHandler by falling back to Handle. Handle on a
 // non-async handler is already synchronous, so durability is preserved.

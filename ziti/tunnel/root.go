@@ -70,7 +70,7 @@ func NewTunnelCmd(legacy bool) *cobra.Command {
 	root.PersistentFlags().StringSlice(dnsUpstreamFlag, nil, "Upstream DNS server(s) for recursive queries (e.g., udp://10.96.0.10:53 or tcp://8.8.8.8:53). Repeat or comma-separate to specify multiple. See --dnsUpstreamMode for how multiple upstreams are queried.")
 	root.PersistentFlags().String(dnsUpstreamModeFlag, "", "How multiple DNS upstreams are queried (parallel|serial|failover|random, default: parallel). parallel fans out to all at once; serial/failover/random query one at a time and fail through to the next.")
 	root.PersistentFlags().String(dnsUnanswerableFlag, "", "Disposition for unanswerable DNS queries (timeout|servfail|refused, default: refused)")
-	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pretty|text]; default is pretty on a terminal and json when redirected (ZITI_LOG_NO_JSON forces pretty)")
 	root.PersistentFlags().StringP(dnsSvcIpRangeFlag, "d", "100.64.0.1/10", "cidr to use when assigning IPs to unresolvable intercept hostnames")
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should listen (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
@@ -114,7 +114,8 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		logrus.WithError(err).Fatal("invalid --log-* flags")
 	}
-	handler, err := logging.BuildHandlerForFormat(os.Stderr, asyncOpts, logFormatter)
+	format := logging.ResolveFormat(logFormatter, os.Stderr)
+	handler, err := logging.BuildHandlerForFormat(os.Stderr, asyncOpts, format)
 	if err != nil {
 		logrus.WithError(err).Fatal("unable to build log handler")
 	}
@@ -131,6 +132,14 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	channel.SetLoggerFor(logging.For)
 
 	util.LogReleaseVersionCheck()
+
+	// Must happen before the subcommand's RunE/Run (e.g. tproxy's interceptor
+	// construction), which reads the DNS intercept IP range to install the
+	// local route on lo.
+	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
+	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
+		logrus.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
+	}
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {
@@ -171,10 +180,6 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	}
 
 	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
-	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
-	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
-		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
-	}
 
 	if idDir := cmd.Flag("identity-dir").Value.String(); idDir != "" {
 		files, err := os.ReadDir(idDir)

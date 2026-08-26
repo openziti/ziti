@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -44,6 +45,55 @@ type listener struct {
 	lock               sync.Mutex
 	env                LinkEnv
 	xlinkRegistery     xlink.Registry
+
+	stopC  chan struct{}
+	closed atomic.Bool
+
+	// acceptsInFlight counts accepts that passed beginAccept and have not yet
+	// finished. Guarded by lock. acceptsDrained is non-nil only while Close is
+	// waiting for the count to reach zero.
+	acceptsInFlight int
+	acceptsDrained  chan struct{}
+}
+
+// beginAccept reserves a slot for an incoming accept, reporting false once the
+// listener is closed. Taken under the same lock Close uses, so an accept either
+// starts before Close begins waiting or is refused outright.
+func (self *listener) beginAccept() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.closed.Load() {
+		return false
+	}
+	self.acceptsInFlight++
+	return true
+}
+
+// endAccept releases a slot taken by beginAccept, waking Close once the last
+// in-flight accept finishes.
+func (self *listener) endAccept() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.acceptsInFlight--
+	if self.acceptsInFlight == 0 && self.acceptsDrained != nil {
+		close(self.acceptsDrained)
+		self.acceptsDrained = nil
+	}
+}
+
+// waitForAcceptsToDrain blocks until accepts that started before the listener
+// was marked closed have finished. beginAccept refuses new ones once closed is
+// set, so the count only falls and this cannot wait indefinitely on new work.
+func (self *listener) waitForAcceptsToDrain() {
+	self.lock.Lock()
+	if self.acceptsInFlight == 0 {
+		self.lock.Unlock()
+		return
+	}
+	done := make(chan struct{})
+	self.acceptsDrained = done
+	self.lock.Unlock()
+	<-done
 }
 
 func (self *listener) Listen() error {
@@ -74,23 +124,68 @@ func (self *listener) GetLinkProtocol() string {
 	return self.config.linkProtocol
 }
 
-func (self *listener) GetLinkCostTags() []string {
-	return self.config.linkCostTags
-}
-
 func (self *listener) GetGroups() []string {
 	return self.config.groups
 }
 
+// Close shuts down the listener: refuses further accepts, stops the cleanup
+// goroutine, closes the listening socket, waits for in-flight accepts to
+// finish, and closes any partial (not-yet-fully-accepted) links. Once it
+// returns, the listener will not register any further links, which is what
+// lets a managed-config change remove a listener without leaving late accepts
+// running behind it.
+//
+// Accepted Xlinks are independent channels at this point and are NOT closed
+// — they continue to operate until naturally torn down or until an operator
+// removes them via `ziti fabric delete link`. Safe to call multiple times,
+// though only the first call waits.
 func (self *listener) Close() error {
-	return self.listener.Close()
+	if self.closed.CompareAndSwap(false, true) {
+		close(self.stopC)
+		var err error
+		if self.listener != nil {
+			err = self.listener.Close()
+		}
+
+		// Ordering matters: drain in-flight accepts before clearing
+		// pendingLinks, so an accept that started before the close cannot
+		// insert an entry after the sweep and leave it held for the process
+		// lifetime (the cleanup goroutine has already exited).
+		self.waitForAcceptsToDrain()
+
+		// Drop any partial (pre-accept) links the cleanup goroutine would
+		// otherwise have eventually expired. They hold underlay resources
+		// that should release immediately when the listener goes away.
+		self.lock.Lock()
+		defer self.lock.Unlock()
+		for k, v := range self.pendingLinks {
+			_ = v.link.Close()
+			delete(self.pendingLinks, k)
+		}
+
+		return err
+	}
+	return nil
 }
 
 func (self *listener) GetLocalBinding() string {
 	return self.config.bindInterface
 }
 
+// errListenerClosed is returned when an accept lands on a listener that has
+// already been closed, which happens when a managed-config change removes a
+// listener while the transport still has accepts in flight.
+var errListenerClosed = errors.New("link listener is closed")
+
 func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCallback func()) (channel.Channel, error) {
+	// The binder runs synchronously inside channel.NewChannel below, so holding
+	// the accept slot across this call covers BindChannel and the Accept it
+	// performs, not just the channel construction.
+	if !self.beginAccept() {
+		return nil, errListenerClosed
+	}
+	defer self.endAccept()
+
 	linkChannel := NewListenerLinkChannel(underlay, self.env.GetLinkPayloadSenderQueueSize(), self.env.GetLinkAckSenderQueueSize())
 	multiConfig := channel.Config{
 		LogicalName: "link/" + resolveLinkId(underlay.Headers(), underlay.Id()),
@@ -118,6 +213,13 @@ func (self *listener) handleGroupedUnderlay(underlay channel.Underlay, closeCall
 }
 
 func (self *listener) handleUngroupedNewUnderlay(underlay channel.Underlay) error {
+	// As in handleGroupedUnderlay, the slot is held across the call that binds
+	// and accepts, so Close cannot return while this accept is still running.
+	if !self.beginAccept() {
+		return errListenerClosed
+	}
+	defer self.endAccept()
+
 	if _, err := channel.NewSingleChannelWithUnderlay("link", underlay, self, self.config.options); err != nil {
 		logrus.WithError(err).Error("error creating link channel")
 		return err
@@ -234,6 +336,14 @@ func (self *listener) cleanupDeadPartialLink(id string) {
 func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata, binding channel.Binding, chanType channelType) (bool, *splitImpl, error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
+
+	// Checked under the same lock Close uses to drain pendingLinks. Without
+	// this an accept racing Close would re-populate the map after the drain,
+	// and the cleanup goroutine that would otherwise expire the entry has
+	// already exited, so the partial link would be held until process exit.
+	if self.closed.Load() {
+		return false, nil, errListenerClosed
+	}
 
 	complete := false
 	var link *splitImpl
@@ -355,6 +465,8 @@ func (self *listener) cleanupExpiredPartialLinks() {
 					}
 				}
 			}()
+		case <-self.stopC:
+			return
 		case <-self.env.GetCloseNotify():
 			return
 		}

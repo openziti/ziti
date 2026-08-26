@@ -22,11 +22,11 @@ import (
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/versions"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // RouterSyncStrategyType aliased type for router strategies
@@ -50,7 +50,15 @@ const (
 	RouterSyncHelloTimeout RouterSyncStatus = "SYNC_HELLO_TIMEOUT" //sync failed due to a hello timeout.
 	RouterSyncError        RouterSyncStatus = "SYNC_ERROR"         //sync failed due to an unexpected error
 
-	//msg headers
+	// msg headers
+	//
+	// These ids alias the edge namespace's HealthStatus (1013), ErrorCode (1014), and Timestamp
+	// (1015) (see edge_client_pb.HeaderId). Both namespaces share the router-to-controller
+	// channel and are kept apart only by message ContentType: these ride ApiSessionAdded/Updated
+	// messages, the edge ids ride error/health/conn messages. Keep it that way. Do not put an
+	// edge-namespace header on a sync message or a sync header on an edge/error message, or the
+	// two meanings will silently clobber each other. The ranges cannot be moved without breaking
+	// backwards compatibility.
 	SyncStrategyTypeHeader  = 1013
 	SyncStrategyStateHeader = 1014
 	SyncStrategyLastIndex   = 1015
@@ -75,7 +83,7 @@ type RouterSyncStrategy interface {
 // This is intended for API Session but additional state is possible. Implementations may bind additional
 // handlers to the channel.
 type RouterConnectionHandler interface {
-	RouterConnected(edgeRouter *model.EdgeRouter, router *model.Router)
+	RouterConnected(router *model.Router)
 	RouterDisconnected(router *model.Router)
 	GetReceiveHandlers() []channel.ContentTypeReceiver
 }

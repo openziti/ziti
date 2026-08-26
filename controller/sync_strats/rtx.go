@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -38,12 +39,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// RouterSender represents a connection from an Edge Router to the controller. Used
-// to asynchronously buffer and send messages to an Edge Router via Start() then Send()
+// RouterSender represents a connection from a router to the controller and asynchronously buffers
+// and sends messages to it via Send(). It starts running when created and is stopped with Stop().
+// Senders exist for both edge and non-edge (transit) routers; see the edge field for what that
+// distinction gates.
 type RouterSender struct {
 	env.RouterState
 	Id               string
-	EdgeRouter       *model.EdgeRouter
 	Router           *model.Router
 	ae               *env.AppEnv
 	send             chan *channel.Message
@@ -60,13 +62,19 @@ type RouterSender struct {
 
 	SupportsRouterModel bool
 
+	// edge is true for edge-router senders and false for non-edge (transit) senders, which are
+	// created on demand when a transit router subscribes to the data model. It gates the legacy
+	// api-session/session broadcasts, which only edge routers consume. Atomic because the connect
+	// path can set it on a sender that a subscribe already created and published to the map, where
+	// the broadcast fanout is already able to see it. Use setEdge and isEdge.
+	edge atomic.Bool
+
 	sync.Mutex
 }
 
-func newRouterSender(ae *env.AppEnv, edgeRouter *model.EdgeRouter, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
+func newRouterSender(ae *env.AppEnv, router *model.Router, sendBufferSize int, routerDataModel *common.RouterDataModelSender) *RouterSender {
 	rtx := &RouterSender{
 		Id:               eid.New(),
-		EdgeRouter:       edgeRouter,
 		Router:           router,
 		ae:               ae,
 		send:             make(chan *channel.Message, sendBufferSize),
@@ -81,6 +89,16 @@ func newRouterSender(ae *env.AppEnv, edgeRouter *model.EdgeRouter, router *model
 	go rtx.run()
 
 	return rtx
+}
+
+// setEdge marks whether this sender is for an edge router.
+func (rtx *RouterSender) setEdge(edge bool) {
+	rtx.edge.Store(edge)
+}
+
+// isEdge reports whether this sender is for an edge router.
+func (rtx *RouterSender) isEdge() bool {
+	return rtx.edge.Load()
 }
 
 func (rtx *RouterSender) GetState() env.RouterStateValues {
@@ -360,8 +378,30 @@ type routerTxMap struct {
 	internalMap cmap.ConcurrentMap[string, *RouterSender] //id -> RouterSender
 }
 
-func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
-	m.internalMap.Set(id, routerMessageTxer)
+// GetOrCreate atomically returns the RouterSender for the given id whose Router.Control
+// matches control, creating one via factory if none exists or if the existing sender is
+// bound to a stale control channel. It returns the sender and whether it was newly created.
+//
+// A replaced stale sender is stopped here rather than left to RouterDisconnected, because the
+// broker dispatches the old connection's RouterDisconnected asynchronously: on a reconnect the new
+// connection's RouterConnected can install its sender before that cleanup runs, which would
+// otherwise orphan the old sender's goroutine.
+func (m *routerTxMap) GetOrCreate(id string, control ctrlchan.CtrlChannel, factory func() *RouterSender) (rtx *RouterSender, created bool) {
+	m.internalMap.Upsert(id, nil, func(exists bool, current *RouterSender, _ *RouterSender) *RouterSender {
+		if exists && current != nil && current.Router.Control == control {
+			rtx = current
+			return current
+		}
+
+		if exists && current != nil {
+			current.Stop()
+		}
+
+		rtx = factory()
+		created = true
+		return rtx
+	})
+	return rtx, created
 }
 
 func (m *routerTxMap) Get(id string) *RouterSender {
@@ -405,4 +445,15 @@ func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
 	for _, routerSender := range routerSenders {
 		callback(routerSender)
 	}
+}
+
+// RangeEdge is like Range but only visits senders for edge routers, skipping non-edge
+// (transit) senders. Used for the legacy api-session/session broadcasts, which only edge
+// routers consume.
+func (m *routerTxMap) RangeEdge(callback func(entries *RouterSender)) {
+	m.Range(func(rtx *RouterSender) {
+		if rtx.isEdge() {
+			callback(rtx)
+		}
+	})
 }

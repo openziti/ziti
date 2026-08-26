@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -202,10 +201,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				time.Sleep(time.Second)
-				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
-
-				ctx.Req.NoError(err)
+				identityDetail := managementHelper.RequireIdentitySdkInfoUpdated(accessClaims.Subject, payload.SdkInfo.AppID)
 
 				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
 				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)
@@ -320,9 +316,7 @@ func Test_Authenticate_OIDC_Auth(t *testing.T) {
 			t.Run("has the correct sdk and env info", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				identityDetail, err := managementHelper.GetIdentity(accessClaims.Subject)
-
-				ctx.Req.NoError(err)
+				identityDetail := managementHelper.RequireIdentitySdkInfoUpdated(accessClaims.Subject, payload.SdkInfo.AppID)
 
 				ctx.Req.Equal(payload.SdkInfo.AppID, identityDetail.SdkInfo.AppID)
 				ctx.Req.Equal(payload.SdkInfo.AppVersion, identityDetail.SdkInfo.AppVersion)

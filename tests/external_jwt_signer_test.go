@@ -266,6 +266,43 @@ func Test_ExternalJWTSigner(t *testing.T) {
 		})
 	})
 
+	t.Run("create with tags returns 200 Ok and the tags are persisted", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtSignerCert, _ := newSelfSignedCert("soCommon")
+		jwtSignerCertPem := nfpem.EncodeToString(jwtSignerCert)
+
+		tags := rest_model.SubTags{
+			"managed":    "true",
+			"network-id": uuid.NewString(),
+		}
+
+		jwtSigner := &rest_model.ExternalJWTSignerCreate{
+			CertPem:  &jwtSignerCertPem,
+			Enabled:  ToPtr(true),
+			Name:     ToPtr("Test JWT Signer With Tags"),
+			Kid:      ToPtr(uuid.NewString()),
+			Issuer:   ToPtr(uuid.NewString()),
+			Audience: ToPtr(uuid.NewString()),
+			Tags:     &rest_model.Tags{SubTags: tags},
+		}
+
+		createResponseEnv := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerDetailEnv).Get("/external-jwt-signers/" + createResponseEnv.Data.ID)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+		ctx.Req.NotNil(jwtSignerDetailEnv.Data.Tags)
+		ctx.Req.Equal(tags, jwtSignerDetailEnv.Data.Tags.SubTags)
+	})
+
 	t.Run("create with missing values returns 400 bad request", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
@@ -656,6 +693,76 @@ func Test_ExternalJWTSigner(t *testing.T) {
 					ctx.Req.Equal(*jwtSigner.Kid, *jwtSignerDetail.Kid)
 					ctx.Req.Equal(string(*jwtSigner.TargetToken), string(*jwtSignerDetail.TargetToken))
 				})
+			})
+		})
+
+		t.Run("name only leaves existing tags untouched", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtSignerCert, _ := newSelfSignedCert("soCommon patch tags")
+			jwtSignerCertPem := nfpem.EncodeToString(jwtSignerCert)
+
+			tags := rest_model.SubTags{
+				"managed":    "true",
+				"network-id": uuid.NewString(),
+			}
+
+			jwtSigner := &rest_model.ExternalJWTSignerCreate{
+				CertPem:  &jwtSignerCertPem,
+				Enabled:  ToPtr(true),
+				Name:     ToPtr("Test JWT Signer Pre-Patch Tags"),
+				Kid:      ToPtr(uuid.NewString()),
+				Issuer:   ToPtr(uuid.NewString()),
+				Audience: ToPtr(uuid.NewString()),
+				Tags:     &rest_model.Tags{SubTags: tags},
+			}
+
+			createResponseEnv := &rest_model.CreateEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+			jwtSignerPatch := &rest_model.ExternalJWTSignerPatch{
+				Name: ToPtr("Test JWT Signer Post-Patch Tags"),
+			}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerPatch).Patch("/external-jwt-signers/" + createResponseEnv.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+			jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerDetailEnv).Get("/external-jwt-signers/" + createResponseEnv.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+			ctx.Req.Equal("Test JWT Signer Post-Patch Tags", *jwtSignerDetailEnv.Data.Name)
+			ctx.Req.NotNil(jwtSignerDetailEnv.Data.Tags)
+			ctx.Req.Equal(tags, jwtSignerDetailEnv.Data.Tags.SubTags)
+
+			t.Run("tags only replaces the tags", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				replacementTags := rest_model.SubTags{"managed": "false"}
+
+				jwtSignerPatch := &rest_model.ExternalJWTSignerPatch{
+					Tags: &rest_model.Tags{SubTags: replacementTags},
+				}
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSignerPatch).Patch("/external-jwt-signers/" + createResponseEnv.Data.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+				jwtSignerDetailEnv := &rest_model.DetailExternalJWTSignerEnvelope{}
+
+				resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(jwtSignerDetailEnv).Get("/external-jwt-signers/" + createResponseEnv.Data.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+				ctx.Req.NotNil(jwtSignerDetailEnv.Data.Tags)
+				ctx.Req.Equal(replacementTags, jwtSignerDetailEnv.Data.Tags.SubTags)
+				ctx.Req.Equal("Test JWT Signer Post-Patch Tags", *jwtSignerDetailEnv.Data.Name)
 			})
 		})
 

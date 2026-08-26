@@ -40,6 +40,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// establishSettleTime is how long a newly created terminator waits before its first create
+// attempt. Hosting starts as soon as a bind policy grants access, which can be before the
+// edge router and service edge router policies that the controller also requires are in
+// place. Config is usually applied in quick succession, so a short delay lets it settle and
+// avoids a failed create followed by a multi-minute wait for the retry scan.
+//
+// It is intentionally a fixed value rather than a tunable knob: this is a stopgap until edge
+// router and service edge router policy visibility lands in the router data model, at which
+// point the router can tell it is not yet in a valid hosting situation and this delay can be
+// removed entirely.
+const establishSettleTime = 2 * time.Second
+
+// establishSettleCheckInterval is how often the run loop re-checks terminators that are still
+// inside their settle window. It bounds how long past establishSettleTime the first create
+// attempt can be delayed.
+const establishSettleCheckInterval = 500 * time.Millisecond
+
 func newHostedServicesRegistry(env routerEnv.RouterEnv, stateManager state.Manager) *HostedServiceRegistry {
 	result := &HostedServiceRegistry{
 		terminators:  cmap.New[*tunnelTerminator](),
@@ -62,6 +79,11 @@ type HostedServiceRegistry struct {
 	establishSet map[string]*tunnelTerminator
 	deleteSet    map[string]*tunnelTerminator
 	triggerEvalC chan struct{}
+
+	// establishNotify wakes the run loop to re-check terminators still inside their settle
+	// window. It is a shared nudge for the whole establish queue, not per-terminator state, and
+	// is only touched from the run loop.
+	establishNotify <-chan time.Time
 
 	connectedToLeader atomic.Bool
 	started           atomic.Bool
@@ -96,6 +118,7 @@ func (self *HostedServiceRegistry) run() {
 		if self.env.GetCtrlRateLimiter().IsRateLimited() {
 			rateLimitedTick = quickTick.C
 		}
+
 		select {
 		case <-self.env.GetCloseNotify():
 			return
@@ -107,6 +130,8 @@ func (self *HostedServiceRegistry) run() {
 		case <-rateLimitedTick:
 		case <-terminatorIdCacheTicker.C:
 			self.pruneTerminatorIdCache()
+		case <-self.establishNotify:
+			self.establishNotify = nil
 		}
 
 		// events should be quick to handle, so make sure we do all them before we
@@ -165,6 +190,15 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 
 		if terminator.state.Load() != xgress_common.TerminatorStateEstablishing {
 			dequeue()
+			continue
+		}
+
+		// only delays the first attempt; retries and re-establishes reuse the terminator,
+		// so their createTime is already outside the settle window
+		if settleDeadline := terminator.createTime.Add(establishSettleTime); settleDeadline.After(time.Now()) {
+			if self.establishNotify == nil {
+				self.establishNotify = time.After(establishSettleCheckInterval)
+			}
 			continue
 		}
 
@@ -554,6 +588,15 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 		if rateLimitCallback := terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
 			rateLimitCallback.Success()
 		}
+
+		// Logged at Warn, not Error: the rejection is recoverable and retried by the periodic
+		// scan, so a persistent misconfiguration (e.g. a missing edge router policy) on an ER/T
+		// hosting many services would otherwise emit an endless per-service Error stream.
+		log.WithField("service", terminator.context.ServiceName()).
+			WithField("result", response.Result.String()).
+			WithField("errorCode", response.ErrorCode).
+			WithField("error", response.Msg).
+			Warn("controller rejected create terminator, will retry on the next scan (in 2-3 minutes)")
 
 		terminator.operationActive.Store(false)
 		return

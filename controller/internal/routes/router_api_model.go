@@ -18,7 +18,9 @@ var TransitRouterLinkFactory = NewBasicLinkFactory(EntityNameTransitRouter)
 
 func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRouter {
 	ret := &model.TransitRouter{
-		BaseEntity:        models.BaseEntity{},
+		BaseEntity: models.BaseEntity{
+			Tags: TagsOrDefault(router.Tags),
+		},
 		Name:              stringz.OrEmpty(router.Name),
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),

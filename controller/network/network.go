@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v5"
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
@@ -54,6 +55,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/raft"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	"github.com/openziti/ziti/v2/controller/xt"
@@ -112,6 +114,10 @@ type Network struct {
 	serviceMisconfiguredTerminatorCounter     servermetrics.IntervalCounter
 
 	config Config
+
+	// restartSelfOnSnapshot, when true, restarts this controller in place after a snapshot restore
+	// (e.g. a node joining the cluster) instead of exiting and relying on an external process manager.
+	restartSelfOnSnapshot bool
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
@@ -190,6 +196,7 @@ func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Co
 	cmd := &command.SyncSnapshotCommand{
 		TimelineId:   msg.SnapshotId,
 		Snapshot:     msg.Snapshot,
+		ClusterId:    msg.ClusterId,
 		SnapshotSink: self.RestoreSnapshot,
 	}
 
@@ -264,9 +271,11 @@ func (network *Network) GetConnectedRouter(routerId string) *model.Router {
 	return network.Router.GetConnected(routerId)
 }
 
-func (network *Network) GetReloadedRouter(routerId string) (*model.Router, error) {
-	network.Router.RemoveFromCache(routerId)
-	return network.Router.Read(routerId)
+// NewCtrlChanRouter returns the Router instance representing a new control-channel connection, with the
+// channel recorded on it. Each connection gets its own instance, which is what lets the connect and
+// disconnect paths tell two racing connections for one router apart.
+func (network *Network) NewCtrlChanRouter(ch channel.Channel) (*model.Router, error) {
+	return network.Router.NewCtrlChanRouter(ch)
 }
 
 func (network *Network) GetRouter(routerId string) (*model.Router, error) {
@@ -347,7 +356,47 @@ func (network *Network) ConnectedRouter(id string) bool {
 	return network.Router.IsConnected(id)
 }
 
-func (network *Network) ConnectRouter(r *model.Router) {
+var (
+	// ErrConnectRejected indicates a router connect was rejected because another connection for the same
+	// router is already current. It is returned by ConnectRouter and propagated out of the bind handler so
+	// NewChannel closes the rejected connection's underlay without starting rx or registering it; the
+	// router then redials.
+	ErrConnectRejected = errors.New("router connect rejected: another connection is already current")
+
+	// ErrConnectChannelClosed indicates a router connect was refused because its control channel was
+	// already closed by the time the connect decision was made, so the connection must not be registered.
+	ErrConnectChannelClosed = errors.New("router connect rejected: control channel already closed")
+)
+
+// IsConnectRejected reports whether err is (or wraps) a connect refusal that the router recovers from by
+// redialing, so the accept path can log it at info rather than treating it as a bind failure.
+func IsConnectRejected(err error) bool {
+	return errors.Is(err, ErrConnectRejected) || errors.Is(err, ErrConnectChannelClosed)
+}
+
+// ConnectRouter registers r as the current connection for its router id, serialized per router. If the
+// slot is already held by a different connection it rejects this one (returning ErrConnectRejected) and
+// displaces the occupant so its teardown runs; the router redials into the freed slot. A connection whose
+// channel is already closed is refused outright (ErrConnectChannelClosed) rather than registered. There is
+// at most one connection per router in the connected map at a time.
+func (network *Network) ConnectRouter(r *model.Router) error {
+	unlock := network.Router.LockConnectFor(r.Id)
+	defer unlock() // leak-safety net; idempotent, so the explicit unlocks below are the ones that matter
+
+	if cur := network.Router.GetConnected(r.Id); cur != nil && cur != r {
+		// Displace the occupant outside the lock: the teardown acquires the stripe itself (we have
+		// released it), so there is no reentrant self-deadlock.
+		unlock()
+		network.displaceConnection(cur)
+		return ErrConnectRejected
+	}
+
+	// Its close handler has already run and never fires again, so nothing would remove it from the
+	// connected map and every redial would bounce off a slot that can never be freed.
+	if r.Control == nil || r.Control.IsClosed() {
+		return ErrConnectChannelClosed
+	}
+
 	network.Link.BuildRouterLinks(r)
 	network.Router.MarkConnected(r)
 
@@ -358,7 +407,10 @@ func (network *Network) ConnectRouter(r *model.Router) {
 			go h.RouterConnected(r)
 		}
 	}
+	unlock()
+
 	go network.ValidateTerminators(r)
+	return nil
 }
 
 func (network *Network) ValidateTerminators(r *model.Router) {
@@ -461,9 +513,59 @@ func (n *Network) ValidateRouterErtTerminators(filter string, cb ErtTerminatorVa
 	return int64(len(result.Entities)), evalF, nil
 }
 
+// isCurrentConnection reports whether r is still the router's current, connected connection, by pointer
+// identity against the connected map (mirrors the check in NotifyExistingLink). A stale or superseded
+// connection returns false.
+func (network *Network) isCurrentConnection(r *model.Router) bool {
+	return network.Router.GetConnected(r.Id) == r && r.Connected.Load()
+}
+
+// displaceConnection removes cur, the connection occupying its router's connected slot, so that a redial
+// can take the slot. Closing the channel is not sufficient on its own: if it is already closed, its close
+// handler has already run and will never run again, so nothing would remove cur and every subsequent
+// connect would be rejected against a slot that can never be freed. The teardown is therefore also
+// invoked directly; it is gated on connection currency, so it is a no-op once the close handler has
+// cleared the slot. Must be called with the router's connect stripe released, since the teardown
+// acquires it.
+func (network *Network) displaceConnection(cur *model.Router) {
+	if ch := cur.Control; ch != nil && !ch.IsClosed() {
+		if err := ch.Close(); err != nil {
+			pfxlog.Logger().WithError(err).WithField("routerId", cur.Id).
+				Error("error closing superseded control channel while rejecting connect")
+		}
+	}
+	network.DisconnectRouter(cur)
+}
+
 func (network *Network) DisconnectRouter(r *model.Router) {
-	// 1: remove Links for Router
-	for _, l := range r.GetLinks() {
+	// Lock-free pre-check: a stale/superseded disconnect (e.g. the old connection after a takeover) has
+	// nothing to tear down and must not touch the live connection's state; bail without blocking.
+	if !network.isCurrentConnection(r) {
+		return
+	}
+
+	unlock := network.Router.LockConnectFor(r.Id)
+	defer unlock()
+
+	// Re-check under the stripe: a newer connection may have taken over between the pre-check and the
+	// lock. The teardown is all-or-nothing and must not run against a superseded connection.
+	if !network.isCurrentConnection(r) {
+		return
+	}
+
+	// Snapshot the router's links before marking it disconnected: MarkDisconnected clears the
+	// router's link set (routerLinks.Clear()), so a later r.GetLinks() would return nothing and
+	// the link-removal/reroute cascade below would be skipped entirely.
+	links := r.GetLinks()
+
+	// Mark the router disconnected before the RerouteLink cascade, so reroute and everything it
+	// calls (shortestPath, connected-map reads) sees the dying router as gone. Otherwise reroute
+	// runs while the router still appears connected and can compute a replacement path through the
+	// very router that is being removed.
+	network.Router.MarkDisconnected(r)
+
+	// remove Links for Router, rerouting circuits off any that were connected
+	for _, l := range links {
 		wasConnected := l.CurrentState().Mode == model.Connected
 		if l.Src.Id == r.Id {
 			network.Link.Remove(l)
@@ -472,8 +574,6 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 			network.RerouteLink(l)
 		}
 	}
-	// 2: remove Router
-	network.Router.MarkDisconnected(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		h.RouterDisconnected(r)
@@ -487,23 +587,33 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		WithField("destRouterId", reportedLink.DestRouterId).
 		WithField("iteration", reportedLink.Iteration)
 
+	// Publish under the stripe DisconnectRouter holds: checking currency and then publishing without it
+	// lets a report recreate a link after the teardown has snapshotted and cleared it. Events go out after
+	// the unlock, since a dispatcher may be slow and this stripe is shared with connect and disconnect.
+	unlock := network.Router.LockConnectFor(srcRouter.Id)
+
 	src := network.Router.GetConnected(srcRouter.Id)
 	if src == nil {
+		unlock()
 		log.Info("ignoring links message processed after router disconnected")
 		return
 	}
 
 	if src != srcRouter || !srcRouter.Connected.Load() {
+		unlock()
 		log.Info("ignoring links message processed from old router connection")
 		return
 	}
 
 	dst := network.Router.GetConnected(reportedLink.DestRouterId)
+	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
+
+	unlock()
+
 	if dst == nil {
 		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
-	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
@@ -1360,11 +1470,14 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 	if currentTimelineId != "" && currentTimelineId == cmd.TimelineId {
 		log.WithField("timelineId", cmd.TimelineId).Info("snapshot already current, skipping reload")
+		// DB already restored; ensure cluster id then raft index (index last, see main path).
+		if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+			return fmt.Errorf("failed to set cluster id for already-current snapshot (%w)", err)
+		}
+		if err = network.ensureRaftIndex(index); err != nil {
+			return fmt.Errorf("failed to set raft index for already-current snapshot (%w)", err)
+		}
 		return nil
-	}
-
-	if err != nil {
-		log.WithError(err).Error("unable to read current raft index before DB restore")
 	}
 
 	buf := bytes.NewBuffer(cmd.Snapshot)
@@ -1374,22 +1487,61 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand, index 
 	}
 
 	network.GetDb().RestoreFromReader(reader)
-	err = network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
-		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
-		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
-		return nil
-	})
 
-	if err != nil {
-		log.WithError(err).Errorf("failed to set index after restore")
+	// Write the cluster id before the raft index. The index is the completion gate on restart (the
+	// FSM skips entries at or below the stored index), so persist it last: any earlier failure then
+	// replays and retries instead of skipping the command with a blank cluster id.
+	if err = network.ensureClusterId(cmd.ClusterId); err != nil {
+		return fmt.Errorf("failed to set cluster id after db restore (%w)", err)
+	}
+	if err = network.ensureRaftIndex(index); err != nil {
+		return fmt.Errorf("failed to set raft index after db restore (%w)", err)
 	}
 
 	time.AfterFunc(5*time.Second, func() {
-		log.Info("database restore requires controller restart. exiting...")
+		if network.restartSelfOnSnapshot {
+			log.Info("database restore requires controller restart, restarting...")
+			// RestartController returns only when the restart failed; on success it replaces this
+			// process and never comes back.
+			err := raft.RestartController()
+			log.WithError(err).Error("failed to restart controller after snapshot restore, exiting...")
+		} else {
+			log.Info("database restore requires controller restart. exiting...")
+		}
 		os.Exit(0)
 	})
 
 	return nil
+}
+
+// ensureClusterId writes the cluster id if one is not already set (no-op when empty or matching).
+// The snapshot restore replaces the whole db, which carries no cluster id, so it must be set here.
+func (network *Network) ensureClusterId(clusterId string) error {
+	if clusterId == "" {
+		return nil
+	}
+	_, err := db.InitClusterId(network.GetDb(), nil, clusterId)
+	return err
+}
+
+// ensureRaftIndex records the raft index if the stored one is behind it, returning an error on
+// failure so a missed index update surfaces rather than being treated as success.
+func (network *Network) ensureRaftIndex(index uint64) error {
+	return network.GetDb().Update(nil, func(ctx boltz.MutateContext) error {
+		if db.LoadCurrentRaftIndex(ctx.Tx()) >= index {
+			return nil
+		}
+		raftBucket := boltz.GetOrCreatePath(ctx.Tx(), db.RootBucket, db.MetadataBucket)
+		raftBucket.SetInt64(db.FieldRaftIndex, int64(index), nil)
+		return raftBucket.GetError()
+	})
+}
+
+// SetRestartSelfOnSnapshot controls whether the controller restarts itself after a snapshot restore
+// (true) or exits expecting an external restart (false). It mirrors the raft restartSelfOnSnapshot
+// setting and is applied by the owning controller after construction.
+func (network *Network) SetRestartSelfOnSnapshot(v bool) {
+	network.restartSelfOnSnapshot = v
 }
 
 func (network *Network) AddInspectTarget(target InspectTarget) {
@@ -1516,9 +1668,14 @@ func (network *Network) checkLinkConns(ctrlLink *model.Link, routerLink *inspect
 		})
 	}
 
-	// ensure that conn info is being reported
+	// The version comes from the hello, so only the connected instance has it. Not knowing it means the
+	// comparison cannot be made, which is not a fault of the link.
 	if srcR := ctrlLink.Src; srcR != nil {
-		hasMinVersion, err := srcR.VersionInfo.HasMinimumVersion("v1.6.6")
+		connectedSrc := network.Router.GetConnected(srcR.Id)
+		if connectedSrc == nil || connectedSrc.VersionInfo == nil {
+			return
+		}
+		hasMinVersion, err := connectedSrc.VersionInfo.HasMinimumVersion("v1.6.6")
 		if err != nil {
 			result.IsValid = false
 			result.Messages = append(result.Messages, err.Error())

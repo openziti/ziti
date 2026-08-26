@@ -67,7 +67,9 @@ func (store *eventualEventStoreImpl) NewEntity() *EventualEvent {
 func (store *eventualEventStoreImpl) FillEntity(entity *EventualEvent, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Type = bucket.GetStringOrError(FieldEventualEventType)
-	entity.Data = bucket.Get([]byte(FieldEventualEventData))
+	// bbolt values must be copied; the source memory doesn't outlive the transaction, and the data is
+	// passed to event handlers asynchronously after the read transaction has closed.
+	entity.Data = append([]byte(nil), bucket.Get([]byte(FieldEventualEventData))...)
 }
 
 func (store *eventualEventStoreImpl) PersistEntity(entity *EventualEvent, ctx *boltz.PersistContext) {

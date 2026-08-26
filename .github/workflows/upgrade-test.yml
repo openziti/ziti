@@ -1,0 +1,151 @@
+name: Upgrade Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      zetVersion:
+        description: 'ziti-edge-tunnel version for every ZET client and host (blank uses the model default)'
+        required: false
+        default: ''
+      fromVersion:
+        description: 'version the system starts on and is upgraded from (blank uses the model default)'
+        required: false
+        default: ''
+      toVersion:
+        description: 'version to upgrade to, and the version a ref build is stamped with (blank uses the model default)'
+        required: false
+        default: ''
+      toVersionRef:
+        description: 'git ref on openziti/ziti to build toVersion from; blank uses the model default'
+        required: false
+        default: ''
+      nextVersion:
+        description: 'second upgrade hop, applied to the whole cluster after toVersion; blank uses the model default, "none" skips the phase'
+        required: false
+        default: ''
+      nextVersionRef:
+        description: 'git ref on openziti/ziti to build nextVersion from; blank uses the model default'
+        required: false
+        default: ''
+      clusterUpgradeMode:
+        description: 'how the cluster moves to nextVersion'
+        required: false
+        type: choice
+        options:
+          - ''
+          - rolling
+          - all-at-once
+        default: ''
+
+# one upgrade test at a time: each run provisions a multi-region AWS topology
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  GOFLAGS: "-trimpath"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
+jobs:
+  upgrade-test:
+    name: Fablab Upgrade Test
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~1.5
+
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go mod tidy && go install -tags all ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        env:
+          # inputs reach the script through the environment, never interpolated into it
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZET_VERSION: ${{ inputs.zetVersion }}
+          FROM_VERSION: ${{ inputs.fromVersion }}
+          TO_VERSION: ${{ inputs.toVersion }}
+          TO_VERSION_REF: ${{ inputs.toVersionRef }}
+          NEXT_VERSION: ${{ inputs.nextVersion }}
+          NEXT_VERSION_REF: ${{ inputs.nextVersionRef }}
+          CLUSTER_UPGRADE_MODE: ${{ inputs.clusterUpgradeMode }}
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+
+          # pass only what was supplied, so the model's own defaults stay authoritative
+          LABELS="environment=gh-upgrade-test"
+          if [ -n "$ZET_VERSION" ]; then LABELS="$LABELS,zetVersion=$ZET_VERSION"; fi
+          if [ -n "$FROM_VERSION" ]; then LABELS="$LABELS,fromVersion=$FROM_VERSION"; fi
+          if [ -n "$TO_VERSION" ]; then LABELS="$LABELS,toVersion=$TO_VERSION"; fi
+          if [ -n "$TO_VERSION_REF" ]; then LABELS="$LABELS,toVersionRef=$TO_VERSION_REF"; fi
+          # "none" is how a run switches the optional second hop off, since a blank input means
+          # "use the model default" and the model defaults it on
+          if [ "$NEXT_VERSION" = "none" ]; then
+            LABELS="$LABELS,nextVersion="
+          elif [ -n "$NEXT_VERSION" ]; then
+            LABELS="$LABELS,nextVersion=$NEXT_VERSION"
+          fi
+          if [ -n "$NEXT_VERSION_REF" ]; then LABELS="$LABELS,nextVersionRef=$NEXT_VERSION_REF"; fi
+          if [ -n "$CLUSTER_UPGRADE_MODE" ]; then LABELS="$LABELS,clusterUpgradeMode=$CLUSTER_UPGRADE_MODE"; fi
+          echo "using labels: $LABELS"
+
+          INSTANCE="upgrade-test-${GITHUB_RUN_NUMBER}"
+          echo "INSTANCE=${INSTANCE}" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/upgrade-test create -d "${INSTANCE}" -n "${INSTANCE}" -l "$LABELS"
+          $(go env GOPATH)/bin/upgrade-test up
+
+      - name: Run Upgrade Iteration
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/upgrade-test exec testIteration
+
+      - name: Create Logs Archive
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/upgrade-test get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: logs-upgrade-test-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/upgrade-test dispose

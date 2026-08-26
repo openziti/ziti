@@ -48,6 +48,34 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 
 }
 
+// TestEdgeRouterAccess uses its own context so that the policies it creates are the only ones
+// in play, letting it assert on each policy link independently.
+func TestEdgeRouterAccess(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+	ctx.Init()
+
+	edgeRouter := ctx.requireNewEdgeRouter()
+	identity := ctx.requireNewIdentity(false)
+	service := ctx.requireNewService()
+
+	requireAccess := func(identityAllowed, serviceAllowed bool) {
+		access, err := ctx.managers.EdgeRouter.GetEdgeRouterAccess(identity.Id, service.Id, edgeRouter.Id)
+		ctx.NoError(err)
+		ctx.Equal(identityAllowed, access.IdentityAllowed)
+		ctx.Equal(serviceAllowed, access.ServiceAllowed)
+		ctx.Equal(identityAllowed && serviceAllowed, access.IsAllowed())
+	}
+
+	requireAccess(false, false)
+
+	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
+	requireAccess(true, false)
+
+	ctx.requireNewServiceNewEdgeRouterPolicy(ss("#all"), ss("#all"))
+	requireAccess(true, true)
+}
+
 func (ctx *TestContext) isEdgeRouterAccessible(edgeRouterId, identityId, serviceId string) bool {
 	found := false
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
@@ -65,9 +93,9 @@ func (ctx *TestContext) isEdgeRouterAccessible(edgeRouterId, identityId, service
 	})
 	ctx.NoError(err)
 
-	accessAllowed, err := ctx.managers.EdgeRouter.IsAccessToEdgeRouterAllowed(identityId, serviceId, edgeRouterId)
+	access, err := ctx.managers.EdgeRouter.GetEdgeRouterAccess(identityId, serviceId, edgeRouterId)
 	ctx.NoError(err)
-	ctx.Equal(found, accessAllowed)
+	ctx.Equal(found, access.IsAllowed())
 
 	return found
 }

@@ -50,6 +50,9 @@ func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.
 	return false
 }
 
+func (m *MockNetworkControllers) MarkChannelEstablished() {}
+func (m *MockNetworkControllers) EverConnected() bool     { return true }
+
 func (m *MockNetworkControllers) ConnectToInitialEndpoints(endpoints []string) {
 }
 

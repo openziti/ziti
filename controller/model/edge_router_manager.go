@@ -176,6 +176,28 @@ func (self *EdgeRouterManager) Read(id string) (*EdgeRouter, error) {
 	return modelEntity, nil
 }
 
+// UpdateRouterReportedState persists the capabilities bitmask and binary version a router reports
+// when it connects, but only when they differ from the stored values. The router-reported values
+// are authoritative; the no-op-on-match guard avoids a raft write on every router (re)connection.
+func (self *EdgeRouterManager) UpdateRouterReportedState(routerId string, capabilitiesMask int64, version string, ctx *change.Context) error {
+	router, err := self.Read(routerId)
+	if err != nil {
+		return err
+	}
+
+	if router.CapabilitiesMask == capabilitiesMask && router.Version == version {
+		return nil
+	}
+
+	router.CapabilitiesMask = capabilitiesMask
+	router.Version = version
+
+	return self.Update(router, true, &fields.UpdatedFieldsMap{
+		db.FieldEdgeRouterCapabilitiesMask: struct{}{},
+		db.FieldEdgeRouterVersion:          struct{}{},
+	}, ctx)
+}
+
 func (self *EdgeRouterManager) readInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
 	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
@@ -221,19 +243,37 @@ func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId s
 	return list, err
 }
 
-func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId, edgeRouterId string) (bool, error) {
-	var result bool
+// EdgeRouterAccess reports which of the two policy links required for an identity to
+// reach a service through a given edge router are present. Access requires both.
+type EdgeRouterAccess struct {
+	// IdentityAllowed is true if an edge router policy links the identity to the edge router
+	IdentityAllowed bool
+
+	// ServiceAllowed is true if a service edge router policy links the service to the edge router
+	ServiceAllowed bool
+}
+
+// IsAllowed returns true only if both required policy links are present.
+func (self EdgeRouterAccess) IsAllowed() bool {
+	return self.IdentityAllowed && self.ServiceAllowed
+}
+
+// GetEdgeRouterAccess reports whether the identity and the service are each linked to the
+// given edge router by policy, so a caller can report which policy link is missing.
+func (self *EdgeRouterManager) GetEdgeRouterAccess(identityId, serviceId, edgeRouterId string) (EdgeRouterAccess, error) {
+	var result EdgeRouterAccess
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
 		serviceEdgeRouters := self.env.GetStores().Service.GetRefCountedLinkCollection(db.FieldEdgeRouters)
 
 		identityCount := identityEdgeRouters.GetLinkCount(tx, []byte(identityId), []byte(edgeRouterId))
 		serviceCount := serviceEdgeRouters.GetLinkCount(tx, []byte(serviceId), []byte(edgeRouterId))
-		result = identityCount != nil && *identityCount > 0 && serviceCount != nil && *serviceCount > 0
+		result.IdentityAllowed = identityCount != nil && *identityCount > 0
+		result.ServiceAllowed = serviceCount != nil && *serviceCount > 0
 		return nil
 	})
 	if err != nil {
-		return false, err
+		return EdgeRouterAccess{}, err
 	}
 	return result, nil
 }
@@ -461,6 +501,8 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		Disabled:              entity.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.EncodeCtrlChanListeners(entity.CtrlChanListeners),
 		Configs:               entity.Configs,
+		CapabilitiesMask:      entity.CapabilitiesMask,
+		Version:               entity.Version,
 	}
 
 	for _, intf := range entity.Interfaces {
@@ -511,6 +553,8 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		Disabled:              msg.Disabled,
 		CtrlChanListeners:     edge_cmd_pb.DecodeCtrlChanListeners(msg.CtrlChanListeners),
 		Configs:               msg.Configs,
+		CapabilitiesMask:      msg.CapabilitiesMask,
+		Version:               msg.Version,
 	}
 
 	for _, intf := range msg.Interfaces {
