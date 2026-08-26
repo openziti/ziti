@@ -50,13 +50,13 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -64,6 +64,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/events"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 
 	"github.com/openziti/ziti/v2/controller/network"
 	"github.com/openziti/ziti/v2/controller/permissions"
@@ -254,19 +255,19 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	parsedToken, err := jwt.ParseWithClaims(token, serviceAccessClaims, ae.JwtSignerKeyFunc)
 
 	if err != nil {
-		return nil, err
+		return nil, &common.InvalidTokenError{Err: err}
 	}
 
 	if !parsedToken.Valid {
-		return nil, errors.New("service access token is invalid")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token is invalid")}
 	}
 
 	if !serviceAccessClaims.HasAudience(common.ClaimAudienceOpenZiti) && !serviceAccessClaims.HasAudience(common.ClaimLegacyNative) {
-		return nil, fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, serviceAccessClaims.Audience)
+		return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid audience, expected an instance of %s or %s, got %v", common.ClaimAudienceOpenZiti, common.ClaimLegacyNative, serviceAccessClaims.Audience)}
 	}
 
 	if serviceAccessClaims.TokenType != common.TokenTypeServiceAccess {
-		return nil, fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeServiceAccess, serviceAccessClaims.Type)
+		return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid token type, expected %s, got %s", common.TokenTypeServiceAccess, serviceAccessClaims.Type)}
 	}
 
 	if apiSessionId != nil {
@@ -275,10 +276,12 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 		}
 
 		if serviceAccessClaims.ApiSessionId != *apiSessionId {
-			return nil, fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)
+			return nil, &common.InvalidTokenError{Err: fmt.Errorf("invalid api session id, expected %s, got %s", *apiSessionId, serviceAccessClaims.ApiSessionId)}
 		}
 	}
 
+	// Revocation.Read failures below are infrastructure errors and are returned raw (not wrapped as
+	// InvalidTokenError), so a transient datastore failure does not make callers discard valid sessions.
 	tokenRevocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.ID)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
@@ -286,7 +289,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	}
 
 	if tokenRevocation != nil {
-		return nil, errors.New("service access token has been revoked by id")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token has been revoked by id")}
 	}
 
 	revocation, err := ae.GetManagers().Revocation.Read(serviceAccessClaims.IdentityId)
@@ -296,7 +299,7 @@ func (ae *AppEnv) ValidateServiceAccessToken(token string, apiSessionId *string)
 	}
 
 	if revocation != nil && revocation.CreatedAt.After(serviceAccessClaims.IssuedAt.Time) {
-		return nil, errors.New("service access token has been revoked by identity")
+		return nil, &common.InvalidTokenError{Err: errors.New("service access token has been revoked by identity")}
 	}
 
 	return serviceAccessClaims, nil
@@ -879,11 +882,27 @@ func (ae *AppEnv) GetControllerPublicKey(kid string) crypto.PublicKey {
 	return signers[kid]
 }
 
-// CreateRequestContext creates a new request context for handling HTTP requests.
+// CreateRequestContext creates a new request context for handling HTTP requests. The request body
+// is buffered into memory before any authentication check, so bodies larger than
+// api.MaxRequestBodySize are rejected with a 413 ApiError instead of being buffered.
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) (*response.RequestContext, error) {
 	rid := eid.New()
 
-	body, _ := io.ReadAll(r.Body)
+	if r.ContentLength > api.MaxRequestBodySize {
+		return nil, apierror.NewRequestEntityTooLarge()
+	}
+
+	r.Body = http.MaxBytesReader(rw, r.Body, api.MaxRequestBodySize)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return nil, apierror.NewRequestEntityTooLarge()
+		}
+		return nil, apierror.NewCouldNotReadBody(err)
+	}
+
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	securityTokenCtx, err := common.NewSecurityTokenCtx(r, ae.TokenIssuerCache)

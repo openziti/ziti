@@ -72,6 +72,7 @@ var rootCommand = RootCmd{
 	cobraCommand: &cobra.Command{
 		Use:   "ziti",
 		Short: "ziti is a CLI for working with Ziti",
+		SilenceErrors: true, // errors are printed by exitWithError, this prevents cobra from also printing them
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SilenceUsage = true
 		},

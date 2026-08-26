@@ -886,12 +886,26 @@ func (self *Router) startControlPlane() error {
 
 	if self.config.Ctrl.StartupTimeout > 0 {
 		time.AfterFunc(self.config.Ctrl.StartupTimeout, func() {
-			if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
-				if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
-					debugz.DumpStack()
-				}
-				pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
+			if self.isShutdown.Load() {
+				return
 			}
+
+			log := pfxlog.Logger().
+				WithField("startupTimeout", self.config.Ctrl.StartupTimeout).
+				WithField("everConnected", self.ctrls.EverConnected()).
+				WithField("connectedCount", len(self.ctrls.GetAll()))
+
+			// This fires once, so sampling the current count kills a router that happens to be between
+			// control channels when it lands, which is routine rather than a failure to start.
+			if self.ctrls.EverConnected() {
+				log.Info("startup connection check passed")
+				return
+			}
+
+			if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
+				debugz.DumpStack()
+			}
+			log.Fatal("unable to connect to any controllers before timeout")
 		})
 	}
 

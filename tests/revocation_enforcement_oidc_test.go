@@ -140,6 +140,18 @@ func echoServerHandler(conn *testServerConn) error {
 	}
 }
 
+// waitForSecondAfter blocks until the wall clock reaches a whole second later than the one containing
+// ts, returning immediately when it already has. Call it before authenticating a session that has to
+// be observably newer than a revocation created at ts: a token's iat claim carries whole seconds, so
+// enforcement cannot tell a session issued just before a revocation from one issued just after it
+// within the same second, and revokes both.
+func waitForSecondAfter(ts time.Time) {
+	next := ts.Truncate(time.Second).Add(time.Second)
+	if remaining := time.Until(next); remaining > 0 {
+		time.Sleep(remaining + 10*time.Millisecond)
+	}
+}
+
 // freshAuthedContext creates and authenticates a new OIDC SDK context for an
 // existing identity, yielding a brand-new api-session (a fresh z_asid and issue
 // time). Authenticate on an already-authenticated context is a no-op, so a new
@@ -258,6 +270,7 @@ func Test_Revocation_IdentityCutoff_PostCutoffSessionSurvives_OIDC(t *testing.T)
 	// can still authenticate a new session below.)
 	_, err := adminApi.CreateRevocation(dialIdentity.Id, rest_model.RevocationTypeEnumIDENTITY)
 	ctx.Req.NoError(err)
+	revocationCreated := time.Now()
 	requireConnClosedByReaper(ctx, clientConn)
 
 	t.Run("a session authenticated after the cutoff survives", func(t *testing.T) {
@@ -265,6 +278,7 @@ func Test_Revocation_IdentityCutoff_PostCutoffSessionSurvives_OIDC(t *testing.T)
 
 		// A fresh session is issued after the cutoff, so it must not be revoked
 		// even though the identity revocation still lingers.
+		waitForSecondAfter(revocationCreated)
 		freshContext := freshAuthedContext(t, ctx, dialIdentity)
 		newConn := ctx.WrapConn(freshContext.Dial(svc.Name))
 		requireConnSurvivesReaper(ctx, newConn)

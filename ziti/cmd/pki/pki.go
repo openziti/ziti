@@ -64,6 +64,7 @@ type PKIFlags struct {
 	SpiffeID              string
 	AllowOverwrite        bool
 	EcCurve               string
+	NotBefore             string
 }
 
 var (

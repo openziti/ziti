@@ -24,7 +24,6 @@ import (
 
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_server"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -138,7 +137,7 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		rc, err := ae.CreateRequestContext(rw, r)
 
 		if err != nil {
-			env.WriteHttpApiError(rw, errorz.NewUnhandled(err))
+			env.WriteHttpError(rw, err)
 			return
 		}
 

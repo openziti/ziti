@@ -17,6 +17,8 @@
 package link
 
 import (
+	"math"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -355,4 +358,126 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId2, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId5, getRegistryMetrics())
+}
+
+// flakySendChannel is a channel.Channel double whose sends fail a set number of times before succeeding. It
+// embeds the interface, so any method these tests do not exercise panics rather than returning a zero value.
+type flakySendChannel struct {
+	channel.Channel
+	failures    int
+	sends       atomic.Int32
+	closed      atomic.Bool
+	closeNotify chan struct{}
+}
+
+func newFlakySendChannel(failures int) *flakySendChannel {
+	return &flakySendChannel{failures: failures, closeNotify: make(chan struct{})}
+}
+
+func (self *flakySendChannel) Id() string     { return "ctrl1" }
+func (self *flakySendChannel) Label() string  { return "ctrl1" }
+func (self *flakySendChannel) IsClosed() bool { return self.closed.Load() }
+
+func (self *flakySendChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+
+func (self *flakySendChannel) Send(s channel.Sendable) error {
+	if int(self.sends.Add(1)) <= self.failures {
+		return errors.New("timeout waiting for space in send queue")
+	}
+	// What the tx loop does once the message is actually written.
+	s.SendListener().NotifyAfterWrite()
+	return nil
+}
+
+// newReconnectTestRegistry builds a registry with no links and no event loop. An empty link set is a case
+// worth covering rather than avoiding: the reconnect announcement is the only message that prunes, so a
+// router with nothing to report still has to send one to clear stale controller state.
+func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
+	t.Helper()
+	routerEnv := newTestEnv()
+	t.Cleanup(func() { close(routerEnv.closeNotify) })
+
+	return &linkRegistryImpl{
+		env:            routerEnv,
+		ctrls:          routerEnv.ctrls,
+		destinations:   map[string]*linkDest{},
+		linkMap:        map[string]xlink.Xlink{},
+		triggerNotifyC: make(chan struct{}, 1),
+		// Production's pacing is not this test's concern; the timeout has to stay reachable, though, since it
+		// is what distinguishes a discarded message from a delivered one.
+		fullRefreshSendTimeout: 20 * time.Millisecond,
+		fullRefreshRetryDelay:  0,
+	}, routerEnv
+}
+
+// Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands covers the retry. A router announces its full link
+// set once per controller reconnect and nothing re-asks, so an announcement lost to send-queue back-pressure
+// leaves that controller unable to route over the router's links, and unable to prune the ones it should have
+// dropped, until the next reconnect.
+func Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(2)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(3), ch.sends.Load(),
+		"the announcement should have been retried until it reached the wire")
+}
+
+// Test_NotifyOfReconnect_GivesUpAfterItsAttempts: the retry is bounded, so a channel that never drains does
+// not hold a goroutine indefinitely.
+func Test_NotifyOfReconnect_GivesUpAfterItsAttempts(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(math.MaxInt32)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(fullRefreshSendAttempts), ch.sends.Load(),
+		"the retry must stop after its attempts rather than looping")
+}
+
+// Test_NotifyOfReconnect_StopsWhenTheChannelCloses: a closed channel cannot be re-announced to, and whatever
+// replaces it announces again, so retrying against it only delays the goroutine's exit.
+func Test_NotifyOfReconnect_StopsWhenTheChannelCloses(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(math.MaxInt32)
+	ch.closed.Store(true)
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(1), ch.sends.Load(),
+		"a closed channel should be abandoned after the first failure, not retried")
+}
+
+// acceptThenDiscardChannel models what a real channel does to a message queued behind a backlog: the send is
+// accepted, and the message is dropped when its deadline expires before the queue drains. Nothing calls back,
+// because a plain send's listener ignores the error.
+type acceptThenDiscardChannel struct {
+	channel.Channel
+	sends       atomic.Int32
+	closeNotify chan struct{}
+}
+
+func (self *acceptThenDiscardChannel) Id() string                   { return "ctrl1" }
+func (self *acceptThenDiscardChannel) Label() string                { return "ctrl1" }
+func (self *acceptThenDiscardChannel) IsClosed() bool               { return false }
+func (self *acceptThenDiscardChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+
+func (self *acceptThenDiscardChannel) Send(channel.Sendable) error {
+	self.sends.Add(1)
+	return nil // queued, and never written
+}
+
+// Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure is the guard on how the announcement is sent.
+// A plain Send returns once the message is queued, and the deadline stays live afterwards, so the tx loop can
+// drop it with nobody told: a plain send's listener ignores the error. Reporting that as success marks the
+// links announced and leaves the controller permanently without them.
+func Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := &acceptThenDiscardChannel{closeNotify: make(chan struct{})}
+
+	reg.NotifyOfReconnect(ch)
+
+	require.Equal(t, int32(fullRefreshSendAttempts), ch.sends.Load(),
+		"an announcement accepted into the queue but never written must count as a failure and be retried")
 }

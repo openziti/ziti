@@ -17,8 +17,6 @@
 package handler_ctrl
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
@@ -111,15 +109,11 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	ch := binding.GetChannel()
 
 	log := pfxlog.Logger().WithField("routerId", ch.Id())
-	// Use a new copy of the router instance each time we connect. That way we can tell on disconnect
-	// if we're working with the right connection, in case connects and disconnects happen quickly.
-	// It also means that the channel and connected time fields don't change and we don't have to protect them
-	r, err := self.network.GetReloadedRouter(ch.Id())
+	// A fresh instance per connection, carrying this channel: that is what lets connect and disconnect tell
+	// two connections for one router apart, and keeps them from writing over each other's state.
+	r, err := self.network.NewCtrlChanRouter(ch)
 	if err != nil {
 		return err
-	}
-	if r == nil {
-		return errors.Errorf("no router with id [%v] found, closing connection", ch.Id())
 	}
 
 	var ctrlChanListeners map[string][]string
@@ -190,8 +184,6 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch.(channel.MultiChannel).GetUnderlayHandler().(ctrlchan.CtrlChannel)
-	r.ConnectTime = time.Now()
 	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
@@ -200,9 +192,16 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
-	log.Info("accepted new router connection")
+	if err = self.network.ConnectRouter(r); err != nil {
+		if network.IsConnectRejected(err) {
+			log.Info("router connect rejected; another connection is already current, router will redial")
+		}
+		// Returning the error fails the bind, so NewChannel closes this channel's underlay without
+		// starting rx or registering it. That preserves the rx-gate for a rejected connection.
+		return err
+	}
 
-	self.network.ConnectRouter(r)
+	log.Info("accepted new router connection")
 
 	return nil
 }

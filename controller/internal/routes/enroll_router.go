@@ -20,8 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -280,15 +278,11 @@ func (ro *EnrollRouter) legacyGenericEnrollPemHandler(ae *env.AppEnv, rc *respon
 		return
 	}
 
-	body, err := io.ReadAll(rc.Request.Body)
-
-	if err != nil {
-		rc.RespondWithError(fmt.Errorf("could not read body: %w", err))
-		return
-	}
-
+	// The request body has already been read and buffered into rc.Body by
+	// CreateRequestContext; reuse that buffer rather than reading rc.Request.Body
+	// again, which would allocate a second full copy of a pre-auth request body.
 	enrollContext.Data = &model.EnrollmentData{
-		ClientCsrPem: body,
+		ClientCsrPem: rc.Body,
 	}
 
 	ro.processEnrollContext(ae, rc, enrollContext)

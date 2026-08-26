@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -68,6 +69,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/teris-io/shortid"
+	"go.etcd.io/bbolt"
 )
 
 type Controller struct {
@@ -311,8 +313,15 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 
 	c.initWeb() // need to init web before bootstrapping, so we can provide our endpoints to peers
 
-	if c.raftController != nil && !c.raftController.IsBootstrapped() {
-		if err = c.TryInitializeRaftFromBoltDb(); err != nil {
+	if c.raftController != nil {
+		_, dbConfigured := c.config.Src["db"]
+		if c.raftController.IsBootstrapped() {
+			// On a clustered config 'db' only seeds a new cluster on first bootstrap; once
+			// initialized it is dead config, so warn rather than let a stale setting sit unnoticed.
+			if dbConfigured {
+				log.Warn("'db' is set but this clustered controller is already initialized; the 'db' setting is ignored and should be removed from the configuration")
+			}
+		} else if err = c.TryInitializeRaftFromBoltDb(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
 		}
 	}
@@ -537,9 +546,6 @@ func (c *Controller) Run() error {
 	pfxlog.Logger().Infof("staring control channel listener on %s", c.config.Ctrl.Listener.String())
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
-	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
-		panic(err)
-	}
 
 	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
 
@@ -547,6 +553,19 @@ func (c *Controller) Run() error {
 	if c.raftController != nil {
 		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
 		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
+	}
+
+	// Channel types routed to a dedicated acceptor above validate their own peers; the connect handler
+	// must skip exactly those and validate everything else (which the dispatcher routes to the default
+	// router control acceptor, including unrecognized types). Set this before accepting connections.
+	separatelyValidatedTypes := map[string]struct{}{}
+	for chType := range ctrlAcceptors {
+		separatelyValidatedTypes[chType] = struct{}{}
+	}
+	c.ctrlConnectHandler.SetSeparatelyValidatedChannelTypes(separatelyValidatedTypes)
+
+	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
+		panic(err)
 	}
 
 	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{
@@ -699,9 +718,19 @@ func (c *Controller) registerXts() {
 }
 
 func (c *Controller) registerComponents() error {
-	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
+	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.signingCertRoots())
 	c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(c.routerDispatchCallback))
 	return nil
+}
+
+// signingCertRoots returns the trust anchors from the edge enrollment signing CA bundle, which issues the
+// certificates routers present on the control channel. It is empty when no signing CA bundle is
+// configured, in which case a router is trusted only through the controller's own CA bundle.
+func (c *Controller) signingCertRoots() []*x509.Certificate {
+	if c.config.Edge == nil {
+		return nil
+	}
+	return nfpem.PemBytesToCertificates(c.config.Edge.Enrollment.SigningCertCaPem)
 }
 
 func (c *Controller) RegisterXctrl(x xctrl.Xctrl) error {
@@ -842,6 +871,32 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	return c.RaftRestoreFromBoltDb(sourceDbPath)
 }
 
+// validateMigrationSourceDb rejects a migration source that is not an initialized controller db.
+// db.Open creates the root bucket on any file, so existence is not enough; it checks for a default
+// admin identity, which an initialized controller always has. The check is read-only.
+func validateMigrationSourceDb(sourceDb boltz.Db) error {
+	hasDefaultAdmin := false
+	err := sourceDb.View(func(tx *bbolt.Tx) error {
+		identities := boltz.Path(tx, db.RootBucket, db.EntityTypeIdentities)
+		if identities == nil {
+			return nil
+		}
+		return identities.ForEachTypedBucket(func(_ string, identity *boltz.TypedBucket) error {
+			if identity.GetBoolWithDefault(db.FieldIdentityIsDefaultAdmin, false) {
+				hasDefaultAdmin = true
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to read identities from source db")
+	}
+	if !hasDefaultAdmin {
+		return errors.New("source db has no default admin identity; it is empty or was never a fully initialized controller")
+	}
+	return nil
+}
+
 func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 	log := pfxlog.Logger()
 
@@ -865,6 +920,10 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 			log.WithError(err).Error("error closing migration source bolt db")
 		}
 	}()
+
+	if err = validateMigrationSourceDb(sourceDb); err != nil {
+		return errors.Wrapf(err, "migration source db [%v] is not a valid initialized controller database", sourceDbPath)
+	}
 
 	timelineId, err := sourceDb.GetTimelineId(boltz.TimelineModeForceReset, shortid.Generate)
 	if err != nil {
@@ -893,6 +952,13 @@ func (c *Controller) RaftRestoreFromBoltDb(sourceDbPath string) error {
 
 	if err = c.raftController.Bootstrap(); err != nil {
 		return fmt.Errorf("unable to bootstrap cluster (%w)", err)
+	}
+
+	// Carry the cluster id Bootstrap established so RestoreSnapshot can write it back after the
+	// restore (the migration source has none). Blank here means a bug in Bootstrap, so fail.
+	cmd.ClusterId = c.raftController.GetClusterId()
+	if cmd.ClusterId == "" {
+		return errors.New("cluster id is blank after bootstrap; refusing to restore without a durable cluster id")
 	}
 
 	return c.raftController.Dispatch(cmd)
