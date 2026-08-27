@@ -219,6 +219,18 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	name = eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
+
+	// Wait for the hosting side to finish before the deferred teardown runs. Reading the last
+	// reply only proves the data reached the wire, not that the hosting write has returned:
+	// the SDK writes with SendAndWaitForWire, so the write is still waiting to be told its
+	// buffer went out. Closing the context under it resolves that wait as "channel closed"
+	// and fails a write whose data the client already has.
+	select {
+	case err := <-errC:
+		ctx.Req.NoError(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out after 2 seconds")
+	}
 }
 
 func Test_ClientConnClosePropagation(t *testing.T) {
