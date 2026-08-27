@@ -4,6 +4,18 @@
 
 * Bug fixes
 
+## Security Advisories
+
+This release addresses one security advisory. See the linked GitHub Security Advisory for full details,
+impact, and affected versions.
+
+* [GHSA-p6gx-g438-rjc8](https://github.com/openziti/ziti/security/advisories/GHSA-p6gx-g438-rjc8) (High) - The identity routes handed out the live enrollment
+  token and JWT of any identity, including admins. The identity detail and list embed the outstanding
+  enrollment, and the identity enrollments subresource applied no scoping, so a non-admin holding only
+  identity or enrollment read access could read an admin identity's enrollment secret and redeem it through
+  the public enrollment endpoints, minting a certificate or password authenticator on that admin identity
+  and escalating to admin. The top level `/enrollments` routes were already scoped.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
