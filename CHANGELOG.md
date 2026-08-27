@@ -9,6 +9,7 @@
 * github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
   * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
   * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
+  * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - [Backport-2.0] `ziti login` fails against a controller whose server certificate is trusted by the OS trust store. The CA pool now falls back to the OS trust store when no `--ca` is given, and a stale cached CA is offered for removal
 
 # Release 2.0.3
 
