@@ -88,6 +88,8 @@ func (options *PKICreateOptions) addPKICreateFlags(cmd *cobra.Command) {
 	err = options.viper.BindPFlag("pki-province", cmd.PersistentFlags().Lookup("pki-province"))
 	options.panicOnErr(err)
 
+	cmd.PersistentFlags().StringVarP(&options.Flags.NotBefore, "not-before", "", "", "Certificate notBefore time as RFC3339 (2006-01-02T15:04:05Z) or date (2006-01-02); defaults to now")
+
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-state", "", "NC", "State/Province")
 	// cmd.MarkFlagRequired("pki-state")
 	// options.viper.BindPFlag("pki-state", cmd.PersistentFlags().Lookup("pki-state"))
@@ -281,7 +283,7 @@ func (o *PKICreateOptions) ObtainFileName(caFile string, commonName string) stri
 }
 
 // ObtainPKIRequestTemplate returns the 'template' used in the PKI request
-func (o *PKICreateOptions) ObtainPKIRequestTemplate(commonName string) *x509.Certificate {
+func (o *PKICreateOptions) ObtainPKIRequestTemplate(commonName string) (*x509.Certificate, error) {
 
 	subject := pkix.Name{CommonName: commonName}
 	if str := o.viper.GetString("pki-organization"); str != "" {
@@ -306,7 +308,27 @@ func (o *PKICreateOptions) ObtainPKIRequestTemplate(commonName string) *x509.Cer
 		MaxPathLen: o.Flags.CAMaxPath,
 	}
 
-	return template
+	if o.Flags.NotBefore != "" {
+		notBefore, err := parseNotBefore(o.Flags.NotBefore)
+		if err != nil {
+			return nil, err
+		}
+		template.NotBefore = notBefore
+	}
+
+	return template, nil
+}
+
+// parseNotBefore parses a certificate notBefore value supplied as either an RFC3339 timestamp or a
+// date-only string (interpreted as midnight UTC).
+func parseNotBefore(value string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse("2006-01-02", value); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("invalid not-before [%s], expected RFC3339 (2006-01-02T15:04:05Z) or date (2006-01-02)", value)
 }
 
 // ObtainKeyName returns the private key from the key-file

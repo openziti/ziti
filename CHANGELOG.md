@@ -4,9 +4,24 @@
 
 * Bug fixes
 
+## Security Advisories
+
+This release addresses one security advisory. See the linked GitHub Security Advisory for full details,
+impact, and affected versions.
+
+* [GHSA-p6gx-g438-rjc8](https://github.com/openziti/ziti/security/advisories/GHSA-p6gx-g438-rjc8) (High) - The identity routes handed out the live enrollment
+  token and JWT of any identity, including admins. The identity detail and list embed the outstanding
+  enrollment, and the identity enrollments subresource applied no scoping, so a non-admin holding only
+  identity or enrollment read access could read an admin identity's enrollment secret and redeem it through
+  the public enrollment endpoints, minting a certificate or password authenticator on that admin identity
+  and escalating to admin. The top level `/enrollments` routes were already scoped.
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
+  * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
+  * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
+  * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - [Backport-2.0] `ziti login` fails against a controller whose server certificate is trusted by the OS trust store. The CA pool now falls back to the OS trust store when no `--ca` is given, and a stale cached CA is offered for removal
   * [Issue #4298](https://github.com/openziti/ziti/issues/4298) - [Backport-2.0] Bind message with a short cost header panics the router
 
 # Release 2.0.3

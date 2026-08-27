@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 )
 
@@ -33,15 +34,24 @@ type ConnectHandler struct {
 	identity identity.Identity
 	network  *network.Network
 
+	// signingCertRoots holds the edge enrollment signing CA bundle. A router presents its enrollment
+	// certificate as its control channel client certificate, so a deployment whose signing CA sits
+	// outside the controller's own trust bundle would otherwise have every router refused here.
+	signingCertRoots []*x509.Certificate
+
 	// separatelyValidatedTypes holds the control-channel type headers that are dispatched to a
 	// separate, self-validating acceptor (currently the raft mesh, when clustering is enabled).
 	separatelyValidatedTypes map[string]struct{}
 }
 
-func NewConnectHandler(identity identity.Identity, network *network.Network) *ConnectHandler {
+// NewConnectHandler returns a ConnectHandler that admits routers whose leaf certificate chains either to
+// the controller's own CA bundle or to signingCertRoots, the edge enrollment signing CA bundle.
+// signingCertRoots may be empty, in which case only the controller's bundle is trusted.
+func NewConnectHandler(identity identity.Identity, network *network.Network, signingCertRoots []*x509.Certificate) *ConnectHandler {
 	return &ConnectHandler{
-		identity: identity,
-		network:  network,
+		identity:         identity,
+		network:          network,
+		signingCertRoots: signingCertRoots,
 	}
 }
 
@@ -77,6 +87,20 @@ func isFirstCtrlConnection(hello *channel.Hello) bool {
 	return first
 }
 
+// withinChurnLimit reports whether an established connection is too new to be displaced by a new one.
+//
+// This is admission policy, not the uniqueness guarantee. At most one connection per router is enforced
+// under the per-router lock in Network.ConnectRouter; this runs against the connected map with no lock
+// held, so it can only avoid paying for a bind that would be refused there anyway.
+//
+// Displacing an established connection costs a round trip: the occupant's teardown runs, the connect is
+// refused, and the router redials into the freed slot. A connection that has only just been established
+// is therefore protected for churnLimit, so a flapping router cannot thrash a working channel. A zero
+// limit disables the protection, making every new connection able to displace the current one.
+func withinChurnLimit(connected *model.Router, churnLimit time.Duration) bool {
+	return time.Since(connected.ConnectTime) < churnLimit
+}
+
 func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	// Connections whose channel type is handled by a separate, self-validating acceptor (e.g. the raft
 	// mesh) are validated there, so skip them. Everything else - router control channel types,
@@ -95,11 +119,11 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	}
 
 	// Verify the peer's leaf certificate (certificates[0], the certificate whose private key the TLS
-	// handshake proved) chains to the controller CA, and bind the router fingerprint check to that
-	// verified leaf. Matching the enrolled fingerprint against any presented certificate would let a
-	// peer present its own leaf followed by a target router's public certificate and pass without that
-	// router's private key.
-	leaf, err := cert.VerifyLeafCertChain(self.identity.CA(), certificates)
+	// handshake proved) chains to the controller CA or the edge signing CA, and bind the router
+	// fingerprint check to that verified leaf. Matching the enrolled fingerprint against any presented
+	// certificate would let a peer present its own leaf followed by a target router's public
+	// certificate and pass without that router's private key.
+	leaf, err := cert.VerifyLeafCertChain(self.identity.CA(), certificates, self.signingCertRoots...)
 	if err != nil {
 		return fmt.Errorf("unable to verify dialer, routerId: %v: %w", id, err)
 	}
@@ -111,7 +135,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	// connected and must not be rejected here.
 	if isFirstCtrlConnection(hello) {
 		if router := self.network.GetConnectedRouter(id); router != nil {
-			if time.Since(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
+			if withinChurnLimit(router, self.network.GetOptions().RouterConnectChurnLimit) {
 				log.WithField("routerName", router.Name).Error("router already connected and churn threshold not met")
 				return fmt.Errorf("router already connected id: %s, name: %s", id, router.Name)
 			}

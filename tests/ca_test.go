@@ -10,6 +10,7 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge-api/rest_model"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/model"
 )
@@ -265,6 +266,38 @@ func Test_CA(t *testing.T) {
 			ctx.Req.NotNil(enrolledSession.AuthResponse)
 			ctx.Req.NotNil(enrolledSession.AuthResponse.IsCertExtendable)
 			ctx.Req.False(*enrolledSession.AuthResponse.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate authentication to be false")
+		})
+
+		t.Run("oidc auth from CA should not be extendable", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			certCreds := edge_apis.NewCertCredentials(clientAuthenticator.certs, clientAuthenticator.key)
+			certCreds.CaPool = ctx.ControllerCaPool()
+
+			clientHelper := ctx.NewEdgeClientApi(nil)
+
+			t.Run("access token reports the certificate as not extendable", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				_, accessClaims, err := clientHelper.OidcAccessToken(certCreds)
+				ctx.Req.NoError(err)
+				ctx.Req.False(accessClaims.IsCertExtendable, "expected the z_ice claim on 3rd party CA certificate OIDC authentication to be false")
+			})
+
+			t.Run("current api session reports the certificate as not extendable", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				clientHelper.SetUseOidc(true)
+
+				apiSession, err := clientHelper.Authenticate(certCreds, nil)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(apiSession)
+
+				currentSession, err := clientHelper.GetCurrentApiSessionDetail()
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(currentSession.IsCertExtendable)
+				ctx.Req.False(*currentSession.IsCertExtendable, "expected isCertExtendable on 3rd party CA certificate OIDC authentication to be false")
+			})
 		})
 
 		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {

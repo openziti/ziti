@@ -108,7 +108,10 @@ func (o *PKICreateClientOptions) Run() error {
 	}
 
 	filename := o.ObtainFileName(clientCertFile, commonName)
-	template := o.ObtainPKIRequestTemplate(commonName)
+	template, err := o.ObtainPKIRequestTemplate(commonName)
+	if err != nil {
+		return err
+	}
 
 	template.IsCA = false
 	template.EmailAddresses = o.Flags.Email

@@ -3,12 +3,13 @@ package tests
 // ConfigSet describes a named collection of config files for a single test scenario.
 // All file paths are relative to the tests/ working directory.
 type ConfigSet struct {
-	Name           string   // display name matching the testdata/configs subdirectory
-	CtrlConfig     string   // controller config file; empty if the set does not define one
-	EdgeRouter     string   // edge router config; empty if the set does not define one
-	TunnelerRouter string   // tunneler-enabled edge router config; empty if not defined
-	TransitRouter  string   // transit router config; empty if not defined
-	FabricRouters  []string // fabric-only router configs, ordered by 1-based index
+	Name            string   // display name matching the testdata/configs subdirectory
+	CtrlConfig      string   // controller config file; empty if the set does not define one
+	PeerCtrlConfigs []string // additional cluster-member controller configs, joined to the primary by StartHaCluster
+	EdgeRouter      string   // edge router config; empty if the set does not define one
+	TunnelerRouter  string   // tunneler-enabled edge router config; empty if not defined
+	TransitRouter   string   // transit router config; empty if not defined
+	FabricRouters   []string // fabric-only router configs, ordered by 1-based index
 }
 
 // DefaultATS is the standard full-stack config set used by the majority of the
@@ -44,6 +45,25 @@ var DisabledOidcAutoBinding = ConfigSet{
 	CtrlConfig: "testdata/configs/disabled-oidc-auto-binding/ctrl.yml",
 }
 
+// Ha3DataDir is the parent raft data directory used by the Ha3 config set. It is cleaned by
+// StartHaCluster before each run and must contain the cluster.dataDir of every ha-3 controller.
+const Ha3DataDir = "testdata/ha-3-data"
+
+// Ha3 is a three-controller raft cluster config set whose edge signing CA root is distinct from
+// the ctrl-channel root CA. Each controller signs identity certs with its own intermediate under
+// the shared signing root. Used to exercise first-party client cert validation when the signing
+// CA and ctrl-channel CA differ, including certs issued by a controller other than the one a
+// router is subscribed to.
+var Ha3 = ConfigSet{
+	Name:       "ha-3",
+	CtrlConfig: "testdata/configs/ha-3/ctrl1.yml",
+	PeerCtrlConfigs: []string{
+		"testdata/configs/ha-3/ctrl2.yml",
+		"testdata/configs/ha-3/ctrl3.yml",
+	},
+	EdgeRouter: "testdata/configs/ha-3/edge-router.yml",
+}
+
 // DualOidcServers is a controller-only config set with two web server entries, each
 // on a different port and each hosting the edge-oidc API. Used to verify that the OIDC
 // discovery document returns issuer-specific endpoint URLs that reflect the port the
@@ -51,4 +71,14 @@ var DisabledOidcAutoBinding = ConfigSet{
 var DualOidcServers = ConfigSet{
 	Name:       "dual-oidc-servers",
 	CtrlConfig: "testdata/configs/dual-oidc-servers/ctrl.yml",
+}
+
+// WildcardOidcServer is a controller-only config set that supplies a wildcard (*.wildcard.test) server
+// certificate via alt_server_certs alongside an ordinary primary server cert, modeling a controller fronted
+// by a wildcard (e.g. LetsEncrypt) certificate. Used to verify that the OIDC discovery document served to a
+// concrete host under the wildcard advertises an issuer derived from that request host, rather than a
+// literal-wildcard issuer or a 404.
+var WildcardOidcServer = ConfigSet{
+	Name:       "wildcard-oidc-server",
+	CtrlConfig: "testdata/configs/wildcard-oidc-server/ctrl.yml",
 }

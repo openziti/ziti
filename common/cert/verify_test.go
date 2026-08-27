@@ -210,3 +210,45 @@ func TestVerifyLeafCertChain_EmptyInputs(t *testing.T) {
 	_, err = VerifyLeafCertChain(roots, nil)
 	req.Error(err, "no certs rejected")
 }
+
+// TestVerifyLeafCertChain_AdditionalRoots covers a controller whose edge signing CA sits outside its own
+// trust bundle: a router presents an enrollment certificate issued by that CA, so the leaf chains only
+// once the signing bundle is supplied as an additional anchor.
+func TestVerifyLeafCertChain_AdditionalRoots(t *testing.T) {
+	req := require.New(t)
+	ctrlRoot := vMkCA(t, "ctrl-root", nil)
+	signingRoot := vMkCA(t, "signing-root", nil)
+	signingInter := vMkCA(t, "signing-int", signingRoot)
+	roots := vPoolOf(ctrlRoot.cert)
+	leaf := vMkLeaf(t, "router", "/identity/r1", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, signingInter)
+
+	_, err := VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert, signingInter.cert})
+	req.Error(err, "without the signing bundle the leaf chains to nothing trusted")
+
+	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert, signingInter.cert}, signingRoot.cert)
+	req.NoError(err, "the signing root supplied as an additional anchor lets the leaf verify")
+
+	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert}, signingInter.cert)
+	req.NoError(err, "an intermediate from the signing bundle is a terminus like any other anchor")
+
+	ctrlLeaf := vMkLeaf(t, "ctrl-signed", "/identity/r2", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, ctrlRoot)
+	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{ctrlLeaf.cert}, signingRoot.cert)
+	req.NoError(err, "additional anchors do not displace the caller's own pool")
+}
+
+// TestVerifyLeafCertChain_AdditionalRootsDoNotMutateCallerPool guards the caller's pool, which an identity
+// shares with the live tls.Configs it has handed out: anchors passed for one check must not become
+// permanently trusted.
+func TestVerifyLeafCertChain_AdditionalRootsDoNotMutateCallerPool(t *testing.T) {
+	req := require.New(t)
+	ctrlRoot := vMkCA(t, "ctrl-root", nil)
+	signingRoot := vMkCA(t, "signing-root", nil)
+	roots := vPoolOf(ctrlRoot.cert)
+	leaf := vMkLeaf(t, "router", "/identity/r1", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, signingRoot)
+
+	_, err := VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert}, signingRoot.cert)
+	req.NoError(err)
+
+	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert})
+	req.Error(err, "the signing root must not have been added to the caller's pool")
+}

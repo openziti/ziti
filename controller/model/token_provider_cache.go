@@ -507,15 +507,30 @@ func (a *TokenIssuerCache) IterateControllerIssuers(f func(issuer common.TokenIs
 	})
 }
 
-// GetIssuerByKid searches both external JWT signers and controller issuers for the one
-// that owns the given key ID. Returns nil if no issuer claims that kid.
+// GetIssuerByKid searches enabled external JWT signers and then controller issuers for the one
+// that owns the given key ID. Disabled external signers are skipped. Returns nil if no issuer
+// claims that kid.
+//
+// External signers can share a kid when they draw from a common signing-key pool, so an external
+// match is ambiguous and does not identify a token's issuer. Callers needing a definitive binding
+// must resolve by issuer claim instead.
 func (a *TokenIssuerCache) GetIssuerByKid(kid string) common.TokenIssuer {
 	for _, issuer := range a.externalIssuers.Items() {
+		if !issuer.IsEnabled() {
+			continue
+		}
 		if pubKey, ok := issuer.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return issuer
 		}
 	}
 
+	return a.GetControllerIssuerByKid(kid)
+}
+
+// GetControllerIssuerByKid returns the controller TokenIssuer that owns the given key ID, or nil if
+// no controller issuer claims that kid. A controller issuer's key ID is the fingerprint of its TLS
+// certificate, so this resolves controller-issued tokens by kid without consulting external signers.
+func (a *TokenIssuerCache) GetControllerIssuerByKid(kid string) common.TokenIssuer {
 	for _, controller := range a.controllerIssuers.Items() {
 		if pubKey, ok := controller.PubKeyByKid(kid); ok && pubKey.PubKey != nil {
 			return controller

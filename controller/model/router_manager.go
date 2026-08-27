@@ -27,6 +27,9 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v4/protobufs"
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/ziti/v2/common/concurrency"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -38,9 +41,9 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -79,8 +82,9 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 
 type RouterManager struct {
 	baseEntityManager[*Router, *db.Router]
-	cache     cmap.ConcurrentMap[string, *Router]
-	connected cmap.ConcurrentMap[string, *Router]
+	cache        cmap.ConcurrentMap[string, *Router]
+	connected    cmap.ConcurrentMap[string, *Router]
+	connectLocks *concurrency.StripedIdLocker
 }
 
 func newRouterManager(env Env) *RouterManager {
@@ -89,6 +93,7 @@ func newRouterManager(env Env) *RouterManager {
 		baseEntityManager: newBaseEntityManager[*Router, *db.Router](env, routerStore),
 		cache:             cmap.New[*Router](),
 		connected:         cmap.New[*Router](),
+		connectLocks:      concurrency.NewStripedIdLocker(256),
 	}
 	result.impl = result
 
@@ -115,28 +120,61 @@ func (self *RouterManager) NewModelEntity() *Router {
 	return &Router{}
 }
 
-func (self *RouterManager) MarkConnected(r *Router) {
-	if router, _ := self.connected.Get(r.Id); router != nil {
-		if ch := router.Control; ch != nil {
-			if err := ch.Close(); err != nil {
-				pfxlog.Logger().WithError(err).Error("error closing control channel")
-			}
+// LockConnectFor acquires the per-router connect lock for the given router id and returns the unlock
+// function. It serializes a router's connect and disconnect processing so they cannot interleave. The
+// returned unlock is idempotent, so a caller may both defer it (as a leak-safety net across all exit
+// paths) and call it early (e.g. to release before closing a channel outside the lock) without
+// double-unlocking. The flag is unshared and only ever touched by the goroutine holding the lock, so it
+// needs no synchronization.
+func (self *RouterManager) LockConnectFor(id string) func() {
+	rawUnlock := self.connectLocks.LockFor(id)
+	unlocked := false
+	return func() {
+		if !unlocked {
+			unlocked = true
+			rawUnlock()
 		}
 	}
+}
 
+// MarkConnected publishes r as the current connection for its router id. Callers must serialize with
+// LockConnectFor and must have already ensured the slot is free (ConnectRouter rejects a busy slot rather
+// than taking over here), so this only records the connection; it does not close any prior channel.
+func (self *RouterManager) MarkConnected(r *Router) {
 	r.Connected.Store(true)
 	self.connected.Set(r.Id, r)
 }
 
+// MarkDisconnected gives up r's registration, and does nothing at all if r is not the registration holder.
+//
+// A connection only owns the state on its own instance, so a connection that has already been replaced must
+// not clear it. What makes that worth enforcing rather than assuming is where the connected flag is read:
+// the handler for a router's link reports drops them when it is false, so clearing it for the wrong
+// connection silences a router that is up and reporting, with nothing to correct it.
+//
+// This is all-or-nothing rather than a fix for instances shared between connections. Pointer identity
+// cannot tell two connections apart when they share an instance, so in that case the shared instance is the
+// registration holder and its state is cleared here regardless. Only giving each connection its own
+// instance prevents that.
 func (self *RouterManager) MarkDisconnected(r *Router) {
-	r.Connected.Store(false)
-	self.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
+	removed := self.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
 		if exists && v != r {
 			pfxlog.Logger().WithField("routerId", r.Id).Info("router not current connect, not clearing from connected map")
 			return false
 		}
-		return exists
+		if !exists {
+			return false
+		}
+		// Under the shard lock so the flag and the map entry change together: the link report path looks the
+		// router up and then reads the flag, and would otherwise see a removed entry still marked connected.
+		r.Connected.Store(false)
+		return true
 	})
+
+	if !removed {
+		return
+	}
+
 	r.routerLinks.Clear()
 }
 
@@ -196,6 +234,46 @@ func (self *RouterManager) Exists(id string) (bool, error) {
 	return exists, err
 }
 
+// NewCtrlChanRouter builds the Router instance representing one control-channel connection, with the
+// channel already recorded on it.
+//
+// The instance is deliberately kept out of the router cache. The connect path writes connection-scoped
+// state onto it (Control, ConnectTime, VersionInfo, Connected, links), and the controller decides which of
+// two racing connections for a router is current by comparing instances. Handing a cached instance to a
+// second connection makes the two indistinguishable: neither the connect path's occupied-slot check nor the
+// disconnect path's currency check can tell them apart, so a connection that dies takes its replacement's
+// registration down with it, and each connection's writes land on the other's state.
+//
+// Read, by contrast, is cache-backed and returns router entity data. Connection state belongs to
+// GetConnected, not to Read.
+func (self *RouterManager) NewCtrlChanRouter(ch channel.Channel) (*Router, error) {
+	r, err := self.readUncached(ch.Id())
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, fmt.Errorf("no router with id [%v] found", ch.Id())
+	}
+
+	multiCh, ok := ch.(channel.MultiChannel)
+	if !ok {
+		return nil, fmt.Errorf("control channel for router [%v] is not a multi-channel, got %T", ch.Id(), ch)
+	}
+
+	ctrlCh, ok := multiCh.GetUnderlayHandler().(ctrlchan.CtrlChannel)
+	if !ok {
+		return nil, fmt.Errorf("control channel for router [%v] has unexpected underlay handler type %T", ch.Id(), multiCh.GetUnderlayHandler())
+	}
+
+	r.Control = ctrlCh
+	r.ConnectTime = time.Now()
+
+	return r, nil
+}
+
+// readUncached reads a router straight from the database, bypassing the cache in both directions: it
+// neither reads a cached instance nor publishes the one it creates. Callers needing an instance they can
+// own get it here.
 func (self *RouterManager) readUncached(id string) (*Router, error) {
 	entity := &Router{}
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {

@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -717,9 +718,19 @@ func (c *Controller) registerXts() {
 }
 
 func (c *Controller) registerComponents() error {
-	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
+	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.signingCertRoots())
 	c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(c.routerDispatchCallback))
 	return nil
+}
+
+// signingCertRoots returns the trust anchors from the edge enrollment signing CA bundle, which issues the
+// certificates routers present on the control channel. It is empty when no signing CA bundle is
+// configured, in which case a router is trusted only through the controller's own CA bundle.
+func (c *Controller) signingCertRoots() []*x509.Certificate {
+	if c.config.Edge == nil {
+		return nil
+	}
+	return nfpem.PemBytesToCertificates(c.config.Edge.Enrollment.SigningCertCaPem)
 }
 
 func (c *Controller) RegisterXctrl(x xctrl.Xctrl) error {

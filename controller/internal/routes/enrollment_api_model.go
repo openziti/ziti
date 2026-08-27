@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
 )
 
@@ -29,22 +30,37 @@ const EntityNameEnrollment = "enrollments"
 
 var EnrollmentLinkFactory = NewBasicLinkFactory(EntityNameEnrollment)
 
-func MapEnrollmentToRestEntity(ae *env.AppEnv, _ *response.RequestContext, enrollment *model.Enrollment) (interface{}, error) {
-	return MapEnrollmentToRestModel(ae, enrollment)
+// mustWithholdEnrollmentSecrets reports whether the live enrollment token and JWT must be omitted
+// when rendering an enrollment owned by the given identity. The token and JWT are the credentials
+// used to enroll as that identity: redeeming one mints an authenticator on it. A caller that is not
+// an admin must therefore never see them for an admin identity, or it can escalate to admin.
+func mustWithholdEnrollmentSecrets(rc *response.RequestContext, owner *model.Identity) bool {
+	if owner == nil || !owner.IsAdmin {
+		return false
+	}
+	return rc == nil || !rc.HasPermission(permissions.AdminPermission)
 }
 
-func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*rest_model.EnrollmentDetail, error) {
+func MapEnrollmentToRestEntity(ae *env.AppEnv, rc *response.RequestContext, enrollment *model.Enrollment) (interface{}, error) {
+	return MapEnrollmentToRestModel(ae, rc, enrollment)
+}
+
+// MapEnrollmentToRestModel renders an enrollment for the API. The token and JWT of an enrollment
+// belonging to an admin identity are withheld from callers that are not admins, since redeeming
+// either yields a credential on that admin identity.
+func MapEnrollmentToRestModel(ae *env.AppEnv, rc *response.RequestContext, enrollment *model.Enrollment) (*rest_model.EnrollmentDetail, error) {
 	expiresAt := strfmt.DateTime(*enrollment.ExpiresAt)
+	token := enrollment.Token
+	jwt := enrollment.Jwt
+
 	ret := &rest_model.EnrollmentDetail{
 		BaseEntity:      BaseEntityToRestModel(enrollment, EnrollmentLinkFactory),
 		EdgeRouterID:    stringz.OrEmpty(enrollment.EdgeRouterId),
 		ExpiresAt:       &expiresAt,
 		IdentityID:      stringz.OrEmpty(enrollment.IdentityId),
 		Method:          &enrollment.Method,
-		Token:           &enrollment.Token,
 		TransitRouterID: stringz.OrEmpty(enrollment.TransitRouterId),
 		Username:        "",
-		JWT:             enrollment.Jwt,
 		CaID:            enrollment.CaId,
 	}
 
@@ -54,7 +70,15 @@ func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*re
 			return nil, err
 		}
 		ret.Identity = ToEntityRef(identity.Name, identity, IdentityLinkFactory)
+
+		if mustWithholdEnrollmentSecrets(rc, identity) {
+			token = ""
+			jwt = ""
+		}
 	}
+
+	ret.Token = &token
+	ret.JWT = jwt
 
 	if enrollment.EdgeRouterId != nil {
 		edgeRouter, err := ae.Managers.EdgeRouter.Read(*enrollment.EdgeRouterId)

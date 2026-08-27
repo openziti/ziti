@@ -346,6 +346,9 @@ func (r *IdentityRouter) listAuthenticators(ae *env.AppEnv, rc *response.Request
 
 func (r *IdentityRouter) listEnrollments(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `identity = "%v"`
+	if !rc.HasPermission(permissions.AdminPermission) {
+		filterTemplate += ` and not (identity.isAdmin = true)`
+	}
 	ListAssociationsWithFilter[*model.Enrollment](ae, rc, filterTemplate, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
