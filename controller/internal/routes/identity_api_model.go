@@ -209,11 +209,14 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 	return ret
 }
 
-func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, entity *model.Identity) (interface{}, error) {
-	return MapIdentityToRestModel(ae, entity)
+func MapIdentityToRestEntity(ae *env.AppEnv, rc *response.RequestContext, entity *model.Identity) (interface{}, error) {
+	return MapIdentityToRestModel(ae, rc, entity)
 }
 
-func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_model.IdentityDetail, error) {
+// MapIdentityToRestModel renders an identity for the API. The detail embeds any outstanding
+// enrollment, whose token and JWT are the credentials used to enroll as the identity, so those two
+// fields are withheld when an admin identity is rendered for a caller that is not an admin.
+func MapIdentityToRestModel(ae *env.AppEnv, rc *response.RequestContext, identity *model.Identity) (*rest_model.IdentityDetail, error) {
 	identityType, err := ae.Managers.IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil {
@@ -353,6 +356,8 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		return nil, err
 	}
 
+	withholdSecrets := mustWithholdEnrollmentSecrets(rc, identity)
+
 	ret.Enrollment = &rest_model.IdentityEnrollments{}
 	if err := ae.GetManagers().Identity.CollectEnrollments(identity.Id, func(entity *model.Enrollment) error {
 		var expiresAt strfmt.DateTime
@@ -360,12 +365,19 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			expiresAt = strfmt.DateTime(*entity.ExpiresAt)
 		}
 
+		jwt := entity.Jwt
+		token := entity.Token
+		if withholdSecrets {
+			jwt = ""
+			token = ""
+		}
+
 		if entity.Method == db.MethodEnrollUpdb {
 
 			ret.Enrollment.Updb = &rest_model.IdentityEnrollmentsUpdb{
 				ID:        entity.Id,
-				JWT:       entity.Jwt,
-				Token:     entity.Token,
+				JWT:       jwt,
+				Token:     token,
 				ExpiresAt: expiresAt,
 			}
 		}
@@ -373,8 +385,8 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		if entity.Method == db.MethodEnrollOtt {
 			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
 				ID:        entity.Id,
-				JWT:       entity.Jwt,
-				Token:     entity.Token,
+				JWT:       jwt,
+				Token:     token,
 				ExpiresAt: expiresAt,
 			}
 		}
@@ -385,8 +397,8 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 					ID:        entity.Id,
 					Ca:        ToEntityRef(ca.Name, ca, CaLinkFactory),
 					CaID:      ca.Id,
-					JWT:       entity.Jwt,
-					Token:     entity.Token,
+					JWT:       jwt,
+					Token:     token,
 					ExpiresAt: expiresAt,
 				}
 			} else {

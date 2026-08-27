@@ -21,7 +21,7 @@
 
 ## Security Advisories
 
-This release addresses eight security advisories. It also includes the two control-plane certificate and
+This release addresses nine security advisories. It also includes the two control-plane certificate and
 identity validation fixes first released in 2.0.2 and 1.6.18; anyone upgrading from 2.0.1 or earlier is
 picking those up here for the first time. See the linked GitHub Security Advisories for full details, impact,
 and affected versions.
@@ -33,6 +33,12 @@ and affected versions.
 * [GHSA-j952-6x8x-jmj6](https://github.com/openziti/ziti/security/advisories/GHSA-j952-6x8x-jmj6) (High) - The unauthenticated legacy enrollment path buffered
   the request body a second time, allocating twice the memory per request and roughly halving the bandwidth
   needed to drive the controller out of memory. Amplifies GHSA-q8g9-jc4c-jp6q.
+* [GHSA-p6gx-g438-rjc8](https://github.com/openziti/ziti/security/advisories/GHSA-p6gx-g438-rjc8) (High) - The identity routes handed out the live enrollment
+  token and JWT of any identity, including admins. The identity detail and list embed the outstanding
+  enrollment, and the identity enrollments subresource applied no scoping, so a non-admin holding only
+  identity or enrollment read access could read an admin identity's enrollment secret and redeem it through
+  the public enrollment endpoints, minting a certificate or password authenticator on that admin identity
+  and escalating to admin. The top level `/enrollments` routes were already scoped.
 * [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (Medium) - When accepting an incoming router-to-router link, a
   router verified the dialing router's identity against the whole presented certificate chain instead of the
   leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could

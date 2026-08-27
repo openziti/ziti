@@ -396,7 +396,7 @@ func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	result, err := MapIdentityToRestModel(ae, identity)
+	result, err := MapIdentityToRestModel(ae, rc, identity)
 
 	if err != nil {
 		rc.RespondWithError(err)

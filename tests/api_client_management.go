@@ -58,7 +58,14 @@ func (helper *ManagementHelperClient) GetVersionResponse() (*managementInformati
 }
 
 func (helper *ManagementHelperClient) CreateAndEnrollOttIdentity(isAdmin bool, roleAttributes ...string) (*rest_model.IdentityDetail, *edgeApis.CertCredentials, error) {
-	idLoc, err := helper.CreateIdentity(uuid.NewString(), isAdmin, roleAttributes...)
+	return helper.CreateAndEnrollOttIdentityWithPermissions(isAdmin, nil, roleAttributes...)
+}
+
+// CreateAndEnrollOttIdentityWithPermissions creates an identity carrying the given management
+// permissions, such as "identity.read" or "enrollment", completes its ott enrollment, and returns
+// the identity along with the certificate credentials it enrolled with.
+func (helper *ManagementHelperClient) CreateAndEnrollOttIdentityWithPermissions(isAdmin bool, permissions []string, roleAttributes ...string) (*rest_model.IdentityDetail, *edgeApis.CertCredentials, error) {
+	idLoc, err := helper.CreateIdentityWithPermissions(uuid.NewString(), isAdmin, permissions, roleAttributes...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create identity: %w", err)
 	}
@@ -89,11 +96,18 @@ func (helper *ManagementHelperClient) CreateAndEnrollOttIdentity(isAdmin bool, r
 }
 
 func (helper *ManagementHelperClient) CreateIdentity(name string, isAdmin bool, roleAttributes ...string) (*rest_model.CreateLocation, error) {
+	return helper.CreateIdentityWithPermissions(name, isAdmin, nil, roleAttributes...)
+}
+
+// CreateIdentityWithPermissions creates an identity carrying the given management permissions, such
+// as "identity.read" or "enrollment". A nil or empty slice leaves the identity with none.
+func (helper *ManagementHelperClient) CreateIdentityWithPermissions(name string, isAdmin bool, permissions []string, roleAttributes ...string) (*rest_model.CreateLocation, error) {
 	newIdentity := &rest_model.IdentityCreate{
 		Name:           ToPtr(name),
 		Type:           ToPtr(rest_model.IdentityTypeDefault),
 		IsAdmin:        ToPtr(isAdmin),
 		RoleAttributes: ToPtr(rest_model.Attributes(roleAttributes)),
+		Permissions:    ToPtr(rest_model.Permissions(permissions)),
 	}
 
 	newIdentityParams := &managementIdentity.CreateIdentityParams{
@@ -243,6 +257,43 @@ func (helper *ManagementHelperClient) GetEnrollment(enrollmentId string) (*rest_
 	}
 
 	resp, err := helper.API.Enrollment.DetailEnrollment(getParams, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// ListIdentityEnrollments returns the outstanding enrollments of an identity, as the
+// /identities/{id}/enrollments subresource renders them for the calling session.
+func (helper *ManagementHelperClient) ListIdentityEnrollments(identityId string) ([]*rest_model.EnrollmentDetail, error) {
+	resp, err := helper.API.Identity.GetIdentityEnrollments(&managementIdentity.GetIdentityEnrollmentsParams{
+		ID: identityId,
+	}, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateOttCaEnabledCa creates a third-party CA with ott-ca enrollment enabled, generating its
+// certificate, so that ott-ca enrollments can be created against it.
+func (helper *ManagementHelperClient) CreateOttCaEnabledCa(name string) (*rest_model.CreateLocation, error) {
+	_, _, caPem := newTestCaCert()
+
+	resp, err := helper.API.CertificateAuthority.CreateCa(&certificate_authority.CreateCaParams{
+		Ca: &rest_model.CaCreate{
+			CertPem:                   ToPtr(caPem.String()),
+			IdentityRoles:             rest_model.Roles{},
+			IsAuthEnabled:             ToPtr(true),
+			IsAutoCaEnrollmentEnabled: ToPtr(true),
+			IsOttCaEnrollmentEnabled:  ToPtr(true),
+			Name:                      ToPtr(name),
+		},
+	}, nil)
 
 	if err != nil {
 		return nil, rest_util.WrapErr(err)
