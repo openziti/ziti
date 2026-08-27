@@ -75,6 +75,14 @@ testdata/configs/
   the `edge:` section. Used to verify that the auto-binding behaviour is suppressed when the
   operator opts out, leaving OIDC absent from the running controller.
 
+- **`dual-oidc-servers`** (`DualOidcServers`) — Controller config with two web servers on different
+  ports, each hosting the `edge-oidc` API. Used by `Test_OidcDiscoveryEndpoints_DualServers` to verify the
+  OIDC discovery document returns endpoint URLs that reflect the port the client connected to.
+
+- **`wildcard-oidc-server`** (`WildcardOidcServer`) — Ordinary primary `server_cert` plus an
+  `alt_server_certs` entry whose only SAN is the wildcard `*.wildcard.test`, with the `edge-oidc` binding
+  setting `allowedHostnames: [ctrl.wildcard.test]`. Used by `Test_OidcDiscoveryEndpoints_WildcardIssuer`.
+
 - **`ha-3`** (`Ha3`) — Three-controller raft cluster whose edge signing CA root
   (`pki/signing-root`) is distinct from the ctrl-channel root CA (`pki/root`). Each controller
   signs identity certs with its own intermediate under the shared signing root
