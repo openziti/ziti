@@ -30,6 +30,50 @@ func loadCtrlRateLimiter(t *testing.T, src map[interface{}]interface{}) *Config 
 	return cfg
 }
 
+func rateLimiterStanza(entries map[interface{}]interface{}) map[interface{}]interface{} {
+	return map[interface{}]interface{}{"rateLimiter": entries}
+}
+
+// The router floors minSize at 1 so the window can shrink all the way down under load. Validating
+// that default against a higher floor made every rateLimiter stanza that omitted minSize fail to
+// load, which takes the router down at startup rather than degrading it.
+func TestCtrlRateLimiterStanzaLoadsWithoutMinSize(t *testing.T) {
+	for name, entries := range map[string]map[interface{}]interface{}{
+		"empty stanza":  {},
+		"timeout only":  {"timeout": "45s"},
+		"max size only": {"maxSize": 250},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg := loadCtrlRateLimiter(t, rateLimiterStanza(entries))
+			require.EqualValues(t, 1, cfg.Ctrl.RateLimit.MinSize,
+				"the router's floor of 1 must survive a stanza that does not set minSize")
+		})
+	}
+}
+
+// Dropping the floor must not drop the bounds that still matter.
+func TestCtrlRateLimiterStanzaRejectsOutOfRange(t *testing.T) {
+	for name, entries := range map[string]map[interface{}]interface{}{
+		"minSize below 1":       {"minSize": 0},
+		"minSize above maxSize": {"minSize": 40, "maxSize": 20},
+		"maxSize below floor":   {"maxSize": 2},
+		"maxSize above ceiling": {"maxSize": 5000},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Config{}
+			require.Error(t, cfg.loadCtrlRateLimiterConfig(rateLimiterStanza(entries)))
+		})
+	}
+}
+
+// A minSize between the router's floor and the old rejected floor is legitimate: it is strictly
+// more conservative than the default the router uses when the operator says nothing.
+func TestCtrlRateLimiterStanzaAcceptsSmallMinSize(t *testing.T) {
+	cfg := loadCtrlRateLimiter(t, rateLimiterStanza(map[interface{}]interface{}{"minSize": 2}))
+
+	require.EqualValues(t, 2, cfg.Ctrl.RateLimit.MinSize)
+}
+
 // The router classifies a terminator operation as congestion at EstablishmentTimeout, but the
 // limiter independently expires outstanding work as a backoff at its own timeout. If the limiter's
 // timeout is the smaller of the two, it resolves the work first and the router's classification is
@@ -44,12 +88,7 @@ func TestCtrlRateLimiterDefaultTimeoutOutlivesEstablishment(t *testing.T) {
 // A too-short timeout is a warning, not a rejection: the router still functions, it just stops
 // being the thing that classifies slow operations.
 func TestCtrlRateLimiterAcceptsTimeoutBelowEstablishment(t *testing.T) {
-	cfg := loadCtrlRateLimiter(t, map[interface{}]interface{}{
-		"rateLimiter": map[interface{}]interface{}{
-			"timeout": "5s",
-			"minSize": 5,
-		},
-	})
+	cfg := loadCtrlRateLimiter(t, rateLimiterStanza(map[interface{}]interface{}{"timeout": "5s"}))
 
 	require.Less(t, cfg.Ctrl.RateLimit.Timeout, xgress_common.EstablishmentTimeout,
 		"the configured value must be applied, not clamped")

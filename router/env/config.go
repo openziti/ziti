@@ -58,8 +58,8 @@ const (
 	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
 	CtrlEndpointBindMapKey = "bind"
 
-	// CtrlRateLimiterMinSizeValue is the minimum size that can be configured for the control channel rate limiter
-	// window range
+	// CtrlRateLimiterMinSizeValue is the smallest maximum window size that can be configured for the
+	// control channel rate limiter. It does not bound minSize, which floors at 1.
 	CtrlRateLimiterMinSizeValue = 5
 
 	// CtrlRateLimiterMaxSizeValue is the maximum size that can be configured for the control channel rate limiter
@@ -1057,10 +1057,9 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 					rateLimitConfig.MaxSize, CtrlRateLimiterMaxSizeValue)
 			}
 
-			if rateLimitConfig.MinSize < CtrlRateLimiterMinSizeValue {
-				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at least %v",
-					rateLimitConfig.MinSize, CtrlRateLimiterMinSizeValue)
-			}
+			// No lower bound on minSize here: the router deliberately floors at 1 above so the
+			// window can shrink all the way down under load, and AdaptiveRateLimiterConfig.Load
+			// already rejects minSize below 1 or above maxSize.
 			if rateLimitConfig.MinSize > CtrlRateLimiterMaxSizeValue {
 				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at most %v",
 					rateLimitConfig.MinSize, CtrlRateLimiterMaxSizeValue)
