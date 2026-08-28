@@ -2,7 +2,10 @@
 
 ## What's New
 
-* Bug fixes
+* The `/version` endpoint now reports build-time provided capabilities
+* The service edge-router list advertises edge router capabilities
+* Security fixes (see below)
+* Component Updates and Bug Fixes (see below)
 
 ## Security Advisories
 
@@ -18,11 +21,21 @@ impact, and affected versions.
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v4.3.11 -> v4.3.12](https://github.com/openziti/channel/compare/v4.3.11...v4.3.12)
+  * [Issue #295](https://github.com/openziti/channel/issues/295) - closeUnresponsiveTimeout is loaded into checkInterval on the v4 line
+
+* github.com/openziti/edge-api: [v0.31.0 -> v0.36.0](https://github.com/openziti/edge-api/compare/v0.31.0...v0.36.0)
+  * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
+
 * github.com/openziti/ziti/v2: [v2.0.3 -> v2.0.4](https://github.com/openziti/ziti/compare/v2.0.3...v2.0.4)
-  * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
-  * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
-  * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - [Backport-2.0] `ziti login` fails against a controller whose server certificate is trusted by the OS trust store. The CA pool now falls back to the OS trust store when no `--ca` is given, and a stale cached CA is offered for removal
+  * [Issue #4304](https://github.com/openziti/ziti/issues/4304) - Support build time provided capabilities in the /version capabilities list
   * [Issue #4298](https://github.com/openziti/ziti/issues/4298) - [Backport-2.0] Bind message with a short cost header panics the router
+  * [Issue #4264](https://github.com/openziti/ziti/issues/4264) - [Backport-2.0] Router control-channel connect/disconnect race can leave a reconnected router de-registered
+  * [Issue #4222](https://github.com/openziti/ziti/issues/4222) - OIDC cert authentication always reports isCertExtendable as true, including for 3rd Party CA certificates
+  * [Issue #4118](https://github.com/openziti/ziti/issues/4118) - Overlapping JWKS kids across ext-jwt-signers cause intermittent primary auth failures (GetIssuerByKid collision)
+  * [Issue #4094](https://github.com/openziti/ziti/issues/4094) - Edge router rejects valid first-party client certificates when the edge signing CA differs from the ctrl-channel CA
+  * [Issue #3914](https://github.com/openziti/ziti/issues/3914) - [Backport-2.0] `ziti login` fails against a controller whose server certificate is trusted by the OS trust store. The CA pool now falls back to the OS trust store when no `--ca` is given, and a stale cached CA is offered for removal
+  * [Issue #3891](https://github.com/openziti/ziti/issues/3891) - [Backport-2.0] OIDC auth fails when the controller's server certificate has a wildcard SAN. A wildcard SAN is now expanded to the exact hostnames listed in the new `edge-oidc` `allowedHostnames` option, which become valid OIDC issuers
 
 # Release 2.0.3
 
