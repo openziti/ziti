@@ -1182,6 +1182,71 @@ func (network *Network) RemoveLink(linkId string) {
 	}
 }
 
+// RemoveLinkAtIteration removes linkId only while it is still at iteration, and
+// faults that iteration rather than whatever is current. Returns false, having
+// done nothing, when the link is already gone or has been re-dialed since.
+//
+// For callers acting on a verdict that was computed earlier: a link id is reused
+// across re-dials, so removing on a stale verdict would close the healthy
+// replacement. The faulted iteration is the one that was actually judged, which
+// also lets the receiving router reject it if the link moved on in the meantime.
+func (network *Network) RemoveLinkAtIteration(linkId string, iteration uint32) bool {
+	log := pfxlog.Logger().WithField("linkId", linkId).WithField("iteration", iteration)
+
+	link, _ := network.Link.Get(linkId)
+	if link == nil {
+		log.Info("not removing link, no longer present")
+		return false
+	}
+	if link.Iteration != iteration {
+		log.WithField("currentIteration", link.Iteration).
+			Info("not removing link, iteration has moved on since it was judged")
+		return false
+	}
+
+	routerList := []*model.Router{link.Src}
+	if dst := link.GetDest(); dst != nil {
+		routerList = append(routerList, dst)
+	}
+	log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.DstId)
+
+	// Removal is the decision point, not the iteration check above: a newer
+	// incarnation can be installed in between, and only the link table can
+	// settle that atomically. Fault and reroute after it has, so a lost race
+	// leaves the replacement untouched and reports no removal.
+	if !network.Link.Remove(link) {
+		log.Info("not removing link, iteration changed while it was being removed")
+		return false
+	}
+
+	log.Info("deleted known link")
+	network.sendLinkFaults(log, routerList, linkId, iteration)
+	network.RerouteLink(link)
+	return true
+}
+
+// sendLinkFaults tells each router in routerList that linkId at iteration has
+// faulted. Best-effort: failures are logged, not returned.
+func (network *Network) sendLinkFaults(log *logrus.Entry, routerList []*model.Router, linkId string, iteration uint32) {
+	for _, router := range routerList {
+		fault := &ctrl_pb.Fault{
+			Subject:   ctrl_pb.FaultSubject_LinkFault,
+			Id:        linkId,
+			Iteration: iteration,
+		}
+
+		if ctrl := router.Control; ctrl != nil {
+			if err := protobufs.MarshalTyped(fault).WithTimeout(15 * time.Second).Send(ctrl.GetDefaultSender()); err != nil {
+				log.WithField("faultDestRouterId", router.Id).WithError(err).
+					Error("failed to send link fault to router on link removal")
+			} else {
+				log.WithField("faultDestRouterId", router.Id).
+					Info("sent link fault to router on link removal")
+			}
+		}
+	}
+}
+
 func (network *Network) rerouteLink(l *model.Link, deadline time.Time) error {
 	circuits := network.Circuit.All()
 	for _, circuit := range circuits {
