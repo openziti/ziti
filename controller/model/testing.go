@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -370,6 +371,9 @@ func NewRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 		Control:     ctrl,
 		Cost:        cost,
 		NoTraversal: noTraversal,
+		// The accept path refuses a router whose hello carries no version, so readers are entitled to
+		// assume it is set.
+		VersionInfo: &versions.VersionInfo{Version: "v0.0.0"},
 	}
 	if advLstnr != nil {
 		r.addLinkListener(advLstnr.String(), advLstnr.Type(), []string{"default"})

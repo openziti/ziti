@@ -184,6 +184,7 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
+	self.Link.RouterDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
 }
 
@@ -397,8 +398,10 @@ func (network *Network) ConnectRouter(r *model.Router) error {
 		return ErrConnectChannelClosed
 	}
 
-	network.Link.BuildRouterLinks(r)
+	// Mark connected before building links: repairDest re-reads the connected map for links that land in
+	// the table after this build, and must find the router there.
 	network.Router.MarkConnected(r)
+	network.Link.BuildRouterLinks(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
