@@ -8,7 +8,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -385,9 +384,8 @@ var m = &model.Model{
 			if err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
-				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".router", 100).Execute(run)
+			if err := chaos.EnsureUp(run, ".router", 100, time.Minute); err != nil {
+				return err
 			}
 
 			// validate non-Absent lifecycle routers are running

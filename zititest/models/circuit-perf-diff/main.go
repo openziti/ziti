@@ -362,9 +362,8 @@ var m = &model.Model{
 			if err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
-				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".router", 100).Execute(run)
+			if err := chaos.EnsureUp(run, ".router", 100, time.Minute); err != nil {
+				return err
 			}
 			return nil
 		})),

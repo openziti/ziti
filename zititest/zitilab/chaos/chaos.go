@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/parallel"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/ziti/zititest/zitirest"
@@ -287,6 +288,28 @@ func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Durati
 		pfxlog.Logger().Infof("all %v components for spec '%s' are running", len(components), spec)
 	}
 	return err
+}
+
+// EnsureUp waits for every component matching spec to be running, and if any are
+// still down after timeout, restarts them all and waits again. The second wait is
+// what makes this an assertion: starting a component only launches it, so without
+// it a restart that never takes would look like success. Component Start is
+// idempotent, so restarting the whole spec leaves running components alone.
+//
+// Prefer this over calling ValidateUp and starting components yourself; ValidateUp
+// only reports, it does not recover.
+func EnsureUp(run model.Run, spec string, concurrency int, timeout time.Duration) error {
+	err := ValidateUp(run, spec, concurrency, timeout)
+	if err == nil {
+		return nil
+	}
+
+	pfxlog.Logger().WithError(err).Errorf("validate up failed for '%s', starting all again", spec)
+	if err = component.StartInParallel(spec, concurrency).Execute(run); err != nil {
+		return err
+	}
+
+	return ValidateUp(run, spec, concurrency, timeout)
 }
 
 // LoginFunc authenticates a Clients instance against a controller component.
