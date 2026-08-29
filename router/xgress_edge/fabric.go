@@ -65,9 +65,12 @@ type edgeTerminator struct {
 	operationActive     atomic.Bool
 	createTime          time.Time
 	lastAttempt         time.Time
-	lock                sync.Mutex
-	rateLimitCallback   rate.RateLimitControl
-	failureCount        atomic.Uint32
+	// establishStart marks when the current establishment attempt began, i.e. the bind or
+	// re-establish that started it. Unlike lastAttempt it is not moved by create re-sends.
+	establishStart    concurrenz.AtomicValue[time.Time]
+	lock              sync.Mutex
+	rateLimitCallback rate.RateLimitControl
+	failureCount      atomic.Uint32
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -87,6 +90,8 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	lastAttempt := other.lastAttempt
 	other.lock.Unlock()
 
+	// establishStart is deliberately not inherited: the SDK deadline that matters belongs to
+	// this terminator's own bind, not to the bind being taken over.
 	self.lock.Lock()
 	self.terminatorId = terminatorId
 	self.setState(otherState, "replacing existing terminator")
@@ -236,7 +241,7 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 }
 
 // replaceRateLimitCallback stores control as the rate-limit control for a new establishment attempt.
-// If a control from a prior attempt is still outstanding, that attempt exceeded establishmentTimeout
+// If a control from a prior attempt is still outstanding, that attempt exceeded EstablishmentTimeout
 // without completing, so its control is resolved with Backoff (signaling congestion and reclaiming its
 // slot) rather than being orphaned and left for the limiter's internal timeout to clean up.
 func (self *edgeTerminator) replaceRateLimitCallback(control rate.RateLimitControl) {
@@ -251,17 +256,39 @@ func (self *edgeTerminator) replaceRateLimitCallback(control rate.RateLimitContr
 }
 
 // resolveRateLimitCallback resolves the terminator's outstanding rate-limit control based on how long
-// establishment took. An establishment that completed within establishmentTimeout reports Success,
-// growing the limiter window; one that took at least establishmentTimeout reports Backoff, signaling
+// establishment took. An establishment that completed within EstablishmentTimeout reports Success,
+// growing the limiter window; one that took at least EstablishmentTimeout reports Backoff, signaling
 // congestion so the window shrinks. It is a no-op if no control is outstanding.
 func (self *edgeTerminator) resolveRateLimitCallback(latency time.Duration) {
 	if control := self.GetAndClearRateLimitCallback(); control != nil {
-		if latency >= establishmentTimeout {
+		if latency >= xgress_common.EstablishmentTimeout {
 			control.Backoff()
 		} else {
 			control.Success()
 		}
 	}
+}
+
+// establishmentAge returns how long the current establishment attempt has been running, measured
+// from the bind that started it rather than from the last create re-send. This is the clock to
+// compare against SDK-side bind deadlines, which are blind to the router's re-sends. A terminator
+// with no recorded start reports an age large enough to be treated as overdue.
+func (self *edgeTerminator) establishmentAge() time.Duration {
+	return time.Since(self.establishStart.Load())
+}
+
+// postEstablishInspectThreshold is the establishment age past which a completed establishment gets
+// a second inspect of the SDK's listener. It is anchored to the SDK's one minute bind deadline
+// (sdk-golang multiListener.forward), not to controller load: past that deadline the SDK closes the
+// listener, which makes the post-bind inspect's confirmation stale. Kept well under the deadline so
+// the re-inspect is queued before the listener is certainly gone.
+const postEstablishInspectThreshold = 30 * time.Second
+
+// needsPostEstablishInspect reports whether the SDK should be re-inspected now that establishment
+// has completed. True once establishment has run long enough that the SDK may have given up on its
+// bind and closed the listener, leaving the post-bind inspect's confirmation stale.
+func (self *edgeTerminator) needsPostEstablishInspect() bool {
+	return self.supportsInspect && self.establishmentAge() >= postEstablishInspectThreshold
 }
 
 func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {

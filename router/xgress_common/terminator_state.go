@@ -16,6 +16,21 @@
 
 package xgress_common
 
+import "time"
+
+// EstablishmentTimeout is how long a terminator establish or remove may take before the router
+// treats it as congestion rather than success. It gates the rate-limit signal and the re-send of
+// stalled attempts. Kept above normal latency so a healthy system won't trip it.
+//
+// Shared by the sdk-hosted and router-hosted registries on purpose: both resolve their rate limit
+// controls into the same limiter, so a threshold that differed between them would feed one window
+// inconsistent signals.
+//
+// Must not exceed the limiter's own expiry timeout (ctrl.rateLimiter.timeout). Past that, the
+// limiter reclaims outstanding work as a backoff before the router can classify it, and slow but
+// successful operations get recorded as congestion depending on sweep timing.
+const EstablishmentTimeout = 30 * time.Second
+
 type TerminatorState int
 
 const (
