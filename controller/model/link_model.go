@@ -72,6 +72,20 @@ func (link *Link) GetDest() *Router {
 	return link.Dst.Load()
 }
 
+// PointDestAt points the link at dst, reporting whether that changed which router it pointed at. Several
+// paths may point a link at the same router; callers use the false return to avoid adding the link to that
+// router's link set twice, as the set does not deduplicate.
+func (link *Link) PointDestAt(dst *Router) bool {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+
+	if link.Dst.Load() == dst {
+		return false
+	}
+	link.Dst.Store(dst)
+	return true
+}
+
 func (link *Link) CurrentState() LinkState {
 	link.lock.Lock()
 	defer link.lock.Unlock()
