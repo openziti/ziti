@@ -48,6 +48,11 @@ func (factory *FabricRouterLinkFactoryIml) Links(entity LinkEntity) rest_model.L
 	return links
 }
 
+// MapCreateFabricRouterToModel builds a router from a fabric router create request. The id is copied from
+// the request, and an empty one is left for the create to generate.
+//
+// Deprecated: this is the only path that gives a router a caller-chosen id rather than one assigned at
+// enrollment. Enroll routers instead.
 func MapCreateFabricRouterToModel(router *rest_model.RouterCreate) *model.Router {
 	ret := &model.Router{
 		BaseEntity: models.BaseEntity{
