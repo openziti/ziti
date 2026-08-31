@@ -542,6 +542,17 @@ in a future release. Plan to migrate off them.
   sessions, is deprecated and will be removed in OpenZiti 3.0, along with the
   supporting infrastructure built around it.
 
+* **Creating a router outside enrollment** - `ziti fabric create router <cert>`,
+  and the caller-supplied `id` on the fabric router create API, are deprecated.
+  This is the only way a router gets an id that was chosen rather than assigned,
+  and it dates from when a router had a single identifier taken from its
+  certificate, before routers gained separate ids and names. Enroll routers
+  instead, which assigns the id.
+
+  A controller now logs a warning whenever a router is created this way, so
+  operators can tell whether anything still depends on it. If you do, please open
+  an issue describing the use case.
+
 ## Removed Features
 
 * **Link `costTags`** - The `costTags` option on router link listeners has been
