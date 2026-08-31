@@ -744,6 +744,16 @@ in a future release. Plan to migrate off them.
   be interpreted as a multi-underlay link with one ack and one payload channel,
   retiring the separate split implementation; in OpenZiti 4.0 the `split`
   configuration option will be removed entirely.
+* **Creating a router outside enrollment** - `ziti fabric create router <cert>`,
+  and the caller-supplied `id` on the fabric router create API, are deprecated.
+  This is the only way a router gets an id that was chosen rather than assigned,
+  and it dates from when a router had a single identifier taken from its
+  certificate, before routers gained separate ids and names. Enroll routers
+  instead, which assigns the id.
+
+  A controller now logs a warning whenever a router is created this way, so
+  operators can tell whether anything still depends on it. If you do, please open
+  an issue describing the use case.
 
 ## Removed Features
 
