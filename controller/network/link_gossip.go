@@ -85,6 +85,7 @@ func (network *Network) initLinkGossip() {
 
 	network.LinkGossipType = linkType
 	network.RegisterGossipType(LinkGossipStoreType, linkType)
+	network.onRouterDeleted(LinkGossipStoreType, linkType.DropOwner)
 }
 
 // NotifyLinkViaGossip is called when an old router reports a link. Only the

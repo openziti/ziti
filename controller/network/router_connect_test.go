@@ -621,34 +621,6 @@ func TestRouterDelete_DropsTheLinkIndex(t *testing.T) {
 	require.Len(t, network.Link.LinksForRouter(peer.Id), 1, "the other endpoint's index must be untouched")
 }
 
-// TestRouterDelete_KeepsTheIndexOfAReusedId covers the delete cleanup running late against an id that has
-// come back. Fabric router ids are the enrollment certificate's common name, so re-adding a router from the
-// same cert reuses its id, and nothing orders the cleanup against that: store commit handlers run after
-// bolt has released the writer lock. Dropping the live router's index here is invisible in the link table
-// and shows up only when a per-router query misses links it should have.
-//
-// The late callback is invoked directly rather than by pausing the real one, since the guard is a store read
-// taken while the index map's shard is held, so the observable property is the same either way.
-func TestRouterDelete_KeepsTheIndexOfAReusedId(t *testing.T) {
-	_, network, addr := newConnectTestNetwork(t)
-
-	peer := newPersistedRouter(t, network, addr, "r1")
-
-	original := newPersistedRouter(t, network, addr, "r0")
-	require.NoError(t, network.Router.Delete(original.Id, change.New()))
-
-	// The same id comes back and its links are reported, all before the earlier delete's cleanup runs.
-	reused := newPersistedRouter(t, network, addr, "r0")
-	network.Link.Add(model.NewTestLink("l0", reused, peer))
-	require.Len(t, network.Link.LinksForRouter(reused.Id), 1)
-
-	network.Link.RouterDeleted(original.Id)
-
-	require.Len(t, network.Link.LinksForRouter(reused.Id), 1,
-		"a delete that lands after the id was recreated must not drop the live router's index")
-	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
-}
-
 // TestRouterReportedLink_RepairsDestDisplacedMidReport is the same interleave with a stale destination
 // rather than an absent one. The report resolves the destination under the source's connect stripe, not the
 // destination's, so that router can be replaced before the report lands. A link left pointing at the

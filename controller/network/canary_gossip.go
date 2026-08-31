@@ -42,7 +42,7 @@ type CanaryValue = gossip_pb.CanaryGossipValue
 // tombstones and no anti-entropy — they are purely fire-and-forget probes.
 // Called once from initGossip, which owns the store this registers against.
 func (network *Network) initCanaryGossip() {
-	listener := &canaryGossipListener{network: network}
+	listener := &canaryGossipListener{network: network, canaries: map[string]*CanaryValue{}}
 
 	canaryType := gossip.Register[*CanaryValue](network.GossipStore, gossip.StateTypeConfig[*CanaryValue]{
 		Name:        CanaryGossipStoreType,
@@ -55,6 +55,13 @@ func (network *Network) initCanaryGossip() {
 
 	network.CanaryGossipType = canaryType
 	network.canaryListener = listener
+
+	// Deliberately not registered as a gossip type: those are swept on an epoch change, and a canary is
+	// what carries the epoch that detects one. It still has to be cleaned up when a router is deleted.
+	network.onRouterDeleted(CanaryGossipStoreType, func(routerId string) {
+		canaryType.DropOwner(routerId)
+		listener.remove(routerId)
+	})
 }
 
 // GetCanaryForRouter returns the latest canary sequence number this controller
@@ -72,15 +79,44 @@ func (network *Network) GetCanaryValueForRouter(routerId string) (*CanaryValue, 
 // canaryGossipListener tracks the latest canary state per router and detects
 // epoch changes to trigger cleanup of old link gossip entries.
 type canaryGossipListener struct {
-	network  *Network
-	canaries sync.Map // routerId (string) -> CanaryValue
+	network *Network
+
+	// A plain map under a mutex rather than a sync.Map, so forget can decide and delete atomically. A
+	// sync.Map offers no compare-and-delete, which would leave the reused-id check racing the delete.
+	lock     sync.RWMutex
+	canaries map[string]*CanaryValue
+}
+
+// swap records a router's canary, returning the one it replaced.
+func (l *canaryGossipListener) swap(routerId string, value *CanaryValue) (*CanaryValue, bool) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	prev, loaded := l.canaries[routerId]
+	if l.canaries == nil {
+		l.canaries = map[string]*CanaryValue{}
+	}
+	l.canaries[routerId] = value
+	return prev, loaded
+}
+
+func (l *canaryGossipListener) load(routerId string) (*CanaryValue, bool) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	v, ok := l.canaries[routerId]
+	return v, ok
+}
+
+func (l *canaryGossipListener) remove(routerId string) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	delete(l.canaries, routerId)
 }
 
 func (l *canaryGossipListener) EntryChanged(key string, value *CanaryValue, _ uint64, _ string, _ bool, _ gossip.ChangeOrigin) {
-	prev, loaded := l.canaries.Swap(key, value)
+	prev, loaded := l.swap(key, value)
 
 	if loaded && len(value.Epoch) > 0 {
-		prevVal := prev.(*CanaryValue)
+		prevVal := prev
 		if len(prevVal.Epoch) > 0 && bytes.Compare(value.Epoch, prevVal.Epoch) > 0 {
 			// New epoch is newer — the router restarted. Clean up old-epoch
 			// entries for this router across all gossip store types.
@@ -95,7 +131,7 @@ func (l *canaryGossipListener) EntryChanged(key string, value *CanaryValue, _ ui
 }
 
 func (l *canaryGossipListener) EntryRemoved(key string, _ string, _ uint64, _ gossip.ChangeOrigin) {
-	l.canaries.Delete(key)
+	l.remove(key)
 }
 
 // checkEpoch compares the given epoch against the stored epoch for a router.
@@ -112,9 +148,8 @@ func (l *canaryGossipListener) checkEpoch(routerId string, epoch []byte) {
 		return
 	}
 
-	prev, loaded := l.canaries.Load(routerId)
+	prevVal, loaded := l.load(routerId)
 	if loaded {
-		prevVal := prev.(*CanaryValue)
 		if len(prevVal.Epoch) > 0 && bytes.Compare(epoch, prevVal.Epoch) > 0 {
 			canaryLog.Info("router epoch changed, cleaning up old-epoch gossip entries",
 				"routerId", routerId,
@@ -133,15 +168,15 @@ func (l *canaryGossipListener) checkEpoch(routerId string, epoch []byte) {
 }
 
 func (l *canaryGossipListener) getSeq(routerId string) (uint64, bool) {
-	if v, ok := l.canaries.Load(routerId); ok {
-		return v.(*CanaryValue).Seq, true
+	if v, ok := l.load(routerId); ok {
+		return v.Seq, true
 	}
 	return 0, false
 }
 
 func (l *canaryGossipListener) getValue(routerId string) (*CanaryValue, bool) {
-	if v, ok := l.canaries.Load(routerId); ok {
-		return v.(*CanaryValue), true
+	if v, ok := l.load(routerId); ok {
+		return v, true
 	}
 	return nil, false
 }

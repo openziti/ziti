@@ -58,6 +58,7 @@ func (network *Network) initLinkMetricsGossip() {
 
 	network.LinkMetricsType = metricsType
 	network.RegisterGossipType(LinkMetricsGossipStoreType, metricsType)
+	network.onRouterDeleted(LinkMetricsGossipStoreType, metricsType.DropOwner)
 }
 
 // applyLinkMetric sets the source or destination latency of the given link from a

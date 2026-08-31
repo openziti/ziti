@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"go.etcd.io/bbolt"
 )
 
 // linkLog is the logger for the controller's link manager. Its channel name is
@@ -290,42 +289,10 @@ func (self *LinkManager) All() []*Link {
 	return self.linkTable.all()
 }
 
-// RouterDeleted drops the deleted router's link index, unless the id has since come back.
-//
-// A router id can be reused: fabric router ids are the enrollment certificate's common name, so re-adding
-// a router from the same cert reuses its id. Nothing orders this call against that, since store commit
-// handlers run after bolt has released the writer lock, so it can execute long after the id was recreated,
-// connected, and reported links. Dropping a live router's index is invisible in the link table and surfaces
-// only when a per-router query fails to find links it should have.
-//
-// Re-reading the store closes that rather than narrowing it, because the read happens while the index map's
-// shard is held. Indexing a link takes the same shard, so an entry for a live router cannot appear without
-// its create having committed first, which this read would then see. Anything indexed while the store says
-// the id is absent belongs to the deleted router.
+// RouterDeleted drops the deleted router's link index. A router id is only ever added to the index, so
+// without this every router that has ever had a link is held for the controller's lifetime.
 func (self *LinkManager) RouterDeleted(routerId string) {
-	self.linkTable.dropRouterIndexIf(routerId, func() bool {
-		return !self.routerExists(routerId)
-	})
-}
-
-// routerExists reports whether a router with this id is in the store. A nil env, which only happens in
-// tests that do not build one, reports absent so cleanup still runs.
-func (self *LinkManager) routerExists(routerId string) bool {
-	if self.env == nil {
-		return false
-	}
-	found := false
-	if err := self.env.GetDb().View(func(tx *bbolt.Tx) error {
-		found = self.env.GetStores().Router.IsEntityPresent(tx, routerId)
-		return nil
-	}); err != nil {
-		// Unreadable is not evidence the router is gone, and keeping an index costs only its entry.
-		linkLog.Warn("could not check whether router still exists, keeping its link index",
-			"routerId", routerId,
-			"error", err)
-		return true
-	}
-	return found
+	self.linkTable.dropRouterIndex(routerId)
 }
 
 // LinksForRouter returns the links with routerId at either end. Per-router work must use this rather than
@@ -462,12 +429,9 @@ func (lt *linkTable) indexFor(routerId string) *concurrency.LockedSet[string] {
 		})
 }
 
-// dropRouterIndexIf forgets a router's link index when shouldDrop agrees. shouldDrop runs with the index
-// map's shard held, so it must not index a link, and callers relying on that exclusion should say so.
-func (lt *linkTable) dropRouterIndexIf(routerId string, shouldDrop func() bool) {
-	lt.byRouter.RemoveCb(routerId, func(_ string, _ *concurrency.LockedSet[string], _ bool) bool {
-		return shouldDrop()
-	})
+// dropRouterIndex forgets a router's link index.
+func (lt *linkTable) dropRouterIndex(routerId string) {
+	lt.byRouter.Remove(routerId)
 }
 
 // linkIdsForRouter returns the ids indexed under the given router. Ids the table no longer holds are

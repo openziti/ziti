@@ -126,10 +126,13 @@ type Network struct {
 	LinkGossipType   *gossip.StateType[*ctrl_pb.RouterLinks_RouterLink]
 	LinkMetricsType  *gossip.StateType[*ctrl_pb.LinkMetrics]
 	CanaryGossipType *gossip.StateType[*CanaryValue]
-	gossipTypes      map[string]gossip.StateTypeInfo // non-generic lookup by store type
-	canaryListener   *canaryGossipListener
-	isHA             bool
-	leaderCheck      func() bool
+	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
+	// different membership, since canaries carry the epoch that detects a change and so must survive one.
+	gossipTypes           map[string]gossip.StateTypeInfo // non-generic lookup by store type
+	routerDeletedCleanups []routerDeletedCleanup
+	canaryListener        *canaryGossipListener
+	isHA                  bool
+	leaderCheck           func() bool
 
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
@@ -226,6 +229,9 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 
 	env.GetManagers().Router.Store.AddEntityIdListener(network.HandleRouterDelete, boltz.EntityDeletedAsync)
 
+	linkManager := env.GetManagers().Link
+	network.onRouterDeleted("linkIndex", linkManager.RouterDeleted)
+
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
@@ -288,13 +294,8 @@ func (network *Network) IsLeader() bool {
 
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
-	self.Link.RouterDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
-	// Drop the router's gossip-store owner data so memory doesn't grow
-	// unboundedly when routers are added/removed over time (e.g., autoscaling).
-	// Live entries are tombstoned and broadcast; the ownerData is compacted out
-	// of the gossip store by the reaper once tombstones age out.
-	self.dropGossipOwner(id)
+	self.runRouterDeletedCleanups(id)
 }
 
 func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {
@@ -689,9 +690,41 @@ func (network *Network) GossipStoreTypes() []string {
 
 // dropGossipOwner tombstones every registered store type's entries for the owner,
 // so a removed router's gossip state is reclaimed across all stores.
-func (network *Network) dropGossipOwner(id string) {
-	for _, t := range network.gossipTypes {
-		t.DropOwner(id)
+// routerDeletedCleanup is one subsystem's per-router state teardown, named so a test can check every
+// per-router store is covered.
+type routerDeletedCleanup struct {
+	name    string
+	cleanup func(routerId string)
+}
+
+// onRouterDeleted registers cleanup for state keyed by router id. Every store holding per-router state
+// must register, or it leaks on delete: nothing else enumerates them, and the leak is invisible until a
+// memory profile is read.
+//
+// This assumes a deleted router id does not come back. Router ids are generated at create, apart from the
+// deprecated path that creates a fabric router outside enrollment with a caller-supplied id, and cleanup
+// is not ordered against a create of the same id. See the deprecation note on that path.
+func (network *Network) onRouterDeleted(name string, cleanup func(routerId string)) {
+	network.routerDeletedCleanups = append(network.routerDeletedCleanups, routerDeletedCleanup{
+		name:    name,
+		cleanup: cleanup,
+	})
+}
+
+// routerDeletedCleanupNames returns the registered cleanups, for tests that check every per-router store
+// is covered.
+func (network *Network) routerDeletedCleanupNames() []string {
+	names := make([]string, 0, len(network.routerDeletedCleanups))
+	for _, c := range network.routerDeletedCleanups {
+		names = append(names, c.name)
+	}
+	return names
+}
+
+// runRouterDeletedCleanups runs every registered cleanup for a deleted router.
+func (network *Network) runRouterDeletedCleanups(id string) {
+	for _, c := range network.routerDeletedCleanups {
+		c.cleanup(id)
 	}
 }
 
