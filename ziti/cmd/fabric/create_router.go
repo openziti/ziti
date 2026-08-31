@@ -38,7 +38,18 @@ type createRouterOptions struct {
 	configs                    []string
 }
 
+// deprecationNotice is printed on every use. This command creates a router outside enrollment, taking its
+// id from the certificate's common name, which dates from when a router had one identifier rather than a
+// separate id and name. It is the only way to give a router a caller-chosen id, and that is what makes a
+// deleted router id able to come back.
+const deprecationNotice = `WARNING: 'ziti fabric create router' is deprecated and will be removed in a
+future release. It creates a router outside the enrollment process, with its id taken from the
+certificate. Enroll routers instead, which assigns the id. If you rely on this command, please open an
+issue describing your use case.`
+
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
+//
+// Deprecated: creating a router outside enrollment is deprecated. See deprecationNotice.
 func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	options := &createRouterOptions{
 		Options: api.Options{
@@ -49,7 +60,9 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "router <path-to-cert>",
-		Short:      "creates a router managed by the Ziti Controller",
+		Short:      "creates a router managed by the Ziti Controller (deprecated)",
+		Long:       deprecationNotice,
+		Deprecated: "enroll routers instead; this creates a router outside enrollment with an id taken from the certificate",
 		Args:       cobra.MinimumNArgs(1),
 		RunE:       options.createRouter,
 		SuggestFor: []string{},
