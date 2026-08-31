@@ -1,3 +1,14 @@
+# Release 2.0.5
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
+  * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+
 # Release 2.0.4
 
 ## What's New
