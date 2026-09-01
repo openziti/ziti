@@ -697,6 +697,16 @@ type routerDeletedCleanup struct {
 	cleanup func(routerId string)
 }
 
+// ObserveRouterClock records a router's wall clock, reported on its canary, against this controller's.
+// A difference large enough to shift tombstone collection is logged; nothing is corrected, and the
+// measurement includes transit, so it bounds skew rather than measuring it.
+func (network *Network) ObserveRouterClock(routerId string, sentAt int64) {
+	if network.GossipStore == nil {
+		return
+	}
+	network.GossipStore.ObservePeerClock(routerId, sentAt)
+}
+
 // onRouterDeleted registers cleanup for state keyed by router id. Every store holding per-router state
 // must register, or it leaks on delete: nothing else enumerates them, and the leak is invisible until a
 // memory profile is read.

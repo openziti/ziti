@@ -58,16 +58,27 @@ func (h *canaryHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	}
 
 	// Parse per-store max sent versions and entry hashes from the body.
+	var sentAt int64
 	if len(msg.Body) > 0 {
 		payload := &gossip_pb.CanaryPayload{}
 		if err := proto.Unmarshal(msg.Body, payload); err == nil {
 			value.MaxSentVersions = payload.MaxSentVersions
 			value.EntryHashes = payload.EntryHashes
 			value.EntryCounts = payload.EntryCounts
+			sentAt = payload.SentAt
 		}
 	}
 
 	if err := h.network.GetGossipApplyPool().QueueOrError(func() {
+		// Routers create tombstones too, and a controller stamps the deadline it reads back, so router
+		// clocks matter as much as peer controllers'. The canary is where that is cheapest to watch, since
+		// it already arrives on a schedule.
+		//
+		// Observed on the pool rather than where the message arrived: the monitor takes a lock shared by
+		// every peer and periodically walks its map under it, and this handler runs on the goroutine
+		// reading a router's control channel. Neither the walk nor the wait for the lock belongs there.
+		h.network.ObserveRouterClock(h.r.Id, sentAt)
+
 		// Rechecked here, not only where the message arrived: this is the path a stale canary would come back
 		// on. A restarting router's hello drops the canary of the lifetime that has gone, precisely so the
 		// restarted sequence is accepted, and a canary from that lifetime still waiting in the pool would be
@@ -78,11 +89,10 @@ func (h *canaryHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 			return
 		}
 
-		// Owner is the router (single source of truth) and the version is the
-		// router's monotonic canary seq, so a stale canary is rejected by version
-		// no matter which controller received it. Storing it under the receiving
-		// controller with a controller-clock version previously let a stale copy
-		// survive on a controller that missed updates, masking divergence.
+		// Owner is the router, the single source of truth, and the version is the router's monotonic
+		// canary seq, so a stale canary is rejected on version whichever controller received it. Owning it
+		// by receiving controller and versioning it by that controller's clock would instead let a stale
+		// copy survive on a controller that missed updates, masking the divergence the canary reports.
 		if err := h.network.CanaryGossipType.SetWithVersion(h.r.Id, h.r.Id, seq, value); err != nil {
 			pfxlog.Logger().WithError(err).WithField("routerId", h.r.Id).
 				Error("failed to set canary in gossip store")

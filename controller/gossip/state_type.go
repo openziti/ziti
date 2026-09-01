@@ -72,6 +72,12 @@ func Register[T any](store *Store, config StateTypeConfig[T]) *StateType[T] {
 		antiEntropy:         config.AntiEntropy,
 		antiEntropyInterval: config.AntiEntropyInterval,
 	}
+
+	// Created at registration rather than on the first observation, so a canary arriving before any
+	// anti-entropy round is still measured.
+	if cfg.tombstones {
+		store.skewMonitorFor(cfg.tombstoneTTL)
+	}
 	sm := newStateMap(config.Name, cfg, store, listener)
 	sm.registerMetrics(store.metricsRegistry)
 	store.types.Store(config.Name, sm)

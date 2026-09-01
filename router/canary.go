@@ -115,6 +115,13 @@ func (e *canaryEmitter) send() {
 			payload.EntryCounts = counts
 		}
 	}
+	// Always stamped, so skew is observable on every canary rather than only on those that happen to carry
+	// gossip metadata. This forces a payload where there would otherwise be none.
+	if payload == nil {
+		payload = &gossip_pb.CanaryPayload{}
+	}
+	payload.SentAt = time.Now().UnixNano()
+
 	if payload != nil {
 		if body, err := proto.Marshal(payload); err == nil {
 			msg.Body = body

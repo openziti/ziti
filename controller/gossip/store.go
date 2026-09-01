@@ -59,6 +59,30 @@ type Store struct {
 	eventsPool       goroutines.Pool
 	ioPool           goroutines.Pool
 	metricsRegistry  metrics.Registry
+
+	// skew reports peers whose clock differs from ours by enough to shift tombstone collection. Created by
+	// the first state type registered that expires tombstones, since a store with none depends on no
+	// clock, and read from handlers on other goroutines.
+	skew atomic.Pointer[SkewMonitor]
+}
+
+// ObservePeerClock records a peer's wall clock against ours, warning when the difference is large enough
+// to shift tombstone collection. sentAt is unix nanoseconds; zero is ignored. A no-op until a state type
+// that expires tombstones has been registered, since nothing depends on clocks before then.
+func (store *Store) ObservePeerClock(peer string, sentAt int64) {
+	store.skew.Load().Observe(peer, sentAt)
+}
+
+// skewMonitorFor returns the store's skew monitor, creating it from the first tombstone lifetime seen. One
+// per store rather than per state type, because the clocks being compared belong to nodes, not to types.
+func (store *Store) skewMonitorFor(tombstoneTTL time.Duration) *SkewMonitor {
+	if m := store.skew.Load(); m != nil {
+		return m
+	}
+	if m := NewSkewMonitor(tombstoneTTL); m != nil {
+		store.skew.CompareAndSwap(nil, m)
+	}
+	return store.skew.Load()
 }
 
 // NewStore creates a gossip Store for the given local peer identity. mesh must not be nil; a controller with

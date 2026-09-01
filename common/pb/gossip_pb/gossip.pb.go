@@ -359,7 +359,13 @@ type GossipDigest struct {
 	// owner_digests optionally carries per-owner hashes. When the receiver
 	// sees this field populated, it short-circuits matching owners and only
 	// walks entries for owners whose hash differs.
-	OwnerDigests  []*OwnerDigest `protobuf:"bytes,3,rep,name=owner_digests,json=ownerDigests,proto3" json:"owner_digests,omitempty"`
+	OwnerDigests []*OwnerDigest `protobuf:"bytes,3,rep,name=owner_digests,json=ownerDigests,proto3" json:"owner_digests,omitempty"`
+	// sent_at is the sender's wall clock when the digest was built, as unix
+	// nanoseconds. Controllers stamp tombstone deadlines for each other to read,
+	// so skew between them shifts collection; the anti-entropy round is where
+	// that is cheapest to observe, since it already runs between every pair.
+	// Read as an upper bound on skew, not a clock offset: see CanaryPayload.
+	SentAt        int64 `protobuf:"varint,4,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -413,6 +419,13 @@ func (x *GossipDigest) GetOwnerDigests() []*OwnerDigest {
 		return x.OwnerDigests
 	}
 	return nil
+}
+
+func (x *GossipDigest) GetSentAt() int64 {
+	if x != nil {
+		return x.SentAt
+	}
+	return 0
 }
 
 type GossipDigestResponse struct {
@@ -530,7 +543,17 @@ type CanaryPayload struct {
 	// entry_counts carries the number of non-tombstoned entries per store type.
 	// Controllers compare this before computing the expensive hash, as a count
 	// mismatch is the cheapest "definitely stale" check.
-	EntryCounts   map[string]int64 `protobuf:"bytes,3,rep,name=entry_counts,json=entryCounts,proto3" json:"entry_counts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	EntryCounts map[string]int64 `protobuf:"bytes,3,rep,name=entry_counts,json=entryCounts,proto3" json:"entry_counts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// sent_at is the sender's wall clock when the message was built, as unix
+	// nanoseconds. Tombstone expiry is a deadline one node stamps and another
+	// reads, so gross clock skew shifts when tombstones are collected; this
+	// exists to make that visible rather than to correct it.
+	//
+	// The receiver's delta is skew plus transit and queueing, so it is an upper
+	// bound on skew, not a clock offset. That is adequate for the seconds-to-
+	// minutes skew that matters against a tombstone lifetime, and unfit for
+	// anything finer.
+	SentAt        int64 `protobuf:"varint,4,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -584,6 +607,13 @@ func (x *CanaryPayload) GetEntryCounts() map[string]int64 {
 		return x.EntryCounts
 	}
 	return nil
+}
+
+func (x *CanaryPayload) GetSentAt() int64 {
+	if x != nil {
+		return x.SentAt
+	}
+	return 0
 }
 
 // CanaryGossipValue is the value stored in the canary gossip store. It carries
@@ -696,12 +726,13 @@ const file_gossip_proto_rawDesc = "" +
 	"\aversion\x18\x02 \x01(\x04R\aversion\"7\n" +
 	"\vOwnerDigest\x12\x14\n" +
 	"\x05owner\x18\x01 \x01(\tR\x05owner\x12\x12\n" +
-	"\x04hash\x18\x02 \x01(\x04R\x04hash\"\x9c\x01\n" +
+	"\x04hash\x18\x02 \x01(\x04R\x04hash\"\xb5\x01\n" +
 	"\fGossipDigest\x12\x1d\n" +
 	"\n" +
 	"store_type\x18\x01 \x01(\tR\tstoreType\x120\n" +
 	"\aentries\x18\x02 \x03(\v2\x16.gossip_pb.DigestEntryR\aentries\x12;\n" +
-	"\rowner_digests\x18\x03 \x03(\v2\x16.gossip_pb.OwnerDigestR\fownerDigests\"g\n" +
+	"\rowner_digests\x18\x03 \x03(\v2\x16.gossip_pb.OwnerDigestR\fownerDigests\x12\x17\n" +
+	"\asent_at\x18\x04 \x01(\x03R\x06sentAt\"g\n" +
 	"\x14GossipDigestResponse\x12\x1d\n" +
 	"\n" +
 	"store_type\x18\x01 \x01(\tR\tstoreType\x120\n" +
@@ -710,11 +741,12 @@ const file_gossip_proto_rawDesc = "" +
 	"\fentry_hashes\x18\x01 \x03(\v2/.gossip_pb.GossipDigestRequest.EntryHashesEntryR\ventryHashes\x1a>\n" +
 	"\x10EntryHashesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xca\x03\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe3\x03\n" +
 	"\rCanaryPayload\x12Y\n" +
 	"\x11max_sent_versions\x18\x01 \x03(\v2-.gossip_pb.CanaryPayload.MaxSentVersionsEntryR\x0fmaxSentVersions\x12L\n" +
 	"\fentry_hashes\x18\x02 \x03(\v2).gossip_pb.CanaryPayload.EntryHashesEntryR\ventryHashes\x12L\n" +
-	"\fentry_counts\x18\x03 \x03(\v2).gossip_pb.CanaryPayload.EntryCountsEntryR\ventryCounts\x1aB\n" +
+	"\fentry_counts\x18\x03 \x03(\v2).gossip_pb.CanaryPayload.EntryCountsEntryR\ventryCounts\x12\x17\n" +
+	"\asent_at\x18\x04 \x01(\x03R\x06sentAt\x1aB\n" +
 	"\x14MaxSentVersionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\x1a>\n" +

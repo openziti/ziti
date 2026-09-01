@@ -77,6 +77,7 @@ func (sm *stateMap) buildAntiEntropyDigest() *gossip_pb.GossipDigest {
 	return &gossip_pb.GossipDigest{
 		StoreType:    sm.name,
 		OwnerDigests: sm.getOwnerDigests(),
+		SentAt:       time.Now().UnixNano(),
 	}
 }
 

@@ -59,6 +59,13 @@ message GossipDigest {
     // sees this field populated, it short-circuits matching owners and only
     // walks entries for owners whose hash differs.
     repeated OwnerDigest owner_digests = 3;
+
+    // sent_at is the sender's wall clock when the digest was built, as unix
+    // nanoseconds. Controllers stamp tombstone deadlines for each other to read,
+    // so skew between them shifts collection; the anti-entropy round is where
+    // that is cheapest to observe, since it already runs between every pair.
+    // Read as an upper bound on skew, not a clock offset: see CanaryPayload.
+    int64 sent_at = 4;
 }
 
 message GossipDigestResponse {
@@ -89,6 +96,17 @@ message CanaryPayload {
     // Controllers compare this before computing the expensive hash, as a count
     // mismatch is the cheapest "definitely stale" check.
     map<string, int64> entry_counts = 3;
+
+    // sent_at is the sender's wall clock when the message was built, as unix
+    // nanoseconds. Tombstone expiry is a deadline one node stamps and another
+    // reads, so gross clock skew shifts when tombstones are collected; this
+    // exists to make that visible rather than to correct it.
+    //
+    // The receiver's delta is skew plus transit and queueing, so it is an upper
+    // bound on skew, not a clock offset. That is adequate for the seconds-to-
+    // minutes skew that matters against a tombstone lifetime, and unfit for
+    // anything finer.
+    int64 sent_at = 4;
 }
 
 // CanaryGossipValue is the value stored in the canary gossip store. It carries

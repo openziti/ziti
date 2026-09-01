@@ -136,6 +136,12 @@ func (h *digestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 			return
 		}
 
+		// The anti-entropy round is the cheapest place to watch controller-to-controller skew: it already
+		// runs between every pair, and it is the exchange tombstone deadlines are read across.
+		if peerId := h.store.mesh.PeerIdForChannel(ch); peerId != "" {
+			h.store.skewMonitorFor(sm.config.tombstoneTTL).Observe(peerId, digest.SentAt)
+		}
+
 		needed := sm.entriesNeededByPeer(digest)
 		if len(needed) == 0 {
 			return
