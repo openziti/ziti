@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
@@ -43,6 +44,10 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 		}
 	}
 
+	if len(foundOs.OsVersions) == 0 {
+		return nil
+	}
+
 	dataVer, err := semver.Make(data.Os.Os.GetVersion())
 
 	if err != nil {
@@ -61,11 +66,12 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 		versionRange, err := semver.ParseRange(version)
 
 		if err != nil {
-			return &CheckError{
-				Id:    m.Id,
-				Name:  m.Name,
-				Cause: err,
-			}
+			pfxlog.Logger().WithError(err).
+				WithField("postureCheckId", m.Id).
+				WithField("osType", foundOs.OsType).
+				WithField("osVersion", version).
+				Warn("skipping unparsable os version range in posture check")
+			continue
 		}
 
 		if versionRange(dataVer) {
