@@ -214,8 +214,29 @@ func (handler *validateIdentityConnectionStatusesHandler) validRouterEdgeConnect
 	}
 
 	lock.Lock()
+
 	for identityId, connMap := range m {
 		if routerConn := connMap[router.Id]; routerConn != nil {
+			// The controller marks tunneler-enabled routers' own identities as
+			// connected (via the broker), but the router's edge connection tracker
+			// doesn't include the internal tunneler binding. Skip this check when
+			// the identity is the router itself and it's a tunneler-enabled router.
+			if identityId == router.Id {
+				er, err := handler.appEnv.Managers.EdgeRouter.Read(router.Id)
+				if err != nil {
+					errList = append(errList, fmt.Sprintf("unable to read edge router %s to determine tunneler status: %v", router.Id, err))
+				}
+				// Skip the connection check for a tunneler-enabled router's own identity;
+				// also skip (having recorded the error above) if the router couldn't be read,
+				// so we don't emit a misleading "router disagrees" error on top of it.
+				if err != nil || er.IsTunnelerEnabled {
+					delete(connMap, router.Id)
+					if len(connMap) == 0 {
+						delete(m, identityId)
+					}
+					continue
+				}
+			}
 			if !routerConn.IsClosed() {
 				errList = append(errList, fmt.Sprintf("ctrl reports identity %s is connected, but router disagrees", identityId))
 			} else if routerConn.GetChannel().GetTimeSinceLastRead() > handler.appEnv.GetConfig().Edge.IdentityStatusConfig.UnknownTimeout {

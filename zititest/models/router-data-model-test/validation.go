@@ -39,9 +39,9 @@ import (
 	ptrutil "github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/ziti/util"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"github.com/openziti/ziti/zititest/zitirest"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -208,9 +208,9 @@ type taskGenerationContext struct {
 	services    []*rest_model.ServiceDetail
 
 	// router-target subset, populated by loadEntities by splitting on configType.Target
-	routerConfigTypes  []*rest_model.ConfigTypeDetail
-	routerConfigs      []*rest_model.ConfigDetail
-	routers            []*rest_model.EdgeRouterDetail
+	routerConfigTypes    []*rest_model.ConfigTypeDetail
+	routerConfigs        []*rest_model.ConfigDetail
+	routers              []*rest_model.EdgeRouterDetail
 	routerConfigsDeleted map[string]struct{}
 
 	configTypesDeleted map[string]struct{}

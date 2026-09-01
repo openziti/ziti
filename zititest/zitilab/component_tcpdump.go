@@ -76,7 +76,7 @@ func (self *TcpDumpType) Start(_ model.Run, c *model.Component) error {
 		maxFileSize = fmt.Sprintf("-C %d ", self.MaxFileSizeInMb)
 	}
 
-	serviceCmd := fmt.Sprintf("sudo tcpdump -Z %s -s 64 -W 10 %s -w %s %s > %s 2>&1 &", user, maxFileSize, capturePath, self.Filter, logsPath)
+	serviceCmd := fmt.Sprintf("sudo tcpdump -i any -Z %s -s 64 -W 10 %s -w %s %s > %s 2>&1 &", user, maxFileSize, capturePath, self.Filter, logsPath)
 	logrus.Infof("starting: %s", serviceCmd)
 	value, err := c.GetHost().ExecLogged(serviceCmd)
 	if err != nil {

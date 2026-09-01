@@ -23,7 +23,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -39,12 +38,12 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
+	"github.com/openziti/ziti/zititest/zitirest"
 )
 
 const TargetZitiVersion = ""
@@ -280,9 +279,8 @@ var m = &model.Model{
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".router", 500, time.Minute); err != nil {
-				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".router", 100).Execute(run)
+			if err := chaos.EnsureUp(run, ".router", 100, time.Minute); err != nil {
+				return err
 			}
 			return nil
 		}),

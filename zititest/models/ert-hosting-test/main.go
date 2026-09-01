@@ -25,7 +25,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -46,7 +45,6 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
-	"github.com/openziti/ziti/v2/zitirest"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
@@ -54,6 +52,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/openziti/ziti/zititest/zitilab/validations"
+	"github.com/openziti/ziti/zititest/zitirest"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
@@ -425,9 +424,8 @@ var m = &model.Model{
 			if err != nil {
 				return err
 			}
-			if err := chaos.ValidateUp(run, ".router", 100, time.Minute); err != nil {
-				pfxlog.Logger().WithError(err).Error("validate up failed, trying to start all routers again")
-				return component.StartInParallel(".router", 100).Execute(run)
+			if err := chaos.EnsureUp(run, ".router", 100, time.Minute); err != nil {
+				return err
 			}
 			return nil
 		})),
