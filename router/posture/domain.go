@@ -10,7 +10,7 @@ type DomainCheck struct {
 }
 
 func (m *DomainCheck) Evaluate(state *InstanceData) *CheckError {
-	if state == nil {
+	if state == nil || state.Domain == nil {
 		return &CheckError{
 			Id:    m.Id,
 			Name:  m.Name,
