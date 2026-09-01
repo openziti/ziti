@@ -50,16 +50,19 @@ type Subsystem struct {
 	mu        sync.RWMutex
 	factories map[string]xlink.Factory
 	config    *Config
-	listeners []xlink.Listener
-	dialers   []xlink.Dialer
+	// appliedData is the raw JSON of the currently-applied config, kept so
+	// Apply can detect a redundant re-apply (notably rollback, which replays
+	// the previous data verbatim) by comparing the incoming data against it.
+	appliedData string
+	listeners   []xlink.Listener
+	dialers     []xlink.Dialer
 
 	changeHandler ConfigurationChangeHandler
 }
 
 // ConfigurationChange describes which parts of the link configuration
-// changed during an Apply / Remove. Both flags may be true (e.g. on
-// Remove from a config that had both listeners and dialers); either may
-// be false to let consumers skip work they don't care about.
+// changed during an Apply / Remove. Any flag may be true; consumers
+// inspect them to decide what work to do.
 type ConfigurationChange struct {
 	// ListenersChanged is true when the listener set differs from the
 	// previous state (membership and/or any listener field that affects
@@ -70,6 +73,9 @@ type ConfigurationChange struct {
 	// binding. The effective local binding includes the single
 	// listener/single dialer default adoption rule.
 	DialersChanged bool
+	// GcModeChanged is true when the gcMode field transitioned. The
+	// handler should consult the current config for the new mode.
+	GcModeChanged bool
 }
 
 // ConfigurationChangeHandler is invoked asynchronously after a successful
@@ -126,10 +132,12 @@ func (self *Subsystem) BaseType() string { return ConfigBaseType }
 // SupportedVersions implements managedconfig.ConfigHandler.
 func (self *Subsystem) SupportedVersions() []int { return []int{1} }
 
-// Apply implements managedconfig.ConfigHandler. Parses the JSON payload,
-// closes every current listener (safe mid-run: accepted Xlinks survive as
-// independent channels), replaces the dialer slice with fresh instances, and
-// starts new listeners from the new config.
+// Apply implements managedconfig.ConfigHandler. Parses the JSON payload and
+// adopts it as the current config. Only a listener or dialer change rebuilds
+// the link surface: current listeners are closed (safe mid-run: accepted
+// Xlinks survive as independent channels), the dialer slice is replaced with
+// fresh instances, and the new listeners are started. Other fields (gcMode)
+// take effect without disturbing what's running.
 //
 // On error, the registry's transition matrix may roll back by calling
 // Apply with the previously-applied data; that's a separate Apply call so
@@ -149,40 +157,51 @@ func (self *Subsystem) Apply(version int, data string) error {
 
 	self.mu.Lock()
 	prevConfig := self.config
-	// Re-applying an identical config is a no-op: leave the running listeners in
-	// place rather than tearing them down and rebuilding them. This matters for
-	// rollback, where a failed update is undone by re-applying the current
-	// config. Checked before build so a no-op rollback doesn't construct (and
-	// then leak) replacement listeners that reserve resources in CreateListener.
-	if listenerSlicesEqual(getListeners(prevConfig), getListeners(cfg)) &&
-		dialerSlicesEqual(getEffectiveDialers(prevConfig), getEffectiveDialers(cfg)) {
-		self.mu.Unlock()
-		return nil
-	}
+	prevApplied := self.appliedData
 	self.mu.Unlock()
 
-	newListeners, newDialers, err := self.build(cfg)
-	if err != nil {
-		return err
+	// Rollback replays the previous data verbatim, so a byte-identical re-apply
+	// must not disturb anything.
+	if prevConfig != nil && data == prevApplied {
+		return nil
 	}
 
-	// Adopt the single-listener/single-dialer default binding before the dialer
-	// slice is published, so concurrent readers never observe an unbound dialer
-	// (which would yield the wrong link key) and adoptedBinding is not written
-	// while other goroutines read it lock-free.
-	setDefaultDialerBinding(newListeners, newDialers)
+	// Both comparisons are whole-struct, so a rebuild is skipped only when
+	// nothing a listener or dialer carries has moved. Decided before build so a
+	// skipped rebuild doesn't leak listeners that reserve resources in
+	// CreateListener.
+	rebuild := !listenerSlicesEqual(getListeners(prevConfig), getListeners(cfg)) ||
+		!dialerSlicesEqual(getEffectiveDialers(prevConfig), getEffectiveDialers(cfg))
+
+	var newListeners []xlink.Listener
+	var newDialers []xlink.Dialer
+	if rebuild {
+		if newListeners, newDialers, err = self.build(cfg); err != nil {
+			return err
+		}
+		// Adopt the default binding before the dialer slice is published, so
+		// readers never see an unbound dialer (wrong link key) and
+		// adoptedBinding isn't written while others read it lock-free.
+		setDefaultDialerBinding(newListeners, newDialers)
+	}
 
 	self.mu.Lock()
-	oldListeners := self.listeners
-	self.listeners = newListeners
-	self.dialers = newDialers
+	var oldListeners []xlink.Listener
+	if rebuild {
+		oldListeners = self.listeners
+		self.listeners = newListeners
+		self.dialers = newDialers
+	}
 	self.config = cfg
+	self.appliedData = data
 	handler := self.changeHandler
 	self.mu.Unlock()
 
-	closeListeners(oldListeners)
-	if err := startListeners(newListeners); err != nil {
-		return err
+	if rebuild {
+		closeListeners(oldListeners)
+		if err := startListeners(newListeners); err != nil {
+			return err
+		}
 	}
 
 	notifyChange(handler, prevConfig, cfg)
@@ -199,6 +218,7 @@ func (self *Subsystem) Remove() error {
 	self.listeners = nil
 	self.dialers = nil
 	self.config = nil
+	self.appliedData = ""
 	handler := self.changeHandler
 	self.mu.Unlock()
 
@@ -219,11 +239,19 @@ func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
 	change := ConfigurationChange{
 		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
 		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+		GcModeChanged:    getGcMode(prev) != getGcMode(next),
 	}
-	if !change.ListenersChanged && !change.DialersChanged {
+	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged {
 		return
 	}
 	go handler(change)
+}
+
+func getGcMode(c *Config) string {
+	if c == nil {
+		return ""
+	}
+	return c.GcMode
 }
 
 func getListeners(c *Config) []ListenerConfig {

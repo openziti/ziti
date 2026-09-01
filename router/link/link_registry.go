@@ -18,7 +18,6 @@ package link
 
 import (
 	"container/heap"
-	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -503,6 +502,21 @@ func (self *linkRegistryImpl) RescanForDialOpportunities() {
 	self.queueEvent(localDialersChangedEvent{})
 }
 
+// GetDestinationListeners implements xlink.Registry. Returns a copied
+// snapshot of the per-destination listener cache, omitting destinations
+// that are unhealthy or have no cached listeners, or (nil, false) if the
+// registry event loop doesn't answer within the timeout.
+func (self *linkRegistryImpl) GetDestinationListeners() (map[string][]*ctrl_pb.Listener, bool) {
+	evt := &getDestinationListenersEvent{
+		done: make(chan struct{}),
+	}
+	self.queueEvent(evt)
+	if result := evt.GetResults(5 * time.Second); result != nil {
+		return result, true
+	}
+	return nil, false
+}
+
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
 	self.queueEvent(&removeLinkDest{
 		id: id,
@@ -575,8 +589,43 @@ func (self *linkRegistryImpl) evaluateLinkStateQueue() {
 			return
 		}
 		heap.Pop(self.linkStateQueue)
+		// A queued state that is no longer the live entry for its key has been
+		// detached (e.g. by a local dialer rescan). Drop the stale entry rather
+		// than evaluate it, or it would redial through a dialer that rescan has
+		// since removed.
+		if live, ok := next.dest.linkMap[next.linkKey]; !ok || live != next {
+			continue
+		}
 		self.evaluateLinkState(next)
 	}
+}
+
+// sendLinkFaultDirect notifies controllers that a dialed link has failed when no
+// linkState remains to carry the fault through the normal notification loop —
+// e.g. a link whose dial state was detached by a local dialer change and then
+// closed. Runs off the registry loop so a slow controller can't block it.
+//
+// Best-effort and not retried: a dropped fault costs at most one circuit routed
+// over a link that no longer exists, which the forwarder answers with an
+// invalid-link fault, and the reconnect FullRefresh prunes what survives that.
+//
+// Sending off the loop is safe only while a fault is a standalone message with
+// no ordering relationship to the live-link notifications the loop stamps. If
+// link state ever becomes versioned, this has to be queued as an event instead,
+// or the fault can be ordered before the live entry it supersedes and lose.
+func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
+	linkId, iteration := link.Id(), link.Iteration()
+	go self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+		fault := &ctrl_pb.Fault{
+			Id:        linkId,
+			Subject:   ctrl_pb.FaultSubject_LinkFault,
+			Iteration: iteration,
+		}
+		if err := protobufs.MarshalTyped(fault).WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
+			pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("linkId", linkId).
+				WithError(err).Error("failed to send fault for closed detached link")
+		}
+	})
 }
 
 func (self *linkRegistryImpl) evaluateDestinations() {
@@ -733,15 +782,12 @@ func (self *linkRegistryImpl) Inspect(timeout time.Duration) *inspect.LinksInspe
 }
 
 func (self *linkRegistryImpl) GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string {
-	if dialerBinding == "" {
-		dialerBinding = "default"
-	}
-
-	if listenerBinding == "" {
-		listenerBinding = "default"
-	}
-
-	return fmt.Sprintf("%s->%s:%s->%s", dialerBinding, protocol, dest, listenerBinding)
+	return xlink.LinkKey{
+		DialerBinding:   dialerBinding,
+		Protocol:        protocol,
+		DestId:          dest,
+		ListenerBinding: listenerBinding,
+	}.String()
 }
 
 func (self *linkRegistryImpl) notifyControllersOfLinks() {

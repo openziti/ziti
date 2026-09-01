@@ -87,7 +87,11 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 	dest.listeners = self.listeners
 
 	if self.healthy {
-		self.ApplyListenerChanges(registry, dest, becameHealthy)
+		// Peer listener updates are authoritative about which listeners the peer
+		// offers, so a vanished or moved listener closes its established link
+		// here. This is long-standing peer-driven behavior, independent of the
+		// local stale-link GC policy (gcMode).
+		self.ApplyListenerChanges(registry, dest, becameHealthy, true)
 	}
 }
 
@@ -111,11 +115,31 @@ func (localDialersChangedEvent) Handle(registry *linkRegistryImpl) {
 			healthy:   true,
 			listeners: dest.listeners,
 		}
-		synthetic.ApplyListenerChanges(registry, dest, false)
+		// A local dialer change only opens or refreshes dial opportunities. It
+		// detaches pairings that no longer match so they can't redial through a
+		// removed dialer, but must not close established links: closing a
+		// locally-stale link is the stale-link GC's job (governed by gcMode), so
+		// gcMode: preserve is honored.
+		synthetic.ApplyListenerChanges(registry, dest, false, false)
 	}
 }
 
-func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, dest *linkDest, becameHealthy bool) {
+// ApplyListenerChanges reconciles dest's link states against self.listeners
+// crossed with the current local dialers: it creates a linkState for each newly
+// matching listener/dialer pair, refreshes existing ones, and detaches (removes
+// from the dial map) pairings that no longer match so they can never redial.
+//
+// closeOrphans decides whether detaching (or an address change) also closes the
+// pairing's established Xlink:
+//   - Peer listener updates pass true. The peer's advertised listener set is
+//     authoritative, so a listener that vanished or moved closes its link
+//     immediately. This is long-standing behavior and is not gated by gcMode.
+//   - The local dialer rescan passes false. A change to this router's own
+//     dialers only detaches pairings and never closes an established link;
+//     whether a locally-stale link is closed is left to the stale-link GC, so
+//     gcMode: preserve keeps the link. With closeOrphans false this function
+//     never closes an established Xlink.
+func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, dest *linkDest, becameHealthy bool, closeOrphans bool) {
 	currentLinkKeys := map[string]struct{}{}
 
 	for k := range dest.linkMap {
@@ -153,7 +177,7 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 						log.WithField("oldAddr", existingLinkState.listener.Address).
 							WithField("newAddr", listener.Address).
 							Info("link address changed, updating")
-						if existingLinkState.link != nil {
+						if closeOrphans && existingLinkState.link != nil {
 							if err := existingLinkState.link.Close(); err != nil {
 								log.WithError(err).Error("error closing existing link")
 							}
@@ -173,12 +197,14 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 		}
 	}
 
-	// anything left is an orphaned link entry
+	// Any key left unmatched is an orphaned pairing. Always detach it from the
+	// dial map so it can't redial through a now-removed dialer/listener. Closing
+	// its established link is caller-dependent: peer-driven updates close it,
+	// while a local rescan leaves it for the stale-link GC (see closeOrphans).
 	for linkKey := range currentLinkKeys {
 		if v, ok := dest.linkMap[linkKey]; ok {
-			// this will prevent the link from being recreated once closed
 			delete(dest.linkMap, linkKey)
-			if v.link != nil {
+			if closeOrphans && v.link != nil {
 				log := pfxlog.Logger().WithField("routerId", self.id).
 					WithField("linkKey", linkKey)
 				log.Info("closing link as link groups no longer align")
@@ -207,7 +233,16 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	state, found := dest.linkMap[link.Key()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
-			log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link state not present in registry", self.status)
+			if self.status == StatusLinkFailed {
+				// The dial state was detached (e.g. a local dialer rescan) while its
+				// established link was preserved; now that the link has closed, report
+				// the fault directly so the controller drops it. No state remains to
+				// carry the fault through the normal notification loop.
+				log.WithField("linkDest", link.DestinationId()).Info("reporting fault for closed detached link")
+				registry.sendLinkFaultDirect(link)
+			} else {
+				log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link state not present in registry", self.status)
+			}
 		}
 		return
 	}
@@ -269,6 +304,40 @@ func (self *updateLinkStatusToDialFailed) Handle(registry *linkRegistryImpl) {
 	if self.linkState.status == StatusDialing {
 		self.linkState.updateStatus(StatusDialFailed)
 		self.linkState.dialFailed(registry, self.applyFailed)
+	}
+}
+
+// getDestinationListenersEvent snapshots the registry's per-destination
+// listener cache so off-loop callers (e.g., the stale-link handler) can
+// read it without racing with event-loop writes. Only healthy destinations
+// with cached listeners are included, so absence means "unknown".
+type getDestinationListenersEvent struct {
+	result atomic.Pointer[map[string][]*ctrl_pb.Listener]
+	done   chan struct{}
+}
+
+func (self *getDestinationListenersEvent) Handle(registry *linkRegistryImpl) {
+	snapshot := make(map[string][]*ctrl_pb.Listener, len(registry.destinations))
+	for id, dest := range registry.destinations {
+		// An unhealthy peer's cache was emptied by its PeerState_Unhealthy
+		// update, which carries no listeners; that's unknown, not none.
+		if !dest.healthy || len(dest.listeners) == 0 {
+			continue
+		}
+		listeners := make([]*ctrl_pb.Listener, len(dest.listeners))
+		copy(listeners, dest.listeners)
+		snapshot[id] = listeners
+	}
+	self.result.Store(&snapshot)
+	close(self.done)
+}
+
+func (self *getDestinationListenersEvent) GetResults(timeout time.Duration) map[string][]*ctrl_pb.Listener {
+	select {
+	case <-self.done:
+		return *self.result.Load()
+	case <-time.After(timeout):
+		return nil
 	}
 }
 

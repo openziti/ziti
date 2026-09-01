@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
-	"github.com/orcaman/concurrent-map/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // linkLog is the logger for the controller's link manager. Its channel name is
@@ -200,13 +200,19 @@ func (self *LinkManager) GetLinkMap() map[string]*Link {
 	return linkMap
 }
 
-func (self *LinkManager) Remove(link *Link) {
-	if self.linkTable.remove(link) {
-		link.Src.routerLinks.Remove(link, link.DstId)
-		if dest := link.GetDest(); dest != nil {
-			dest.routerLinks.Remove(link, link.Src.Id)
-		}
+// Remove drops link and detaches it from both endpoints' link sets. Removal is
+// conditional on link still being the current incarnation: it does nothing and
+// returns false when a newer iteration has taken its place, so a caller holding
+// an older reference can tell it lost the race rather than assume it won.
+func (self *LinkManager) Remove(link *Link) bool {
+	if !self.linkTable.remove(link) {
+		return false
 	}
+	link.Src.routerLinks.Remove(link, link.DstId)
+	if dest := link.GetDest(); dest != nil {
+		dest.routerLinks.Remove(link, link.Src.Id)
+	}
+	return true
 }
 
 func (self *LinkManager) ConnectedNeighborsOfRouter(router *Router) []*Router {
