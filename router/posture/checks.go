@@ -16,15 +16,14 @@ import (
 )
 
 type Cache struct {
-	apiSessionInstances       cmap.ConcurrentMap[string, *Instance]
-	apiSessionInstanceHistory cmap.ConcurrentMap[string, []*InstanceData]
-	updateListeners           []func(data *InstanceData)
-	totpParser                TotpTokenParser
+	apiSessionInstances cmap.ConcurrentMap[string, *Instance]
+	updateListeners     []func(data *InstanceData)
+	totpParser          TotpTokenParser
 }
 
-// NewCache creates a new posture data cache for managing device state information
-// across API sessions. The cache maintains both current posture data and historical
-// snapshots to support policy evaluation and audit requirements.
+// NewCache creates a new posture data cache holding the current posture data reported by each
+// API session, for evaluating posture checks. Data is retained until the session's posture
+// instance is evicted; see EvictInactive.
 //
 // Parameters:
 //   - parser: A TOTP token parser implementation, used to verify ToTP tokens on posture response
@@ -33,25 +32,13 @@ type Cache struct {
 //   - *Cache: A new cache instance ready for storing posture responses
 func NewCache(parser TotpTokenParser) *Cache {
 	return &Cache{
-		apiSessionInstances:       cmap.New[*Instance](),
-		apiSessionInstanceHistory: cmap.New[[]*InstanceData](),
-		totpParser:                parser,
+		apiSessionInstances: cmap.New[*Instance](),
+		totpParser:          parser,
 	}
 }
 
 func (cache *Cache) onUpdate(data *InstanceData) {
-	cache.saveHistory(data)
 	cache.emitUpdate(data)
-}
-
-func (cache *Cache) saveHistory(data *InstanceData) {
-	cache.apiSessionInstanceHistory.Upsert(data.ApiSessionId, nil, func(exist bool, valueInMap []*InstanceData, newValue []*InstanceData) []*InstanceData {
-		if len(valueInMap) > 50 {
-			valueInMap = valueInMap[1:]
-		}
-		valueInMap = append(valueInMap, data)
-		return valueInMap
-	})
 }
 
 // AddResponses processes a posture responses from an SDK client and updates the cache.
@@ -89,6 +76,9 @@ func (cache *Cache) getOrCreateInstance(identityId, apiSessionId string) *Instan
 			valueInMap.ApiSessionId = apiSessionId
 			valueInMap.IdentityId = identityId
 			valueInMap.updatedListeners = []func(data *InstanceData){cache.onUpdate}
+		} else {
+			// fresh posture activity for the session: it is not a candidate for eviction
+			valueInMap.clearDisconnected()
 		}
 
 		return valueInMap
@@ -141,13 +131,134 @@ func (cache *Cache) GetInstance(apiSessionId string) *Instance {
 	return result
 }
 
+// MarkConnected records that an api session has a connection again, so its posture data is no
+// longer a candidate for eviction. A session with no posture instance is a no-op: there is
+// nothing to retain.
+//
+// Safe to call concurrently with EvictInactive: the two are mutually exclusive, so a session is
+// either retained or already evicted, never left half-retained.
+func (cache *Cache) MarkConnected(apiSessionId string) {
+	// Updating under the map's lock is what makes this exclusive with EvictInactive's removal.
+	// Looking the instance up and then updating it leaves a window where an eviction confirms the
+	// disconnect time and deletes the entry, and the update lands on a detached instance.
+	cache.apiSessionInstances.RemoveCb(apiSessionId, func(_ string, instance *Instance, exists bool) bool {
+		if exists && instance != nil {
+			instance.clearDisconnected()
+		}
+		return false // borrow the lock without removing
+	})
+}
+
+// MarkDisconnected records that an api session's last connection has gone away, starting its
+// retention window. A session already recorded as disconnected keeps its earlier time, and a
+// session with no posture instance is a no-op.
+//
+// Safe to call concurrently with EvictInactive, as for MarkConnected.
+func (cache *Cache) MarkDisconnected(apiSessionId string) {
+	cache.markDisconnectedAt(apiSessionId, time.Now())
+}
+
+func (cache *Cache) markDisconnectedAt(apiSessionId string, at time.Time) {
+	cache.apiSessionInstances.RemoveCb(apiSessionId, func(_ string, instance *Instance, exists bool) bool {
+		if exists && instance != nil {
+			instance.setDisconnected(at)
+		}
+		return false // borrow the lock without removing
+	})
+}
+
+// ReconcileDisconnected brings cached sessions back in line with isConnected: sessions it reports
+// connected have any recorded disconnect cleared, and sessions it reports disconnected have one
+// recorded if they carry none. It corrects drift if a MarkConnected or MarkDisconnected was
+// missed, and never removes anything, so a missed notification delays eviction rather than
+// preventing it. Eviction decisions are made from the recorded times alone, by EvictInactive.
+func (cache *Cache) ReconcileDisconnected(isConnected func(apiSessionId string) bool) {
+	now := time.Now()
+
+	for entry := range cache.apiSessionInstances.IterBuffered() {
+		if isConnected(entry.Key) {
+			cache.MarkConnected(entry.Key)
+		} else {
+			cache.markDisconnectedAt(entry.Key, now)
+		}
+	}
+}
+
+// EvictInactive removes the posture data of api sessions recorded as disconnected for at least
+// retention, returning the number removed. A session with no recorded disconnect is connected, or
+// still being connected, and is never evicted.
+func (cache *Cache) EvictInactive(retention time.Duration) int {
+	evictBefore := time.Now().Add(-retention)
+	evicted := 0
+
+	for entry := range cache.apiSessionInstances.IterBuffered() {
+		judgedDisconnectedAt, disconnected := entry.Val.getDisconnected()
+		if !disconnected || !judgedDisconnectedAt.Before(evictBefore) {
+			continue
+		}
+
+		// The verdict was formed against one disconnect time, so the removal confirms that exact
+		// time rather than re-reading the state: a reconnect clears it and a later disconnect
+		// replaces it, either of which makes this verdict stale and the removal a no-op.
+		removed := cache.apiSessionInstances.RemoveCb(entry.Key, func(_ string, instance *Instance, exists bool) bool {
+			return exists && instance != nil && instance.disconnectedAtIs(judgedDisconnectedAt)
+		})
+		if removed {
+			evicted++
+		}
+	}
+
+	return evicted
+}
+
 // Instance represents a managed posture data container for a specific API session,
 // providing thread-safe access to posture information and change notification
 // capabilities for real-time posture policy evaluation.
 type Instance struct {
 	lock             sync.Mutex
 	updatedListeners []func(data *InstanceData)
+	// disconnectedAt is when this instance's api session lost its last connection, or the zero
+	// time while it is connected. It starts the eviction retention window. Guarded by lock.
+	disconnectedAt time.Time
 	InstanceData
+}
+
+// setDisconnected records at as when the api session lost its last connection, if no disconnect
+// is recorded yet, and returns the effective time. An existing time is never moved, so the
+// recorded time is always the earliest known disconnect.
+func (instance *Instance) setDisconnected(at time.Time) time.Time {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+
+	if instance.disconnectedAt.IsZero() {
+		instance.disconnectedAt = at
+	}
+	return instance.disconnectedAt
+}
+
+// clearDisconnected drops any recorded disconnect, so the instance is not a candidate for
+// eviction.
+func (instance *Instance) clearDisconnected() {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	instance.disconnectedAt = time.Time{}
+}
+
+// getDisconnected returns when the api session lost its last connection, and whether any
+// disconnect is recorded at all.
+func (instance *Instance) getDisconnected() (time.Time, bool) {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	return instance.disconnectedAt, !instance.disconnectedAt.IsZero()
+}
+
+// disconnectedAtIs reports whether the instance still carries exactly the disconnect time a
+// caller judged, identifying the incarnation that verdict was formed against. A cleared time (the
+// session reconnected) or a different one means the caller's verdict has been overtaken.
+func (instance *Instance) disconnectedAtIs(judged time.Time) bool {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	return !instance.disconnectedAt.IsZero() && instance.disconnectedAt.Equal(judged)
 }
 
 // InstanceData is separated from Instance in order to make creating copies without copying locks or other sensitive
