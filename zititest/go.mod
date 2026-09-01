@@ -19,7 +19,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/channel/v5 v5.0.27
-	github.com/openziti/edge-api v0.35.2
+	github.com/openziti/edge-api v0.36.0
 	github.com/openziti/fablab v0.6.23
 	github.com/openziti/foundation/v2 v2.0.100
 	github.com/openziti/identity v1.0.140
