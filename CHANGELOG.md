@@ -3,11 +3,14 @@
 ## What's New
 
 * Bug fixes
+* Edge router tunnelers now close a service's circuits when the router loses dial access to it, and
+  the controller verifies the dial policy for tunneler circuits
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
   * [Issue #4299](https://github.com/openziti/ziti/issues/4299) - [Backport-1.6] Bind message with a short cost header panics the router
+  * [Issue #4336](https://github.com/openziti/ziti/issues/4336) - [Backport-1.6] ER/T does not close existing circuits when the router loses dial access to a service
 
 # Release 1.6.20
 
