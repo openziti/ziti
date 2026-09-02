@@ -149,6 +149,32 @@ func TestPostureCheckModelProcessMulti_Evaluate(t *testing.T) {
 		req := require.New(t)
 		req.False(result)
 	})
+
+	t.Run("returns true for AnyOf when one of two processes matches", func(t *testing.T) {
+		processCheck, postureData := newMatchingProcessMultiCheckAndData()
+		processCheck.Semantic = db.SemanticAnyOf
+		processCheck.Processes = append([]*ProcessMulti{
+			{
+				OsType: "Linux",
+				Path:   "/usr/bin/never-running",
+			},
+		}, processCheck.Processes...)
+
+		result := processCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.True(result)
+	})
+
+	t.Run("returns false if the required process was never reported", func(t *testing.T) {
+		processCheck, postureData := newMatchingProcessMultiCheckAndData()
+		postureData.ProcessPathMap = map[string]*PostureResponseProcess{}
+
+		result := processCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.False(result)
+	})
 }
 
 func newMatchingProcessMultiCheckAndData() (*PostureCheckProcessMulti, *PostureData) {

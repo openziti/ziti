@@ -43,6 +43,10 @@ func (m *OsCheck) Evaluate(data *InstanceData) *CheckError {
 		}
 	}
 
+	if len(foundOs.OsVersions) == 0 {
+		return nil
+	}
+
 	dataVer, err := semver.Make(data.Os.Os.GetVersion())
 
 	if err != nil {

@@ -17,6 +17,7 @@
 package model
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -298,6 +299,16 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 
 		req := require.New(t)
 		req.False(result)
+	})
+
+	t.Run("returns true for valid os type with mismatched case", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		postureData.Os.Type = strings.ToLower(os1Type)
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.True(result)
 	})
 }
 
