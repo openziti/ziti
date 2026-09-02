@@ -17,9 +17,7 @@
 package db
 
 import (
-	"regexp"
-	"strings"
-
+	"github.com/openziti/ziti/v2/common/posture"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -43,7 +41,7 @@ func (entity *PostureCheckMacAddresses) GetTypeId() string {
 
 func (entity *PostureCheckMacAddresses) LoadValues(bucket *boltz.TypedBucket) {
 	for _, macAddress := range bucket.GetStringList(FieldPostureCheckMacAddresses) {
-		macAddress = cleanMacAddress(macAddress)
+		macAddress = posture.CleanMacAddress(macAddress)
 		entity.MacAddresses = append(entity.MacAddresses, macAddress)
 	}
 }
@@ -51,15 +49,9 @@ func (entity *PostureCheckMacAddresses) LoadValues(bucket *boltz.TypedBucket) {
 func (entity *PostureCheckMacAddresses) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
 	var macAddresses []string
 	for _, macAddress := range entity.MacAddresses {
-		macAddress = cleanMacAddress(macAddress)
+		macAddress = posture.CleanMacAddress(macAddress)
 		macAddresses = append(macAddresses, macAddress)
 	}
 	entity.MacAddresses = macAddresses
 	bucket.SetStringList(FieldPostureCheckMacAddresses, macAddresses, ctx.FieldChecker)
-}
-
-func cleanMacAddress(macAddress string) string {
-	macAddress = strings.ToLower(macAddress)
-	nonHex := regexp.MustCompile("[^a-f0-9]")
-	return nonHex.ReplaceAllString(macAddress, "")
 }
