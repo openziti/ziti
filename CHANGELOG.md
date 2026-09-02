@@ -4,6 +4,7 @@
 
 * Bug fixes
 * [Controller Advertise Address Updates](#controller-advertise-address-updates) - Changing an HA controller's `advertiseAddress` and restarting now updates the address the cluster and routers use
+* [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
 * Removal of the edge router API proxy (see Removed Features below)
 
 ## Controller Advertise Address Updates
@@ -31,6 +32,37 @@ The leader must be running this version for the update to happen. An older leade
 the stored address stays as it is. The requesting controller logs a warning and keeps retrying, so the
 change goes through once the leader is upgraded.
 
+## Edge Router Tunneler Policy Enforcement
+
+When an edge router tunneler (ER/T) intercepts a service and the router's identity later loses dial
+access to that service, through a service policy change, an identity being disabled, or the identity
+being deleted, the router now closes the circuits it established for that service. Previously only new
+intercepts were stopped, and existing connections kept flowing until the application or the router
+ended them. The same applies to circuits created through the router-embedded SDK. See
+[#4330](https://github.com/openziti/ziti/issues/4330).
+
+Two related gaps are closed at the same time:
+
+* The router's pre-dial policy check for tunneler circuits was miswritten and never denied a dial.
+* The controller did not verify the dial service policy when a router requested a tunneler circuit;
+  it verified only edge router and service edge router policy. It now rejects the request when no dial
+  policy grants the router's identity access to the service.
+
+### Warning: posture checks and edge router tunnelers
+
+Edge routers do not submit posture data. Because the tunneler's dial check previously never denied,
+a service policy that carried posture checks and granted access to a router identity, whether
+directly or through `#all`, let the router dial the service as though the checks had passed.
+
+That is no longer the case. The router now evaluates the dial policy the same way it does for any
+other identity, and with no posture data every posture check fails. **After upgrading, a router
+granted dial access only through a policy with posture checks will be denied**, and connections that
+were flowing through such a policy before the upgrade will not re-establish. Before upgrading, find
+any service policies that both carry posture checks and include router identities, and split the
+routers out into their own policy without posture checks. `ziti edge list service-policies` shows the
+Identity Roles and Posture Check Roles of each policy; `#all` in Identity Roles includes every router
+identity.
+
 ## Removed Features
 
 * **Edge router API proxy** - The `edge.apiProxy` router option, which served the
@@ -49,6 +81,7 @@ change goes through once the leader is upgraded.
     * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
+    * [Issue #4332](https://github.com/openziti/ziti/issues/4332) - [Backport-2.0] ER/T does not close existing circuits when the router loses dial access to a service
 
 
 # Release 2.0.8
