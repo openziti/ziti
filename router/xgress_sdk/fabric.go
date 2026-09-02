@@ -32,7 +32,6 @@ import (
 	"github.com/openziti/ziti/common/ctrl_msg"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/posture"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -40,8 +39,9 @@ import (
 
 func NewFabric(env env.RouterEnv, options *xgress.Options) (Fabric, error) {
 	result := &fabricImpl{
-		env:     env,
-		options: options,
+		env:          env,
+		options:      options,
+		dialCircuits: xgress_common.NewDialCircuitRegistry(),
 	}
 
 	env.MarkRouterDataModelRequired()
@@ -57,6 +57,7 @@ type fabricImpl struct {
 	options         *xgress.Options
 	currentIdentity atomic.Pointer[common.IdentityState]
 	servicesByName  concurrenz.AtomicValue[map[string]*common.IdentityService]
+	dialCircuits    *xgress_common.DialCircuitRegistry
 }
 
 func (self *fabricImpl) updateIdentityState(state *common.IdentityState) {
@@ -73,7 +74,9 @@ func (self *fabricImpl) updateIdentityState(state *common.IdentityState) {
 func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventType common.IdentityEventType) {
 	self.updateIdentityState(state)
 	pfxlog.Logger().Infof("identity %s event %s", state.Identity.Name, eventType.String())
-	if eventType == common.EventFullState {
+	if eventType == common.EventIdentityDeleted || state.Identity.Disabled {
+		self.dialCircuits.CloseAll("identity deleted or disabled")
+	} else if eventType == common.EventFullState {
 		for _, service := range state.Services {
 			pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, service.GetName())
 		}
@@ -87,6 +90,9 @@ func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, service
 		pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, service.GetName())
 	} else if eventType == common.EventAccessRemoved {
 		pfxlog.Logger().Infof("identity %s lost access to %s", state.Identity.Name, service.GetName())
+		self.dialCircuits.CloseForService(service.GetId(), "service access lost")
+	} else if eventType == common.EventUpdated && !service.DialAllowed {
+		self.dialCircuits.CloseForService(service.GetId(), "dial access lost")
 	}
 }
 
@@ -124,11 +130,6 @@ func (self *fabricImpl) TunnelWithOptions(serviceName string, options *ziti.Dial
 
 	log = log.WithField("ctrlId", ctrlCh.Id())
 
-	rdm := self.env.GetRouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
-		return fmt.Errorf("router does not have access to service '%s' (%w)", serviceName, err)
-	}
-
 	request := &edge_ctrl_pb.CreateTunnelCircuitV2Request{
 		ServiceName:          serviceName,
 		TerminatorInstanceId: options.Identity,
@@ -157,7 +158,9 @@ func (self *fabricImpl) TunnelWithOptions(serviceName string, options *ziti.Dial
 	}
 
 	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
+	self.dialCircuits.PrepareTrack(x)
 	self.env.GetXgressBindHandler().HandleXgressBind(x)
+	self.dialCircuits.Publish(service.GetId(), x)
 	x.Start()
 
 	return nil
