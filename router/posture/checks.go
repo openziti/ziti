@@ -11,6 +11,7 @@ import (
 	"github.com/openziti/sdk-golang/v2/pb/edge_client_pb"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/common/posture"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -211,8 +212,13 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 			updated = true
 		}
 	} else if macs := response.GetMacs(); macs != nil {
-		if instance.Macs == nil || !slices.Equal(macs.Addresses, instance.Macs.Addresses) {
-			instance.Macs = macs
+		addresses := make([]string, 0, len(macs.Addresses))
+		for _, address := range macs.Addresses {
+			addresses = append(addresses, posture.CleanMacAddress(address))
+		}
+
+		if instance.Macs == nil || !slices.Equal(addresses, instance.Macs.Addresses) {
+			instance.Macs = &edge_client_pb.PostureResponse_Macs{Addresses: addresses}
 			updated = true
 		}
 	} else if unlocked := response.GetUnlocked(); unlocked != nil {
