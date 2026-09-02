@@ -43,6 +43,10 @@ type TunnelFabricProvider interface {
 	tunnel.FabricProvider
 	SetXgressOptions(*xgress.Options)
 	UpdateIdentity(i *rest_model.IdentityDetail)
+	// CloseDialCircuits closes every dial circuit this provider established for serviceId.
+	CloseDialCircuits(serviceId string, reason string)
+	// CloseAllDialCircuits closes every dial circuit this provider established.
+	CloseAllDialCircuits(reason string)
 }
 
 type tunneler struct {
@@ -153,6 +157,7 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 		pfxlog.Logger().Infof("identity deleted or disabled %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
+		self.fabricProvider.CloseAllDialCircuits("identity deleted or disabled")
 	} else if eventType == common.EventFullState || eventType == common.EventIdentityUpdated {
 		pfxlog.Logger().Infof("identity updated %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
@@ -171,8 +176,15 @@ func (self *tunneler) NotifyServiceChange(state *common.IdentityState, service *
 		self.serviceListener.HandleServicesChange(ziti.ServiceAdded, tunSvc)
 	case common.EventUpdated:
 		self.serviceListener.HandleServicesChange(ziti.ServiceChanged, tunSvc)
+		// The service's denorm changed; if the router no longer has dial access (e.g. its dial
+		// policy was removed while a bind policy kept the service otherwise accessible), close the
+		// circuits it dialed. DialAllowed is the router data model's own denorm flag.
+		if !service.DialAllowed {
+			self.fabricProvider.CloseDialCircuits(service.GetId(), "dial access lost")
+		}
 	case common.EventAccessRemoved:
 		self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, tunSvc)
+		self.fabricProvider.CloseDialCircuits(service.GetId(), "service access lost")
 	}
 }
 
