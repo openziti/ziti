@@ -23,6 +23,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -30,8 +31,8 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -313,10 +314,33 @@ var m = &model.Model{
 			}
 			return nil
 		}),
-		"validateLinks":   model.BindF(validateLinks),
-		"validateMetrics": model.BindF(validateMetrics),
+		"validateLinks":        model.BindF(validateLinks),
+		"validateMetrics":      model.BindF(validateMetrics),
+		"validateGossipOwners": model.BindF(validateGossipOwners),
+		"recreateRouters": model.BindF(func(run model.Run) error {
+			ctrls := models.CtrlClients{}
+			if err := ctrls.Init(run, "#ctrl1"); err != nil {
+				return err
+			}
+			return recreateRouters(run, ctrls.GetCtrl("ctrl1"))
+		}),
 		"testIteration": model.BindF(func(run model.Run) error {
-			return run.GetModel().Exec(run, "sowChaos", "validateUp", "validateLinks", "validateMetrics")
+			// Entity churn every third iteration, so most rounds still exercise the connection-level chaos
+			// the model was built for while the delete path is reached often enough to matter over a long
+			// run.
+			//
+			// Immediately after sowChaos, so the deletes land while the cluster is still settling from it:
+			// controllers restarting, raft rejoining, routers reconnecting. That is where an asynchronous
+			// cleanup handler is most likely to run late, which is the condition per-router state teardown
+			// has to survive. Before it, the deletes would run against a quiet cluster and exercise only
+			// the easy case.
+			actions := []string{"sowChaos"}
+			if iterationCount%3 == 0 {
+				actions = append(actions, "recreateRouters")
+			}
+			actions = append(actions, "validateUp", "validateLinks", "validateMetrics", "validateGossipOwners")
+			iterationCount++
+			return run.GetModel().Exec(run, actions...)
 		}),
 	},
 
