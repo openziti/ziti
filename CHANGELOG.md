@@ -18,6 +18,7 @@
 * [Policy Evaluation Without Store Scans](#policy-evaluation-without-store-scans) - creating, updating or deleting a policy or a policy target no longer scans every entity or policy in the store
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
+* [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -749,6 +750,37 @@ the controller offers over the API, is defined by this repository, and is
 enumerated at `/enumerated-capabilities`. Build flags describe how the binary
 was built, are open-ended, and are enumerated nowhere.
 
+## Edge Router Tunneler Policy Enforcement
+
+When an edge router tunneler (ER/T) intercepts a service and the router's identity later loses dial
+access to that service, through a service policy change, an identity being disabled, or the identity
+being deleted, the router now closes the circuits it established for that service. Previously only new
+intercepts were stopped, and existing connections kept flowing until the application or the router
+ended them. The same applies to circuits created through the router-embedded SDK. See
+[#4330](https://github.com/openziti/ziti/issues/4330).
+
+Two related gaps are closed at the same time:
+
+* The router's pre-dial policy check for tunneler circuits was miswritten and never denied a dial.
+* The controller did not verify the dial service policy when a router requested a tunneler circuit;
+  it verified only edge router and service edge router policy. It now rejects the request when no dial
+  policy grants the router's identity access to the service.
+
+### Warning: posture checks and edge router tunnelers
+
+Edge routers do not submit posture data. Because the tunneler's dial check previously never denied,
+a service policy that carried posture checks and granted access to a router identity, whether
+directly or through `#all`, let the router dial the service as though the checks had passed.
+
+That is no longer the case. The router now evaluates the dial policy the same way it does for any
+other identity, and with no posture data every posture check fails. **After upgrading, a router
+granted dial access only through a policy with posture checks will be denied**, and connections that
+were flowing through such a policy before the upgrade will not re-establish. Before upgrading, find
+any service policies that both carry posture checks and include router identities, and split the
+routers out into their own policy without posture checks. `ziti edge list service-policies` shows the
+Identity Roles and Posture Check Roles of each policy; `#all` in Identity Roles includes every router
+identity.
+
 ## Current Beta Features
 
 Beta features are still under development and are subject to change. They should
@@ -897,6 +929,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4330](https://github.com/openziti/ziti/issues/4330) - ER/T does not close existing circuits when the router loses dial access to a service
     * [Issue #4753](https://github.com/openziti/ziti/issues/4753) - Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4705](https://github.com/openziti/ziti/issues/4705) - Version built-in config types independently of the database version
     * [Issue #4712](https://github.com/openziti/ziti/issues/4712) - Identity PUT re-enables a disabled identity
