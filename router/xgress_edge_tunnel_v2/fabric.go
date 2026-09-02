@@ -17,7 +17,6 @@
 package xgress_edge_tunnel_v2
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -36,7 +35,6 @@ import (
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/controller/idgen"
 	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/posture"
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/tunnel"
 	"github.com/pkg/errors"
@@ -48,6 +46,7 @@ func NewTunnelFabricProvider(routerEnv env.RouterEnv, hostedServicesRegistry *Ho
 		env:            routerEnv,
 		hostedServices: hostedServicesRegistry,
 		bindHandler:    routerEnv.GetXgressBindHandler(),
+		dialCircuits:   xgress_common.NewDialCircuitRegistry(),
 	}
 }
 
@@ -56,6 +55,7 @@ type fabricProvider struct {
 	hostedServices *HostedServiceRegistry
 	options        *xgress.Options
 	bindHandler    xgress.BindHandler
+	dialCircuits   *xgress_common.DialCircuitRegistry
 
 	currentIdentity atomic.Pointer[rest_model.IdentityDetail]
 }
@@ -72,6 +72,14 @@ func (self *fabricProvider) GetCurrentIdentityWithBackoff() (*rest_model.Identit
 
 func (self *fabricProvider) UpdateIdentity(i *rest_model.IdentityDetail) {
 	self.currentIdentity.Store(i)
+}
+
+func (self *fabricProvider) CloseDialCircuits(serviceId string, reason string) {
+	self.dialCircuits.CloseForService(serviceId, reason)
+}
+
+func (self *fabricProvider) CloseAllDialCircuits(reason string) {
+	self.dialCircuits.CloseAll(reason)
 }
 
 func (self *fabricProvider) SetXgressOptions(options *xgress.Options) {
@@ -106,11 +114,6 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	log = log.WithField("ctrlId", ctrlCh.Id())
 
-	rdm := self.env.GetRouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
-		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
-	}
-
 	request := &edge_ctrl_pb.CreateTunnelCircuitV2Request{
 		ServiceName:          service.GetName(),
 		TerminatorInstanceId: terminatorInstanceId,
@@ -141,7 +144,12 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	}
 
 	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
+	// Install the registry close handler before HandleXgressBind exposes x to the forwarder, then
+	// publish once bound, so revocation can neither race the handler registration nor close an
+	// unbound xgress.
+	self.dialCircuits.PrepareTrack(x)
 	self.bindHandler.HandleXgressBind(x)
+	self.dialCircuits.Publish(service.GetId(), x)
 	x.Start()
 
 	return nil
