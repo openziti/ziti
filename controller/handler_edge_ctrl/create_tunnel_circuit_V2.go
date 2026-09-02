@@ -81,6 +81,7 @@ func (self *createTunnelCircuitV2Handler) CreateCircuit(ctx *CreateTunnelCircuit
 	}
 	ctx.loadIdentity()
 	ctx.loadServiceForName(ctx.req.ServiceName)
+	ctx.verifyEdgeRouterServiceDialAccess()
 	ctx.verifyRouterEdgeRouterAccess()
 	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData, ctx.newTunnelCircuitCreateParms)
 
