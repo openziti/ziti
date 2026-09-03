@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/sirupsen/logrus"
 )
 
@@ -71,9 +71,14 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	boltztest.RequireReload(ctx, session)
 	boltztest.RequireReload(ctx, session2)
 
+	// Built directly rather than through NewSessionEnforcer, which refuses a session timeout under a
+	// minute; the negative timeout here is what makes every session expired. The metrics still have to be
+	// supplied, since the enforcer holds them rather than resolving one per run.
 	enforcer := &ApiSessionEnforcer{
 		appEnv:         ctx,
 		sessionTimeout: -time.Second,
+		runTimer:       ctx.GetMetricsRegistry().Timer(ApiSessionEnforcerRun),
+		deleteMeter:    ctx.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete),
 	}
 
 	ctx.NoError(enforcer.Run())
