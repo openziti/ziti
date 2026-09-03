@@ -49,11 +49,17 @@ func echoPostureTestServer(conn *testServerConn) error {
 // stays open past the timeout. Posture revalidation is asynchronous (the router
 // re-evaluates and tears the circuit out of band), so a poll is required.
 func requireConnClosed(ctx *TestContext, conn *TestConn) {
+	requireConnClosedWithin(ctx, conn, 10*time.Second)
+}
+
+// requireConnClosedWithin is requireConnClosed with an explicit budget, for revocations that wait
+// on something slower than a posture update, such as a swept deadline.
+func requireConnClosedWithin(ctx *TestContext, conn *TestConn, timeout time.Duration) {
 	// A read is what surfaces the close on these conns (a bare IsClosed poll
 	// never advances the conn state). Loop with a short read deadline so we detect
 	// the close promptly yet bound the total wait, failing fast on a regression
 	// instead of blocking until the test timeout.
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(timeout)
 	buf := make([]byte, 1)
 	for time.Now().Before(deadline) {
 		if conn.IsClosed() {

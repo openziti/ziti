@@ -99,11 +99,11 @@ func (cache *Cache) getOrCreateInstance(identityId, apiSessionId string) *Instan
 // token's authentication methods include TOTP, the identity passed MFA during authentication, so
 // MFA posture checks pass from that moment without requiring a posture-response TOTP token. The
 // baseline is auth_time (when TOTP was part of authentication); a token without auth_time seeds
-// nothing — iat is never used, because it moves on every refresh and a router seeing the session
+// nothing. iat is never used, because it moves on every refresh and a router seeing the session
 // for the first time would seed a baseline newer than the actual TOTP pass, extending the MFA
 // window. The controller mints all OpenZiti OIDC tokens and always sets auth_time. The baseline
-// is set only when no MFA-passed time is known — a refreshed token must never extend an existing
-// MFA window — while posture-response TOTP tokens advance the time monotonically and always win.
+// is set only when no MFA-passed time is known, since a refreshed token must never extend an
+// existing MFA window. Posture-response TOTP tokens advance the time monotonically and always win.
 func (cache *Cache) SeedMfaFromApiSession(identityId, apiSessionId string, claims *common.AccessClaims) {
 	if claims == nil || !claims.TotpComplete() || claims.AuthTime == 0 {
 		return
@@ -145,8 +145,9 @@ func (cache *Cache) GetInstance(apiSessionId string) *Instance {
 // providing thread-safe access to posture information and change notification
 // capabilities for real-time posture policy evaluation.
 type Instance struct {
-	lock             sync.Mutex
-	updatedListeners []func(data *InstanceData)
+	lock              sync.Mutex
+	updatedListeners  []func(data *InstanceData)
+	enforcedMfaExpiry *time.Time
 	InstanceData
 }
 
@@ -276,6 +277,21 @@ func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.P
 	}
 
 	return false
+}
+
+// MarkMfaExpiryEnforced records deadline as enforced, returning true when it had not been
+// enforced already. Comparing by deadline value means a session left sitting past a deadline is
+// enforced once rather than on every sweep, while a deadline that moves, from a shortened check
+// timeout or from an MFA re-pass, is enforced again when it too elapses.
+func (instance *Instance) MarkMfaExpiryEnforced(deadline time.Time) bool {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+
+	if instance.enforcedMfaExpiry != nil && instance.enforcedMfaExpiry.Equal(deadline) {
+		return false
+	}
+	instance.enforcedMfaExpiry = &deadline
+	return true
 }
 
 // SeedPassedMfaAt establishes the MFA-passed baseline if none is known yet, returning true when

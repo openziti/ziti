@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 )
@@ -121,5 +122,43 @@ func MfaExpiresAt(mfa *edge_ctrl_pb.DataState_PostureCheck_Mfa, state *InstanceD
 			expiresAt = deadline
 		}
 	}
+	return expiresAt
+}
+
+// EarliestMfaExpiry returns the soonest moment at which an MFA posture check governing the
+// identity stops passing, or nil when nothing bounds the identity's current MFA pass: no MFA
+// check applies, MFA has never been passed, or every applicable check is unbounded. It walks the
+// identity's service policies' posture checks and takes the earliest MfaExpiresAt, so time-based
+// enforcement fires at the first expiry rather than the last.
+func EarliestMfaExpiry(rdm *common.RouterDataModel, identityId string, state *InstanceData) *time.Time {
+	if rdm == nil || state == nil {
+		return nil
+	}
+
+	identity, ok := rdm.Identities.Get(identityId)
+	if !ok {
+		return nil
+	}
+
+	var expiresAt *time.Time
+	identity.IterateServicePolicies(func(policyId string) {
+		policy, ok := rdm.ServicePolicies.Get(policyId)
+		if !ok {
+			return
+		}
+
+		policy.PostureChecks.IterCb(func(checkId string, _ struct{}) {
+			check, ok := rdm.PostureChecks.Get(checkId)
+			if !ok {
+				return
+			}
+
+			deadline := MfaExpiresAt(check.GetMfa(), state)
+			if deadline != nil && (expiresAt == nil || deadline.Before(*expiresAt)) {
+				expiresAt = deadline
+			}
+		})
+	})
+
 	return expiresAt
 }

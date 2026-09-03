@@ -112,8 +112,8 @@ type ConnProvider interface {
 	CloseConn(connId uint32, reason string) error
 
 	// IterateEdgeCircuits invokes f for every active circuit on this connection
-	// (dialing and serving) — both connId mux-sink conns and SDK-hosted xgress
-	// circuits.
+	// (dialing and serving), covering both connId mux-sink conns and SDK-hosted
+	// xgress circuits.
 	IterateEdgeCircuits(f func(EdgeCircuit))
 
 	// IterateBindTerminators invokes f for every hosted terminator on this
@@ -244,7 +244,7 @@ type Manager interface {
 	// attaches the subscriber to the current RDM (if any), bootstraps by
 	// dispatching Applied for every router-target Config already loaded, and
 	// re-attaches the subscriber to any subsequent RDM provided via
-	// SetRouterDataModel — with a remove/apply diff against the prior RDM so
+	// SetRouterDataModel, with a remove/apply diff against the prior RDM so
 	// configs that vanish during a full-state resync are surfaced as removals.
 	SetRouterConfigSubscriber(s common.RouterConfigEventSubscriber)
 
@@ -347,7 +347,7 @@ type ConnectionTracker interface {
 }
 
 // ErrServiceNotFound indicates a dial referenced a service id that is not in the router's data
-// model — the service does not exist or is not in the identity's view. Wrapped by
+// model, meaning it does not exist or is not in the identity's view. Wrapped by
 // GetServiceSessionToken's id-lookup branch so denial classification can distinguish an unknown
 // service from an invalid session token.
 var ErrServiceNotFound = errors.New("service not found")
@@ -431,7 +431,7 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 	for _, ch := range channels {
 		// Posture data is per-api-session. An identity may have several concurrent
 		// api-sessions (e.g. multiple devices), and GetChannelsByIdentityId returns
-		// all of them — but only the session whose posture changed should be
+		// all of them. Only the session whose posture changed should be
 		// re-evaluated, since a posture failure on one device must not revoke
 		// another's circuits. Every circuit and terminator on a channel shares the
 		// channel's api-session, so make this check once per channel.
@@ -448,7 +448,7 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		identityId := apiSessionToken.IdentityId
 
 		// Re-evaluate dial access (policy + posture) for every active dial
-		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
+		// circuit, both connId mux-sink conns and SDK-hosted xgress circuits.
 		// Collect first, then close: CloseForAccessLoss mutates the circuit
 		// maps being iterated (mirrors handleDialAccessLost).
 		var dialToClose []EdgeCircuit
@@ -1137,7 +1137,7 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 
 	// Diff router-target configs between old and new now that the new model
 	// is the authoritative one. Subscribers that query RouterDataModel()
-	// during dispatch see the post-swap state — matching the contract of
+	// during dispatch see the post-swap state, matching the contract of
 	// HandleConfigEvent, which also fires after rdm.Configs is updated.
 	if self.routerConfigSubscriber != nil {
 		dispatchRouterConfigDiff(existing, model, self.routerConfigSubscriber)
@@ -1807,8 +1807,63 @@ func (sm *ManagerImpl) startConnectionVerification(resolution time.Duration) {
 		select {
 		case <-time.After(resolution):
 			sm.CheckConnections()
+			sm.CheckPostureDeadlines()
 		case <-sm.env.GetCloseNotify():
 			return
+		}
+	}
+}
+
+// CheckPostureDeadlines revokes access that an expired MFA, wake or unlock deadline has
+// invalidated. A posture response and a posture check change each announce themselves, so both
+// drive re-evaluation directly, but a deadline elapses with nothing behind it to announce it, so
+// it has to be swept for: without this an established circuit or hosted terminator outlives MFA
+// expiry for as long as the identity's api session token keeps refreshing, which never requires
+// re-passing TOTP.
+//
+// Deadlines are swept per channel rather than per posture cache entry, since cache entries
+// outlive the connections they were created for. Enforcement runs once per deadline per api
+// session. A deadline that moves, from a shortened check timeout or from an MFA re-pass, is
+// enforced again when it too elapses.
+func (sm *ManagerImpl) CheckPostureDeadlines() {
+	rdm := sm.routerDataModel.Load()
+	if rdm == nil {
+		return
+	}
+
+	now := time.Now()
+	for _, channels := range sm.connectionTracker.GetChannels() {
+		for _, ch := range channels {
+			if ch.IsClosed() {
+				continue
+			}
+
+			// Legacy api sessions have their posture enforced by the controller, which sweeps
+			// timeouts of its own; only JWT-backed sessions are enforced router-side.
+			apiSession := GetApiSessionTokenFromCh(ch)
+			if apiSession == nil || apiSession.Type != ApiSessionTokenJwt {
+				continue
+			}
+
+			instance := sm.postureCache.GetInstance(apiSession.Id)
+			if instance == nil {
+				continue
+			}
+
+			data := instance.Snapshot()
+			deadline := posture.EarliestMfaExpiry(rdm, apiSession.IdentityId, &data)
+			if deadline == nil || !now.After(*deadline) {
+				continue
+			}
+
+			if instance.MarkMfaExpiryEnforced(*deadline) {
+				pfxlog.Logger().
+					WithField("identityId", apiSession.IdentityId).
+					WithField("apiSessionId", apiSession.Id).
+					WithField("deadline", deadline.String()).
+					Info("posture deadline elapsed, re-evaluating access")
+				sm.onPostureDataUpdate(&data)
+			}
 		}
 	}
 }
