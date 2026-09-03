@@ -432,6 +432,95 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 	ctx.Req.Equal(err, io.EOF)
 }
 
+// Test_ServerConnCloseWritePropagationXgressTerminator covers the same half-close as
+// Test_ServerConnCloseWritePropagation across a mixed-mode circuit: the host binds with SDK
+// flow control, so its terminator is an xgress conn, while the client is forced onto the
+// legacy ConnectV1 dial path, so the router bridges between the two. The client's read must
+// still end at io.EOF while its own write side stays open, which requires the router to relay
+// the terminator's xgress EOF to the client as an edge FIN.
+//
+// Both options matter: with a default dial the client would negotiate ConnectV2 and both ends
+// would run xgress, which never crosses this seam.
+func Test_ServerConnCloseWritePropagationXgressTerminator(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
+
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
+	defer context.Close()
+
+	sdkFlowControl := true
+	listenOptions := ziti.DefaultListenOptions()
+	listenOptions.SdkFlowControl = &sdkFlowControl
+
+	listener, err := context.ListenWithOptions(service.Name, listenOptions)
+	ctx.Req.NoError(err)
+	defer listener.Close()
+
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
+
+	forceV1 := true
+	dialOptions := &ziti.DialOptions{
+		ConnectTimeout: 5 * time.Second,
+		ForceConnectV1: &forceV1,
+	}
+
+	errC := make(chan error, 1)
+
+	go func() {
+		defer func() {
+			val := recover()
+			if val != nil {
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
+			}
+			close(errC)
+		}()
+
+		conn := ctx.WrapConn(clientContext.DialWithOptions(service.Name, dialOptions))
+		name := conn.ReadString(512, 2*time.Second)
+		n, err := conn.Read(make([]byte, 128))
+		if err != io.EOF {
+			errC <- fmt.Errorf("did not receive EOF err(%v) %d", err, n)
+		}
+		conn.WriteString("hello, "+name+"\nI got your FIN!", time.Second)
+		conn.RequireClose()
+	}()
+
+	conn := ctx.WrapNetConn(listener.AcceptEdge())
+	name := eid.New()
+	conn.WriteString(name, time.Second)
+	_ = conn.CloseWrite()
+
+	select {
+	case err := <-errC:
+		ctx.Req.NoError(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out after 2 seconds")
+	}
+
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	conn.ReadExpected("hello, "+name+"\nI got your FIN!", time.Second)
+
+	n, err := conn.Read(make([]byte, 1024))
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
+}
+
 func Test_ClientConnCloseWritePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
