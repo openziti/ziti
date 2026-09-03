@@ -87,6 +87,15 @@ func EvaluatePostureCheck(postureCheck *edge_ctrl_pb.DataState_PostureCheck, dat
 	}()
 
 	check := CtrlCheckToLogic(postureCheck)
+
+	if check == nil {
+		return &CheckError{
+			Id:    postureCheck.Id,
+			Name:  postureCheck.Name,
+			Cause: UnsupportedCheckTypeError,
+		}
+	}
+
 	return check.Evaluate(data)
 }
 
@@ -182,3 +191,5 @@ func (s Str) String() string {
 var NilStateError = errors.New("posture state was nil, no posture data has been sent")
 
 var NotEqualError = errors.New("the values were not equal")
+
+var UnsupportedCheckTypeError = errors.New("the posture check subtype is not supported by this router")
