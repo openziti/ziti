@@ -18,8 +18,6 @@ package model
 
 import (
 	"bytes"
-	"regexp"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -463,10 +461,4 @@ func (pr *PostureResponse) Apply(postureData *PostureData) {
 
 type PostureResponseSubType interface {
 	Apply(postureData *PostureData)
-}
-
-var macClean = regexp.MustCompile(`[^a-f\d]+`)
-
-func CleanHexString(hexString string) string {
-	return macClean.ReplaceAllString(strings.ToLower(hexString), "")
 }

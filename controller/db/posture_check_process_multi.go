@@ -18,6 +18,7 @@ package db
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common/posture"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -52,6 +53,18 @@ func (entity *PostureCheckProcessMulti) GetTypeId() string {
 	return PostureCheckTypeProcessMulti
 }
 
+// cleanProcessMultiValues normalizes a process's hashes and signer fingerprints to lowercase
+// unseparated hex, the form they are compared in.
+func cleanProcessMultiValues(proc *ProcessMulti) {
+	for i, hash := range proc.Hashes {
+		proc.Hashes[i] = posture.CleanHexString(hash)
+	}
+
+	for i, fingerprint := range proc.SignerFingerprints {
+		proc.SignerFingerprints[i] = posture.CleanHexString(fingerprint)
+	}
+}
+
 func (entity *PostureCheckProcessMulti) LoadValues(bucket *boltz.TypedBucket) {
 	entity.Semantic = bucket.GetStringOrError(FieldSemantic)
 
@@ -68,6 +81,8 @@ func (entity *PostureCheckProcessMulti) LoadValues(bucket *boltz.TypedBucket) {
 		proc.SignerFingerprints = procBucket.GetStringList(FieldPostureCheckProcessMultiSignerFingerprints)
 		proc.Hashes = procBucket.GetStringList(FieldPostureCheckProcessMultiHashes)
 
+		cleanProcessMultiValues(proc)
+
 		entity.Processes = append(entity.Processes, proc)
 	}
 }
@@ -79,6 +94,8 @@ func (entity *PostureCheckProcessMulti) SetValues(ctx *boltz.PersistContext, buc
 
 	seenKeys := map[string]struct{}{}
 	for _, proc := range entity.Processes {
+		cleanProcessMultiValues(proc)
+
 		key := proc.OsType + "-" + proc.Path
 		seenKeys[key] = struct{}{}
 
