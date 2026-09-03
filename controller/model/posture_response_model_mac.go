@@ -18,6 +18,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/openziti/ziti/v2/common/posture"
 )
 
 type PostureResponseMac struct {
@@ -28,7 +30,7 @@ type PostureResponseMac struct {
 func (pr *PostureResponseMac) Apply(postureData *PostureData) {
 	var cleanedAddresses []string
 	for _, address := range pr.Addresses {
-		cleanedAddresses = append(cleanedAddresses, CleanHexString(address))
+		cleanedAddresses = append(cleanedAddresses, posture.CleanHexString(address))
 	}
 
 	pr.Addresses = cleanedAddresses
