@@ -200,7 +200,7 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 			instance.Woken = woken
 			updated = true
 		}
-	} else if processList := response.GetProcessList(); isProcessListDifferent(instance.ProcessList, processList) {
+	} else if processList := normalizedProcessList(response.GetProcessList()); isProcessListDifferent(instance.ProcessList, processList) {
 		instance.ProcessList = processList
 		updated = true
 	} else if totpToken := response.GetTotpToken(); totpToken != nil {
@@ -231,6 +231,28 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 	}
 
 	return updated
+}
+
+// normalizedProcessList returns a copy of a reported process list with each binary hash and signer
+// fingerprint normalized to the form the controller stores, so a process that passes a posture
+// check at the controller passes the same check at the router. The caller's message is left
+// untouched, and normalizing before the list is compared against the cached copy keeps a report
+// differing only in formatting from reading as a posture change.
+func normalizedProcessList(processList *edge_client_pb.PostureResponse_ProcessList) *edge_client_pb.PostureResponse_ProcessList {
+	if processList == nil {
+		return nil
+	}
+
+	normalized := proto.Clone(processList).(*edge_client_pb.PostureResponse_ProcessList)
+
+	for _, process := range normalized.Processes {
+		process.Hash = posture.CleanHexString(process.Hash)
+		for i, fingerprint := range process.SignerFingerprints {
+			process.SignerFingerprints[i] = posture.CleanHexString(fingerprint)
+		}
+	}
+
+	return normalized
 }
 
 func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.PostureResponse_OperatingSystem) bool {
