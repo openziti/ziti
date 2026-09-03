@@ -21,10 +21,16 @@ production incident leaves the playbook a little better than it found it.
 
 | Pool                       | Prefix                  | What it does                                                          |
 |----------------------------|-------------------------|-----------------------------------------------------------------------|
-| Router connect             | `pool.router.connect`   | Accepts new router ctrl-channel binds                                 |
-| Router events              | `pool.router.events`    | Processes per-router messages (metrics, link reports, etc.)           |
+| Router connect             | `pool.router.connect`   | Router connect setup: a concurrency limit, not a pool (see below)     |
+| Gossip apply               | `pool.gossip.apply`     | Applies gossip deltas, digests and canaries arriving from routers     |
 | Peer events                | `pool.peer.events`      | Processes incoming gossip from peer controllers                       |
+| Outbound I/O               | `pool.io`               | Peer broadcasts, kept off the apply pool so a slow send cannot pin it |
 | Router messaging           | `pool.router.messaging` | Outbound messaging to routers                                         |
+
+Router connect is the odd one out: it is bounded by a semaphore rather than a goroutine pool, so it has
+no `worker_count` or `busy_workers`. It reports `queue_size` (connects waiting for a slot), `wait_timer`
+(how long they waited), `work_timer` (the setup itself) and `timeouts`. Wait and work are separate
+because a high wait wants more concurrency while a high work time wants a look at the setup.
 
 Each pool exposes:
 
@@ -99,8 +105,10 @@ is normal, a minute of the same condition is not.
 
 | Signal                                                 | Threshold                       | Probable cause                                                                                             |
 |--------------------------------------------------------|---------------------------------|------------------------------------------------------------------------------------------------------------|
-| `pool.router.connect.queue_size`                       | > 80% of QueueSize for > 30s    | Router reconnect storm exceeding `MaxWorkers`. Symptom that bit us pre-split.                              |
-| `pool.router.events.queue_size`                        | > 80% of QueueSize for > 30s    | Slow event handler, or a router sending too much. Look at per-router work_timer.                           |
+| `pool.router.connect.queue_size`                       | sustained > 0 for > 30s         | Connects waiting on `routerConnectConcurrency`. Brief spikes are a reconnect storm draining; sustained means setups are wedged, since this is the only one of these that keeps moving when nothing completes. |
+| `pool.router.connect.timeouts`                         | any                             | A connect waited past `routerConnectSetupTimeout` and was closed to force a redial. Setups are stuck, not merely busy.                                                                                        |
+| `pool.gossip.apply.queue_size`                         | > 80% of QueueSize for > 30s    | Slow apply, or routers sending faster than they can be applied. Dropping gossip diverges state and costs a digest round trip to recover. |
+| `pool.io.queue_size`                                   | sustained > 0                   | Peer sends backing up. Broadcasts are best-effort, so a full pool drops them and anti-entropy repairs.     |
 | `pool.peer.events.queue_size`                          | sustained > 0                   | Peer controller is sending faster than we can apply. May indicate a gossip storm (see broadcast section).  |
 | `pool.*.work_timer` p99                                | climbing over a run             | Handler slowdown - DB contention, lock starvation, GC pause. Cross-check `host.cpu.percent`.               |
 | `pool.*.busy_workers`                                  | at MaxWorkers sustained         | Either real load or a single stuck task pinning a worker. Inspect for goroutine leak via `process.goroutines`. |
@@ -160,7 +168,7 @@ A few patterns to look for that combine signals:
   be a single-controller divergence that the aggregate metrics hide.
 
 - **The "pool A is saturated because pool B is slow" pattern**: two pools
-  saturate together. Look at `work_duration` - the upstream pool is usually
+  saturate together. Look at `work_timer` - the upstream pool is usually
   the one whose tasks are blocking on the downstream pool.
 
 - **The "tombstone storm" pattern**: `entries.tombstones` spikes, then

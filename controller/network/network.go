@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -151,14 +152,25 @@ type Network struct {
 	// (e.g. a node joining the cluster) instead of exiting and relying on an external process manager.
 	restartSelfOnSnapshot bool
 
-	Inspections         *InspectionsManager
-	RouterMessaging     *RouterMessaging
-	routerConnectSem    concurrenz.Semaphore
-	gossipApplyPool     goroutines.Pool
-	peerEventsPool      goroutines.Pool
-	ioPool              goroutines.Pool
-	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
-	ctrlDialerValidator CtrlDialerValidator
+	Inspections      *InspectionsManager
+	RouterMessaging  *RouterMessaging
+	routerConnectSem concurrenz.Semaphore
+	// routerConnectWaiting counts goroutines parked on routerConnectSem. Reported as a gauge because it
+	// is the only one of these signals visible during a hang: the timers record on completion, so a
+	// wedged setup makes them go quiet exactly when something is wrong.
+	routerConnectWaiting atomic.Int64
+	// Resolved once and held. A Meter lookup takes a reference each time it is called, and nothing
+	// releases them, so looking one up per event leaks a reference per event. The timers do not, but are
+	// held alongside so the call site does not invite the question, and so converting one to a meter
+	// later cannot quietly reintroduce the leak.
+	routerConnectWaitTimer metrics.Timer
+	routerConnectWorkTimer metrics.Timer
+	routerConnectTimeouts  metrics.Meter
+	gossipApplyPool        goroutines.Pool
+	peerEventsPool         goroutines.Pool
+	ioPool                 goroutines.Pool
+	inspectionTargets      concurrenz.CopyOnWriteSlice[InspectTarget]
+	ctrlDialerValidator    CtrlDialerValidator
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
@@ -201,6 +213,14 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	env.GetManagers().Command.Decoders.RegisterF(int32(cmd_pb.CommandType_SyncSnapshot), network.decodeSyncSnapshotCommand)
 
 	network.routerConnectSem = concurrenz.NewSemaphore(int(config.GetOptions().RouterConnectConcurrency))
+	network.routerConnectWaitTimer = config.GetMetricsRegistry().Timer(RouterConnectWaitTimer)
+	network.routerConnectWorkTimer = config.GetMetricsRegistry().Timer(RouterConnectWorkTimer)
+	network.routerConnectTimeouts = config.GetMetricsRegistry().Meter(RouterConnectTimeoutMeter)
+	// A func gauge rather than a counter the code updates: the depth is derived from a value already
+	// maintained, so there is nothing to keep in step.
+	config.GetMetricsRegistry().FuncGauge(RouterConnectQueueSizeGauge, func() int64 {
+		return network.routerConnectWaiting.Load()
+	})
 
 	gossipApplyPool, err := network.createGossipApplyPool(config)
 	if err != nil {
@@ -616,14 +636,68 @@ func (network *Network) QueueRouterConnect(r *model.Router) error {
 	// Off the accept goroutine, so binding stays quick: the listener holds this group's create
 	// reservation until the bind returns, and the group's other underlays wait on it. The semaphore
 	// bounds how many of these run at once so a mass reconnect cannot starve the gossip and I/O pools,
-	// and it blocks rather than refusing, since a refusal here would fail the bind.
-	go func() {
-		network.routerConnectSem.Acquire()
-		defer network.routerConnectSem.Release()
-		network.ConnectRouter(r)
-	}()
+	// and it waits rather than refusing, since a refusal here would fail the bind, and the expensive
+	// part of connecting has already been paid by this point.
+	go network.runConnectSetup(r)
 
 	return nil
+}
+
+// Router connect setup metrics. Named to match the goroutine pool convention the other gossip pools use
+// (`pool.gossip.apply.*`, `pool.peer.events.*`, `pool.io.*`), so a dashboard built for one transfers, even
+// though this path is bounded by a semaphore rather than a pool.
+const (
+	// RouterConnectQueueSizeGauge is the number of connects waiting for a slot. The one signal that shows
+	// a wedge: the timers below only record on completion.
+	RouterConnectQueueSizeGauge = "pool.router.connect.queue_size"
+
+	// RouterConnectWaitTimer is how long a connect waited for a slot, which measures contention.
+	RouterConnectWaitTimer = "pool.router.connect.wait_timer"
+
+	// RouterConnectWorkTimer is how long the setup itself took, which measures the work. Split from the
+	// wait because the two have opposite remedies: contention wants more concurrency, slow setup wants a
+	// look at what the setup does.
+	RouterConnectWorkTimer = "pool.router.connect.work_timer"
+
+	// RouterConnectTimeoutMeter counts connects that gave up waiting and were closed to force a redial.
+	RouterConnectTimeoutMeter = "pool.router.connect.timeouts"
+)
+
+// runConnectSetup waits for a slot and runs the connect setup, giving up if the wait exceeds the
+// configured timeout.
+//
+// Giving up closes the router's control channel rather than skipping the setup. Skipping would leave a
+// router that is connected, believes it is, and has no links built, which is invisible everywhere; closing
+// makes it redial with its normal backoff and says so in the log. The timeout is long enough that reaching
+// it means setups are wedged rather than slow, and waiters behind a wedge were never going to drain.
+//
+// Waiters are released oldest first, since the semaphore is a channel receive, so a timeout here is a
+// statement about the whole queue rather than about one unlucky router.
+func (network *Network) runConnectSetup(r *model.Router) {
+	network.routerConnectWaiting.Add(1)
+	waitStart := time.Now()
+	acquired := network.routerConnectSem.AcquireWithTimeout(network.options.RouterConnectSetupTimeout)
+	network.routerConnectWaiting.Add(-1)
+	network.routerConnectWaitTimer.UpdateSince(waitStart)
+
+	if !acquired {
+		network.routerConnectTimeouts.Mark(1)
+		log := pfxlog.Logger().
+			WithField("routerId", r.Id).
+			WithField("waitedMs", time.Since(waitStart).Milliseconds())
+		if ctrl := r.Control; ctrl != nil {
+			log.Error("timed out waiting to run router connect setup, closing the connection so the router redials")
+			_ = ctrl.Close()
+		} else {
+			log.Error("timed out waiting to run router connect setup, and the router has no channel to close")
+		}
+		return
+	}
+	defer network.routerConnectSem.Release()
+
+	setupStart := time.Now()
+	network.ConnectRouter(r)
+	network.routerConnectWorkTimer.UpdateSince(setupStart)
 }
 
 // ConnectRouter runs the deferred, non-gating connect setup for r on the router connect pool. It

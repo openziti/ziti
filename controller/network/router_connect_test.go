@@ -775,3 +775,94 @@ func TestIsCurrentConnection(t *testing.T) {
 	network.DisconnectRouter(r)
 	require.False(t, network.IsCurrentConnection(r), "a connection that has been given up is not current")
 }
+
+// TestConnectSetup_TimesOutAndClosesRatherThanSkipping covers what happens when the connect setup cannot
+// get a slot. Skipping the setup would leave a router that is connected, believes it is, and has no links
+// built, which nothing reports; closing the channel makes it redial with its normal backoff instead.
+func TestConnectSetup_TimesOutAndClosesRatherThanSkipping(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	network.options.RouterConnectSetupTimeout = 50 * time.Millisecond
+
+	// Hold every slot, so the setup below can only time out.
+	held := 0
+	for network.routerConnectSem.TryAcquire() {
+		held++
+	}
+	require.Greater(t, held, 0)
+	defer func() {
+		for i := 0; i < held; i++ {
+			network.routerConnectSem.Release()
+		}
+	}()
+
+	ch := &fakeCtrlChannel{}
+	r := model.NewRouterForTest("r0", "", addr, ch, 0, false)
+
+	done := make(chan struct{})
+	go func() {
+		network.runConnectSetup(r)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		require.Fail(t, "connect setup should give up rather than wait forever")
+	}
+
+	require.True(t, ch.IsClosed(),
+		"a setup that gave up must close the connection, or the router stays connected with no links")
+}
+
+// TestConnectSetup_ReleasesTheSlotItTook: a setup that completes has to hand its slot back, or the limit
+// erodes with every connect until nothing can run.
+func TestConnectSetup_ReleasesTheSlotItTook(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	before := 0
+	for network.routerConnectSem.TryAcquire() {
+		before++
+	}
+	for i := 0; i < before; i++ {
+		network.routerConnectSem.Release()
+	}
+
+	r := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	network.runConnectSetup(r)
+
+	after := 0
+	for network.routerConnectSem.TryAcquire() {
+		after++
+	}
+	for i := 0; i < after; i++ {
+		network.routerConnectSem.Release()
+	}
+
+	require.Equal(t, before, after, "the slot taken by a completed setup must be released")
+}
+
+// TestConnectSetup_QueueGaugeShowsWaiters is the signal that survives a wedge. The timers only record on
+// completion, so a setup that never finishes makes them go quiet exactly when something is wrong; the
+// gauge is what still shows the pile-up.
+func TestConnectSetup_QueueGaugeShowsWaiters(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	network.options.RouterConnectSetupTimeout = 5 * time.Second
+
+	require.Equal(t, int64(0), network.routerConnectWaiting.Load())
+
+	held := 0
+	for network.routerConnectSem.TryAcquire() {
+		held++
+	}
+	defer func() {
+		for i := 0; i < held; i++ {
+			network.routerConnectSem.Release()
+		}
+	}()
+
+	r := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	go network.runConnectSetup(r)
+
+	require.Eventually(t, func() bool { return network.routerConnectWaiting.Load() == 1 },
+		2*time.Second, 5*time.Millisecond, "a parked connect setup must be visible in the queue depth")
+}

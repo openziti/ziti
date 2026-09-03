@@ -549,10 +549,13 @@ config (defaults shown).
 
 Inbound work is split into separate pools:
 
-- **`routerConnectPool`** handles `ConnectRouter` (link building, presence handlers, terminator
-  validation). The queue is kept tiny so that when it is full a connecting router is rejected fast
-  and retries via its normal backoff, rather than letting a burst of reconnects (for example a
-  chaos restart of many routers) drop gossip messages.
+- **`routerConnectConcurrency`** bounds how many `ConnectRouter` setups (link building, presence
+  handlers, terminator validation) run at once, so a burst of reconnects cannot starve the pools
+  below. This one is a limit rather than a pool: the setup runs off the accept path, so the router is
+  already connected by the time it is reached, and a connect that has to wait waits rather than being
+  refused. Refusing would discard a completed handshake and have it redone, which turns a reconnect
+  storm into a larger one. A wait longer than `routerConnectSetupTimeout` closes the connection so the
+  router redials, since that means setups are wedged rather than busy.
 - **`gossipApplyPool`** applies inbound gossip deltas, digests, and canaries from routers. Its queue
   is generous because dropping gossip causes router and controller state to diverge and forces an
   extra digest-exchange round trip to recover.
@@ -561,9 +564,8 @@ Inbound work is split into separate pools:
 
 ```yaml
 network:
-  routerConnectPool:
-    queueSize:  1
-    maxWorkers: 200
+  routerConnectConcurrency:  200
+  routerConnectSetupTimeout: 2m
   gossipApplyPool:
     queueSize:  1024
     maxWorkers: 50
@@ -583,9 +585,15 @@ network:
     maxWorkers: 32
 ```
 
-Each pool exposes goroutine-pool metrics (`current_size`, `busy_workers`, `work_timer`,
-`queue_size`) under a per-pool prefix: `pool.router.connect.*`, `pool.gossip.apply.*`,
-`pool.peer.events.*`, and `pool.io.*`.
+Each pool exposes goroutine-pool metrics (`worker_count`, `busy_workers`, `work_timer`,
+`queue_size`) under a per-pool prefix: `pool.gossip.apply.*`, `pool.peer.events.*`, and `pool.io.*`.
+
+Router connect setup reports under the same prefix convention, `pool.router.connect.*`, though it is a
+limit rather than a pool: `queue_size` for connects waiting on a slot, `wait_timer` for how long they
+waited, `work_timer` for the setup itself, and `timeouts` for those that gave up and were closed. The
+wait and the work are separate because their remedies are: a high wait wants more concurrency, a high
+work time wants a look at the setup. `queue_size` is the one to alert on, since it is the only one of
+these that still moves when setups are wedged, the timers recording only on completion.
 
 ## Deprecated Features
 

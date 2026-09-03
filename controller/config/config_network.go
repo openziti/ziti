@@ -34,19 +34,26 @@ const (
 	DefaultOptionsMetricsReportInterval     = time.Minute
 	DefaultOptionsMinRouterCost             = 10
 	DefaultOptionsRouterConnectChurnLimit   = time.Minute
-	DefaultOptionsRouterMessagingMaxWorkers  = 100
-	DefaultOptionsRouterMessagingQueueSize   = 100
+	DefaultOptionsRouterMessagingMaxWorkers = 100
+	DefaultOptionsRouterMessagingQueueSize  = 100
 	// DefaultOptionsRouterConnectConcurrency bounds how many router connect setups run at once, so a
-	// burst of reconnects cannot starve the gossip and I/O pools. Connects are never refused for
-	// exceeding it; they wait.
+	// burst of reconnects cannot starve the gossip and I/O pools. Connects are not refused for exceeding
+	// it; they wait, since the expensive part of connecting is already paid by the time this is reached
+	// and refusing would throw it away and have it redone.
 	DefaultOptionsRouterConnectConcurrency = 200
-	DefaultOptionsGossipApplyPoolMaxWorkers  = 50
-	DefaultOptionsGossipApplyPoolQueueSize   = 1024
-	DefaultOptionsPeerEventsPoolMaxWorkers    = 10
-	DefaultOptionsPeerEventsPoolQueueSize     = 1
-	DefaultOptionsIoPoolMaxWorkers            = 32
-	DefaultOptionsIoPoolQueueSize             = 1024
-	DefaultOptionsRouteTimeout               = 10 * time.Second
+
+	// DefaultOptionsRouterConnectSetupTimeout bounds that wait. It is a stuck detector, not load
+	// shedding: setup is sub-second and runs 200 at a time, so reaching this needs tens of thousands of
+	// connects queued, which no real fleet produces. It fires when setups are wedged rather than slow,
+	// and those waiters were never going to drain.
+	DefaultOptionsRouterConnectSetupTimeout = 2 * time.Minute
+	DefaultOptionsGossipApplyPoolMaxWorkers = 50
+	DefaultOptionsGossipApplyPoolQueueSize  = 1024
+	DefaultOptionsPeerEventsPoolMaxWorkers  = 10
+	DefaultOptionsPeerEventsPoolQueueSize   = 1
+	DefaultOptionsIoPoolMaxWorkers          = 32
+	DefaultOptionsIoPoolQueueSize           = 1024
+	DefaultOptionsRouteTimeout              = 10 * time.Second
 
 	DefaultOptionsSmartRerouteCap          = 4
 	DefaultOptionsSmartRerouteFraction     = 0.02
@@ -74,12 +81,13 @@ type NetworkConfig struct {
 	// per-router lock in Network.ConnectRouter. Its purpose is to stop a flapping router from repeatedly
 	// tearing down a working channel, since displacement is not free.
 	RouterConnectChurnLimit time.Duration
-	RouterComm struct {
+	RouterComm              struct {
 		QueueSize  uint32
 		MaxWorkers uint32
 	}
-	RouterConnectConcurrency uint32
-	GossipApplyPool struct {
+	RouterConnectConcurrency  uint32
+	RouterConnectSetupTimeout time.Duration
+	GossipApplyPool           struct {
 		QueueSize  uint32
 		MaxWorkers uint32
 	}
@@ -116,7 +124,8 @@ func DefaultNetworkConfig() *NetworkConfig {
 			QueueSize:  DefaultOptionsRouterMessagingQueueSize,
 			MaxWorkers: DefaultOptionsRouterMessagingMaxWorkers,
 		},
-		RouterConnectConcurrency: DefaultOptionsRouterConnectConcurrency,
+		RouterConnectConcurrency:  DefaultOptionsRouterConnectConcurrency,
+		RouterConnectSetupTimeout: DefaultOptionsRouterConnectSetupTimeout,
 		GossipApplyPool: struct {
 			QueueSize  uint32
 			MaxWorkers uint32
@@ -259,6 +268,21 @@ func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) 
 			options.RouterConnectConcurrency = uint32(concurrency)
 		} else {
 			return nil, fmt.Errorf("invalid value for 'routerConnectConcurrency'")
+		}
+	}
+
+	if value, found := src["routerConnectSetupTimeout"]; found {
+		if timeout, ok := value.(string); ok {
+			d, err := time.ParseDuration(timeout)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout': %w", err)
+			}
+			if d <= 0 {
+				return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout', must be greater than 0")
+			}
+			options.RouterConnectSetupTimeout = d
+		} else {
+			return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout', must be a duration such as 2m")
 		}
 	}
 
