@@ -254,6 +254,7 @@ const (
 	FlagPostCreateAccessChecked = 1
 	FlagIsCircuitInitiator      = 2
 	FlagIsHostSide              = 3
+	FlagSentFin                 = 4
 
 	FlagPostCreateAccessCheckedMask = 1 << FlagPostCreateAccessChecked
 	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
@@ -489,6 +490,31 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 	if self.onClose != nil {
 		self.onClose()
+	}
+}
+
+// FlowFromFabricToXgressClosed implements xgress.SignalConnection. It signals the
+// end of the fabric->app half of the circuit to the edge client as an edge FIN, so
+// a blocked Read there returns io.EOF while the app->fabric half stays open and the
+// client can still write. The FIN is sent at most once; a later full close still
+// sends StateClosed and tears down both halves. It is a no-op once the conn or its
+// channel is closed.
+func (self *edgeXgressConn) FlowFromFabricToXgressClosed() {
+	if self.flags.IsSet(FlagClosed) || self.GetChannel().IsClosed() {
+		return
+	}
+
+	if !self.flags.CompareAndSet(FlagSentFin, false, true) {
+		return
+	}
+
+	// sent on the default (data) sender so it stays ordered behind payloads already
+	// forwarded to the client
+	msg := edge.NewDataMsg(self.Id(), nil)
+	msg.PutUint32Header(edge.FlagsHeader, edge.FIN)
+	if err := self.GetDefaultSender().Send(msg); err != nil {
+		pfxlog.ContextLogger(self.GetChannel().Label()).WithField("connId", self.Id()).
+			WithError(err).Warn("unable to send FIN to edge client on fabric-to-xgress close")
 	}
 }
 
