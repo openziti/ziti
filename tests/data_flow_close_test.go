@@ -22,11 +22,12 @@ package tests
 import (
 	"errors"
 	"fmt"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/ziti/common/eid"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/common/eid"
 )
 
 func Test_ServerConnClosePropagation(t *testing.T) {
@@ -364,6 +365,88 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
+	defer listener.Close()
+
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
+
+	errC := make(chan error, 1)
+
+	go func() {
+		defer func() {
+			val := recover()
+			if val != nil {
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
+			}
+			close(errC)
+		}()
+
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
+		name := conn.ReadString(512, 2*time.Second)
+		n, err := conn.Read(make([]byte, 128))
+		if err != io.EOF {
+			errC <- fmt.Errorf("did not receive EOF err(%v) %d", err, n)
+		}
+		conn.WriteString("hello, "+name+"\nI got your FIN!", time.Second)
+		conn.RequireClose()
+	}()
+
+	conn := ctx.WrapNetConn(listener.AcceptEdge())
+	name := eid.New()
+	conn.WriteString(name, time.Second)
+	_ = conn.CloseWrite()
+
+	select {
+	case err := <-errC:
+		ctx.Req.NoError(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out after 2 seconds")
+	}
+
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	conn.ReadExpected("hello, "+name+"\nI got your FIN!", time.Second)
+
+	n, err := conn.Read(make([]byte, 1024))
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
+}
+
+// Test_ServerConnCloseWritePropagationXgressTerminator covers the same half-close as
+// Test_ServerConnCloseWritePropagation, with the host bound using SDK flow control so its
+// terminator is an xgress conn that the router bridges to an edge client. The client's read
+// must still end at io.EOF while its own write side stays open, which requires the router to
+// relay the terminator's xgress EOF to the client as an edge FIN.
+//
+// The seam depends on the router honoring the flow-control bind request; a router that
+// silently ignored it would give a legacy terminator and pass without exercising this.
+func Test_ServerConnCloseWritePropagationXgressTerminator(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
+
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
+	defer context.Close()
+
+	sdkFlowControl := true
+	listenOptions := ziti.DefaultListenOptions()
+	listenOptions.SdkFlowControl = &sdkFlowControl
+
+	listener, err := context.ListenWithOptions(service.Name, listenOptions)
 	ctx.Req.NoError(err)
 	defer listener.Close()
 
