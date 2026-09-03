@@ -17,8 +17,7 @@
 package db
 
 import (
-	"strings"
-
+	"github.com/openziti/ziti/v2/common/posture"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -53,15 +52,19 @@ func (entity *PostureCheckProcess) LoadValues(bucket *boltz.TypedBucket) {
 	entity.OperatingSystem = bucket.GetStringOrError(FieldPostureCheckProcessOs)
 	entity.Path = bucket.GetStringOrError(FieldPostureCheckProcessPath)
 	entity.Hashes = bucket.GetStringList(FieldPostureCheckProcessHashes)
-	entity.Fingerprint = bucket.GetStringOrError(FieldPostureCheckProcessFingerprint)
+	entity.Fingerprint = posture.CleanHexString(bucket.GetStringOrError(FieldPostureCheckProcessFingerprint))
+
+	for i, hash := range entity.Hashes {
+		entity.Hashes[i] = posture.CleanHexString(hash)
+	}
 }
 
 func (entity *PostureCheckProcess) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
 
-	entity.Fingerprint = strings.ToLower(entity.Fingerprint)
+	entity.Fingerprint = posture.CleanHexString(entity.Fingerprint)
 
 	for i, hash := range entity.Hashes {
-		entity.Hashes[i] = strings.ToLower(hash)
+		entity.Hashes[i] = posture.CleanHexString(hash)
 	}
 
 	bucket.SetString(FieldPostureCheckProcessOs, entity.OperatingSystem, ctx.FieldChecker)

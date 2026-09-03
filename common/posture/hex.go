@@ -23,9 +23,16 @@ import (
 
 var nonHex = regexp.MustCompile("[^a-f0-9]")
 
+// CleanHexString normalizes a hex posture value to lowercase unseparated hex, the form posture
+// check values are persisted in. Reported values must be normalized with it before they are
+// compared against check values, whichever case and separator style the client sent them in.
+func CleanHexString(hexString string) string {
+	return nonHex.ReplaceAllString(strings.ToLower(hexString), "")
+}
+
 // CleanMacAddress normalizes a MAC address to lowercase unseparated hex, the form MAC posture
 // check values are persisted in. Reported addresses must be normalized with it before they are
 // compared against check values, whichever separator style the client sent them in.
 func CleanMacAddress(macAddress string) string {
-	return nonHex.ReplaceAllString(strings.ToLower(macAddress), "")
+	return CleanHexString(macAddress)
 }

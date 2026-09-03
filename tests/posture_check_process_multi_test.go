@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/common/posture"
 )
 
 func Test_PostureChecks_ProcessMulti(t *testing.T) {
@@ -781,12 +782,22 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					for _, patchProcess := range patchProcesses {
+						var expectedHashes []string
+						for _, hash := range patchProcess.Hashes {
+							expectedHashes = append(expectedHashes, posture.CleanHexString(hash))
+						}
+
+						var expectedFingerprints []string
+						for _, fingerprint := range patchProcess.SignerFingerprints {
+							expectedFingerprints = append(expectedFingerprints, posture.CleanHexString(fingerprint))
+						}
+
 						isMatched := false
 						for _, getProcess := range getCheck.Processes {
 							if *getProcess.OsType == *patchProcess.OsType && *getProcess.Path == *patchProcess.Path {
 								isMatched = true
-								ctx.Req.ElementsMatch(patchProcess.Hashes, getProcess.Hashes)
-								ctx.Req.ElementsMatch(patchProcess.SignerFingerprints, getProcess.SignerFingerprints)
+								ctx.Req.ElementsMatch(expectedHashes, getProcess.Hashes)
+								ctx.Req.ElementsMatch(expectedFingerprints, getProcess.SignerFingerprints)
 								break
 							}
 						}
