@@ -462,4 +462,3 @@ func (pr *PostureResponse) Apply(postureData *PostureData) {
 type PostureResponseSubType interface {
 	Apply(postureData *PostureData)
 }
-
