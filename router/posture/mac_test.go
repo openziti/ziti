@@ -74,3 +74,47 @@ func Test_MacCheck_RepeatedResponseNotSeenAsChange(t *testing.T) {
 
 	require.False(t, updated)
 }
+
+// Test_MacCheck_NoMacsReported locks in that a session which has not sent a MAC posture response
+// fails the check rather than dereferencing the nil Macs state.
+func Test_MacCheck_NoMacsReported(t *testing.T) {
+	check := newMacCheck("001122aabbcc")
+
+	err := check.Evaluate(&InstanceData{})
+
+	require.NotNil(t, err, "no MAC data reported: the check must fail")
+	require.ErrorIs(t, err.Cause, NilStateError)
+}
+
+// Test_MacCheck_NilState locks in the same for a wholly absent posture instance.
+func Test_MacCheck_NilState(t *testing.T) {
+	check := newMacCheck("001122aabbcc")
+
+	err := check.Evaluate(nil)
+
+	require.NotNil(t, err, "no posture state at all: the check must fail")
+	require.ErrorIs(t, err.Cause, NilStateError)
+}
+
+// Test_MacCheck_MatchPasses keeps the guards from swallowing a legitimate pass.
+func Test_MacCheck_MatchPasses(t *testing.T) {
+	check := newMacCheck("001122aabbcc", "aabbccddeeff")
+	state := &InstanceData{
+		Macs: &edge_client_pb.PostureResponse_Macs{Addresses: []string{"aabbccddeeff"}},
+	}
+
+	require.Nil(t, check.Evaluate(state), "a reported address is in the valid list")
+}
+
+// Test_MacCheck_NoMatchFails covers the reported-but-not-matching case.
+func Test_MacCheck_NoMatchFails(t *testing.T) {
+	check := newMacCheck("001122aabbcc")
+	state := &InstanceData{
+		Macs: &edge_client_pb.PostureResponse_Macs{Addresses: []string{"aabbccddeeff"}},
+	}
+
+	err := check.Evaluate(state)
+
+	require.NotNil(t, err, "the reported address is not in the valid list")
+	require.NotErrorIs(t, err.Cause, NilStateError)
+}
