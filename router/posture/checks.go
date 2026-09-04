@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -169,10 +168,8 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 
 	if os := response.GetOs(); os != nil {
 		if isOsDifferent(instance.Os, os) {
-			if instance.Os == nil {
-				instance.Os = &edge_client_pb.PostureResponse_Os{}
-			}
-			instance.Os.Os = os
+			// replace rather than mutate: snapshots share the previous pointer with concurrent readers
+			instance.Os = &edge_client_pb.PostureResponse_Os{Os: os}
 			updated = true
 		}
 	} else if domain := response.GetDomain(); domain != nil {
@@ -200,9 +197,10 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 			instance.Woken = woken
 			updated = true
 		}
-	} else if processList := response.GetProcessList(); isProcessListDifferent(instance.ProcessList, processList) {
-		instance.ProcessList = processList
-		updated = true
+	} else if processList := response.GetProcessList(); processList != nil {
+		if instance.mergeProcessList(processList) {
+			updated = true
+		}
 	} else if totpToken := response.GetTotpToken(); totpToken != nil {
 		if totpToken.Token == "" {
 			pfxlog.Logger().Error("received empty totp token for posture response")
@@ -231,6 +229,45 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 	}
 
 	return updated
+}
+
+// mergeProcessList folds an incoming process-list delta into the stored process state, keyed by
+// process path, reporting whether anything changed. SDKs report processes as per-path deltas (a
+// message may carry any subset of the watched paths), so entries for paths absent from the
+// incoming list are preserved. The stored list is replaced rather than mutated: snapshots share
+// the previous pointer with concurrent readers. Caller must hold the instance lock.
+func (instance *Instance) mergeProcessList(incoming *edge_client_pb.PostureResponse_ProcessList) bool {
+	if len(incoming.Processes) == 0 {
+		return false
+	}
+
+	existing := instance.ProcessList.GetProcesses()
+
+	merged := make([]*edge_client_pb.PostureResponse_Process, 0, len(existing)+len(incoming.Processes))
+	indexByPath := make(map[string]int, len(existing)+len(incoming.Processes))
+	for _, proc := range existing {
+		indexByPath[proc.Path] = len(merged)
+		merged = append(merged, proc)
+	}
+
+	changed := false
+	for _, proc := range incoming.Processes {
+		if idx, ok := indexByPath[proc.Path]; ok {
+			if compareProc(merged[idx], proc) != 0 {
+				merged[idx] = proc
+				changed = true
+			}
+		} else {
+			indexByPath[proc.Path] = len(merged)
+			merged = append(merged, proc)
+			changed = true
+		}
+	}
+
+	if changed {
+		instance.ProcessList = &edge_client_pb.PostureResponse_ProcessList{Processes: merged}
+	}
+	return changed
 }
 
 func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.PostureResponse_OperatingSystem) bool {
@@ -312,64 +349,6 @@ func CtrlCheckToLogic(postureCheck *edge_ctrl_pb.DataState_PostureCheck) Checker
 	}
 
 	return nil
-}
-
-func isProcessListDifferent(listA *edge_client_pb.PostureResponse_ProcessList, listB *edge_client_pb.PostureResponse_ProcessList) bool {
-
-	listAEmpty := listA == nil || len(listA.Processes) == 0
-	listBEmpty := listB == nil || len(listB.Processes) == 0
-
-	if listAEmpty && listBEmpty {
-		return false
-	}
-
-	if listAEmpty != listBEmpty {
-		return true
-	}
-
-	procAs := map[string]*edge_client_pb.PostureResponse_Process{}
-	for _, proc := range listA.Processes {
-		procAs[proc.Path] = proc
-	}
-
-	procBs := map[string]*edge_client_pb.PostureResponse_Process{}
-	for _, proc := range listB.Processes {
-		procBs[proc.Path] = proc
-	}
-
-	if len(procAs) != len(procBs) {
-		return true
-	}
-
-	var checkedPaths []string
-	for pathA, procA := range procAs {
-		procB, ok := procBs[pathA]
-
-		if !ok {
-			return true
-		}
-		if compareProc(procA, procB) != 0 {
-			return true
-		}
-
-		checkedPaths = append(checkedPaths, pathA)
-	}
-
-	for pathB, procB := range procBs {
-		if !stringz.Contains(checkedPaths, pathB) {
-			procA, ok := procAs[pathB]
-
-			if !ok {
-				return true
-			}
-
-			if compareProc(procA, procB) != 0 {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func compareProc(procA, procB *edge_client_pb.PostureResponse_Process) int {
