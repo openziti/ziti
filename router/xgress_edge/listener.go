@@ -1828,6 +1828,7 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 
 		if err := proto.Unmarshal(msg.Body, postureResponses); err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to unmarshal posture responses")
+			return
 		}
 
 		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
