@@ -98,11 +98,12 @@ type BindTerminator interface {
 	CloseForBindAccessLoss()
 }
 
-// PostureStateNotifier is an optional extension of ConnProvider. When implemented,
-// the connection wants to receive posture evaluation results after each posture
-// data update so it can push a PostureStateChange message to the SDK.
+// PostureStateNotifier is an optional extension of ConnProvider, implemented by connections that
+// push posture state to the SDK. SendPostureStateChange tells the connection its posture state may
+// have changed. It does not block; the connection reads the current RDM and posture data when it
+// writes, so calls may arrive in any order.
 type PostureStateNotifier interface {
-	SendPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData)
+	SendPostureStateChange()
 }
 
 // ConnProvider is an interface used to abstract specific conn implementations from lower level packages
@@ -393,6 +394,28 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		panic(errors.Wrap(err, "error creating rdm goroutine pool"))
 	}
 
+	// Separate from the rdm pool, which is single-worker because data state events must apply in
+	// order. Posture re-evaluations are per api session and independent of each other, and must
+	// not queue behind an rdm sync.
+	postureEvalPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(1000),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(8),
+		IdleTime:    30 * time.Second,
+		CloseNotify: stateEnv.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().
+				WithField(logrus.ErrorKey, err).
+				WithField("backtrace", string(debug.Stack())).Error("panic during posture re-evaluation")
+		},
+	}
+	servermetrics.ConfigureGoroutinesPoolMetrics(&postureEvalPoolConfig, stateEnv.GetMetricsRegistry(), "pool.posture.eval")
+
+	postureEvalPool, err := goroutines.NewPool(postureEvalPoolConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error creating posture evaluation goroutine pool"))
+	}
+
 	result := &ManagerImpl{
 		EventEmmiter:             events.New(),
 		legacyApiSessionsByToken: cmap.New[*ApiSessionToken](),
@@ -400,6 +423,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		certCache:                cmap.New[*x509.Certificate](),
 		env:                      stateEnv,
 		routerDataModelPool:      routerDataModelPool,
+		postureEvalPool:          postureEvalPool,
 		endpointsChanged:         make(chan env.CtrlEvent, 10),
 		modelChanged:             make(chan struct{}, 1),
 	}
@@ -426,20 +450,48 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 	return result
 }
 
-// onPostureDataUpdate responds to changes in posture data by re-evaluating access policies
-// for all connections associated with the affected identity. When posture data changes
-// (such as OS updates, domain changes, or MFA status), this function ensures that all
-// active connections are still compliant with access policies.
-//
-// The function iterates through all channels for the identity, examines each connection,
-// and re-evaluates access using the updated posture data. Connections that no longer
-// meet policy requirements are automatically terminated with appropriate error messages.
-//
-// Parameters:
-//   - data: The updated posture instance data containing the current device state
+// onPostureDataUpdate schedules a re-evaluation of the api session whose posture data changed, so
+// that access no longer permitted by current posture is revoked and the SDK is told the new state.
+// It returns without waiting for that evaluation; see evaluatePostureChange.
 func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
-	rdm := self.routerDataModel.Load()
-	channels := self.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
+	identityId := data.IdentityId
+	apiSessionId := data.ApiSessionId
+
+	// Handed to a worker so the caller, the connection's read loop, is not held while circuits are
+	// re-evaluated and state is pushed. If the workers are saturated, run it here instead: dropping
+	// it would leave access that posture no longer permits in place, and running it inline makes
+	// the connection producing the churn absorb the cost.
+	work := func() { self.evaluatePostureChange(identityId, apiSessionId) }
+	if err := self.postureEvalPool.QueueOrError(work); err != nil {
+		pfxlog.Logger().WithError(err).
+			WithField("identityId", identityId).
+			Debug("posture evaluation pool unavailable, re-evaluating inline")
+		work()
+	}
+}
+
+// evaluatePostureChange re-evaluates an api session's circuits and hosted terminators against the
+// identity's current posture, closing what no longer has access, and has the api session's
+// connections push their posture state to the SDK.
+//
+// It reads posture data and the RDM itself, after collecting a connection's circuits and
+// terminators, rather than taking them from the update that scheduled it. Everything collected was
+// admitted against data no newer than what is then read, so an evaluation that runs late, behind
+// newer updates or behind dials and binds admitted under them, is redundant rather than wrong.
+//
+// A consequence is that states between updates are not separately acted on: if an endpoint reports
+// non-compliance and then compliance again before this runs, nothing is revoked. Enforcement is
+// against current posture only. Anything that must observe every reported state, an audit trail or
+// posture events, belongs on the ingest path in posture.Instance.Apply, which sees every update in
+// the order it arrived.
+func (self *ManagerImpl) evaluatePostureChange(identityId, apiSessionId string) {
+	if self.postureCache.GetInstance(apiSessionId) == nil {
+		// the api session's posture data is gone (the session was evicted), so it has no
+		// connections left to re-evaluate
+		return
+	}
+
+	channels := self.connectionTracker.GetChannelsByIdentityId(identityId)
 
 	for _, ch := range channels {
 		// Posture data is per-api-session. An identity may have several concurrent
@@ -449,7 +501,7 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		// another's circuits. Every circuit and terminator on a channel shares the
 		// channel's api-session, so make this check once per channel.
 		apiSessionToken := GetApiSessionTokenFromCh(ch)
-		if apiSessionToken == nil || apiSessionToken.Id != data.ApiSessionId {
+		if apiSessionToken == nil || apiSessionToken.Id != apiSessionId {
 			continue
 		}
 
@@ -458,19 +510,30 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 			continue
 		}
 
-		identityId := apiSessionToken.IdentityId
+		// Serving-side circuits are governed by bind access, handled via the
+		// terminator re-evaluation below; only dial circuits are checked here.
+		var dialCircuits []EdgeCircuit
+		edgeConn.IterateEdgeCircuits(func(c EdgeCircuit) {
+			if !c.IsHostSide() {
+				dialCircuits = append(dialCircuits, c)
+			}
+		})
+
+		var terminators []BindTerminator
+		edgeConn.IterateBindTerminators(func(t BindTerminator) {
+			terminators = append(terminators, t)
+		})
+
+		// must follow the collection above; see the godoc
+		data := self.GetPostureData(apiSessionId)
+		if data == nil {
+			return
+		}
+		rdm := self.routerDataModel.Load()
 
 		// Re-evaluate dial access (policy + posture) for every active dial
-		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
-		// Collect first, then close: CloseForAccessLoss mutates the circuit
-		// maps being iterated (mirrors handleDialAccessLost).
-		var dialToClose []EdgeCircuit
-		edgeConn.IterateEdgeCircuits(func(c EdgeCircuit) {
-			// Serving-side circuits are governed by bind access, handled via the
-			// terminator re-evaluation below; only dial circuits are checked here.
-			if c.IsHostSide() {
-				return
-			}
+		// circuit, both connId mux-sink conns and SDK-hosted xgress circuits.
+		for _, c := range dialCircuits {
 			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), data, edge_ctrl_pb.PolicyType_DialPolicy)
 			if err != nil || policy == nil {
 				// every HasAccess error is a definitive denial (entity removed,
@@ -481,19 +544,15 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 					WithField("serviceId", c.GetServiceId()).
 					WithField("circuitId", c.GetCircuitId()).
 					Info("dial access lost on posture update, closing circuit")
-				dialToClose = append(dialToClose, c)
+				c.CloseForAccessLoss("dial access lost on posture update")
 			}
-		})
-		for _, c := range dialToClose {
-			c.CloseForAccessLoss("dial access lost on posture update")
 		}
 
 		// Re-evaluate bind access (policy + posture) for every hosted terminator
 		// on this connection. A posture change that fails a BindPolicy's posture
 		// requirements must revoke the host's terminators, same as a policy
 		// change does via handleBindAccessLost.
-		var bindToClose []BindTerminator
-		edgeConn.IterateBindTerminators(func(t BindTerminator) {
+		for _, t := range terminators {
 			policy, err := posture.HasAccess(rdm, identityId, t.GetServiceId(), data, edge_ctrl_pb.PolicyType_BindPolicy)
 			if err != nil || policy == nil {
 				pfxlog.Logger().WithError(err).
@@ -501,15 +560,12 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 					WithField("serviceId", t.GetServiceId()).
 					WithField("terminatorId", t.GetTerminatorId()).
 					Info("bind access lost on posture update, closing terminator")
-				bindToClose = append(bindToClose, t)
+				t.CloseForBindAccessLoss()
 			}
-		})
-		for _, t := range bindToClose {
-			t.CloseForBindAccessLoss()
 		}
 
 		if notifier, ok := edgeConn.(PostureStateNotifier); ok {
-			notifier.SendPostureStateChange(rdm, uint64(rdm.CurrentIndex()), data)
+			notifier.SendPostureStateChange()
 		}
 	}
 }
@@ -626,6 +682,7 @@ type ManagerImpl struct {
 	ctrlRootCache       controllerRootCache
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
+	postureEvalPool     goroutines.Pool
 
 	resyncRouterDataModel atomic.Bool
 	endpointsChanged      chan env.CtrlEvent
