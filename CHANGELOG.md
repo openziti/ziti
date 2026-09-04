@@ -3,11 +3,25 @@
 ## What's New
 
 * Bug fixes
+* Edge router tunnelers now close a service's circuits when the router loses dial access to it, and
+  the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
+
+### Warning: posture checks and edge router tunnelers
+
+Edge routers do not submit posture data. Before this release the tunneler's dial check never denied,
+so a dial policy that carried posture checks and granted a router identity let the router dial as
+though the checks had passed. The router now evaluates the dial policy the same way it does for any
+other identity, and with no posture data every posture check fails. **After upgrading, a router
+granted dial access only through a policy with posture checks will be denied**, and connections that
+were flowing through such a policy will not re-establish. Before upgrading, find any service policies
+that both carry posture checks and include router identities, and split the routers out into their
+own policy without posture checks.
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
   * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+  * [Issue #4332](https://github.com/openziti/ziti/issues/4332) - [Backport-2.0] ER/T does not close existing circuits when the router loses dial access to a service
 
 # Release 2.0.4
 
