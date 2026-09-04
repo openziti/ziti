@@ -112,12 +112,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		},
 	})
 
-	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
-		Type: sdkEdge.ContentTypePostureResponse,
-		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processPostureResponse(m, ch)
-		},
-	})
+	// Handled on the receive loop rather than through an async adapter: posture responses must
+	// apply in the order the SDK sent them, and a dial or bind received behind one must observe it
+	// applied. An async adapter dispatches each message on its own goroutine, which lets an older
+	// response land after a newer one and lets a dial overtake the response it depends on. Only
+	// applying the reported state runs here; enforcement and the SDK notification are deferred.
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypePostureResponse, conn.processPostureResponse)
 
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeUpdateToken,
@@ -140,6 +140,8 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		},
 	})
 
+	// Resync requests carry no ordering requirement and are rate limited per connection, so unlike
+	// posture responses above they stay on an async adapter.
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeResyncPostureState,
 		Handler: func(m *channel.Message, ch channel.Channel) {

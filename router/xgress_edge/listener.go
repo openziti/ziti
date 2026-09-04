@@ -408,6 +408,43 @@ func (listener *listener) Close() error {
 	return listener.underlayListener.Close()
 }
 
+// pendingPostureState is a posture state change waiting to be written to the SDK. seq is not
+// assigned here; the writer assigns it as it sends, so coalescing cannot leave gaps in the
+// sequence the SDK sees.
+type pendingPostureState struct {
+	rdm             *common.RouterDataModel
+	structuralIndex uint64
+	data            *posture.InstanceData
+}
+
+// posturePushState is a connection's posture push state: the queue of state changes to write to
+// the SDK, the sequence of those writes, and the rate limit for SDK-requested resyncs.
+type posturePushState struct {
+	// send holds the queued state change and whether a writer goroutine is draining it. Both are
+	// decided under the same lock so a producer cannot queue work just as the writer decides to
+	// exit, which would leave the state unsent with nothing to retrigger it.
+	send struct {
+		sync.Mutex
+		// pending is the state change to write, or nil when none is queued. A newer state
+		// replaces an older one rather than queueing behind it: PostureStateChange is a full
+		// state replacement, so only the newest is worth sending.
+		pending *pendingPostureState
+		writing bool
+	}
+
+	// seq is the per-connection PostureStateChange counter, assigned by the writer.
+	seq atomic.Uint64
+
+	// resync rate limits SDK-requested resyncs, each of which rebuilds the identity's full
+	// posture state. See processResyncPostureState. deferredSend is the pending send for a
+	// request that arrived inside the rate limit, and is nil when none is pending.
+	resync struct {
+		sync.Mutex
+		lastSentAt   time.Time
+		deferredSend *time.Timer
+	}
+}
+
 type edgeClientConn struct {
 	msgMux          sdkedge.ConnMux[*state.ConnState]
 	listener        *listener
@@ -429,11 +466,8 @@ type edgeClientConn struct {
 		lastRequired concurrenz.AtomicValue[time.Time]
 	}
 
-	// postureSeq is the per-connection PostureStateChange counter. postureSendMu serializes seq
-	// assignment with the channel send (see emitPostureStateChange): two concurrent emits must not
-	// enqueue out of seq order, since the SDK reads out-of-order seqs as gaps.
-	postureSeq    atomic.Uint64
-	postureSendMu sync.Mutex
+	// posture holds this connection's posture push state.
+	posture posturePushState
 
 	// svcSubscription tracks the per-connection service push subscription state.
 	svcSubscription struct {
@@ -858,6 +892,8 @@ func (self *edgeClientConn) HandleClose(ch channel.Channel) {
 	self.msgMux.Close()
 	self.cleanupXgressCircuits()
 	self.listener.factory.stateManager.RouterDataModel().UnsubscribeFromIdentityChanges(self.getIdentityId(), self)
+	self.cancelDeferredPostureResync()
+	self.discardPendingPostureState()
 	if self.removeApiSessionListener != nil {
 		self.removeApiSessionListener()
 	}
@@ -1831,8 +1867,11 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 			return
 		}
 
-		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
-
+		// Applied on the read loop, not a goroutine: responses for one connection must apply in the
+		// order sent, and the SDK reports posture before it dials or binds, so a dial arriving
+		// behind a posture response must see that response already applied. The expensive part,
+		// re-evaluating access and pushing state, is handed off inside ProcessPostureResponses.
+		self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 	}
 }
 
@@ -2038,8 +2077,70 @@ func (self *edgeClientConn) sendFullSyncLocked(rdm *common.RouterDataModel) bool
 	return true
 }
 
+// minPostureResyncInterval is the shortest gap between honouring posture resync requests on one
+// connection. A conforming SDK asks at most once per detected gap and waits for the answer, so
+// this only bounds a client that asks faster than that.
+const minPostureResyncInterval = time.Second
+
 func (self *edgeClientConn) processResyncPostureState(_ *channel.Message, _ channel.Channel) {
 	if !self.isServiceSubscriptionActive() {
+		return
+	}
+
+	if !self.claimPostureResync() {
+		return
+	}
+
+	self.sendPostureState()
+}
+
+// claimPostureResync reports whether a resync should be sent now. Requests arriving inside the
+// rate limit are not answered immediately and not discarded either: one is deferred to the end of
+// the current interval, because an SDK that asked will not ask again until it is answered, and
+// dropping the request would leave it on stale posture state until some unrelated change happened
+// to push new state. Repeated requests inside one interval collapse into that single deferred send.
+func (self *edgeClientConn) claimPostureResync() bool {
+	self.posture.resync.Lock()
+	defer self.posture.resync.Unlock()
+
+	now := time.Now()
+	if elapsed := now.Sub(self.posture.resync.lastSentAt); elapsed >= minPostureResyncInterval {
+		self.posture.resync.lastSentAt = now
+		return true
+	} else if self.posture.resync.deferredSend == nil {
+		self.posture.resync.deferredSend = time.AfterFunc(minPostureResyncInterval-elapsed, self.sendDeferredPostureResync)
+	}
+
+	return false
+}
+
+// discardPendingPostureState drops any queued posture state change. The writer's send unblocks
+// when the channel closes; this keeps it from writing state nobody can receive on its way out.
+func (self *edgeClientConn) discardPendingPostureState() {
+	self.posture.send.Lock()
+	defer self.posture.send.Unlock()
+	self.posture.send.pending = nil
+}
+
+// cancelDeferredPostureResync stops a pending deferred resync, so a closing connection is not
+// kept alive by its timer.
+func (self *edgeClientConn) cancelDeferredPostureResync() {
+	self.posture.resync.Lock()
+	defer self.posture.resync.Unlock()
+
+	if self.posture.resync.deferredSend != nil {
+		self.posture.resync.deferredSend.Stop()
+		self.posture.resync.deferredSend = nil
+	}
+}
+
+func (self *edgeClientConn) sendDeferredPostureResync() {
+	self.posture.resync.Lock()
+	self.posture.resync.deferredSend = nil
+	self.posture.resync.lastSentAt = time.Now()
+	self.posture.resync.Unlock()
+
+	if self.ch.GetChannel().IsClosed() || !self.isServiceSubscriptionActive() {
 		return
 	}
 
@@ -2062,14 +2163,60 @@ func (self *edgeClientConn) sendPostureState() {
 	self.emitPostureStateChange(rdm, uint64(rdm.CurrentIndex()), data)
 }
 
-// emitPostureStateChange assigns the next posture seq and sends the state change through one
-// serialized per-connection path. All PostureStateChange emission funnels through here.
+// emitPostureStateChange queues a posture state change for delivery to the SDK and returns
+// without waiting for it to be written. All PostureStateChange emission funnels through here.
+//
+// It does not write to the channel itself because callers include the connection read loop and
+// the shared posture evaluation pool: a peer that stops reading would otherwise park the caller
+// on a full send queue, stalling that connection's reads or, worse, posture enforcement for every
+// other identity. A state change queued while an earlier one is still being written replaces it,
+// since the message is a full state replacement.
 func (self *edgeClientConn) emitPostureStateChange(rdm *common.RouterDataModel, structuralIndex uint64, data *posture.InstanceData) {
-	self.postureSendMu.Lock()
-	defer self.postureSendMu.Unlock()
+	self.posture.send.Lock()
+	self.posture.send.pending = &pendingPostureState{
+		rdm:             rdm,
+		structuralIndex: structuralIndex,
+		data:            data,
+	}
+	startWriter := !self.posture.send.writing
+	if startWriter {
+		self.posture.send.writing = true
+	}
+	self.posture.send.Unlock()
 
-	seq := self.postureSeq.Inc()
-	ps := buildPostureStateChange(seq, structuralIndex, rdm, self.getIdentityId(), data)
+	if startWriter {
+		go self.writePostureStateChanges()
+	}
+}
+
+// writePostureStateChanges drains queued posture state changes to the SDK, exiting once the queue
+// is empty. It is started on demand by emitPostureStateChange and is the only writer of
+// PostureStateChange messages on this connection, which is what keeps the sequence the SDK sees
+// contiguous.
+func (self *edgeClientConn) writePostureStateChanges() {
+	for {
+		self.posture.send.Lock()
+		next := self.posture.send.pending
+		self.posture.send.pending = nil
+		if next == nil {
+			// Released under the same lock a producer queues on, so a state change queued from
+			// here on starts a new writer rather than being dropped.
+			self.posture.send.writing = false
+			self.posture.send.Unlock()
+			return
+		}
+		self.posture.send.Unlock()
+
+		self.writePostureStateChange(next)
+	}
+}
+
+// writePostureStateChange assigns the next posture seq and writes one state change to the SDK.
+// Only writePostureStateChanges may call it: seq is assigned here rather than at queue time, so
+// concurrent writers would produce out-of-order seqs, which the SDK reads as gaps.
+func (self *edgeClientConn) writePostureStateChange(pending *pendingPostureState) {
+	seq := self.posture.seq.Inc()
+	ps := buildPostureStateChange(seq, pending.structuralIndex, pending.rdm, self.getIdentityId(), pending.data)
 
 	b, err := proto.Marshal(ps)
 	if err != nil {
@@ -2078,6 +2225,10 @@ func (self *edgeClientConn) emitPostureStateChange(rdm *common.RouterDataModel, 
 	}
 
 	msg := channel.NewMessage(sdkedge.ContentTypePostureStateChange, b)
+
+	// CH-S1 exception: this goroutine exists to drain the queue into the channel, so blocking here
+	// is the backpressure, and nothing else is behind it. A peer that stops reading parks this
+	// writer only; the send unblocks when the channel closes.
 	if err := self.ch.GetChannel().Send(msg); err != nil {
 		pfxlog.Logger().WithError(err).Error("failed to send PostureStateChange")
 	}
