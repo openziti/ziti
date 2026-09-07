@@ -23,7 +23,7 @@ jobs:
       ZITI_TUNNEL_IMAGE:     ${{ vars.ZITI_TUNNEL_IMAGE || 'openziti/ziti-tunnel' }}
     steps:
       - name: Checkout Workspace
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download Linux Release Artifacts
         uses: actions/download-artifact@v8
