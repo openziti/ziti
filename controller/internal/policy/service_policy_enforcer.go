@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/runner"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -39,14 +40,18 @@ const (
 type ServicePolicyEnforcer struct {
 	appEnv *env.AppEnv
 	*runner.BaseOperation
-	notify chan struct{}
+	notify            chan struct{}
+	eventDeletesMeter metrics.Meter
+	runDeletesMeter   metrics.Meter
 }
 
 func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolicyEnforcer {
 	result := &ServicePolicyEnforcer{
-		appEnv:        appEnv,
-		BaseOperation: runner.NewBaseOperation("ServicePolicyEnforcer", f),
-		notify:        make(chan struct{}, 1),
+		appEnv:            appEnv,
+		BaseOperation:     runner.NewBaseOperation("ServicePolicyEnforcer", f),
+		notify:            make(chan struct{}, 1),
+		eventDeletesMeter: appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerEventDeletes),
+		runDeletesMeter:   appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes),
 	}
 	result.notify <- struct{}{} // ensure we do a full scan on startup
 	db.ServiceEvents.AddServiceEventHandler(result.handleServiceEvent)
@@ -109,7 +114,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *db.ServiceEvent
 		log.Debugf("session %v deleted", sessionId)
 	}
 
-	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerEventDeletes).Mark(int64(len(sessionsToDelete)))
+	enforcer.eventDeletesMeter.Mark(int64(len(sessionsToDelete)))
 }
 
 func (enforcer *ServicePolicyEnforcer) Run() error {
@@ -174,7 +179,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 	}
 
-	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes).Mark(int64(len(sessionsToRemove)))
+	enforcer.runDeletesMeter.Mark(int64(len(sessionsToRemove)))
 
 	return nil
 }
