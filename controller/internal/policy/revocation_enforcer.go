@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/runner"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -36,8 +37,9 @@ const (
 // controller database and router data models. It only runs on the raft leader
 // (or in a leaderless configuration) to avoid redundant batch-delete dispatches.
 type RevocationEnforcer struct {
-	appEnv     *env.AppEnv
-	dispatcher command.Dispatcher
+	appEnv      *env.AppEnv
+	dispatcher  command.Dispatcher
+	deleteMeter metrics.Meter
 	*runner.BaseOperation
 }
 
@@ -46,6 +48,7 @@ func NewRevocationEnforcer(appEnv *env.AppEnv, frequency time.Duration, dispatch
 	return &RevocationEnforcer{
 		appEnv:        appEnv,
 		dispatcher:    dispatcher,
+		deleteMeter:   appEnv.GetMetricsRegistry().Meter(RevocationEnforcerDelete),
 		BaseOperation: runner.NewBaseOperation("RevocationEnforcer", frequency),
 	}
 }
@@ -72,7 +75,7 @@ func (e *RevocationEnforcer) Run() error {
 
 	if total > 0 {
 		pfxlog.Logger().Debugf("removed %d expired revocations", total)
-		e.appEnv.GetMetricsRegistry().Meter(RevocationEnforcerDelete).Mark(int64(total))
+		e.deleteMeter.Mark(int64(total))
 	}
 
 	return nil

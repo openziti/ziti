@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/runner"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -39,6 +40,7 @@ const (
 type ApiSessionEnforcer struct {
 	appEnv         model.Env
 	sessionTimeout time.Duration
+	deleteMeter    metrics.Meter
 	*runner.BaseOperation
 }
 
@@ -55,6 +57,7 @@ func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTime
 	return &ApiSessionEnforcer{
 		appEnv:         appEnv,
 		sessionTimeout: sessionTimeout,
+		deleteMeter:    appEnv.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete),
 		BaseOperation:  runner.NewBaseOperation("ApiSessionEnforcer", frequency),
 	}
 }
@@ -108,7 +111,7 @@ func (s *ApiSessionEnforcer) Run() error {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}
-			s.appEnv.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete).Mark(int64(len(ids)))
+			s.deleteMeter.Mark(int64(len(ids)))
 		}
 	}
 
