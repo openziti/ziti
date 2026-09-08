@@ -380,6 +380,35 @@ func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
 	return nil
 }
 
+// loadLinkHeartbeatOptions parses the link heartbeats stanza.
+//
+// Keys the operator omits keep the link defaults rather than the channel defaults
+// channel.LoadHeartbeatOptions supplies, so naming one key does not move the others; links want a longer
+// unresponsive timeout than a generic channel does. A non-positive interval is refused rather than
+// defaulted, because the ticker the heartbeater runs on panics on one.
+func loadLinkHeartbeatOptions(submap map[interface{}]interface{}) (*channel.HeartbeatOptions, error) {
+	options, err := channel.LoadHeartbeatOptions(submap)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, found := submap["sendInterval"]; !found {
+		options.SendInterval = DefaultLinkHeartbeatSendInterval
+	}
+	if _, found := submap["closeUnresponsiveTimeout"]; !found {
+		options.CloseUnresponsiveTimeout = DefaultLinkUnresponsiveTimeout
+	}
+
+	if options.SendInterval <= 0 {
+		return nil, errors.New("[link/heartbeats/sendInterval] must be greater than zero")
+	}
+	if options.CheckInterval <= 0 {
+		return nil, errors.New("[link/heartbeats/checkInterval] must be greater than zero")
+	}
+
+	return options, nil
+}
+
 func LoadConfig(path string) (*Config, error) {
 	return LoadConfigWithOptions(path, true)
 }
@@ -643,7 +672,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 
 			if value, found := submap["heartbeats"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					options, err := channel.LoadHeartbeatOptions(submap)
+					options, err := loadLinkHeartbeatOptions(submap)
 					if err != nil {
 						return nil, err
 					}
