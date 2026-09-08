@@ -47,7 +47,7 @@ func Test_PostureCheck_SDK_Process_Multi_OIDC(t *testing.T) {
 
 	targetHash := "3cdaefed0138a1d01df9ac5c8a57f02b29c24a31201614c51a592eeed2e5f7f3"
 	targetPath := "C:\\example\\path\\1.exe"
-	targetSignerFingerprint := "f1b2a6e9a37dfc918bd495e79b03dbbe6cb7477e3c6a0c29ff476c2b9a43ad0f\n"
+	targetSignerFingerprint := "f1b2a6e9a37dfc918bd495e79b03dbbe6cb7477e3c6a0c29ff476c2b9a43ad0f"
 	targetProcess := &rest_model.ProcessMulti{
 		Hashes: []string{targetHash},
 		OsType: ToPtr(rest_model.OsTypeWindows),
