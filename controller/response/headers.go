@@ -38,26 +38,34 @@ func AddHeaders(rc *RequestContext) {
 		rc.ResponseWriter.Header().Set(ServerHeader, "ziti-controller/"+buildInfo.Version())
 	}
 
-	AddApiSessionHeaders(rc)
+	addApiSessionLifetimeHeaders(rc)
 }
 
 // AddApiSessionHeaders writes API-session lifetime headers when a resolved session is
 // available, and appends WWW-Authenticate or other structured error headers from any
-// MFA or session-level errors so that clients can determine the next required action.
+// MFA error so that clients can determine the next required action. Session-level errors
+// are not reported here; the unauthorized response for a protected endpoint carries them.
 func AddApiSessionHeaders(rc *RequestContext) {
-	if apiSession, apiSessionErr := rc.SecurityCtx.GetApiSessionWithoutResolve(); apiSession != nil {
-		rc.ResponseWriter.Header().Set(ApiSessionExpirationSecondsHeader, strconv.FormatInt(int64(apiSession.ExpirationDuration.Seconds()), 10))
-		rc.ResponseWriter.Header().Set(ApiSessionExpiresAtHeader, apiSession.ExpiresAt.String())
-
-		// add any headers for MFA errors
-		mfaErr := rc.SecurityCtx.GetMfaErrorWithoutResolve()
-
-		if mfaErr != nil {
-			addApiErrorHeaders(rc, mfaErr)
-		}
-	} else if apiSessionErr != nil {
-		addApiErrorHeaders(rc, apiSessionErr)
+	if !addApiSessionLifetimeHeaders(rc) {
+		return
 	}
+
+	if mfaErr := rc.SecurityCtx.GetMfaErrorWithoutResolve(); mfaErr != nil {
+		addApiErrorHeaders(rc, mfaErr)
+	}
+}
+
+// addApiSessionLifetimeHeaders writes the expiration headers for an already-resolved API
+// session and reports whether a session was present.
+func addApiSessionLifetimeHeaders(rc *RequestContext) bool {
+	apiSession, _ := rc.SecurityCtx.GetApiSessionWithoutResolve()
+	if apiSession == nil {
+		return false
+	}
+
+	rc.ResponseWriter.Header().Set(ApiSessionExpirationSecondsHeader, strconv.FormatInt(int64(apiSession.ExpirationDuration.Seconds()), 10))
+	rc.ResponseWriter.Header().Set(ApiSessionExpiresAtHeader, apiSession.ExpiresAt.String())
+	return true
 }
 
 // addApiErrorHeaders extracts header key-value pairs from an errorz.ApiError and writes

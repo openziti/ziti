@@ -210,7 +210,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	ae.GetManagers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
-	rc.Request.Header.Set("zt-session", filledApiSession.Token)
+	rc.Request.Header.Set(common.ZtSessionHeader, filledApiSession.Token)
 	securityToken, err := common.NewSecurityTokenCtx(rc.Request, ae.TokenIssuerCache)
 
 	if err != nil {
@@ -228,7 +228,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
-	rc.ResponseWriter.Header().Set(env.ZitiSession, filledApiSession.Token)
+	rc.ResponseWriter.Header().Set(common.ZtSessionHeader, filledApiSession.Token)
 
 	ro.createTimer.UpdateSince(start)
 

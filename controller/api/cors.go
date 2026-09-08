@@ -20,11 +20,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/handlers"
-)
-
-const (
-	// ZitiSession is the header value used to pass Ziti sessions around
-	ZitiSession = "zt-session"
+	"github.com/openziti/ziti/v2/common"
 )
 
 func WrapCorsHandler(innerHandler http.Handler) http.Handler {
@@ -35,7 +31,7 @@ func WrapCorsHandler(innerHandler http.Handler) http.Handler {
 			"content-type",
 			"accept",
 			"authorization",
-			ZitiSession,
+			common.ZtSessionHeader,
 		}),
 		handlers.AllowedMethods([]string{
 			http.MethodGet,
