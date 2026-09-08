@@ -19,6 +19,8 @@ package model
 import (
 	"strings"
 	"time"
+
+	"github.com/openziti/ziti/v2/common/posture"
 )
 
 type PostureResponseProcess struct {
@@ -33,10 +35,10 @@ func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
 	found := false
 
 	for i, fingerprint := range pr.SignerFingerprints {
-		pr.SignerFingerprints[i] = CleanHexString(fingerprint)
+		pr.SignerFingerprints[i] = posture.CleanHexString(fingerprint)
 	}
 
-	pr.BinaryHash = CleanHexString(pr.BinaryHash)
+	pr.BinaryHash = posture.CleanHexString(pr.BinaryHash)
 
 	for i, process := range postureData.Processes {
 		if process.PostureCheckId == pr.PostureCheckId {

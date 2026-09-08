@@ -3,10 +3,10 @@ package posture
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/pb/edge_client_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -169,12 +169,12 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		return result
 	}
 
-	if !strings.EqualFold(strings.ToLower(valid.OsType), strings.ToLower(osType)) {
+	if !strings.EqualFold(valid.OsType, osType) {
 		result.Reason = fmt.Errorf("os types do not match, given %s, expected: %s", osType, valid.OsType)
 		return result
 	}
 
-	if len(valid.Hashes) > 0 && !stringz.Contains(valid.Hashes, given.Hash) {
+	if len(valid.Hashes) > 0 && !containsFold(valid.Hashes, given.Hash) {
 		result.Reason = fmt.Errorf("hash is not valid, given %s, expected one of: %v", given.Hash, valid.Hashes)
 		return result
 	}
@@ -183,12 +183,12 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		validPrints := map[string]struct{}{}
 
 		for _, validPrint := range valid.Fingerprints {
-			validPrints[validPrint] = struct{}{}
+			validPrints[strings.ToLower(validPrint)] = struct{}{}
 		}
 
 		validPrintFound := false
 		for _, givenPrint := range given.SignerFingerprints {
-			if _, ok := validPrints[givenPrint]; ok {
+			if _, ok := validPrints[strings.ToLower(givenPrint)]; ok {
 				validPrintFound = true
 				break
 			}
@@ -201,4 +201,12 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 	}
 
 	return nil
+}
+
+// containsFold reports whether values holds target, ignoring case. Configured hex values are
+// stored as the administrator entered them, so they are compared case-insensitively.
+func containsFold(values []string, target string) bool {
+	return slices.ContainsFunc(values, func(value string) bool {
+		return strings.EqualFold(value, target)
+	})
 }
