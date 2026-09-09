@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/common/runner"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -39,6 +40,11 @@ const (
 type ApiSessionEnforcer struct {
 	appEnv         model.Env
 	sessionTimeout time.Duration
+	// Resolved once and held. A Meter lookup takes a reference on every call and only Dispose releases
+	// one, so looking one up per run accumulates references and leaves the meter sampling after the
+	// registry is disposed. Timer is not reference counted, and is held here so the two read alike.
+	runTimer    metrics.Timer
+	deleteMeter metrics.Meter
 	*runner.BaseOperation
 }
 
@@ -55,6 +61,8 @@ func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTime
 	return &ApiSessionEnforcer{
 		appEnv:         appEnv,
 		sessionTimeout: sessionTimeout,
+		runTimer:       appEnv.GetMetricsRegistry().Timer(ApiSessionEnforcerRun),
+		deleteMeter:    appEnv.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete),
 		BaseOperation:  runner.NewBaseOperation("ApiSessionEnforcer", frequency),
 	}
 }
@@ -63,7 +71,7 @@ func (s *ApiSessionEnforcer) Run() error {
 	startTime := time.Now()
 
 	defer func() {
-		s.appEnv.GetMetricsRegistry().Timer(ApiSessionEnforcerRun).UpdateSince(startTime)
+		s.runTimer.UpdateSince(startTime)
 	}()
 
 	oldest := time.Now().Add(s.sessionTimeout * -1)
@@ -108,7 +116,7 @@ func (s *ApiSessionEnforcer) Run() error {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}
-			s.appEnv.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete).Mark(int64(len(ids)))
+			s.deleteMeter.Mark(int64(len(ids)))
 		}
 	}
 
