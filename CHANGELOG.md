@@ -13,6 +13,7 @@
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
+* [Posture Ordering and Circuit Fault Delivery](#posture-ordering-and-circuit-fault-delivery) - Routers apply posture responses in order, and retry circuit endpoint faults they couldn't send, for a configurable window
 * [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
@@ -579,6 +580,28 @@ ziti tunnel run --dnsUpstreamMode serial \
   --dnsUpstream udp://10.96.0.10:53 \
   --dnsUpstream tcp://8.8.8.8:53
 ```
+
+## Posture Ordering and Circuit Fault Delivery
+
+Routers now apply an SDK's posture responses in the order they arrive, before handling a dial or bind
+sent after them. Re-evaluating access after a posture change runs on its own worker pool.
+
+When a circuit's ingress or egress on a router goes away, the router sends the controller a circuit
+endpoint fault. Those faults are now retried until sent, including when a controller reconnects. A
+fault still unsent after the retention window is dropped, which bounds what a router holds through a
+long controller outage. The window is set in the router's `forwarder` section, and takes a duration:
+
+```yaml
+forwarder:
+  endpointFaultRetention: 5m  # default 5m
+```
+
+New router metrics:
+
+* `faults.circuit.endpoint` - a meter of circuit endpoint faults sent to a controller
+* `faults.circuit.endpoint.expired` - a meter of circuit endpoint faults dropped after the retention window
+* `pool.posture.eval.queue_size`, `.worker_count`, `.busy_workers`, `.work_timer` - the worker pool that
+  re-evaluates access after a posture change
 
 ## Controller Read Throughput Under Load
 
