@@ -127,6 +127,9 @@ func (t testFaultReceiver) Report(circuitId string, ctrlId string) {}
 
 func (t testFaultReceiver) NotifyInvalidLink(linkId string) {}
 
+func (t testFaultReceiver) ReportEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject) {
+}
+
 type testXgCloseHandler struct{}
 
 func (t testXgCloseHandler) HandleXgressClose(x *xgress.Xgress) {
