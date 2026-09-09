@@ -164,10 +164,12 @@ jobs:
 
       - name: Run Unit and Integration Tests
         if: ${{ vars.ZITI_SKIP_INTEGRATION_TESTS != 'true' }}
-        timeout-minutes: 15
+        # The step limit must exceed the go test timeout plus compile time, otherwise the runner
+        # kills the test binary before go can print the goroutine dump for a hung test.
+        timeout-minutes: 18
         shell: bash
         run: |
-          go test ./... -timeout 15m --tags apitests,dataflow
+          go test ./... -timeout 14m --tags apitests,dataflow
 
       - name: Run CLI tests and Integration Tests
         if: ${{ vars.ZITI_SKIP_CLI_TESTS != 'true' }}
