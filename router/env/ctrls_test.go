@@ -127,24 +127,24 @@ func newTestNetworkCtrl(nc *networkControllers, ctrlId string, label string) (*n
 	return newNetworkCtrl(&ctrlsTestCtrlChannel{ch: ch}, "tls:"+ctrlId+":6262", nc.heartbeatOptions), ch
 }
 
-// collectCtrlEvents registers a listener and returns a function draining the events seen so far. Listeners
-// are notified on their own goroutine, so the buffer carries them back to the test.
+// collectCtrlEvents registers a listener and returns a function reporting every event seen so far, oldest
+// first. Listeners are notified on their own goroutine, so the collector carries them back to the test. It
+// accumulates rather than consumes: Eventually and Never run each condition check on its own goroutine and
+// do not wait for a slow one, so a consuming drain could hand an event to a straggler check whose result is
+// discarded, and the event would be lost to the assertion that needed it.
 func collectCtrlEvents(nc *networkControllers) func() []CtrlEvent {
-	received := make(chan CtrlEvent, 16)
+	var lock sync.Mutex
+	var received []CtrlEvent
 	nc.AddChangeListener(CtrlEventListenerFunc(func(event CtrlEvent) {
-		received <- event
+		lock.Lock()
+		defer lock.Unlock()
+		received = append(received, event)
 	}))
 
 	return func() []CtrlEvent {
-		var result []CtrlEvent
-		for {
-			select {
-			case e := <-received:
-				result = append(result, e)
-			default:
-				return result
-			}
-		}
+		lock.Lock()
+		defer lock.Unlock()
+		return append([]CtrlEvent(nil), received...)
 	}
 }
 
@@ -187,12 +187,11 @@ func TestHandleChannelClose_CurrentUnregisters(t *testing.T) {
 
 	require.Nil(t, nc.ctrls.Get("ctrl1"), "the registered channel closing must unregister the controller")
 
-	var events []CtrlEvent
 	require.Eventually(t, func() bool {
-		events = append(events, drain()...)
-		return len(events) > 0
+		return len(drain()) > 0
 	}, time.Second, 10*time.Millisecond, "expected a controller change event")
 
+	events := drain()
 	require.Len(t, events, 1)
 	require.Equal(t, ControllerDisconnected, events[0].Type)
 	require.Same(t, current, events[0].Controller)
@@ -462,25 +461,6 @@ func TestEverConnected_StaysTrueAcrossLosingEveryController(t *testing.T) {
 		"having reached a controller once must not be forgotten when the connection is lost")
 }
 
-// awaitCtrlEvents collects n controller events, failing if they do not arrive in time.
-// Collection happens on the calling goroutine: testify runs Eventually and Never conditions
-// on their own goroutine, so accumulating into a slice the test body also reads would race.
-func awaitCtrlEvents(t *testing.T, drain func() []CtrlEvent, n int) []CtrlEvent {
-	t.Helper()
-
-	var events []CtrlEvent
-	deadline := time.Now().Add(2 * time.Second)
-	for len(events) < n && time.Now().Before(deadline) {
-		events = append(events, drain()...)
-		if len(events) < n {
-			time.Sleep(5 * time.Millisecond)
-		}
-	}
-
-	require.GreaterOrEqual(t, len(events), n, "expected %d controller events, got %v", n, events)
-	return events
-}
-
 // TestNotifyOfConnectivityChange_ReconnectReportsBothHalves guards the reconnect half of a
 // grouped control channel losing every underlay and getting one back. The registration
 // survives that, so nothing else reports it: a reconnect that re-offers state without
@@ -493,21 +473,25 @@ func TestNotifyOfConnectivityChange_ReconnectReportsBothHalves(t *testing.T) {
 	ctrl, _ := newTestNetworkCtrl(nc, "ctrl1", "current")
 	nc.ctrls.Put("ctrl1", ctrl)
 
-	var wasDisconnected atomic.Bool
+	connectivity := &connectivityState{}
 	var reconnectNotifications int
 	notifyReconnect := func() { reconnectNotifications++ }
 
 	// Last underlay lost, then one back.
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 0, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 1, notifyReconnect)
 
-	events := awaitCtrlEvents(t, drain, 2)
+	require.Eventually(t, func() bool {
+		return len(drain()) >= 2
+	}, time.Second, 10*time.Millisecond, "expected a disconnect and a reconnect event")
 
-	// Listeners are notified on their own goroutine per event, so the two can arrive in
-	// either order; what matters is that both were reported, once each.
+	// A listener keyed on connectivity clears its state on the disconnect and acts on the reconnect, so
+	// it must see them in that order however the notifications are delivered.
+	events := drain()
 	require.Len(t, events, 2)
-	types := []CtrlEventType{events[0].Type, events[1].Type}
-	require.ElementsMatch(t, []CtrlEventType{ControllerDisconnected, ControllerReconnected}, types,
+	require.Equal(t, ControllerDisconnected, events[0].Type)
+	require.Same(t, ctrl, events[0].Controller)
+	require.Equal(t, ControllerReconnected, events[1].Type,
 		"regaining an underlay must report the controller as reconnected")
 	for _, e := range events {
 		require.Same(t, ctrl, e.Controller)
@@ -525,36 +509,41 @@ func TestNotifyOfConnectivityChange_ReportsEachEdgeOnce(t *testing.T) {
 	ctrl, _ := newTestNetworkCtrl(nc, "ctrl1", "current")
 	nc.ctrls.Put("ctrl1", ctrl)
 
-	var wasDisconnected atomic.Bool
+	connectivity := &connectivityState{}
 	var reconnectNotifications int
 	notifyReconnect := func() { reconnectNotifications++ }
 
 	// A second underlay arriving and leaving while one remains is not a transition.
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 2, notifyReconnect)
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 2, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 1, notifyReconnect)
 
 	require.Never(t, func() bool { return len(drain()) > 0 }, 100*time.Millisecond, 10*time.Millisecond,
 		"underlay churn that never cost connectivity must not be reported")
 	require.Zero(t, reconnectNotifications)
 
 	// Two reports of the count reaching zero are one disconnect.
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 0, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 0, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 0, notifyReconnect)
 
-	events := awaitCtrlEvents(t, drain, 1)
+	require.Eventually(t, func() bool {
+		return len(drain()) >= 1
+	}, time.Second, 10*time.Millisecond, "expected a disconnect event")
 
 	// Same for the count coming back.
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 1, notifyReconnect)
-	nc.notifyOfConnectivityChange("ctrl1", &wasDisconnected, 2, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 1, notifyReconnect)
+	nc.notifyOfConnectivityChange("ctrl1", connectivity, 2, notifyReconnect)
 
-	events = append(events, awaitCtrlEvents(t, drain, 1)...)
+	require.Eventually(t, func() bool {
+		return len(drain()) >= 2
+	}, time.Second, 10*time.Millisecond, "expected a reconnect event")
 
-	// Waiting for each edge before triggering the next fixes their order here, unlike the
-	// back-to-back case, where the per-event goroutines can deliver in either order.
+	require.Never(t, func() bool {
+		return len(drain()) > 2
+	}, 100*time.Millisecond, 10*time.Millisecond, "each edge must be reported once")
+
+	events := drain()
+	require.Len(t, events, 2)
 	require.Equal(t, ControllerDisconnected, events[0].Type)
 	require.Equal(t, ControllerReconnected, events[1].Type)
-
-	require.Never(t, func() bool { return len(drain()) > 0 }, 100*time.Millisecond, 10*time.Millisecond,
-		"each edge must be reported once")
 	require.Equal(t, 1, reconnectNotifications)
 }

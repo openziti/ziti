@@ -120,7 +120,7 @@ type networkControllers struct {
 	idsBeingDialed        cmap.ConcurrentMap[string, struct{}]
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId              concurrenz.AtomicValue[string]
-	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[CtrlEventListener]
+	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[*ctrlEventQueue]
 	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
 	closed                atomic.Bool
 	// everConnected records that a control channel was established at some point. It is never cleared, so it
@@ -160,7 +160,7 @@ func (self *networkControllers) ControllersHaveMinVersion(version string) bool {
 }
 
 func (self *networkControllers) AddChangeListener(listener CtrlEventListener) {
-	self.ctrlChangeListeners.Append(listener)
+	self.ctrlChangeListeners.Append(newCtrlEventQueue(listener))
 }
 
 func (self *networkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDetail {
@@ -395,13 +395,13 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 	}
 
 	// Track connectivity transitions for reconnect/disconnect notifications
-	var wasDisconnected atomic.Bool
+	connectivity := &connectivityState{}
 	changeCallback := func(ch *ctrlchan.DialCtrlChannel, _, newCount uint32) {
 		multiCh := ch.GetChannel()
 		if multiCh == nil || multiCh.IsClosed() {
 			return
 		}
-		self.notifyOfConnectivityChange(ch.PeerId(), &wasDisconnected, newCount, func() {
+		self.notifyOfConnectivityChange(ch.PeerId(), connectivity, newCount, func() {
 			self.dialEnv.NotifyOfReconnect(ch)
 		})
 	}
@@ -625,17 +625,33 @@ func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlcha
 // ControllerReconnected ctrl event is what listeners keyed on connectivity wait for.
 // Sending only the first leaves those listeners believing the controller is still gone.
 //
-// wasDisconnected belongs to the one channel and is swapped rather than stored, so each
-// edge is reported exactly once however many underlays come or go at the same moment.
-func (self *networkControllers) notifyOfConnectivityChange(ctrlId string, wasDisconnected *atomic.Bool, newCount uint32, notifyReconnect func()) {
+// state belongs to the one channel. Its lock is held from deciding that an edge occurred until the
+// event is queued, so each edge is reported exactly once however many underlays come or go at the
+// same moment, and a disconnect is always queued before the reconnect that follows it.
+func (self *networkControllers) notifyOfConnectivityChange(ctrlId string, state *connectivityState, newCount uint32, notifyReconnect func()) {
+	state.lock.Lock()
+	reconnected := false
 	if newCount > 0 {
-		if wasDisconnected.CompareAndSwap(true, false) {
-			notifyReconnect()
+		if state.disconnected {
+			state.disconnected = false
+			reconnected = true
 			self.NotifyOfReconnect(ctrlId)
 		}
-	} else if wasDisconnected.CompareAndSwap(false, true) {
+	} else if !state.disconnected {
+		state.disconnected = true
 		self.NotifyOfDisconnect(ctrlId)
 	}
+	state.lock.Unlock()
+
+	if reconnected {
+		notifyReconnect()
+	}
+}
+
+// connectivityState tracks whether a control channel is currently without underlays.
+type connectivityState struct {
+	lock         sync.Mutex
+	disconnected bool
 }
 
 func (self *networkControllers) NotifyOfDisconnect(ctrlId string) {
@@ -650,12 +666,15 @@ func (self *networkControllers) NotifyOfReconnect(ctrlId string) {
 	}
 }
 
+// notifyOfChange queues the event for every listener. Listeners are notified off the caller's
+// goroutine, and each sees events in the order they were queued.
 func (self *networkControllers) notifyOfChange(controller NetworkController, eventType CtrlEventType) {
-	for _, l := range self.ctrlChangeListeners.Value() {
-		go l.NotifyOfCtrlEvent(CtrlEvent{
-			Type:       eventType,
-			Controller: controller,
-		})
+	event := CtrlEvent{
+		Type:       eventType,
+		Controller: controller,
+	}
+	for _, queue := range self.ctrlChangeListeners.Value() {
+		queue.enqueue(event)
 	}
 }
 
