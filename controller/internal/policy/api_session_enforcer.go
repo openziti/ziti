@@ -108,16 +108,20 @@ func (s *ApiSessionEnforcer) Run() error {
 		logrus.Debugf("found %v expired api-sessions to remove", len(ids))
 
 		ctx := change.New().SetSourceType("api-session.enforcer").SetChangeAuthorType(change.AuthorTypeController)
+		deleted := int64(len(ids))
 		if err = s.appEnv.GetManagers().ApiSession.DeleteBatch(ids, ctx); err != nil {
 			logrus.WithError(err).Error("failure while batch deleting expired api sessions")
 
+			deleted = 0
 			for _, id := range ids {
 				if err = s.appEnv.GetManagers().ApiSession.Delete(id, ctx); err != nil {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
+				} else {
+					deleted++
 				}
 			}
-			s.deleteMeter.Mark(int64(len(ids)))
 		}
+		s.deleteMeter.Mark(deleted)
 	}
 
 	return nil
