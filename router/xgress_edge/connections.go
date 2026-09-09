@@ -41,6 +41,18 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
+const (
+	// postureEvictionInterval is how often disconnected api sessions' posture data is swept.
+	postureEvictionInterval = time.Minute
+
+	// postureDataRetention is how long posture data is kept after an api session's last
+	// connection to this router goes away. It is generous relative to a reconnect so that a
+	// client that drops and comes back keeps its posture state, most importantly the MFA-passed
+	// time, which a reconnect alone does not always re-establish: the SDK only reports posture
+	// for services it is actively dialing or binding.
+	postureDataRetention = 5 * time.Minute
+)
+
 type identityConnect struct {
 	srcAddr     string
 	dstAddr     string
@@ -78,7 +90,10 @@ func (self *identityState) markConnect(ch channel.Channel, queueEvent bool) {
 	}
 }
 
-func (self *identityState) markDisconnect(ch channel.Channel) {
+// markDisconnect removes ch from the identity's connections, reporting whether any remaining
+// connection still belongs to apiSessionId. An empty apiSessionId reports true: with no session
+// to attribute the closing channel to, nothing is treated as having disconnected.
+func (self *identityState) markDisconnect(ch channel.Channel, apiSessionId string) bool {
 	self.Lock()
 	defer self.Unlock()
 	startLen := len(self.connections)
@@ -88,6 +103,21 @@ func (self *identityState) markDisconnect(ch channel.Channel) {
 	if startLen > 0 && len(self.connections) == 0 {
 		self.unreported.stateChanged = true
 	}
+
+	if apiSessionId == "" {
+		return true
+	}
+
+	// An identity can hold several api sessions at once (one per device), and a session can
+	// briefly hold more than one channel across a reconnect, so the session is only disconnected
+	// once none of the remaining channels carry it.
+	for _, remaining := range self.connections {
+		if apiSessionToken := state.GetApiSessionTokenFromCh(remaining); apiSessionToken != nil && apiSessionToken.Id == apiSessionId {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (self *identityState) getConnectedStateEvent(id string) *edge_ctrl_pb.ConnectEvents_IdentityConnectEvents {
@@ -196,6 +226,9 @@ func (self *connectionTracker) runLoop(closeNotify <-chan struct{}) {
 	circuitPostDialAccessCheckTicker := time.NewTicker(time.Minute)
 	defer circuitPostDialAccessCheckTicker.Stop()
 
+	postureEvictionTicker := time.NewTicker(postureEvictionInterval)
+	defer postureEvictionTicker.Stop()
+
 	for {
 		select {
 		case <-reportTicker.C:
@@ -207,6 +240,8 @@ func (self *connectionTracker) runLoop(closeNotify <-chan struct{}) {
 			self.scanForInactiveStateListeners()
 		case <-circuitPostDialAccessCheckTicker.C:
 			self.scanForCircuitsNeedingPolicyCheck()
+		case <-postureEvictionTicker.C:
+			self.evictInactivePostureData()
 		case <-closeNotify:
 			return
 		}
@@ -223,6 +258,33 @@ func (self *connectionTracker) scanForInactiveStateListeners() {
 
 	for _, clientConn := range toCheck {
 		clientConn.removeStateListenerIfEligible()
+	}
+}
+
+// connectedApiSessionIds returns the set of api sessions with at least one connection to this
+// router.
+func (self *connectionTracker) connectedApiSessionIds() map[string]struct{} {
+	result := map[string]struct{}{}
+	for entry := range self.states.IterBuffered() {
+		idState := entry.Val
+		idState.Lock()
+		for _, ch := range idState.connections {
+			if apiSessionToken := state.GetApiSessionTokenFromCh(ch); apiSessionToken != nil {
+				result[apiSessionToken.Id] = struct{}{}
+			}
+		}
+		idState.Unlock()
+	}
+	return result
+}
+
+// evictInactivePostureData drops cached posture data for api sessions that have been disconnected
+// from this router for longer than postureDataRetention. Without it the posture cache grows for
+// the life of the process, since every re-authentication produces a new api session id.
+func (self *connectionTracker) evictInactivePostureData() {
+	evicted := self.stateManager.SweepInactivePostureData(self.connectedApiSessionIds(), postureDataRetention)
+	if evicted > 0 {
+		pfxlog.Logger().WithField("evicted", evicted).Debug("evicted posture data for disconnected api sessions")
 	}
 }
 
@@ -350,6 +412,13 @@ func (self *connectionTracker) notifyNeedsFullSync() {
 
 func (self *connectionTracker) markConnected(identityId string, ch channel.Channel) {
 	pfxlog.Logger().WithField("identityId", identityId).Trace("marking connected")
+
+	// Retain the session's posture data before it is discoverable through the connection snapshot
+	// an eviction sweep takes, so a reconnect cannot be overtaken by a sweep already in flight.
+	if apiSessionToken := state.GetApiSessionTokenFromCh(ch); apiSessionToken != nil {
+		self.stateManager.NotifyApiSessionConnected(apiSessionToken.Id)
+	}
+
 	queueEvent := self.enabled && self.queuedEventCounter.Load() < self.maxQueuedEvents
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
@@ -366,13 +435,27 @@ func (self *connectionTracker) markConnected(identityId string, ch channel.Chann
 
 func (self *connectionTracker) markDisconnected(identityId string, ch channel.Channel) {
 	pfxlog.Logger().WithField("identityId", identityId).Trace("marking disconnected")
+
+	apiSessionId := ""
+	if apiSessionToken := state.GetApiSessionTokenFromCh(ch); apiSessionToken != nil {
+		apiSessionId = apiSessionToken.Id
+	}
+
+	apiSessionStillConnected := true
 	self.states.Upsert(identityId, nil, func(exist bool, valueInMap *identityState, newValue *identityState) *identityState {
 		if valueInMap == nil {
 			valueInMap = &identityState{}
 		}
-		valueInMap.markDisconnect(ch)
+		apiSessionStillConnected = valueInMap.markDisconnect(ch, apiSessionId)
 		return valueInMap
 	})
+
+	// Notified outside the upsert callback: the posture cache takes its own locks, and the
+	// connect path notifies it before touching this map, so notifying while holding the map
+	// would invert that order.
+	if apiSessionId != "" && !apiSessionStillConnected {
+		self.stateManager.NotifyApiSessionDisconnected(apiSessionId)
+	}
 }
 
 func (self *connectionTracker) report() {

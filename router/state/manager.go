@@ -280,6 +280,19 @@ type Manager interface {
 	// the router's posture cache.
 	ProcessPostureResponses(ch channel.Channel, response *edge_client_pb.PostureResponses)
 
+	// SweepInactivePostureData reconciles cached posture data against connectedApiSessionIds and
+	// then evicts sessions that have been disconnected for at least retention, returning the
+	// number evicted.
+	SweepInactivePostureData(connectedApiSessionIds map[string]struct{}, retention time.Duration) int
+
+	// NotifyApiSessionConnected reports that an api session has a connection to this router, so
+	// its posture data is retained and its retention window reset.
+	NotifyApiSessionConnected(apiSessionId string)
+
+	// NotifyApiSessionDisconnected reports that an api session's last connection to this router
+	// has gone away, starting the retention window for its posture data.
+	NotifyApiSessionDisconnected(apiSessionId string)
+
 	// GetEnv returns the router environment instance.
 	GetEnv() env.RouterEnv
 
@@ -477,6 +490,33 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 
 func routerDataModelWorker(_ uint32, f func()) {
 	f()
+}
+
+// NotifyApiSessionConnected retains the posture data of a newly connected api session, cancelling
+// any eviction an in-flight sweep has already judged against it.
+func (self *ManagerImpl) NotifyApiSessionConnected(apiSessionId string) {
+	self.postureCache.MarkConnected(apiSessionId)
+}
+
+// NotifyApiSessionDisconnected starts the retention window for a disconnected api session's
+// posture data, so it is evicted a fixed time after the disconnect rather than after a sweep
+// happens to notice.
+func (self *ManagerImpl) NotifyApiSessionDisconnected(apiSessionId string) {
+	self.postureCache.MarkDisconnected(apiSessionId)
+}
+
+// SweepInactivePostureData bounds the posture cache, which would otherwise grow for the life of
+// the process as clients re-authenticate into new api sessions. Connect and disconnect
+// notifications are what normally record a session's state; the reconcile pass against
+// connectedApiSessionIds only corrects sessions those notifications missed, so a missed
+// notification delays an eviction rather than losing or preventing one.
+func (self *ManagerImpl) SweepInactivePostureData(connectedApiSessionIds map[string]struct{}, retention time.Duration) int {
+	self.postureCache.ReconcileDisconnected(func(apiSessionId string) bool {
+		_, connected := connectedApiSessionIds[apiSessionId]
+		return connected
+	})
+
+	return self.postureCache.EvictInactive(retention)
 }
 
 // HasBindAccess evaluates service binding authorization, determining if an
