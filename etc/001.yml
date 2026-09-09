@@ -29,6 +29,14 @@ forwarder:
   #
   idleTxInterval: 60000
   #
+  # How long to keep retrying a circuit endpoint fault, which tells the controller that a circuit's ingress or
+  # egress on this router has gone away, while it can't be sent. A fault still unsent after this is dropped,
+  # which bounds what the router holds through a long controller outage. Unlike the settings above, this takes
+  # a duration, such as 5m, rather than milliseconds.
+  # (default 5m)
+  #
+  endpointFaultRetention: 5m
+  #
   # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
   # for services that have a terminator egress specified with an xgress binding (e.g. transport)
   # (minimum 1, max 10000, default 1000)

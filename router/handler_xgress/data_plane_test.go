@@ -101,15 +101,33 @@ func (self *nopPeer) Close() error {
 	return nil
 }
 
+// recordingFaultReceiver records the endpoint faults reported to it.
+type recordingFaultReceiver struct {
+	endpointFaults chan *ctrl_pb.Fault
+}
+
+// newRecordingFaultReceiver returns a recordingFaultReceiver with room for ten endpoint faults.
+func newRecordingFaultReceiver() *recordingFaultReceiver {
+	return &recordingFaultReceiver{endpointFaults: make(chan *ctrl_pb.Fault, 10)}
+}
+
+func (self *recordingFaultReceiver) Report(string, string) {}
+
+func (self *recordingFaultReceiver) NotifyInvalidLink(string) {}
+
+func (self *recordingFaultReceiver) ReportEndpointFault(circuitId string, _ string, subject ctrl_pb.FaultSubject) {
+	self.endpointFaults <- &ctrl_pb.Fault{Id: circuitId, Subject: subject}
+}
+
 // newRoutedXgress returns an open xgress whose payloads the returned forwarder routes to dest, through
-// the returned data plane.
-func newRoutedXgress(t *testing.T, dest *busyDestination) (*xgress.Xgress, *forwarder.Forwarder, xgress.DataPlaneAdapter) {
+// the returned data plane. The forwarder reports faults to faulter.
+func newRoutedXgress(t *testing.T, dest *busyDestination, faulter forwarder.FaultReceiver) (*xgress.Xgress, *forwarder.Forwarder, xgress.DataPlaneAdapter) {
 	t.Helper()
 
 	closeNotify := make(chan struct{})
 	t.Cleanup(func() { close(closeNotify) })
 
-	fwd := forwarder.NewForwarder(nil, nil, &env.ForwarderOptions{}, closeNotify)
+	fwd := forwarder.NewForwarder(nil, faulter, &env.ForwarderOptions{}, closeNotify)
 	fwd.RegisterDestination(testCircuitId, testDstAddr, dest)
 	require.NoError(t, fwd.Route("ctrl", &ctrl_pb.Route{
 		CircuitId: testCircuitId,
@@ -126,13 +144,14 @@ func newRoutedXgress(t *testing.T, dest *busyDestination) (*xgress.Xgress, *forw
 
 // TestCloseReturnsWhenNextHopAndControllerStall verifies that Close returns while the next hop times
 // out every send and the controller takes no messages, making one end-of-circuit attempt from Close and
-// one from the close handler.
+// one from the close handler, and reports the ingress fault to the faulter.
 func TestCloseReturnsWhenNextHopAndControllerStall(t *testing.T) {
 	req := require.New(t)
 
 	// A finite count lets a retrying Close finish, so a regression fails on the count rather than hanging.
 	dest := &busyDestination{timeouts: 100, timeoutErr: newTimeoutError(t)}
-	x, fwd, _ := newRoutedXgress(t, dest)
+	faulter := newRecordingFaultReceiver()
+	x, fwd, _ := newRoutedXgress(t, dest, faulter)
 	x.AddCloseHandler(NewCloseHandler(&env.MockNetworkControllers{Channel: &stalledCtrlChannel{}}, fwd))
 
 	closed := make(chan struct{})
@@ -147,6 +166,14 @@ func TestCloseReturnsWhenNextHopAndControllerStall(t *testing.T) {
 		req.Fail("Close did not return while the next hop and controller were stalled")
 	}
 	req.Equal(int32(2), dest.attempts.Load())
+
+	select {
+	case fault := <-faulter.endpointFaults:
+		req.Equal(testCircuitId, fault.Id)
+		req.Equal(ctrl_pb.FaultSubject_IngressFault, fault.Subject)
+	default:
+		req.Fail("no endpoint fault was reported")
+	}
 }
 
 // TestForwardPayloadRetriesTimeoutsWhileOpen verifies that a payload from an open xgress is retried
@@ -155,7 +182,7 @@ func TestForwardPayloadRetriesTimeoutsWhileOpen(t *testing.T) {
 	req := require.New(t)
 
 	dest := &busyDestination{timeouts: 3, timeoutErr: newTimeoutError(t)}
-	x, _, dataPlane := newRoutedXgress(t, dest)
+	x, _, dataPlane := newRoutedXgress(t, dest, newRecordingFaultReceiver())
 	payload := &xgress.Payload{CircuitId: testCircuitId, Data: []byte("data")}
 
 	dataPlane.ForwardPayload(payload, x, context.Background())
