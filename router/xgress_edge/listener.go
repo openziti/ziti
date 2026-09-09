@@ -956,25 +956,16 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	self.forwarder.EndCircuit(circuitId)
 	self.xgCircuits.Remove(circuitId)
 
-	// Notify the controller of the xgress fault
-	fault := &ctrl_pb.Fault{Id: circuitId}
-	switch edgeForwarder.originator {
-	case xgress.Initiator:
-		fault.Subject = ctrl_pb.FaultSubject_IngressFault
-	case xgress.Terminator:
-		fault.Subject = ctrl_pb.FaultSubject_EgressFault
+	// Notify the controller of the xgress fault. Handed to the forwarder rather than sent here:
+	// this runs on the connection read loop and on the posture evaluation pool, neither of which
+	// may park on a controller that has stopped reading.
+	subject := ctrl_pb.FaultSubject_IngressFault
+	if edgeForwarder.originator == xgress.Terminator {
+		subject = ctrl_pb.FaultSubject_EgressFault
 	}
 
-	controllers := self.listener.factory.env.GetNetworkControllers()
-	ch := controllers.GetChannel(edgeForwarder.ctrlId)
-	if ch == nil {
-		log.WithField("ctrlId", edgeForwarder.ctrlId).Error("control channel not available")
-	} else {
-		log.Debug("notifying controller of fault")
-		if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
-			log.WithError(err).Error("error sending fault")
-		}
-	}
+	log.Debug("reporting circuit fault")
+	self.forwarder.ReportCircuitEndpointFault(circuitId, edgeForwarder.ctrlId, subject)
 }
 
 func (self *edgeClientConn) ContentType() int32 {
