@@ -152,9 +152,9 @@ type Config struct {
 		Listeners             []*CtrlListenerConfig
 	}
 	Link struct {
-		Listeners          []map[interface{}]interface{}
-		Dialers            []map[interface{}]interface{}
-		Heartbeats         channel.HeartbeatOptions
+		Listeners              []map[interface{}]interface{}
+		Dialers                []map[interface{}]interface{}
+		Heartbeats             channel.HeartbeatOptions
 		PayloadSenderQueueSize int
 		AckSenderQueueSize     int
 	}
