@@ -18,12 +18,14 @@ package policy
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
-	"time"
 
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/controller/env"
 	"go.etcd.io/bbolt"
 )
@@ -37,15 +39,27 @@ const (
 
 type ServicePolicyEnforcer struct {
 	appEnv *env.AppEnv
+	// Resolved once and held. A Meter lookup takes a reference on every call and only Dispose releases
+	// one, so looking one up per run accumulates references and leaves the meter sampling after the
+	// registry is disposed. The timers are not reference counted, and are held here so the two read alike.
+	eventTimer       metrics.Timer
+	eventDeleteMeter metrics.Meter
+	runTimer         metrics.Timer
+	runDeleteMeter   metrics.Meter
 	*runner.BaseOperation
 	notify chan struct{}
 }
 
 func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolicyEnforcer {
+	registry := appEnv.GetMetricsRegistry()
 	result := &ServicePolicyEnforcer{
-		appEnv:        appEnv,
-		BaseOperation: runner.NewBaseOperation("ServicePolicyEnforcer", f),
-		notify:        make(chan struct{}, 1),
+		appEnv:           appEnv,
+		eventTimer:       registry.Timer(SessionPolicyEnforcerEvent),
+		eventDeleteMeter: registry.Meter(SessionPolicyEnforcerEventDeletes),
+		runTimer:         registry.Timer(SessionPolicyEnforcerRun),
+		runDeleteMeter:   registry.Meter(SessionPolicyEnforcerRunDeletes),
+		BaseOperation:    runner.NewBaseOperation("ServicePolicyEnforcer", f),
+		notify:           make(chan struct{}, 1),
 	}
 	result.notify <- struct{}{} // ensure we do a full scan on startup
 	db.ServiceEvents.AddServiceEventHandler(result.handleServiceEvent)
@@ -69,7 +83,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *db.ServiceEvent
 
 	startTime := time.Now()
 	defer func() {
-		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerEvent).UpdateSince(startTime)
+		enforcer.eventTimer.UpdateSince(startTime)
 	}()
 
 	log := pfxlog.Logger().WithField("event", event.String())
@@ -108,7 +122,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *db.ServiceEvent
 		log.Debugf("session %v deleted", sessionId)
 	}
 
-	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerEventDeletes).Mark(int64(len(sessionsToDelete)))
+	enforcer.eventDeleteMeter.Mark(int64(len(sessionsToDelete)))
 }
 
 func (enforcer *ServicePolicyEnforcer) Run() error {
@@ -122,7 +136,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	startTime := time.Now()
 
 	defer func() {
-		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerRun).UpdateSince(startTime)
+		enforcer.runTimer.UpdateSince(startTime)
 	}()
 
 	result, err := enforcer.appEnv.GetManagers().Session.Query("")
@@ -173,7 +187,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 	}
 
-	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes).Mark(int64(len(sessionsToRemove)))
+	enforcer.runDeleteMeter.Mark(int64(len(sessionsToRemove)))
 
 	return nil
 }
