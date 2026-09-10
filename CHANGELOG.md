@@ -59,6 +59,8 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4389](https://github.com/openziti/ziti/issues/4389) - [Backport-2.0] Router applies posture responses out of order and without bound
+    * [Issue #4392](https://github.com/openziti/ziti/issues/4392) - Router posture access checks read posture data without synchronization
     * [Issue #4390](https://github.com/openziti/ziti/issues/4390) - [Backport-2.0] Circuit endpoint faults are sent inline from arbitrary goroutines and lost on failure
     * [Issue #4585](https://github.com/openziti/ziti/issues/4585) - [Backport-2.0] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4599](https://github.com/openziti/ziti/issues/4599) - [Backport-2.0] ER/T terminator re-create reverts health check cost and precedence
