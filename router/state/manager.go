@@ -355,6 +355,28 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		panic(errors.Wrap(err, "error creating rdm goroutine pool"))
 	}
 
+	// Separate from the rdm pool, which is single-worker because data state events must apply in
+	// order. Posture re-evaluations are per api session and independent of each other, and must
+	// not queue behind an rdm sync.
+	postureEvalPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(1000),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(8),
+		IdleTime:    30 * time.Second,
+		CloseNotify: stateEnv.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().
+				WithField(logrus.ErrorKey, err).
+				WithField("backtrace", string(debug.Stack())).Error("panic during posture re-evaluation")
+		},
+	}
+	metrics.ConfigureGoroutinesPoolMetrics(&postureEvalPoolConfig, stateEnv.GetMetricsRegistry(), "pool.posture.eval")
+
+	postureEvalPool, err := goroutines.NewPool(postureEvalPoolConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error creating posture evaluation goroutine pool"))
+	}
+
 	result := &ManagerImpl{
 		EventEmmiter:             events.New(),
 		legacyApiSessionsByToken: cmap.New[*ApiSessionToken](),
@@ -362,6 +384,7 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		certCache:                cmap.New[*x509.Certificate](),
 		env:                      stateEnv,
 		routerDataModelPool:      routerDataModelPool,
+		postureEvalPool:          postureEvalPool,
 		endpointsChanged:         make(chan env.CtrlEvent, 10),
 		modelChanged:             make(chan struct{}, 1),
 	}
@@ -400,8 +423,46 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 // Parameters:
 //   - data: The updated posture instance data containing the current device state
 func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
+	identityId := data.IdentityId
+	apiSessionId := data.ApiSessionId
+
+	// Handed to a worker so the caller, the connection's read loop, is not held while circuits are
+	// re-evaluated. If the workers are saturated, run it here instead: dropping it would leave
+	// access that posture no longer permits in place, and running it inline makes the connection
+	// producing the churn absorb the cost.
+	work := func() { self.evaluatePostureChange(identityId, apiSessionId) }
+	if err := self.postureEvalPool.QueueOrError(work); err != nil {
+		pfxlog.Logger().WithError(err).
+			WithField("identityId", identityId).
+			Debug("posture evaluation pool unavailable, re-evaluating inline")
+		work()
+	}
+}
+
+// evaluatePostureChange re-evaluates an api session's circuits and hosted terminators against the
+// identity's current posture, closing what no longer has access.
+//
+// It reads the posture data itself rather than taking it from the update that scheduled it: several
+// updates for one api session can be in flight, and evaluating the state an older update carried
+// could revoke access that the newer state allows. Reading current data makes a late evaluation
+// redundant instead of wrong.
+//
+// A consequence is that states between updates are not separately acted on: if an endpoint reports
+// non-compliance and then compliance again before this runs, nothing is revoked. Enforcement is
+// against current posture only. Anything that must observe every reported state belongs on the
+// ingest path in posture.Instance.ApplyBatch, which sees every update in the order it arrived.
+func (self *ManagerImpl) evaluatePostureChange(identityId, apiSessionId string) {
+	instance := self.postureCache.GetInstance(apiSessionId)
+	if instance == nil {
+		// the api session's posture data is gone (the session was evicted), so it has no
+		// connections left to re-evaluate
+		return
+	}
+	snapshot := instance.Snapshot()
+	data := &snapshot
+
 	rdm := self.routerDataModel.Load()
-	channels := self.connectionTracker.GetChannelsByIdentityId(data.IdentityId)
+	channels := self.connectionTracker.GetChannelsByIdentityId(identityId)
 
 	for _, ch := range channels {
 		// Posture data is per-api-session. An identity may have several concurrent
@@ -411,7 +472,7 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		// another's circuits. Every circuit and terminator on a channel shares the
 		// channel's api-session, so make this check once per channel.
 		apiSessionToken := GetApiSessionTokenFromCh(ch)
-		if apiSessionToken == nil || apiSessionToken.Id != data.ApiSessionId {
+		if apiSessionToken == nil || apiSessionToken.Id != apiSessionId {
 			continue
 		}
 
@@ -419,8 +480,6 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 		if edgeConn == nil {
 			continue
 		}
-
-		identityId := apiSessionToken.IdentityId
 
 		// Re-evaluate dial access (policy + posture) for every active dial
 		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
@@ -482,7 +541,8 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 	instance := self.postureCache.GetInstance(apiSessionId)
 
 	if instance != nil {
-		data = &instance.InstanceData
+		snapshot := instance.Snapshot()
+		data = &snapshot
 	}
 
 	return posture.HasAccess(rdm, identityId, serviceId, data, policyType)
@@ -561,6 +621,7 @@ type ManagerImpl struct {
 	ctrlRootCache       controllerRootCache
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
+	postureEvalPool     goroutines.Pool
 
 	resyncRouterDataModel atomic.Bool
 	endpointsChanged      chan env.CtrlEvent
