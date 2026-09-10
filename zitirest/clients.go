@@ -42,8 +42,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/v2/controller/api"
-	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/common"
 	fabricRestClient "github.com/openziti/ziti/v2/controller/rest_client"
 	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
@@ -113,7 +112,7 @@ func (self *Clients) Authenticate(user, password string) error {
 }
 
 func (self *Clients) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
-	return request.SetHeaderParam(api.ZitiSession, self.token.Load())
+	return request.SetHeaderParam(common.ZtSessionHeader, self.token.Load())
 }
 
 func (self *Clients) SetSessionToken(token string) {
@@ -132,7 +131,7 @@ func (self *Clients) NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.
 	}
 
 	result := http.Header{}
-	result.Set(env.ZitiSession, self.token.Load())
+	result.Set(common.ZtSessionHeader, self.token.Load())
 
 	conn, resp, err := dialer.Dial(wsUrl, result)
 	if err != nil {

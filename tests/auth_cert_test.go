@@ -36,11 +36,11 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/config"
-	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
@@ -166,7 +166,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 	standardJsonResponseTests(resp, http.StatusOK, t)
 
 	t.Run("returns a session token HTTP headers", func(t *testing.T) {
-		require.New(t).NotEmpty(resp.Header().Get(env.ZitiSession), fmt.Sprintf("HTTP header %s is empty", env.ZitiSession))
+		require.New(t).NotEmpty(resp.Header().Get(common.ZtSessionHeader), fmt.Sprintf("HTTP header %s is empty", common.ZtSessionHeader))
 	})
 
 	t.Run("returns a session token in body", func(t *testing.T) {
@@ -186,7 +186,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		r.NoError(err)
 
 		bodyToken := data.Path("data.token").Data().(string)
-		headerToken := resp.Header().Get(env.ZitiSession)
+		headerToken := resp.Header().Get(common.ZtSessionHeader)
 		r.Equal(bodyToken, headerToken)
 	})
 
@@ -299,7 +299,7 @@ func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {
 	standardErrorJsonResponseTests(resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest, t)
 
 	t.Run("returns without a ziti session header", func(t *testing.T) {
-		require.New(t).Equal("", resp.Header().Get(env.ZitiSession))
+		require.New(t).Equal("", resp.Header().Get(common.ZtSessionHeader))
 	})
 }
 
@@ -382,7 +382,7 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 	standardErrorJsonResponseTests(resp, "INVALID_AUTH", http.StatusUnauthorized, t)
 
 	t.Run("returns without a ziti session header", func(t *testing.T) {
-		require.New(t).Equal("", resp.Header().Get(env.ZitiSession))
+		require.New(t).Equal("", resp.Header().Get(common.ZtSessionHeader))
 	})
 }
 
@@ -483,7 +483,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 	standardJsonResponseTests(resp, http.StatusOK, t)
 
 	t.Run("returns a session token HTTP headers", func(t *testing.T) {
-		require.New(t).NotEmpty(resp.Header().Get(env.ZitiSession), fmt.Sprintf("HTTP header %s is empty", env.ZitiSession))
+		require.New(t).NotEmpty(resp.Header().Get(common.ZtSessionHeader), fmt.Sprintf("HTTP header %s is empty", common.ZtSessionHeader))
 	})
 
 	t.Run("returns a session token in body", func(t *testing.T) {
@@ -511,7 +511,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 		r.NoError(err)
 
 		bodyToken := data.Path("data.token").Data().(string)
-		headerToken := resp.Header().Get(env.ZitiSession)
+		headerToken := resp.Header().Get(common.ZtSessionHeader)
 		r.Equal(bodyToken, headerToken)
 	})
 

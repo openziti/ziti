@@ -34,7 +34,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/ziti/v2/controller/api"
+	"github.com/openziti/ziti/v2/common"
 	fabric_rest_client "github.com/openziti/ziti/v2/controller/rest_client"
 	"gopkg.in/resty.v1"
 )
@@ -310,7 +310,7 @@ type EdgeManagementAuth struct {
 
 func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
 	if e.LegacyToken != "" {
-		return request.SetHeaderParam(api.ZitiSession, e.LegacyToken)
+		return request.SetHeaderParam(common.ZtSessionHeader, e.LegacyToken)
 	} else {
 		return request.SetHeaderParam("Authorization", "Bearer "+e.BearerToken)
 	}

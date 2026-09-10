@@ -38,9 +38,9 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/eid"
-	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 )
@@ -318,7 +318,7 @@ func (sess *session) CloneToManagementApi(ctx *TestContext) (*session, error) {
 
 func (sess *session) NewRequest() *resty.Request {
 	if sess.AuthResponse != nil && sess.AuthResponse.Token != nil {
-		return sess.client.R().SetHeader(env.ZitiSession, *sess.AuthResponse.Token)
+		return sess.client.R().SetHeader(common.ZtSessionHeader, *sess.AuthResponse.Token)
 	}
 
 	return sess.client.R()
