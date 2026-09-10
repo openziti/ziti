@@ -227,3 +227,21 @@ func Test_ProcessCheck_RepeatedResponseNotSeenAsChange(t *testing.T) {
 
 	require.False(t, updated)
 }
+
+// Test_ProcessCheck_EmptyConfiguredFingerprintImposesNoConstraint locks in that a process check
+// with no configured signer accepts whatever signer the client reports. The controller holds the
+// single optional fingerprint as a string, so an unconfigured one can reach the router as a
+// one-element list holding an empty string, which no client ever reports.
+func Test_ProcessCheck_EmptyConfiguredFingerprintImposesNoConstraint(t *testing.T) {
+	t.Run("client reports no signer", func(t *testing.T) {
+		check := newProcessCheckWith(nil, []string{""})
+
+		require.Nil(t, check.Evaluate(reportedProcess(lowerHash, nil)))
+	})
+
+	t.Run("client reports a signer", func(t *testing.T) {
+		check := newProcessCheckWith(nil, []string{""})
+
+		require.Nil(t, check.Evaluate(reportedProcess(lowerHash, []string{otherPrint})))
+	})
+}
