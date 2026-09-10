@@ -27,12 +27,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/spiffehlp"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // SecurityCtx resolves and caches the full authentication context for a single HTTP request.
@@ -341,6 +341,8 @@ func (ctx *SecurityCtx) resolveZtSession(securityToken *common.SecurityToken) {
 		ctx.setApiSessionError(errorz.NewUnauthorizedZtSessionInvalid())
 		return
 	}
+
+	ctx.env.GetManagers().ApiSession.MarkLastActivityById(apiSession.Id)
 
 	identity, err := ctx.env.GetManagers().Identity.Read(apiSession.IdentityId)
 

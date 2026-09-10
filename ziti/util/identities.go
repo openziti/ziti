@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client"
 	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti"
-	"github.com/openziti/ziti/v2/controller/env"
+	zitiCommon "github.com/openziti/ziti/v2/common"
 	fabric_rest_client "github.com/openziti/ziti/v2/controller/rest_client"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	"github.com/openziti/ziti/v2/ziti/constants"
@@ -180,12 +180,12 @@ func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Requ
 			authHeader := "Bearer " + strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken()))
 			r.SetHeader("Authorization", authHeader)
 		case edge_apis.ApiSessionTypeLegacy:
-			r.SetHeader(env.ZitiSession, string(self.ApiSession.ApiSession.GetToken()))
+			r.SetHeader(zitiCommon.ZtSessionHeader, string(self.ApiSession.ApiSession.GetToken()))
 		default:
 			panic("unsupported api session type " + self.ApiSession.ApiSession.GetType())
 		}
 	} else {
-		r.SetHeader(env.ZitiSession, self.Token)
+		r.SetHeader(zitiCommon.ZtSessionHeader, self.Token)
 	}
 	return r
 }
@@ -331,10 +331,10 @@ func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 		if self.ApiSession.ApiSession.GetType() == edge_apis.ApiSessionTypeOidc {
 			result.Set("Authorization", "Bearer "+strings.TrimSpace(string(self.ApiSession.ApiSession.GetToken())))
 		} else {
-			result.Set(env.ZitiSession, string(self.ApiSession.ApiSession.GetToken()))
+			result.Set(zitiCommon.ZtSessionHeader, string(self.ApiSession.ApiSession.GetToken()))
 		}
 	} else if self.Token != "" {
-		result.Set(env.ZitiSession, self.Token)
+		result.Set(zitiCommon.ZtSessionHeader, self.Token)
 	} else {
 		panic("no  authentication mechanism set")
 	}

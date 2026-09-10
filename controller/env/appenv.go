@@ -81,7 +81,6 @@ import (
 var _ model.Env = &AppEnv{}
 
 const (
-	ZitiSession      = "zt-session"
 	ClientApiBinding = "edge-client"
 
 	JwtAudEnrollment = "openziti-enroller"
@@ -915,6 +914,13 @@ func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) 
 
 	securityCtx := NewSecurityCtx(securityTokenCtx, ae)
 	securityCtx.AddToRequest(r)
+
+	// Legacy zt-session tokens are resolved up front so that every request carrying one counts as
+	// activity on its API session and gets session lifetime headers, regardless of endpoint.
+	// Bearer tokens stay lazy.
+	if securityTokenCtx.HasZtSessionHeader() {
+		securityCtx.resolve()
+	}
 
 	requestContext := &response.RequestContext{
 		Id:             rid,

@@ -61,10 +61,10 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/controller/config"
-	"github.com/openziti/ziti/v2/controller/env"
 	restClientRouter "github.com/openziti/ziti/v2/controller/rest_client/router"
 	fabricRestModel "github.com/openziti/ziti/v2/controller/rest_model"
 	"github.com/openziti/ziti/v2/controller/server"
@@ -394,7 +394,7 @@ func (ctx *TestContext) NewWsMgmtChannel(bindHandler channel.BindHandler) (chann
 	}
 
 	authHeader := http.Header{}
-	authHeader.Set(env.ZitiSession, *ctx.AdminManagementSession.AuthResponse.Token)
+	authHeader.Set(common.ZtSessionHeader, *ctx.AdminManagementSession.AuthResponse.Token)
 
 	conn, resp, err := dialer.Dial(wsUrl, authHeader)
 	if err != nil {

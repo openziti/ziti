@@ -17,6 +17,9 @@ import (
 // MaxBearerTokensProcessed represents the maximum number of bearer tokens that will be processed.
 const MaxBearerTokensProcessed = 3
 
+// ZtSessionHeader is the request and response header carrying a legacy API session token.
+const ZtSessionHeader = "zt-session"
+
 // TokenIssuer represents a JWT token issuer capable of verifying tokens.
 // Implementations provide token verification, configuration queries, and claim extraction.
 type TokenIssuer interface {
@@ -397,6 +400,12 @@ func (s *SecurityTokenCtx) AddToRequest(r *http.Request) {
 	*r = *r.WithContext(context.WithValue(r.Context(), SecurityTokenCtxKey, s))
 }
 
+// HasZtSessionHeader reports whether the request carries a non-empty zt-Session header. It
+// inspects the header only; no tokens are parsed or verified.
+func (s *SecurityTokenCtx) HasZtSessionHeader() bool {
+	return s.httpRequest != nil && strings.TrimSpace(s.httpRequest.Header.Get(ZtSessionHeader)) != ""
+}
+
 // IsZtSession returns true if the request carried a legacy zt-Session header. It triggers
 // header processing if not already done.
 func (s *SecurityTokenCtx) IsZtSession() bool {
@@ -479,7 +488,7 @@ func (s *SecurityTokenCtx) processHeaders() error {
 	s.fillOnce.Do(func() {
 		defer func() { s.hasProcessedHeaders = true }()
 
-		s.ztSession = strings.TrimSpace(s.httpRequest.Header.Get("zt-Session"))
+		s.ztSession = strings.TrimSpace(s.httpRequest.Header.Get(ZtSessionHeader))
 
 		s.rawAuthorizationHeaders = s.httpRequest.Header.Values("Authorization")
 
