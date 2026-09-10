@@ -54,6 +54,16 @@ ctrl:
 link:
   dialers:
     - binding:          transport
+  listeners:
+    # A router can listen for links on multiple ports or protocols by specifying multiple listeners.
+    - binding:          transport
+      bind:             tls:0.0.0.0:10086
+      advertise:        tls:127.0.0.1:10086
+    # Example of an additional link listener (with an optional custom link type)
+    # - binding:          transport
+    #   bind:             tls:0.0.0.0:10087
+    #   advertise:        tls:127.0.0.1:10087
+    #   type:             cellular
 
 healthChecks:
   ctrlPingCheck:
