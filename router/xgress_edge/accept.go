@@ -106,12 +106,12 @@ func (self *Acceptor) BindChannel(binding channel.Binding) error {
 		},
 	})
 
-	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
-		Type: sdkEdge.ContentTypePostureResponse,
-		Handler: func(m *channel.Message, ch channel.Channel) {
-			conn.processPostureResponse(m, ch)
-		},
-	})
+	// Handled on the receive loop rather than through an async adapter: posture responses must
+	// apply in the order the SDK sent them, and a dial or bind received behind one must observe it
+	// applied. An async adapter dispatches each message on its own goroutine, which lets an older
+	// response land after a newer one and lets a dial overtake the response it depends on. Only
+	// applying the reported state runs here; re-evaluating access is deferred.
+	binding.AddReceiveHandlerF(sdkEdge.ContentTypePostureResponse, conn.processPostureResponse)
 
 	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type: sdkEdge.ContentTypeUpdateToken,
