@@ -68,13 +68,7 @@ func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edg
 		return valueInMap
 	})
 
-	updated := false
-	for _, response := range responses.Responses {
-		next := instance.Apply(response, cache.totpParser)
-		updated = updated || next
-	}
-
-	if updated {
+	if instance.ApplyBatch(responses.Responses, cache.totpParser) {
 		instance.emitUpdated()
 	}
 }
@@ -257,24 +251,64 @@ type TotpTokenParser interface {
 	ParseTotpToken(string) (*common.TotpClaims, error)
 }
 
-// Apply updates the posture instance with new device state information from a posture response.
-// This function merges the incoming posture data with existing data, only updating fields
-// that are present in the response. Changes are detected by comparing new values with
-// existing ones, and update listeners are notified only when actual changes occur.
-//
-// The function handles various types of posture data including OS information, domain
-// membership, MAC addresses, process lists, device lock status, and wake events.
-//
-// Parameters:
-//   - response: The posture response containing updated device state information
-//   - parser: A TOTP token parser implementation, used to verify ToTP tokens on posture response
-//
-// Returns:
-//   - bool: True if the posture instance was updated, false if no changes were detected
+// Apply updates the posture instance with the device state in a single posture response,
+// reporting whether anything changed. Equivalent to ApplyBatch with one response.
 func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser TotpTokenParser) bool {
+	return instance.ApplyBatch([]*edge_client_pb.PostureResponse{response}, parser)
+}
+
+// ApplyBatch merges a batch of posture responses into the instance, reporting whether anything
+// changed. Each response carries one kind of device state (OS, domain, MAC addresses, a process
+// list, lock or wake events, or a TOTP token) and only that field is updated.
+//
+// The batch applies under a single lock hold, so a reader taking a Snapshot sees the state before
+// the batch or after all of it, never a partial batch. That matters because a batch is the unit a
+// client reports in: it may carry one process-list entry per watched process, or a MAC address
+// and a domain that change together, and evaluating an intermediate state can fail checks that
+// both the previous and the resulting state pass.
+//
+// TOTP tokens are verified before the lock is taken, since ParseTotpToken does signature
+// verification and reads public keys from the router data model, which does not belong inside this
+// lock. parser may be nil when no response carries a token.
+func (instance *Instance) ApplyBatch(responses []*edge_client_pb.PostureResponse, parser TotpTokenParser) bool {
+	totpClaims := make([]*common.TotpClaims, len(responses))
+	for i, response := range responses {
+		totpToken := response.GetTotpToken()
+		if totpToken == nil {
+			continue
+		}
+
+		if totpToken.Token == "" {
+			pfxlog.Logger().Error("received empty totp token for posture response")
+		}
+
+		claims, err := parser.ParseTotpToken(totpToken.Token)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("error parsing totp token")
+		} else if claims.IssuedAt == nil {
+			pfxlog.Logger().Error("received totp token with no issued at time")
+		} else {
+			totpClaims[i] = claims
+		}
+	}
+
 	instance.lock.Lock()
 	defer instance.lock.Unlock()
 
+	updated := false
+	for i, response := range responses {
+		if instance.applyLocked(response, totpClaims[i]) {
+			updated = true
+		}
+	}
+
+	return updated
+}
+
+// applyLocked merges one response into the instance, reporting whether anything changed.
+// totpClaims carries the response's pre-verified TOTP claims, and is nil when the response is not
+// a TOTP token or its token failed verification. Caller must hold the instance lock.
+func (instance *Instance) applyLocked(response *edge_client_pb.PostureResponse, totpClaims *common.TotpClaims) bool {
 	updated := false
 
 	if os := response.GetOs(); os != nil {
@@ -312,28 +346,20 @@ func (instance *Instance) Apply(response *edge_client_pb.PostureResponse, parser
 		if instance.mergeProcessList(processList) {
 			updated = true
 		}
-	} else if totpToken := response.GetTotpToken(); totpToken != nil {
-		if totpToken.Token == "" {
-			pfxlog.Logger().Error("received empty totp token for posture response")
+	} else if response.GetTotpToken() != nil {
+		if totpClaims == nil {
+			// verification failed and was already logged
+			return false
 		}
 
-		totpClaims, err := parser.ParseTotpToken(totpToken.Token)
-
-		if err != nil {
-			pfxlog.Logger().WithError(err).Error("error parsing totp token")
-		} else if totpClaims.IssuedAt == nil {
-			pfxlog.Logger().Error("received totp token with no issued at time")
-		} else {
-
-			if totpClaims.ApiSessionId == instance.ApiSessionId {
-				passedAt := totpClaims.IssuedAt.Time
-				if instance.PassedMfaAt == nil || instance.PassedMfaAt.Before(passedAt) {
-					instance.PassedMfaAt = &passedAt
-					updated = true
-				}
-			} else {
-				pfxlog.Logger().Errorf("received totp token for api session %s, but instance is for %s", totpClaims.ApiSessionId, instance.ApiSessionId)
+		if totpClaims.ApiSessionId == instance.ApiSessionId {
+			passedAt := totpClaims.IssuedAt.Time
+			if instance.PassedMfaAt == nil || instance.PassedMfaAt.Before(passedAt) {
+				instance.PassedMfaAt = &passedAt
+				updated = true
 			}
+		} else {
+			pfxlog.Logger().Errorf("received totp token for api session %s, but instance is for %s", totpClaims.ApiSessionId, instance.ApiSessionId)
 		}
 	} else {
 		pfxlog.Logger().Warnf("received unknown posture response type: no fields updated, type: %T", response.GetType())
@@ -423,10 +449,22 @@ func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.P
 	return false
 }
 
-func (instance *Instance) emitUpdated() {
-	instance.Time = time.Now()
+// Snapshot returns a copy of the instance's posture data taken under the instance lock, so
+// readers evaluating posture checks never race the writers applying posture responses.
+func (instance *Instance) Snapshot() InstanceData {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	return instance.InstanceData
+}
 
+// emitUpdated stamps the update time and hands listeners a copy of the posture data, both under
+// the instance lock, so it does not race a reader taking a Snapshot or a writer applying a batch.
+// Listeners are called outside the lock: they re-enter the cache and evaluate access.
+func (instance *Instance) emitUpdated() {
+	instance.lock.Lock()
+	instance.Time = time.Now()
 	instanceFieldCopy := instance.InstanceData
+	instance.lock.Unlock()
 
 	for _, listener := range instance.updatedListeners {
 		listener(&instanceFieldCopy)

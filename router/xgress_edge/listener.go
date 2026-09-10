@@ -1468,8 +1468,11 @@ func (self *edgeClientConn) processPostureResponse(msg *channel.Message, ch chan
 			return
 		}
 
-		go self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
-
+		// Applied on the read loop, not a goroutine: responses for one connection must apply in the
+		// order sent, and the SDK reports posture before it dials or binds, so a dial arriving
+		// behind a posture response must see that response already applied. The expensive part,
+		// re-evaluating access, is handed off inside ProcessPostureResponses.
+		self.listener.factory.stateManager.ProcessPostureResponses(ch, postureResponses)
 	}
 }
 
