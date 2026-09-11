@@ -40,6 +40,10 @@ func (x *CreateRevocationsBatchCommand) GetCommandType() int32 {
 	return int32(CommandType_CreateRevocationsBatchType)
 }
 
+func (x *RemoveMfaForIdentityCmd) GetCommandType() int32 {
+	return int32(CommandType_RemoveMfaForIdentityType)
+}
+
 func EncodeTags(tags map[string]interface{}) (map[string]*TagValue, error) {
 	if len(tags) == 0 {
 		return nil, nil
