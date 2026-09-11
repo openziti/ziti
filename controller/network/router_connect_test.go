@@ -21,6 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/transport/v2"
@@ -375,4 +376,206 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 				"iteration %d: a link published by a router that has been disconnected must not survive", i)
 		}
 	}
+}
+
+// TestRouterReportedLink_RepairsDestConnectedMidReport drives the interleave where both paths that pair a
+// link with its destination miss: the report resolves the destination before the link is in the table, and
+// the destination's own link build runs before the link lands there. The destination connects through
+// ConnectRouter rather than by calling its steps here, since the order of those steps is load-bearing.
+func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: dst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+
+	// The reporting path resolves the destination first, and finds it absent.
+	resolved := network.Router.GetConnected(dst.Id)
+	require.Nil(t, resolved)
+
+	// The destination connects in the gap. Its link build finds nothing, the link is not in the table yet.
+	require.NoError(t, network.ConnectRouter(dst))
+	require.Empty(t, dst.GetLinks(), "the destination's link build must have found nothing")
+
+	// Only now does the report land, still carrying the resolution that was accurate when it was taken.
+	link, created := network.Link.RouterReportedLink(report, src, resolved)
+	require.True(t, created)
+	require.NotNil(t, link)
+
+	require.Same(t, dst, link.GetDest(),
+		"the link must be pointed at the destination router that connected while the report was in flight")
+
+	// The consequence that matters: path computation can see the adjacency.
+	neighbors := network.Link.ConnectedNeighborsOfRouter(src)
+	require.Len(t, neighbors, 1, "the link must carry adjacency")
+	require.Equal(t, dst.Id, neighbors[0].Id)
+
+	// Exactly once: the router's link set does not deduplicate, and its link build may run again.
+	require.Len(t, dst.GetLinks(), 1)
+	network.Link.BuildRouterLinks(dst)
+	require.Len(t, dst.GetLinks(), 1, "a second link build must not index the link again")
+}
+
+// TestRouterDelete_DropsTheLinkIndex covers the wiring rather than the drop itself: a delete has to
+// actually reach the cleanup. Awaited, since the store dispatches the delete listener on its own goroutine.
+func TestRouterDelete_DropsTheLinkIndex(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	gone := newPersistedRouter(t, network, addr, "r0")
+	peer := newPersistedRouter(t, network, addr, "r1")
+	network.Link.Add(model.NewTestLink("l0", gone, peer))
+
+	require.Len(t, network.Link.LinksForRouter(gone.Id), 1)
+	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
+
+	require.NoError(t, network.Router.Delete(gone.Id, change.New()))
+
+	require.Eventually(t, func() bool { return len(network.Link.LinksForRouter(gone.Id)) == 0 },
+		2*time.Second, 10*time.Millisecond, "deleting a router must drop its link index")
+	require.Len(t, network.Link.LinksForRouter(peer.Id), 1, "the other endpoint's index must be untouched")
+}
+
+// TestRouterDelete_KeepsTheIndexOfAReusedId covers the delete cleanup running late against an id that has
+// come back. Fabric router ids are the enrollment certificate's common name, so re-adding a router from the
+// same cert reuses its id, and nothing orders the cleanup against that: store commit handlers run after
+// bolt has released the writer lock. Dropping the live router's index here is invisible in the link table
+// and shows up only when a per-router query misses links it should have.
+//
+// The late callback is invoked directly rather than by pausing the real one, since the guard is a store read
+// taken while the index map's shard is held, so the observable property is the same either way.
+func TestRouterDelete_KeepsTheIndexOfAReusedId(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	peer := newPersistedRouter(t, network, addr, "r1")
+
+	original := newPersistedRouter(t, network, addr, "r0")
+	require.NoError(t, network.Router.Delete(original.Id, change.New()))
+
+	// The same id comes back and its links are reported, all before the earlier delete's cleanup runs.
+	reused := newPersistedRouter(t, network, addr, "r0")
+	network.Link.Add(model.NewTestLink("l0", reused, peer))
+	require.Len(t, network.Link.LinksForRouter(reused.Id), 1)
+
+	network.Link.RouterDeleted(original.Id)
+
+	require.Len(t, network.Link.LinksForRouter(reused.Id), 1,
+		"a delete that lands after the id was recreated must not drop the live router's index")
+	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
+}
+
+// TestRouterReportedLink_RepairsDestDisplacedMidReport is the same interleave with a stale destination
+// rather than an absent one. The report resolves the destination under the source's connect stripe, not the
+// destination's, so that router can be replaced before the report lands. A link left pointing at the
+// displaced instance reads as healthy everywhere while carrying no adjacency, since the instance it names
+// is no longer connected.
+func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	firstDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+	require.NoError(t, network.ConnectRouter(firstDst))
+
+	// The reporting path resolves the destination, and gets the connection that is current right then.
+	resolved := network.Router.GetConnected(firstDst.Id)
+	require.Same(t, firstDst, resolved)
+
+	// That connection is replaced before the report lands.
+	network.DisconnectRouter(firstDst)
+	secondDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(secondDst))
+	require.Empty(t, secondDst.GetLinks(), "the replacement's link build must have found nothing")
+
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: firstDst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+	link, created := network.Link.RouterReportedLink(report, src, resolved)
+	require.True(t, created)
+
+	require.Same(t, secondDst, link.GetDest(),
+		"the link must be pointed at the connection that replaced the one the report resolved")
+
+	neighbors := network.Link.ConnectedNeighborsOfRouter(src)
+	require.Len(t, neighbors, 1, "the link must carry adjacency")
+	require.Same(t, secondDst, neighbors[0])
+
+	require.Len(t, secondDst.GetLinks(), 1, "the link must be indexed on the current connection exactly once")
+}
+
+// TestRouterReportedLink_RepairsDestOnALaterReport: a link already pointing at a displaced connection is
+// repaired by the next report for it, which is the only thing left that will look. The report carries no
+// new iteration, so the link is not rebuilt; the repair has to happen on the already-known path.
+func TestRouterReportedLink_RepairsDestOnALaterReport(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	firstDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+	require.NoError(t, network.ConnectRouter(firstDst))
+
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: firstDst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+	link, created := network.Link.RouterReportedLink(report, src, firstDst)
+	require.True(t, created)
+	require.Same(t, firstDst, link.GetDest())
+
+	// The destination is replaced. Its link build repairs links already in the table, so drive the case it
+	// cannot reach by putting the link back on the stale instance behind its back.
+	network.DisconnectRouter(firstDst)
+	secondDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(secondDst))
+	require.True(t, link.PointDestAt(firstDst), "putting the link back on the displaced instance")
+
+	again, created := network.Link.RouterReportedLink(report, src, firstDst)
+	require.False(t, created, "a report at the same iteration must not rebuild the link")
+	require.Same(t, link, again)
+	require.Same(t, secondDst, link.GetDest(), "a later report must repair a displaced destination")
+}
+
+// TestConnectRouter_RepairsLinkAlreadyMissingItsDest covers the other half of the pairing: a link already in
+// the table with no destination is repaired when that destination connects.
+func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+
+	// A link recorded while its destination was not connected, so it points at nothing.
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: dst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+	link, created := network.Link.RouterReportedLink(report, src, nil)
+	require.True(t, created)
+	require.Nil(t, link.GetDest(), "the destination was not connected when the link was recorded")
+
+	require.NoError(t, network.ConnectRouter(dst))
+
+	require.Same(t, dst, link.GetDest(), "connecting the destination must repair the link")
+	require.Len(t, dst.GetLinks(), 1, "and index it on the destination")
+
+	neighbors := network.Link.ConnectedNeighborsOfRouter(src)
+	require.Len(t, neighbors, 1, "the link must carry adjacency once repaired")
+	require.Equal(t, dst.Id, neighbors[0].Id)
 }
