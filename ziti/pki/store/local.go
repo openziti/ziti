@@ -69,15 +69,14 @@ func (l *Local) path(caName, name string) (key string, cert string) {
 
 // Exists checks if a certificate or private key already exist on the local
 // filesystem for a given name.
+// Exists returns true when a complete bundle (both key and cert) exists.
+// A key without a cert (e.g., created separately via "ziti pki create key")
+// is not a complete bundle and should not block certificate creation.
 func (l *Local) Exists(caName, name string) bool {
 	privPath, certPath := l.path(caName, name)
-	if _, err := os.Stat(privPath); err == nil {
-		return true
-	}
-	if _, err := os.Stat(certPath); err == nil {
-		return true
-	}
-	return false
+	_, keyErr := os.Stat(privPath)
+	_, certErr := os.Stat(certPath)
+	return keyErr == nil && certErr == nil
 }
 
 // Fetch fetches the private key and certificate for a given name signed by caName.
@@ -135,10 +134,14 @@ func (l *Local) Add(caName, name string, isCa bool, key, cert []byte, allowOverw
 }
 
 // Chain concats an intermediate cert and a newly signed certificate bundle and adds the chained cert to the store.
-func (l *Local) Chain(caName, destCaName, name string) error {
+// Chain concats an intermediate cert and a newly signed certificate bundle and adds the chained cert to the store.
+func (l *Local) Chain(caName, destCaName, name string, allowOverwrite bool) error {
 	chainName := name + ".chain.pem"
-	if l.Exists(destCaName, chainName) {
-		return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, destCaName)
+	if !allowOverwrite {
+		chainPath := filepath.Join(l.Root, destCaName, "certs", chainName)
+		if _, err := os.Stat(chainPath); err == nil {
+			return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, destCaName)
+		}
 	}
 	if err := l.writeChainBundle(caName, destCaName, name, chainName); err != nil {
 		return fmt.Errorf("failed writing chain %v to the local filesystem: %v", chainName, err)
