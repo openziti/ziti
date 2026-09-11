@@ -4,6 +4,11 @@
 
 * Bug fixes
 
+### End-to-End Encryption (e2ee) Improvements
+
+* Add support for negotiating e2ee crypto material during Dial/Accept handshake. This allows hosting-side crypto material to be per connection (instead of per terminator) and using TLS stream for e2ee.
+
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
