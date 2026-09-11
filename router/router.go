@@ -869,7 +869,13 @@ func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
 // to every connected controller so peer routers see the new state via
 // PeerStateChange. Dialer changes trigger a local rescan against known
 // peers, in case the new dialer set unlocks previously-unmatched
-// listeners.
+// listeners. Under a non-preserve gcMode the change also drives an auto-GC
+// pass over the xlink registry, closing entries it just made stale.
+//
+// The mode comes from the change rather than from the active config, so a
+// removal is swept under the policy of the config being removed. Removing the
+// link config leaves no listeners or dialers, which makes every remaining link
+// unsupportable, so under orphaned or changed they are all closed.
 func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	if change.ListenersChanged {
 		self.publishLinkListeners()
@@ -877,6 +883,7 @@ func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	if change.DialersChanged {
 		self.xlinkRegistry.RescanForDialOpportunities()
 	}
+	link.RunStaleLinkGc(self, change.GcMode)
 }
 
 // publishLinkListeners marshals the current listener set and sends an
@@ -915,6 +922,7 @@ func (self *Router) applyLocalLinkConfig() error {
 		Heartbeats:             self.config.Link.Heartbeats,
 		PayloadSenderQueueSize: self.config.Link.PayloadSenderQueueSize,
 		AckSenderQueueSize:     self.config.Link.AckSenderQueueSize,
+		GcMode:                 self.config.Link.GcMode,
 	})
 	if err != nil {
 		return fmt.Errorf("translate local link config: %w", err)

@@ -245,7 +245,19 @@ let a TLS-valid but non-member controller stay connected to the mesh before drop
 This gives a controller that is being added to the cluster time to be accepted as a member
 before its connection is reaped.
 
-## Config Type Target Field
+## Controller Managed Router Configuration
+
+Routers can now be configured from the controller. A config is attached to a router the same way one
+is attached to a service, the controller distributes it through the Router Data Model, and the router
+applies it at runtime without a restart.
+
+**Status: beta.** The data model, distribution, and the first config type are in place and usable.
+The shape of the config types may still change. See `doc/design/ctrl-managed-router-config.md` for
+the full design.
+
+The pieces below build on each other, in order.
+
+### Config Type Target Field
 
 Config types now have an optional `target` field that indicates what kind of entity the config type
 is intended for. Valid values are `"service"`, `"router"`, and `"other"`. The field is set on creation
@@ -264,6 +276,110 @@ The CLI has been updated to support the new field:
 
 * `ziti edge create config-type` now accepts a `--target` flag
 * `ziti edge list config-types` now shows a `Target` column
+
+### Router Configs
+
+Routers (edge, transit, and fabric) now have a `configs` field that holds a list of config IDs the
+router should use. This is the second step toward controller-managed router configuration: routers
+can now be associated with configs in the same way services already can.
+
+Validation rules:
+
+* Every config referenced by a router must use a config type with `target = "router"`. Configs
+  with `target = "service"` (or anything else) are rejected.
+* A router may reference at most one config per config type. Attempting to attach two configs of
+  the same type is rejected with a duplicate-config error naming both configs.
+* Deleting a config automatically removes it from the `configs` list of any router that referenced
+  it, so dangling references are not possible.
+
+The `configs` field is exposed on router create, update, patch, and detail responses across the
+edge, transit, and fabric router REST APIs.
+
+The CLI has been updated to support the new field:
+
+* `ziti edge create edge-router` accepts `--config <id>` (repeatable)
+* `ziti edge create transit-router` accepts `--config <id>` (repeatable)
+* `ziti edge update edge-router` accepts `--config <id>` to replace the router's config list
+* `ziti fabric create router` accepts `--config <id>` (repeatable)
+* `ziti fabric update router` accepts `--config <id>` to replace the router's config list
+
+### How Routers Consume Configs
+
+**Routers opt in, per config type.** A router accepts nothing from the controller unless its own
+config file says so, and it chooses which types it will accept:
+
+```yaml
+managedConfig:
+  allow:
+    - router.link
+```
+
+An entry naming a type family accepts every version of it, so `router.link` covers `router.link.v1`
+and any later version. An exact type name works too. The special entry `all` accepts every type:
+
+```yaml
+managedConfig:
+  allow:
+    - all
+```
+
+Omitting the `managedConfig` section, or leaving `allow` empty, disables controller-managed config
+entirely. That is the default, so upgrading a router never changes where its configuration comes
+from. Configs of a type the router has not allowed are ignored.
+
+Once a config is allowed, the router receives it through the Router Data Model and hands it to the
+subsystem that owns its type. It is applied in place: the subsystem reconciles its running state
+against the new version rather than the router restarting.
+
+Local YAML wins. Where a router's own config file already configures a subsystem, that subsystem
+ignores the controller's config for as long as the local one is present, so moving a subsystem to
+controller management is a deliberate act of removing its local configuration. A router with no
+local configuration for a subsystem uses whatever the controller sends.
+
+An apply that fails is rolled back to the previously-applied config, and a failure that cannot be
+rolled back raises an alert to the controller rather than leaving the router in an unknown state.
+
+### First Config Type: `router.link.v1`
+
+`router.link.v1` is the first controller-managed config type, covering a router's link listeners and
+dialers. It is built in, so no config type has to be created before use.
+
+Applying one reconciles the router's link surface in place: listeners whose definitions changed are
+rebuilt, listeners that are unchanged are left running, and dialers are replaced. A change confined
+to fields that do not describe a listener or dialer does not disturb either.
+
+Removing the config from a router removes its link surface entirely.
+
+### Stale Link Collection
+
+A link can outlive the configuration that created it. Change a listener's advertise address or a
+dialer's groups and the established link keeps carrying traffic, even though nothing in the current
+configuration would re-establish it. These links are "stale": they work until they break, and then
+they are gone for good.
+
+`router.link.v1` takes an optional `gcMode` controlling what a router does about them after a config
+change:
+
+* `preserve` (default) never closes a link on the basis of the router's own configuration.
+* `orphaned` closes links whose supporting listener or dialer is entirely absent.
+* `changed` closes links whose supporting listener or dialer still exists but has moved, such as a
+  renamed advertise address.
+
+`gcMode` covers local staleness only. A peer withdrawing or moving a listener already closes the
+affected link under every mode, because the peer decides what it will accept, so `preserve` is not a
+guarantee that links survive every change.
+
+**Removing a router's link config closes its links**, whatever `gcMode` said. A removal leaves no
+listeners and no dialers, so every remaining link is one the router can never re-establish.
+
+For operators, `ziti ops verify stale-links` reports every link in the network against both
+endpoints' current configuration, and `--gc` closes the ones both endpoints confirm as stale. It
+judges a router against whatever configuration that router is actually running, so it is useful on
+routers configured from local YAML as well as controller-managed ones.
+
+A link is only closed when both of its endpoints agree it is stale and both judged the same
+incarnation of it. An endpoint that is offline, too old to answer, or outside `--filter` leaves the
+link reported as partial and never closes it.
 
 ## Wildcard OIDC Issuers
 
@@ -291,41 +407,6 @@ Each entry must be an exact hostname (no patterns) that an active server-certifi
 entries are matched against wildcard SANs using standard X.509 hostname rules. The resulting OIDC issuers
 are therefore concrete, fixed hostnames, so the set of valid `iss` values stays closed. Concrete
 (non-wildcard) SANs continue to be served as issuers automatically and do not need to be listed.
-
-## Router Configs
-
-Routers (edge, transit, and fabric) now have a `configs` field that holds a list of config IDs the
-router should use. This is the second step toward controller-managed router configuration: routers
-can now be associated with configs in the same way services already can.
-
-Validation rules:
-
-* Every config referenced by a router must use a config type with `target = "router"`. Configs
-  with `target = "service"` (or anything else) are rejected.
-* A router may reference at most one config per config type. Attempting to attach two configs of
-  the same type is rejected with a duplicate-config error naming both configs.
-* Deleting a config automatically removes it from the `configs` list of any router that referenced
-  it, so dangling references are not possible.
-
-The `configs` field is exposed on router create, update, patch, and detail responses across the
-edge, transit, and fabric router REST APIs.
-
-The CLI has been updated to support the new field:
-
-* `ziti edge create edge-router` accepts `--config <id>` (repeatable)
-* `ziti edge create transit-router` accepts `--config <id>` (repeatable)
-* `ziti edge update edge-router` accepts `--config <id>` to replace the router's config list
-* `ziti fabric create router` accepts `--config <id>` (repeatable)
-* `ziti fabric update router` accepts `--config <id>` to replace the router's config list
-
-**Status: in progress.** The `target` field, the router `configs` field, and the built-in
-`router.link.v1` config type together establish the data model and distribution path:
-config types can be targeted at routers, configs can be attached to routers, and the
-controller distributes router-targeted configs to the affected routers through the Router
-Data Model, where a router-side registry receives them. Routers do not yet consume these
-configs to drive their runtime behavior, so controller-managed router configuration is not
-ready for production use in this release. See `doc/design/ctrl-managed-router-config.md`
-for the overall design.
 
 ## Multiple LAN Interfaces for tproxy
 
@@ -532,6 +613,17 @@ Build flags are not capabilities. `capabilities` on `/version` describes what
 the controller offers over the API, is defined by this repository, and is
 enumerated at `/enumerated-capabilities`. Build flags describe how the binary
 was built, are open-ended, and are enumerated nowhere.
+
+## Current Beta Features
+
+Beta features are still under development and are subject to change. They should
+be usable in their released form. Though unlikely, there is a small chance they will
+be removed.
+
+* Basic Permission System
+* Alert Events
+* Controller-Initiated Control Channel Dials
+* Controller Managed Router Configuration
 
 ## Deprecated Features
 
