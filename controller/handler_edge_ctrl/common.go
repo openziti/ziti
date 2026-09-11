@@ -428,6 +428,30 @@ func (self *baseSessionRequestContext) verifyServiceBindAccess(identityId string
 	}
 }
 
+func (self *baseSessionRequestContext) verifyServiceDialAccess(identityId string, serviceId string) {
+	if self.err == nil {
+		result, err := self.handler.getAppEnv().Managers.EdgeService.IsDialableByIdentity(serviceId, identityId)
+		if err != nil {
+			self.err = internalError(err)
+			logrus.
+				WithField("routerId", self.sourceRouter.Id).
+				WithField("identityId", identityId).
+				WithField("serviceId", serviceId).
+				WithField("operation", self.handler.Label()).
+				WithError(err).Error("unable to verify edge router access to dial service")
+			return
+		} else if !result {
+			self.err = InvalidServiceError{}
+			logrus.
+				WithField("routerId", self.sourceRouter.Id).
+				WithField("identityId", identityId).
+				WithField("serviceId", serviceId).
+				WithField("operation", self.handler.Label()).
+				Error("edge router does not have dial access to service")
+		}
+	}
+}
+
 // verifyRouterEdgeRouterAccess checks that the requesting router may act on the service on its
 // own behalf, as an edge router tunneler does. No edge session is involved, so denials are
 // reported with the missing policy link rather than as a session error.
