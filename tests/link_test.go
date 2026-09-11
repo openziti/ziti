@@ -124,6 +124,10 @@ func (self *testDial) GetIteration() uint32 {
 	return 1
 }
 
+func (self *testDial) GetListenerBinding() string {
+	return ""
+}
+
 type dialEnvMock struct{}
 
 func (self *dialEnvMock) GetChannelHeaders() (channel.Headers, error) {

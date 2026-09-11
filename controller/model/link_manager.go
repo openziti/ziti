@@ -299,21 +299,26 @@ func (self *LinkManager) GetLinkMap() map[string]*Link {
 	return linkMap
 }
 
-// Remove retracts link from the link table, its endpoint routers' link sets, and the per-router index.
+// Remove retracts link from the link table, its endpoint routers' link sets, and the per-router index,
+// reporting whether it did. Removal is conditional on link still being the current incarnation: it does
+// nothing and returns false when a newer iteration has taken its place, so a caller holding an older
+// reference can tell it lost the race rather than assume it won.
 // Serialized against any other change to the same link id, for the reason given on Add.
-func (self *LinkManager) Remove(link *Link) {
+func (self *LinkManager) Remove(link *Link) bool {
 	defer self.linkLocks.LockFor(link.Id)()
-	self.removeLocked(link)
+	return self.removeLocked(link)
 }
 
-// removeLocked retracts a link. The caller must hold the link's stripe.
-func (self *LinkManager) removeLocked(link *Link) {
-	if self.linkTable.remove(link) {
-		link.Src.routerLinks.Remove(link, link.DstId)
-		if dest := link.GetDest(); dest != nil {
-			dest.routerLinks.Remove(link, link.Src.Id)
-		}
+// removeLocked retracts a link, reporting whether it did. The caller must hold the link's stripe.
+func (self *LinkManager) removeLocked(link *Link) bool {
+	if !self.linkTable.remove(link) {
+		return false
 	}
+	link.Src.routerLinks.Remove(link, link.DstId)
+	if dest := link.GetDest(); dest != nil {
+		dest.routerLinks.Remove(link, link.Src.Id)
+	}
+	return true
 }
 
 func (self *LinkManager) ConnectedNeighborsOfRouter(router *Router) []*Router {

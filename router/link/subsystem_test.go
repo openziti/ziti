@@ -17,6 +17,7 @@
 package link
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -335,6 +336,53 @@ func Test_Subsystem_ChangeHandler_ListenersOnlyChange(t *testing.T) {
 	req.Len(changes, 1)
 	req.True(changes[0].ListenersChanged)
 	req.False(changes[0].DialersChanged, "dialer slice unchanged")
+}
+
+func Test_Subsystem_ChangeHandler_GcModeOnlyChange(t *testing.T) {
+	req := require.New(t)
+	r, f := newTestRegistry(t)
+
+	// Prime with a listener and the default gc mode.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"preserve"}`))
+	req.Len(f.createdListeners, 1)
+	original := f.createdListeners[0]
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// Only gcMode changes; listeners and dialers are identical. The apply must
+	// still take effect (the config data differs, so it is not a no-op).
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"orphaned"}`))
+	req.True(rec.waitForChange(time.Second), "handler should fire when only gcMode changes")
+
+	changes := rec.snapshot()
+	req.Len(changes, 1)
+	req.False(changes[0].ListenersChanged, "listeners unchanged")
+	req.False(changes[0].DialersChanged, "dialers unchanged")
+	req.True(changes[0].GcModeChanged, "gcMode changed preserve→orphaned")
+	req.Equal("orphaned", r.GetConfig().GcMode)
+
+	// Rebuilding here would rebind the listen socket and drop half-established
+	// links for nothing.
+	req.Len(f.createdListeners, 1, "gcMode change must not build a replacement listener")
+	req.False(original.closed, "gcMode change must not close the running listener")
+	req.Equal([]xlink.Listener{original}, r.Listeners(), "the same listener instance must still be live")
+}
+
+func Test_Subsystem_Apply_ListenerChangeStillRebuilds(t *testing.T) {
+	// Guards the other direction: the narrowed rebuild condition must not make
+	// real listener changes inert.
+	req := require.New(t)
+	r, f := newTestRegistry(t)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"orphaned"}`))
+	req.Len(f.createdListeners, 1)
+	original := f.createdListeners[0]
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6263"}],"gcMode":"orphaned"}`))
+	req.Len(f.createdListeners, 2, "a changed bind address must build a replacement listener")
+	req.True(original.closed, "the superseded listener must be closed")
+	req.True(f.createdListeners[1].started, "the replacement listener must be started")
 }
 
 func Test_Subsystem_ChangeHandler_ListenerBindInterfaceChangeAffectsDefaultDialer(t *testing.T) {
@@ -879,4 +927,67 @@ func Test_Groups_MarshalArray(t *testing.T) {
 	js, err := g.MarshalJSON()
 	req.NoError(err)
 	req.Equal(`["a","b"]`, string(js))
+}
+
+func Test_Subsystem_ChangeHandler_RemoveAlwaysSweeps(t *testing.T) {
+	// Remove clears the config before notifying, so a handler that read the
+	// active config to find the mode would see nothing and skip the sweep,
+	// leaving links up with no listeners or dialers to maintain them.
+	//
+	// The removed config's own mode does not govern: gcMode applies to links the
+	// router's configuration made stale, and after a removal there is no
+	// configuration. Preserve is no exception.
+	req := require.New(t)
+
+	for _, gcMode := range []string{"preserve", "orphaned", "changed", ""} {
+		r, _ := newTestRegistry(t)
+		data := fmt.Sprintf(`{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":%q}`, gcMode)
+		req.NoError(r.Apply(1, data))
+
+		rec := newChangeRecorder()
+		r.SetConfigurationChangeHandler(rec.handle)
+
+		req.NoError(r.Remove())
+		req.True(rec.waitForChange(time.Second), "removal must notify (gcMode %q)", gcMode)
+
+		changes := rec.snapshot()
+		req.Len(changes, 1)
+		req.Equal(GcModeOrphaned, changes[0].GcMode,
+			"a removal sweeps regardless of the removed config's gcMode %q", gcMode)
+		req.Nil(r.GetConfig(), "and the config really is gone by then")
+	}
+}
+
+func Test_Subsystem_ChangeHandler_CarriesAppliedGcMode(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"preserve"}`))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	// An apply is swept under the mode it brings, not the one it replaces.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}],"gcMode":"changed"}`))
+	req.True(rec.waitForChange(time.Second))
+	req.Equal(GcModeChanged, rec.snapshot()[0].GcMode)
+}
+
+func Test_EffectiveGcMode(t *testing.T) {
+	req := require.New(t)
+
+	mode := func(gcMode string) *Config { return &Config{GcMode: gcMode} }
+
+	// Apply: the incoming config decides.
+	req.Equal(GcModeChanged, effectiveGcMode(mode("changed")))
+	req.Equal(GcModeOrphaned, effectiveGcMode(mode("orphaned")))
+	req.Equal(GcModePreserve, effectiveGcMode(mode("preserve")))
+	req.Equal(GcModePreserve, effectiveGcMode(mode("")))
+
+	// An unparseable mode must not widen what gets closed.
+	req.Equal(GcModePreserve, effectiveGcMode(mode("nonsense")))
+
+	// Remove: always sweeps, since there is no longer a configuration whose
+	// policy could apply.
+	req.Equal(GcModeOrphaned, effectiveGcMode(nil))
 }

@@ -84,6 +84,8 @@ type RouterCapabilityMask = Mask[RouterCapability]
 // namespace.
 type ControllerCapabilityMask = Mask[ControllerCapability]
 
+// Shared router capabilities: non-negative, sourced from the SDK enum, and
+// meaningful to the SDK as well as the controller.
 const (
 	// RouterMultiChannel indicates the router uses new (1000+) ControlHeaders IDs
 	// and supports multi-underlay control channels
@@ -91,13 +93,6 @@ const (
 
 	// RouterConnectV2 indicates the router supports the ConnectV2 message flow
 	RouterConnectV2 RouterCapability = RouterCapability(edge_client_pb.RouterCapability_ConnectV2)
-
-	// RouterDataModel indicates the router supports the router data model. This capability is
-	// meaningful only between controller and router, so it lives at a negative (side-local)
-	// position rather than in the SDK-shared enum; its former shared value 3 is reserved.
-	// Side-local capabilities start at -2: -1 maps to bit 63, which cannot ride the controller's
-	// persisted int64 capabilities mask (sign bit).
-	RouterDataModel RouterCapability = -2
 
 	// RouterServiceSubscriptions indicates the router can push service change and posture
 	// state notifications to subscribed SDK clients over the edge protocol
@@ -110,15 +105,35 @@ const (
 	// RouterBindSuccess indicates the router sends bind-success notifications. Also
 	// advertised to older SDKs via the deprecated SupportsBindSuccess edge header.
 	RouterBindSuccess RouterCapability = RouterCapability(edge_client_pb.RouterCapability_BindSuccess)
+)
 
-	// Example of a control-plane-only capability (not advertised). A capability
-	// that only the controller and router need — and that shouldn't wait on an
-	// SDK proto release — is defined here with a negative value, which places it
-	// at the top of the mask, invisible to the SDK and edge-api. Uncomment,
-	// rename, and add it to GetRouterCapabilitiesMask to advertise one; the next
-	// available slot is -1.
+// Control-plane-only router capabilities: negative, defined only in this repo,
+// and invisible to the SDK and the edge-api (they appear there as unknown bit
+// positions). Use one for a capability only the controller and router need, or
+// one that shouldn't wait on an SDK proto release.
+//
+// Negative values index down from the top of the mask, so -1 is bit 63, -2 is
+// bit 62, and so on. **-1 is unusable**: bit 63 is the sign bit of the
+// controller's persisted int64 capabilities mask, and the hello path masks it
+// off before storing (see sync_strats). A capability there would negotiate
+// correctly on the control channel and then silently vanish from the persisted
+// mask and the edge-router API. Side-local values therefore start at -2.
+//
+// To add one: take the next value below the lowest in use, define it here, and
+// add it to GetRouterCapabilitiesMask to advertise it.
+const (
+	// RouterDataModel indicates the router supports the router data model. Its
+	// former SDK-shared value 3 is reserved.
+	RouterDataModel RouterCapability = -2
+
+	// RouterStaleLinkCheck indicates the router answers CheckStaleLinks requests.
+	// A router without it never replies, so the controller skips it rather than
+	// waiting out the request timeout.
+	RouterStaleLinkCheck RouterCapability = -3
+
+	// Next free slot is -4.
 	//
-	// RouterExampleControlOnly RouterCapability = -1
+	// RouterExampleControlOnly RouterCapability = -4
 )
 
 // GetRouterCapabilitiesMask returns the full router capability bitmask advertised
@@ -127,10 +142,12 @@ func GetRouterCapabilitiesMask() *RouterCapabilityMask {
 	return NewMask(
 		RouterMultiChannel,
 		RouterConnectV2,
-		RouterDataModel,
 		RouterServiceSubscriptions,
 		RouterPostureChecks,
 		RouterBindSuccess,
+
+		RouterDataModel,
+		RouterStaleLinkCheck,
 	)
 }
 

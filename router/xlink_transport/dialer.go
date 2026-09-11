@@ -155,13 +155,18 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		dialer: self,
 		link: &splitImpl{
 			id:            dial.GetLinkId(),
-			key:           dial.GetLinkKey(),
 			routerId:      dial.GetRouterId(),
 			routerVersion: dial.GetRouterVersion(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			dialAddress:   dial.GetAddress(),
-			iteration:     dial.GetIteration(),
-			dialed:        true,
+			linkKey: xlink.LinkKey{
+				DialerBinding:   self.GetBinding(),
+				Protocol:        dial.GetLinkProtocol(),
+				DestId:          dial.GetRouterId(),
+				ListenerBinding: dial.GetListenerBinding(),
+			},
+			iteration: dial.GetIteration(),
+			dialed:    true,
 		},
 	}
 
@@ -215,13 +220,18 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		dialer: self,
 		link: &impl{
 			id:            dial.GetLinkId(),
-			key:           dial.GetLinkKey(),
 			routerId:      dial.GetRouterId(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
 			dialAddress:   dial.GetAddress(),
-			iteration:     dial.GetIteration(),
-			dialed:        true,
+			linkKey: xlink.LinkKey{
+				DialerBinding:   self.GetBinding(),
+				Protocol:        dial.GetLinkProtocol(),
+				DestId:          dial.GetRouterId(),
+				ListenerBinding: dial.GetListenerBinding(),
+			},
+			iteration: dial.GetIteration(),
+			dialed:    true,
 		},
 	}
 
@@ -264,13 +274,18 @@ func (self *dialer) dialMulti(linkId *identity.TokenId, address transport.Addres
 		dialer: self,
 		link: &impl{
 			id:            dial.GetLinkId(),
-			key:           dial.GetLinkKey(),
 			routerId:      dial.GetRouterId(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
 			dialAddress:   dial.GetAddress(),
-			iteration:     dial.GetIteration(),
-			dialed:        true,
+			linkKey: xlink.LinkKey{
+				DialerBinding:   self.GetBinding(),
+				Protocol:        dial.GetLinkProtocol(),
+				DestId:          dial.GetRouterId(),
+				ListenerBinding: dial.GetListenerBinding(),
+			},
+			iteration: dial.GetIteration(),
+			dialed:    true,
 		},
 	}
 
