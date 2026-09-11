@@ -63,7 +63,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v5 v5.0.27
+	github.com/openziti/channel/v5 v5.0.29
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.36.0
 	github.com/openziti/foundation/v2 v2.0.100
@@ -73,7 +73,7 @@ require (
 	github.com/openziti/runzmd v1.0.92
 	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
 	github.com/openziti/secretstream v0.1.52
-	github.com/openziti/transport/v2 v2.0.220
+	github.com/openziti/transport/v2 v2.0.221
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.5
 	github.com/orcaman/concurrent-map/v2 v2.0.1
