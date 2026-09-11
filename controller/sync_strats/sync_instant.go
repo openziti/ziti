@@ -1797,12 +1797,17 @@ func newPostureCheck(postureModel *db.PostureCheck) *edge_ctrl_pb.DataState_Post
 
 	switch subType := postureModel.SubType.(type) {
 	case *db.PostureCheckProcess:
+		var fingerprints []string
+		if subType.Fingerprint != "" {
+			fingerprints = []string{subType.Fingerprint}
+		}
+
 		newVal.Subtype = &edge_ctrl_pb.DataState_PostureCheck_Process_{
 			Process: &edge_ctrl_pb.DataState_PostureCheck_Process{
 				OsType:       subType.OperatingSystem,
 				Path:         subType.Path,
 				Hashes:       subType.Hashes,
-				Fingerprints: []string{subType.Fingerprint},
+				Fingerprints: fingerprints,
 			},
 		}
 	case *db.PostureCheckProcessMulti:
