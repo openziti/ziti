@@ -88,6 +88,7 @@ func (o *PKICreateServerOptions) addPKICreateServerFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (o *PKICreateServerOptions) Run() error {
+	o.ResolveFlagsFromViper(o.Cmd)
 	IPs, DNSNames, err := o.ObtainIPsAndDNSNames()
 	if err != nil {
 		return err
