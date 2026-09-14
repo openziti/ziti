@@ -619,11 +619,13 @@ Thanks to the community members who contributed to this release.
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.52](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.52)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.220](https://github.com/openziti/transport/compare/v2.0.215...v2.0.220)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.221](https://github.com/openziti/transport/compare/v2.0.215...v2.0.221)
+    * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
     * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4394](https://github.com/openziti/ziti/issues/4394) - Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4184](https://github.com/openziti/ziti/issues/4184) - Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4278](https://github.com/openziti/ziti/issues/4278) - fabric inspect data-model-index doesn't move for writes outside the router data model
     * [Issue #4196](https://github.com/openziti/ziti/issues/4196) - Router control-channel connect/disconnect race can leave a reconnected router de-registered

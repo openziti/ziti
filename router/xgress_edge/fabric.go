@@ -260,6 +260,8 @@ const (
 	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
 )
 
+var _ xgress.SignalConnection = (*edgeXgressConn)(nil)
+
 type edgeXgressConn struct {
 	edge.MsgChannel
 	mux     edge.ConnMux[*state.ConnState]
