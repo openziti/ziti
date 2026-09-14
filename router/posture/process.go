@@ -179,13 +179,17 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		return result
 	}
 
-	if len(valid.Fingerprints) > 0 {
-		validPrints := map[string]struct{}{}
+	validPrints := map[string]struct{}{}
 
-		for _, validPrint := range valid.Fingerprints {
-			validPrints[strings.ToLower(validPrint)] = struct{}{}
+	for _, validPrint := range valid.Fingerprints {
+		if validPrint == "" {
+			continue
 		}
 
+		validPrints[strings.ToLower(validPrint)] = struct{}{}
+	}
+
+	if len(validPrints) > 0 {
 		validPrintFound := false
 		for _, givenPrint := range given.SignerFingerprints {
 			if _, ok := validPrints[strings.ToLower(givenPrint)]; ok {
@@ -195,7 +199,7 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		}
 
 		if !validPrintFound {
-			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Hashes)
+			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Fingerprints)
 			return result
 		}
 	}
