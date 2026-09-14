@@ -12,8 +12,22 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
-  * [Issue #4294](https://github.com/openziti/ziti/issues/4294) - [Backport-2.0] Admin MFA removal doesn't replicate across HA cluster members
-  * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+    * [Issue #4373](https://github.com/openziti/ziti/issues/4373) - [Backport-2.0] improve crypto exchange
+    * [Issue #4294](https://github.com/openziti/ziti/issues/4294) - [Backport-2.0] Admin MFA removal doesn't replicate across HA cluster members
+    * [Issue #4365](https://github.com/openziti/ziti/issues/4365) - REST requests no longer reset the legacy API session timeout
+    * [Issue #4351](https://github.com/openziti/ziti/issues/4351) - [Backport-2.0] Policy enforcers leak a metrics reference on every run
+    * [Issue #4367](https://github.com/openziti/ziti/issues/4367) - [Backport-2.0] REST requests no longer reset the legacy API session timeout
+    * [Issue #4369](https://github.com/openziti/ziti/issues/4369) - Router control channel connectivity events can be delivered out of order
+    * [Issue #4357](https://github.com/openziti/ziti/issues/4357) - [Backport-2.0] Router posture cache grows without bound as clients re-authenticate
+    * [Issue #4371](https://github.com/openziti/ziti/issues/4371) - [Backport-2.0] Router control channel connectivity events can be delivered out of order
+    * [Issue #4323](https://github.com/openziti/ziti/issues/4323) - Router posture cache grows without bound as clients re-authenticate
+    * [Issue #4316](https://github.com/openziti/ziti/issues/4316) - [Backport-2.0] Router posture cache corrupts process posture state when applying posture responses
+    * [Issue #4350](https://github.com/openziti/ziti/issues/4350) - Policy enforcers leak a metrics reference on every run
+    * [Issue #4319](https://github.com/openziti/ziti/issues/4319) - OS posture check with no versions fails at the router, passes at the controller
+    * [Issue #4314](https://github.com/openziti/ziti/issues/4314) - Router posture cache corrupts process posture state when applying posture responses
+    * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+    * [Issue #4202](https://github.com/openziti/ziti/issues/4202) - wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+
 
 # Release 2.0.4
 
