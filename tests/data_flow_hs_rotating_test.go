@@ -20,16 +20,17 @@
 package tests
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/ziti/common/eid"
-	"github.com/pkg/errors"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/common/eid"
+	"github.com/pkg/errors"
 )
 
 func Test_HSRotatingDataflow(t *testing.T) {
@@ -102,7 +103,7 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
 
 				notifyFirst := &sync.Once{}
-				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.RouterHostConn) {
 					if len(conn) > 0 {
 						notifyFirst.Do(func() {
 							for i := 0; i < int(service.maxRequests); i++ {
@@ -247,7 +248,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
 
 				notifyFirst := &sync.Once{}
-				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.RouterHostConn) {
 					if len(conn) > 0 {
 						notifyFirst.Do(func() {
 							for i := 0; i < int(service.maxRequests); i++ {
@@ -270,7 +271,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientContext, err := ziti.NewContext(clientConfig)
 	ctx.Req.NoError(err)
-	
+
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 

@@ -22,20 +22,21 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/openziti/channel/v4"
-	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/ziti/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/router/env"
-	"github.com/openziti/ziti/router/forwarder"
-	"github.com/openziti/ziti/router/handler_xgress"
-	"github.com/openziti/sdk-golang/xgress"
-	"github.com/openziti/ziti/router/xgress_router"
-	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/openziti/channel/v4"
+	"github.com/openziti/metrics"
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/ziti/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/router/env"
+	"github.com/openziti/ziti/router/forwarder"
+	"github.com/openziti/ziti/router/handler_xgress"
+	"github.com/openziti/ziti/router/xgress_router"
+	"github.com/stretchr/testify/require"
 )
 
 type testSrcConn struct {
@@ -154,7 +155,6 @@ func Test_SingleRouterPerf(t *testing.T) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           xgress_router.NewAcker(fwd, registry, closeNotify),
 		Forwarder:       fwd,
-		Retransmitter:   xgress.NewRetransmitter(fwd, fwd, registry, closeNotify),
 		PayloadIngester: xgress.NewPayloadIngester(closeNotify),
 		Metrics:         xgress.NewMetrics(registry),
 	})
