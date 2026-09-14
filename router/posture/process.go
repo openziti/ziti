@@ -195,7 +195,7 @@ func (p *ProcessCheck) compareProcesses(osType string, given *edge_client_pb.Pos
 		}
 
 		if !validPrintFound {
-			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Hashes)
+			result.Reason = fmt.Errorf("valid signer not found, given: %v, expected one of: %v", given.SignerFingerprints, valid.Fingerprints)
 			return result
 		}
 	}
