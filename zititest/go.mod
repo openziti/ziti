@@ -21,12 +21,12 @@ require (
 	github.com/openziti/channel/v5 v5.0.27
 	github.com/openziti/edge-api v0.36.0
 	github.com/openziti/fablab v0.6.23
-	github.com/openziti/foundation/v2 v2.0.100
-	github.com/openziti/identity v1.0.140
+	github.com/openziti/foundation/v2 v2.0.104
+	github.com/openziti/identity v1.0.143
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/sdk-golang/acquire v0.3.0
 	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
-	github.com/openziti/transport/v2 v2.0.220
+	github.com/openziti/transport/v2 v2.0.225
 	github.com/openziti/ziti/v2 v2.0.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -193,7 +193,7 @@ require (
 	github.com/openziti/xweb/v3 v3.0.5 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
-	github.com/pion/dtls/v3 v3.1.5 // indirect
+	github.com/pion/dtls/v3 v3.1.8 // indirect
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/transport/v4 v4.1.0 // indirect
 	github.com/pkg/sftp v1.13.11 // indirect
@@ -242,7 +242,7 @@ require (
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect

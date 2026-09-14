@@ -757,13 +757,15 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/edge-api: [v0.31.0 -> v0.36.0](https://github.com/openziti/edge-api/compare/v0.31.0...v0.36.0)
     * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
 
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.100](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.100)
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.104](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.104)
+    * [Issue #502](https://github.com/openziti/foundation/issues/502) - logging registry forwards records its root handler would decline
+    * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
     * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
     * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
     * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
 
-* github.com/openziti/identity: [v1.0.129 -> v1.0.140](https://github.com/openziti/identity/compare/v1.0.129...v1.0.140)
+* github.com/openziti/identity: [v1.0.129 -> v1.0.143](https://github.com/openziti/identity/compare/v1.0.129...v1.0.143)
     * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
     * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
 
@@ -789,11 +791,13 @@ Thanks to the community members who contributed to this release.
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.52](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.52)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.220](https://github.com/openziti/transport/compare/v2.0.215...v2.0.220)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.225](https://github.com/openziti/transport/compare/v2.0.215...v2.0.225)
+    * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
     * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4394](https://github.com/openziti/ziti/issues/4394) - Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4442](https://github.com/openziti/ziti/issues/4442) - Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
     * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails
     * [Issue #4434](https://github.com/openziti/ziti/issues/4434) - Update to Go 1.27
