@@ -7,7 +7,26 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/ziti/compare/v2.0.4...v2.0.5)
+  * [Issue #4339](https://github.com/openziti/ziti/issues/4339) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to a legacy edge client
   * [Issue #4289](https://github.com/openziti/ziti/issues/4289) - [Backport-2.0] wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
+
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.102](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.102)
+    * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
+    * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
+    * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
+    * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
+    * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
+
+* github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.2](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.2)
+    * [Issue #1019](https://github.com/openziti/sdk-golang/issues/1019) - [Backport-1.8] Legacy edge conn ignores a StateClosed that arrives after a FIN
+    * [Issue #1007](https://github.com/openziti/sdk-golang/issues/1007) - [Backport-1.8] Dial for an unknown edge conn id is dropped silently, costing the client its full connect timeout
+    * [Issue #988](https://github.com/openziti/sdk-golang/issues/988) - LinkSendBuffer leaks goroutines after send-half close
+    * [Issue #992](https://github.com/openziti/sdk-golang/issues/992) - Read deadline on ReadAdapter permanently closes the peer's send buffer
+    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
+    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
+    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
+    * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 # Release 2.0.4
 

@@ -66,12 +66,12 @@ require (
 	github.com/openziti/channel/v4 v4.3.12
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.36.0
-	github.com/openziti/foundation/v2 v2.0.91
+	github.com/openziti/foundation/v2 v2.0.102-0.20260911201209-ee0af61de2d7
 	github.com/openziti/identity v1.0.129
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.90
-	github.com/openziti/sdk-golang v1.7.0
+	github.com/openziti/sdk-golang v1.8.2-0.20260914200339-f79c9ce3c967
 	github.com/openziti/secretstream v0.1.49
 	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/x509-claims v1.0.3
@@ -99,7 +99,7 @@ require (
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
 	google.golang.org/protobuf v1.36.12
@@ -127,6 +127,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
@@ -180,6 +181,7 @@ require (
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.4 // indirect
 	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.15.0 // indirect
