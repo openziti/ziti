@@ -24,7 +24,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.102
 	github.com/openziti/identity v1.0.129
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang v1.7.0
+	github.com/openziti/sdk-golang v1.8.2-0.20260916191751-c903f9f269a4
 	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/ziti/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -93,6 +93,7 @@ require (
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
@@ -206,6 +207,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.4 // indirect
 	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect

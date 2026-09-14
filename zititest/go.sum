@@ -195,6 +195,8 @@ github.com/dlclark/regexp2 v1.12.0 h1:0j4c5qQmnC6XOWNjP3PIXURXN2gWx76rd3KvgdPkCz
 github.com/dlclark/regexp2 v1.12.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
+github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=
+github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/ef-ds/deque v1.0.4 h1:iFAZNmveMT9WERAkqLJ+oaABF9AcVQ5AjXem/hroniI=
 github.com/ef-ds/deque v1.0.4/go.mod h1:gXDnTC3yqvBcHbq2lcExjtAcVrOnJCbMcZXmuj8Z4tg=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
@@ -619,8 +621,8 @@ github.com/openziti/metrics v1.4.5 h1:p51HYSQyqaDafizPWluhYjU/rVfY52snER8/BHpfPr
 github.com/openziti/metrics v1.4.5/go.mod h1:MOLcoTxhPNla6+NWUCMVTnl1PNqTU40qrbKVa/lVVgg=
 github.com/openziti/runzmd v1.0.90 h1:fasGlaq9xV+zohEGDC7Q0nOLA0n8Kpfccribc+VGQVw=
 github.com/openziti/runzmd v1.0.90/go.mod h1:ma3b7UdVYAC9ZCVUSjevUH/7yz9asI537XPsEh7+j14=
-github.com/openziti/sdk-golang v1.7.0 h1:4IzBbioToOPkb7F0+vQcXwAx7e9Ca3++TBZh4mrHc7I=
-github.com/openziti/sdk-golang v1.7.0/go.mod h1:MLEH77mc/l4CT4VShw0JFCzF0g+G+Z5HmV4Ic/Baer4=
+github.com/openziti/sdk-golang v1.8.2-0.20260916191751-c903f9f269a4 h1:TwSvXkM8K2iUJeKVVIWvt4EWTOt6P/r1ozEPFeXkNlU=
+github.com/openziti/sdk-golang v1.8.2-0.20260916191751-c903f9f269a4/go.mod h1:N76C90aeRFguYww1wczhpdH4ZXQ1YURpEONh1dnlGJM=
 github.com/openziti/secretstream v0.1.49 h1:qfyex2w4fGtTnvIGSiVXn8prQC2IWajQ4Y76r8x9CD0=
 github.com/openziti/secretstream v0.1.49/go.mod h1:wrPNC1z0rh4e3wFW4kYumU1Tx9YoXXc9Im2biyxb0P4=
 github.com/openziti/transport/v2 v2.0.215 h1:JkasjdBTa8kcVsLO1fn655GJWBrp6BsMElzSxN9dcEA=
@@ -699,6 +701,8 @@ github.com/sagikazarmark/locafero v0.12.0/go.mod h1:sZh36u/YSZ918v0Io+U9ogLYQJ9t
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/shirou/gopsutil/v3 v3.24.5 h1:i0t8kL+kQTvpAYToeuiVk3TgDeKOFioZO3Ztz/iZ9pI=
 github.com/shirou/gopsutil/v3 v3.24.5/go.mod h1:bsoOS1aStSs9ErQ1WWfxllSeS1K5D+U30r2NfcubMVk=
+github.com/shirou/gopsutil/v4 v4.26.4 h1:B4SXVbcwTyrocPHEmWBC4uCYr4Xcu3MK1TXqbprAOWY=
+github.com/shirou/gopsutil/v4 v4.26.4/go.mod h1:LZ6ewCSkBqUpvSOf+LsTGnRinC6iaNUNMGBtDkJBaLQ=
 github.com/shoenig/go-m1cpu v0.2.1 h1:yqRB4fvOge2+FyRXFkXqsyMoqPazv14Yyy+iyccT2E4=
 github.com/shoenig/go-m1cpu v0.2.1/go.mod h1:KkDOw6m3ZJQAPHbrzkZki4hnx+pDRR1Lo+ldA56wD5w=
 github.com/shoenig/test v1.7.0 h1:eWcHtTXa6QLnBvm0jgEabMRN/uJ4DMV3M8xUGgRkZmk=
