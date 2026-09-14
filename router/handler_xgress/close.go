@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
@@ -56,20 +55,11 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	txc.forwarder.EndCircuit(x.CircuitId())
 
 	// Notify the controller of the xgress fault
-	fault := &ctrl_pb.Fault{Id: x.CircuitId()}
-	if x.Originator() == xgress.Initiator {
-		fault.Subject = ctrl_pb.FaultSubject_IngressFault
-	} else if x.Originator() == xgress.Terminator {
-		fault.Subject = ctrl_pb.FaultSubject_EgressFault
+	subject := ctrl_pb.FaultSubject_IngressFault
+	if x.Originator() == xgress.Terminator {
+		subject = ctrl_pb.FaultSubject_EgressFault
 	}
 
-	ch := txc.ctrls.GetChannel(x.CtrlId())
-	if ch == nil {
-		log.WithField("ctrlId", x.CtrlId()).Error("control channel not available")
-	} else {
-		log.Debug("notifying controller of fault")
-		if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
-			log.WithError(err).Error("error sending fault")
-		}
-	}
+	log.Debug("reporting circuit fault")
+	txc.forwarder.ReportCircuitEndpointFault(x.CircuitId(), x.CtrlId(), subject)
 }
