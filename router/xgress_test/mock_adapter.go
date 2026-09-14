@@ -189,11 +189,6 @@ func (self *MockDataPlaneAdapter) ForwardAcknowledgement(ack *xgress.Acknowledge
 	}
 }
 
-// GetRetransmitter returns the retransmitter from the environment
-func (self *MockDataPlaneAdapter) GetRetransmitter() *xgress.Retransmitter {
-	return self.env.GetRetransmitter()
-}
-
 // GetPayloadIngester returns the payload ingester from the environment
 func (self *MockDataPlaneAdapter) GetPayloadIngester() *xgress.PayloadIngester {
 	return self.env.GetPayloadIngester()

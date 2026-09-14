@@ -10,8 +10,6 @@ replace github.com/openziti/dilithium => github.com/openziti/dilithium v0.3.5
 
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
 
-replace github.com/openziti/foundation/v2 => github.com/openziti/foundation/v2 v2.0.86
-
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
@@ -21,12 +19,12 @@ require (
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.32
 	github.com/openziti/channel/v4 v4.3.11
-	github.com/openziti/edge-api v0.27.5
+	github.com/openziti/edge-api v0.31.0
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.90
-	github.com/openziti/identity v1.0.128
+	github.com/openziti/foundation/v2 v2.0.102-0.20260911201209-ee0af61de2d7
+	github.com/openziti/identity v1.0.129
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/sdk-golang v1.6.0
+	github.com/openziti/sdk-golang v1.8.2-0.20260914200339-f79c9ce3c967
 	github.com/openziti/storage v0.4.28
 	github.com/openziti/transport/v2 v2.0.215
 	github.com/openziti/ziti v1.6.2
@@ -70,6 +68,7 @@ require (
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -179,6 +178,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.4 // indirect
 	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -211,7 +211,7 @@ require (
 	golang.org/x/image v0.42.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
