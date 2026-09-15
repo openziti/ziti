@@ -66,7 +66,7 @@ require (
 	github.com/openziti/channel/v4 v4.3.12
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.36.0
-	github.com/openziti/foundation/v2 v2.0.91
+	github.com/openziti/foundation/v2 v2.0.102-0.20260911201209-ee0af61de2d7
 	github.com/openziti/identity v1.0.129
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
@@ -99,7 +99,7 @@ require (
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
 	google.golang.org/protobuf v1.36.12
