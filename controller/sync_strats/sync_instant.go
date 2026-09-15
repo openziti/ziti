@@ -23,6 +23,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,9 +35,9 @@ import (
 	"github.com/openziti/foundation/v2/genext"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/build"
+	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
@@ -224,6 +225,7 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		indexProvider: strategy.indexProvider,
 		createHandler: strategy.ControllerCreate,
 		updateHandler: strategy.ControllerUpdate,
+		deleteHandler: strategy.ControllerDelete,
 	}
 
 	strategy.ae.GetStores().Controller.AddEntityConstraint(controllerHandler)
@@ -898,58 +900,21 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 	// needs no chain, and a controller cert's kid is emitted by several paths (identity TLS chain
 	// here, controller store records below and on create/update events). Identical content keeps
 	// the sender and router models convergent under last-writer-wins by kid.
-	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages)}
-	newEvent := &edge_ctrl_pb.DataState_Event{
-		Action:      edge_ctrl_pb.DataState_Create,
-		Model:       newModel,
-		IsSynthetic: true,
-	}
-	strategy.HandlePublicKeyEvent(newEvent, newModel)
+	strategy.publishPublicKey(newPublicKey(serverTls[0].Certificate[0], edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
 
-	for cursor := strategy.ae.GetStores().Controller.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
-		currentBytes := cursor.Current()
-		currentId := string(currentBytes)
-
-		storeModel, err := strategy.ae.GetStores().Controller.LoadById(tx, currentId)
-
-		if err != nil {
-			return err
-		}
-		certs := nfPem.PemStringToCertificates(storeModel.CertPem)
-
-		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages)}
-		newEvent := &edge_ctrl_pb.DataState_Event{
-			Action:      edge_ctrl_pb.DataState_Create,
-			Model:       newModel,
-			IsSynthetic: true,
-		}
-		strategy.HandlePublicKeyEvent(newEvent, newModel)
+	controllers, err := strategy.loadControllers(tx)
+	if err != nil {
+		return err
 	}
 
-	caPEMs := strategy.ae.GetConfig().Edge.CaPems()
-	caCerts := nfPem.PemBytesToCertificates(caPEMs)
-
-	// Non-root CA certs in the bundle are intermediates; publish them on every root from
-	// the same bundle. Verification treats intermediates as a pool, so extras are harmless.
-	var caIntermediates [][]byte
-	for _, caCert := range caCerts {
-		if caCert.IsCA && !identity.IsRootCa(caCert) {
-			caIntermediates = append(caIntermediates, caCert.Raw)
+	for _, controller := range controllers {
+		if certs := nfPem.PemStringToCertificates(controller.CertPem); len(certs) > 0 {
+			strategy.publishPublicKey(newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
 		}
 	}
 
-	for _, caCert := range caCerts {
-		if identity.IsRootCa(caCert) {
-			publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, firstPartyCaUsages, caIntermediates...)
-			newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
-			newEvent := &edge_ctrl_pb.DataState_Event{
-				Action:      edge_ctrl_pb.DataState_Create,
-				Model:       newModel,
-				IsSynthetic: true,
-			}
-
-			strategy.HandlePublicKeyEvent(newEvent, newModel)
-		}
+	for _, publicKey := range firstPartyCaPublicKeys(strategy.ae.GetConfig().Edge.CaCerts(), controllers) {
+		strategy.publishPublicKey(publicKey)
 	}
 
 	for cursor := strategy.ae.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
@@ -1880,13 +1845,83 @@ func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *
 }
 
 func (strategy *InstantStrategy) ControllerCreate(index uint64, controller *db.Controller) {
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+	strategy.handleControllerChange(index, edge_ctrl_pb.DataState_Create, controller)
 }
 
 func (strategy *InstantStrategy) ControllerUpdate(index uint64, controller *db.Controller) {
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+	strategy.handleControllerChange(index, edge_ctrl_pb.DataState_Create, controller)
+}
+
+func (strategy *InstantStrategy) ControllerDelete(index uint64, controller *db.Controller) {
+	strategy.handleControllerChange(index, edge_ctrl_pb.DataState_Delete, controller)
+}
+
+// handleControllerChange applies action to the controller's cert key, then republishes the first-party
+// root CA keys from the controller records that remain, since their intermediates are drawn from every
+// record.
+func (strategy *InstantStrategy) handleControllerChange(index uint64, action edge_ctrl_pb.DataState_Action, controller *db.Controller) {
+	if certs := nfPem.PemStringToCertificates(controller.CertPem); len(certs) > 0 {
+		strategy.handlePublicKey(index, action, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+	}
+
+	var controllers []*db.Controller
+	err := strategy.ae.GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		controllers, err = strategy.loadControllers(tx)
+		return err
+	})
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("could not load controllers to republish first-party CA public keys")
+		return
+	}
+
+	for _, publicKey := range firstPartyCaPublicKeys(strategy.ae.GetConfig().Edge.CaCerts(), controllers) {
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, publicKey)
+	}
+}
+
+// loadControllers returns every controller record in the store.
+func (strategy *InstantStrategy) loadControllers(tx *bbolt.Tx) ([]*db.Controller, error) {
+	var result []*db.Controller
+	for cursor := strategy.ae.GetStores().Controller.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		controller, err := strategy.ae.GetStores().Controller.LoadById(tx, string(cursor.Current()))
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, controller)
+	}
+	return result, nil
+}
+
+// publishPublicKey applies a synthetic create for publicKey to the data model being built.
+func (strategy *InstantStrategy) publishPublicKey(publicKey *edge_ctrl_pb.DataState_PublicKey) {
+	newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+	newEvent := &edge_ctrl_pb.DataState_Event{
+		Action:      edge_ctrl_pb.DataState_Create,
+		Model:       newModel,
+		IsSynthetic: true,
+	}
+	strategy.HandlePublicKeyEvent(newEvent, newModel)
+}
+
+// firstPartyCaPublicKeys returns a public key for each root CA in caCerts. Every key carries the same
+// intermediates: every non-root CA certificate found in caCerts or in any controller record,
+// deduplicated and in byte order. Controllers compute this from the same replicated records, so
+// they publish identical content for a shared kid.
+func firstPartyCaPublicKeys(caCerts []*x509.Certificate, controllers []*db.Controller) []*edge_ctrl_pb.DataState_PublicKey {
+	candidates := slices.Clone(caCerts)
+	for _, controller := range controllers {
+		candidates = append(candidates, nfPem.PemStringToCertificates(controller.CaPem+controller.CertPem)...)
+	}
+	intermediates := cert.UniqueSortedDer(cert.Intermediates(candidates))
+
+	var result []*edge_ctrl_pb.DataState_PublicKey
+	for _, caCert := range caCerts {
+		if cert.IsRootCa(caCert) {
+			result = append(result, newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, firstPartyCaUsages, intermediates...))
+		}
+	}
+	return result
 }
 
 func (strategy *InstantStrategy) CaCreate(index uint64, ca *db.Ca) {

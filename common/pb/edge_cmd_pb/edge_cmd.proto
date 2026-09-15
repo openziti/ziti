@@ -188,6 +188,7 @@ message Controller {
   map<string, TagValue> tags = 8;
   map<string, ApiAddressList> apiAddresses = 9;
   bool isPreferredLeader = 10;
+  string caPem = 11;
 }
 
 message ApiAddressList {
