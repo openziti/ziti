@@ -20,7 +20,13 @@ import (
 	"context"
 	goflag "flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/common/slogbridge"
 	edgeSubCmd "github.com/openziti/ziti/controller/subcmd"
 	"github.com/openziti/ziti/ziti/cmd/ascode/importer"
 	"github.com/openziti/ziti/ziti/cmd/ops"
@@ -29,12 +35,8 @@ import (
 	"github.com/openziti/ziti/ziti/enroll"
 	"github.com/openziti/ziti/ziti/run"
 	"github.com/sirupsen/logrus"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/openziti/cobra-to-md"
+	gendoc "github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -93,6 +95,7 @@ func Execute() {
 }
 
 func init() {
+	slogbridge.Install()
 	cobra.OnInitialize(initConfig)
 	NewCmdRoot(os.Stdin, os.Stdout, os.Stderr, rootCommand.cobraCommand)
 }

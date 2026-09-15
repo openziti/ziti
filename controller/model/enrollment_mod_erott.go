@@ -196,7 +196,7 @@ func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeR
 
 	if clientCsr.Subject.CommonName != edgeRouterId {
 		return nil, &errorz.ApiError{
-			Code:        EdgeRouterEnrollmentCommonNameInvalidCode,
+			AppCode:     EdgeRouterEnrollmentCommonNameInvalidCode,
 			Message:     EdgeRouterEnrollmentCommonNameInvalidMessage,
 			Status:      400,
 			Cause:       nil,
