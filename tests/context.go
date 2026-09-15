@@ -63,6 +63,7 @@ import (
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/common/slogbridge"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/controller/config"
 	restClientRouter "github.com/openziti/ziti/v2/controller/rest_client/router"
@@ -87,6 +88,7 @@ func init() {
 
 	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
 	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
+	slogbridge.Install()
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 

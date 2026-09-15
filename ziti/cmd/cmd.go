@@ -36,7 +36,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/run"
 	"github.com/sirupsen/logrus"
 
-	"github.com/openziti/cobra-to-md"
+	gendoc "github.com/openziti/cobra-to-md"
 	"github.com/openziti/ziti/v2/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/v2/ziti/cmd/ascode/exporter"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
@@ -52,6 +52,7 @@ import (
 	"github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/openziti/ziti/v2/ziti/util"
 
+	"github.com/openziti/ziti/v2/common/slogbridge"
 	"github.com/openziti/ziti/v2/common/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -70,8 +71,8 @@ type RootCmd struct {
 
 var rootCommand = RootCmd{
 	cobraCommand: &cobra.Command{
-		Use:   "ziti",
-		Short: "ziti is a CLI for working with Ziti",
+		Use:           "ziti",
+		Short:         "ziti is a CLI for working with Ziti",
 		SilenceErrors: true, // errors are printed by exitWithError, this prevents cobra from also printing them
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SilenceUsage = true
@@ -96,6 +97,7 @@ func Execute() {
 }
 
 func init() {
+	slogbridge.Install()
 	cobra.OnInitialize(initConfig)
 	NewCmdRoot(os.Stdin, os.Stdout, os.Stderr, rootCommand.cobraCommand)
 }
@@ -304,7 +306,6 @@ func NewV1CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
 	cmd.AddCommand(NewCliCmd(out, err))
-
 
 	return cmd
 }
@@ -583,7 +584,6 @@ func NewV2CmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.C
 	cmd.AddCommand(gendoc.NewGendocCmd(cmd))
 	cmd.AddCommand(newCommandTreeCmd())
 	cmd.AddCommand(NewCliCmd(out, err))
-
 
 	// Add hidden root-level aliases for power users
 	hiddenAgentCmd := agentcli.NewAgentCmd(p)
