@@ -456,7 +456,7 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 
 	if err != nil {
 		return nil, &errorz.ApiError{
-			Code:    apierror.CouldNotDecodeProxiedCertCode,
+			AppCode: apierror.CouldNotDecodeProxiedCertCode,
 			Message: apierror.CouldNotDecodeProxiedCertMessage,
 			Cause:   err,
 			Status:  http.StatusBadRequest,
@@ -467,7 +467,7 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 
 	if err != nil {
 		return nil, &errorz.ApiError{
-			Code:    apierror.CouldNotParseX509FromDerCode,
+			AppCode: apierror.CouldNotParseX509FromDerCode,
 			Message: apierror.CouldNotParseX509FromDerMessage,
 			Cause:   err,
 			Status:  http.StatusBadRequest,

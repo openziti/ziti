@@ -69,7 +69,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 func ToRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
 	ret := &rest_model.APIError{
 		Args:      nil,
-		Code:      e.Code,
+		Code:      e.AppCode,
 		Message:   e.Message,
 		RequestID: requestId,
 	}
