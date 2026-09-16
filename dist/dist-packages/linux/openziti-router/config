@@ -1,0 +1,26 @@
+#!/bin/sh
+# debconf "config" script: asks questions only, never configures anything.
+# Invoked by dpkg-preconfigure before the package's files are unpacked, so
+# frontends (dialog, gnome, noninteractive, ...) can batch/skip questions
+# before postinst ever runs. See debconf-devel(7) and Debian Policy 3.9.1.
+set -e
+
+. /usr/share/debconf/confmodule
+
+STATE_DIR="/var/lib/ziti-router"
+
+# Only offer the wizard when there's no existing config; re-asking on every
+# reconfigure of an already-configured router would be noise, and the
+# wizard isn't meant to run against a live config.yml.
+#
+# Priority "high" matches debconf's out-of-the-box priority threshold, so an
+# interactive install (dialog/readline/gnome frontend, real TTY) still asks
+# by default -- same UX as before. An admin who wants silence can lower
+# their debconf priority (dpkg-reconfigure debconf); DEBIAN_FRONTEND=
+# noninteractive always skips the prompt regardless of priority.
+if [ ! -f "${STATE_DIR}/config.yml" ]; then
+  db_input high openziti-router/configure-now || true
+  db_go
+fi
+
+exit 0

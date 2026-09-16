@@ -1,0 +1,9 @@
+Template: openziti-router/configure-now
+Type: boolean
+Default: false
+Description: Configure ziti-router now?
+ The router has no config.yml yet. You can run the bootstrap wizard
+ now to generate an initial configuration and PKI.
+ .
+ If you decline, you can run it later as root:
+ /opt/openziti/etc/router/bootstrap.bash

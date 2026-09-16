@@ -247,10 +247,42 @@ case "$action" in
     ;;
 esac
 
-# If stdin is a TTY and the router has no config yet, offer to run
-# bootstrap interactively. This fires on fresh install and on upgrade if
-# config.yml was deleted.
-if [[ -t 0 ]] && [[ ! -f "${STATE_DIR}/config.yml" ]]; then
+# This script is shared by both the deb and rpm builds (see
+# build-packages.bash), but debconf is deb-only: the "config" script and
+# "templates" file that ask this question are wired up only for the deb
+# packager (nfpm's deb.scripts.{config,templates}). rpm has no equivalent
+# preseeding mechanism, so it keeps the plain TTY-gated prompt.
+if [[ -f /usr/share/debconf/confmodule ]]; then
+  # If the router has no config yet, ask (via debconf) whether to run
+  # bootstrap now. The question itself was already asked by the "config"
+  # script before this postinst ran (or answered from its default); here we
+  # only retrieve the recorded answer and act on it. Under the noninteractive
+  # frontend (DEBIAN_FRONTEND=noninteractive, e.g. apt-get -y) debconf never
+  # touches the terminal — it resolves straight to the template's Default
+  # ("false") — so this never blocks a scripted install.
+  if [[ ! -f "${STATE_DIR}/config.yml" ]]; then
+    # shellcheck disable=SC1091
+    set +o nounset
+    . /usr/share/debconf/confmodule
+    db_get openziti-router/configure-now || RET=false
+    set -o nounset
+    if [[ "${RET}" == "true" ]]; then
+      # Run as child process (not exec) so we can catch SIGINT/failure and
+      # still exit 0 to dpkg — the package is installed regardless.
+      set +o errexit
+      /opt/openziti/etc/router/bootstrap.bash
+      _rc=$?
+      set -o errexit
+      if (( _rc != 0 )); then
+        echo "Bootstrap exited with code ${_rc}."
+        echo "Re-run: /opt/openziti/etc/router/bootstrap.bash"
+      fi
+    else
+      echo "Run /opt/openziti/etc/router/bootstrap.bash when ready."
+    fi
+    db_stop
+  fi
+elif [[ -t 0 ]] && [[ ! -f "${STATE_DIR}/config.yml" ]]; then
   read -r -p "Configure ziti-router now? [Y/n]: " _answer
   case "${_answer,,}" in
     n|no)

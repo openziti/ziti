@@ -43,9 +43,28 @@ contents:
 
   - dst: /usr/lib/tmpfiles.d/openziti-controller.conf
     src: ./dist/dist-packages/linux/openziti-controller/openziti-controller.tmpfiles.conf
+
+scripts:
+  postinstall: ./dist/dist-packages/linux/openziti-controller/postinstall.bash
+  postremove: ./dist/dist-packages/linux/openziti-controller/postrm
+
+deb:
+  scripts:
+    templates: ./dist/dist-packages/linux/openziti-controller/templates
+    config: ./dist/dist-packages/linux/openziti-controller/config
+
 depends:
   - openziti  # ziti CLI
   - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
 
-scripts:
-  postinstall: ./dist/dist-packages/linux/openziti-controller/postinstall.bash
+overrides:
+  deb:
+    # debconf is Debian-only; a shared top-level "depends" would land an
+    # unsatisfiable "debconf" Requires on the rpm build. overrides.deb.depends
+    # replaces the whole list for deb, so the common deps are repeated here.
+    depends:
+      - openziti  # ziti CLI
+      - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
+      - debconf (>= 0.5) | debconf-2.0
+
+
