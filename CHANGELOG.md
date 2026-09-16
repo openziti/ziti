@@ -1,3 +1,22 @@
+# Release 2.0.6
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.102](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.102)
+    * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
+    * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
+    * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
+    * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
+    * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
+
+* github.com/openziti/ziti/v2: [v2.0.5 -> v2.0.6](https://github.com/openziti/ziti/compare/v2.0.5...v2.0.6)
+    * [Issue #4411](https://github.com/openziti/ziti/issues/4411) - [Backport-2.0] REST error responder logs ApiError.Code as a method value
+    * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
+
 # Release 2.0.5
 
 ## What's New
