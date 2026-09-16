@@ -18,7 +18,9 @@ package slogbridge
 
 import (
 	"context"
+	"log"
 	"log/slog"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -180,4 +182,45 @@ func Test_Bridge_InstallRoutesFoundationAndDefaultLoggers(t *testing.T) {
 	require.Nil(t, hook.LastEntry())
 	logging.For("transport.test").Warn("passes")
 	require.NotNil(t, hook.LastEntry())
+}
+
+// The registry forwards records the logrus level will reject, so Handle must decline them before
+// it allocates fields or symbolizes the caller.
+func Test_Bridge_SuppressedRecordDoesNoWork(t *testing.T) {
+	logger, hook := newTestLogger()
+	logger.SetLevel(logrus.InfoLevel)
+	h := New(logger).WithAttrs([]slog.Attr{slog.String("k", "v")})
+
+	var pcs [1]uintptr
+	runtime.Callers(1, pcs[:])
+	r := slog.NewRecord(time.Now(), slog.LevelDebug, "suppressed", pcs[0])
+	r.AddAttrs(slog.Int("n", 1))
+
+	allocs := testing.AllocsPerRun(50, func() {
+		_ = h.Handle(context.Background(), r)
+	})
+	require.Zero(t, allocs)
+	require.Nil(t, hook.LastEntry())
+}
+
+// Output from the log package's default logger lands in logrus at info level and is attributed
+// to the function that called log.Print, not to the bridge.
+func Test_Bridge_StdlibLogIsAttributedToCaller(t *testing.T) {
+	logger, hook := newTestLogger()
+	InstallTo(logger)
+
+	log.Print("via the log package")
+
+	entry := hook.LastEntry()
+	require.NotNil(t, entry)
+	require.Equal(t, logrus.InfoLevel, entry.Level)
+	require.Equal(t, "via the log package", entry.Message)
+	require.NotNil(t, entry.Caller)
+	require.True(t, strings.HasSuffix(entry.Caller.Function, "Test_Bridge_StdlibLogIsAttributedToCaller"),
+		"caller was %s", entry.Caller.Function)
+
+	hook.Reset()
+	logger.SetLevel(logrus.WarnLevel)
+	log.Print("filtered by logrus level")
+	require.Nil(t, hook.LastEntry())
 }
