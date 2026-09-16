@@ -20,6 +20,7 @@ package slogbridge
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"runtime"
 	"strings"
@@ -49,7 +50,9 @@ func New(logger *logrus.Logger) *Handler {
 
 // Install routes slog output into the standard logrus logger: it makes a Handler the root of
 // foundation's logging registry and the log/slog default, and opens the registry to every level
-// so that the logrus level is the only filter. Call it once, after pfxlog is initialized.
+// so that the logrus level is the only filter. Setting the slog default also routes the log
+// package's default logger through the Handler, at info level and attributed to the calling
+// function. Call it once, after pfxlog is initialized.
 func Install() {
 	InstallTo(logrus.StandardLogger())
 }
@@ -59,6 +62,9 @@ func InstallTo(logger *logrus.Logger) {
 	h := New(logger)
 	logging.Configure(h)
 	logging.SetGlobalLevel(logging.LevelTrace)
+	// slog's writer for the log package captures the caller's PC only if the log flags ask for
+	// file information when SetDefault runs; SetDefault then clears the flags itself
+	log.SetFlags(log.Lshortfile)
 	slog.SetDefault(slog.New(h))
 }
 
@@ -67,6 +73,13 @@ func (h *Handler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 func (h *Handler) Handle(_ context.Context, r slog.Record) error {
+	// the registry forwards every record regardless of the logrus level, so decline here
+	// before building fields or symbolizing the caller
+	level := logrusLevel(r.Level)
+	if !h.logger.IsLevelEnabled(level) {
+		return nil
+	}
+
 	fields := make(logrus.Fields, len(h.fields)+r.NumAttrs())
 	for k, v := range h.fields {
 		fields[k] = v
@@ -92,7 +105,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 		entry.Caller = &frame
 	}
 	// Entry.Log emits at any level without the exit or panic that Entry.Fatal and Entry.Panic add
-	entry.Log(logrusLevel(r.Level), r.Message)
+	entry.Log(level, r.Message)
 	return nil
 }
 
