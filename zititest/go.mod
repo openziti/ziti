@@ -21,7 +21,7 @@ require (
 	github.com/openziti/channel/v4 v4.3.11
 	github.com/openziti/edge-api v0.27.5
 	github.com/openziti/fablab v0.5.115
-	github.com/openziti/foundation/v2 v2.0.102-0.20260911201209-ee0af61de2d7
+	github.com/openziti/foundation/v2 v2.0.102
 	github.com/openziti/identity v1.0.128
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/sdk-golang v1.6.0
