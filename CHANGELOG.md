@@ -14,6 +14,7 @@
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
 
 * github.com/openziti/ziti/v2: [v2.0.5 -> v2.0.6](https://github.com/openziti/ziti/compare/v2.0.5...v2.0.6)
+    * [Issue #4411](https://github.com/openziti/ziti/issues/4411) - [Backport-2.0] REST error responder logs ApiError.Code as a method value
     * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
 
 # Release 2.0.5
