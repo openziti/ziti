@@ -97,7 +97,7 @@ func Test_AdaptiveRateLimiter(t *testing.T) {
 					}
 				} else {
 					apiError := &errorz.ApiError{}
-					if errors.As(err, &apiError) && apiError.Code == apierror.ServerTooManyRequestsCode {
+					if errors.As(err, &apiError) && apiError.AppCode == apierror.ServerTooManyRequestsCode {
 						queueFull.Add(1)
 					} else {
 						panic(err)
@@ -175,7 +175,7 @@ func Test_AdaptiveRateLimiterTracker(t *testing.T) {
 
 				if err != nil {
 					apiError := &errorz.ApiError{}
-					if errors.As(err, &apiError) && apiError.Code == apierror.ServerTooManyRequestsCode {
+					if errors.As(err, &apiError) && apiError.AppCode == apierror.ServerTooManyRequestsCode {
 						queueFull.Add(1)
 						time.Sleep(time.Millisecond)
 					} else {

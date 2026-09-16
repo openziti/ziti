@@ -22,19 +22,6 @@ import (
 	tls2 "crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/openziti/foundation/v2/util"
-	"github.com/openziti/foundation/v2/versions"
-	id "github.com/openziti/identity"
-	"github.com/openziti/identity/certtools"
-	"github.com/openziti/ziti/controller/config"
-	"github.com/openziti/ziti/controller/rest_client"
-	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
-	"github.com/openziti/ziti/controller/rest_model"
-	"github.com/openziti/ziti/controller/rest_util"
-	"github.com/openziti/ziti/controller/webapis"
-	"github.com/openziti/ziti/router"
-	"github.com/openziti/ziti/router/env"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -43,6 +30,21 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/openziti/foundation/v2/util"
+	"github.com/openziti/foundation/v2/versions"
+	id "github.com/openziti/identity"
+	"github.com/openziti/identity/certtools"
+	"github.com/openziti/ziti/common/slogbridge"
+	"github.com/openziti/ziti/controller/config"
+	"github.com/openziti/ziti/controller/rest_client"
+	restClientRouter "github.com/openziti/ziti/controller/rest_client/router"
+	"github.com/openziti/ziti/controller/rest_model"
+	"github.com/openziti/ziti/controller/rest_util"
+	"github.com/openziti/ziti/controller/webapis"
+	"github.com/openziti/ziti/router"
+	"github.com/openziti/ziti/router/env"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/transport/v2"
@@ -64,6 +66,7 @@ func init() {
 		StartingToday()
 
 	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
+	slogbridge.Install()
 	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")

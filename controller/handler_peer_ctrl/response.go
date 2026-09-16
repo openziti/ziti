@@ -19,6 +19,7 @@ package handler_peer_ctrl
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/hashicorp/raft"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/errorz"
@@ -47,17 +48,28 @@ func sendErrorResponse(m *channel.Message, ch channel.Channel, err error, errorC
 	}
 }
 
-func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.ApiError) {
+// encodeApiError serializes err for a peer controller, which rebuilds a typed error from the
+// code, message and status fields. A cause that marshals to nothing useful is sent as its text.
+func encodeApiError(err *errorz.ApiError) ([]byte, error) {
 	encodingMap := map[string]interface{}{}
-	encodingMap["code"] = err.Code
+	encodingMap["code"] = err.AppCode
 	encodingMap["message"] = err.Message
 	encodingMap["status"] = err.Status
-	encodingMap["cause"] = err.Cause
+
 	if err.Cause != nil {
 		encodingMap["causeType"] = fmt.Sprintf("%T", err.Cause)
+		if causeBytes, causeErr := json.Marshal(err.Cause); causeErr == nil && string(causeBytes) != "{}" {
+			encodingMap["cause"] = err.Cause
+		} else {
+			encodingMap["cause"] = err.Cause.Error()
+		}
 	}
 
-	buf, encodeErr := json.Marshal(encodingMap)
+	return json.Marshal(encodingMap)
+}
+
+func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.ApiError) {
+	buf, encodeErr := encodeApiError(err)
 	if encodeErr != nil {
 		logrus.WithError(encodeErr).WithField("apiErr", err).Error("unable to encode api error")
 		sendErrorResponse(m, ch, err, peermsg.ErrorCodeGeneric)

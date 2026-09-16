@@ -124,7 +124,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		env:             env,
 		Config:          env.GetRaftConfig(),
 		indexTracker:    NewIndexTracker(),
-		migrationMgr:   migrationMgr,
+		migrationMgr:    migrationMgr,
 		clusterEvents:   make(chan raft.Observation, 16),
 		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
 		errorMappers:    map[string]func(map[string]any) error{},
@@ -356,7 +356,7 @@ func (self *Controller) decodeApiError(data []byte) error {
 	apiErr := &errorz.ApiError{}
 
 	if code, ok := m["code"]; ok {
-		if apiErr.Code, ok = code.(string); !ok {
+		if apiErr.AppCode, ok = code.(string); !ok {
 			pfxlog.Logger().Warnf("invalid api error encoding, invalid code, not string: %v", string(data))
 			return errors.New(string(data))
 		}

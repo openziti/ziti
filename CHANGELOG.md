@@ -7,7 +7,17 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
+  * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
   * [Issue #4299](https://github.com/openziti/ziti/issues/4299) - [Backport-1.6] Bind message with a short cost header panics the router
+
+* github.com/openziti/foundation/v2: [v2.0.86 -> v2.0.102](https://github.com/openziti/foundation/compare/v2.0.86...v2.0.102)
+    * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
+    * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
+    * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
+    * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
+    * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
+    * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add multi-bit get/set operations to AtomicBitSet
+    * [Issue #470](https://github.com/openziti/foundation/pull/470) - Add WWW-Authenticate headers to unauthorized API errors; renames `ApiError.Code` to `AppCode`
 
 # Release 1.6.20
 

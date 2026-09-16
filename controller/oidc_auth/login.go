@@ -259,7 +259,7 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	if verifyErr != nil {
 		if responseType == JsonContentType {
 			renderJsonApiError(w, &errorz.ApiError{
-				Code:    "INVALID TOTP CODE",
+				AppCode: "INVALID TOTP CODE",
 				Message: "an invalid TOTP code was supplied",
 				Status:  http.StatusBadRequest,
 			})

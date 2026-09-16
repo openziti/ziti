@@ -39,6 +39,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/ziti/common/slogbridge"
+
 	edgeApis "github.com/openziti/sdk-golang/edge-apis"
 	"github.com/openziti/ziti/controller/config"
 	routerEnv "github.com/openziti/ziti/router/env"
@@ -82,6 +84,7 @@ func init() {
 		StartingToday()
 
 	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
+	slogbridge.Install()
 	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")

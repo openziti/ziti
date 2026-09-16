@@ -102,7 +102,7 @@ func errorToRestApiError(err error) (*rest_model.APIError, int) {
 		}, http.StatusRequestEntityTooLarge
 	case errors.As(err, &typedErr):
 		restErr := &rest_model.APIError{
-			Code:    typedErr.Code,
+			Code:    typedErr.AppCode,
 			Message: typedErr.Message,
 		}
 
