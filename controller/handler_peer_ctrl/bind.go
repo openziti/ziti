@@ -17,6 +17,8 @@
 package handler_peer_ctrl
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/latency"
@@ -25,7 +27,6 @@ import (
 	"github.com/openziti/ziti/controller/network"
 	"github.com/openziti/ziti/controller/raft"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, heartbeatOptions *channel.HeartbeatOptions) channel.BindHandler {
