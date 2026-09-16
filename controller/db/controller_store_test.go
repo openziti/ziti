@@ -31,9 +31,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/boltztest"
-	"github.com/openziti/ziti/v2/common/eid"
 	"go.etcd.io/bbolt"
 )
 
@@ -57,6 +57,7 @@ func Test_ControllerStore(t *testing.T) {
 			Fingerprint:   testControllerCert.fingerprint,
 			IsOnline:      true,
 			LastJoinedAt:  time.Now(),
+			CaPem:         testControllerCert.certPem,
 			ApiAddresses: map[string][]ApiAddress{
 				"v1": {
 					{
@@ -90,6 +91,7 @@ func Test_ControllerStore(t *testing.T) {
 				ctx.Equal(newController.IsOnline, readController.IsOnline)
 				ctx.Equal(newController.LastJoinedAt.UTC(), readController.LastJoinedAt.UTC())
 				ctx.Equal(newController.CertPem, readController.CertPem)
+				ctx.Equal(newController.CaPem, readController.CaPem)
 				ctx.Equal(len(newController.ApiAddresses), len(readController.ApiAddresses))
 
 				for apiKey, newApiList := range newController.ApiAddresses {

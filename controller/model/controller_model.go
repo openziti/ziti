@@ -20,9 +20,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -35,6 +35,7 @@ type Controller struct {
 	IsOnline          bool
 	LastJoinedAt      time.Time
 	IsPreferredLeader bool
+	CaPem             string
 	ApiAddresses      map[string][]ApiAddress
 }
 
@@ -58,7 +59,8 @@ func (entity *Controller) IsChanged(other *Controller) bool {
 		entity.CertPem != other.CertPem ||
 		entity.Fingerprint != other.Fingerprint ||
 		entity.IsOnline != other.IsOnline ||
-		entity.IsPreferredLeader != other.IsPreferredLeader {
+		entity.IsPreferredLeader != other.IsPreferredLeader ||
+		entity.CaPem != other.CaPem {
 		return true
 	}
 
@@ -103,6 +105,7 @@ func (entity *Controller) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Controller, e
 		IsOnline:          entity.IsOnline,
 		LastJoinedAt:      entity.LastJoinedAt,
 		IsPreferredLeader: entity.IsPreferredLeader,
+		CaPem:             entity.CaPem,
 		ApiAddresses:      map[string][]db.ApiAddress{},
 	}
 
@@ -136,6 +139,7 @@ func (entity *Controller) fillFrom(env Env, tx *bbolt.Tx, boltController *db.Con
 	entity.IsOnline = boltController.IsOnline
 	entity.LastJoinedAt = boltController.LastJoinedAt
 	entity.IsPreferredLeader = boltController.IsPreferredLeader
+	entity.CaPem = boltController.CaPem
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	for apiKey, instances := range boltController.ApiAddresses {

@@ -24,6 +24,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -188,6 +189,7 @@ func (self *ControllerManager) Marshall(entity *Controller) ([]byte, error) {
 		IsOnline:          entity.IsOnline,
 		LastJoinedAt:      timePtrToPb(&entity.LastJoinedAt),
 		IsPreferredLeader: entity.IsPreferredLeader,
+		CaPem:             entity.CaPem,
 		ApiAddresses:      map[string]*edge_cmd_pb.ApiAddressList{},
 	}
 
@@ -228,6 +230,7 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 		IsOnline:          msg.IsOnline,
 		LastJoinedAt:      lastJoinedAt,
 		IsPreferredLeader: msg.IsPreferredLeader,
+		CaPem:             msg.CaPem,
 		ApiAddresses:      map[string][]ApiAddress{},
 	}
 
@@ -329,6 +332,18 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 			continue
 		}
 
+		existing := controllers[peer.Id]
+
+		// A peer's CaPem is only ever written by that peer (see UpdateSelfOnNewLeader) and is excluded
+		// from the update below. It is copied here only so IsChanged does not report it as a change.
+		caPem := ""
+		if existing != nil {
+			caPem = existing.CaPem
+		}
+		if peer == selfAsPeer {
+			caPem = self.selfCaPem()
+		}
+
 		newController := &Controller{
 			BaseEntity: models.BaseEntity{
 				Id: peer.Id,
@@ -340,17 +355,17 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 			IsOnline:          true,
 			LastJoinedAt:      time.Now(),
 			IsPreferredLeader: peer.IsPreferredLeader,
+			CaPem:             caPem,
 			ApiAddresses:      apiAddressesFromPeer(peer),
 		}
 
-		existing := controllers[peer.Id]
 		if existing == nil {
 			if err = self.Create(newController, changeCtx); err != nil {
 				pfxlog.Logger().WithError(err).WithField("ctrlId", peer.Id).
 					Error("could not create controller during peer(s) connection")
 			}
 		} else if peerConnectedEvent || existing.IsChanged(newController) {
-			if err = self.Update(newController, nil, changeCtx); err != nil {
+			if err = self.Update(newController, helloDerivedFields(peer == selfAsPeer), changeCtx); err != nil {
 				pfxlog.Logger().WithError(err).WithField("ctrlId", peer.Id).
 					Error("could not update controller during peer(s) connection")
 			}
@@ -451,11 +466,13 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 		CtrlAddress:       peer.Addr,
 		IsOnline:          true,
 		IsPreferredLeader: peer.IsPreferredLeader,
+		CaPem:             self.selfCaPem(),
 		ApiAddresses:      apiAddressesFromPeer(peer),
 	}
 	disconnectFields := fields.UpdatedFieldsMap{
 		db.FieldControllerIsOnline:          struct{}{},
 		db.FieldControllerCertPem:           struct{}{},
+		db.FieldControllerCaPem:             struct{}{},
 		db.FieldControllerFingerprint:       struct{}{},
 		db.FieldControllerCtrlAddress:       struct{}{},
 		db.FieldControllerApiAddresses:      struct{}{},
@@ -474,7 +491,38 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 	}
 }
 
-// apiAddressFromPeer converts event.ClusterPeer API Addresses to model API Addresses
+// helloDerivedFields returns the controller record fields the leader can populate from a peer's hello
+// and connection state. CaPem is included only for the leader's own record: a peer reports its own CaPem
+// through raft, and a leader update carrying the value it last read could overwrite a newer report.
+func helloDerivedFields(includeCaPem bool) fields.UpdatedFieldsMap {
+	result := fields.UpdatedFieldsMap{
+		db.FieldName:                        struct{}{},
+		db.FieldControllerCertPem:           struct{}{},
+		db.FieldControllerFingerprint:       struct{}{},
+		db.FieldControllerCtrlAddress:       struct{}{},
+		db.FieldControllerIsOnline:          struct{}{},
+		db.FieldControllerLastJoinedAt:      struct{}{},
+		db.FieldControllerIsPreferredLeader: struct{}{},
+		db.FieldControllerApiAddresses:      struct{}{},
+		db.FieldControllerApiAddressUrl:     struct{}{},
+		db.FieldControllerApiAddressVersion: struct{}{},
+	}
+	if includeCaPem {
+		result[db.FieldControllerCaPem] = struct{}{}
+	}
+	return result
+}
+
+// selfCaPem returns the intermediate CA certificates from this controller's edge CA bundle as
+// concatenated PEM, or an empty string when there is no edge configuration.
+func (self *ControllerManager) selfCaPem() string {
+	edgeConfig := self.env.GetConfig().Edge
+	if edgeConfig == nil {
+		return ""
+	}
+	return certChainPem(cert.Intermediates(edgeConfig.CaCerts()))
+}
+
 // certChainPem encodes certs (leaf first) as concatenated PEM.
 func certChainPem(certs []*x509.Certificate) string {
 	sb := strings.Builder{}
