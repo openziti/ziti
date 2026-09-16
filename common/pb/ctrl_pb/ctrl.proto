@@ -54,6 +54,9 @@ enum ContentType {
   UpdateLinkListenersType = 1056;
   CheckStaleLinksRequestType = 1057;
   CheckStaleLinksResponseType = 1058;
+
+  CanaryType = 1059;        // router -> controller: canary sequence number
+  CanaryStatusType = 1060;  // controller -> router: controller's view of router's canary
 }
 
 enum ControlHeaders {
@@ -62,6 +65,13 @@ enum ControlHeaders {
   RouterMetadataHeader = 1001;
   CapabilitiesHeader = 1002;
   CtrlChanListenersHeader = 1003;
+  CanarySeqHeader = 1004;
+  EpochHeader = 1005;
+  // ClusterCapabilitiesHeader carries the capabilities every member of the controller cluster supports, as
+  // distinct from CapabilitiesHeader, which is what one controller supports. A router needs both: the
+  // cluster answer says whether a feature can be carried at all, its own view of its connections says
+  // whether everything it talks to can hear it.
+  ClusterCapabilitiesHeader = 1006;
 }
 
 enum RouterCapability {
@@ -186,6 +196,17 @@ message RouterLinks {
 
   repeated RouterLink links = 1;
   bool fullRefresh = 2;
+}
+
+// LinkMetrics is the value of a link-metrics gossip entry. It carries a router's
+// measured latency cost for a link (latency mean plus queue_time mean, in
+// nanoseconds) along with the link's dial iteration at the time of measurement.
+// The entry is keyed by link id and owned by the reporting router; both ends of
+// a link publish their own measurement.
+message LinkMetrics {
+  string linkId = 1;
+  uint32 iteration = 2;
+  int64 latencyNanos = 3;
 }
 
 enum FaultSubject {

@@ -62,6 +62,8 @@ const (
 	ContentType_UpdateLinkListenersType           ContentType = 1056
 	ContentType_CheckStaleLinksRequestType        ContentType = 1057
 	ContentType_CheckStaleLinksResponseType       ContentType = 1058
+	ContentType_CanaryType                        ContentType = 1059 // router -> controller: canary sequence number
+	ContentType_CanaryStatusType                  ContentType = 1060 // controller -> router: controller's view of router's canary
 )
 
 // Enum value maps for ContentType.
@@ -101,6 +103,8 @@ var (
 		1056: "UpdateLinkListenersType",
 		1057: "CheckStaleLinksRequestType",
 		1058: "CheckStaleLinksResponseType",
+		1059: "CanaryType",
+		1060: "CanaryStatusType",
 	}
 	ContentType_value = map[string]int32{
 		"Zero":                              0,
@@ -137,6 +141,8 @@ var (
 		"UpdateLinkListenersType":           1056,
 		"CheckStaleLinksRequestType":        1057,
 		"CheckStaleLinksResponseType":       1058,
+		"CanaryType":                        1059,
+		"CanaryStatusType":                  1060,
 	}
 )
 
@@ -175,6 +181,13 @@ const (
 	ControlHeaders_RouterMetadataHeader    ControlHeaders = 1001
 	ControlHeaders_CapabilitiesHeader      ControlHeaders = 1002
 	ControlHeaders_CtrlChanListenersHeader ControlHeaders = 1003
+	ControlHeaders_CanarySeqHeader         ControlHeaders = 1004
+	ControlHeaders_EpochHeader             ControlHeaders = 1005
+	// ClusterCapabilitiesHeader carries the capabilities every member of the controller cluster supports, as
+	// distinct from CapabilitiesHeader, which is what one controller supports. A router needs both: the
+	// cluster answer says whether a feature can be carried at all, its own view of its connections says
+	// whether everything it talks to can hear it.
+	ControlHeaders_ClusterCapabilitiesHeader ControlHeaders = 1006
 )
 
 // Enum value maps for ControlHeaders.
@@ -185,13 +198,19 @@ var (
 		1001: "RouterMetadataHeader",
 		1002: "CapabilitiesHeader",
 		1003: "CtrlChanListenersHeader",
+		1004: "CanarySeqHeader",
+		1005: "EpochHeader",
+		1006: "ClusterCapabilitiesHeader",
 	}
 	ControlHeaders_value = map[string]int32{
-		"NoneHeader":              0,
-		"ListenersHeader":         1000,
-		"RouterMetadataHeader":    1001,
-		"CapabilitiesHeader":      1002,
-		"CtrlChanListenersHeader": 1003,
+		"NoneHeader":                0,
+		"ListenersHeader":           1000,
+		"RouterMetadataHeader":      1001,
+		"CapabilitiesHeader":        1002,
+		"CtrlChanListenersHeader":   1003,
+		"CanarySeqHeader":           1004,
+		"EpochHeader":               1005,
+		"ClusterCapabilitiesHeader": 1006,
 	}
 )
 
@@ -1550,6 +1569,71 @@ func (x *RouterLinks) GetFullRefresh() bool {
 	return false
 }
 
+// LinkMetrics is the value of a link-metrics gossip entry. It carries a router's
+// measured latency cost for a link (latency mean plus queue_time mean, in
+// nanoseconds) along with the link's dial iteration at the time of measurement.
+// The entry is keyed by link id and owned by the reporting router; both ends of
+// a link publish their own measurement.
+type LinkMetrics struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LinkId        string                 `protobuf:"bytes,1,opt,name=linkId,proto3" json:"linkId,omitempty"`
+	Iteration     uint32                 `protobuf:"varint,2,opt,name=iteration,proto3" json:"iteration,omitempty"`
+	LatencyNanos  int64                  `protobuf:"varint,3,opt,name=latencyNanos,proto3" json:"latencyNanos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LinkMetrics) Reset() {
+	*x = LinkMetrics{}
+	mi := &file_ctrl_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkMetrics) ProtoMessage() {}
+
+func (x *LinkMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_ctrl_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkMetrics.ProtoReflect.Descriptor instead.
+func (*LinkMetrics) Descriptor() ([]byte, []int) {
+	return file_ctrl_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *LinkMetrics) GetLinkId() string {
+	if x != nil {
+		return x.LinkId
+	}
+	return ""
+}
+
+func (x *LinkMetrics) GetIteration() uint32 {
+	if x != nil {
+		return x.Iteration
+	}
+	return 0
+}
+
+func (x *LinkMetrics) GetLatencyNanos() int64 {
+	if x != nil {
+		return x.LatencyNanos
+	}
+	return 0
+}
+
 type Fault struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Subject       FaultSubject           `protobuf:"varint,1,opt,name=subject,proto3,enum=ziti.ctrl.pb.FaultSubject" json:"subject,omitempty"`
@@ -1561,7 +1645,7 @@ type Fault struct {
 
 func (x *Fault) Reset() {
 	*x = Fault{}
-	mi := &file_ctrl_proto_msgTypes[15]
+	mi := &file_ctrl_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1573,7 +1657,7 @@ func (x *Fault) String() string {
 func (*Fault) ProtoMessage() {}
 
 func (x *Fault) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[15]
+	mi := &file_ctrl_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1586,7 +1670,7 @@ func (x *Fault) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Fault.ProtoReflect.Descriptor instead.
 func (*Fault) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{15}
+	return file_ctrl_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Fault) GetSubject() FaultSubject {
@@ -1620,7 +1704,7 @@ type Context struct {
 
 func (x *Context) Reset() {
 	*x = Context{}
-	mi := &file_ctrl_proto_msgTypes[16]
+	mi := &file_ctrl_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1632,7 +1716,7 @@ func (x *Context) String() string {
 func (*Context) ProtoMessage() {}
 
 func (x *Context) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[16]
+	mi := &file_ctrl_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1645,7 +1729,7 @@ func (x *Context) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Context.ProtoReflect.Descriptor instead.
 func (*Context) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{16}
+	return file_ctrl_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Context) GetFields() map[string]string {
@@ -1677,7 +1761,7 @@ type Route struct {
 
 func (x *Route) Reset() {
 	*x = Route{}
-	mi := &file_ctrl_proto_msgTypes[17]
+	mi := &file_ctrl_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1689,7 +1773,7 @@ func (x *Route) String() string {
 func (*Route) ProtoMessage() {}
 
 func (x *Route) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[17]
+	mi := &file_ctrl_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1702,7 +1786,7 @@ func (x *Route) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Route.ProtoReflect.Descriptor instead.
 func (*Route) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{17}
+	return file_ctrl_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Route) GetCircuitId() string {
@@ -1764,7 +1848,7 @@ type Unroute struct {
 
 func (x *Unroute) Reset() {
 	*x = Unroute{}
-	mi := &file_ctrl_proto_msgTypes[18]
+	mi := &file_ctrl_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1776,7 +1860,7 @@ func (x *Unroute) String() string {
 func (*Unroute) ProtoMessage() {}
 
 func (x *Unroute) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[18]
+	mi := &file_ctrl_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1789,7 +1873,7 @@ func (x *Unroute) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Unroute.ProtoReflect.Descriptor instead.
 func (*Unroute) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{18}
+	return file_ctrl_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Unroute) GetCircuitId() string {
@@ -1815,7 +1899,7 @@ type InspectRequest struct {
 
 func (x *InspectRequest) Reset() {
 	*x = InspectRequest{}
-	mi := &file_ctrl_proto_msgTypes[19]
+	mi := &file_ctrl_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1827,7 +1911,7 @@ func (x *InspectRequest) String() string {
 func (*InspectRequest) ProtoMessage() {}
 
 func (x *InspectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[19]
+	mi := &file_ctrl_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1840,7 +1924,7 @@ func (x *InspectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectRequest.ProtoReflect.Descriptor instead.
 func (*InspectRequest) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{19}
+	return file_ctrl_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *InspectRequest) GetRequestedValues() []string {
@@ -1861,7 +1945,7 @@ type InspectResponse struct {
 
 func (x *InspectResponse) Reset() {
 	*x = InspectResponse{}
-	mi := &file_ctrl_proto_msgTypes[20]
+	mi := &file_ctrl_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1873,7 +1957,7 @@ func (x *InspectResponse) String() string {
 func (*InspectResponse) ProtoMessage() {}
 
 func (x *InspectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[20]
+	mi := &file_ctrl_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1886,7 +1970,7 @@ func (x *InspectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectResponse.ProtoReflect.Descriptor instead.
 func (*InspectResponse) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{20}
+	return file_ctrl_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *InspectResponse) GetSuccess() bool {
@@ -1920,7 +2004,7 @@ type VerifyRouter struct {
 
 func (x *VerifyRouter) Reset() {
 	*x = VerifyRouter{}
-	mi := &file_ctrl_proto_msgTypes[21]
+	mi := &file_ctrl_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1932,7 +2016,7 @@ func (x *VerifyRouter) String() string {
 func (*VerifyRouter) ProtoMessage() {}
 
 func (x *VerifyRouter) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[21]
+	mi := &file_ctrl_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1945,7 +2029,7 @@ func (x *VerifyRouter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyRouter.ProtoReflect.Descriptor instead.
 func (*VerifyRouter) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{21}
+	return file_ctrl_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *VerifyRouter) GetRouterId() string {
@@ -1974,7 +2058,7 @@ type Listener struct {
 
 func (x *Listener) Reset() {
 	*x = Listener{}
-	mi := &file_ctrl_proto_msgTypes[22]
+	mi := &file_ctrl_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1986,7 +2070,7 @@ func (x *Listener) String() string {
 func (*Listener) ProtoMessage() {}
 
 func (x *Listener) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[22]
+	mi := &file_ctrl_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1999,7 +2083,7 @@ func (x *Listener) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listener.ProtoReflect.Descriptor instead.
 func (*Listener) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{22}
+	return file_ctrl_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Listener) GetAddress() string {
@@ -2039,7 +2123,7 @@ type Listeners struct {
 
 func (x *Listeners) Reset() {
 	*x = Listeners{}
-	mi := &file_ctrl_proto_msgTypes[23]
+	mi := &file_ctrl_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2051,7 +2135,7 @@ func (x *Listeners) String() string {
 func (*Listeners) ProtoMessage() {}
 
 func (x *Listeners) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[23]
+	mi := &file_ctrl_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2148,7 @@ func (x *Listeners) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listeners.ProtoReflect.Descriptor instead.
 func (*Listeners) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{23}
+	return file_ctrl_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Listeners) GetListeners() []*Listener {
@@ -2083,7 +2167,7 @@ type CheckStaleLinksRequest struct {
 
 func (x *CheckStaleLinksRequest) Reset() {
 	*x = CheckStaleLinksRequest{}
-	mi := &file_ctrl_proto_msgTypes[24]
+	mi := &file_ctrl_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2095,7 +2179,7 @@ func (x *CheckStaleLinksRequest) String() string {
 func (*CheckStaleLinksRequest) ProtoMessage() {}
 
 func (x *CheckStaleLinksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[24]
+	mi := &file_ctrl_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2108,7 +2192,7 @@ func (x *CheckStaleLinksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckStaleLinksRequest.ProtoReflect.Descriptor instead.
 func (*CheckStaleLinksRequest) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{24}
+	return file_ctrl_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CheckStaleLinksRequest) GetMode() StaleLinkMatchMode {
@@ -2135,7 +2219,7 @@ type LinkStaleReport struct {
 
 func (x *LinkStaleReport) Reset() {
 	*x = LinkStaleReport{}
-	mi := &file_ctrl_proto_msgTypes[25]
+	mi := &file_ctrl_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2147,7 +2231,7 @@ func (x *LinkStaleReport) String() string {
 func (*LinkStaleReport) ProtoMessage() {}
 
 func (x *LinkStaleReport) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[25]
+	mi := &file_ctrl_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2160,7 +2244,7 @@ func (x *LinkStaleReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkStaleReport.ProtoReflect.Descriptor instead.
 func (*LinkStaleReport) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{25}
+	return file_ctrl_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *LinkStaleReport) GetLinkId() string {
@@ -2210,7 +2294,7 @@ type CheckStaleLinksResponse struct {
 
 func (x *CheckStaleLinksResponse) Reset() {
 	*x = CheckStaleLinksResponse{}
-	mi := &file_ctrl_proto_msgTypes[26]
+	mi := &file_ctrl_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2222,7 +2306,7 @@ func (x *CheckStaleLinksResponse) String() string {
 func (*CheckStaleLinksResponse) ProtoMessage() {}
 
 func (x *CheckStaleLinksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[26]
+	mi := &file_ctrl_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2235,7 +2319,7 @@ func (x *CheckStaleLinksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckStaleLinksResponse.ProtoReflect.Descriptor instead.
 func (*CheckStaleLinksResponse) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{26}
+	return file_ctrl_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CheckStaleLinksResponse) GetRouterId() string {
@@ -2276,7 +2360,7 @@ type CtrlEndpoint struct {
 
 func (x *CtrlEndpoint) Reset() {
 	*x = CtrlEndpoint{}
-	mi := &file_ctrl_proto_msgTypes[27]
+	mi := &file_ctrl_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2288,7 +2372,7 @@ func (x *CtrlEndpoint) String() string {
 func (*CtrlEndpoint) ProtoMessage() {}
 
 func (x *CtrlEndpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[27]
+	mi := &file_ctrl_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2301,7 +2385,7 @@ func (x *CtrlEndpoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlEndpoint.ProtoReflect.Descriptor instead.
 func (*CtrlEndpoint) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{27}
+	return file_ctrl_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CtrlEndpoint) GetAddress() string {
@@ -2328,7 +2412,7 @@ type CtrlDetail struct {
 
 func (x *CtrlDetail) Reset() {
 	*x = CtrlDetail{}
-	mi := &file_ctrl_proto_msgTypes[28]
+	mi := &file_ctrl_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2340,7 +2424,7 @@ func (x *CtrlDetail) String() string {
 func (*CtrlDetail) ProtoMessage() {}
 
 func (x *CtrlDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[28]
+	mi := &file_ctrl_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2353,7 +2437,7 @@ func (x *CtrlDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlDetail.ProtoReflect.Descriptor instead.
 func (*CtrlDetail) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{28}
+	return file_ctrl_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *CtrlDetail) GetId() string {
@@ -2382,7 +2466,7 @@ type UpdateCtrlAddresses struct {
 
 func (x *UpdateCtrlAddresses) Reset() {
 	*x = UpdateCtrlAddresses{}
-	mi := &file_ctrl_proto_msgTypes[29]
+	mi := &file_ctrl_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2394,7 +2478,7 @@ func (x *UpdateCtrlAddresses) String() string {
 func (*UpdateCtrlAddresses) ProtoMessage() {}
 
 func (x *UpdateCtrlAddresses) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[29]
+	mi := &file_ctrl_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2407,7 +2491,7 @@ func (x *UpdateCtrlAddresses) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCtrlAddresses.ProtoReflect.Descriptor instead.
 func (*UpdateCtrlAddresses) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{29}
+	return file_ctrl_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateCtrlAddresses) GetAddresses() []string {
@@ -2447,7 +2531,7 @@ type UpdateClusterLeader struct {
 
 func (x *UpdateClusterLeader) Reset() {
 	*x = UpdateClusterLeader{}
-	mi := &file_ctrl_proto_msgTypes[30]
+	mi := &file_ctrl_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2459,7 +2543,7 @@ func (x *UpdateClusterLeader) String() string {
 func (*UpdateClusterLeader) ProtoMessage() {}
 
 func (x *UpdateClusterLeader) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[30]
+	mi := &file_ctrl_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2472,7 +2556,7 @@ func (x *UpdateClusterLeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClusterLeader.ProtoReflect.Descriptor instead.
 func (*UpdateClusterLeader) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{30}
+	return file_ctrl_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpdateClusterLeader) GetIndex() uint64 {
@@ -2494,7 +2578,7 @@ type PeerStateChange struct {
 
 func (x *PeerStateChange) Reset() {
 	*x = PeerStateChange{}
-	mi := &file_ctrl_proto_msgTypes[31]
+	mi := &file_ctrl_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2506,7 +2590,7 @@ func (x *PeerStateChange) String() string {
 func (*PeerStateChange) ProtoMessage() {}
 
 func (x *PeerStateChange) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[31]
+	mi := &file_ctrl_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2519,7 +2603,7 @@ func (x *PeerStateChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerStateChange.ProtoReflect.Descriptor instead.
 func (*PeerStateChange) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{31}
+	return file_ctrl_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PeerStateChange) GetId() string {
@@ -2559,7 +2643,7 @@ type PeerStateChanges struct {
 
 func (x *PeerStateChanges) Reset() {
 	*x = PeerStateChanges{}
-	mi := &file_ctrl_proto_msgTypes[32]
+	mi := &file_ctrl_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2571,7 +2655,7 @@ func (x *PeerStateChanges) String() string {
 func (*PeerStateChanges) ProtoMessage() {}
 
 func (x *PeerStateChanges) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[32]
+	mi := &file_ctrl_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2584,7 +2668,7 @@ func (x *PeerStateChanges) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerStateChanges.ProtoReflect.Descriptor instead.
 func (*PeerStateChanges) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{32}
+	return file_ctrl_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *PeerStateChanges) GetChanges() []*PeerStateChange {
@@ -2603,7 +2687,7 @@ type RouterMetadata struct {
 
 func (x *RouterMetadata) Reset() {
 	*x = RouterMetadata{}
-	mi := &file_ctrl_proto_msgTypes[33]
+	mi := &file_ctrl_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2615,7 +2699,7 @@ func (x *RouterMetadata) String() string {
 func (*RouterMetadata) ProtoMessage() {}
 
 func (x *RouterMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[33]
+	mi := &file_ctrl_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2628,7 +2712,7 @@ func (x *RouterMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterMetadata.ProtoReflect.Descriptor instead.
 func (*RouterMetadata) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{33}
+	return file_ctrl_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RouterMetadata) GetCapabilities() []RouterCapability {
@@ -2652,7 +2736,7 @@ type Interface struct {
 
 func (x *Interface) Reset() {
 	*x = Interface{}
-	mi := &file_ctrl_proto_msgTypes[34]
+	mi := &file_ctrl_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2664,7 +2748,7 @@ func (x *Interface) String() string {
 func (*Interface) ProtoMessage() {}
 
 func (x *Interface) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[34]
+	mi := &file_ctrl_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2677,7 +2761,7 @@ func (x *Interface) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Interface.ProtoReflect.Descriptor instead.
 func (*Interface) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{34}
+	return file_ctrl_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *Interface) GetName() string {
@@ -2731,7 +2815,7 @@ type RouterInterfacesUpdate struct {
 
 func (x *RouterInterfacesUpdate) Reset() {
 	*x = RouterInterfacesUpdate{}
-	mi := &file_ctrl_proto_msgTypes[35]
+	mi := &file_ctrl_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2743,7 +2827,7 @@ func (x *RouterInterfacesUpdate) String() string {
 func (*RouterInterfacesUpdate) ProtoMessage() {}
 
 func (x *RouterInterfacesUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[35]
+	mi := &file_ctrl_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2756,7 +2840,7 @@ func (x *RouterInterfacesUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterInterfacesUpdate.ProtoReflect.Descriptor instead.
 func (*RouterInterfacesUpdate) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{35}
+	return file_ctrl_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *RouterInterfacesUpdate) GetInterfaces() []*Interface {
@@ -2777,7 +2861,7 @@ type LinkStateUpdate struct {
 
 func (x *LinkStateUpdate) Reset() {
 	*x = LinkStateUpdate{}
-	mi := &file_ctrl_proto_msgTypes[36]
+	mi := &file_ctrl_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2789,7 +2873,7 @@ func (x *LinkStateUpdate) String() string {
 func (*LinkStateUpdate) ProtoMessage() {}
 
 func (x *LinkStateUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[36]
+	mi := &file_ctrl_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2802,7 +2886,7 @@ func (x *LinkStateUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkStateUpdate.ProtoReflect.Descriptor instead.
 func (*LinkStateUpdate) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{36}
+	return file_ctrl_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *LinkStateUpdate) GetLinkId() string {
@@ -2841,7 +2925,7 @@ type Alert struct {
 
 func (x *Alert) Reset() {
 	*x = Alert{}
-	mi := &file_ctrl_proto_msgTypes[37]
+	mi := &file_ctrl_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2853,7 +2937,7 @@ func (x *Alert) String() string {
 func (*Alert) ProtoMessage() {}
 
 func (x *Alert) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[37]
+	mi := &file_ctrl_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2866,7 +2950,7 @@ func (x *Alert) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Alert.ProtoReflect.Descriptor instead.
 func (*Alert) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{37}
+	return file_ctrl_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *Alert) GetSourceType() string {
@@ -2927,7 +3011,7 @@ type Alerts struct {
 
 func (x *Alerts) Reset() {
 	*x = Alerts{}
-	mi := &file_ctrl_proto_msgTypes[38]
+	mi := &file_ctrl_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2939,7 +3023,7 @@ func (x *Alerts) String() string {
 func (*Alerts) ProtoMessage() {}
 
 func (x *Alerts) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[38]
+	mi := &file_ctrl_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2952,7 +3036,7 @@ func (x *Alerts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Alerts.ProtoReflect.Descriptor instead.
 func (*Alerts) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{38}
+	return file_ctrl_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *Alerts) GetAlerts() []*Alert {
@@ -2972,7 +3056,7 @@ type CtrlChanListener struct {
 
 func (x *CtrlChanListener) Reset() {
 	*x = CtrlChanListener{}
-	mi := &file_ctrl_proto_msgTypes[39]
+	mi := &file_ctrl_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2984,7 +3068,7 @@ func (x *CtrlChanListener) String() string {
 func (*CtrlChanListener) ProtoMessage() {}
 
 func (x *CtrlChanListener) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[39]
+	mi := &file_ctrl_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2997,7 +3081,7 @@ func (x *CtrlChanListener) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlChanListener.ProtoReflect.Descriptor instead.
 func (*CtrlChanListener) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{39}
+	return file_ctrl_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *CtrlChanListener) GetAddress() string {
@@ -3023,7 +3107,7 @@ type CtrlChanListeners struct {
 
 func (x *CtrlChanListeners) Reset() {
 	*x = CtrlChanListeners{}
-	mi := &file_ctrl_proto_msgTypes[40]
+	mi := &file_ctrl_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3035,7 +3119,7 @@ func (x *CtrlChanListeners) String() string {
 func (*CtrlChanListeners) ProtoMessage() {}
 
 func (x *CtrlChanListeners) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[40]
+	mi := &file_ctrl_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3048,7 +3132,7 @@ func (x *CtrlChanListeners) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlChanListeners.ProtoReflect.Descriptor instead.
 func (*CtrlChanListeners) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{40}
+	return file_ctrl_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *CtrlChanListeners) GetListeners() []*CtrlChanListener {
@@ -3072,7 +3156,7 @@ type RouterLinks_RouterLink struct {
 
 func (x *RouterLinks_RouterLink) Reset() {
 	*x = RouterLinks_RouterLink{}
-	mi := &file_ctrl_proto_msgTypes[46]
+	mi := &file_ctrl_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3084,7 +3168,7 @@ func (x *RouterLinks_RouterLink) String() string {
 func (*RouterLinks_RouterLink) ProtoMessage() {}
 
 func (x *RouterLinks_RouterLink) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[46]
+	mi := &file_ctrl_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3154,7 +3238,7 @@ type Route_Egress struct {
 
 func (x *Route_Egress) Reset() {
 	*x = Route_Egress{}
-	mi := &file_ctrl_proto_msgTypes[48]
+	mi := &file_ctrl_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3166,7 +3250,7 @@ func (x *Route_Egress) String() string {
 func (*Route_Egress) ProtoMessage() {}
 
 func (x *Route_Egress) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[48]
+	mi := &file_ctrl_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3179,7 +3263,7 @@ func (x *Route_Egress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Route_Egress.ProtoReflect.Descriptor instead.
 func (*Route_Egress) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{17, 0}
+	return file_ctrl_proto_rawDescGZIP(), []int{18, 0}
 }
 
 func (x *Route_Egress) GetBinding() string {
@@ -3221,7 +3305,7 @@ type Route_Forward struct {
 
 func (x *Route_Forward) Reset() {
 	*x = Route_Forward{}
-	mi := &file_ctrl_proto_msgTypes[49]
+	mi := &file_ctrl_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3233,7 +3317,7 @@ func (x *Route_Forward) String() string {
 func (*Route_Forward) ProtoMessage() {}
 
 func (x *Route_Forward) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[49]
+	mi := &file_ctrl_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3246,7 +3330,7 @@ func (x *Route_Forward) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Route_Forward.ProtoReflect.Descriptor instead.
 func (*Route_Forward) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{17, 1}
+	return file_ctrl_proto_rawDescGZIP(), []int{18, 1}
 }
 
 func (x *Route_Forward) GetSrcAddress() string {
@@ -3280,7 +3364,7 @@ type InspectResponse_InspectValue struct {
 
 func (x *InspectResponse_InspectValue) Reset() {
 	*x = InspectResponse_InspectValue{}
-	mi := &file_ctrl_proto_msgTypes[52]
+	mi := &file_ctrl_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3292,7 +3376,7 @@ func (x *InspectResponse_InspectValue) String() string {
 func (*InspectResponse_InspectValue) ProtoMessage() {}
 
 func (x *InspectResponse_InspectValue) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[52]
+	mi := &file_ctrl_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3305,7 +3389,7 @@ func (x *InspectResponse_InspectValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectResponse_InspectValue.ProtoReflect.Descriptor instead.
 func (*InspectResponse_InspectValue) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{20, 0}
+	return file_ctrl_proto_rawDescGZIP(), []int{21, 0}
 }
 
 func (x *InspectResponse_InspectValue) GetName() string {
@@ -3423,7 +3507,11 @@ const file_ctrl_proto_rawDesc = "" +
 	"\flinkProtocol\x18\x03 \x01(\tR\flinkProtocol\x12 \n" +
 	"\vdialAddress\x18\x05 \x01(\tR\vdialAddress\x12\x1c\n" +
 	"\titeration\x18\x06 \x01(\rR\titeration\x129\n" +
-	"\tconnState\x18\a \x01(\v2\x1b.ziti.ctrl.pb.LinkConnStateR\tconnStateJ\x04\b\x04\x10\x05R\flinkCostTags\"k\n" +
+	"\tconnState\x18\a \x01(\v2\x1b.ziti.ctrl.pb.LinkConnStateR\tconnStateJ\x04\b\x04\x10\x05R\flinkCostTags\"g\n" +
+	"\vLinkMetrics\x12\x16\n" +
+	"\x06linkId\x18\x01 \x01(\tR\x06linkId\x12\x1c\n" +
+	"\titeration\x18\x02 \x01(\rR\titeration\x12\"\n" +
+	"\flatencyNanos\x18\x03 \x01(\x03R\flatencyNanos\"k\n" +
 	"\x05Fault\x124\n" +
 	"\asubject\x18\x01 \x01(\x0e2\x1a.ziti.ctrl.pb.FaultSubjectR\asubject\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x1c\n" +
@@ -3553,7 +3641,7 @@ const file_ctrl_proto_rawDesc = "" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x16\n" +
 	"\x06groups\x18\x02 \x03(\tR\x06groups\"Q\n" +
 	"\x11CtrlChanListeners\x12<\n" +
-	"\tlisteners\x18\x01 \x03(\v2\x1e.ziti.ctrl.pb.CtrlChanListenerR\tlisteners*\xbc\a\n" +
+	"\tlisteners\x18\x01 \x03(\v2\x1e.ziti.ctrl.pb.CtrlChanListenerR\tlisteners*\xe4\a\n" +
 	"\vContentType\x12\b\n" +
 	"\x04Zero\x10\x00\x12\x17\n" +
 	"\x12CircuitRequestType\x10\xe8\a\x12\x0e\n" +
@@ -3589,14 +3677,20 @@ const file_ctrl_proto_rawDesc = "" +
 	"\x15RequestClusterMembers\x10\x9f\b\x12\x1c\n" +
 	"\x17UpdateLinkListenersType\x10\xa0\b\x12\x1f\n" +
 	"\x1aCheckStaleLinksRequestType\x10\xa1\b\x12 \n" +
-	"\x1bCheckStaleLinksResponseType\x10\xa2\b*\x88\x01\n" +
+	"\x1bCheckStaleLinksResponseType\x10\xa2\b\x12\x0f\n" +
+	"\n" +
+	"CanaryType\x10\xa3\b\x12\x15\n" +
+	"\x10CanaryStatusType\x10\xa4\b*\xd0\x01\n" +
 	"\x0eControlHeaders\x12\x0e\n" +
 	"\n" +
 	"NoneHeader\x10\x00\x12\x14\n" +
 	"\x0fListenersHeader\x10\xe8\a\x12\x19\n" +
 	"\x14RouterMetadataHeader\x10\xe9\a\x12\x17\n" +
 	"\x12CapabilitiesHeader\x10\xea\a\x12\x1c\n" +
-	"\x17CtrlChanListenersHeader\x10\xeb\a*:\n" +
+	"\x17CtrlChanListenersHeader\x10\xeb\a\x12\x14\n" +
+	"\x0fCanarySeqHeader\x10\xec\a\x12\x10\n" +
+	"\vEpochHeader\x10\xed\a\x12\x1e\n" +
+	"\x19ClusterCapabilitiesHeader\x10\xee\a*:\n" +
 	"\x10RouterCapability\x12\x12\n" +
 	"\x0eCapabilityZero\x10\x00\x12\x12\n" +
 	"\x0eLinkManagement\x10\x01*5\n" +
@@ -3647,7 +3741,7 @@ func file_ctrl_proto_rawDescGZIP() []byte {
 }
 
 var file_ctrl_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
+var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
 var file_ctrl_proto_goTypes = []any{
 	(ContentType)(0),                      // 0: ziti.ctrl.pb.ContentType
 	(ControlHeaders)(0),                   // 1: ziti.ctrl.pb.ControlHeaders
@@ -3675,84 +3769,85 @@ var file_ctrl_proto_goTypes = []any{
 	(*LinkConn)(nil),                      // 23: ziti.ctrl.pb.LinkConn
 	(*LinkConnState)(nil),                 // 24: ziti.ctrl.pb.LinkConnState
 	(*RouterLinks)(nil),                   // 25: ziti.ctrl.pb.RouterLinks
-	(*Fault)(nil),                         // 26: ziti.ctrl.pb.Fault
-	(*Context)(nil),                       // 27: ziti.ctrl.pb.Context
-	(*Route)(nil),                         // 28: ziti.ctrl.pb.Route
-	(*Unroute)(nil),                       // 29: ziti.ctrl.pb.Unroute
-	(*InspectRequest)(nil),                // 30: ziti.ctrl.pb.InspectRequest
-	(*InspectResponse)(nil),               // 31: ziti.ctrl.pb.InspectResponse
-	(*VerifyRouter)(nil),                  // 32: ziti.ctrl.pb.VerifyRouter
-	(*Listener)(nil),                      // 33: ziti.ctrl.pb.Listener
-	(*Listeners)(nil),                     // 34: ziti.ctrl.pb.Listeners
-	(*CheckStaleLinksRequest)(nil),        // 35: ziti.ctrl.pb.CheckStaleLinksRequest
-	(*LinkStaleReport)(nil),               // 36: ziti.ctrl.pb.LinkStaleReport
-	(*CheckStaleLinksResponse)(nil),       // 37: ziti.ctrl.pb.CheckStaleLinksResponse
-	(*CtrlEndpoint)(nil),                  // 38: ziti.ctrl.pb.CtrlEndpoint
-	(*CtrlDetail)(nil),                    // 39: ziti.ctrl.pb.CtrlDetail
-	(*UpdateCtrlAddresses)(nil),           // 40: ziti.ctrl.pb.UpdateCtrlAddresses
-	(*UpdateClusterLeader)(nil),           // 41: ziti.ctrl.pb.UpdateClusterLeader
-	(*PeerStateChange)(nil),               // 42: ziti.ctrl.pb.PeerStateChange
-	(*PeerStateChanges)(nil),              // 43: ziti.ctrl.pb.PeerStateChanges
-	(*RouterMetadata)(nil),                // 44: ziti.ctrl.pb.RouterMetadata
-	(*Interface)(nil),                     // 45: ziti.ctrl.pb.Interface
-	(*RouterInterfacesUpdate)(nil),        // 46: ziti.ctrl.pb.RouterInterfacesUpdate
-	(*LinkStateUpdate)(nil),               // 47: ziti.ctrl.pb.LinkStateUpdate
-	(*Alert)(nil),                         // 48: ziti.ctrl.pb.Alert
-	(*Alerts)(nil),                        // 49: ziti.ctrl.pb.Alerts
-	(*CtrlChanListener)(nil),              // 50: ziti.ctrl.pb.CtrlChanListener
-	(*CtrlChanListeners)(nil),             // 51: ziti.ctrl.pb.CtrlChanListeners
-	nil,                                   // 52: ziti.ctrl.pb.Settings.DataEntry
-	nil,                                   // 53: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	nil,                                   // 54: ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
-	nil,                                   // 55: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
-	nil,                                   // 56: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
-	(*RouterLinks_RouterLink)(nil),        // 57: ziti.ctrl.pb.RouterLinks.RouterLink
-	nil,                                   // 58: ziti.ctrl.pb.Context.FieldsEntry
-	(*Route_Egress)(nil),                  // 59: ziti.ctrl.pb.Route.Egress
-	(*Route_Forward)(nil),                 // 60: ziti.ctrl.pb.Route.Forward
-	nil,                                   // 61: ziti.ctrl.pb.Route.TagsEntry
-	nil,                                   // 62: ziti.ctrl.pb.Route.Egress.PeerDataEntry
-	(*InspectResponse_InspectValue)(nil),  // 63: ziti.ctrl.pb.InspectResponse.InspectValue
-	nil,                                   // 64: ziti.ctrl.pb.Alert.RelatedEntitiesEntry
+	(*LinkMetrics)(nil),                   // 26: ziti.ctrl.pb.LinkMetrics
+	(*Fault)(nil),                         // 27: ziti.ctrl.pb.Fault
+	(*Context)(nil),                       // 28: ziti.ctrl.pb.Context
+	(*Route)(nil),                         // 29: ziti.ctrl.pb.Route
+	(*Unroute)(nil),                       // 30: ziti.ctrl.pb.Unroute
+	(*InspectRequest)(nil),                // 31: ziti.ctrl.pb.InspectRequest
+	(*InspectResponse)(nil),               // 32: ziti.ctrl.pb.InspectResponse
+	(*VerifyRouter)(nil),                  // 33: ziti.ctrl.pb.VerifyRouter
+	(*Listener)(nil),                      // 34: ziti.ctrl.pb.Listener
+	(*Listeners)(nil),                     // 35: ziti.ctrl.pb.Listeners
+	(*CheckStaleLinksRequest)(nil),        // 36: ziti.ctrl.pb.CheckStaleLinksRequest
+	(*LinkStaleReport)(nil),               // 37: ziti.ctrl.pb.LinkStaleReport
+	(*CheckStaleLinksResponse)(nil),       // 38: ziti.ctrl.pb.CheckStaleLinksResponse
+	(*CtrlEndpoint)(nil),                  // 39: ziti.ctrl.pb.CtrlEndpoint
+	(*CtrlDetail)(nil),                    // 40: ziti.ctrl.pb.CtrlDetail
+	(*UpdateCtrlAddresses)(nil),           // 41: ziti.ctrl.pb.UpdateCtrlAddresses
+	(*UpdateClusterLeader)(nil),           // 42: ziti.ctrl.pb.UpdateClusterLeader
+	(*PeerStateChange)(nil),               // 43: ziti.ctrl.pb.PeerStateChange
+	(*PeerStateChanges)(nil),              // 44: ziti.ctrl.pb.PeerStateChanges
+	(*RouterMetadata)(nil),                // 45: ziti.ctrl.pb.RouterMetadata
+	(*Interface)(nil),                     // 46: ziti.ctrl.pb.Interface
+	(*RouterInterfacesUpdate)(nil),        // 47: ziti.ctrl.pb.RouterInterfacesUpdate
+	(*LinkStateUpdate)(nil),               // 48: ziti.ctrl.pb.LinkStateUpdate
+	(*Alert)(nil),                         // 49: ziti.ctrl.pb.Alert
+	(*Alerts)(nil),                        // 50: ziti.ctrl.pb.Alerts
+	(*CtrlChanListener)(nil),              // 51: ziti.ctrl.pb.CtrlChanListener
+	(*CtrlChanListeners)(nil),             // 52: ziti.ctrl.pb.CtrlChanListeners
+	nil,                                   // 53: ziti.ctrl.pb.Settings.DataEntry
+	nil,                                   // 54: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	nil,                                   // 55: ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
+	nil,                                   // 56: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	nil,                                   // 57: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
+	(*RouterLinks_RouterLink)(nil),        // 58: ziti.ctrl.pb.RouterLinks.RouterLink
+	nil,                                   // 59: ziti.ctrl.pb.Context.FieldsEntry
+	(*Route_Egress)(nil),                  // 60: ziti.ctrl.pb.Route.Egress
+	(*Route_Forward)(nil),                 // 61: ziti.ctrl.pb.Route.Forward
+	nil,                                   // 62: ziti.ctrl.pb.Route.TagsEntry
+	nil,                                   // 63: ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	(*InspectResponse_InspectValue)(nil),  // 64: ziti.ctrl.pb.InspectResponse.InspectValue
+	nil,                                   // 65: ziti.ctrl.pb.Alert.RelatedEntitiesEntry
 }
 var file_ctrl_proto_depIdxs = []int32{
-	52, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
-	53, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	54, // 2: ziti.ctrl.pb.CircuitConfirmation.idleTimes:type_name -> ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
-	55, // 3: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	53, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
+	54, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	55, // 2: ziti.ctrl.pb.CircuitConfirmation.idleTimes:type_name -> ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
+	56, // 3: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
 	4,  // 4: ziti.ctrl.pb.CreateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
 	17, // 5: ziti.ctrl.pb.ValidateTerminatorsRequest.terminators:type_name -> ziti.ctrl.pb.Terminator
 	17, // 6: ziti.ctrl.pb.ValidateTerminatorsV2Request.terminators:type_name -> ziti.ctrl.pb.Terminator
 	5,  // 7: ziti.ctrl.pb.RouterTerminatorState.reason:type_name -> ziti.ctrl.pb.TerminatorInvalidReason
-	56, // 8: ziti.ctrl.pb.ValidateTerminatorsV2Response.states:type_name -> ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
+	57, // 8: ziti.ctrl.pb.ValidateTerminatorsV2Response.states:type_name -> ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
 	4,  // 9: ziti.ctrl.pb.UpdateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
 	23, // 10: ziti.ctrl.pb.LinkConnState.conns:type_name -> ziti.ctrl.pb.LinkConn
-	57, // 11: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
+	58, // 11: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
 	6,  // 12: ziti.ctrl.pb.Fault.subject:type_name -> ziti.ctrl.pb.FaultSubject
-	58, // 13: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
-	59, // 14: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
-	60, // 15: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
-	27, // 16: ziti.ctrl.pb.Route.context:type_name -> ziti.ctrl.pb.Context
-	61, // 17: ziti.ctrl.pb.Route.tags:type_name -> ziti.ctrl.pb.Route.TagsEntry
-	63, // 18: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
-	33, // 19: ziti.ctrl.pb.Listeners.listeners:type_name -> ziti.ctrl.pb.Listener
+	59, // 13: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
+	60, // 14: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
+	61, // 15: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
+	28, // 16: ziti.ctrl.pb.Route.context:type_name -> ziti.ctrl.pb.Context
+	62, // 17: ziti.ctrl.pb.Route.tags:type_name -> ziti.ctrl.pb.Route.TagsEntry
+	64, // 18: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
+	34, // 19: ziti.ctrl.pb.Listeners.listeners:type_name -> ziti.ctrl.pb.Listener
 	8,  // 20: ziti.ctrl.pb.CheckStaleLinksRequest.mode:type_name -> ziti.ctrl.pb.StaleLinkMatchMode
 	9,  // 21: ziti.ctrl.pb.LinkStaleReport.side:type_name -> ziti.ctrl.pb.StaleLinkSide
-	36, // 22: ziti.ctrl.pb.CheckStaleLinksResponse.reports:type_name -> ziti.ctrl.pb.LinkStaleReport
-	38, // 23: ziti.ctrl.pb.CtrlDetail.endpoints:type_name -> ziti.ctrl.pb.CtrlEndpoint
-	39, // 24: ziti.ctrl.pb.UpdateCtrlAddresses.controllers:type_name -> ziti.ctrl.pb.CtrlDetail
+	37, // 22: ziti.ctrl.pb.CheckStaleLinksResponse.reports:type_name -> ziti.ctrl.pb.LinkStaleReport
+	39, // 23: ziti.ctrl.pb.CtrlDetail.endpoints:type_name -> ziti.ctrl.pb.CtrlEndpoint
+	40, // 24: ziti.ctrl.pb.UpdateCtrlAddresses.controllers:type_name -> ziti.ctrl.pb.CtrlDetail
 	10, // 25: ziti.ctrl.pb.PeerStateChange.state:type_name -> ziti.ctrl.pb.PeerState
-	33, // 26: ziti.ctrl.pb.PeerStateChange.listeners:type_name -> ziti.ctrl.pb.Listener
-	42, // 27: ziti.ctrl.pb.PeerStateChanges.changes:type_name -> ziti.ctrl.pb.PeerStateChange
+	34, // 26: ziti.ctrl.pb.PeerStateChange.listeners:type_name -> ziti.ctrl.pb.Listener
+	43, // 27: ziti.ctrl.pb.PeerStateChanges.changes:type_name -> ziti.ctrl.pb.PeerStateChange
 	2,  // 28: ziti.ctrl.pb.RouterMetadata.capabilities:type_name -> ziti.ctrl.pb.RouterCapability
-	45, // 29: ziti.ctrl.pb.RouterInterfacesUpdate.interfaces:type_name -> ziti.ctrl.pb.Interface
+	46, // 29: ziti.ctrl.pb.RouterInterfacesUpdate.interfaces:type_name -> ziti.ctrl.pb.Interface
 	24, // 30: ziti.ctrl.pb.LinkStateUpdate.connState:type_name -> ziti.ctrl.pb.LinkConnState
-	64, // 31: ziti.ctrl.pb.Alert.relatedEntities:type_name -> ziti.ctrl.pb.Alert.RelatedEntitiesEntry
-	48, // 32: ziti.ctrl.pb.Alerts.alerts:type_name -> ziti.ctrl.pb.Alert
-	50, // 33: ziti.ctrl.pb.CtrlChanListeners.listeners:type_name -> ziti.ctrl.pb.CtrlChanListener
+	65, // 31: ziti.ctrl.pb.Alert.relatedEntities:type_name -> ziti.ctrl.pb.Alert.RelatedEntitiesEntry
+	49, // 32: ziti.ctrl.pb.Alerts.alerts:type_name -> ziti.ctrl.pb.Alert
+	51, // 33: ziti.ctrl.pb.CtrlChanListeners.listeners:type_name -> ziti.ctrl.pb.CtrlChanListener
 	20, // 34: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry.value:type_name -> ziti.ctrl.pb.RouterTerminatorState
 	24, // 35: ziti.ctrl.pb.RouterLinks.RouterLink.connState:type_name -> ziti.ctrl.pb.LinkConnState
-	62, // 36: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	63, // 36: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
 	7,  // 37: ziti.ctrl.pb.Route.Forward.dstType:type_name -> ziti.ctrl.pb.DestType
 	38, // [38:38] is the sub-list for method output_type
 	38, // [38:38] is the sub-list for method input_type
@@ -3772,7 +3867,7 @@ func file_ctrl_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ctrl_proto_rawDesc), len(file_ctrl_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   54,
+			NumMessages:   55,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

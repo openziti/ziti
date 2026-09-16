@@ -26,8 +26,10 @@ import (
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
@@ -71,6 +73,8 @@ func NewRouterMessaging(env model.Env, routerCommPool goroutines.Pool) *RouterMe
 		terminatorValidations:   map[string]*terminatorValidations{},
 		routerCommPool:          routerCommPool,
 		queuedTerminatorDeletes: map[string]struct{}{},
+		sendFailDeadChannel:     env.GetMetricsRegistry().Meter("pool.router.messaging.send_fail.dead_channel"),
+		sendFailBackpressure:    env.GetMetricsRegistry().Meter("pool.router.messaging.send_fail.backpressure"),
 	}
 
 	env.GetManagers().Terminator.GetStore().AddEntityEventListenerF(result.TerminatorCreated, boltz.EntityCreated)
@@ -89,6 +93,20 @@ type RouterMessaging struct {
 	markerCounter           atomic.Uint64
 	deleteInProgress        atomic.Bool
 	deleteStarted           concurrenz.AtomicValue[time.Time]
+	sendFailDeadChannel     metrics.Meter
+	sendFailBackpressure    metrics.Meter
+}
+
+// recordSendFailure classifies a failed SendAndWaitForWire to a router so we can
+// tell wasted 1s timeouts to dead/disconnected channels (benign, the router is
+// down/restarting) apart from genuine back-pressure to a live router. Without
+// this split the pool.router.messaging p99 alone can't distinguish the two.
+func (self *RouterMessaging) recordSendFailure(ch ctrlchan.CtrlChannel) {
+	if ch.IsClosed() || !ch.IsConnected() {
+		self.sendFailDeadChannel.Mark(1)
+	} else {
+		self.sendFailBackpressure.Mark(1)
+	}
 }
 
 func (self *RouterMessaging) getNextMarker() uint64 {
@@ -122,6 +140,20 @@ func (self *RouterMessaging) RouterListenersUpdated(r *model.Router) {
 func (self *RouterMessaging) TerminatorCreated(terminator *db.Terminator) {
 	self.queueEvent(&terminatorCreatedEvent{
 		terminator: terminator,
+	})
+}
+
+// NotifyRouterRemoved queues a peer-state change telling notifyRouterId that routerId is gone, for a
+// router that evidently missed the removal the first time.
+//
+// Peer state is otherwise only recomputed when a router connects or disconnects, and a deleted router does
+// neither again, so a removal that does not land is never repeated. This is the way to say it a second
+// time. The state itself is still computed at send time by syncStates, so a router that turns out to exist
+// after all is reported as it actually is rather than as removed.
+func (self *RouterMessaging) NotifyRouterRemoved(notifyRouterId string, routerId string) {
+	self.queueEvent(&routerRemovalNoticeEvent{
+		notifyRouterId: notifyRouterId,
+		routerId:       routerId,
 	})
 }
 
@@ -264,6 +296,7 @@ func (self *RouterMessaging) syncStates() {
 			if ch := notifyRouter.Control; ch != nil {
 				if err := protobufs.MarshalTyped(changes).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
 					pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send peer state changes to router")
+					self.recordSendFailure(ch)
 				} else {
 					success = true
 				}
@@ -351,6 +384,7 @@ func (self *RouterMessaging) sendTerminatorValidationRequest(routerId string, up
 
 		if err := protobufs.MarshalTyped(req).WithTimeout(time.Second * 1).SendAndWaitForWire(ch.GetDefaultSender()); err != nil {
 			pfxlog.Logger().WithError(err).WithField("routerId", notifyRouter.Id).Error("failed to send validate terminators request to router")
+			self.recordSendFailure(ch)
 		}
 	})
 
@@ -464,6 +498,22 @@ func (self *RouterMessaging) Inspect() (*inspect.RouterMessagingState, error) {
 	case <-timeout:
 		return nil, errors.New("timed out waiting for inspect result from router messaging")
 	}
+}
+
+// routerRemovalNoticeEvent re-queues one router's state for one other router. Unlike routerChangedEvent it
+// names its audience, since the router that needs telling is the one still reporting links to the removed
+// router, not every connected router.
+type routerRemovalNoticeEvent struct {
+	notifyRouterId string
+	routerId       string
+}
+
+func (self *routerRemovalNoticeEvent) handle(c *RouterMessaging) {
+	pfxlog.Logger().
+		WithField("notifyRouterId", self.notifyRouterId).
+		WithField("routerId", self.routerId).
+		Info("re-asserting router removal to router still referencing it")
+	c.getRouterStates(self.notifyRouterId).stateUpdated(self.routerId)
 }
 
 type routerChangedEvent struct {

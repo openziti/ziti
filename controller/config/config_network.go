@@ -17,6 +17,7 @@
 package config
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -35,6 +36,23 @@ const (
 	DefaultOptionsRouterConnectChurnLimit   = time.Minute
 	DefaultOptionsRouterMessagingMaxWorkers = 100
 	DefaultOptionsRouterMessagingQueueSize  = 100
+	// DefaultOptionsRouterConnectConcurrency bounds how many router connect setups run at once, so a
+	// burst of reconnects cannot starve the gossip and I/O pools. Connects are not refused for exceeding
+	// it; they wait, since the expensive part of connecting is already paid by the time this is reached
+	// and refusing would throw it away and have it redone.
+	DefaultOptionsRouterConnectConcurrency = 200
+
+	// DefaultOptionsRouterConnectSetupTimeout bounds that wait. It is a stuck detector, not load
+	// shedding: setup is sub-second and runs 200 at a time, so reaching this needs tens of thousands of
+	// connects queued, which no real fleet produces. It fires when setups are wedged rather than slow,
+	// and those waiters were never going to drain.
+	DefaultOptionsRouterConnectSetupTimeout = 2 * time.Minute
+	DefaultOptionsGossipApplyPoolMaxWorkers = 50
+	DefaultOptionsGossipApplyPoolQueueSize  = 1024
+	DefaultOptionsPeerEventsPoolMaxWorkers  = 10
+	DefaultOptionsPeerEventsPoolQueueSize   = 1
+	DefaultOptionsIoPoolMaxWorkers          = 32
+	DefaultOptionsIoPoolQueueSize           = 1024
 	DefaultOptionsRouteTimeout              = 10 * time.Second
 
 	DefaultOptionsSmartRerouteCap          = 4
@@ -67,6 +85,20 @@ type NetworkConfig struct {
 		QueueSize  uint32
 		MaxWorkers uint32
 	}
+	RouterConnectConcurrency  uint32
+	RouterConnectSetupTimeout time.Duration
+	GossipApplyPool           struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	PeerEventsPool struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	IoPool struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
 	Smart struct {
 		RerouteFraction float32
 		RerouteCap      uint32
@@ -91,6 +123,29 @@ func DefaultNetworkConfig() *NetworkConfig {
 		}{
 			QueueSize:  DefaultOptionsRouterMessagingQueueSize,
 			MaxWorkers: DefaultOptionsRouterMessagingMaxWorkers,
+		},
+		RouterConnectConcurrency:  DefaultOptionsRouterConnectConcurrency,
+		RouterConnectSetupTimeout: DefaultOptionsRouterConnectSetupTimeout,
+		GossipApplyPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsGossipApplyPoolQueueSize,
+			MaxWorkers: DefaultOptionsGossipApplyPoolMaxWorkers,
+		},
+		PeerEventsPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsPeerEventsPoolQueueSize,
+			MaxWorkers: DefaultOptionsPeerEventsPoolMaxWorkers,
+		},
+		IoPool: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultOptionsIoPoolQueueSize,
+			MaxWorkers: DefaultOptionsIoPoolMaxWorkers,
 		},
 		RouterConnectChurnLimit: DefaultOptionsRouterConnectChurnLimit,
 		RouteTimeout:            DefaultOptionsRouteTimeout,
@@ -199,6 +254,137 @@ func LoadNetworkConfig(src map[interface{}]interface{}) (*NetworkConfig, error) 
 			}
 		} else {
 			logrus.Errorf("invalid 'routerMessaging' stanza")
+		}
+	}
+
+	if value, found := src["routerConnectConcurrency"]; found {
+		if concurrency, ok := value.(int); ok {
+			if concurrency < 1 {
+				return nil, fmt.Errorf("invalid value for 'routerConnectConcurrency', must be greater than 0")
+			}
+			if concurrency > OptionsRouterCommMaxWorkers {
+				return nil, fmt.Errorf("invalid value for 'routerConnectConcurrency', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+			}
+			options.RouterConnectConcurrency = uint32(concurrency)
+		} else {
+			return nil, fmt.Errorf("invalid value for 'routerConnectConcurrency'")
+		}
+	}
+
+	if value, found := src["routerConnectSetupTimeout"]; found {
+		if timeout, ok := value.(string); ok {
+			d, err := time.ParseDuration(timeout)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout': %w", err)
+			}
+			if d <= 0 {
+				return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout', must be greater than 0")
+			}
+			options.RouterConnectSetupTimeout = d
+		} else {
+			return nil, fmt.Errorf("invalid value for 'routerConnectSetupTimeout', must be a duration such as 2m")
+		}
+	}
+
+	if value, found := src["gossipApplyPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.GossipApplyPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'gossipApplyPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.GossipApplyPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'gossipApplyPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'gossipApplyPool' stanza")
+		}
+	}
+
+	if value, found := src["peerEventsPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.PeerEventsPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'peerEventsPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.PeerEventsPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'peerEventsPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'peerEventsPool' stanza")
+		}
+	}
+
+	if value, found := src["ioPool"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, fmt.Errorf("invalid value for 'ioPool.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > OptionsRouterCommMaxQueueSize {
+						return nil, fmt.Errorf("invalid value for 'ioPool.queueSize', must be less than or equal to %v", OptionsRouterCommMaxQueueSize)
+					}
+					options.IoPool.QueueSize = uint32(queueSize)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'ioPool.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > OptionsRouterCommMaxWorkers {
+						return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers', must be less than or equal to %v", OptionsRouterCommMaxWorkers)
+					}
+					options.IoPool.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, fmt.Errorf("invalid value for 'ioPool.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'ioPool' stanza")
 		}
 	}
 

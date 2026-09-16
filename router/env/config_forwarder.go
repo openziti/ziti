@@ -38,11 +38,18 @@ const (
 	DefaultLinkDialQueueLength   = 1000
 	MinLinkDialWorkerQueueLength = 1
 	MaxLinkDialWorkerQueueLength = 10000
-	DefaultLinkDialWorkerCount   = 32
+	DefaultLinkDialWorkerCount   = 64
 	MinLinkDialWorkerCount       = 1
 	MaxLinkDialWorkerCount       = 10000
 
-	DefaultRateLimiterQueueLength   = 5000
+	DefaultRateLimiterQueueLength = 5000
+
+	// DefaultRxPoolQueueLength and DefaultRxPoolWorkerCount size the pool for work lifted off a control
+	// channel's receive goroutine. The queue is generous because the work arrives in bursts, one per
+	// controller reconnect, while the worker count stays modest since the work is per control channel and
+	// there are only ever a handful of those.
+	DefaultRxPoolQueueLength        = 1024
+	DefaultRxPoolWorkerCount        = 16
 	MinRateLimiterWorkerQueueLength = 1
 	MaxRateLimiterWorkerQueueLength = 50000
 	DefaultRateLimiterWorkerCount   = 15

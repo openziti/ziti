@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/objectz"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"go.etcd.io/bbolt"
 )
 
 // linkLog is the logger for the controller's link manager. Its channel name is
@@ -73,7 +72,7 @@ func NewLinkManager(env Env) *LinkManager {
 		return &entity.DialAddress
 	})
 	result.GetStore().AddStringSymbol("sourceRouter", func(entity *Link) *string {
-		return &entity.Src.Id
+		return &entity.GetSrc().Id
 	})
 	result.GetStore().AddStringSymbol("destRouter", func(entity *Link) *string {
 		return &entity.DstId
@@ -134,8 +133,19 @@ func (self *LinkManager) buildRouterLink(router *Router, linkId string) {
 	if !found {
 		return
 	}
+	src := link.GetSrc()
+	if src == nil {
+		return
+	}
 	if link.DstId == router.Id && link.PointDestAt(router) {
-		router.routerLinks.Add(link, link.Src.Id)
+		router.routerLinks.Add(link, src.Id)
+	}
+	// Symmetric to the destination side: a link built from a gossiped entry can hold a database-loaded
+	// source router, and neighbour and path queries need the connected object rather than that placeholder.
+	// Src links are keyed by DstId.
+	if src.Id == router.Id && src != router {
+		link.Src.Store(router)
+		router.routerLinks.Add(link, link.DstId)
 	}
 }
 
@@ -150,9 +160,9 @@ func (self *LinkManager) Add(link *Link) {
 // addLocked publishes a link. The caller must hold the link's stripe.
 func (self *LinkManager) addLocked(link *Link) {
 	self.linkTable.add(link)
-	link.Src.routerLinks.Add(link, link.DstId)
+	link.GetSrc().routerLinks.Add(link, link.DstId)
 	if dest := link.GetDest(); dest != nil {
-		dest.routerLinks.Add(link, link.Src.Id)
+		dest.routerLinks.Add(link, link.GetSrc().Id)
 	}
 }
 
@@ -160,16 +170,63 @@ func (self *LinkManager) has(link *Link) bool {
 	return self.linkTable.has(link)
 }
 
-func (self *LinkManager) ScanForDeadLinks() {
+// destinationExists reports whether routerId names a router that still exists. The router cache answers
+// most calls without a bolt transaction; a miss falls through to the store.
+//
+// True when there is no one to ask, so a link report is never refused on the strength of a missing lookup.
+func (self *LinkManager) destinationExists(routerId string) bool {
+	if self.env == nil {
+		return true
+	}
+	router, err := self.env.GetManagers().Router.Read(routerId)
+	return err == nil && router != nil
+}
+
+// ScanForDeadLinks removes links whose dialer is no longer connected to this controller, skipping any the
+// keep predicate claims.
+//
+// Sound only for links the dialer re-announces on reconnect, which is what keep is for. A router that
+// reports links the pre-gossip way sends its whole dialed set every time it reconnects, so dropping its
+// links when it goes away costs nothing: it says them all again when it returns, and while it is away this
+// controller cannot route through it in any case. A router that gossips deliberately does not re-announce,
+// leaving that to anti-entropy, so dropping its links would strand them until a digest exchange noticed.
+//
+// The dialer is the only end considered. A link whose far end is gone is still the dialer's to retire, and
+// it does so by faulting it. A link always has a source: every path that builds one stores a router, and
+// disconnect clears the router's link set rather than the link's source.
+func (self *LinkManager) ScanForDeadLinks(keep func(*Link) bool) {
 	var toRemove []*Link
 	self.linkTable.links.IterCb(func(_ string, link *Link) {
-		if !link.Src.Connected.Load() {
-			toRemove = append(toRemove, link)
+		if link.GetSrc().Connected.Load() {
+			return
 		}
+		if keep != nil && keep(link) {
+			return
+		}
+		toRemove = append(toRemove, link)
 	})
 
 	for _, link := range toRemove {
-		self.Remove(link)
+		src := link.GetSrc()
+
+		// Whether the id is connected here under a different object is the distinction that matters when
+		// this fires: a router that is genuinely away, versus a link still pointing at a connection that has
+		// been replaced. The second is a stale pointer rather than a dead dialer, and retiring on it drops a
+		// live router's link. The two want different fixes, and nothing else records which one happened.
+		supersededSrc := false
+		if self.env != nil {
+			if current := self.env.GetManagers().Router.GetConnected(src.Id); current != nil && current != src {
+				supersededSrc = true
+			}
+		}
+
+		linkLog.Info("retiring link whose dialer is not connected here",
+			"linkId", link.Id,
+			"iteration", link.Iteration,
+			"srcRouterId", src.Id,
+			"destRouterId", link.DstId,
+			"supersededSrc", supersededSrc,
+			"removed", self.Remove(link))
 	}
 }
 
@@ -178,7 +235,7 @@ func (self *LinkManager) ScanForDeadLinks() {
 // pointing at a connection that has since been replaced. No-op if the router is absent or the link already
 // points at it, so it is safe to call on every report. The link must already be in the link table.
 func (self *LinkManager) repairDest(link *Link) {
-	if self.env == nil || link.Src == nil {
+	if self.env == nil || link.GetSrc() == nil {
 		return
 	}
 	dst := self.env.GetManagers().Router.GetConnected(link.DstId)
@@ -186,24 +243,71 @@ func (self *LinkManager) repairDest(link *Link) {
 		return
 	}
 	if link.PointDestAt(dst) {
-		dst.routerLinks.Add(link, link.Src.Id)
+		dst.routerLinks.Add(link, link.GetSrc().Id)
 		linkLog.Info("repaired link destination",
 			"linkId", link.Id,
-			"linkSrcRouterId", link.Src.Id,
+			"linkSrcRouterId", link.GetSrc().Id,
 			"linkDestRouterId", link.DstId)
 	}
 }
 
+// RouterReportedLink records a link a router has reported, returning the link and whether this report created
+// it. There are three outcomes, and callers have to tell them apart:
+//
+//	(link, true)   the link was created, or an older iteration of it was replaced
+//	(link, false)  the report matched a link already held, which is left untouched
+//	(nil, false)   the report was refused, because the reporting router is not the link's source
+//
+// A nil link is the case worth naming: every caller has to check for it before using the result, since the
+// refusal means there is no link to speak of rather than one that happens to be unchanged.
 func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
 	// Striped by link id so concurrent reports for different links proceed in
 	// parallel; reports for the same link still serialize. Replaces a single
 	// global mutex that funneled every router's link reports through one lock.
 	defer self.linkLocks.LockFor(reportedLink.Id)()
 
+	// A nil dst means the destination is not connected here, which is ordinary: the link is recorded and
+	// repaired when that router connects. It also covers a router that has been deleted, and that link can
+	// never be repaired, since a recreated router is assigned a new id. Left alone it is a link to an entity
+	// that does not exist: it counts, it validates, it offers itself for routing, and it cannot even be
+	// rendered by the API, which fails the whole listing rather than one row.
+	//
+	// The routers that dialed it do not know the router is gone and re-announce the link on every reconnect,
+	// so refusing here is what stops it coming back.
+	if dst == nil && !self.destinationExists(reportedLink.DestRouterId) {
+		linkLog.Warn("ignoring link report naming a destination router that no longer exists",
+			"linkId", reportedLink.Id,
+			"destRouterId", reportedLink.DestRouterId)
+		return nil, false
+	}
+
 	link, _ := self.Get(reportedLink.Id)
+
+	// Only the router that dialed a link may report on it. Link ids are generated by the dialing router and
+	// reused across its re-dials, with the iteration distinguishing attempts, so a report naming an existing
+	// link id from a different router is not a re-dial. Allowing it would let any router take over a link
+	// between two others by reporting a higher iteration: the replacement below would drop the real link and
+	// install one whose source is the impostor. Every caller passes the reporting router as src, so comparing
+	// against it is comparing against who is making the claim.
+	if link != nil {
+		if existingSrc := link.GetSrc(); existingSrc != nil && src != nil && existingSrc.Id != src.Id {
+			linkLog.Warn("ignoring link report from a router that is not the link's source",
+				"routerId", src.Id,
+				"linkId", reportedLink.Id,
+				"linkSrcRouterId", existingSrc.Id,
+				"iteration", reportedLink.Iteration,
+				"linkIteration", link.Iteration)
+			return nil, false
+		}
+	}
+
 	if link != nil && link.Iteration >= reportedLink.Iteration {
-		// A link can be left pointing at nothing, or at a connection that has since been replaced. Both are
-		// invisible in the table, so a later report is the only thing that will notice.
+		// A link built from a gossiped entry can hold a database-loaded source router. Repointing that is
+		// BuildRouterLinks' job at connect time, not this path's.
+		//
+		// The destination is repaired here, since it can be left pointing at nothing or at a connection that
+		// has since been replaced. Both are invisible in the table, so a later report is the only thing that
+		// will notice.
 		self.repairDest(link)
 		return link, false
 	}
@@ -225,7 +329,7 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 
 	link = newLink(reportedLink.Id, reportedLink.LinkProtocol, reportedLink.DialAddress, self.initialLatency)
 	link.Iteration = reportedLink.Iteration
-	link.Src = src
+	link.Src.Store(src)
 	link.Dst.Store(dst)
 	link.DstId = reportedLink.DestRouterId
 	link.SetState(Connected)
@@ -247,42 +351,10 @@ func (self *LinkManager) All() []*Link {
 	return self.linkTable.all()
 }
 
-// RouterDeleted drops the deleted router's link index, unless the id has since come back.
-//
-// A router id can be reused: fabric router ids are the enrollment certificate's common name, so re-adding
-// a router from the same cert reuses its id. Nothing orders this call against that, since store commit
-// handlers run after bolt has released the writer lock, so it can execute long after the id was recreated,
-// connected, and reported links. Dropping a live router's index is invisible in the link table and surfaces
-// only when a per-router query fails to find links it should have.
-//
-// Re-reading the store closes that rather than narrowing it, because the read happens while the index map's
-// shard is held. Indexing a link takes the same shard, so an entry for a live router cannot appear without
-// its create having committed first, which this read would then see. Anything indexed while the store says
-// the id is absent belongs to the deleted router.
+// RouterDeleted drops the deleted router's link index. A router id is only ever added to the index, so
+// without this every router that has ever had a link is held for the controller's lifetime.
 func (self *LinkManager) RouterDeleted(routerId string) {
-	self.linkTable.dropRouterIndexIf(routerId, func() bool {
-		return !self.routerExists(routerId)
-	})
-}
-
-// routerExists reports whether a router with this id is in the store. A nil env, which only happens in
-// tests that do not build one, reports absent so cleanup still runs.
-func (self *LinkManager) routerExists(routerId string) bool {
-	if self.env == nil {
-		return false
-	}
-	found := false
-	if err := self.env.GetDb().View(func(tx *bbolt.Tx) error {
-		found = self.env.GetStores().Router.IsEntityPresent(tx, routerId)
-		return nil
-	}); err != nil {
-		// Unreadable is not evidence the router is gone, and keeping an index costs only its entry.
-		linkLog.Warn("could not check whether router still exists, keeping its link index",
-			"routerId", routerId,
-			"error", err)
-		return true
-	}
-	return found
+	self.linkTable.dropRouterIndex(routerId)
 }
 
 // LinksForRouter returns the links with routerId at either end. Per-router work must use this rather than
@@ -314,9 +386,9 @@ func (self *LinkManager) removeLocked(link *Link) bool {
 	if !self.linkTable.remove(link) {
 		return false
 	}
-	link.Src.routerLinks.Remove(link, link.DstId)
+	link.GetSrc().routerLinks.Remove(link, link.DstId)
 	if dest := link.GetDest(); dest != nil {
-		dest.routerLinks.Remove(link, link.Src.Id)
+		dest.routerLinks.Remove(link, link.GetSrc().Id)
 	}
 	return true
 }
@@ -328,8 +400,8 @@ func (self *LinkManager) ConnectedNeighborsOfRouter(router *Router) []*Router {
 	for _, link := range links {
 		dstRouter := link.GetDest()
 		if dstRouter != nil && dstRouter.Connected.Load() && link.IsUsable() {
-			if link.Src.Id != router.Id {
-				neighborMap[link.Src.Id] = link.Src
+			if link.GetSrc().Id != router.Id {
+				neighborMap[link.GetSrc().Id] = link.GetSrc()
 			}
 			if link.DstId != router.Id {
 				neighborMap[link.DstId] = dstRouter
@@ -358,7 +430,7 @@ func (self *LinkManager) LeastExpensiveLink(a, b *Router) (*Link, bool) {
 					selected = link
 					cost = linkCost
 				}
-			} else if link.Src.Id == b.Id {
+			} else if link.GetSrc().Id == b.Id {
 				if linkCost < cost {
 					selected = link
 					cost = linkCost
@@ -399,8 +471,8 @@ func newLinkTable() *linkTable {
 // endpointIds returns the router ids a link should be indexed under, without duplicates.
 func (lt *linkTable) endpointIds(link *Link) []string {
 	ids := make([]string, 0, 2)
-	if link.Src != nil {
-		ids = append(ids, link.Src.Id)
+	if src := link.GetSrc(); src != nil {
+		ids = append(ids, src.Id)
 	}
 	if link.DstId != "" && (len(ids) == 0 || link.DstId != ids[0]) {
 		ids = append(ids, link.DstId)
@@ -424,12 +496,9 @@ func (lt *linkTable) indexFor(routerId string) *concurrency.LockedSet[string] {
 		})
 }
 
-// dropRouterIndexIf forgets a router's link index when shouldDrop agrees. shouldDrop runs with the index
-// map's shard held, so it must not index a link, and callers relying on that exclusion should say so.
-func (lt *linkTable) dropRouterIndexIf(routerId string, shouldDrop func() bool) {
-	lt.byRouter.RemoveCb(routerId, func(_ string, _ *concurrency.LockedSet[string], _ bool) bool {
-		return shouldDrop()
-	})
+// dropRouterIndex forgets a router's link index.
+func (lt *linkTable) dropRouterIndex(routerId string) {
+	lt.byRouter.Remove(routerId)
 }
 
 // linkIdsForRouter returns the ids indexed under the given router. Ids the table no longer holds are

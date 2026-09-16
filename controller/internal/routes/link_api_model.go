@@ -66,7 +66,7 @@ func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  ToFabricEntityRef(link.Src.Name, link.Src, FabricRouterLinkFactory),
+		SourceRouter:  ToFabricEntityRef(link.GetSrc().Name, link.GetSrc(), FabricRouterLinkFactory),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,

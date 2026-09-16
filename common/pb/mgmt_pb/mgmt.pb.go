@@ -87,6 +87,9 @@ const (
 	ContentType_ValidateStaleLinksRequestType                  ContentType = 10125
 	ContentType_ValidateStaleLinksResponseType                 ContentType = 10126
 	ContentType_ValidateStaleLinksResultType                   ContentType = 10127
+	ContentType_ValidateGossipRequestType                      ContentType = 10128
+	ContentType_ValidateGossipResponseType                     ContentType = 10129
+	ContentType_ValidateGossipResultType                       ContentType = 10130
 )
 
 // Enum value maps for ContentType.
@@ -147,6 +150,9 @@ var (
 		10125: "ValidateStaleLinksRequestType",
 		10126: "ValidateStaleLinksResponseType",
 		10127: "ValidateStaleLinksResultType",
+		10128: "ValidateGossipRequestType",
+		10129: "ValidateGossipResponseType",
+		10130: "ValidateGossipResultType",
 	}
 	ContentType_value = map[string]int32{
 		"Zero":                                           0,
@@ -204,6 +210,9 @@ var (
 		"ValidateStaleLinksRequestType":                  10125,
 		"ValidateStaleLinksResponseType":                 10126,
 		"ValidateStaleLinksResultType":                   10127,
+		"ValidateGossipRequestType":                      10128,
+		"ValidateGossipResponseType":                     10129,
+		"ValidateGossipResultType":                       10130,
 	}
 )
 
@@ -1761,17 +1770,20 @@ func (x *RouterLinkDetails) GetLinkDetails() []*RouterLinkDetail {
 }
 
 type RouterLinkDetail struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	LinkId        string                 `protobuf:"bytes,1,opt,name=linkId,proto3" json:"linkId,omitempty"`
-	CtrlState     LinkState              `protobuf:"varint,2,opt,name=ctrlState,proto3,enum=ziti.mgmt_pb.LinkState" json:"ctrlState,omitempty"`
-	RouterState   LinkState              `protobuf:"varint,3,opt,name=routerState,proto3,enum=ziti.mgmt_pb.LinkState" json:"routerState,omitempty"`
-	DestConnected bool                   `protobuf:"varint,4,opt,name=destConnected,proto3" json:"destConnected,omitempty"`
-	IsValid       bool                   `protobuf:"varint,5,opt,name=isValid,proto3" json:"isValid,omitempty"`
-	DestRouterId  string                 `protobuf:"bytes,6,opt,name=destRouterId,proto3" json:"destRouterId,omitempty"`
-	Dialed        bool                   `protobuf:"varint,7,opt,name=dialed,proto3" json:"dialed,omitempty"`
-	Messages      []string               `protobuf:"bytes,8,rep,name=messages,proto3" json:"messages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	LinkId          string                 `protobuf:"bytes,1,opt,name=linkId,proto3" json:"linkId,omitempty"`
+	CtrlState       LinkState              `protobuf:"varint,2,opt,name=ctrlState,proto3,enum=ziti.mgmt_pb.LinkState" json:"ctrlState,omitempty"`
+	RouterState     LinkState              `protobuf:"varint,3,opt,name=routerState,proto3,enum=ziti.mgmt_pb.LinkState" json:"routerState,omitempty"`
+	DestConnected   bool                   `protobuf:"varint,4,opt,name=destConnected,proto3" json:"destConnected,omitempty"`
+	IsValid         bool                   `protobuf:"varint,5,opt,name=isValid,proto3" json:"isValid,omitempty"`
+	DestRouterId    string                 `protobuf:"bytes,6,opt,name=destRouterId,proto3" json:"destRouterId,omitempty"`
+	Dialed          bool                   `protobuf:"varint,7,opt,name=dialed,proto3" json:"dialed,omitempty"`
+	Messages        []string               `protobuf:"bytes,8,rep,name=messages,proto3" json:"messages,omitempty"`
+	InGossipStore   bool                   `protobuf:"varint,9,opt,name=inGossipStore,proto3" json:"inGossipStore,omitempty"`
+	GossipVersion   uint64                 `protobuf:"varint,10,opt,name=gossipVersion,proto3" json:"gossipVersion,omitempty"`
+	GossipIteration uint32                 `protobuf:"varint,11,opt,name=gossipIteration,proto3" json:"gossipIteration,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RouterLinkDetail) Reset() {
@@ -1860,6 +1872,339 @@ func (x *RouterLinkDetail) GetMessages() []string {
 	return nil
 }
 
+func (x *RouterLinkDetail) GetInGossipStore() bool {
+	if x != nil {
+		return x.InGossipStore
+	}
+	return false
+}
+
+func (x *RouterLinkDetail) GetGossipVersion() uint64 {
+	if x != nil {
+		return x.GossipVersion
+	}
+	return 0
+}
+
+func (x *RouterLinkDetail) GetGossipIteration() uint32 {
+	if x != nil {
+		return x.GossipIteration
+	}
+	return 0
+}
+
+type ValidateGossipRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filter        string                 `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	ValidateCtrl  bool                   `protobuf:"varint,2,opt,name=validateCtrl,proto3" json:"validateCtrl,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateGossipRequest) Reset() {
+	*x = ValidateGossipRequest{}
+	mi := &file_mgmt_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateGossipRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateGossipRequest) ProtoMessage() {}
+
+func (x *ValidateGossipRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateGossipRequest.ProtoReflect.Descriptor instead.
+func (*ValidateGossipRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ValidateGossipRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *ValidateGossipRequest) GetValidateCtrl() bool {
+	if x != nil {
+		return x.ValidateCtrl
+	}
+	return false
+}
+
+type ValidateGossipResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Success        bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message        string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	ComponentCount uint64                 `protobuf:"varint,3,opt,name=componentCount,proto3" json:"componentCount,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ValidateGossipResponse) Reset() {
+	*x = ValidateGossipResponse{}
+	mi := &file_mgmt_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateGossipResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateGossipResponse) ProtoMessage() {}
+
+func (x *ValidateGossipResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateGossipResponse.ProtoReflect.Descriptor instead.
+func (*ValidateGossipResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ValidateGossipResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ValidateGossipResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ValidateGossipResponse) GetComponentCount() uint64 {
+	if x != nil {
+		return x.ComponentCount
+	}
+	return 0
+}
+
+type GossipValidationDetails struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ComponentType   string                 `protobuf:"bytes,1,opt,name=componentType,proto3" json:"componentType,omitempty"` // "router" or "controller"
+	ComponentId     string                 `protobuf:"bytes,2,opt,name=componentId,proto3" json:"componentId,omitempty"`
+	ComponentName   string                 `protobuf:"bytes,3,opt,name=componentName,proto3" json:"componentName,omitempty"`
+	ValidateSuccess bool                   `protobuf:"varint,4,opt,name=validateSuccess,proto3" json:"validateSuccess,omitempty"`
+	Message         string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	LinkDetails     []*GossipLinkDetail    `protobuf:"bytes,6,rep,name=linkDetails,proto3" json:"linkDetails,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GossipValidationDetails) Reset() {
+	*x = GossipValidationDetails{}
+	mi := &file_mgmt_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GossipValidationDetails) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GossipValidationDetails) ProtoMessage() {}
+
+func (x *GossipValidationDetails) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GossipValidationDetails.ProtoReflect.Descriptor instead.
+func (*GossipValidationDetails) Descriptor() ([]byte, []int) {
+	return file_mgmt_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GossipValidationDetails) GetComponentType() string {
+	if x != nil {
+		return x.ComponentType
+	}
+	return ""
+}
+
+func (x *GossipValidationDetails) GetComponentId() string {
+	if x != nil {
+		return x.ComponentId
+	}
+	return ""
+}
+
+func (x *GossipValidationDetails) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
+func (x *GossipValidationDetails) GetValidateSuccess() bool {
+	if x != nil {
+		return x.ValidateSuccess
+	}
+	return false
+}
+
+func (x *GossipValidationDetails) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *GossipValidationDetails) GetLinkDetails() []*GossipLinkDetail {
+	if x != nil {
+		return x.LinkDetails
+	}
+	return nil
+}
+
+type GossipLinkDetail struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LinkId        string                 `protobuf:"bytes,1,opt,name=linkId,proto3" json:"linkId,omitempty"`
+	Iteration     uint32                 `protobuf:"varint,2,opt,name=iteration,proto3" json:"iteration,omitempty"`
+	DestRouterId  string                 `protobuf:"bytes,3,opt,name=destRouterId,proto3" json:"destRouterId,omitempty"`
+	Dialed        bool                   `protobuf:"varint,4,opt,name=dialed,proto3" json:"dialed,omitempty"`               // for a router component, this component owns/dialed the link
+	InSource      bool                   `protobuf:"varint,5,opt,name=inSource,proto3" json:"inSource,omitempty"`           // present in the source of truth (router link registry / controller link manager)
+	InLocalGossip bool                   `protobuf:"varint,6,opt,name=inLocalGossip,proto3" json:"inLocalGossip,omitempty"` // present in this component's own gossip store
+	InCtrlGossip  bool                   `protobuf:"varint,7,opt,name=inCtrlGossip,proto3" json:"inCtrlGossip,omitempty"`   // present in the validating controller's gossip store
+	GossipVersion uint64                 `protobuf:"varint,8,opt,name=gossipVersion,proto3" json:"gossipVersion,omitempty"`
+	IsValid       bool                   `protobuf:"varint,9,opt,name=isValid,proto3" json:"isValid,omitempty"`
+	Messages      []string               `protobuf:"bytes,10,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GossipLinkDetail) Reset() {
+	*x = GossipLinkDetail{}
+	mi := &file_mgmt_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GossipLinkDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GossipLinkDetail) ProtoMessage() {}
+
+func (x *GossipLinkDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GossipLinkDetail.ProtoReflect.Descriptor instead.
+func (*GossipLinkDetail) Descriptor() ([]byte, []int) {
+	return file_mgmt_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GossipLinkDetail) GetLinkId() string {
+	if x != nil {
+		return x.LinkId
+	}
+	return ""
+}
+
+func (x *GossipLinkDetail) GetIteration() uint32 {
+	if x != nil {
+		return x.Iteration
+	}
+	return 0
+}
+
+func (x *GossipLinkDetail) GetDestRouterId() string {
+	if x != nil {
+		return x.DestRouterId
+	}
+	return ""
+}
+
+func (x *GossipLinkDetail) GetDialed() bool {
+	if x != nil {
+		return x.Dialed
+	}
+	return false
+}
+
+func (x *GossipLinkDetail) GetInSource() bool {
+	if x != nil {
+		return x.InSource
+	}
+	return false
+}
+
+func (x *GossipLinkDetail) GetInLocalGossip() bool {
+	if x != nil {
+		return x.InLocalGossip
+	}
+	return false
+}
+
+func (x *GossipLinkDetail) GetInCtrlGossip() bool {
+	if x != nil {
+		return x.InCtrlGossip
+	}
+	return false
+}
+
+func (x *GossipLinkDetail) GetGossipVersion() uint64 {
+	if x != nil {
+		return x.GossipVersion
+	}
+	return 0
+}
+
+func (x *GossipLinkDetail) GetIsValid() bool {
+	if x != nil {
+		return x.IsValid
+	}
+	return false
+}
+
+func (x *GossipLinkDetail) GetMessages() []string {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
 type ValidateStaleLinksRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Filter string                 `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
@@ -1875,7 +2220,7 @@ type ValidateStaleLinksRequest struct {
 
 func (x *ValidateStaleLinksRequest) Reset() {
 	*x = ValidateStaleLinksRequest{}
-	mi := &file_mgmt_proto_msgTypes[18]
+	mi := &file_mgmt_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1887,7 +2232,7 @@ func (x *ValidateStaleLinksRequest) String() string {
 func (*ValidateStaleLinksRequest) ProtoMessage() {}
 
 func (x *ValidateStaleLinksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[18]
+	mi := &file_mgmt_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1900,7 +2245,7 @@ func (x *ValidateStaleLinksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateStaleLinksRequest.ProtoReflect.Descriptor instead.
 func (*ValidateStaleLinksRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{18}
+	return file_mgmt_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ValidateStaleLinksRequest) GetFilter() string {
@@ -1935,7 +2280,7 @@ type ValidateStaleLinksResponse struct {
 
 func (x *ValidateStaleLinksResponse) Reset() {
 	*x = ValidateStaleLinksResponse{}
-	mi := &file_mgmt_proto_msgTypes[19]
+	mi := &file_mgmt_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1947,7 +2292,7 @@ func (x *ValidateStaleLinksResponse) String() string {
 func (*ValidateStaleLinksResponse) ProtoMessage() {}
 
 func (x *ValidateStaleLinksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[19]
+	mi := &file_mgmt_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1960,7 +2305,7 @@ func (x *ValidateStaleLinksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateStaleLinksResponse.ProtoReflect.Descriptor instead.
 func (*ValidateStaleLinksResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{19}
+	return file_mgmt_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ValidateStaleLinksResponse) GetSuccess() bool {
@@ -2005,7 +2350,7 @@ type StaleLinkResult struct {
 
 func (x *StaleLinkResult) Reset() {
 	*x = StaleLinkResult{}
-	mi := &file_mgmt_proto_msgTypes[20]
+	mi := &file_mgmt_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2017,7 +2362,7 @@ func (x *StaleLinkResult) String() string {
 func (*StaleLinkResult) ProtoMessage() {}
 
 func (x *StaleLinkResult) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[20]
+	mi := &file_mgmt_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2030,7 +2375,7 @@ func (x *StaleLinkResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StaleLinkResult.ProtoReflect.Descriptor instead.
 func (*StaleLinkResult) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{20}
+	return file_mgmt_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *StaleLinkResult) GetLinkId() string {
@@ -2105,7 +2450,7 @@ type ValidateRouterSdkTerminatorsRequest struct {
 
 func (x *ValidateRouterSdkTerminatorsRequest) Reset() {
 	*x = ValidateRouterSdkTerminatorsRequest{}
-	mi := &file_mgmt_proto_msgTypes[21]
+	mi := &file_mgmt_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2117,7 +2462,7 @@ func (x *ValidateRouterSdkTerminatorsRequest) String() string {
 func (*ValidateRouterSdkTerminatorsRequest) ProtoMessage() {}
 
 func (x *ValidateRouterSdkTerminatorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[21]
+	mi := &file_mgmt_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2130,7 +2475,7 @@ func (x *ValidateRouterSdkTerminatorsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ValidateRouterSdkTerminatorsRequest.ProtoReflect.Descriptor instead.
 func (*ValidateRouterSdkTerminatorsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{21}
+	return file_mgmt_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ValidateRouterSdkTerminatorsRequest) GetFilter() string {
@@ -2151,7 +2496,7 @@ type ValidateRouterSdkTerminatorsResponse struct {
 
 func (x *ValidateRouterSdkTerminatorsResponse) Reset() {
 	*x = ValidateRouterSdkTerminatorsResponse{}
-	mi := &file_mgmt_proto_msgTypes[22]
+	mi := &file_mgmt_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2163,7 +2508,7 @@ func (x *ValidateRouterSdkTerminatorsResponse) String() string {
 func (*ValidateRouterSdkTerminatorsResponse) ProtoMessage() {}
 
 func (x *ValidateRouterSdkTerminatorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[22]
+	mi := &file_mgmt_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2176,7 +2521,7 @@ func (x *ValidateRouterSdkTerminatorsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ValidateRouterSdkTerminatorsResponse.ProtoReflect.Descriptor instead.
 func (*ValidateRouterSdkTerminatorsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{22}
+	return file_mgmt_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ValidateRouterSdkTerminatorsResponse) GetSuccess() bool {
@@ -2213,7 +2558,7 @@ type RouterSdkTerminatorsDetails struct {
 
 func (x *RouterSdkTerminatorsDetails) Reset() {
 	*x = RouterSdkTerminatorsDetails{}
-	mi := &file_mgmt_proto_msgTypes[23]
+	mi := &file_mgmt_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2570,7 @@ func (x *RouterSdkTerminatorsDetails) String() string {
 func (*RouterSdkTerminatorsDetails) ProtoMessage() {}
 
 func (x *RouterSdkTerminatorsDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[23]
+	mi := &file_mgmt_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2583,7 @@ func (x *RouterSdkTerminatorsDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterSdkTerminatorsDetails.ProtoReflect.Descriptor instead.
 func (*RouterSdkTerminatorsDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{23}
+	return file_mgmt_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RouterSdkTerminatorsDetails) GetRouterId() string {
@@ -2291,7 +2636,7 @@ type RouterSdkTerminatorDetail struct {
 
 func (x *RouterSdkTerminatorDetail) Reset() {
 	*x = RouterSdkTerminatorDetail{}
-	mi := &file_mgmt_proto_msgTypes[24]
+	mi := &file_mgmt_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2303,7 +2648,7 @@ func (x *RouterSdkTerminatorDetail) String() string {
 func (*RouterSdkTerminatorDetail) ProtoMessage() {}
 
 func (x *RouterSdkTerminatorDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[24]
+	mi := &file_mgmt_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2316,7 +2661,7 @@ func (x *RouterSdkTerminatorDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterSdkTerminatorDetail.ProtoReflect.Descriptor instead.
 func (*RouterSdkTerminatorDetail) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{24}
+	return file_mgmt_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *RouterSdkTerminatorDetail) GetTerminatorId() string {
@@ -2377,7 +2722,7 @@ type ValidateRouterErtTerminatorsRequest struct {
 
 func (x *ValidateRouterErtTerminatorsRequest) Reset() {
 	*x = ValidateRouterErtTerminatorsRequest{}
-	mi := &file_mgmt_proto_msgTypes[25]
+	mi := &file_mgmt_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2389,7 +2734,7 @@ func (x *ValidateRouterErtTerminatorsRequest) String() string {
 func (*ValidateRouterErtTerminatorsRequest) ProtoMessage() {}
 
 func (x *ValidateRouterErtTerminatorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[25]
+	mi := &file_mgmt_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2402,7 +2747,7 @@ func (x *ValidateRouterErtTerminatorsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ValidateRouterErtTerminatorsRequest.ProtoReflect.Descriptor instead.
 func (*ValidateRouterErtTerminatorsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{25}
+	return file_mgmt_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ValidateRouterErtTerminatorsRequest) GetFilter() string {
@@ -2423,7 +2768,7 @@ type ValidateRouterErtTerminatorsResponse struct {
 
 func (x *ValidateRouterErtTerminatorsResponse) Reset() {
 	*x = ValidateRouterErtTerminatorsResponse{}
-	mi := &file_mgmt_proto_msgTypes[26]
+	mi := &file_mgmt_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2435,7 +2780,7 @@ func (x *ValidateRouterErtTerminatorsResponse) String() string {
 func (*ValidateRouterErtTerminatorsResponse) ProtoMessage() {}
 
 func (x *ValidateRouterErtTerminatorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[26]
+	mi := &file_mgmt_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2448,7 +2793,7 @@ func (x *ValidateRouterErtTerminatorsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ValidateRouterErtTerminatorsResponse.ProtoReflect.Descriptor instead.
 func (*ValidateRouterErtTerminatorsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{26}
+	return file_mgmt_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ValidateRouterErtTerminatorsResponse) GetSuccess() bool {
@@ -2485,7 +2830,7 @@ type RouterErtTerminatorsDetails struct {
 
 func (x *RouterErtTerminatorsDetails) Reset() {
 	*x = RouterErtTerminatorsDetails{}
-	mi := &file_mgmt_proto_msgTypes[27]
+	mi := &file_mgmt_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2497,7 +2842,7 @@ func (x *RouterErtTerminatorsDetails) String() string {
 func (*RouterErtTerminatorsDetails) ProtoMessage() {}
 
 func (x *RouterErtTerminatorsDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[27]
+	mi := &file_mgmt_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2510,7 +2855,7 @@ func (x *RouterErtTerminatorsDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterErtTerminatorsDetails.ProtoReflect.Descriptor instead.
 func (*RouterErtTerminatorsDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{27}
+	return file_mgmt_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RouterErtTerminatorsDetails) GetRouterId() string {
@@ -2560,7 +2905,7 @@ type RouterErtTerminatorDetail struct {
 
 func (x *RouterErtTerminatorDetail) Reset() {
 	*x = RouterErtTerminatorDetail{}
-	mi := &file_mgmt_proto_msgTypes[28]
+	mi := &file_mgmt_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2572,7 +2917,7 @@ func (x *RouterErtTerminatorDetail) String() string {
 func (*RouterErtTerminatorDetail) ProtoMessage() {}
 
 func (x *RouterErtTerminatorDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[28]
+	mi := &file_mgmt_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2585,7 +2930,7 @@ func (x *RouterErtTerminatorDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterErtTerminatorDetail.ProtoReflect.Descriptor instead.
 func (*RouterErtTerminatorDetail) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{28}
+	return file_mgmt_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *RouterErtTerminatorDetail) GetTerminatorId() string {
@@ -2627,7 +2972,7 @@ type ValidateRouterDataModelRequest struct {
 
 func (x *ValidateRouterDataModelRequest) Reset() {
 	*x = ValidateRouterDataModelRequest{}
-	mi := &file_mgmt_proto_msgTypes[29]
+	mi := &file_mgmt_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2639,7 +2984,7 @@ func (x *ValidateRouterDataModelRequest) String() string {
 func (*ValidateRouterDataModelRequest) ProtoMessage() {}
 
 func (x *ValidateRouterDataModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[29]
+	mi := &file_mgmt_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2652,7 +2997,7 @@ func (x *ValidateRouterDataModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateRouterDataModelRequest.ProtoReflect.Descriptor instead.
 func (*ValidateRouterDataModelRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{29}
+	return file_mgmt_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ValidateRouterDataModelRequest) GetRouterFilter() string {
@@ -2687,7 +3032,7 @@ type ValidateRouterDataModelResponse struct {
 
 func (x *ValidateRouterDataModelResponse) Reset() {
 	*x = ValidateRouterDataModelResponse{}
-	mi := &file_mgmt_proto_msgTypes[30]
+	mi := &file_mgmt_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2699,7 +3044,7 @@ func (x *ValidateRouterDataModelResponse) String() string {
 func (*ValidateRouterDataModelResponse) ProtoMessage() {}
 
 func (x *ValidateRouterDataModelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[30]
+	mi := &file_mgmt_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2712,7 +3057,7 @@ func (x *ValidateRouterDataModelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateRouterDataModelResponse.ProtoReflect.Descriptor instead.
 func (*ValidateRouterDataModelResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{30}
+	return file_mgmt_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ValidateRouterDataModelResponse) GetSuccess() bool {
@@ -2749,7 +3094,7 @@ type RouterDataModelDetails struct {
 
 func (x *RouterDataModelDetails) Reset() {
 	*x = RouterDataModelDetails{}
-	mi := &file_mgmt_proto_msgTypes[31]
+	mi := &file_mgmt_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2761,7 +3106,7 @@ func (x *RouterDataModelDetails) String() string {
 func (*RouterDataModelDetails) ProtoMessage() {}
 
 func (x *RouterDataModelDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[31]
+	mi := &file_mgmt_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2774,7 +3119,7 @@ func (x *RouterDataModelDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterDataModelDetails.ProtoReflect.Descriptor instead.
 func (*RouterDataModelDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{31}
+	return file_mgmt_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RouterDataModelDetails) GetComponentType() string {
@@ -2821,7 +3166,7 @@ type ValidateIdentityConnectionStatusesRequest struct {
 
 func (x *ValidateIdentityConnectionStatusesRequest) Reset() {
 	*x = ValidateIdentityConnectionStatusesRequest{}
-	mi := &file_mgmt_proto_msgTypes[32]
+	mi := &file_mgmt_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2833,7 +3178,7 @@ func (x *ValidateIdentityConnectionStatusesRequest) String() string {
 func (*ValidateIdentityConnectionStatusesRequest) ProtoMessage() {}
 
 func (x *ValidateIdentityConnectionStatusesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[32]
+	mi := &file_mgmt_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2846,7 +3191,7 @@ func (x *ValidateIdentityConnectionStatusesRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use ValidateIdentityConnectionStatusesRequest.ProtoReflect.Descriptor instead.
 func (*ValidateIdentityConnectionStatusesRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{32}
+	return file_mgmt_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ValidateIdentityConnectionStatusesRequest) GetRouterFilter() string {
@@ -2867,7 +3212,7 @@ type ValidateIdentityConnectionStatusesResponse struct {
 
 func (x *ValidateIdentityConnectionStatusesResponse) Reset() {
 	*x = ValidateIdentityConnectionStatusesResponse{}
-	mi := &file_mgmt_proto_msgTypes[33]
+	mi := &file_mgmt_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2879,7 +3224,7 @@ func (x *ValidateIdentityConnectionStatusesResponse) String() string {
 func (*ValidateIdentityConnectionStatusesResponse) ProtoMessage() {}
 
 func (x *ValidateIdentityConnectionStatusesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[33]
+	mi := &file_mgmt_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2892,7 +3237,7 @@ func (x *ValidateIdentityConnectionStatusesResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use ValidateIdentityConnectionStatusesResponse.ProtoReflect.Descriptor instead.
 func (*ValidateIdentityConnectionStatusesResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{33}
+	return file_mgmt_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ValidateIdentityConnectionStatusesResponse) GetSuccess() bool {
@@ -2929,7 +3274,7 @@ type RouterIdentityConnectionStatusesDetails struct {
 
 func (x *RouterIdentityConnectionStatusesDetails) Reset() {
 	*x = RouterIdentityConnectionStatusesDetails{}
-	mi := &file_mgmt_proto_msgTypes[34]
+	mi := &file_mgmt_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2941,7 +3286,7 @@ func (x *RouterIdentityConnectionStatusesDetails) String() string {
 func (*RouterIdentityConnectionStatusesDetails) ProtoMessage() {}
 
 func (x *RouterIdentityConnectionStatusesDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[34]
+	mi := &file_mgmt_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2954,7 +3299,7 @@ func (x *RouterIdentityConnectionStatusesDetails) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use RouterIdentityConnectionStatusesDetails.ProtoReflect.Descriptor instead.
 func (*RouterIdentityConnectionStatusesDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{34}
+	return file_mgmt_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *RouterIdentityConnectionStatusesDetails) GetComponentType() string {
@@ -3003,7 +3348,7 @@ type InitRequest struct {
 
 func (x *InitRequest) Reset() {
 	*x = InitRequest{}
-	mi := &file_mgmt_proto_msgTypes[35]
+	mi := &file_mgmt_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3015,7 +3360,7 @@ func (x *InitRequest) String() string {
 func (*InitRequest) ProtoMessage() {}
 
 func (x *InitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[35]
+	mi := &file_mgmt_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3028,7 +3373,7 @@ func (x *InitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitRequest.ProtoReflect.Descriptor instead.
 func (*InitRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{35}
+	return file_mgmt_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *InitRequest) GetUsername() string {
@@ -3061,7 +3406,7 @@ type ValidateCircuitsRequest struct {
 
 func (x *ValidateCircuitsRequest) Reset() {
 	*x = ValidateCircuitsRequest{}
-	mi := &file_mgmt_proto_msgTypes[36]
+	mi := &file_mgmt_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3073,7 +3418,7 @@ func (x *ValidateCircuitsRequest) String() string {
 func (*ValidateCircuitsRequest) ProtoMessage() {}
 
 func (x *ValidateCircuitsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[36]
+	mi := &file_mgmt_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3086,7 +3431,7 @@ func (x *ValidateCircuitsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateCircuitsRequest.ProtoReflect.Descriptor instead.
 func (*ValidateCircuitsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{36}
+	return file_mgmt_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ValidateCircuitsRequest) GetRouterFilter() string {
@@ -3107,7 +3452,7 @@ type ValidateCircuitsResponse struct {
 
 func (x *ValidateCircuitsResponse) Reset() {
 	*x = ValidateCircuitsResponse{}
-	mi := &file_mgmt_proto_msgTypes[37]
+	mi := &file_mgmt_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3119,7 +3464,7 @@ func (x *ValidateCircuitsResponse) String() string {
 func (*ValidateCircuitsResponse) ProtoMessage() {}
 
 func (x *ValidateCircuitsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[37]
+	mi := &file_mgmt_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3132,7 +3477,7 @@ func (x *ValidateCircuitsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateCircuitsResponse.ProtoReflect.Descriptor instead.
 func (*ValidateCircuitsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{37}
+	return file_mgmt_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ValidateCircuitsResponse) GetSuccess() bool {
@@ -3169,7 +3514,7 @@ type RouterCircuitDetails struct {
 
 func (x *RouterCircuitDetails) Reset() {
 	*x = RouterCircuitDetails{}
-	mi := &file_mgmt_proto_msgTypes[38]
+	mi := &file_mgmt_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3181,7 +3526,7 @@ func (x *RouterCircuitDetails) String() string {
 func (*RouterCircuitDetails) ProtoMessage() {}
 
 func (x *RouterCircuitDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[38]
+	mi := &file_mgmt_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3194,7 +3539,7 @@ func (x *RouterCircuitDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterCircuitDetails.ProtoReflect.Descriptor instead.
 func (*RouterCircuitDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{38}
+	return file_mgmt_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *RouterCircuitDetails) GetRouterId() string {
@@ -3246,7 +3591,7 @@ type RouterCircuitDetail struct {
 
 func (x *RouterCircuitDetail) Reset() {
 	*x = RouterCircuitDetail{}
-	mi := &file_mgmt_proto_msgTypes[39]
+	mi := &file_mgmt_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3258,7 +3603,7 @@ func (x *RouterCircuitDetail) String() string {
 func (*RouterCircuitDetail) ProtoMessage() {}
 
 func (x *RouterCircuitDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[39]
+	mi := &file_mgmt_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3271,7 +3616,7 @@ func (x *RouterCircuitDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouterCircuitDetail.ProtoReflect.Descriptor instead.
 func (*RouterCircuitDetail) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{39}
+	return file_mgmt_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *RouterCircuitDetail) GetCircuitId() string {
@@ -3324,7 +3669,7 @@ type ValidateControllerDialersRequest struct {
 
 func (x *ValidateControllerDialersRequest) Reset() {
 	*x = ValidateControllerDialersRequest{}
-	mi := &file_mgmt_proto_msgTypes[40]
+	mi := &file_mgmt_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3336,7 +3681,7 @@ func (x *ValidateControllerDialersRequest) String() string {
 func (*ValidateControllerDialersRequest) ProtoMessage() {}
 
 func (x *ValidateControllerDialersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[40]
+	mi := &file_mgmt_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3349,7 +3694,7 @@ func (x *ValidateControllerDialersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateControllerDialersRequest.ProtoReflect.Descriptor instead.
 func (*ValidateControllerDialersRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{40}
+	return file_mgmt_proto_rawDescGZIP(), []int{44}
 }
 
 type ValidateControllerDialersResponse struct {
@@ -3363,7 +3708,7 @@ type ValidateControllerDialersResponse struct {
 
 func (x *ValidateControllerDialersResponse) Reset() {
 	*x = ValidateControllerDialersResponse{}
-	mi := &file_mgmt_proto_msgTypes[41]
+	mi := &file_mgmt_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3375,7 +3720,7 @@ func (x *ValidateControllerDialersResponse) String() string {
 func (*ValidateControllerDialersResponse) ProtoMessage() {}
 
 func (x *ValidateControllerDialersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[41]
+	mi := &file_mgmt_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3388,7 +3733,7 @@ func (x *ValidateControllerDialersResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ValidateControllerDialersResponse.ProtoReflect.Descriptor instead.
 func (*ValidateControllerDialersResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{41}
+	return file_mgmt_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ValidateControllerDialersResponse) GetSuccess() bool {
@@ -3424,7 +3769,7 @@ type ControllerDialerDetails struct {
 
 func (x *ControllerDialerDetails) Reset() {
 	*x = ControllerDialerDetails{}
-	mi := &file_mgmt_proto_msgTypes[42]
+	mi := &file_mgmt_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3436,7 +3781,7 @@ func (x *ControllerDialerDetails) String() string {
 func (*ControllerDialerDetails) ProtoMessage() {}
 
 func (x *ControllerDialerDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[42]
+	mi := &file_mgmt_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3449,7 +3794,7 @@ func (x *ControllerDialerDetails) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ControllerDialerDetails.ProtoReflect.Descriptor instead.
 func (*ControllerDialerDetails) Descriptor() ([]byte, []int) {
-	return file_mgmt_proto_rawDescGZIP(), []int{42}
+	return file_mgmt_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ControllerDialerDetails) GetComponentId() string {
@@ -3490,7 +3835,7 @@ type StreamMetricsRequest_MetricMatcher struct {
 
 func (x *StreamMetricsRequest_MetricMatcher) Reset() {
 	*x = StreamMetricsRequest_MetricMatcher{}
-	mi := &file_mgmt_proto_msgTypes[43]
+	mi := &file_mgmt_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3502,7 +3847,7 @@ func (x *StreamMetricsRequest_MetricMatcher) String() string {
 func (*StreamMetricsRequest_MetricMatcher) ProtoMessage() {}
 
 func (x *StreamMetricsRequest_MetricMatcher) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[43]
+	mi := &file_mgmt_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3544,7 +3889,7 @@ type StreamMetricsEvent_IntervalMetric struct {
 
 func (x *StreamMetricsEvent_IntervalMetric) Reset() {
 	*x = StreamMetricsEvent_IntervalMetric{}
-	mi := &file_mgmt_proto_msgTypes[47]
+	mi := &file_mgmt_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3556,7 +3901,7 @@ func (x *StreamMetricsEvent_IntervalMetric) String() string {
 func (*StreamMetricsEvent_IntervalMetric) ProtoMessage() {}
 
 func (x *StreamMetricsEvent_IntervalMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[47]
+	mi := &file_mgmt_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3611,7 +3956,7 @@ type InspectResponse_InspectValue struct {
 
 func (x *InspectResponse_InspectValue) Reset() {
 	*x = InspectResponse_InspectValue{}
-	mi := &file_mgmt_proto_msgTypes[50]
+	mi := &file_mgmt_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3623,7 +3968,7 @@ func (x *InspectResponse_InspectValue) String() string {
 func (*InspectResponse_InspectValue) ProtoMessage() {}
 
 func (x *InspectResponse_InspectValue) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_proto_msgTypes[50]
+	mi := &file_mgmt_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3795,7 +4140,7 @@ const file_mgmt_proto_rawDesc = "" +
 	"routerName\x12(\n" +
 	"\x0fvalidateSuccess\x18\x03 \x01(\bR\x0fvalidateSuccess\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12@\n" +
-	"\vlinkDetails\x18\x05 \x03(\v2\x1e.ziti.mgmt_pb.RouterLinkDetailR\vlinkDetails\"\xb4\x02\n" +
+	"\vlinkDetails\x18\x05 \x03(\v2\x1e.ziti.mgmt_pb.RouterLinkDetailR\vlinkDetails\"\xaa\x03\n" +
 	"\x10RouterLinkDetail\x12\x16\n" +
 	"\x06linkId\x18\x01 \x01(\tR\x06linkId\x125\n" +
 	"\tctrlState\x18\x02 \x01(\x0e2\x17.ziti.mgmt_pb.LinkStateR\tctrlState\x129\n" +
@@ -3804,7 +4149,37 @@ const file_mgmt_proto_rawDesc = "" +
 	"\aisValid\x18\x05 \x01(\bR\aisValid\x12\"\n" +
 	"\fdestRouterId\x18\x06 \x01(\tR\fdestRouterId\x12\x16\n" +
 	"\x06dialed\x18\a \x01(\bR\x06dialed\x12\x1a\n" +
-	"\bmessages\x18\b \x03(\tR\bmessages\"y\n" +
+	"\bmessages\x18\b \x03(\tR\bmessages\x12$\n" +
+	"\rinGossipStore\x18\t \x01(\bR\rinGossipStore\x12$\n" +
+	"\rgossipVersion\x18\n" +
+	" \x01(\x04R\rgossipVersion\x12(\n" +
+	"\x0fgossipIteration\x18\v \x01(\rR\x0fgossipIteration\"S\n" +
+	"\x15ValidateGossipRequest\x12\x16\n" +
+	"\x06filter\x18\x01 \x01(\tR\x06filter\x12\"\n" +
+	"\fvalidateCtrl\x18\x02 \x01(\bR\fvalidateCtrl\"t\n" +
+	"\x16ValidateGossipResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12&\n" +
+	"\x0ecomponentCount\x18\x03 \x01(\x04R\x0ecomponentCount\"\x8d\x02\n" +
+	"\x17GossipValidationDetails\x12$\n" +
+	"\rcomponentType\x18\x01 \x01(\tR\rcomponentType\x12 \n" +
+	"\vcomponentId\x18\x02 \x01(\tR\vcomponentId\x12$\n" +
+	"\rcomponentName\x18\x03 \x01(\tR\rcomponentName\x12(\n" +
+	"\x0fvalidateSuccess\x18\x04 \x01(\bR\x0fvalidateSuccess\x12\x18\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\x12@\n" +
+	"\vlinkDetails\x18\x06 \x03(\v2\x1e.ziti.mgmt_pb.GossipLinkDetailR\vlinkDetails\"\xc6\x02\n" +
+	"\x10GossipLinkDetail\x12\x16\n" +
+	"\x06linkId\x18\x01 \x01(\tR\x06linkId\x12\x1c\n" +
+	"\titeration\x18\x02 \x01(\rR\titeration\x12\"\n" +
+	"\fdestRouterId\x18\x03 \x01(\tR\fdestRouterId\x12\x16\n" +
+	"\x06dialed\x18\x04 \x01(\bR\x06dialed\x12\x1a\n" +
+	"\binSource\x18\x05 \x01(\bR\binSource\x12$\n" +
+	"\rinLocalGossip\x18\x06 \x01(\bR\rinLocalGossip\x12\"\n" +
+	"\finCtrlGossip\x18\a \x01(\bR\finCtrlGossip\x12$\n" +
+	"\rgossipVersion\x18\b \x01(\x04R\rgossipVersion\x12\x18\n" +
+	"\aisValid\x18\t \x01(\bR\aisValid\x12\x1a\n" +
+	"\bmessages\x18\n" +
+	" \x03(\tR\bmessages\"y\n" +
 	"\x19ValidateStaleLinksRequest\x12\x16\n" +
 	"\x06filter\x18\x01 \x01(\tR\x06filter\x124\n" +
 	"\x04mode\x18\x02 \x01(\x0e2 .ziti.mgmt_pb.StaleLinkMatchModeR\x04mode\x12\x0e\n" +
@@ -3932,7 +4307,7 @@ const file_mgmt_proto_rawDesc = "" +
 	"\vcomponentId\x18\x01 \x01(\tR\vcomponentId\x12$\n" +
 	"\rcomponentName\x18\x02 \x01(\tR\rcomponentName\x12(\n" +
 	"\x0fvalidateSuccess\x18\x03 \x01(\bR\x0fvalidateSuccess\x12\x16\n" +
-	"\x06errors\x18\x04 \x03(\tR\x06errors*\xe1\x0f\n" +
+	"\x06errors\x18\x04 \x03(\tR\x06errors*\xc1\x10\n" +
 	"\vContentType\x12\b\n" +
 	"\x04Zero\x10\x00\x12\x1c\n" +
 	"\x17StreamEventsRequestType\x10\xb8N\x12\x1a\n" +
@@ -3988,7 +4363,10 @@ const file_mgmt_proto_rawDesc = "" +
 	"#ValidateControllerDialersResultType\x10\x8cO\x12\"\n" +
 	"\x1dValidateStaleLinksRequestType\x10\x8dO\x12#\n" +
 	"\x1eValidateStaleLinksResponseType\x10\x8eO\x12!\n" +
-	"\x1cValidateStaleLinksResultType\x10\x8fO*S\n" +
+	"\x1cValidateStaleLinksResultType\x10\x8fO\x12\x1e\n" +
+	"\x19ValidateGossipRequestType\x10\x90O\x12\x1f\n" +
+	"\x1aValidateGossipResponseType\x10\x91O\x12\x1d\n" +
+	"\x18ValidateGossipResultType\x10\x92O*S\n" +
 	"\x06Header\x12\x0e\n" +
 	"\n" +
 	"NoneHeader\x10\x00\x12\x13\n" +
@@ -4037,7 +4415,7 @@ func file_mgmt_proto_rawDescGZIP() []byte {
 }
 
 var file_mgmt_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_mgmt_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
+var file_mgmt_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
 var file_mgmt_proto_goTypes = []any{
 	(ContentType)(0),                                   // 0: ziti.mgmt_pb.ContentType
 	(Header)(0),                                        // 1: ziti.mgmt_pb.Header
@@ -4065,78 +4443,83 @@ var file_mgmt_proto_goTypes = []any{
 	(*ValidateRouterLinksResponse)(nil),                // 23: ziti.mgmt_pb.ValidateRouterLinksResponse
 	(*RouterLinkDetails)(nil),                          // 24: ziti.mgmt_pb.RouterLinkDetails
 	(*RouterLinkDetail)(nil),                           // 25: ziti.mgmt_pb.RouterLinkDetail
-	(*ValidateStaleLinksRequest)(nil),                  // 26: ziti.mgmt_pb.ValidateStaleLinksRequest
-	(*ValidateStaleLinksResponse)(nil),                 // 27: ziti.mgmt_pb.ValidateStaleLinksResponse
-	(*StaleLinkResult)(nil),                            // 28: ziti.mgmt_pb.StaleLinkResult
-	(*ValidateRouterSdkTerminatorsRequest)(nil),        // 29: ziti.mgmt_pb.ValidateRouterSdkTerminatorsRequest
-	(*ValidateRouterSdkTerminatorsResponse)(nil),       // 30: ziti.mgmt_pb.ValidateRouterSdkTerminatorsResponse
-	(*RouterSdkTerminatorsDetails)(nil),                // 31: ziti.mgmt_pb.RouterSdkTerminatorsDetails
-	(*RouterSdkTerminatorDetail)(nil),                  // 32: ziti.mgmt_pb.RouterSdkTerminatorDetail
-	(*ValidateRouterErtTerminatorsRequest)(nil),        // 33: ziti.mgmt_pb.ValidateRouterErtTerminatorsRequest
-	(*ValidateRouterErtTerminatorsResponse)(nil),       // 34: ziti.mgmt_pb.ValidateRouterErtTerminatorsResponse
-	(*RouterErtTerminatorsDetails)(nil),                // 35: ziti.mgmt_pb.RouterErtTerminatorsDetails
-	(*RouterErtTerminatorDetail)(nil),                  // 36: ziti.mgmt_pb.RouterErtTerminatorDetail
-	(*ValidateRouterDataModelRequest)(nil),             // 37: ziti.mgmt_pb.ValidateRouterDataModelRequest
-	(*ValidateRouterDataModelResponse)(nil),            // 38: ziti.mgmt_pb.ValidateRouterDataModelResponse
-	(*RouterDataModelDetails)(nil),                     // 39: ziti.mgmt_pb.RouterDataModelDetails
-	(*ValidateIdentityConnectionStatusesRequest)(nil),  // 40: ziti.mgmt_pb.ValidateIdentityConnectionStatusesRequest
-	(*ValidateIdentityConnectionStatusesResponse)(nil), // 41: ziti.mgmt_pb.ValidateIdentityConnectionStatusesResponse
-	(*RouterIdentityConnectionStatusesDetails)(nil),    // 42: ziti.mgmt_pb.RouterIdentityConnectionStatusesDetails
-	(*InitRequest)(nil),                                // 43: ziti.mgmt_pb.InitRequest
-	(*ValidateCircuitsRequest)(nil),                    // 44: ziti.mgmt_pb.ValidateCircuitsRequest
-	(*ValidateCircuitsResponse)(nil),                   // 45: ziti.mgmt_pb.ValidateCircuitsResponse
-	(*RouterCircuitDetails)(nil),                       // 46: ziti.mgmt_pb.RouterCircuitDetails
-	(*RouterCircuitDetail)(nil),                        // 47: ziti.mgmt_pb.RouterCircuitDetail
-	(*ValidateControllerDialersRequest)(nil),           // 48: ziti.mgmt_pb.ValidateControllerDialersRequest
-	(*ValidateControllerDialersResponse)(nil),          // 49: ziti.mgmt_pb.ValidateControllerDialersResponse
-	(*ControllerDialerDetails)(nil),                    // 50: ziti.mgmt_pb.ControllerDialerDetails
-	(*StreamMetricsRequest_MetricMatcher)(nil),         // 51: ziti.mgmt_pb.StreamMetricsRequest.MetricMatcher
-	nil, // 52: ziti.mgmt_pb.StreamMetricsEvent.TagsEntry
-	nil, // 53: ziti.mgmt_pb.StreamMetricsEvent.IntMetricsEntry
-	nil, // 54: ziti.mgmt_pb.StreamMetricsEvent.FloatMetricsEntry
-	(*StreamMetricsEvent_IntervalMetric)(nil), // 55: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric
-	nil,                                  // 56: ziti.mgmt_pb.StreamMetricsEvent.MetricGroupEntry
-	nil,                                  // 57: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.ValuesEntry
-	(*InspectResponse_InspectValue)(nil), // 58: ziti.mgmt_pb.InspectResponse.InspectValue
-	nil,                                  // 59: ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry
-	nil,                                  // 60: ziti.mgmt_pb.RouterCircuitDetail.DestinationsEntry
-	(*timestamppb.Timestamp)(nil),        // 61: google.protobuf.Timestamp
+	(*ValidateGossipRequest)(nil),                      // 26: ziti.mgmt_pb.ValidateGossipRequest
+	(*ValidateGossipResponse)(nil),                     // 27: ziti.mgmt_pb.ValidateGossipResponse
+	(*GossipValidationDetails)(nil),                    // 28: ziti.mgmt_pb.GossipValidationDetails
+	(*GossipLinkDetail)(nil),                           // 29: ziti.mgmt_pb.GossipLinkDetail
+	(*ValidateStaleLinksRequest)(nil),                  // 30: ziti.mgmt_pb.ValidateStaleLinksRequest
+	(*ValidateStaleLinksResponse)(nil),                 // 31: ziti.mgmt_pb.ValidateStaleLinksResponse
+	(*StaleLinkResult)(nil),                            // 32: ziti.mgmt_pb.StaleLinkResult
+	(*ValidateRouterSdkTerminatorsRequest)(nil),        // 33: ziti.mgmt_pb.ValidateRouterSdkTerminatorsRequest
+	(*ValidateRouterSdkTerminatorsResponse)(nil),       // 34: ziti.mgmt_pb.ValidateRouterSdkTerminatorsResponse
+	(*RouterSdkTerminatorsDetails)(nil),                // 35: ziti.mgmt_pb.RouterSdkTerminatorsDetails
+	(*RouterSdkTerminatorDetail)(nil),                  // 36: ziti.mgmt_pb.RouterSdkTerminatorDetail
+	(*ValidateRouterErtTerminatorsRequest)(nil),        // 37: ziti.mgmt_pb.ValidateRouterErtTerminatorsRequest
+	(*ValidateRouterErtTerminatorsResponse)(nil),       // 38: ziti.mgmt_pb.ValidateRouterErtTerminatorsResponse
+	(*RouterErtTerminatorsDetails)(nil),                // 39: ziti.mgmt_pb.RouterErtTerminatorsDetails
+	(*RouterErtTerminatorDetail)(nil),                  // 40: ziti.mgmt_pb.RouterErtTerminatorDetail
+	(*ValidateRouterDataModelRequest)(nil),             // 41: ziti.mgmt_pb.ValidateRouterDataModelRequest
+	(*ValidateRouterDataModelResponse)(nil),            // 42: ziti.mgmt_pb.ValidateRouterDataModelResponse
+	(*RouterDataModelDetails)(nil),                     // 43: ziti.mgmt_pb.RouterDataModelDetails
+	(*ValidateIdentityConnectionStatusesRequest)(nil),  // 44: ziti.mgmt_pb.ValidateIdentityConnectionStatusesRequest
+	(*ValidateIdentityConnectionStatusesResponse)(nil), // 45: ziti.mgmt_pb.ValidateIdentityConnectionStatusesResponse
+	(*RouterIdentityConnectionStatusesDetails)(nil),    // 46: ziti.mgmt_pb.RouterIdentityConnectionStatusesDetails
+	(*InitRequest)(nil),                                // 47: ziti.mgmt_pb.InitRequest
+	(*ValidateCircuitsRequest)(nil),                    // 48: ziti.mgmt_pb.ValidateCircuitsRequest
+	(*ValidateCircuitsResponse)(nil),                   // 49: ziti.mgmt_pb.ValidateCircuitsResponse
+	(*RouterCircuitDetails)(nil),                       // 50: ziti.mgmt_pb.RouterCircuitDetails
+	(*RouterCircuitDetail)(nil),                        // 51: ziti.mgmt_pb.RouterCircuitDetail
+	(*ValidateControllerDialersRequest)(nil),           // 52: ziti.mgmt_pb.ValidateControllerDialersRequest
+	(*ValidateControllerDialersResponse)(nil),          // 53: ziti.mgmt_pb.ValidateControllerDialersResponse
+	(*ControllerDialerDetails)(nil),                    // 54: ziti.mgmt_pb.ControllerDialerDetails
+	(*StreamMetricsRequest_MetricMatcher)(nil),         // 55: ziti.mgmt_pb.StreamMetricsRequest.MetricMatcher
+	nil, // 56: ziti.mgmt_pb.StreamMetricsEvent.TagsEntry
+	nil, // 57: ziti.mgmt_pb.StreamMetricsEvent.IntMetricsEntry
+	nil, // 58: ziti.mgmt_pb.StreamMetricsEvent.FloatMetricsEntry
+	(*StreamMetricsEvent_IntervalMetric)(nil), // 59: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric
+	nil,                                  // 60: ziti.mgmt_pb.StreamMetricsEvent.MetricGroupEntry
+	nil,                                  // 61: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.ValuesEntry
+	(*InspectResponse_InspectValue)(nil), // 62: ziti.mgmt_pb.InspectResponse.InspectValue
+	nil,                                  // 63: ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry
+	nil,                                  // 64: ziti.mgmt_pb.RouterCircuitDetail.DestinationsEntry
+	(*timestamppb.Timestamp)(nil),        // 65: google.protobuf.Timestamp
 }
 var file_mgmt_proto_depIdxs = []int32{
-	51, // 0: ziti.mgmt_pb.StreamMetricsRequest.matchers:type_name -> ziti.mgmt_pb.StreamMetricsRequest.MetricMatcher
-	61, // 1: ziti.mgmt_pb.StreamMetricsEvent.timestamp:type_name -> google.protobuf.Timestamp
-	52, // 2: ziti.mgmt_pb.StreamMetricsEvent.tags:type_name -> ziti.mgmt_pb.StreamMetricsEvent.TagsEntry
-	53, // 3: ziti.mgmt_pb.StreamMetricsEvent.intMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntMetricsEntry
-	54, // 4: ziti.mgmt_pb.StreamMetricsEvent.floatMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.FloatMetricsEntry
-	55, // 5: ziti.mgmt_pb.StreamMetricsEvent.intervalMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric
-	56, // 6: ziti.mgmt_pb.StreamMetricsEvent.metricGroup:type_name -> ziti.mgmt_pb.StreamMetricsEvent.MetricGroupEntry
+	55, // 0: ziti.mgmt_pb.StreamMetricsRequest.matchers:type_name -> ziti.mgmt_pb.StreamMetricsRequest.MetricMatcher
+	65, // 1: ziti.mgmt_pb.StreamMetricsEvent.timestamp:type_name -> google.protobuf.Timestamp
+	56, // 2: ziti.mgmt_pb.StreamMetricsEvent.tags:type_name -> ziti.mgmt_pb.StreamMetricsEvent.TagsEntry
+	57, // 3: ziti.mgmt_pb.StreamMetricsEvent.intMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntMetricsEntry
+	58, // 4: ziti.mgmt_pb.StreamMetricsEvent.floatMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.FloatMetricsEntry
+	59, // 5: ziti.mgmt_pb.StreamMetricsEvent.intervalMetrics:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric
+	60, // 6: ziti.mgmt_pb.StreamMetricsEvent.metricGroup:type_name -> ziti.mgmt_pb.StreamMetricsEvent.MetricGroupEntry
 	2,  // 7: ziti.mgmt_pb.StreamCircuitsEvent.eventType:type_name -> ziti.mgmt_pb.StreamCircuitEventType
 	10, // 8: ziti.mgmt_pb.StreamCircuitsEvent.path:type_name -> ziti.mgmt_pb.Path
 	3,  // 9: ziti.mgmt_pb.StreamTracesRequest.filterType:type_name -> ziti.mgmt_pb.TraceFilterType
-	58, // 10: ziti.mgmt_pb.InspectResponse.values:type_name -> ziti.mgmt_pb.InspectResponse.InspectValue
+	62, // 10: ziti.mgmt_pb.InspectResponse.values:type_name -> ziti.mgmt_pb.InspectResponse.InspectValue
 	16, // 11: ziti.mgmt_pb.RaftMemberListResponse.members:type_name -> ziti.mgmt_pb.RaftMember
 	4,  // 12: ziti.mgmt_pb.TerminatorDetail.state:type_name -> ziti.mgmt_pb.TerminatorState
 	25, // 13: ziti.mgmt_pb.RouterLinkDetails.linkDetails:type_name -> ziti.mgmt_pb.RouterLinkDetail
 	5,  // 14: ziti.mgmt_pb.RouterLinkDetail.ctrlState:type_name -> ziti.mgmt_pb.LinkState
 	5,  // 15: ziti.mgmt_pb.RouterLinkDetail.routerState:type_name -> ziti.mgmt_pb.LinkState
-	6,  // 16: ziti.mgmt_pb.ValidateStaleLinksRequest.mode:type_name -> ziti.mgmt_pb.StaleLinkMatchMode
-	7,  // 17: ziti.mgmt_pb.StaleLinkResult.dialerVerdict:type_name -> ziti.mgmt_pb.StaleVerdict
-	7,  // 18: ziti.mgmt_pb.StaleLinkResult.listenerVerdict:type_name -> ziti.mgmt_pb.StaleVerdict
-	32, // 19: ziti.mgmt_pb.RouterSdkTerminatorsDetails.details:type_name -> ziti.mgmt_pb.RouterSdkTerminatorDetail
-	4,  // 20: ziti.mgmt_pb.RouterSdkTerminatorDetail.ctrlState:type_name -> ziti.mgmt_pb.TerminatorState
-	36, // 21: ziti.mgmt_pb.RouterErtTerminatorsDetails.details:type_name -> ziti.mgmt_pb.RouterErtTerminatorDetail
-	4,  // 22: ziti.mgmt_pb.RouterErtTerminatorDetail.ctrlState:type_name -> ziti.mgmt_pb.TerminatorState
-	59, // 23: ziti.mgmt_pb.RouterCircuitDetails.details:type_name -> ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry
-	60, // 24: ziti.mgmt_pb.RouterCircuitDetail.destinations:type_name -> ziti.mgmt_pb.RouterCircuitDetail.DestinationsEntry
-	61, // 25: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.intervalStartUTC:type_name -> google.protobuf.Timestamp
-	61, // 26: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.intervalEndUTC:type_name -> google.protobuf.Timestamp
-	57, // 27: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.values:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.ValuesEntry
-	47, // 28: ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry.value:type_name -> ziti.mgmt_pb.RouterCircuitDetail
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	29, // 16: ziti.mgmt_pb.GossipValidationDetails.linkDetails:type_name -> ziti.mgmt_pb.GossipLinkDetail
+	6,  // 17: ziti.mgmt_pb.ValidateStaleLinksRequest.mode:type_name -> ziti.mgmt_pb.StaleLinkMatchMode
+	7,  // 18: ziti.mgmt_pb.StaleLinkResult.dialerVerdict:type_name -> ziti.mgmt_pb.StaleVerdict
+	7,  // 19: ziti.mgmt_pb.StaleLinkResult.listenerVerdict:type_name -> ziti.mgmt_pb.StaleVerdict
+	36, // 20: ziti.mgmt_pb.RouterSdkTerminatorsDetails.details:type_name -> ziti.mgmt_pb.RouterSdkTerminatorDetail
+	4,  // 21: ziti.mgmt_pb.RouterSdkTerminatorDetail.ctrlState:type_name -> ziti.mgmt_pb.TerminatorState
+	40, // 22: ziti.mgmt_pb.RouterErtTerminatorsDetails.details:type_name -> ziti.mgmt_pb.RouterErtTerminatorDetail
+	4,  // 23: ziti.mgmt_pb.RouterErtTerminatorDetail.ctrlState:type_name -> ziti.mgmt_pb.TerminatorState
+	63, // 24: ziti.mgmt_pb.RouterCircuitDetails.details:type_name -> ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry
+	64, // 25: ziti.mgmt_pb.RouterCircuitDetail.destinations:type_name -> ziti.mgmt_pb.RouterCircuitDetail.DestinationsEntry
+	65, // 26: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.intervalStartUTC:type_name -> google.protobuf.Timestamp
+	65, // 27: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.intervalEndUTC:type_name -> google.protobuf.Timestamp
+	61, // 28: ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.values:type_name -> ziti.mgmt_pb.StreamMetricsEvent.IntervalMetric.ValuesEntry
+	51, // 29: ziti.mgmt_pb.RouterCircuitDetails.DetailsEntry.value:type_name -> ziti.mgmt_pb.RouterCircuitDetail
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_proto_init() }
@@ -4151,7 +4534,7 @@ func file_mgmt_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_proto_rawDesc), len(file_mgmt_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   53,
+			NumMessages:   57,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -114,10 +114,15 @@ func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *testEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testLink struct {
-	id     string
-	key    string
-	destId string
+	id        string
+	key       string
+	destId    string
+	iteration uint32
 }
 
 func (self *testLink) GetDestinationType() string {
@@ -201,7 +206,7 @@ func (self *testLink) IsDialed() bool {
 }
 
 func (self *testLink) Iteration() uint32 {
-	panic("implement me")
+	return self.iteration
 }
 
 func (self *testLink) AreFaultsSent() bool {
@@ -332,6 +337,10 @@ func Test_gcLinkMetrics(t *testing.T) {
 		checkLinkMetrics(linkId, m, false)
 	}
 
+	// nonLinkMetrics is how many metrics the registry publishes that are not per-link, and so survive link
+	// metric collection. Named rather than repeated inline so adding a registry metric is one edit, not four.
+	const nonLinkMetrics = 3
+
 	getRegistryMetrics := func() map[string]metrics.Metric {
 		result := map[string]metrics.Metric{}
 		registry.EachMetric(func(name string, metric metrics.Metric) {
@@ -356,7 +365,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	req.Equal(0, len(orphaned))
 	checkLinkMetricsDoesntHave(linkId, getRegistryMetrics())
 
-	req.Equal(2, len(getRegistryMetrics()))
+	req.Equal(nonLinkMetrics, len(getRegistryMetrics()))
 
 	linkId2 := idgen.MustNewUUIDString()
 	link3 := newTestLink(reg)
@@ -380,7 +389,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	addLinkMetrics(link4.id)
 	addLinkMetrics(linkId5)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(nil)
 	req.Equal(18, len(orphaned))
@@ -389,11 +398,11 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsDoesntHave(link3.id, orphaned)
 	checkLinkMetricsDoesntHave(link4.id, orphaned)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(orphaned)
 	req.Equal(0, len(orphaned))
-	req.Equal(9*2+2, len(getRegistryMetrics()))
+	req.Equal(9*2+nonLinkMetrics, len(getRegistryMetrics()))
 
 	checkLinkMetricsContains(link3.id, getRegistryMetrics())
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
@@ -466,7 +475,7 @@ func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
 	// matching dialer yet, so the listener doesn't produce a linkState.
 	destId := "peer-router-1"
 	tenv.setDialers(nil)
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -497,7 +506,7 @@ func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
 	// shouldn't create a state because there's no group intersection.
 	destId := "peer-router-2"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -647,7 +656,7 @@ func Test_LinkRegistry_RescanDetachesRemovedDialerPairing(t *testing.T) {
 	// A matching dialer + listener produces a linkState.
 	destId := "peer-router-3"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 	req.Eventually(func() bool {
@@ -782,7 +791,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 
 	destId := "peer-router-1"
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -793,7 +802,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 
 	// PeerState_Unhealthy carries no listeners, so the cache empties. It has to
 	// drop out entirely rather than appear with an empty set.
-	reg.UpdateLinkDest(destId, "v0", false, nil)
+	reg.UpdateLinkDest("ctrl1", destId, "v0", false, nil)
 
 	req.Eventually(func() bool {
 		snapshot, ok := reg.GetDestinationListeners()
