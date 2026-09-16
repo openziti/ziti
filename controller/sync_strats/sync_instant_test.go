@@ -20,9 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,4 +80,50 @@ func Test_RouterConnected_ignoresClosedChannel(t *testing.T) {
 
 	req.Nil(strategy.rtxMap.Get("r1"), "no sender should be created for a closed channel")
 	req.Len(strategy.routerConnectedQueue, 0, "nothing should be queued for a closed channel")
+}
+
+// Test_newPostureCheck_ProcessWithoutFingerprint covers a process check the administrator
+// configured no signer for. Routers treat every entry in the fingerprint list as a signer the
+// client must report, and no client reports an empty one, so an unconfigured fingerprint must
+// reach the router as no entries at all.
+func Test_newPostureCheck_ProcessWithoutFingerprint(t *testing.T) {
+	req := require.New(t)
+
+	stored := &db.PostureCheck{
+		BaseExtEntity: boltz.BaseExtEntity{Id: "pc1"},
+		Name:          "proc",
+		TypeId:        db.PostureCheckTypeProcess,
+		SubType: &db.PostureCheckProcess{
+			OperatingSystem: "Windows",
+			Path:            "C:\\Windows\\System32\\notepad.exe",
+			Fingerprint:     "",
+		},
+	}
+
+	result := newPostureCheck(stored)
+
+	process := result.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_Process_).Process
+	req.Len(process.Fingerprints, 0)
+}
+
+// Test_newPostureCheck_ProcessWithFingerprint covers the configured case, where the single stored
+// signer is the one entry the router must match against.
+func Test_newPostureCheck_ProcessWithFingerprint(t *testing.T) {
+	req := require.New(t)
+
+	stored := &db.PostureCheck{
+		BaseExtEntity: boltz.BaseExtEntity{Id: "pc1"},
+		Name:          "proc",
+		TypeId:        db.PostureCheckTypeProcess,
+		SubType: &db.PostureCheckProcess{
+			OperatingSystem: "Windows",
+			Path:            "C:\\Windows\\System32\\notepad.exe",
+			Fingerprint:     "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+		},
+	}
+
+	result := newPostureCheck(stored)
+
+	process := result.Subtype.(*edge_ctrl_pb.DataState_PostureCheck_Process_).Process
+	req.Equal([]string{"a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"}, process.Fingerprints)
 }
