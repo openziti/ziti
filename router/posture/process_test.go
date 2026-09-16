@@ -189,6 +189,22 @@ func Test_ProcessCheck_DifferentFingerprintFails(t *testing.T) {
 	require.NotNil(t, check.Evaluate(reportedProcess(lowerHash, []string{otherPrint})))
 }
 
+// Test_ProcessCheck_FingerprintFailureNamesFingerprints locks in that a signer mismatch reports the
+// configured signer fingerprints as the expected values, not the check's configured hashes.
+func Test_ProcessCheck_FingerprintFailureNamesFingerprints(t *testing.T) {
+	check := newProcessCheckWith([]string{lowerHash}, []string{upperPrint})
+
+	checkError := check.Evaluate(reportedProcess(lowerHash, []string{otherPrint}))
+
+	require.NotNil(t, checkError)
+	listError, ok := checkError.Cause.(*AllInListError[*edge_ctrl_pb.DataState_PostureCheck_Process])
+	require.True(t, ok)
+	require.Len(t, listError.FailedValues, 1)
+	reason := listError.FailedValues[0].Reason.Error()
+	require.Contains(t, reason, upperPrint)
+	require.NotContains(t, reason, lowerHash)
+}
+
 // Test_ProcessCheck_ReportedValuesNormalizedOnIngest locks in that reported hashes and signer
 // fingerprints are stored in the normalized form the controller stores them in, whatever case and
 // separator style the client sent.
