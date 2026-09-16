@@ -34,18 +34,21 @@ const (
 	FieldControllerApiAddressVersion = "apiAddresses.version"
 	FieldControllerApiAddressUrl     = "apiAddresses.url"
 	FieldControllerIsPreferredLeader = "isPreferredLeader"
+	FieldControllerCaPem             = "caPem"
 )
 
 type Controller struct {
 	boltz.BaseExtEntity
-	Name         string    `json:"name"`
-	CtrlAddress  string    `json:"address"`
-	CertPem      string    `json:"certPem"`
-	Fingerprint  string    `json:"fingerprint"`
+	Name              string    `json:"name"`
+	CtrlAddress       string    `json:"address"`
+	CertPem           string    `json:"certPem"`
+	Fingerprint       string    `json:"fingerprint"`
 	IsOnline          bool      `json:"isOnline"`
 	LastJoinedAt      time.Time `json:"lastJoinedAt"`
 	IsPreferredLeader bool      `json:"isPreferredLeader"`
-	ApiAddresses      map[string][]ApiAddress
+	// CaPem holds the intermediate CA certificates from the controller's CA bundle, as concatenated PEM.
+	CaPem        string `json:"caPem"`
+	ApiAddresses map[string][]ApiAddress
 }
 
 type ApiAddress struct {
@@ -94,6 +97,7 @@ func (store *controllerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldControllerIsOnline, ast.NodeTypeBool)
 	store.AddSymbol(FieldControllerLastJoinedAt, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldControllerIsPreferredLeader, ast.NodeTypeBool)
+	store.AddSymbol(FieldControllerCaPem, ast.NodeTypeString)
 }
 
 func (store *controllerStoreImpl) initializeLinked() {}
@@ -111,6 +115,7 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 	entity.IsOnline = bucket.GetBoolWithDefault(FieldControllerIsOnline, false)
 	entity.LastJoinedAt = bucket.GetTimeOrDefault(FieldControllerLastJoinedAt, time.Time{})
 	entity.IsPreferredLeader = bucket.GetBoolWithDefault(FieldControllerIsPreferredLeader, false)
+	entity.CaPem = bucket.GetStringWithDefault(FieldControllerCaPem, "")
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)
@@ -138,6 +143,7 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 	ctx.SetBool(FieldControllerIsPreferredLeader, entity.IsPreferredLeader)
+	ctx.SetString(FieldControllerCaPem, entity.CaPem)
 
 	if ctx.ProceedWithSet(FieldControllerApiAddresses) && (ctx.ProceedWithSet(FieldControllerApiAddressUrl) || ctx.ProceedWithSet(FieldControllerApiAddressVersion)) {
 		apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)
