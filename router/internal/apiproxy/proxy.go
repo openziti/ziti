@@ -79,6 +79,29 @@ func Start(config *env.EdgeConfig) {
 	}
 }
 
+// setProxyHeaders marks the request as proxied by this router and attaches the certificate
+// chain from the router's own TLS handshake.
+//
+// Both headers tell the controller the chain is router-vouched, and a client can send them
+// too, so whatever it sent under those names is dropped before ours go on. The chain goes out
+// as a single value rather than one value per certificate, which lets the controller refuse a
+// request carrying values it cannot attribute to a router.
+func setProxyHeaders(req *http.Request) {
+	req.Header.Set(edgeRouterProxyRequest, time.Now().String())
+	req.Header.Del(clientCertHeader)
+
+	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
+		return
+	}
+
+	var chain []byte
+	for _, peerCert := range req.TLS.PeerCertificates {
+		chain = append(chain, peerCert.Raw...)
+	}
+
+	req.Header.Set(clientCertHeader, base64.StdEncoding.EncodeToString(chain))
+}
+
 func Listen(c Config, cc chan interface{}) {
 	defer close(cc)
 	log := pfxlog.Logger()
@@ -94,15 +117,7 @@ func Listen(c Config, cc chan interface{}) {
 			WithField("uri", req.RequestURI).
 			Tracef("proxying API request method [%s], URL [%s]", req.Method, req.RequestURI)
 		director(req)
-		req.Header.Add(edgeRouterProxyRequest, time.Now().String())
-		if req.TLS.PeerCertificates != nil {
-			for i := range req.TLS.PeerCertificates {
-				cert := base64.StdEncoding.EncodeToString(req.TLS.PeerCertificates[i].Raw)
-				req.Header.Add(clientCertHeader, cert)
-			}
-		} else {
-			req.Header.Del(clientCertHeader)
-		}
+		setProxyHeaders(req)
 	}
 
 	server := &http.Server{
