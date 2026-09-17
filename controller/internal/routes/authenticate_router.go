@@ -277,7 +277,12 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCo
 		return
 	}
 
-	ok, _ := ae.Managers.Mfa.Verify(mfa, *mfaCode.Code, rc.NewChangeContext())
+	ok, err := ae.Managers.Mfa.Verify(mfa, *mfaCode.Code, rc.NewChangeContext())
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
