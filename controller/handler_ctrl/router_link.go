@@ -75,6 +75,10 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 // gossip bypass this handler and send GossipDelta messages directly.
 func (h *routerLinkHandler) HandleLinks(links *ctrl_pb.RouterLinks) {
 	if links.FullRefresh {
+		// Remembered so a disconnect knows this router cleans up after itself, and the controller does not
+		// have to retire links the next announcement would have corrected.
+		h.r.MarkSendsFullRefresh()
+
 		for _, link := range linksToPrune(h.r.Id, h.network.Link.LinksForRouter(h.r.Id), links.Links) {
 			h.network.LinkFaulted(link, false)
 			routerLinkLog.Info("removed link not present in full reported set", "linkId", link.Id)

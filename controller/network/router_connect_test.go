@@ -902,6 +902,7 @@ func TestDisconnectRouter_RetiresLinksTheRouterWillReannounce(t *testing.T) {
 	peer := newPersistedRouter(t, network, addr, "peer")
 	network.Router.MarkConnected(peer)
 
+	// Never announced a full refresh, so its stale links are the controller's to retire.
 	dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
 	req.NoError(network.Router.Create(dialer, change.New()))
 	req.NoError(network.QueueRouterConnect(dialer))
@@ -939,6 +940,7 @@ func TestDisconnectRouter_RetiresUnpublishedLinksWithoutHA(t *testing.T) {
 	peer := newPersistedRouter(t, network, addr, "peer")
 	network.Router.MarkConnected(peer)
 
+	// Never announced a full refresh, so its stale links are the controller's to retire.
 	dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
 	req.NoError(network.Router.Create(dialer, change.New()))
 	req.NoError(network.QueueRouterConnect(dialer))
@@ -951,4 +953,34 @@ func TestDisconnectRouter_RetiresUnpublishedLinksWithoutHA(t *testing.T) {
 
 	_, found := network.Link.Get(link.Id)
 	req.False(found, "a link the dialer will re-announce must be retired when the dialer disconnects")
+}
+
+// TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn: a router that flags its reconnect announcement
+// a full refresh states authoritatively which links it still has, and the controller prunes against that.
+// Retiring here as well would trade a problem the router already solves for one it cannot: the announcement
+// is bounded and best-effort, so an outage outlasting its retries would leave this controller holding no
+// links for a router that is up.
+func TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+	testConfigOf(t, network).raftEnabled = true
+
+	peer := newPersistedRouter(t, network, addr, "peer")
+	network.Router.MarkConnected(peer)
+
+	dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
+	dialer.MarkSendsFullRefresh()
+	req.NoError(network.Router.Create(dialer, change.New()))
+	req.NoError(network.QueueRouterConnect(dialer))
+
+	link := model.NewTestLink("self-pruned", dialer, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+	req.False(network.IsLinkInGossip(link), "the link is reported, not gossiped")
+
+	network.DisconnectRouter(dialer)
+
+	held, found := network.Link.Get(link.Id)
+	req.True(found, "a link its dialer prunes on reconnect must survive the disconnect")
+	req.True(held.IsUsable(), "and be left usable, since this controller cannot route over it either way")
 }
