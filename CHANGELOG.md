@@ -14,7 +14,7 @@
 
 * github.com/openziti/edge-api: [v0.27.5 -> v0.36.1](https://github.com/openziti/edge-api/compare/v0.27.5...v0.36.1)
     * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
-    * [Issue #191](https://github.com/openziti/edge-api/issues/191) - Add `other` as a valid config type target for config types not intented to be used with services or routers
+    * [Issue #191](https://github.com/openziti/edge-api/issues/191) - Add `other` as a valid config type target for config types not intended to be used with services or routers
     * [Issue #187](https://github.com/openziti/edge-api/issues/187) - Add support for new attribute query endpoints
     * [Issue #181](https://github.com/openziti/edge-api/issues/181) - Add support for config type targets
     * [Issue #183](https://github.com/openziti/edge-api/issues/183) - Add configs field to edge routers and transit routers
