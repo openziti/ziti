@@ -60,7 +60,10 @@ go1.18
 ## Configuring Agent 
 
 By default, the agent will listen on a Unix socket at `/tmp/gops-agent.<pid>.sock`. You can change this to a custom unix socket or use a network socket instead.
-Use unix sockets to limit security risk. Only the user on the machine who started the application, or the root user should be able to access the socket.
+
+The agent does not authenticate its callers. Whoever reaches the socket can dump the heap, pull the running binary and run operations such as quiescing a router, so who can open it is the only control there is. A unix socket is created 0700 and is limited to the user that started the process, which is why it is the default and the recommended choice.
+
+A network socket has no such limit and is refused unless it binds to a loopback address, which still lets any local user reach it. To use the agent from another machine, reach the unix socket over ssh or through a ziti service.
 
 Examples:
 
