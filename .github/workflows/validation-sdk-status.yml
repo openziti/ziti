@@ -1,13 +1,13 @@
-name: Validation (Links)
+name: Validation (SDK Status)
 
 on:
   workflow_call:
   workflow_dispatch:
 
 jobs:
-  links-validation:
-    name: Links Validation
+  sdk-status-validation:
+    name: SDK Status Validation
     uses: ./.github/workflows/validation-test.yml
     secrets: inherit
     with:
-      test: links-test
+      test: sdk-status-test
