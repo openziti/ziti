@@ -1,0 +1,12 @@
+#!/bin/sh
+# Clean up our debconf answers on purge, per debconf-devel(7) "Purging".
+set -e
+
+if [ "$1" = purge ]; then
+  if [ -f /usr/share/debconf/confmodule ]; then
+    . /usr/share/debconf/confmodule
+    db_purge
+  fi
+fi
+
+exit 0

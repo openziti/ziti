@@ -1,0 +1,9 @@
+Template: openziti-controller/configure-now
+Type: boolean
+Default: true
+Description: Configure ziti-controller now?
+ The controller has no config.yml yet. You can run the bootstrap wizard
+ now to generate an initial configuration and PKI.
+ .
+ If you decline, you can run it later as root:
+ /opt/openziti/etc/controller/bootstrap.bash

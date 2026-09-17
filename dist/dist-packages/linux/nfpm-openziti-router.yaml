@@ -46,7 +46,23 @@ contents:
 
 scripts:
   postinstall: ./dist/dist-packages/linux/openziti-router/postinstall.bash
+  postremove: ./dist/dist-packages/linux/openziti-router/postrm
+
+deb:
+  scripts:
+    templates: ./dist/dist-packages/linux/openziti-router/templates
+    config: ./dist/dist-packages/linux/openziti-router/config
 
 depends:
   - openziti  # ziti CLI
   - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
+
+overrides:
+  deb:
+    # debconf is Debian-only; a shared top-level "depends" would land an
+    # unsatisfiable "debconf" Requires on the rpm build. overrides.deb.depends
+    # replaces the whole list for deb, so the common deps are repeated here.
+    depends:
+      - openziti  # ziti CLI
+      - systemd (>= ${MINIMUM_SYSTEMD_VERSION})
+      - debconf (>= 0.5) | debconf-2.0
