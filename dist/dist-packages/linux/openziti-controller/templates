@@ -1,6 +1,6 @@
 Template: openziti-controller/configure-now
 Type: boolean
-Default: false
+Default: true
 Description: Configure ziti-controller now?
  The controller has no config.yml yet. You can run the bootstrap wizard
  now to generate an initial configuration and PKI.

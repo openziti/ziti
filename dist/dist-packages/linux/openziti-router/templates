@@ -1,6 +1,6 @@
 Template: openziti-router/configure-now
 Type: boolean
-Default: false
+Default: true
 Description: Configure ziti-router now?
  The router has no config.yml yet. You can run the bootstrap wizard
  now to generate an initial configuration and PKI.
