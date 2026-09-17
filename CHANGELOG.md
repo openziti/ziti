@@ -6,18 +6,65 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
-  * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
-  * [Issue #4299](https://github.com/openziti/ziti/issues/4299) - [Backport-1.6] Bind message with a short cost header panics the router
+* github.com/openziti/agent: [v1.0.32 -> v1.0.33](https://github.com/openziti/agent/compare/v1.0.32...v1.0.33)
+* github.com/openziti/channel/v4: [v4.3.11 -> v4.3.13](https://github.com/openziti/channel/compare/v4.3.11...v4.3.13)
+    * [Issue #302](https://github.com/openziti/channel/issues/302) - [Backport-4.x] ReplyFor header with a length other than 4 causes a nil pointer dereference on the rx path
+    * [Issue #304](https://github.com/openziti/channel/issues/304) - [Backport-4.x] Crafted frame lengths panic the decoder: int truncation on 32-bit, uint32 wrap everywhere
+    * [Issue #295](https://github.com/openziti/channel/issues/295) - closeUnresponsiveTimeout is loaded into checkInterval on the v4 line
 
-* github.com/openziti/foundation/v2: [v2.0.86 -> v2.0.102](https://github.com/openziti/foundation/compare/v2.0.86...v2.0.102)
+* github.com/openziti/edge-api: [v0.27.5 -> v0.36.1](https://github.com/openziti/edge-api/compare/v0.27.5...v0.36.1)
+    * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
+    * [Issue #191](https://github.com/openziti/edge-api/issues/191) - Add `other` as a valid config type target for config types not intented to be used with services or routers
+    * [Issue #187](https://github.com/openziti/edge-api/issues/187) - Add support for new attribute query endpoints
+    * [Issue #181](https://github.com/openziti/edge-api/issues/181) - Add support for config type targets
+    * [Issue #183](https://github.com/openziti/edge-api/issues/183) - Add configs field to edge routers and transit routers
+
+* github.com/openziti/foundation/v2: [v2.0.90 -> v2.0.104](https://github.com/openziti/foundation/compare/v2.0.90...v2.0.104)
+    * [Issue #502](https://github.com/openziti/foundation/issues/502) - logging registry forwards records its root handler would decline
     * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
     * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
     * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
     * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
-    * [Issue #472](https://github.com/openziti/foundation/issues/472) - Add multi-bit get/set operations to AtomicBitSet
-    * [Issue #470](https://github.com/openziti/foundation/pull/470) - Add WWW-Authenticate headers to unauthorized API errors; renames `ApiError.Code` to `AppCode`
+
+* github.com/openziti/identity: [v1.0.128 -> v1.0.143](https://github.com/openziti/identity/compare/v1.0.128...v1.0.143)
+    * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
+    * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
+
+* github.com/openziti/runzmd: [v1.0.82 -> v1.0.96](https://github.com/openziti/runzmd/compare/v1.0.82...v1.0.96)
+    * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
+
+* github.com/openziti/sdk-golang: [v1.6.0 -> v1.8.2](https://github.com/openziti/sdk-golang/compare/v1.6.0...v1.8.2)
+    * [Issue #1019](https://github.com/openziti/sdk-golang/issues/1019) - [Backport-1.8] Legacy edge conn ignores a StateClosed that arrives after a FIN
+    * [Issue #1007](https://github.com/openziti/sdk-golang/issues/1007) - [Backport-1.8] Dial for an unknown edge conn id is dropped silently, costing the client its full connect timeout
+    * [Issue #988](https://github.com/openziti/sdk-golang/issues/988) - [Backport-1.8] LinkSendBuffer leaks goroutines after send-half close
+    * [Issue #992](https://github.com/openziti/sdk-golang/issues/992) - [Backport-1.8] Read deadline on ReadAdapter permanently closes the peer's send buffer
+    * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
+    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
+    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
+    * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
+    * [Issue #913](https://github.com/openziti/sdk-golang/issues/913) - Malformed authorization header when primary jwt is provided but secondary jwt is empty
+    * [Issue #901](https://github.com/openziti/sdk-golang/issues/901) - Move xgress back to having retransmitter goroutine per-xgress
+    * [Issue #906](https://github.com/openziti/sdk-golang/issues/906) - Fix potential nil references on session service structs
+    * [Issue #897](https://github.com/openziti/sdk-golang/issues/897) - Allow xgress to use pull model for reads when appropriate
+
+* github.com/openziti/secretstream: [v0.1.49 -> v0.1.53](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.53)
+* github.com/openziti/storage: [v0.4.28 -> v0.4.39](https://github.com/openziti/storage/compare/v0.4.28...v0.4.39)
+    * [Issue #120](https://github.com/openziti/storage/issues/120) - Change post tx commit constraint handling order
+    * [Issue #119](https://github.com/openziti/storage/issues/119) - Add ContextDecorator API
+    * [Issue #122](https://github.com/openziti/storage/issues/122) - StringFuncNode has incorrect nil check, allowing panic
+
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.225](https://github.com/openziti/transport/compare/v2.0.215...v2.0.225)
+    * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
+    * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
+
+* github.com/openziti/go-term-markdown: v1.0.1 (new)
+* github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
+    * [Issue #4340](https://github.com/openziti/ziti/issues/4340) - [Backport-1.6] Router does not relay an SDK xgress terminator's half-close to a legacy edge client
+    * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
+    * [Issue #4299](https://github.com/openziti/ziti/issues/4299) - [Backport-1.6] Bind message with a short cost header panics the router
+
 
 # Release 1.6.20
 
