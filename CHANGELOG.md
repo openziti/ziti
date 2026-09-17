@@ -6,12 +6,23 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.102](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.102)
+* github.com/openziti/channel/v4: [v4.3.12 -> v4.3.13](https://github.com/openziti/channel/compare/v4.3.12...v4.3.13)
+    * [Issue #302](https://github.com/openziti/channel/issues/302) - [Backport-4.x] ReplyFor header with a length other than 4 causes a nil pointer dereference on the rx path
+    * [Issue #304](https://github.com/openziti/channel/issues/304) - [Backport-4.x] Crafted frame lengths panic the decoder: int truncation on 32-bit, uint32 wrap everywhere
+    * [Issue #295](https://github.com/openziti/channel/issues/295) - closeUnresponsiveTimeout is loaded into checkInterval on the v4 line
+
+* github.com/openziti/edge-api: [v0.36.0 -> v0.36.1](https://github.com/openziti/edge-api/compare/v0.36.0...v0.36.1)
+
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.104](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.104)
+    * [Issue #502](https://github.com/openziti/foundation/issues/502) - logging registry forwards records its root handler would decline
     * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
     * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
     * [Issue #489](https://github.com/openziti/foundation/issues/489) - Add graceful shutdown and idle-wait support to goroutines.Pool
     * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
+
+* github.com/openziti/identity: [v1.0.129 -> v1.0.143](https://github.com/openziti/identity/compare/v1.0.129...v1.0.143)
+    * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.2](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.2)
     * [Issue #1019](https://github.com/openziti/sdk-golang/issues/1019) - [Backport-1.8] Legacy edge conn ignores a StateClosed that arrives after a FIN
@@ -23,6 +34,12 @@
     * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
     * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
+
+* github.com/openziti/secretstream: [v0.1.49 -> v0.1.53](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.53)
+
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.225](https://github.com/openziti/transport/compare/v2.0.215...v2.0.225)
+    * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
+    * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/ziti/v2: [v2.0.5 -> v2.0.6](https://github.com/openziti/ziti/compare/v2.0.5...v2.0.6)
     * [Issue #4339](https://github.com/openziti/ziti/issues/4339) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to a legacy edge client
