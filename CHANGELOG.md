@@ -12,7 +12,6 @@
     * [Issue #295](https://github.com/openziti/channel/issues/295) - closeUnresponsiveTimeout is loaded into checkInterval on the v4 line
 
 * github.com/openziti/edge-api: [v0.36.0 -> v0.36.1](https://github.com/openziti/edge-api/compare/v0.36.0...v0.36.1)
-
 * github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.104](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.104)
     * [Issue #502](https://github.com/openziti/foundation/issues/502) - logging registry forwards records its root handler would decline
     * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
@@ -23,28 +22,33 @@
 
 * github.com/openziti/identity: [v1.0.129 -> v1.0.143](https://github.com/openziti/identity/compare/v1.0.129...v1.0.143)
     * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
+    * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
+
+* github.com/openziti/runzmd: [v1.0.90 -> v1.0.96](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.96)
+    * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
 
 * github.com/openziti/sdk-golang: [v1.7.0 -> v1.8.2](https://github.com/openziti/sdk-golang/compare/v1.7.0...v1.8.2)
     * [Issue #1019](https://github.com/openziti/sdk-golang/issues/1019) - [Backport-1.8] Legacy edge conn ignores a StateClosed that arrives after a FIN
     * [Issue #1007](https://github.com/openziti/sdk-golang/issues/1007) - [Backport-1.8] Dial for an unknown edge conn id is dropped silently, costing the client its full connect timeout
-    * [Issue #988](https://github.com/openziti/sdk-golang/issues/988) - LinkSendBuffer leaks goroutines after send-half close
-    * [Issue #992](https://github.com/openziti/sdk-golang/issues/992) - Read deadline on ReadAdapter permanently closes the peer's send buffer
-    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
-    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
-    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #988](https://github.com/openziti/sdk-golang/issues/988) - [Backport-1.8] LinkSendBuffer leaks goroutines after send-half close
+    * [Issue #992](https://github.com/openziti/sdk-golang/issues/992) - [Backport-1.8] Read deadline on ReadAdapter permanently closes the peer's send buffer
     * [Issue #924](https://github.com/openziti/sdk-golang/issues/924) - Make controller http timeout configurable, with a default of 30s
+    * [Issue #925](https://github.com/openziti/sdk-golang/issues/925) - Switch controllers on a broader set of errors
+    * [Issue #926](https://github.com/openziti/sdk-golang/issues/926) - Refresh OIDC token using a window to avoid race conditions and herding
+    * [Issue #927](https://github.com/openziti/sdk-golang/issues/927) - Apply exponential backoff to auth retry attempts
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.53](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.53)
-
 * github.com/openziti/transport/v2: [v2.0.215 -> v2.0.225](https://github.com/openziti/transport/compare/v2.0.215...v2.0.225)
     * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
     * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
+* github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.5 -> v2.0.6](https://github.com/openziti/ziti/compare/v2.0.5...v2.0.6)
     * [Issue #4339](https://github.com/openziti/ziti/issues/4339) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to a legacy edge client
-    * [Issue #4411](https://github.com/openziti/ziti/issues/4411) - [Backport-2.0] REST error responder logs ApiError.Code as a method value
     * [Issue #4401](https://github.com/openziti/ziti/issues/4401) - Route library slog output through pfxlog on release-v2.0.x and release-v1.6.x
+    * [Issue #4411](https://github.com/openziti/ziti/issues/4411) - [Backport-2.0] REST error responder logs ApiError.Code as a method value
+
 
 # Release 2.0.5
 
