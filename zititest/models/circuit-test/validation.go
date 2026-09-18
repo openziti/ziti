@@ -19,6 +19,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -30,7 +32,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	zitiLibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type simCallback struct {
@@ -41,7 +42,7 @@ func (self *simCallback) DiagnosticRequested(msg *channel.Message, ch channel.Ch
 	circuitId, _ := msg.GetStringHeader(int32(loop4Pb.HeaderType_RequestIdHeader))
 	inspectKeys := []string{"stackdump", "circuitAndStacks:" + circuitId}
 
-	err := self.ctrlClients.Inspect("ctrl1", ".*", "/home/plorenz/work/support/flow/"+circuitId, "yaml", inspectKeys...)
+	err := self.ctrlClients.InspectAndWriteToFile("ctrl1", ".*", "/home/plorenz/work/support/flow/"+circuitId, "yaml", inspectKeys...)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failed to run inspect, diagnostic requested by circuit  %s", circuitId)
 	} else {

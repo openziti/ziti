@@ -2,6 +2,9 @@ package xgress_edge
 
 import (
 	"crypto/x509"
+	"testing"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/metrics"
@@ -16,8 +19,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func newMirrorLink(fwd *forwarder.Forwarder) *mirrorLink {
@@ -145,7 +146,6 @@ func writePerf(b *testing.B, mux edge.ConnMux[any]) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -167,7 +167,6 @@ func writePerf(b *testing.B, mux edge.ConnMux[any]) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})
@@ -233,7 +232,6 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	fwdOptions := env.DefaultForwarderOptions()
 	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 	acker := xgress_router.NewAcker(fwd, metricsRegistry, nil)
-	retransmitter := xgress.NewRetransmitter(fwd, metricsRegistry, nil)
 	payloadIngester := xgress.NewPayloadIngester(nil)
 
 	link := newMirrorLink(fwd)
@@ -256,7 +254,6 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	dataPlaneAdapter := handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})

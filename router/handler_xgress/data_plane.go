@@ -18,17 +18,17 @@ package handler_xgress
 
 import (
 	"context"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/router/forwarder"
-	"time"
 )
 
 type dataPlaneAdapter struct {
 	acker           xgress.AckSender
 	forwarder       *forwarder.Forwarder
-	retransmitter   *xgress.Retransmitter
 	payloadIngester *xgress.PayloadIngester
 	metrics         xgress.Metrics
 }
@@ -36,7 +36,6 @@ type dataPlaneAdapter struct {
 type DataPlaneAdapterConfig struct {
 	Acker           xgress.AckSender
 	Forwarder       *forwarder.Forwarder
-	Retransmitter   *xgress.Retransmitter
 	PayloadIngester *xgress.PayloadIngester
 	Metrics         xgress.Metrics
 }
@@ -45,7 +44,6 @@ func NewXgressDataPlaneAdapter(cfg DataPlaneAdapterConfig) xgress.DataPlaneAdapt
 	return &dataPlaneAdapter{
 		acker:           cfg.Acker,
 		forwarder:       cfg.Forwarder,
-		retransmitter:   cfg.Retransmitter,
 		payloadIngester: cfg.PayloadIngester,
 		metrics:         cfg.Metrics,
 	}
@@ -66,7 +64,11 @@ func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgre
 }
 
 func (adapter *dataPlaneAdapter) RetransmitPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
-	return adapter.forwarder.RetransmitPayload(srcAddr, payload)
+	if err := adapter.forwarder.RetransmitPayload(srcAddr, payload); err != nil {
+		adapter.forwarder.ReportForwardingFault(payload.CircuitId, "")
+		return err
+	}
+	return nil
 }
 
 func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, x *xgress.Xgress) {
@@ -77,10 +79,6 @@ func (adapter *dataPlaneAdapter) ForwardControlMessage(control *xgress.Control, 
 
 func (adapter *dataPlaneAdapter) ForwardAcknowledgement(ack *xgress.Acknowledgement, address xgress.Address) {
 	adapter.acker.SendAck(ack, address)
-}
-
-func (adapter *dataPlaneAdapter) GetRetransmitter() *xgress.Retransmitter {
-	return adapter.retransmitter
 }
 
 func (adapter *dataPlaneAdapter) GetPayloadIngester() *xgress.PayloadIngester {

@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/rand/v2"
+	"net"
+	"testing"
+	"time"
+
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/xgress"
@@ -15,10 +20,6 @@ import (
 	"github.com/openziti/ziti/router/xgress_common"
 	"github.com/openziti/ziti/router/xgress_router"
 	"github.com/stretchr/testify/require"
-	"math/rand/v2"
-	"net"
-	"testing"
-	"time"
 )
 
 func newTestSetup() *testSetup {
@@ -43,13 +44,11 @@ func (self *testSetup) init() {
 	fwdOptions := env.DefaultForwarderOptions()
 	self.fwd = forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, self.closeNotify)
 	acker := xgress_router.NewAcker(self.fwd, metricsRegistry, self.closeNotify)
-	retransmitter := xgress.NewRetransmitter(self.fwd, metricsRegistry, self.closeNotify)
 	payloadIngester := xgress.NewPayloadIngester(self.closeNotify)
 
 	self.dataPlaneAdapter = handler_xgress.NewXgressDataPlaneAdapter(handler_xgress.DataPlaneAdapterConfig{
 		Acker:           acker,
 		Forwarder:       self.fwd,
-		Retransmitter:   retransmitter,
 		PayloadIngester: payloadIngester,
 		Metrics:         xgress.NewMetrics(metricsRegistry),
 	})
