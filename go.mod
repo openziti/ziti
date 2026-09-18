@@ -1,6 +1,6 @@
 module github.com/openziti/ziti
 
-go 1.26.3
+go 1.27.1
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
