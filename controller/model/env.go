@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
@@ -157,6 +158,11 @@ type Env interface {
 	// GetTokenIssuerCache provides access to the cache of external JWT token issuers.
 	// Used for token-based enrollment and JWT authentication to verify tokens from external identity providers.
 	GetTokenIssuerCache() *TokenIssuerCache
+
+	// GetAuthRateLimiter bounds how much authentication work runs at once. Credential checks
+	// are reachable without authentication and are expensive, so every entry point into
+	// primary authentication goes through this limiter.
+	GetAuthRateLimiter() rate.AdaptiveRateLimiter
 
 	// CreateTotpTokenFromAccessClaims creates a new TOTP JWT for the given access claims
 	CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error)
