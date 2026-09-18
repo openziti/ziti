@@ -4,6 +4,11 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -27,10 +32,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 var ClientRoutersVersion = ""
@@ -252,7 +253,7 @@ var m = &model.Model{
 			}
 
 			if val, _ := m.GetBoolVariable("tcpdump"); !val {
-				for _, c := range m.SelectComponents("tcpdump") {
+				for _, c := range m.SelectComponents(".tcpdump") {
 					delete(c.Host.Components, c.Id)
 				}
 			}
