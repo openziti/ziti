@@ -20,6 +20,10 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -45,9 +49,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""
@@ -298,7 +299,17 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
+			// A controller that joins after the leader has snapshotted restores the snapshot and exits
+			// five seconds later; nothing restarts it. Wait out that window, then Start is a no-op for
+			// running controllers and brings back any that exited.
+			workflow.AddAction(semaphore.Sleep(15 * time.Second))
+			workflow.AddAction(component.Start(".ctrl"))
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				return run.GetModel().ForEachComponent(".ctrl", 3, func(c *model.Component) error {
+					return edge.ControllerAvailable(c.Id, 30*time.Second).Execute(run)
+				})
+			}))
+
 			workflow.AddAction(component.StartInParallel(".router", 50))
 
 			return workflow
