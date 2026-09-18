@@ -29,15 +29,19 @@ module "{{ $regionId }}_host_{{ $hostId }}" {
   key_name          = var.aws_key_name
   key_path          = var.aws_key_path
   region            = "{{ $region.Region }}"
-  security_group_id = module.{{ $regionId }}_region.security_group_id
+  security_group_ids = [
+{{ range $sgIdx, $sgId := $host.SecurityGroupIds }}
+     module.{{ $regionId }}_region.{{ $sgId }}_security_group_id,
+{{ end }}
+  ]
   subnet_id         = module.{{ $regionId }}_region.subnet_id
   spot_price        = "{{ $host.SpotPrice }}"
   spot_type         = "{{ $host.SpotType }}"
   name              = "{{ $region.Model.MustVariable "environment" }}.{{ $host.Id }}"
-  {{ if not (eq $host.EC2.Volume.Type "") }}
-  volume_type       = "{{ $host.EC2.Volume.Type }}"
-  volume_size       = "{{ $host.EC2.Volume.SizeGB }}"
-  volume_iops       = "{{ $host.EC2.Volume.IOPS }}"
+  {{ if not (eq $host.AWS.Volume.Type "") }}
+  volume_type       = "{{ $host.AWS.Volume.Type }}"
+  volume_size       = "{{ $host.AWS.Volume.SizeGB }}"
+  volume_iops       = "{{ $host.AWS.Volume.IOPS }}"
   {{ end }}
 }
 
