@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha512"
+	"net"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/metrics"
 	loopPb "github.com/openziti/ziti/zititest/ziti-traffic-test/loop4/pb"
 	"github.com/stretchr/testify/require"
-	"reflect"
-	"testing"
 )
 
 type testPeer struct {
@@ -19,6 +22,12 @@ type testPeer struct {
 func (t *testPeer) Close() error {
 	return nil
 }
+
+func (t *testPeer) LocalAddr() net.Addr              { return nil }
+func (t *testPeer) RemoteAddr() net.Addr             { return nil }
+func (t *testPeer) SetDeadline(time.Time) error      { return nil }
+func (t *testPeer) SetReadDeadline(time.Time) error  { return nil }
+func (t *testPeer) SetWriteDeadline(time.Time) error { return nil }
 
 func Test_MessageSerDeser(t *testing.T) {
 	req := require.New(t)
