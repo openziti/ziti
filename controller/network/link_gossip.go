@@ -96,16 +96,26 @@ func (network *Network) initLinkGossip() {
 // replication delay) and whose listener notification was skipped.
 func (network *Network) ReconcileGossipLinksForRouter(router *model.Router) {
 	reconciled := 0
+	refusedDests := map[string]struct{}{}
 	network.LinkGossipType.IterByOwner(router.Id, func(key string, value *ctrl_pb.RouterLinks_RouterLink) {
 		dst := network.Router.GetConnected(value.DestRouterId)
-		if _, created := network.Link.RouterReportedLink(value, router, dst); created {
+		link, created := network.Link.RouterReportedLink(value, router, dst)
+		if created {
 			reconciled++
+		} else if link == nil {
+			refusedDests[value.DestRouterId] = struct{}{}
 		}
 	})
 	if reconciled > 0 {
 		linkGossipLog.Info("reconciled missing links from gossip store on router connect",
 			"routerId", router.Id,
 			"count", reconciled)
+	}
+
+	// Answered after the walk rather than inside it: the notice is queued on the messaging event loop,
+	// which is not somewhere to go while holding the store.
+	for destRouterId := range refusedDests {
+		network.notifyDestinationRemovedIfGone(router, destRouterId, network.Router.GetConnected(destRouterId))
 	}
 }
 
@@ -159,6 +169,9 @@ func (l *linkGossipListener) EntryChanged(key string, value *ctrl_pb.RouterLinks
 
 	link, linkCreated := l.network.Link.RouterReportedLink(value, src, dst)
 	if link == nil {
+		// Refused; RouterReportedLink has already said why. An entry naming a destination that no longer
+		// exists is the evidence that its dialer never got the removal, so answer it with one.
+		l.network.notifyDestinationRemovedIfGone(src, value.DestRouterId, dst)
 		return
 	}
 

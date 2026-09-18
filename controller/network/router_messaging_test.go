@@ -90,25 +90,32 @@ func newReportingRouter(t *testing.T, network *Network, addr transport.Address, 
 	return r
 }
 
-// TestShouldNotifyDestinationRemoved_RouterWithoutGossipIsTold is the case the notice exists for: a router
-// that does not participate in link gossip has no way to notice a deleted destination on its own. A router
-// that advertised nothing at all is told for the same reason.
-func TestShouldNotifyDestinationRemoved_RouterWithoutGossipIsTold(t *testing.T) {
+// TestShouldNotifyDestinationRemoved_EveryReporterIsTold: what the reporting router supports has no bearing
+// on whether the destination is gone. A router in link gossip learns of deletions from the router data
+// model, but only where its controllers are new enough to distribute routers there, so it is told too.
+func TestShouldNotifyDestinationRemoved_EveryReporterIsTold(t *testing.T) {
 	req := require.New(t)
 	_, network, addr := newConnectTestNetwork(t)
 
-	req.True(network.shouldNotifyDestinationRemoved(
-		newReportingRouter(t, network, addr, "other-caps", capabilities.RouterDataModel), "never-existed", nil))
-	req.True(network.shouldNotifyDestinationRemoved(
-		newReportingRouter(t, network, addr, "no-caps"), "never-existed", nil),
-		"a router whose capabilities did not arrive must be told, since the statement is true either way")
+	for _, tc := range []struct {
+		id   string
+		caps []capabilities.RouterCapability
+	}{
+		{id: "gossiping", caps: []capabilities.RouterCapability{capabilities.RouterLinkGossip}},
+		{id: "other-caps", caps: []capabilities.RouterCapability{capabilities.RouterDataModel}},
+		{id: "no-caps"},
+	} {
+		req.True(network.shouldNotifyDestinationRemoved(
+			newReportingRouter(t, network, addr, tc.id, tc.caps...), "never-existed", nil),
+			"router %v named a destination that does not exist and must be told it is gone", tc.id)
+	}
 }
 
-// TestShouldNotifyDestinationRemoved_GossipingRouterIsLeftAlone: a router in link gossip drops the
-// destination itself off the router data model, so telling it is redundant.
-func TestShouldNotifyDestinationRemoved_GossipingRouterIsLeftAlone(t *testing.T) {
+// TestShouldNotifyDestinationRemoved_UnconnectedReporterIsSkipped: a gossip entry names its dialer whether or
+// not that router is connected here, and a router this controller does not hold is one it cannot tell.
+func TestShouldNotifyDestinationRemoved_UnconnectedReporterIsSkipped(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
-	src := newReportingRouter(t, network, addr, "gossiping", capabilities.RouterLinkGossip)
+	src := newPersistedRouter(t, network, addr, "connected-elsewhere")
 
 	require.False(t, network.shouldNotifyDestinationRemoved(src, "never-existed", nil))
 }
@@ -170,24 +177,50 @@ func TestNotifyExistingLink_RefusedDeletedDestNotifiesReporter(t *testing.T) {
 	_, held := network.Link.Get("l0")
 	req.False(held, "a link to a router that does not exist must not be recorded")
 
-	// The messaging event loop consumes the event, so the effect is read back through Inspect rather than
-	// off the queue.
-	req.Eventually(func() bool {
+	requireRemovalNotice(t, network, src.Id, "deleted-router",
+		"refusing the report must tell the reporting router the destination is gone")
+}
+
+// TestReconcileGossipLinksForRouter_RefusedDeletedDestNotifiesOwner covers the same correction on the gossip
+// path. A gossiping router sends no link reports at all, so without this the notice could never reach the
+// routers that now make up most of a fleet. Reconcile runs on every connect, which is what makes it repeat.
+func TestReconcileGossipLinksForRouter_RefusedDeletedDestNotifiesOwner(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "deleted-router", Iteration: 1}))
+
+	network.ReconcileGossipLinksForRouter(dialer)
+
+	_, held := network.Link.Get("l0")
+	req.False(held, "a link to a router that does not exist must not be recorded")
+
+	requireRemovalNotice(t, network, dialer.Id, "deleted-router",
+		"refusing the gossip entry must tell its owner the destination is gone")
+}
+
+// requireRemovalNotice waits for a peer-state removal of destRouterId to be queued for notifyRouterId. The
+// messaging event loop consumes the event, so the effect is read back through Inspect rather than off the
+// queue.
+func requireRemovalNotice(t *testing.T, network *Network, notifyRouterId, destRouterId, msg string) {
+	t.Helper()
+	require.Eventually(t, func() bool {
 		state, err := network.RouterMessaging.Inspect()
 		if err != nil {
 			return false
 		}
 		for _, update := range state.RouterUpdates {
-			if update.Router.Id != src.Id {
+			if update.Router.Id != notifyRouterId {
 				continue
 			}
 			for _, changed := range update.ChangedRouters {
-				if changed.Id == "deleted-router" {
+				if changed.Id == destRouterId {
 					return true
 				}
 			}
 		}
 		return false
-	}, 2*time.Second, 10*time.Millisecond,
-		"refusing the report must tell the reporting router the destination is gone")
+	}, 2*time.Second, 10*time.Millisecond, msg)
 }

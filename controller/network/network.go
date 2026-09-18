@@ -1130,9 +1130,7 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	if link == nil {
 		// Refused; RouterReportedLink has already said why. A report naming a destination that no longer
 		// exists is also the evidence that the router never got the removal, so answer it with one.
-		if network.shouldNotifyDestinationRemoved(src, reportedLink.DestRouterId, dst) {
-			network.RouterMessaging.NotifyRouterRemoved(src.Id, reportedLink.DestRouterId)
-		}
+		network.notifyDestinationRemovedIfGone(src, reportedLink.DestRouterId, dst)
 		return
 	}
 
@@ -1145,20 +1143,29 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	}
 }
 
+// notifyDestinationRemovedIfGone tells srcRouter that destRouterId is gone, when a link report or gossip
+// entry naming it has been refused. dst is the destination's connection here, if any.
+func (network *Network) notifyDestinationRemovedIfGone(srcRouter *model.Router, destRouterId string, dst *model.Router) {
+	if network.shouldNotifyDestinationRemoved(srcRouter, destRouterId, dst) {
+		network.RouterMessaging.NotifyRouterRemoved(srcRouter.Id, destRouterId)
+	}
+}
+
 // shouldNotifyDestinationRemoved reports whether to re-assert a removal for destRouterId to srcRouter. dst
 // is the destination's connection here, if any.
 //
 // Peer state is only recomputed when a router connects or disconnects, and a deleted router does neither
-// again, so a removal a router misses is never repeated and it dials the dead destination forever. The link
-// report is the evidence that it was missed, and the report repeats, so the correction repeats with it.
+// again, so a removal a router misses is never repeated and it dials the dead destination forever. A link
+// report or a gossip entry naming the destination is the evidence that it was missed, and both repeat, so
+// the correction repeats with them.
+//
+// Every router that names the destination is told, whatever it supports. A router in link gossip learns of
+// deletions from the router data model instead, but only where its controllers distribute routers there,
+// and the statement is true regardless of who hears it.
 //
 // Leader only. This is an unsolicited assertion rather than a reaction to a local event, and it tears links
 // down: a controller lagging on a create would otherwise tell a router to drop a destination that is fine.
-// One controller saying it is enough, since the report that prompts it repeats.
-//
-// A router that participates in link gossip drops such a destination itself, from the router data model, so
-// it is left alone. Anything else is told, including a router whose capabilities did not arrive: the
-// statement is true regardless of who hears it.
+// One controller saying it is enough, since the reports that prompt it repeat.
 func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, destRouterId string, dst *model.Router) bool {
 	if srcRouter == nil || destRouterId == "" || dst != nil {
 		return false
@@ -1168,7 +1175,9 @@ func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, 
 		return false
 	}
 
-	if srcRouter.HasCapability(capabilities.RouterLinkGossip) {
+	// A gossip entry names its dialer whether or not that router is connected here, and a router this
+	// controller does not hold is one it cannot tell.
+	if network.Router.GetConnected(srcRouter.Id) == nil {
 		return false
 	}
 
