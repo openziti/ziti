@@ -378,12 +378,26 @@ func (self *dialer) notifyOfLinkChange(ch *DialLinkChannel, link xlink.Xlink) {
 	}
 }
 
+// verifyDialedPeer reports an error if the router that answered a dial is not the one the dial was
+// for. peerId is the identity the acceptor presented in its hello, which link listeners set to their
+// router id. An empty peerId says nothing about who answered and is not treated as a mismatch.
+func verifyDialedPeer(peerId, dialedRouterId, linkId string) error {
+	if peerId == "" || peerId == dialedRouterId {
+		return nil
+	}
+	return fmt.Errorf("link [l/%s] dialed router '%s' but was answered by router '%s', closing connection", linkId, dialedRouterId, peerId)
+}
+
 type dialBindHandler struct {
 	dialer *dialer
 	link   *impl
 }
 
 func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
+	if err := verifyDialedPeer(binding.GetChannel().Id(), self.link.routerId, self.link.id); err != nil {
+		return err
+	}
+
 	if linkChan, ok := binding.GetChannel().GetSenders().(LinkChannel); ok {
 		self.link.ch = linkChan
 	}
@@ -405,6 +419,9 @@ type splitDialBindHandler struct {
 
 func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) error {
 	return self.link.syncInit(func() error {
+		if err := verifyDialedPeer(binding.GetChannel().Id(), self.link.routerId, self.link.id); err != nil {
+			return err
+		}
 		self.link.payloadCh = binding.GetChannel()
 		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 		if err := bindHandler.BindChannel(binding); err != nil {
@@ -416,7 +433,9 @@ func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) er
 
 func (self *splitDialBindHandler) bindAckChannel(binding channel.Binding) error {
 	return self.link.syncInit(func() error {
-
+		if err := verifyDialedPeer(binding.GetChannel().Id(), self.link.routerId, self.link.id); err != nil {
+			return err
+		}
 		self.link.ackCh = binding.GetChannel()
 		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
 		if err := bindHandler.BindChannel(binding); err != nil {

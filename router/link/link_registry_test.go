@@ -1067,6 +1067,65 @@ func Test_evaluateLinkStateQueue_SkipsDetachedState(t *testing.T) {
 	req.Equal(StatusPending, detached.status, "detached queued state should be dropped, not evaluated")
 }
 
+// addressRecordingDialer reports the address of each dial it is handed.
+type addressRecordingDialer struct {
+	stubDialer
+	dialed chan string
+}
+
+func newAddressRecordingDialer() *addressRecordingDialer {
+	return &addressRecordingDialer{
+		stubDialer: stubDialer{binding: "transport", groups: []string{"default"}},
+		dialed:     make(chan string, 1),
+	}
+}
+
+func (d *addressRecordingDialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
+	select {
+	case d.dialed <- dial.GetAddress():
+	default:
+	}
+	return nil, fmt.Errorf("addressRecordingDialer never connects")
+}
+
+// Test_evaluateLinkState_DialUsesTheStateAsQueued: a dial runs on the dialer pool while the event loop goes on
+// updating its link state, and a peer listener update in that time can move the listener's address and
+// replace the dialer. The dial works from the state as it was when the dial was queued.
+func Test_evaluateLinkState_DialUsesTheStateAsQueued(t *testing.T) {
+	req := require.New(t)
+	reg, tenv := newReconnectTestRegistry(t)
+	report := func(address string) {
+		(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: true, listeners: []*ctrl_pb.Listener{
+			{Address: address, Protocol: "tls", Groups: []string{"default"}},
+		}}).Handle(reg)
+	}
+
+	// The test env's dialer pool runs at most two workers, so holding two keeps the dial queued behind them.
+	release := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		req.NoError(tenv.GetLinkDialerPool().QueueOrError(func() { <-release }))
+	}
+
+	queued, replacement := newAddressRecordingDialer(), newAddressRecordingDialer()
+	tenv.setDialers([]xlink.Dialer{queued})
+	report("tls:peer:6000")
+	req.Len(reg.destinations["dest"].linkMap, 1)
+
+	tenv.setDialers([]xlink.Dialer{replacement})
+	report("tls:peer:6001")
+	req.Len(reg.destinations["dest"].linkMap, 1, "the second report updates the same link state")
+	close(release)
+
+	select {
+	case address := <-queued.dialed:
+		req.Equal("tls:peer:6000", address, "the dial goes to the address it was queued for")
+	case address := <-replacement.dialed:
+		req.Failf("the dial used a dialer that replaced the one it was queued with", "dialed %s", address)
+	case <-time.After(2 * time.Second):
+		req.Fail("the queued dial never ran")
+	}
+}
+
 func Test_updateLinkStatusForLink_ReportsFaultWhenStateMissing(t *testing.T) {
 	req := require.New(t)
 	tenv := newTestEnv()

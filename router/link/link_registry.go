@@ -809,6 +809,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 		log = log.WithField("linkId", state.linkId).WithField("iteration", iteration)
 		log.Info("queuing link to dial")
 
+		attempt := state.newDialAttempt(uint32(iteration))
 		err := self.env.GetLinkDialerPool().QueueOrError(func() {
 			defer state.dialActive.Store(false)
 
@@ -820,7 +821,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 			}
 
 			log.Info("dialing link")
-			link, err := state.dialer.Dial(state)
+			link, err := attempt.dialer.Dial(attempt)
 			if err != nil {
 				log.WithError(err).Error("error dialing link")
 				self.dialFailed(state, false)

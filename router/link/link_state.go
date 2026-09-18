@@ -118,33 +118,42 @@ func (self *linkState) updateStatus(status linkStatus) {
 	}
 }
 
-func (self *linkState) GetLinkId() string {
-	return self.linkId
+// newDialAttempt copies what a dial needs from the state. Call it on the registry's event loop, which owns the
+// state.
+func (self *linkState) newDialAttempt(iteration uint32) *dialAttempt {
+	return &dialAttempt{
+		dialer:          self.dialer,
+		linkId:          self.linkId,
+		routerId:        self.dest.id,
+		address:         self.listener.Address,
+		linkProtocol:    self.listener.Protocol,
+		listenerBinding: self.listener.LocalBinding,
+		routerVersion:   self.dest.version.Load(),
+		iteration:       iteration,
+	}
 }
 
-func (self *linkState) GetRouterId() string {
-	return self.dest.id
+// dialAttempt is one dial of a linkState, fixed when the dial is queued, and is the xlink.Dial its dialer is
+// handed. The dial runs on the dialer pool while the event loop goes on updating the state, which can move
+// the listener's address or replace the dialer, so the dial reads only this copy.
+type dialAttempt struct {
+	dialer          xlink.Dialer
+	linkId          string
+	routerId        string
+	address         string
+	linkProtocol    string
+	listenerBinding string
+	routerVersion   string
+	iteration       uint32
 }
 
-func (self *linkState) GetAddress() string {
-	return self.listener.Address
-}
-
-func (self *linkState) GetLinkProtocol() string {
-	return self.listener.Protocol
-}
-
-func (self *linkState) GetListenerBinding() string {
-	return self.listener.LocalBinding
-}
-
-func (self *linkState) GetRouterVersion() string {
-	return self.dest.version.Load()
-}
-
-func (self *linkState) GetIteration() uint32 {
-	return uint32(self.dialAttempts.Load())
-}
+func (self *dialAttempt) GetLinkId() string          { return self.linkId }
+func (self *dialAttempt) GetRouterId() string        { return self.routerId }
+func (self *dialAttempt) GetAddress() string         { return self.address }
+func (self *dialAttempt) GetLinkProtocol() string    { return self.linkProtocol }
+func (self *dialAttempt) GetListenerBinding() string { return self.listenerBinding }
+func (self *dialAttempt) GetRouterVersion() string   { return self.routerVersion }
+func (self *dialAttempt) GetIteration() uint32       { return self.iteration }
 
 func (self *linkState) addPendingLinkFault(linkId string, iteration uint32) {
 	log := pfxlog.Logger().WithField("linkId", linkId).WithField("iteration", iteration)
