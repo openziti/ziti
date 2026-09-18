@@ -1,6 +1,6 @@
 module github.com/openziti/ziti
 
-go 1.26.4
+go 1.27.1
 
 // pinned
 replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.6.10
