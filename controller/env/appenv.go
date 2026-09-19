@@ -492,6 +492,9 @@ type HostController interface {
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
+	// GetStartRaftIndex returns the last raft index applied to the database at startup, which
+	// trails GetRaftIndex while a node is catching up.
+	GetStartRaftIndex() uint64
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
