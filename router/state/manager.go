@@ -1318,9 +1318,10 @@ func collectRouterConfigTypes(rdm *common.RouterDataModel) map[string]string {
 // OnRouterChanged for routers that are new or whose record differs. Either RDM
 // may be nil.
 //
-// Unchanged routers are skipped. The fast path through HandleRouterEvent
-// dispatches via the subscriber attached to the RDM; this covers the transition
-// points (subscriber attach, RDM swap) where those events never fire.
+// Removals are only replayed when newRdm's source distributes routers at all; see
+// carriesRouters. Unchanged routers are skipped. The fast path through
+// HandleRouterEvent dispatches via the subscriber attached to the RDM; this covers
+// the transition points (subscriber attach, RDM swap) where those events never fire.
 func dispatchRouterDiff(oldRdm, newRdm *common.RouterDataModel, sub common.RouterEventSubscriber) {
 	if sub == nil {
 		return
@@ -1328,9 +1329,11 @@ func dispatchRouterDiff(oldRdm, newRdm *common.RouterDataModel, sub common.Route
 	oldRouters := collectRouters(oldRdm)
 	newRouters := collectRouters(newRdm)
 
-	for id := range oldRouters {
-		if _, stillPresent := newRouters[id]; !stillPresent {
-			sub.OnRouterRemoved(id)
+	if carriesRouters(newRdm, newRouters) {
+		for id := range oldRouters {
+			if _, stillPresent := newRouters[id]; !stillPresent {
+				sub.OnRouterRemoved(id)
+			}
 		}
 	}
 	for id, router := range newRouters {
@@ -1342,6 +1345,24 @@ func dispatchRouterDiff(oldRdm, newRdm *common.RouterDataModel, sub common.Route
 		}
 		sub.OnRouterChanged(router)
 	}
+}
+
+// carriesRouters reports whether the model's source sends Router records at all, which is what makes an
+// absent router evidence of a deletion rather than evidence of nothing.
+//
+// A controller that predates routers in the data model sends a full state with none, and reading that as a
+// fleet-wide deletion would drop every link destination this router has. The subscriber's own record is the
+// signal: a source that sends routers sends all of them, so it always includes the router it is talking to.
+// Where the local router id is unknown, any router at all stands in for it.
+func carriesRouters(rdm *common.RouterDataModel, routers map[string]*edge_ctrl_pb.DataState_Router) bool {
+	if rdm == nil {
+		return false
+	}
+	if selfId := rdm.SelfRouterId(); selfId != "" {
+		_, present := routers[selfId]
+		return present
+	}
+	return len(routers) > 0
 }
 
 // collectRouters snapshots rdm.Routers, returning nil when rdm is nil.
