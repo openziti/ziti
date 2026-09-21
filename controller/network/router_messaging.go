@@ -229,7 +229,82 @@ func (self *RouterMessaging) getTerminatorValidations(routerId string) *terminat
 	return result
 }
 
+// peerState is what one pass of syncStates concluded about a router, along with the store index the
+// conclusion rests on. Cached for the pass so the conclusion is reached once rather than once per recipient,
+// and so every router hears the same thing about it.
+type peerState struct {
+	state      ctrl_pb.PeerState
+	version    string
+	listeners  []*ctrl_pb.Listener
+	storeIndex uint64
+	// unknown marks a router the store could not be read for. That is not a statement about the router, so
+	// nothing is sent and the next pass tries again.
+	unknown bool
+}
+
+func (self peerState) toChange(routerId string) *ctrl_pb.PeerStateChange {
+	return &ctrl_pb.PeerStateChange{
+		Id:         routerId,
+		Version:    self.version,
+		State:      self.state,
+		Listeners:  self.listeners,
+		StoreIndex: self.storeIndex,
+	}
+}
+
+// computePeerState decides what to say about routerId and stamps the store index the answer rests on.
+//
+// Existence is settled first, because it is the part the store answers and connectedness only means
+// anything for a router that exists. A router in the connected map provably existed when it connected, so
+// finding it absent now means it was deleted. Asking the connected map first would report such a router
+// healthy, and a controller that had already applied the delete would stamp that with an index outranking
+// the removal, which no ordering could then correct.
+//
+// The two index reads go opposite ways on purpose. A router id is never reused, so once the store says a
+// router is gone it is gone at every later index too: reading after the check leaves a removal true and
+// makes it as strong as it truthfully can be. Existence is not permanent, so the other states are stamped
+// with an index read before the check, making them as weak as they truthfully can be. That bias is what
+// settles a delete landing mid-computation: the healthy report it produces is stamped below the delete and
+// loses to the removal, which is exactly what the index is for.
+func (self *RouterMessaging) computePeerState(routerId string) peerState {
+	observedAt := self.env.GetStoreIndex()
+
+	exists, err := self.managers.Router.Exists(routerId)
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithField("routerId", routerId).
+			Error("failed to check if router exists")
+		return peerState{unknown: true}
+	}
+
+	if !exists {
+		return peerState{state: ctrl_pb.PeerState_Removed, storeIndex: self.env.GetStoreIndex()}
+	}
+
+	if router := self.managers.Router.GetConnected(routerId); router != nil {
+		return peerState{
+			state:      ctrl_pb.PeerState_Healthy,
+			version:    router.VersionInfo.Version,
+			listeners:  router.GetLinkListeners(),
+			storeIndex: observedAt,
+		}
+	}
+
+	return peerState{state: ctrl_pb.PeerState_Unhealthy, storeIndex: observedAt}
+}
+
 func (self *RouterMessaging) syncStates() {
+	// Rebuilt every pass. A memo carried across passes would be the stale snapshot that computing state at
+	// send time exists to avoid.
+	peerStates := map[string]peerState{}
+	stateOf := func(routerId string) peerState {
+		if state, found := peerStates[routerId]; found {
+			return state
+		}
+		state := self.computePeerState(routerId)
+		peerStates[routerId] = state
+		return state
+	}
+
 	for k, v := range self.routerUpdates {
 		notifyRouterId := k
 		updates := v
@@ -253,34 +328,8 @@ func (self *RouterMessaging) syncStates() {
 		}
 
 		for routerId := range updates.changedRouters {
-			router := self.managers.Router.GetConnected(routerId)
-			if router != nil {
-				changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
-					Id:        routerId,
-					Version:   router.VersionInfo.Version,
-					State:     ctrl_pb.PeerState_Healthy,
-					Listeners: router.GetLinkListeners(),
-				})
-			} else {
-				exists, err := self.managers.Router.Exists(routerId)
-				if exists && err == nil {
-					changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
-						Id:    routerId,
-						State: ctrl_pb.PeerState_Unhealthy,
-					})
-				} else if err != nil {
-					pfxlog.Logger().WithError(err).
-						WithField("notifyRouterId", notifyRouter).
-						WithField("routerId", routerId).
-						Error("failed to check if router exists")
-				}
-
-				if !exists && err == nil {
-					changes.Changes = append(changes.Changes, &ctrl_pb.PeerStateChange{
-						Id:    routerId,
-						State: ctrl_pb.PeerState_Removed,
-					})
-				}
+			if state := stateOf(routerId); !state.unknown {
+				changes.Changes = append(changes.Changes, state.toChange(routerId))
 			}
 		}
 

@@ -38,12 +38,21 @@ type event interface {
 }
 
 type removeLinkDest struct {
-	id string
+	id         string
+	storeIndex uint64
 }
 
 func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 	dest := registry.destinations[self.id]
 	delete(registry.destinations, self.id)
+
+	// A removal computed against a known store index leaves a marker, so a report of this destination that
+	// was computed before the router was deleted cannot recreate it. Controllers compute peer state
+	// independently and nothing orders their messages, so such a report can arrive after the removal.
+	if self.storeIndex > 0 {
+		registry.removedDests[self.id] = removedDest{storeIndex: self.storeIndex, at: time.Now()}
+	}
+
 	if dest != nil {
 		for _, state := range dest.linkMap {
 			state.updateStatus(StatusDestRemoved)
@@ -60,14 +69,48 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 }
 
 type linkDestUpdate struct {
-	id        string
-	ctrlId    string
-	version   string
-	healthy   bool
-	listeners []*ctrl_pb.Listener
+	id         string
+	ctrlId     string
+	storeIndex uint64
+	version    string
+	healthy    bool
+	listeners  []*ctrl_pb.Listener
+}
+
+// supersededByRemoval reports whether this update is an older statement about the destination's existence
+// than a removal already applied, and clears the marker when it is a newer one.
+//
+// The comparison is only sound for existence, which is what the store answers. Health is not in the store:
+// it is each controller's own view of what it is connected to, which the registry unions across controllers,
+// so it is never suppressed here. A controller lagging in replication reports a low index alongside a
+// perfectly good health report, and dropping that would strand a destination that is up.
+//
+// An update at the same index as the removal loses. A router being deleted stays in a controller's connected
+// map until its control channel teardown runs, so the same store state can still produce a healthy report.
+func (self *linkDestUpdate) supersededByRemoval(registry *linkRegistryImpl) bool {
+	removed, ok := registry.removedDests[self.id]
+	if !ok {
+		return false
+	}
+
+	if self.storeIndex > 0 && self.storeIndex <= removed.storeIndex {
+		linkLog.Info("ignoring link destination update older than the removal already applied",
+			"routerId", self.id,
+			"ctrlId", self.ctrlId,
+			"storeIndex", self.storeIndex,
+			"removedAtStoreIndex", removed.storeIndex)
+		return true
+	}
+
+	delete(registry.removedDests, self.id)
+	return false
 }
 
 func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
+	if self.supersededByRemoval(registry) {
+		return
+	}
+
 	dest := registry.destinations[self.id]
 
 	if dest == nil {

@@ -52,6 +52,10 @@ type TestContext struct {
 	closeNotify     chan struct{}
 	dispatcher      command.Dispatcher
 	eventDispatcher event.Dispatcher
+	// StoreIndex is what GetStoreIndex reports. StoreIndexF takes precedence when set, for tests that need
+	// the index to move between reads.
+	StoreIndex  uint64
+	StoreIndexF func() uint64
 }
 
 func (ctx *TestContext) GetTokenIssuerCache() *TokenIssuerCache {
@@ -181,6 +185,13 @@ func (self *TestContext) GetApiAddresses() (map[string][]event.ApiAddress, []byt
 
 func (self *TestContext) GetRaftInfo() (string, string, string) {
 	return "testaddr", "testid", "testversion"
+}
+
+func (self *TestContext) GetStoreIndex() uint64 {
+	if self.StoreIndexF != nil {
+		return self.StoreIndexF()
+	}
+	return self.StoreIndex
 }
 
 func (self *TestContext) GetPeerSigners() []*x509.Certificate {

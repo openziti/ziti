@@ -42,6 +42,38 @@ type fakeCtrlChannel struct {
 	ctrlchan.CtrlChannel
 	closed  atomic.Bool
 	onClose func()
+
+	sendLock sync.Mutex
+	sent     []*channel.Message
+}
+
+// GetDefaultSender returns a sender that records what was sent and reports it written, which is what a
+// SendAndWaitForWire caller blocks on.
+func (f *fakeCtrlChannel) GetDefaultSender() channel.Sender { return f }
+
+func (f *fakeCtrlChannel) Send(s channel.Sendable) error {
+	f.sendLock.Lock()
+	f.sent = append(f.sent, s.Msg())
+	f.sendLock.Unlock()
+
+	listener := s.SendListener()
+	listener.NotifyQueued()
+	listener.NotifyBeforeWrite()
+	listener.NotifyAfterWrite()
+	return nil
+}
+
+func (f *fakeCtrlChannel) TrySend(s channel.Sendable) (bool, error) {
+	return true, f.Send(s)
+}
+
+func (f *fakeCtrlChannel) CloseNotify() <-chan struct{} { return nil }
+
+// sentMessages returns a copy of what has been sent, safe to read while sends continue.
+func (f *fakeCtrlChannel) sentMessages() []*channel.Message {
+	f.sendLock.Lock()
+	defer f.sendLock.Unlock()
+	return append([]*channel.Message(nil), f.sent...)
 }
 
 func (f *fakeCtrlChannel) Close() error {
