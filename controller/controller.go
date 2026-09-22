@@ -185,6 +185,54 @@ func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.GetAppliedIndex()
 }
 
+// GetRaftCommitIndex returns the highest index known to be committed, which is the barrier to wait for in
+// order to see everything the cluster had committed when it was read. Zero without raft.
+func (c *Controller) GetRaftCommitIndex() uint64 {
+	if c.raftController == nil {
+		return 0
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return 0
+	}
+	return r.CommitIndex()
+}
+
+// HasRaftLeader reports whether this controller knows of a leader, itself included. False when isolated or
+// mid-election. True without raft.
+func (c *Controller) HasRaftLeader() bool {
+	if c.raftController == nil {
+		return true
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return false
+	}
+	_, leaderId := r.LeaderWithID()
+	return leaderId != ""
+}
+
+// IsRaftCaughtUp reports whether this controller has applied every entry the cluster is known to have
+// committed. False while leaderless, and while applying entries committed before this controller caught up,
+// which includes the window after winning an election. True without raft, where there is nothing to lag.
+//
+// The commit index a follower knows is the one carried by the last append it received, so this is a lower
+// bound rather than a live view of the leader. Callers that need certainty about an absent entity should
+// re-check over a window rather than treat one true answer as final.
+func (c *Controller) IsRaftCaughtUp() bool {
+	if c.raftController == nil {
+		return true
+	}
+	if !c.HasRaftLeader() {
+		return false
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return false
+	}
+	return c.raftController.GetAppliedIndex() >= r.CommitIndex()
+}
+
 func (c *Controller) GetStartRaftIndex() uint64 {
 	return c.raftController.Fsm.GetStartIndex()
 }

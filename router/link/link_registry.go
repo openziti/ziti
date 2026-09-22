@@ -530,14 +530,14 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, storeIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, raftIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
-		id:         id,
-		ctrlId:     ctrlId,
-		storeIndex: storeIndex,
-		version:    version,
-		healthy:    healthy,
-		listeners:  listeners,
+		id:        id,
+		ctrlId:    ctrlId,
+		raftIndex: raftIndex,
+		version:   version,
+		healthy:   healthy,
+		listeners: listeners,
 	}
 
 	self.queueEvent(updateEvent)
@@ -571,10 +571,10 @@ func (self *linkRegistryImpl) NotifyLinkConnStateChanged(link xlink.Xlink) {
 	self.queueEvent(&linkConnStateChanged{link: link})
 }
 
-func (self *linkRegistryImpl) RemoveLinkDest(id string, storeIndex uint64) {
+func (self *linkRegistryImpl) RemoveLinkDest(id string, raftIndex uint64) {
 	self.queueEvent(&removeLinkDest{
-		id:         id,
-		storeIndex: storeIndex,
+		id:        id,
+		raftIndex: raftIndex,
 	})
 }
 

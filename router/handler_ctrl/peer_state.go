@@ -57,9 +57,9 @@ func (self *peerStateChangeHandler) DispatchChanges(ctrlId string, changes *ctrl
 		if peerStateChange.Id == self.env.GetRouterId().Token {
 			log.WithField("routerId", peerStateChange.Id).Warn("got peer state change message for myself, ignoring")
 		} else if peerStateChange.State == ctrl_pb.PeerState_Removed {
-			self.env.GetXlinkRegistry().RemoveLinkDest(peerStateChange.Id, peerStateChange.StoreIndex)
+			self.env.GetXlinkRegistry().RemoveLinkDest(peerStateChange.Id, peerStateChange.RaftIndex)
 		} else {
-			self.env.GetXlinkRegistry().UpdateLinkDest(ctrlId, peerStateChange.StoreIndex, peerStateChange.Id, peerStateChange.Version, peerStateChange.State == ctrl_pb.PeerState_Healthy, peerStateChange.Listeners)
+			self.env.GetXlinkRegistry().UpdateLinkDest(ctrlId, peerStateChange.RaftIndex, peerStateChange.Id, peerStateChange.Version, peerStateChange.State == ctrl_pb.PeerState_Healthy, peerStateChange.Listeners)
 		}
 	}
 }

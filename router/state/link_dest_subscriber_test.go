@@ -33,9 +33,9 @@ type fakeRegistry struct {
 	storeIndexes []uint64
 }
 
-func (f *fakeRegistry) RemoveLinkDest(id string, storeIndex uint64) {
+func (f *fakeRegistry) RemoveLinkDest(id string, raftIndex uint64) {
 	f.removed = append(f.removed, id)
-	f.storeIndexes = append(f.storeIndexes, storeIndex)
+	f.storeIndexes = append(f.storeIndexes, raftIndex)
 }
 
 func Test_LinkDestSubscriber_RemovedForwardsToRegistry(t *testing.T) {

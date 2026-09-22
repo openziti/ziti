@@ -18,6 +18,7 @@ package model
 
 import (
 	"math"
+	"sync"
 	"time"
 
 	"github.com/openziti/ziti/v2/common/concurrency"
@@ -43,6 +44,37 @@ type LinkManager struct {
 	// env is held rather than the router manager, which does not exist yet when this one is built. Nil in
 	// tests that do not need router lookups.
 	env Env
+	// deferredReports holds reports refused only because this controller had not caught up, keyed by link
+	// id. See RetryDeferredReports.
+	deferredReports map[string]*deferredReport
+	// deferredBarrier is the raft index the next evaluation pass waits for, taken at the end of the previous
+	// pass. Shared rather than per report: passes are a minute apart and a report gets several, so the worst
+	// case is that one deferred just after a barrier was taken spends its first pass looking at slightly old
+	// state, which costs an attempt out of maxDeferredReportAttempts and is corrected on the next pass.
+	//
+	// Taken per pass rather than per deferral on purpose. A barrier that moved with every arrival would keep
+	// receding while reports kept arriving, which is the starvation that made the plain caught-up check
+	// unusable here.
+	deferredBarrier     uint64
+	deferredReportsLock sync.Mutex
+}
+
+// maxDeferredReports bounds the deferred set. A controller that never catches up is partitioned and cannot
+// route anyway, and every router announces its full set again when it reconnects, so discarding the excess
+// costs nothing that reconnecting will not restore.
+const maxDeferredReports = 4096
+
+// maxDeferredReportAttempts is how many barriers a report waits through before its destination is treated as
+// genuinely absent. The commit index a follower knows trails the leader by up to one append, so reaching one
+// barrier can still leave a just-committed create unseen; taking a fresh barrier each pass removes that.
+const maxDeferredReportAttempts = 5
+
+// deferredReport is a link report held back because the destination was unknown while this controller was
+// behind. The report is kept rather than the routers it named, since those are re-resolved on each retry.
+type deferredReport struct {
+	reportedLink *ctrl_pb.RouterLinks_RouterLink
+	srcRouterId  string
+	attempts     int
 }
 
 func NewLinkManager(env Env) *LinkManager {
@@ -182,6 +214,146 @@ func (self *LinkManager) destinationExists(routerId string) bool {
 	return err == nil && router != nil
 }
 
+// isRaftCaughtUp reports whether this controller has applied everything the cluster is known to have
+// committed. True when there is no env, which is the case in tests that do not exercise catch-up.
+func (self *LinkManager) isRaftCaughtUp() bool {
+	if self.env == nil {
+		return true
+	}
+	return self.env.IsRaftCaughtUp()
+}
+
+// raftCommitIndex returns the barrier to wait for, or zero when there is no env, which is the case in tests
+// that do not exercise catch-up. A zero barrier is immediately satisfied.
+func (self *LinkManager) raftCommitIndex() uint64 {
+	if self.env == nil {
+		return 0
+	}
+	return self.env.GetRaftCommitIndex()
+}
+
+// deferReport holds a report whose destination is unknown while this controller is behind, so it can be
+// re-evaluated once caught up. Re-reporting the same link replaces the held copy and keeps its attempt
+// count, since it is the same question being asked again.
+func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLink, src *Router) {
+	if src == nil {
+		return
+	}
+
+	self.deferredReportsLock.Lock()
+	defer self.deferredReportsLock.Unlock()
+
+	if self.deferredReports == nil {
+		self.deferredReports = map[string]*deferredReport{}
+	}
+
+	if existing, found := self.deferredReports[reportedLink.Id]; found {
+		// Same question asked again. The original barrier already covers the destination's creation, and it
+		// is the earlier of the two, so keeping it resolves the report sooner.
+		existing.reportedLink = reportedLink
+		existing.srcRouterId = src.Id
+		return
+	}
+
+	if len(self.deferredReports) >= maxDeferredReports {
+		return
+	}
+
+	self.deferredReports[reportedLink.Id] = &deferredReport{
+		reportedLink: reportedLink,
+		srcRouterId:  src.Id,
+	}
+}
+
+// RetryDeferredReports re-evaluates reports held back because their destination was unknown while this
+// controller was behind. A report is only judged once this controller has applied the index it was holding
+// for, at which point failing to find the destination is a real answer rather than a symptom of lag.
+//
+// Each pass that still cannot find the destination takes a fresh barrier, so the next pass judges against
+// newer state. After maxDeferredReportAttempts the destination is treated as genuinely gone and the report
+// is dropped.
+//
+// Safe to call on a timer from a single goroutine; concurrent calls are serialized by the lock but gain
+// nothing.
+func (self *LinkManager) RetryDeferredReports() {
+	if self.env == nil {
+		return
+	}
+
+	// With no leader this controller is not receiving commits at all, so its view is frozen rather than
+	// behind. Judging an absence now would mistake isolation for deletion, and waiting for an index it will
+	// never be told about would never end.
+	if !self.env.HasRaftLeader() {
+		return
+	}
+
+	self.deferredReportsLock.Lock()
+	barrier := self.deferredBarrier
+	pending := make([]*deferredReport, 0, len(self.deferredReports))
+	for _, report := range self.deferredReports {
+		pending = append(pending, report)
+	}
+	self.deferredReportsLock.Unlock()
+
+	if len(pending) == 0 {
+		return
+	}
+
+	// Still short of what the cluster had committed when the last pass ran, so nothing here could tell us
+	// anything new yet.
+	if self.env.GetRaftIndex() < barrier {
+		return
+	}
+
+	routers := self.env.GetManagers().Router
+	var resolved []string
+
+	for _, report := range pending {
+		report.attempts++
+
+		src := routers.GetConnected(report.srcRouterId)
+		if src == nil {
+			// The reporting router has gone. It announces its whole set again when it returns, so there is
+			// nothing left here to hold.
+			resolved = append(resolved, report.reportedLink.Id)
+			continue
+		}
+
+		dst := routers.GetConnected(report.reportedLink.DestRouterId)
+		if dst != nil || self.destinationExists(report.reportedLink.DestRouterId) {
+			self.RouterReportedLink(report.reportedLink, src, dst)
+			resolved = append(resolved, report.reportedLink.Id)
+			linkLog.Info("applied deferred link report once its destination was known",
+				"linkId", report.reportedLink.Id,
+				"destRouterId", report.reportedLink.DestRouterId)
+			continue
+		}
+
+		if report.attempts >= maxDeferredReportAttempts {
+			resolved = append(resolved, report.reportedLink.Id)
+			linkLog.Warn("dropping link report naming a destination router that does not exist",
+				"linkId", report.reportedLink.Id,
+				"destRouterId", report.reportedLink.DestRouterId,
+				"attempts", report.attempts)
+		}
+	}
+
+	self.deferredReportsLock.Lock()
+	for _, id := range resolved {
+		delete(self.deferredReports, id)
+	}
+	// Anything still held is judged next pass against everything committed as of now.
+	self.deferredBarrier = self.raftCommitIndex()
+	self.deferredReportsLock.Unlock()
+}
+
+// DeferredReportCount returns how many reports are held awaiting catch-up.
+func (self *LinkManager) DeferredReportCount() int {
+	self.deferredReportsLock.Lock()
+	defer self.deferredReportsLock.Unlock()
+	return len(self.deferredReports)
+}
+
 // ScanForDeadLinks removes links whose dialer is no longer connected to this controller, skipping any the
 // keep predicate claims.
 //
@@ -293,6 +465,17 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 	// The routers that dialed it do not know the router is gone and re-announce the link on every reconnect,
 	// so refusing here is what stops it coming back.
 	if dst == nil && !self.destinationExists(reportedLink.DestRouterId) {
+		// A destination this controller has not caught up to looks exactly like one that was deleted, and
+		// the two want opposite answers. Refusing while behind silently drops a link to a router that does
+		// exist, and the reporting router considers it delivered, so nothing ever says it again.
+		if !self.isRaftCaughtUp() {
+			self.deferReport(reportedLink, src)
+			linkLog.Info("deferring link report naming an unknown destination until this controller catches up",
+				"linkId", reportedLink.Id,
+				"destRouterId", reportedLink.DestRouterId)
+			return nil, false
+		}
+
 		linkLog.Warn("ignoring link report naming a destination router that no longer exists",
 			"linkId", reportedLink.Id,
 			"destRouterId", reportedLink.DestRouterId)

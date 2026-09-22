@@ -38,8 +38,8 @@ type event interface {
 }
 
 type removeLinkDest struct {
-	id         string
-	storeIndex uint64
+	id        string
+	raftIndex uint64
 }
 
 func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
@@ -49,8 +49,8 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 	// A removal computed against a known store index leaves a marker, so a report of this destination that
 	// was computed before the router was deleted cannot recreate it. Controllers compute peer state
 	// independently and nothing orders their messages, so such a report can arrive after the removal.
-	if self.storeIndex > 0 {
-		registry.removedDests[self.id] = removedDest{storeIndex: self.storeIndex, at: time.Now()}
+	if self.raftIndex > 0 {
+		registry.removedDests[self.id] = removedDest{raftIndex: self.raftIndex, at: time.Now()}
 	}
 
 	if dest != nil {
@@ -69,12 +69,12 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 }
 
 type linkDestUpdate struct {
-	id         string
-	ctrlId     string
-	storeIndex uint64
-	version    string
-	healthy    bool
-	listeners  []*ctrl_pb.Listener
+	id        string
+	ctrlId    string
+	raftIndex uint64
+	version   string
+	healthy   bool
+	listeners []*ctrl_pb.Listener
 }
 
 // supersededByRemoval reports whether this update is an older statement about the destination's existence
@@ -93,12 +93,12 @@ func (self *linkDestUpdate) supersededByRemoval(registry *linkRegistryImpl) bool
 		return false
 	}
 
-	if self.storeIndex > 0 && self.storeIndex <= removed.storeIndex {
+	if self.raftIndex > 0 && self.raftIndex <= removed.raftIndex {
 		linkLog.Info("ignoring link destination update older than the removal already applied",
 			"routerId", self.id,
 			"ctrlId", self.ctrlId,
-			"storeIndex", self.storeIndex,
-			"removedAtStoreIndex", removed.storeIndex)
+			"raftIndex", self.raftIndex,
+			"removedAtStoreIndex", removed.raftIndex)
 		return true
 	}
 
@@ -257,6 +257,22 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 	for linkKey := range currentLinkKeys {
 		if v, ok := dest.linkMap[linkKey]; ok {
 			delete(dest.linkMap, linkKey)
+
+			// Logged even when nothing is closed: a detached pairing cannot redial or report, so a dial
+			// already in flight lands with nowhere to go, and nothing else records why.
+			source := "local dialer rescan"
+			if closeOrphans {
+				source = "peer listener update"
+			}
+			linkLog.Info("detaching link pairing that no longer matches",
+				"routerId", self.id,
+				"ctrlId", self.ctrlId,
+				"linkKey", linkKey,
+				"linkId", v.linkId,
+				"status", v.status,
+				"hasLink", v.link != nil,
+				"source", source)
+
 			if closeOrphans && v.link != nil {
 				linkLog.Info("closing link as link groups no longer align",
 					"routerId", self.id, "linkKey", linkKey)

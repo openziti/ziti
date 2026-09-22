@@ -226,9 +226,9 @@ func requireRemovalNotice(t *testing.T, network *Network, notifyRouterId, destRo
 	}, 2*time.Second, 10*time.Millisecond, msg)
 }
 
-// countingStoreIndex returns a GetStoreIndex that advances on every read, so a test can tell which of the
+// countingRaftIndex returns a GetRaftIndex that advances on every read, so a test can tell which of the
 // two reads in computePeerState a change was stamped from.
-func countingStoreIndex() func() uint64 {
+func countingRaftIndex() func() uint64 {
 	var n uint64
 	return func() uint64 {
 		n++
@@ -287,7 +287,7 @@ func connectTarget(t *testing.T, network *Network, addr transport.Address, id st
 func TestSyncStates_RemovalIsStampedFromTheLaterRead(t *testing.T) {
 	req := require.New(t)
 	ctx, network, addr := newConnectTestNetwork(t)
-	ctx.StoreIndexF = countingStoreIndex()
+	ctx.RaftIndexF = countingRaftIndex()
 
 	targets := map[string]*fakeCtrlChannel{"r1": connectTarget(t, network, addr, "r1")}
 	batches := syncOnce(t, ctx, network, targets, "gone")
@@ -295,7 +295,7 @@ func TestSyncStates_RemovalIsStampedFromTheLaterRead(t *testing.T) {
 	changes := batches["r1"].Changes
 	req.Len(changes, 1)
 	req.Equal(ctrl_pb.PeerState_Removed, changes[0].State)
-	req.Equal(uint64(2), changes[0].StoreIndex,
+	req.Equal(uint64(2), changes[0].RaftIndex,
 		"a removal must carry the index read after the existence check, not the one read before it")
 }
 
@@ -305,7 +305,7 @@ func TestSyncStates_RemovalIsStampedFromTheLaterRead(t *testing.T) {
 func TestSyncStates_HealthyIsStampedFromTheEarlierRead(t *testing.T) {
 	req := require.New(t)
 	ctx, network, addr := newConnectTestNetwork(t)
-	ctx.StoreIndexF = countingStoreIndex()
+	ctx.RaftIndexF = countingRaftIndex()
 
 	live := connectTarget(t, network, addr, "live")
 	req.NotNil(live)
@@ -316,7 +316,7 @@ func TestSyncStates_HealthyIsStampedFromTheEarlierRead(t *testing.T) {
 	changes := batches["r1"].Changes
 	req.Len(changes, 1)
 	req.Equal(ctrl_pb.PeerState_Healthy, changes[0].State)
-	req.Equal(uint64(1), changes[0].StoreIndex,
+	req.Equal(uint64(1), changes[0].RaftIndex,
 		"a healthy report must carry the index read before the observation")
 }
 
@@ -346,7 +346,7 @@ func TestSyncStates_DeletedRouterStillConnectedIsReportedRemoved(t *testing.T) {
 func TestSyncStates_OneStatementPerRouterPerPass(t *testing.T) {
 	req := require.New(t)
 	ctx, network, addr := newConnectTestNetwork(t)
-	ctx.StoreIndexF = countingStoreIndex()
+	ctx.RaftIndexF = countingRaftIndex()
 
 	targets := map[string]*fakeCtrlChannel{
 		"r1": connectTarget(t, network, addr, "r1"),
@@ -356,6 +356,162 @@ func TestSyncStates_OneStatementPerRouterPerPass(t *testing.T) {
 
 	req.Len(batches["r1"].Changes, 1)
 	req.Len(batches["r2"].Changes, 1)
-	req.Equal(batches["r1"].Changes[0].StoreIndex, batches["r2"].Changes[0].StoreIndex,
+	req.Equal(batches["r1"].Changes[0].RaftIndex, batches["r2"].Changes[0].RaftIndex,
 		"both recipients must hear the same statement, computed once")
+}
+
+// TestNotifyExistingLink_BehindControllerDefersRatherThanDropping is the failure a soak run reproduced: a
+// follower that has not yet applied a router's creation cannot tell it from one that was deleted, and
+// refusing the report loses the link for good, because the reporting router has already marked it notified
+// and only re-announces on reconnect. One controller ended 125 links short of its peers that way.
+func TestNotifyExistingLink_BehindControllerDefersRatherThanDropping(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+	ctx.RaftNotCaughtUp = true
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: "not-applied-yet",
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	})
+
+	_, held := network.Link.Get("l0")
+	req.False(held, "the link must not be recorded while the destination is unknown")
+	req.Equal(1, network.Link.DeferredReportCount(), "but the report must be held, not discarded")
+
+	// Once the destination is applied and the controller has caught up, the held report is applied.
+	dest := newPersistedRouter(t, network, addr, "not-applied-yet")
+	req.NotNil(dest)
+	ctx.RaftNotCaughtUp = false
+
+	network.Link.RetryDeferredReports()
+
+	_, held = network.Link.Get("l0")
+	req.True(held, "the link must be recorded once its destination is known")
+	req.Zero(network.Link.DeferredReportCount())
+}
+
+// TestNotifyExistingLink_BehindControllerStaysQuiet guards the hazard the other way. The destination-removed
+// notice tears links down at the router, so a controller that simply has not caught up must not send it. A
+// leader can be behind too, in the window after it wins an election and before it finishes applying.
+func TestNotifyExistingLink_BehindControllerStaysQuiet(t *testing.T) {
+	ctx, network, addr := newConnectTestNetwork(t)
+	src := newReportingRouter(t, network, addr, "reporter")
+
+	ctx.RaftNotCaughtUp = true
+
+	require.False(t, network.shouldNotifyDestinationRemoved(src, "not-applied-yet", nil),
+		"a controller that is still catching up must not announce a router as removed")
+}
+
+// TestRetryDeferredReports_DropsAGenuinelyAbsentDestination: deferring must not become permanent holding. Once the
+// controller is current and the destination is still absent after the retries, the report is dropped, which
+// is the behaviour the refusal existed for.
+func TestRetryDeferredReports_DropsAGenuinelyAbsentDestination(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+	ctx.RaftNotCaughtUp = true
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id: "l0", DestRouterId: "never-existed", LinkProtocol: "tls", Iteration: 1,
+	})
+	req.Equal(1, network.Link.DeferredReportCount())
+
+	ctx.RaftNotCaughtUp = false
+	for i := 0; i < 6; i++ {
+		network.Link.RetryDeferredReports()
+	}
+
+	req.Zero(network.Link.DeferredReportCount(), "a destination that is still absent once caught up is gone")
+	_, held := network.Link.Get("l0")
+	req.False(held)
+}
+
+// TestRetryDeferredReports_AdvancesWhileTheClusterKeepsCommitting is the liveness property the per-pass
+// barrier exists for. A busy cluster commits continuously, so "have I applied everything committed" can be
+// false every time it is asked, and a retry gated on that would hold reports for ever. The barrier is taken
+// once per pass instead, so it is a fixed target and is always reached.
+func TestRetryDeferredReports_AdvancesWhileTheClusterKeepsCommitting(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+
+	ctx.RaftNotCaughtUp = true
+	ctx.RaftCommitIndex = 100
+	ctx.RaftIndex = 50
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id: "l0", DestRouterId: "arrives-later", LinkProtocol: "tls", Iteration: 1,
+	})
+	req.Equal(1, network.Link.DeferredReportCount())
+
+	// The destination lands, and the cluster keeps committing, so this controller is still not caught up in
+	// the global sense. The held report must be judged anyway.
+	dest := newPersistedRouter(t, network, addr, "arrives-later")
+	req.NotNil(dest)
+	ctx.RaftIndex = 120
+	ctx.RaftCommitIndex = 500
+
+	network.Link.RetryDeferredReports()
+
+	_, held := network.Link.Get("l0")
+	req.True(held, "a pass past its barrier must run even while the cluster keeps committing")
+	req.Zero(network.Link.DeferredReportCount())
+}
+
+// TestRetryDeferredReports_HoldsUntilTheBarrierIsReached: judging before the pass barrier would reach the
+// same wrong answer that deferring exists to avoid.
+func TestRetryDeferredReports_HoldsUntilTheBarrierIsReached(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+	ctx.RaftNotCaughtUp = true
+	ctx.RaftCommitIndex = 100
+	ctx.RaftIndex = 50
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id: "l0", DestRouterId: "never-existed", LinkProtocol: "tls", Iteration: 1,
+	})
+
+	// First pass runs against a zero barrier and burns one attempt, then sets the barrier to 100.
+	network.Link.RetryDeferredReports()
+	req.Equal(1, network.Link.DeferredReportCount())
+
+	// Applied is still short of that barrier, so no further pass may consume an attempt or drop it.
+	for i := 0; i < 10; i++ {
+		network.Link.RetryDeferredReports()
+	}
+	req.Equal(1, network.Link.DeferredReportCount(), "a pass short of the barrier must leave reports alone")
+}
+
+// TestRetryDeferredReports_IsolatedControllerDropsNothing: with no leader this controller receives no
+// commits, so its view is frozen rather than behind. Judging an absence then mistakes isolation for
+// deletion, which is the failure deferring exists to prevent.
+func TestRetryDeferredReports_IsolatedControllerDropsNothing(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+	ctx.RaftNotCaughtUp = true
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id: "l0", DestRouterId: "unreachable-truth", LinkProtocol: "tls", Iteration: 1,
+	})
+	req.Equal(1, network.Link.DeferredReportCount())
+
+	ctx.RaftLeaderless = true
+	for i := 0; i < 10; i++ {
+		network.Link.RetryDeferredReports()
+	}
+
+	req.Equal(1, network.Link.DeferredReportCount(),
+		"an isolated controller must not conclude anything about a destination it cannot hear about")
 }

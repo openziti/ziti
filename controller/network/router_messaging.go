@@ -233,10 +233,10 @@ func (self *RouterMessaging) getTerminatorValidations(routerId string) *terminat
 // conclusion rests on. Cached for the pass so the conclusion is reached once rather than once per recipient,
 // and so every router hears the same thing about it.
 type peerState struct {
-	state      ctrl_pb.PeerState
-	version    string
-	listeners  []*ctrl_pb.Listener
-	storeIndex uint64
+	state     ctrl_pb.PeerState
+	version   string
+	listeners []*ctrl_pb.Listener
+	raftIndex uint64
 	// unknown marks a router the store could not be read for. That is not a statement about the router, so
 	// nothing is sent and the next pass tries again.
 	unknown bool
@@ -244,11 +244,11 @@ type peerState struct {
 
 func (self peerState) toChange(routerId string) *ctrl_pb.PeerStateChange {
 	return &ctrl_pb.PeerStateChange{
-		Id:         routerId,
-		Version:    self.version,
-		State:      self.state,
-		Listeners:  self.listeners,
-		StoreIndex: self.storeIndex,
+		Id:        routerId,
+		Version:   self.version,
+		State:     self.state,
+		Listeners: self.listeners,
+		RaftIndex: self.raftIndex,
 	}
 }
 
@@ -267,7 +267,7 @@ func (self peerState) toChange(routerId string) *ctrl_pb.PeerStateChange {
 // settles a delete landing mid-computation: the healthy report it produces is stamped below the delete and
 // loses to the removal, which is exactly what the index is for.
 func (self *RouterMessaging) computePeerState(routerId string) peerState {
-	observedAt := self.env.GetStoreIndex()
+	observedAt := self.env.GetRaftIndex()
 
 	exists, err := self.managers.Router.Exists(routerId)
 	if err != nil {
@@ -277,19 +277,19 @@ func (self *RouterMessaging) computePeerState(routerId string) peerState {
 	}
 
 	if !exists {
-		return peerState{state: ctrl_pb.PeerState_Removed, storeIndex: self.env.GetStoreIndex()}
+		return peerState{state: ctrl_pb.PeerState_Removed, raftIndex: self.env.GetRaftIndex()}
 	}
 
 	if router := self.managers.Router.GetConnected(routerId); router != nil {
 		return peerState{
-			state:      ctrl_pb.PeerState_Healthy,
-			version:    router.VersionInfo.Version,
-			listeners:  router.GetLinkListeners(),
-			storeIndex: observedAt,
+			state:     ctrl_pb.PeerState_Healthy,
+			version:   router.VersionInfo.Version,
+			listeners: router.GetLinkListeners(),
+			raftIndex: observedAt,
 		}
 	}
 
-	return peerState{state: ctrl_pb.PeerState_Unhealthy, storeIndex: observedAt}
+	return peerState{state: ctrl_pb.PeerState_Unhealthy, raftIndex: observedAt}
 }
 
 func (self *RouterMessaging) syncStates() {

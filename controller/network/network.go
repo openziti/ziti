@@ -1175,6 +1175,13 @@ func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, 
 		return false
 	}
 
+	// Saying a router is gone is only meaningful once this controller has caught up. A leader that has just
+	// been elected is still applying entries committed before it won, so an entity it cannot find may simply
+	// be one it has not reached yet, and announcing that as a removal tears down links to a live router.
+	if !network.env.IsRaftCaughtUp() {
+		return false
+	}
+
 	// A gossip entry names its dialer whether or not that router is connected here, and a router this
 	// controller does not hold is one it cannot tell.
 	if network.Router.GetConnected(srcRouter.Id) == nil {
@@ -1630,6 +1637,7 @@ func (network *Network) Run() {
 			network.clean()
 			network.smart()
 			network.scanForDeadLinks()
+			network.Link.RetryDeferredReports()
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
