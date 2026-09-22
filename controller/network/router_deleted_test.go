@@ -189,3 +189,57 @@ func TestScanForDeadLinks_KeepsLinksOfConnectedRouters(t *testing.T) {
 	_, found := network.Link.Get(link.Id)
 	req.True(found, "a connected router's links must be left alone")
 }
+
+// TestScanForDeadLinks_DialerReturningMidScanKeepsItsLinks is the race that cost a soak run 53 links. The
+// scan walks the link table and then removes from it in a second pass, and on a large table that gap is
+// wide enough for a dialer to reconnect and re-announce. Removing on the first pass's answer drops a link
+// the controller was just told about, and a router reporting the pre-gossip way says its set only on
+// reconnect, so it never mentions that link again.
+//
+// The keep callback stands in for the reconnect, since it runs between the scan's test of the dialer and
+// the removal that acts on it.
+func TestScanForDeadLinks_DialerReturningMidScanKeepsItsLinks(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := newPersistedRouter(t, network, addr, "returning")
+	peer := newPersistedRouter(t, network, addr, "peer")
+	network.Router.MarkConnected(peer)
+
+	link := model.NewTestLink("reannounced", src, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+
+	// Away when the scan starts, which is what puts the link on the list.
+	src.Connected.Store(false)
+
+	network.Link.ScanForDeadLinks(func(*model.Link) bool {
+		src.Connected.Store(true)
+		return false
+	})
+
+	_, found := network.Link.Get(link.Id)
+	req.True(found, "a link whose dialer returned before the removal must be kept, since the dialer has "+
+		"already re-announced it and will not do so again until it next connects")
+}
+
+// TestScanForDeadLinks_StillRetiresADialerThatStaysAway guards the other direction: re-testing must not turn
+// the scan into a no-op, or a restarted router's abandoned links accumulate forever.
+func TestScanForDeadLinks_StillRetiresADialerThatStaysAway(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := newPersistedRouter(t, network, addr, "gone")
+	peer := newPersistedRouter(t, network, addr, "peer")
+	network.Router.MarkConnected(peer)
+
+	link := model.NewTestLink("abandoned", src, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+	src.Connected.Store(false)
+
+	network.scanForDeadLinks()
+
+	_, found := network.Link.Get(link.Id)
+	req.False(found, "a dialer that is still away must have its links retired")
+}

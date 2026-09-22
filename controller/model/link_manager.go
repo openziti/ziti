@@ -194,19 +194,37 @@ func (self *LinkManager) destinationExists(routerId string) bool {
 // The dialer is the only end considered. A link whose far end is gone is still the dialer's to retire, and
 // it does so by faulting it. A link always has a source: every path that builds one stores a router, and
 // disconnect clears the router's link set rather than the link's source.
+//
+// Every candidate is re-tested before it is removed. Walking the table and removing from it are separate
+// passes, and on a large table the gap between them is wide enough for a dialer to reconnect and re-announce
+// its links. Acting on the first pass's answer then removes a link the controller has just been told about,
+// and a router that reports the pre-gossip way announces its set only on reconnect, so it does not say so
+// again until it next connects.
 func (self *LinkManager) ScanForDeadLinks(keep func(*Link) bool) {
+	dead := func(link *Link) bool {
+		if link.GetSrc().Connected.Load() {
+			return false
+		}
+		return keep == nil || !keep(link)
+	}
+
 	var toRemove []*Link
 	self.linkTable.links.IterCb(func(_ string, link *Link) {
-		if link.GetSrc().Connected.Load() {
-			return
+		if dead(link) {
+			toRemove = append(toRemove, link)
 		}
-		if keep != nil && keep(link) {
-			return
-		}
-		toRemove = append(toRemove, link)
 	})
 
 	for _, link := range toRemove {
+		if !dead(link) {
+			linkLog.Info("skipping retirement of a link whose dialer returned mid-scan",
+				"linkId", link.Id,
+				"iteration", link.Iteration,
+				"srcRouterId", link.GetSrc().Id,
+				"destRouterId", link.DstId)
+			continue
+		}
+
 		src := link.GetSrc()
 
 		// Whether the id is connected here under a different object is the distinction that matters when
