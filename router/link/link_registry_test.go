@@ -959,3 +959,81 @@ func (p destHealthyProbe) Handle(reg *linkRegistryImpl) {
 	}
 	p.out <- false
 }
+
+// Test_LinkRegistry_UnaccountedDialedLinkIsClosed is the orphan a soak run turned up. A dial that completes
+// after its destination has been removed cannot be recorded, and the old code only warned. The far end had
+// accepted it and kept it, and used its link id to refuse the dialer's later attempts for the same pair, so
+// the link blocked its own replacement until something timed out.
+func Test_LinkRegistry_UnaccountedDialedLinkIsClosed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	link := &stubXlink{id: "orphan", dialed: true, destId: "removed-dest"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+
+	req.True(link.IsClosed(), "a dialed link with no destination to belong to must be closed, not just logged")
+}
+
+// Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen: the listener side keeps no state for a link it
+// accepted, so absence there is normal and says nothing about whether the link is wanted.
+func Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	link := &stubXlink{id: "accepted", dialed: false, destId: "no-state-here"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+
+	req.False(link.IsClosed(), "an accepted link must not be closed for having no dial state")
+}
+
+// Test_LinkRegistry_RemovedDestIsNotDialed: removing a destination leaves its linkMap intact, so a state
+// still sitting in the dial queue looked live and got dialed anyway. That dial reaches whoever now answers
+// the address, and its result has no state to be recorded against, which is how the orphan above is made.
+func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "doomed-dest"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	stateC := make(chan *linkState, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		stateC <- r.destinations[destId].linkMap[r.GetLinkKey("transport", "tls", destId, "default")]
+	}))
+	state := <-stateC
+	req.NotNil(state)
+
+	reg.RemoveLinkDest(destId, 0)
+
+	// Queue it as the only due entry, which is the position the soak found it in: scheduled to dial, with
+	// its destination removed out from under it.
+	statusC := make(chan linkStatus, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		state.dialActive.Store(false)
+		state.nextDial = time.Now().Add(-time.Minute)
+		*r.linkStateQueue = linkStateHeap{}
+		heap.Push(r.linkStateQueue, state)
+		r.evaluateLinkStateQueue()
+		statusC <- state.status
+	}))
+
+	req.Equal(StatusDestRemoved, <-statusC,
+		"a removed destination's link state must be left alone, not dialed")
+}
+
+// funcEvent runs an arbitrary function on the registry's event loop, so a test can read or poke registry
+// state without racing the loop.
+type funcEvent func(*linkRegistryImpl)
+
+func (self funcEvent) Handle(registry *linkRegistryImpl) { self(registry) }

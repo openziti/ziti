@@ -277,8 +277,11 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	dest, found := registry.destinations[link.DestinationId()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
-			log.Warn("unable to mark link, link destination not present in registry",
+			// Reached when a dial completes after its destination has been removed. The link cannot be
+			// recorded, so closing it is the only way it ever ends.
+			log.Warn("closing dialed link, its destination is not present in registry",
 				"linkDest", link.DestinationId(), "status", self.status)
+			registry.closeUnaccountedLink(link)
 		}
 		return
 	}
@@ -294,8 +297,9 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 				log.Info("reporting fault for closed detached link", "linkDest", link.DestinationId())
 				registry.sendLinkFaultDirect(link)
 			} else {
-				log.Warn("unable to mark link, link state not present in registry",
+				log.Warn("closing dialed link, its state is not present in registry",
 					"linkDest", link.DestinationId(), "status", self.status)
+				registry.closeUnaccountedLink(link)
 			}
 		}
 		return
