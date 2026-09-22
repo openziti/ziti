@@ -82,6 +82,7 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	}
 
 	ctx.NoError(enforcer.Run())
+	ctx.Equal(int64(1), enforcer.deleteMeter.Count())
 
 	done, err := ctx.GetStores().EventualEventer.Trigger()
 	ctx.NoError(err)
