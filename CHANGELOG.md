@@ -1,3 +1,9 @@
+# Release 1.5.18
+
+## What's New
+
+Update libraries and build with the latest Go version.
+
 # Release 1.5.17
 
 ## What's New
