@@ -175,8 +175,17 @@ func (self *splitImpl) CloseOnce(f func()) {
 	}
 }
 
+// IsClosed reports whether either channel of the link has closed. A channel that is not yet bound counts as
+// open: the listener side sets the two independently as each binds, so a link is briefly half-built, and
+// Close skips a nil channel for the same reason.
 func (self *splitImpl) IsClosed() bool {
-	return self.payloadCh.IsClosed() || self.ackCh.IsClosed()
+	if ch := self.payloadCh; ch != nil && ch.IsClosed() {
+		return true
+	}
+	if ch := self.ackCh; ch != nil && ch.IsClosed() {
+		return true
+	}
+	return false
 }
 
 func (self *splitImpl) IsDialed() bool {
