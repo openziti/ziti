@@ -20,6 +20,8 @@ package cli_tests
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +48,8 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("identity file auth then cached request", s.testIdentityFileLoginThenCachedRequest)
 	t.Run("identity file auth then separate process", s.testIdentityFileLoginThenSeparateProcess)
 	t.Run("client cert auth then cached request", s.testClientCertLoginThenCachedRequest)
+	t.Run("identity file given as a relative path", s.testIdentityFileRelativePath)
+	t.Run("identity file auth then token refresh", s.testIdentityFileLoginThenTokenRefresh)
 	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
 	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
@@ -240,6 +244,7 @@ func (s *cliTestState) testIdentityFileLoginThenCachedRequest(t *testing.T) {
 	}
 	require.NoError(t, opts.Run(), "file-based login should succeed")
 	require.NotEmpty(t, opts.ApiSession)
+	util.ReloadConfig() // drop the memoized identity so the cached one is read back off disk
 
 	// `ziti edge list identities` lands here: load the cached identity, build a client from it, replay
 	// the saved session.
@@ -263,6 +268,7 @@ func (s *cliTestState) testClientCertLoginThenCachedRequest(t *testing.T) {
 	}
 	require.NoError(t, opts.Run(), "client cert login should succeed")
 	require.NotEmpty(t, opts.ApiSession)
+	util.ReloadConfig() // drop the memoized identity so the cached one is read back off disk
 
 	_, err := util.EdgeControllerList("identities", nil, false, os.Stdout, 10, false)
 	require.NoError(t, err, "a command run after 'ziti edge login --client-cert' must still be authorized")
@@ -291,6 +297,128 @@ func (s *cliTestState) testIdentityFileLoginThenSeparateProcess(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	t.Logf("ziti edge list identities:\n%s", strings.TrimSpace(string(out)))
 	require.NoError(t, err, "'ziti edge list identities' after 'ziti edge login -f' must still be authorized")
+}
+
+// testIdentityFileRelativePath logs in with a relative path and then runs a command from a different
+// working directory. The cached identity has to hold a path that still resolves from anywhere.
+func (s *cliTestState) testIdentityFileRelativePath(t *testing.T) {
+	s.removeZitiDir(t)
+
+	idDir := filepath.Dir(s.controllerUnderTest.AdminIdFile)
+	relativeId := "." + string(filepath.Separator) + filepath.Base(s.controllerUnderTest.AdminIdFile)
+
+	startDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(idDir), "log in from the directory holding the identity file")
+	defer func() { _ = os.Chdir(startDir) }()
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		File:          relativeId,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NoError(t, opts.Run(), "login with a relative identity file should succeed")
+
+	// move away, exactly as a user would by cd-ing elsewhere before the next command
+	require.NoError(t, os.Chdir(startDir))
+	util.ReloadConfig() // drop the memoized identity so the cached one is read back off disk
+
+	_, err = util.EdgeControllerList("identities", nil, false, os.Stdout, 10, false)
+	require.NoError(t, err, "the cached identity must resolve from a different working directory")
+}
+
+// testIdentityFileLoginThenTokenRefresh covers the delayed version of the same failure. Once the access
+// token expires the CLI refreshes it from the cached refresh token, and the controller verifies the
+// certificate binding on that exchange too, so the refresh has to present the certificate as well.
+// Rather than wait out the token lifetime, rewrite the cached access token so it has already expired.
+func (s *cliTestState) testIdentityFileLoginThenTokenRefresh(t *testing.T) {
+	s.removeZitiDir(t)
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NoError(t, opts.Run(), "file-based login should succeed")
+
+	expireCachedAccessToken(t)
+	util.ReloadConfig() // drop the memoized identity so the expired token is read back off disk
+
+	// this drives refreshOidcTokenIfExpired, which talks to the controller's token endpoint
+	_, err := util.EdgeControllerList("identities", nil, false, os.Stdout, 10, false)
+	require.NoError(t, err, "refreshing an expired cert-bound session must present the client certificate")
+}
+
+// expireCachedAccessToken rewrites the cached OIDC access token so its exp is in the past, leaving the
+// refresh token alone. The CLI only parses the access token unverified to read the expiry, and the
+// tampered token is never sent anywhere, so the broken signature does not matter.
+func expireCachedAccessToken(t *testing.T) {
+	t.Helper()
+
+	cfgDir, err := util.ConfigDir()
+	require.NoError(t, err)
+	configFile := filepath.Join(cfgDir, "ziti-cli.json")
+
+	raw, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+
+	var config map[string]any
+	require.NoError(t, json.Unmarshal(raw, &config))
+
+	identities, ok := config["edgeIdentities"].(map[string]any)
+	require.True(t, ok, "cached config must hold edge identities")
+
+	found := false
+	for name, entry := range identities {
+		identityEntry, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		session, ok := identityEntry["apiSession"].(map[string]any)
+		if !ok {
+			continue
+		}
+		accessToken, ok := session["oidcAccessToken"].(string)
+		if !ok || accessToken == "" {
+			continue
+		}
+		require.NotEmpty(t, session["oidcRefreshToken"], "identity %s needs a refresh token to refresh with", name)
+		session["oidcAccessToken"] = withExpiry(t, accessToken, time.Now().Add(-time.Hour))
+		found = true
+	}
+	require.True(t, found, "cached config must hold an OIDC access token to expire")
+
+	updated, err := json.MarshalIndent(config, "", "    ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(configFile, updated, 0600))
+}
+
+// withExpiry rebuilds a JWT with its exp claim replaced. The signature is left as-is and becomes
+// invalid, which is fine for a token only ever parsed unverified.
+func withExpiry(t *testing.T, token string, exp time.Time) string {
+	t.Helper()
+
+	parts := strings.Split(token, ".")
+	require.Len(t, parts, 3, "expected a three part JWT")
+
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	require.NoError(t, err)
+
+	var claims map[string]any
+	require.NoError(t, json.Unmarshal(payload, &claims))
+	claims["exp"] = exp.Unix()
+
+	rewritten, err := json.Marshal(claims)
+	require.NoError(t, err)
+	parts[1] = base64.RawURLEncoding.EncodeToString(rewritten)
+
+	return strings.Join(parts, ".")
 }
 
 func (s *cliTestState) testExternalJWTAuthentication(t *testing.T) {

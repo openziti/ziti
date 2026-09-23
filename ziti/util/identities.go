@@ -287,6 +287,18 @@ func OidcRefreshTokenValid(sess edge_apis.ApiSession) bool {
 	return time.Now().Add(oidcTokenLeeway).Before(exp.Time)
 }
 
+// newComponentsWithTls builds the http components an edge-apis client needs, carrying the whole TLS
+// config rather than only the root CAs. The controller verifies the certificate binding on a token
+// refresh too, so a cert based session has to present its certificate there as well.
+func newComponentsWithTls(tlsClientConfig *tls.Config) *edge_apis.Components {
+	components := edge_apis.NewComponentsWithConfig(&edge_apis.ComponentsConfig{
+		Proxy: http.ProxyFromEnvironment,
+	})
+	components.TlsAwareTransport.SetTlsClientConfig(tlsClientConfig)
+	components.CaPool = tlsClientConfig.RootCAs
+	return components
+}
+
 // refreshOidcTokenIfExpired refreshes the cached OIDC access token when it has expired and the
 // refresh token is still valid. It returns true when the session was refreshed so the caller can
 // persist the updated config. Non-OIDC sessions and still-valid access tokens are no-ops. An expired
@@ -314,7 +326,11 @@ func (self *RestClientEdgeIdentity) refreshOidcTokenIfExpired() (bool, error) {
 
 	_, _ = fmt.Fprintln(os.Stderr, "Access token has expired, refreshing it using the cached refresh token...")
 
-	mgmtClient := edge_apis.NewManagementApiClient([]*url.URL{ctrlUrl}, tlsClientConfig.RootCAs, nil)
+	mgmtClient := edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
+		ApiUrls:    []*url.URL{ctrlUrl},
+		CaPool:     tlsClientConfig.RootCAs,
+		Components: newComponentsWithTls(tlsClientConfig),
+	})
 	refreshed, refreshErr := mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, self.ApiSession.ApiSession)
 	if refreshErr != nil || refreshed == nil {
 		return false, errors.Wrap(refreshErr, "failed to refresh the access token using the cached refresh token, please login again")
