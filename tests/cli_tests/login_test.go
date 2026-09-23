@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/edge"
 	"github.com/openziti/ziti/v2/ziti/util"
@@ -347,6 +348,12 @@ func (s *cliTestState) testIdentityFileLoginThenTokenRefresh(t *testing.T) {
 		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
 	}
 	require.NoError(t, opts.Run(), "file-based login should succeed")
+
+	// Only OIDC sessions carry an access token that expires. Logins over the overlay come back as legacy
+	// sessions, where there is nothing to refresh.
+	if opts.ApiSession.GetType() != edge_apis.ApiSessionTypeOidc {
+		t.Skip("not an OIDC session, so there is no access token to refresh")
+	}
 
 	expireCachedAccessToken(t)
 	util.ReloadConfig() // drop the memoized identity so the expired token is read back off disk
