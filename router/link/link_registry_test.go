@@ -17,6 +17,7 @@
 package link
 
 import (
+	"container/heap"
 	"errors"
 	"math"
 	"sync/atomic"
@@ -700,3 +701,90 @@ type connectivityUnderlay struct {
 }
 
 func (self connectivityUnderlay) IsConnected() bool { return self.connected }
+
+// unaccountedTestLink is an xlink.Xlink double for a link the registry may have no state for.
+type unaccountedTestLink struct {
+	xlink.Xlink
+	id     string
+	destId string
+	dialed bool
+	closed bool
+}
+
+func (self *unaccountedTestLink) Id() string            { return self.id }
+func (self *unaccountedTestLink) Key() string           { return "key-" + self.id }
+func (self *unaccountedTestLink) DestinationId() string { return self.destId }
+func (self *unaccountedTestLink) IsDialed() bool        { return self.dialed }
+func (self *unaccountedTestLink) IsClosed() bool        { return self.closed }
+func (self *unaccountedTestLink) Close() error          { self.closed = true; return nil }
+
+// Test_LinkRegistry_UnaccountedDialedLinkIsClosed: a dial that completes after its destination has been
+// removed cannot be recorded. Only warning left the link up and unreported, while the far end kept it and
+// used its id to refuse the dialer's later attempts for the same pair.
+func Test_LinkRegistry_UnaccountedDialedLinkIsClosed(t *testing.T) {
+	req := require.New(t)
+	reg := &linkRegistryImpl{destinations: map[string]*linkDest{}}
+
+	link := &unaccountedTestLink{id: "orphan", dialed: true, destId: "removed-dest"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+	req.True(link.closed, "a dialed link with no destination to belong to must be closed, not just logged")
+
+	dest := newLinkDest("known-dest")
+	reg.destinations["known-dest"] = dest
+	link = &unaccountedTestLink{id: "stateless", dialed: true, destId: "known-dest"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+	req.True(link.closed, "a dialed link with no dial state must be closed, not just logged")
+}
+
+// Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen: the listener side keeps no state for a link it
+// accepted, so absence there is normal and says nothing about whether the link is wanted.
+func Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen(t *testing.T) {
+	req := require.New(t)
+	reg := &linkRegistryImpl{destinations: map[string]*linkDest{}}
+
+	link := &unaccountedTestLink{id: "accepted", dialed: false, destId: "no-state-here"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+
+	req.False(link.closed, "an accepted link must not be closed for having no dial state")
+}
+
+// Test_LinkRegistry_RemovedDestIsNotDialed: removing a destination leaves its linkMap intact, so a state
+// still sitting in the dial queue looked live and got dialed anyway. That dial reaches whoever now answers
+// the address, and its result has no state to be recorded against.
+func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := &linkRegistryImpl{
+		linkMap:        map[string]xlink.Xlink{},
+		linkByIdMap:    map[string]xlink.Xlink{},
+		ctrls:          tenv.ctrls,
+		env:            tenv,
+		destinations:   map[string]*linkDest{},
+		linkStateQueue: &linkStateHeap{},
+		events:         make(chan event, 16),
+		triggerNotifyC: make(chan struct{}, 1),
+	}
+	dest := newLinkDest("doomed-dest")
+	reg.destinations[dest.id] = dest
+	state := &linkState{
+		linkKey:      "k",
+		linkId:       "l1",
+		status:       StatusPending,
+		dest:         dest,
+		listener:     &ctrl_pb.Listener{Address: "tls:peer:6000", Protocol: "tls"},
+		allowedDials: -1,
+	}
+	dest.linkMap["k"] = state
+
+	(&removeLinkDest{id: dest.id}).Handle(reg)
+
+	// Queue it as the only due entry: scheduled to dial, with its destination removed out from under it.
+	state.nextDial = time.Now().Add(-time.Minute)
+	*reg.linkStateQueue = linkStateHeap{}
+	heap.Push(reg.linkStateQueue, state)
+	req.NotPanics(reg.evaluateLinkStateQueue)
+
+	req.Equal(StatusDestRemoved, state.status, "a removed destination's link state must be left alone, not dialed")
+}
