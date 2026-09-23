@@ -46,6 +46,7 @@ type Env interface {
 	GetLinkDialerPool() goroutines.Pool
 	GetRateLimiterPool() goroutines.Pool
 	GetMetricsRegistry() servermetrics.UsageRegistry
+	GetHeartbeatSettings() xlink.HeartbeatSettings
 }
 
 func NewLinkRegistry(routerEnv Env) xlink.Registry {
@@ -288,6 +289,11 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkMapLocks.Unlock()
 
 	self.updateLinkStateEstablished(link)
+
+	// A link samples its heartbeat settings while binding and only joins the
+	// registry afterwards, so a change pushed in between missed it. A no-op when the
+	// link already has the current generation.
+	link.UpdateHeartbeat(self.env.GetHeartbeatSettings())
 
 	log.Info("link registered")
 

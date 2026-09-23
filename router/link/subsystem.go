@@ -22,9 +22,27 @@ import (
 	"sync"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/config/routerlink"
 	"github.com/openziti/ziti/v2/router/xlink"
+)
+
+// Aliases for the heartbeat fallbacks, which routerlink owns as part of the
+// config contract.
+const (
+	defaultCloseUnresponsiveTimeout = routerlink.DefaultCloseUnresponsiveTimeout
+	defaultHeartbeatSendInterval    = routerlink.DefaultHeartbeatSendInterval
+	defaultHeartbeatCheckInterval   = routerlink.DefaultHeartbeatCheckInterval
+)
+
+// Link sender queue size fallbacks, matching the router env defaults
+// (DefaultLinkPayloadSenderQueueSize / DefaultLinkAckSenderQueueSize), used
+// when no link config supplies them.
+const (
+	defaultPayloadSenderQueueSize = 128
+	defaultAckSenderQueueSize     = 64
 )
 
 // Subsystem owns the router's configurable link surface: the set of
@@ -57,7 +75,82 @@ type Subsystem struct {
 	listeners   []xlink.Listener
 	dialers     []xlink.Dialer
 
+	// heartbeats is the heartbeat timing in force, swapped whole on Apply and
+	// Remove so a reader never pairs one generation's interval with another's
+	// timeout.
+	heartbeats concurrenz.AtomicValue[xlink.HeartbeatSettings]
+	// generation identifies the applied config. Bumped under mu with the listener
+	// and dialer swap, so a reader holding mu sees a generation and the state it
+	// describes together.
+	generation uint64
+
 	changeHandler ConfigurationChangeHandler
+}
+
+// Heartbeats returns the heartbeat timing currently in force as one snapshot.
+// Lock-free. Until a config has been applied it returns the defaults at
+// generation zero.
+func (self *Subsystem) Heartbeats() xlink.HeartbeatSettings {
+	settings := self.heartbeats.Load()
+	if settings.Generation == 0 {
+		return xlink.HeartbeatSettings{
+			SendInterval:             defaultHeartbeatSendInterval,
+			CheckInterval:            defaultHeartbeatCheckInterval,
+			CloseUnresponsiveTimeout: defaultCloseUnresponsiveTimeout,
+		}
+	}
+	return settings
+}
+
+// applyHeartbeats resolves cfg's heartbeat timing and publishes it as the next
+// generation; a nil cfg, on Remove, publishes the defaults. Validate has already
+// accepted cfg, so a resolution failure falls back to the defaults.
+func (self *Subsystem) applyHeartbeats(cfg *Config, generation uint64) {
+	timings := HeartbeatDurations{
+		SendInterval:             defaultHeartbeatSendInterval,
+		CheckInterval:            defaultHeartbeatCheckInterval,
+		CloseUnresponsiveTimeout: defaultCloseUnresponsiveTimeout,
+	}
+	if cfg != nil {
+		if resolved, err := cfg.EffectiveHeartbeats(); err == nil {
+			timings = resolved
+		} else {
+			pfxlog.Logger().WithError(err).
+				Error("applied link config has unresolvable heartbeat timing; using defaults")
+		}
+	}
+
+	self.heartbeats.Store(xlink.HeartbeatSettings{
+		Generation:               generation,
+		SendInterval:             timings.SendInterval,
+		CheckInterval:            timings.CheckInterval,
+		CloseUnresponsiveTimeout: timings.CloseUnresponsiveTimeout,
+	})
+}
+
+// PayloadSenderQueueSize returns the effective link payload sender queue size
+// from the applied config, falling back to the default when unset. Read when a
+// link channel is built, so a change takes effect on links established after
+// it; existing links keep the size they were built with.
+func (self *Subsystem) PayloadSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.PayloadSenderQueueSize > 0 {
+		return self.config.PayloadSenderQueueSize
+	}
+	return defaultPayloadSenderQueueSize
+}
+
+// AckSenderQueueSize returns the effective link ack sender queue size from the
+// applied config, falling back to the default when unset. Like
+// PayloadSenderQueueSize, it applies to links established after a change.
+func (self *Subsystem) AckSenderQueueSize() int {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	if self.config != nil && self.config.AckSenderQueueSize > 0 {
+		return self.config.AckSenderQueueSize
+	}
+	return defaultAckSenderQueueSize
 }
 
 // ConfigurationChange describes which parts of the link configuration
@@ -81,6 +174,9 @@ type ConfigurationChange struct {
 	// to read. A removal uses the policy of the config being removed, which is
 	// the last one the operator set.
 	GcMode GcMode
+	// HeartbeatsChanged is true when any heartbeat field differs from the
+	// previous state; the handler pushes the new generation to established links.
+	HeartbeatsChanged bool
 }
 
 // ConfigurationChangeHandler is invoked asynchronously after a successful
@@ -199,8 +295,24 @@ func (self *Subsystem) Apply(version int, data string) error {
 	}
 	self.config = cfg
 	self.appliedData = data
+	self.generation++
+	generation := self.generation
 	handler := self.changeHandler
 	self.mu.Unlock()
+
+	// Published whether or not the listener and dialer set moved, since it applies
+	// to established links too.
+	self.applyHeartbeats(cfg, generation)
+
+	// A thin margin is warned about rather than rejected: the config works until a
+	// response is lost, and on the local path a rejection stops startup.
+	if timings, err := cfg.EffectiveHeartbeats(); err == nil && timings.HasThinMargin() {
+		pfxlog.Logger().
+			WithField("sendInterval", timings.SendInterval).
+			WithField("checkInterval", timings.CheckInterval).
+			WithField("closeUnresponsiveTimeout", timings.CloseUnresponsiveTimeout).
+			Warn("link heartbeat timeout leaves less than one heartbeat cycle of margin; a single lost response may close a healthy link")
+	}
 
 	if rebuild {
 		closeListeners(oldListeners)
@@ -209,7 +321,21 @@ func (self *Subsystem) Apply(version int, data string) error {
 		}
 	}
 
-	notifyChange(handler, prevConfig, cfg)
+	change := newConfigurationChange(prevConfig, cfg)
+
+	// Logged on every apply, including one that dispatches nothing, so there is
+	// always a record that the router received the config.
+	pfxlog.Logger().
+		WithField("generation", generation).
+		WithField("listenersChanged", change.ListenersChanged).
+		WithField("dialersChanged", change.DialersChanged).
+		WithField("gcModeChanged", change.GcModeChanged).
+		WithField("heartbeatsChanged", change.HeartbeatsChanged).
+		WithField("payloadSenderQueueSize", cfg.PayloadSenderQueueSize).
+		WithField("ackSenderQueueSize", cfg.AckSenderQueueSize).
+		Info("applied link configuration")
+
+	notifyChange(handler, change)
 	return nil
 }
 
@@ -224,33 +350,56 @@ func (self *Subsystem) Remove() error {
 	self.dialers = nil
 	self.config = nil
 	self.appliedData = ""
+	self.generation++
+	generation := self.generation
 	handler := self.changeHandler
 	self.mu.Unlock()
 
+	// A removed config's heartbeat settings revert to the defaults, published as a
+	// new generation so established links are re-tuned off the removed values.
+	self.applyHeartbeats(nil, generation)
+
 	closeListeners(oldListeners)
-	notifyChange(handler, prevConfig, nil)
+	notifyChange(handler, newConfigurationChange(prevConfig, nil))
 	return nil
 }
 
-// notifyChange invokes handler asynchronously when prev and next differ.
-// nil handler is a no-op. Compares listeners and dialers slices by
-// deep-equality; identical state is a no-op (avoids spurious peer
-// notifications and dialer rescans when an Apply was just re-applying
-// the same config).
-func notifyChange(handler ConfigurationChangeHandler, prev, next *Config) {
-	if handler == nil {
-		return
+// newConfigurationChange describes how next differs from prev. Listeners and
+// dialers are compared by deep equality. Queue sizes are not represented, since
+// they only affect links created later, so a change confined to them reports no
+// work.
+func newConfigurationChange(prev, next *Config) ConfigurationChange {
+	return ConfigurationChange{
+		ListenersChanged:  !listenerSlicesEqual(getListeners(prev), getListeners(next)),
+		DialersChanged:    !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
+		GcModeChanged:     getGcMode(prev) != getGcMode(next),
+		GcMode:            effectiveGcMode(next),
+		HeartbeatsChanged: getHeartbeats(prev) != getHeartbeats(next),
 	}
-	change := ConfigurationChange{
-		ListenersChanged: !listenerSlicesEqual(getListeners(prev), getListeners(next)),
-		DialersChanged:   !dialerSlicesEqual(getEffectiveDialers(prev), getEffectiveDialers(next)),
-		GcModeChanged:    getGcMode(prev) != getGcMode(next),
-		GcMode:           effectiveGcMode(next),
-	}
-	if !change.ListenersChanged && !change.DialersChanged && !change.GcModeChanged {
+}
+
+// hasWork reports whether the change asks anything of the handler. A change
+// that asks nothing is not dispatched.
+func (self ConfigurationChange) hasWork() bool {
+	return self.ListenersChanged || self.DialersChanged || self.GcModeChanged || self.HeartbeatsChanged
+}
+
+// notifyChange invokes handler asynchronously when change asks for work. A nil
+// handler is a no-op.
+func notifyChange(handler ConfigurationChangeHandler, change ConfigurationChange) {
+	if handler == nil || !change.hasWork() {
 		return
 	}
 	go handler(change)
+}
+
+// getHeartbeats returns a comparable value of the config's heartbeat settings
+// (zero value when unset), so notifyChange can detect heartbeat changes.
+func getHeartbeats(c *Config) HeartbeatsConfig {
+	if c == nil || c.Heartbeats == nil {
+		return HeartbeatsConfig{}
+	}
+	return *c.Heartbeats
 }
 
 func getGcMode(c *Config) string {
@@ -356,6 +505,16 @@ func (self *Subsystem) Listeners() []xlink.Listener {
 	out := make([]xlink.Listener, len(self.listeners))
 	copy(out, self.listeners)
 	return out
+}
+
+// ListenerSnapshot returns the current listener set and the config generation it
+// belongs to, read under one lock so the pair is consistent.
+func (self *Subsystem) ListenerSnapshot() (uint64, []xlink.Listener) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	out := make([]xlink.Listener, len(self.listeners))
+	copy(out, self.listeners)
+	return self.generation, out
 }
 
 // Dialers returns a snapshot of the current dialer slice.

@@ -82,6 +82,17 @@ type Registry interface {
 	RescanForDialOpportunities()
 }
 
+// HeartbeatSettings is the heartbeat timing a link runs with, as one immutable
+// snapshot. Generation increases with each applied link config. The values
+// travel together because they are only valid as a set: the timeout must exceed
+// the gap a responsive link shows, roughly sendInterval + checkInterval.
+type HeartbeatSettings struct {
+	Generation               uint64
+	SendInterval             time.Duration
+	CheckInterval            time.Duration
+	CloseUnresponsiveTimeout time.Duration
+}
+
 type Forwarder interface {
 	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload, timeout time.Duration) error
 	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
@@ -164,6 +175,19 @@ type Xlink interface {
 	LinkKey() LinkKey
 	CloseOnce(f func())
 	IsClosed() bool
+	// SetHeartbeatControl registers one channel's heartbeat control handle and the
+	// settings that channel was configured from. Call once per channel backing the
+	// link (a split link has two); handles accumulate.
+	SetHeartbeatControl(hc channel.HeartbeatControl, settings HeartbeatSettings)
+	// UpdateHeartbeat applies settings to every channel backing the link,
+	// retuning intervals and publishing the timeout its callbacks read, so a
+	// managed-config change reaches an established link without rebuilding it.
+	// Settings at or below the generation already applied are ignored.
+	UpdateHeartbeat(settings HeartbeatSettings)
+	// HeartbeatSettings returns the settings currently in force for this link.
+	// Read by each channel's heartbeat callback, so the timeout it enforces is
+	// always the one belonging to the intervals its ticker is running.
+	HeartbeatSettings() HeartbeatSettings
 	InspectLink() *inspect.LinkInspectDetail
 	GetLinkConnState() *ctrl_pb.LinkConnState
 	IsDialed() bool

@@ -2031,8 +2031,14 @@ func (x *Listener) GetLocalBinding() string {
 }
 
 type Listeners struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Listeners     []*Listener            `protobuf:"bytes,1,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Listeners []*Listener            `protobuf:"bytes,1,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	// generation identifies the router link config this set came from. It
+	// increases with each applied config and restarts with the router process, so
+	// a receiver compares it only within one control channel session. Updates can
+	// arrive out of order (a multi-underlay channel gives no ordering across
+	// underlays), so a receiver drops a generation it has already passed.
+	Generation    uint64 `protobuf:"varint,2,opt,name=generation,proto3" json:"generation,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2072,6 +2078,13 @@ func (x *Listeners) GetListeners() []*Listener {
 		return x.Listeners
 	}
 	return nil
+}
+
+func (x *Listeners) GetGeneration() uint64 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
 }
 
 type CheckStaleLinksRequest struct {
@@ -3480,9 +3493,12 @@ const file_ctrl_proto_rawDesc = "" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12\x16\n" +
 	"\x06groups\x18\x04 \x03(\tR\x06groups\x12\"\n" +
-	"\flocalBinding\x18\x05 \x01(\tR\flocalBindingJ\x04\b\x03\x10\x04R\bcostTags\"A\n" +
+	"\flocalBinding\x18\x05 \x01(\tR\flocalBindingJ\x04\b\x03\x10\x04R\bcostTags\"a\n" +
 	"\tListeners\x124\n" +
-	"\tlisteners\x18\x01 \x03(\v2\x16.ziti.ctrl.pb.ListenerR\tlisteners\"N\n" +
+	"\tlisteners\x18\x01 \x03(\v2\x16.ziti.ctrl.pb.ListenerR\tlisteners\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\x04R\n" +
+	"generation\"N\n" +
 	"\x16CheckStaleLinksRequest\x124\n" +
 	"\x04mode\x18\x01 \x01(\x0e2 .ziti.ctrl.pb.StaleLinkMatchModeR\x04mode\"\xa6\x01\n" +
 	"\x0fLinkStaleReport\x12\x16\n" +

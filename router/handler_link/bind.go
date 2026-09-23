@@ -2,6 +2,7 @@ package handler_link
 
 import (
 	"crypto/x509"
+	"math"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -13,6 +14,7 @@ import (
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/trace"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
@@ -22,22 +24,43 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewBindHandlerFactory(c env.NetworkControllers, f *forwarder.Forwarder, hbo *channel.HeartbeatOptions, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
+// LinkSettings supplies the link settings the bind handler reads, which can
+// change at runtime through controller-managed config. An interface so
+// handler_link doesn't depend on the link package, whose Subsystem implements it.
+// Implementations must be safe for concurrent reads.
+type LinkSettings interface {
+	// Heartbeats is the heartbeat timing currently in force, as one snapshot.
+	// Taken whole so a link is never configured from a mix of generations.
+	Heartbeats() xlink.HeartbeatSettings
+}
+
+// LinkChannelEnv bundles what the link bind handler needs. The router satisfies
+// it directly; GetForwarderImpl returns the concrete *forwarder.Forwarder, which
+// GetForwarder can't without an env->forwarder import cycle.
+type LinkChannelEnv interface {
+	GetNetworkControllers() env.NetworkControllers
+	GetForwarderImpl() *forwarder.Forwarder
+	GetMetricsRegistry() servermetrics.UsageRegistry
+	GetXlinkRegistry() xlink.Registry
+	GetLinkSettings() LinkSettings
+}
+
+func NewBindHandlerFactory(linkEnv LinkChannelEnv) *bindHandlerFactory {
 	return &bindHandlerFactory{
-		ctrl:             c,
-		forwarder:        f,
-		metricsRegistry:  mr,
-		xlinkRegistry:    registry,
-		heartbeatOptions: hbo,
+		ctrl:            linkEnv.GetNetworkControllers(),
+		forwarder:       linkEnv.GetForwarderImpl(),
+		metricsRegistry: linkEnv.GetMetricsRegistry(),
+		xlinkRegistry:   linkEnv.GetXlinkRegistry(),
+		linkSettings:    linkEnv.GetLinkSettings(),
 	}
 }
 
 type bindHandlerFactory struct {
-	ctrl             env.NetworkControllers
-	forwarder        *forwarder.Forwarder
-	metricsRegistry  metrics.Registry
-	xlinkRegistry    xlink.Registry
-	heartbeatOptions *channel.HeartbeatOptions
+	ctrl            env.NetworkControllers
+	forwarder       *forwarder.Forwarder
+	metricsRegistry metrics.Registry
+	xlinkRegistry   xlink.Registry
+	linkSettings    LinkSettings
 }
 
 func (self *bindHandlerFactory) NewBindHandler(link xlink.Xlink, latency bool, listenerSide bool) channel.BindHandler {
@@ -97,16 +120,23 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	}))
 
 	log.Info("link destination support heartbeats")
+
+	// One sample, used for both the ticker and the seed, and handed to the link
+	// so its callbacks enforce the timeout belonging to these intervals.
+	settings := self.linkSettings.Heartbeats()
+
 	cb := &heartbeatCallback{
 		linkId:           self.xlink.Id(),
 		latencyMetric:    latencyMetric,
 		queueTimeMetric:  queueTimeMetric,
 		ch:               binding.GetChannel(),
-		heartbeatOptions: self.heartbeatOptions,
+		link:             self.xlink,
 		latencySemaphore: concurrenz.NewSemaphore(2),
-		lastResponse:     time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(),
+		lastResponse:     time.Now().Add(settings.CloseUnresponsiveTimeout * 2).UnixMilli(),
+		generation:       settings.Generation,
 	}
-	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+	hc := channel.ConfigureHeartbeat(binding, settings.SendInterval, settings.CheckInterval, cb)
+	self.xlink.SetHeartbeatControl(hc, settings)
 
 	return nil
 }
@@ -162,12 +192,35 @@ func leafFingerprint(certs []*x509.Certificate) (string, error) {
 	return nfpem.FingerprintFromCertificate(certs[0]), nil
 }
 
+// minUnhealthyThreshold is the floor for reporting a silent link as unhealthy.
+const minUnhealthyThreshold = 30 * time.Second
+
+// unhealthyThresholdMs is how long a link can go without a heartbeat response
+// before it is reported unhealthy, which poisons its latency metric and so its
+// routing cost: twice the send + check gap a healthy link already shows, so a
+// response has actually been missed, and never less than minUnhealthyThreshold.
+func unhealthyThresholdMs(settings xlink.HeartbeatSettings) int64 {
+	threshold := minUnhealthyThreshold
+	if gap := settings.SendInterval + settings.CheckInterval; gap > threshold/2 {
+		threshold = 2 * gap
+		if threshold < gap { // validation bounds the gap, not its double
+			threshold = math.MaxInt64
+		}
+	}
+	return threshold.Milliseconds()
+}
+
+// heartbeatCallback enforces one channel's heartbeat liveness. Every method runs
+// on that channel's heartbeat pulse goroutine, including the response callbacks,
+// which the heartbeater queues rather than calling on the rxer, so lastResponse
+// and generation need no synchronization.
 type heartbeatCallback struct {
 	linkId           string
 	latencyMetric    metrics.Histogram
 	queueTimeMetric  metrics.Histogram
 	lastResponse     int64
-	heartbeatOptions *channel.HeartbeatOptions
+	generation       uint64
+	link             xlink.Xlink
 	ch               channel.Channel
 	latencySemaphore concurrenz.Semaphore
 }
@@ -186,21 +239,45 @@ func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 
 func (self *heartbeatCallback) CheckHeartBeat() {
 	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
-	now := time.Now().UnixMilli()
-	if delta := now - self.lastResponse; delta > 30000 {
+
+	unhealthy, shouldClose := self.evaluate(time.Now().UnixMilli(), self.link.HeartbeatSettings())
+	if unhealthy {
 		log.Warn("heartbeat not received in time, link may be unhealthy")
 		self.latencyMetric.Clear()
 		self.latencyMetric.Update(8888888888888)
-
-		if delta > self.heartbeatOptions.CloseUnresponsiveTimeout.Milliseconds() {
-			log.Error("heartbeat not received in time, closing router link connection")
-			if err := self.ch.Close(); err != nil {
-				log.WithError(err).Error("error while closing router link connection")
-			}
+	}
+	if shouldClose {
+		log.Error("heartbeat not received in time, closing router link connection")
+		if err := self.ch.Close(); err != nil {
+			log.WithError(err).Error("error while closing router link connection")
 		}
 	}
 
 	go self.checkQueueTime()
+}
+
+// evaluate advances the deadline state for a check run at now and reports what
+// that check should do. Split from CheckHeartBeat so the timing rules can be
+// exercised without a live channel.
+//
+// A change of generation re-arms the deadline, granting one fresh timeout window:
+// under the previous intervals a healthy link's last response can be most of a
+// send+check cycle old, and the channel only picks up a new check interval on its
+// next pulse.
+func (self *heartbeatCallback) evaluate(now int64, settings xlink.HeartbeatSettings) (unhealthy, shouldClose bool) {
+	if settings.Generation != self.generation {
+		self.generation = settings.Generation
+		self.lastResponse = now
+	}
+
+	delta := now - self.lastResponse
+
+	// The thresholds are independent. A zero timeout means no settings have been
+	// published yet, so it closes nothing.
+	if timeout := settings.CloseUnresponsiveTimeout.Milliseconds(); timeout > 0 && delta > timeout {
+		return true, true
+	}
+	return delta > unhealthyThresholdMs(settings), false
 }
 
 func (self *heartbeatCallback) checkQueueTime() {

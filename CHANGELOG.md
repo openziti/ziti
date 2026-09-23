@@ -8,9 +8,8 @@
 * [Cluster Quorum Recovery](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
-* [Config Type Target Field](#config-type-target-field) - Config types now have a target field indicating whether they apply to services, routers or other entities
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
-* [Router Configs](#router-configs) - Allow routers to have a list of associated configs
+* [Controller Managed Router Configuration](#controller-managed-router-configuration) - (beta) Routers can take configuration from the controller and apply it at runtime, starting with link listeners, dialers and heartbeats, with automatic collection of links the new config leaves stale
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
@@ -263,10 +262,8 @@ Config types now have an optional `target` field that indicates what kind of ent
 is intended for. Valid values are `"service"`, `"router"`, and `"other"`. The field is set on creation
 and is immutable afterward.
 
-This is the first step toward controller-managed router configuration. The `target` field lets us
-distinguish between config types meant for services, config types meant for routers, and config types
-meant for other purposes, which keeps UIs, APIs, and validation clean. See
-`doc/design/ctrl-managed-router-config.md` for the full design.
+The `target` field distinguishes config types meant for services, config types meant for routers,
+and config types meant for other purposes, which keeps UIs, APIs, and validation clean.
 
 A database migration sets `target = "service"` on all existing config types. Services and identity
 service config overrides now require that referenced configs have a config type with
@@ -280,8 +277,7 @@ The CLI has been updated to support the new field:
 ### Router Configs
 
 Routers (edge, transit, and fabric) now have a `configs` field that holds a list of config IDs the
-router should use. This is the second step toward controller-managed router configuration: routers
-can now be associated with configs in the same way services already can.
+router should use, associating routers with configs in the same way services already are.
 
 Validation rules:
 
@@ -344,9 +340,45 @@ rolled back raises an alert to the controller rather than leaving the router in 
 `router.link.v1` is the first controller-managed config type, covering a router's link listeners and
 dialers. It is built in, so no config type has to be created before use.
 
+A config looks like this:
+
+```json
+{
+  "listeners": [
+    {
+      "binding": "transport",
+      "bind": "tls:0.0.0.0:6004",
+      "advertise": "tls:router-east.example.com:6004",
+      "groups": ["east"]
+    }
+  ],
+  "dialers": [
+    { "binding": "transport", "groups": ["east", "west"] }
+  ],
+  "heartbeats": { "sendInterval": "10s", "checkInterval": "1s", "closeUnresponsiveTimeout": "60s" },
+  "gcMode": "orphaned"
+}
+```
+
+To put one on a router, create the config, attach it, and allow the type in the router's own config
+file (see above):
+
+```
+ziti edge create config east-links router.link.v1 "$(cat east-links.json)"
+ziti edge update edge-router router-east --config east-links
+```
+
 Applying one reconciles the router's link surface in place: listeners whose definitions changed are
 rebuilt, listeners that are unchanged are left running, and dialers are replaced. A change confined
-to fields that do not describe a listener or dialer does not disturb either.
+to fields that do not describe a listener or dialer does not disturb either. Every successful apply
+is logged at info level as `applied link configuration`, with the generation and what changed, so
+you can confirm a router received a config even when the change asked nothing of its links.
+
+For links, local config means the router's config file has a `link` section at all. Anything in
+it, even only heartbeat or queue settings, takes precedence over the controller's `router.link`
+config for the whole type. A `link` section with no listeners or dialers therefore leaves the
+router with no links, and the router warns at startup when that happens. To hand a router's links to
+the controller, remove its `link` section.
 
 Removing the config from a router removes its link surface entirely.
 
@@ -380,6 +412,43 @@ routers configured from local YAML as well as controller-managed ones.
 A link is only closed when both of its endpoints agree it is stale and both judged the same
 incarnation of it. An endpoint that is offline, too old to answer, or outside `--filter` leaves the
 link reported as partial and never closes it.
+
+### Link Heartbeat and Queue Settings
+
+`router.link.v1` also carries the link heartbeat timing (`sendInterval`, `checkInterval`,
+`closeUnresponsiveTimeout`) and the `payloadSenderQueueSize` / `ackSenderQueueSize` queue sizes.
+
+Heartbeat timing is applied to links that are already established, retuning them in place, rather
+than only reaching links formed after the change. It is applied as a single generation, so a link
+never pairs one version's interval with another version's timeout.
+
+**Queue sizes apply to new links only.** `payloadSenderQueueSize` and `ackSenderQueueSize` are read
+when a link is built, so changing them has no effect on links that are already established. Those
+keep the queues they were built with until they are re-established for some other reason. A change
+confined to queue sizes does not trigger stale-link collection, since nothing about an existing link
+has become stale.
+
+The timing is validated on both the controller and the router, and some combinations that were
+accepted before are now rejected. `closeUnresponsiveTimeout` must be greater than `sendInterval +
+checkInterval`, because a responsive link's own heartbeat gap already reaches that sum, and it must
+be at least 10s.
+
+**A `closeUnresponsiveTimeout` under 30s now takes effect.** The close check previously sat behind a
+fixed 30s threshold, so any shorter timeout silently behaved as 30s. A router configured with a
+short timeout will start closing unresponsive links sooner than it did before.
+
+The 10s minimum is there because a healthy connection can legitimately go quiet for several seconds
+while TCP recovers from ordinary packet loss, and a timeout inside that window turns routine loss
+into a closed link and the cost of re-establishing it. A controller config below the minimum is
+rejected. A value below it in a router's own YAML is raised to the minimum with a warning instead,
+so a router that started yesterday still starts today.
+
+**Link `sendInterval` and `checkInterval` in a router's own YAML now take effect.** Links
+previously ran a fixed 10s send and 1s check interval whatever the config said, reading only
+`closeUnresponsiveTimeout`. Because those values were never in force, local timing that fails the
+validation above is not allowed to stop a router from starting: the router logs a warning and uses
+the defaults instead. That includes an explicit `0s`, which was previously treated as if the field
+were absent.
 
 ## Wildcard OIDC Issuers
 
@@ -634,6 +703,15 @@ in a future release. Plan to migrate off them.
   sessions, is deprecated and will be removed in OpenZiti 3.0, along with the
   supporting infrastructure built around it.
 
+* **Split links** - The split-channel link implementation (separate payload and
+  ack connections) is a fallback used only when dialing a router that doesn't
+  support multi-underlay links. The multi-underlay link implementation is a
+  superset of what split links provide, so nothing is lost by moving off them.
+  The deprecation proceeds in two steps: in OpenZiti 3.0 the `split` option will
+  be interpreted as a multi-underlay link with one ack and one payload channel,
+  retiring the separate split implementation; in OpenZiti 4.0 the `split`
+  configuration option will be removed entirely.
+
 ## Removed Features
 
 * **Link `costTags`** - The `costTags` option on router link listeners has been
@@ -676,7 +754,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #241](https://github.com/openziti/channel/issues/241) - Allow calling LoadOptions on an Options instance
     * [Issue #238](https://github.com/openziti/channel/issues/238) - Channelv5
 
-* github.com/openziti/edge-api: [v0.31.0 -> v0.35.2](https://github.com/openziti/edge-api/compare/v0.31.0...v0.35.2)
+* github.com/openziti/edge-api: [v0.31.0 -> v0.36.0](https://github.com/openziti/edge-api/compare/v0.31.0...v0.36.0)
     * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
 
 * github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.100](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.100)
@@ -716,7 +794,30 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails
+    * [Issue #4434](https://github.com/openziti/ziti/issues/4434) - Update to Go 1.27
+    * [Issue #4413](https://github.com/openziti/ziti/issues/4413) - debian controller & router packages hang on post-install script when installed via ansible
     * [Issue #4410](https://github.com/openziti/ziti/issues/4410) - REST error responder logs ApiError.Code as a method value
+    * [Issue #4349](https://github.com/openziti/ziti/issues/4349) - Router process check reports configured hashes as the expected signer fingerprints
+    * [Issue #4348](https://github.com/openziti/ziti/issues/4348) - Single-process posture check with no signer fingerprint always fails at the router
+    * [Issue #4005](https://github.com/openziti/ziti/issues/4005) - Auto-GC stale router links
+    * [Issue #4246](https://github.com/openziti/ziti/issues/4246) - Router connect scans the entire link table, making a reconnect wave scale with the cube of the router count
+    * [Issue #4365](https://github.com/openziti/ziti/issues/4365) - REST requests no longer reset the legacy API session timeout
+    * [Issue #4350](https://github.com/openziti/ziti/issues/4350) - Policy enforcers leak a metrics reference on every run
+    * [Issue #4369](https://github.com/openziti/ziti/issues/4369) - Router control channel connectivity events can be delivered out of order
+    * [Issue #4323](https://github.com/openziti/ziti/issues/4323) - Router posture cache grows without bound as clients re-authenticate
+    * [Issue #4321](https://github.com/openziti/ziti/issues/4321) - Process hashes and signer fingerprints are compared case-sensitively at the router
+    * [Issue #4314](https://github.com/openziti/ziti/issues/4314) - Router posture cache corrupts process posture state when applying posture responses
+    * [Issue #4318](https://github.com/openziti/ziti/issues/4318) - Mac and Domain posture checks panic when the client has not reported that data
+    * [Issue #4319](https://github.com/openziti/ziti/issues/4319) - OS posture check with no versions fails at the router, passes at the controller
+    * [Issue #4320](https://github.com/openziti/ziti/issues/4320) - Router does not normalize MAC addresses from posture responses
+    * [Issue #4222](https://github.com/openziti/ziti/issues/4222) - OIDC cert authentication always reports isCertExtendable as true, including for 3rd Party CA certificates
+    * [Issue #4094](https://github.com/openziti/ziti/issues/4094) - Edge router rejects valid first-party client certificates when the edge signing CA differs from the ctrl-channel CA
+    * [Issue #4304](https://github.com/openziti/ziti/issues/4304) - Support build time provided capabilities in the /version capabilities list
+    * [Issue #4296](https://github.com/openziti/ziti/issues/4296) - Bind message with a short cost header panics the router
+    * [Issue #4199](https://github.com/openziti/ziti/issues/4199) - Add in-place upgrade smoke test
+    * [Issue #4291](https://github.com/openziti/ziti/issues/4291) - Admin MFA removal doesn't replicate across HA cluster members
+    * [Issue #4202](https://github.com/openziti/ziti/issues/4202) - wss edge listener rejects all clients on 2.0: certValidatingIdentity forces client-cert verification on a listener that intentionally sets NoClientCert
     * [Issue #4184](https://github.com/openziti/ziti/issues/4184) - Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4278](https://github.com/openziti/ziti/issues/4278) - fabric inspect data-model-index doesn't move for writes outside the router data model
     * [Issue #4196](https://github.com/openziti/ziti/issues/4196) - Router control-channel connect/disconnect race can leave a reconnected router de-registered

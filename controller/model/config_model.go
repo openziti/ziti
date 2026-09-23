@@ -17,11 +17,13 @@
 package model
 
 import (
+	"errors"
+
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 )
@@ -50,7 +52,9 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Config, error) {
 		entity.TypeId = currentConfig.TypeId
 	}
 
-	if configType, _ := env.GetManagers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
+	configType, _ := env.GetManagers().ConfigType.readInTx(tx, entity.TypeId)
+
+	if configType != nil && len(configType.Schema) > 0 {
 		compileSchema, err := configType.GetCompiledSchema()
 		if err != nil {
 			return nil, err
@@ -62,6 +66,19 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Config, error) {
 		}
 		if !result.Valid() {
 			return nil, apierror.NewValidationErrors(result)
+		}
+	}
+
+	// Semantic validation runs after the schema, so a validator can assume the
+	// shape is already right and only judge the values. Keyed on the type name,
+	// which is stable across networks in a way the id is not.
+	if configType != nil {
+		if err := env.GetManagers().Config.validateData(configType.Name, entity.Data); err != nil {
+			var fieldErr *errorz.FieldError
+			if errors.As(err, &fieldErr) {
+				return nil, fieldErr
+			}
+			return nil, errorz.NewFieldError(err.Error(), db.FieldConfigData, entity.Data)
 		}
 	}
 

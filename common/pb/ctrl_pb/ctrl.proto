@@ -271,6 +271,12 @@ message Listener {
 
 message Listeners {
   repeated Listener listeners = 1;
+  // generation identifies the router link config this set came from. It
+  // increases with each applied config and restarts with the router process, so
+  // a receiver compares it only within one control channel session. Updates can
+  // arrive out of order (a multi-underlay channel gives no ordering across
+  // underlays), so a receiver drops a generation it has already passed.
+  uint64 generation = 2;
 }
 
 // StaleLinkMatchMode controls when an established link is considered
