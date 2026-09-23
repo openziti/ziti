@@ -66,6 +66,8 @@ func (self *SimMetricsValidator) AcceptHostMetrics(host *model.Host, event *mode
 				metrics.PopulateTimer(&metrics.latency, set)
 			case "tx.bytes":
 				metrics.PopulateMeter(&metrics.throughput, set)
+			case "tx.byterate":
+				metrics.PopulateGaugeFloat64(&metrics.byteRate, set)
 			case "tx.messages", "rx.bytes", "rx.messages", "active", "completed":
 			default:
 				fmt.Printf("ignoring metric %s for service %s\n", metricName, serviceName)
@@ -97,6 +99,11 @@ func (self *SimMetricsValidator) AcceptHostMetrics(host *model.Host, event *mode
 		if metric.throughput == nil {
 			metric.throughput = &model.Meter{}
 			errList = append(errList, fmt.Errorf("missing throughput metric for service %s", service))
+		}
+		if metric.byteRate == nil {
+			zero := float64(0)
+			metric.byteRate = &zero
+			errList = append(errList, fmt.Errorf("missing byterate metric for service %s", service))
 		}
 	}
 	if len(errList) > 0 {
@@ -178,6 +185,7 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 	var errList []error
 
 	for host, events := range self.events {
+		byteRates := lastByteRates(events)
 		for idx, event := range events {
 			isLast := idx == len(events)-1
 			for service, metrics := range event.Metrics {
@@ -232,12 +240,18 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 					}
 				}
 
+				// Throughput is judged on the whole-transfer rate the sim reports when a workload finishes, not
+				// on the tx.bytes meter's one-minute EWMA: a throughput workload completes in well under a
+				// minute, so the EWMA never converges and its reading depends on where the burst falls
+				// against the sampling ticks.
 				if isLast && strings.Contains(service, "throughput") {
 					throughputThreshold := throughputThresholds[clientType]
-
-					if uint64(metrics.throughput.M1Rate) < throughputThreshold {
+					byteRate, found := byteRates[service]
+					if !found {
+						errList = append(errList, fmt.Errorf("%s: service %s reported no transfer rate", host.Id, service))
+					} else if uint64(byteRate) < throughputThreshold {
 						errList = append(errList, fmt.Errorf("%s: service %s has throughput %v not meeting %s",
-							host.Id, service, outputz.FormatBytes(uint64(metrics.throughput.M1Rate)),
+							host.Id, service, outputz.FormatBytes(uint64(byteRate)),
 							outputz.FormatBytes(throughputThreshold)))
 					}
 				}
@@ -247,7 +261,8 @@ func (self *SimMetricsValidator) ValidateCollected() error {
 						fmt.Printf("%s: service %s has mean latency %s, p95 latency %s\n", host.Id, service,
 							time.Duration(int64(metrics.latency.Mean)).String(), time.Duration(int64(metrics.latency.P95)).String())
 					} else {
-						fmt.Printf("%s: service %s has throughput %v\n", host.Id, service,
+						fmt.Printf("%s: service %s has throughput %v (1m ewma %v)\n", host.Id, service,
+							outputz.FormatBytes(uint64(byteRates[service])),
 							outputz.FormatBytes(uint64(metrics.throughput.M1Rate)))
 					}
 				}
@@ -294,6 +309,8 @@ func (self *SimMetricsValidator) LogMetrics() {
 				}
 				if !strings.Contains(service, "latency") {
 					self.LogMeter("tx.bytes", metrics.throughput)
+					self.printIndentF(8, "gauge: tx.byterate")
+					self.printIndentF(12, "value    : %f", *metrics.byteRate)
 				}
 			}
 		}
@@ -355,7 +372,35 @@ type ServiceMetrics struct {
 	connectTimes *model.Timer
 	latency      *model.Timer
 	throughput   *model.Meter
+	byteRate     *float64
 	err          error
+}
+
+// lastByteRates returns, per service, the last non-zero tx.byterate across events. The sim sets the gauge
+// once, when a workload finishes, so earlier events carry zero.
+func lastByteRates(events []*MetricsEvent) map[string]float64 {
+	result := map[string]float64{}
+	for _, event := range events {
+		for service, metrics := range event.Metrics {
+			if metrics.byteRate != nil && *metrics.byteRate > 0 {
+				result[service] = *metrics.byteRate
+			}
+		}
+	}
+	return result
+}
+
+// PopulateGaugeFloat64 reads a float gauge, which the metrics reporter sends as a single "value" entry.
+func (self *ServiceMetrics) PopulateGaugeFloat64(val **float64, metric model.MetricSet) {
+	switch v := metric["value"].(type) {
+	case float64:
+		*val = &v
+	case int64:
+		f := float64(v)
+		*val = &f
+	default:
+		self.err = fmt.Errorf("gauge has no numeric value (%T)", metric["value"])
+	}
 }
 
 func (self *ServiceMetrics) PopulateMeter(val **model.Meter, metric model.MetricSet) {
