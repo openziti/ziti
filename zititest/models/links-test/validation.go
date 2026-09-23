@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -74,6 +75,10 @@ func validateLinksForCtrlWithChan(run model.Run, c *model.Component, deadline ti
 	errC <- validateLinksForCtrl(run, c, deadline)
 }
 
+// expectedLinkCount is the number of links in a fully-converged mesh: exactly one link per unordered router
+// pair (links are single-dialer), C(400,2) = 400*399/2.
+const expectedLinkCount = 79800
+
 func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time) error {
 	clients, err := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute)
 	if err != nil {
@@ -88,9 +93,18 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	for time.Now().Before(deadline) && !allLinksPresent {
 		linkCount, err := getLinkCount(clients)
 		if err != nil {
-			return nil
+			// Keep retrying until the deadline, re-logging in best-effort: a controller that is restarting or
+			// briefly unreachable is not converged, and treating the error as success skipped validation.
+			logger.WithError(err).Warn("failed to get link count, retrying")
+			time.Sleep(5 * time.Second)
+			if newClients, loginErr := chaos.EnsureLoggedIntoCtrl(run, c, time.Minute); loginErr == nil {
+				clients = newClients
+			} else {
+				logger.WithError(loginErr).Warn("failed to log in to controller, will retry")
+			}
+			continue
 		}
-		if linkCount == 79800 {
+		if linkCount == expectedLinkCount {
 			allLinksPresent = true
 		} else {
 			time.Sleep(5 * time.Second)
@@ -106,11 +120,11 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 	} else {
 		linkCount, _ := getLinkCount(clients)
 		logLinkDiagnostics(logger, clients, linkCount)
-		return fmt.Errorf("fail to reach expected link count of 79800 on controller %v (got %v)", c.Id, linkCount)
+		return fmt.Errorf("fail to reach expected link count of %d on controller %v (got %v)", expectedLinkCount, c.Id, linkCount)
 	}
 
 	for {
-		count, err := validateRouterLinks(c.Id, clients)
+		linkErrs, err := validateRouterLinks(c.Id, clients)
 		if err == nil {
 			return nil
 		}
@@ -119,7 +133,9 @@ func validateLinksForCtrl(run model.Run, c *model.Component, deadline time.Time)
 			return err
 		}
 
-		logger.Infof("current link errors: %v, elapsed time: %v", count, time.Since(start))
+		// Log why the pass did not succeed, not just the counts: an unreachable router reports zero link
+		// errors, so counts alone leave a retrying-until-deadline run with no visible cause.
+		logger.Infof("validation not yet complete: %v (link errors: %v, elapsed time: %v)", err, linkErrs, time.Since(start))
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -192,15 +208,22 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 	expected := response.RouterCount
 
 	invalid := 0
+	var unreachable []string
 	for expected > 0 {
 		select {
 		case <-closeNotify:
-			fmt.Printf("channel closed, exiting")
 			return 0, errors.New("unexpected close of mgmt channel")
 		case routerDetail := <-eventNotify:
+			expected--
 			if !routerDetail.ValidateSuccess {
-				return invalid, fmt.Errorf("error: unable to validate router %s (%s) on controller %s (%s)",
-					routerDetail.RouterId, routerDetail.RouterName, id, routerDetail.Message)
+				// The controller could not reach this router, so its links are unknown rather than wrong.
+				// Collect it and keep draining the pass: during chaos a router is routinely restarting or
+				// mid-reconnect, and failing here would both abandon the remaining routers' results and
+				// turn a momentary gap into a failed run. The caller retries until its deadline, so a
+				// router that never becomes reachable still fails the run, named below.
+				unreachable = append(unreachable,
+					fmt.Sprintf("%s (%s): %s", routerDetail.RouterName, routerDetail.RouterId, routerDetail.Message))
+				continue
 			}
 			for _, linkDetail := range routerDetail.LinkDetails {
 				if !linkDetail.IsValid {
@@ -212,18 +235,34 @@ func validateRouterLinks(id string, clients *zitirest.Clients) (int, error) {
 						linkDetail.Dialed, linkDetail.Messages)
 				}
 			}
-			expected--
 		}
 	}
-	if invalid == 0 {
-		logger.Infof("link validation of %v routers successful", response.RouterCount)
-		return invalid, nil
+
+	// An inconsistent link is a real failure and is reported ahead of unreachability, which may just be
+	// churn that has not settled yet.
+	if invalid > 0 {
+		return invalid, fmt.Errorf("invalid links found")
 	}
-	return invalid, fmt.Errorf("invalid links found")
+	if len(unreachable) > 0 {
+		return invalid, fmt.Errorf("%d of %d routers could not be validated on controller %s: %s",
+			len(unreachable), response.RouterCount, id, describeUnreachable(unreachable))
+	}
+	logger.Infof("link validation of %v routers successful", response.RouterCount)
+	return invalid, nil
+}
+
+// describeUnreachable renders the routers or components a controller could not reach, naming the first few
+// so a failure says where to look, without embedding hundreds of entries in one error.
+func describeUnreachable(entries []string) string {
+	const maxNamed = 5
+	if len(entries) <= maxNamed {
+		return strings.Join(entries, "; ")
+	}
+	return fmt.Sprintf("%s; and %d more", strings.Join(entries[:maxNamed], "; "), len(entries)-maxNamed)
 }
 
 func logLinkDiagnostics(logger *logrus.Entry, clients *zitirest.Clients, linkCount int64) {
-	logger.Infof("link count mismatch: expected 79800, got %v, fetching diagnostics", linkCount)
+	logger.Infof("link count mismatch: expected %d, got %v, fetching diagnostics", expectedLinkCount, linkCount)
 
 	ctx, cancelF := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancelF()
@@ -238,68 +277,66 @@ func logLinkDiagnostics(logger *logrus.Entry, clients *zitirest.Clients, linkCou
 		return
 	}
 
-	// Build a set of directed src->dst pairs from existing links, and track per-router link counts
-	type directedPair struct {
-		src, dst string
-	}
-
-	existingLinks := map[directedPair][]*rest_model.LinkDetail{}
-	routerLinkCount := map[string]int{}
+	// Links are single-dialer: each unordered router pair should have exactly one
+	// link, in whichever direction the dialer chose. Normalize each link to an
+	// unordered pair and look for pairs with the wrong number of links. A directed
+	// view (expecting src->dst for every ordered pair) is wrong here — it flags
+	// every normal one-directional link as "missing" and every router as off-count.
+	type pairKey struct{ a, b string } // a <= b
+	linksByPair := map[pairKey][]*rest_model.LinkDetail{}
 	routerIds := map[string]struct{}{}
 
 	for _, l := range result.Payload.Data {
 		src := l.SourceRouter.ID
 		dst := l.DestRouter.ID
-		key := directedPair{src: src, dst: dst}
-		existingLinks[key] = append(existingLinks[key], l)
-		routerLinkCount[src]++
 		routerIds[src] = struct{}{}
 		routerIds[dst] = struct{}{}
+		k := pairKey{a: src, b: dst}
+		if k.a > k.b {
+			k.a, k.b = k.b, k.a
+		}
+		linksByPair[k] = append(linksByPair[k], l)
 	}
 
-	// Log duplicate links (same src->dst pair with multiple links)
-	for pair, links := range existingLinks {
+	// Duplicate pairs: more than one link for the same unordered pair. This is the
+	// real anomaly when the count is over expected (e.g., both directions present
+	// because dedup didn't converge).
+	dupPairs := 0
+	for k, links := range linksByPair {
 		if len(links) > 1 {
-			logger.Infof("DUPLICATE: %v -> %v has %d links:", pair.src, pair.dst, len(links))
+			dupPairs++
+			logger.Infof("DUPLICATE pair %v <-> %v has %d links:", k.a, k.b, len(links))
 			for _, l := range links {
-				logger.Infof("  link %v: state=%v iteration=%v", *l.ID, *l.State, *l.Iteration)
+				logger.Infof("  link %v: %v -> %v state=%v iteration=%v",
+					*l.ID, l.SourceRouter.ID, l.DestRouter.ID, *l.State, *l.Iteration)
 			}
 		}
 	}
 
-	// Find routers with fewer links than expected (should be numRouters-1 links sourced from each)
-	expectedPerRouter := len(routerIds) - 1
-	var routersWithMissing []string
+	// Missing pairs: unordered router pairs with no link in either direction. This
+	// is the real anomaly when the count is under expected.
+	ids := make([]string, 0, len(routerIds))
 	for id := range routerIds {
-		count := routerLinkCount[id]
-		if count != expectedPerRouter {
-			routersWithMissing = append(routersWithMissing, id)
-			logger.Infof("router %v has %d source links (expected %d)", id, count, expectedPerRouter)
-		}
+		ids = append(ids, id)
 	}
-
-	sort.Strings(routersWithMissing)
-
-	// For routers with missing links, find which dest routers are missing
-	for _, srcId := range routersWithMissing {
-		for dstId := range routerIds {
-			if srcId == dstId {
-				continue
-			}
-			key := directedPair{src: srcId, dst: dstId}
-			if _, ok := existingLinks[key]; !ok {
-				// check if the reverse link exists
-				reverseKey := directedPair{src: dstId, dst: srcId}
-				reverseLinks := existingLinks[reverseKey]
-				reverseInfo := "no"
-				if len(reverseLinks) > 0 {
-					reverseInfo = fmt.Sprintf("yes (id=%v, iteration=%v)", *reverseLinks[0].ID, *reverseLinks[0].Iteration)
+	sort.Strings(ids)
+	missingPairs := 0
+	const missingLogCap = 50
+	for i := 0; i < len(ids); i++ {
+		for j := i + 1; j < len(ids); j++ {
+			k := pairKey{a: ids[i], b: ids[j]}
+			if _, ok := linksByPair[k]; !ok {
+				missingPairs++
+				if missingPairs <= missingLogCap {
+					logger.Infof("MISSING pair: %v <-> %v (no link in either direction)", ids[i], ids[j])
 				}
-				logger.Infof("MISSING link: %v -> %v (reverse exists: %v)", srcId, dstId, reverseInfo)
 			}
 		}
 	}
+	if missingPairs > missingLogCap {
+		logger.Infof("... and %d more missing pairs (log output capped at %d)", missingPairs-missingLogCap, missingLogCap)
+	}
 
-	logger.Infof("total links: %v, routers: %v, directed pairs: %v, routers with wrong count: %v",
-		len(result.Payload.Data), len(routerIds), len(existingLinks), len(routersWithMissing))
+	logger.Infof("total links: %v, routers: %v, unique pairs: %v, duplicate pairs: %v, missing pairs: %v",
+		len(result.Payload.Data), len(routerIds), len(linksByPair), dupPairs, missingPairs)
 }
