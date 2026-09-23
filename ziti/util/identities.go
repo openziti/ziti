@@ -18,6 +18,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/identity"
 	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti"
 	zitiCommon "github.com/openziti/ziti/v2/common"
@@ -89,6 +90,9 @@ type RestClientEdgeIdentity struct {
 	Token         string                           `json:"token"`
 	LoginTime     string                           `json:"loginTime"`
 	CaCert        string                           `json:"caCert,omitempty"`
+	ClientIdFile  string                           `json:"clientIdentity,omitempty"`
+	ClientCert    string                           `json:"clientCert,omitempty"`
+	ClientKey     string                           `json:"clientKey,omitempty"`
 	ReadOnly      bool                             `json:"readOnly"`
 	NetworkIdFile string                           `json:"networkId"`
 	ApiSession    *edge_apis.ApiSessionJsonWrapper `json:"apiSession"`
@@ -98,13 +102,49 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 	return self.ReadOnly
 }
 
+// clientCertificate returns the certificate this login authenticated with, or nil when the login used a
+// credential that isn't certificate based. Certificate authentication binds the session to the
+// certificate, and the controller verifies proof of possession on every request, so each new client has
+// to present it again.
+func (self *RestClientEdgeIdentity) clientCertificate() (*tls.Certificate, error) {
+	if self.ClientIdFile != "" {
+		cfg, err := ziti.NewConfigFromFile(self.ClientIdFile)
+		if err != nil {
+			return nil, errors.Errorf("client identity file [%s] is no longer readable: %v. Run 'ziti edge login' to log in again", self.ClientIdFile, err)
+		}
+
+		id, err := identity.LoadIdentity(cfg.ID)
+		if err != nil {
+			return nil, errors.Errorf("could not load the identity in [%s]: %v. Run 'ziti edge login' to log in again", self.ClientIdFile, err)
+		}
+
+		cert := id.Cert()
+		if cert == nil || len(cert.Certificate) == 0 {
+			return nil, errors.Errorf("the identity in [%s] has no certificate to authenticate with. Run 'ziti edge login' to log in again", self.ClientIdFile)
+		}
+
+		return cert, nil
+	}
+
+	if self.ClientCert != "" && self.ClientKey != "" {
+		cert, err := tls.LoadX509KeyPair(self.ClientCert, self.ClientKey)
+		if err != nil {
+			return nil, errors.Errorf("client certificate [%s] and key [%s] are no longer usable: %v. Run 'ziti edge login' to log in again", self.ClientCert, self.ClientKey, err)
+		}
+
+		return &cert, nil
+	}
+
+	return nil, nil
+}
+
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 	rootCaPool := x509.NewCertPool()
 
 	if self.CaCert != "" {
 		rootPemData, err := os.ReadFile(self.CaCert)
 		if err != nil {
-			return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+			return nil, errors.Errorf("could not read session certificates [%s]: %v. Run 'ziti edge login' to log in again", self.CaCert, err)
 		}
 
 		rootCaPool.AppendCertsFromPEM(rootPemData)
@@ -116,9 +156,19 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 		}
 	}
 
-	return &tls.Config{
+	tlsConfig := &tls.Config{
 		RootCAs: rootCaPool,
-	}, nil
+	}
+
+	cert, err := self.clientCertificate()
+	if err != nil {
+		return nil, err
+	}
+	if cert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*cert}
+	}
+
+	return tlsConfig, nil
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
@@ -137,10 +187,8 @@ func (self *RestClientEdgeIdentity) getHttpTransport(log *log.Logger, verbose bo
 		} else {
 			if self.NetworkIdFile != "" {
 				if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile, terminator); ztFromFileErr != nil {
-					// ignore any error around the networkId file
-					if verbose {
-						log.Printf("Ziti transport from cached file failed: %v", ztFromFileErr)
-					}
+					// the default transport still works, so warn and carry on rather than failing
+					_, _ = fmt.Fprintf(os.Stderr, "WARNING: network identity [%s] is no longer usable, falling back to a direct connection: %v\n", self.NetworkIdFile, ztFromFileErr)
 				} else {
 					if verbose {
 						log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
@@ -166,6 +214,13 @@ func (self *RestClientEdgeIdentity) NewClientByTerminator(timeout time.Duration,
 	client.GetClient().Transport = transport
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
+	}
+	cert, err := self.clientCertificate()
+	if err != nil {
+		return nil, err
+	}
+	if cert != nil {
+		client.SetCertificates(*cert)
 	}
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)

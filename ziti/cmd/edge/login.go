@@ -386,12 +386,21 @@ func (o *LoginOptions) Run() error {
 		}
 	}
 	if !o.IgnoreConfig {
+		// a certificate based login binds the session to the certificate, so record how to find it again.
+		// Later commands build a new client and have to present it or the controller rejects the session.
+		clientIdFile := absPathOrSelf(o.File)
+		clientCert := absPathOrSelf(o.ClientCert)
+		clientKey := absPathOrSelf(o.ClientKey)
+
 		loginIdentity := &util.RestClientEdgeIdentity{
 			Url:           o.ControllerUrl,
 			Username:      o.Username,
 			Token:         "", // --use-api-session--
 			LoginTime:     time.Now().Format(time.RFC3339),
 			CaCert:        o.CaCert,
+			ClientIdFile:  clientIdFile,
+			ClientCert:    clientCert,
+			ClientKey:     clientKey,
 			ReadOnly:      o.ReadOnly,
 			NetworkIdFile: o.NetworkId,
 			ApiSession:    sess,
@@ -952,6 +961,18 @@ func (o *LoginOptions) EffectiveUrl() (string, error) {
 	}
 
 	return "", nil
+}
+
+// absPathOrSelf resolves path so a cached login keeps working from a different working directory. An
+// unresolvable path is returned unchanged and reported when something tries to read it.
+func absPathOrSelf(path string) string {
+	if path == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }
 
 func addHttpsIfNeeded(host string) string {

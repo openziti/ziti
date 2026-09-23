@@ -18,8 +18,10 @@ limitations under the License.
 package cli_tests
 
 import (
+	"context"
 	"crypto/x509"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -41,6 +43,9 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("client cert authentication - no ca", s.testClientCertAuthentication)
 	t.Run("identity file authentication", s.testIdentityFileAuthentication)
 	t.Run("identity file authentication - ctrl url unset", s.testIdentityFileAuthenticationCtrlUrlUnset)
+	t.Run("identity file auth then cached request", s.testIdentityFileLoginThenCachedRequest)
+	t.Run("identity file auth then separate process", s.testIdentityFileLoginThenSeparateProcess)
+	t.Run("client cert auth then cached request", s.testClientCertLoginThenCachedRequest)
 	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
 	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
@@ -213,6 +218,80 @@ func (s *cliTestState) testIdentityFileAuthentication(t *testing.T) {
 	require.NotNil(t, client)
 	require.NotEmpty(t, opts.ApiSession)
 	t.Logf("Login successful for %s, token: %s", s.controllerUnderTest.ControllerHostPort(), opts.Token)
+}
+
+// The tests above stop at "login succeeded". The ones below carry on to the part that matters: a command
+// issued afterwards, which loads the identity back off disk and builds a new client from it. Certificate
+// authentication binds the session to the client certificate, so that new client has to present the
+// certificate again or the controller rejects the session.
+
+// testIdentityFileLoginThenCachedRequest logs in with an identity file, then makes a request the way a
+// later command does -- through the identity cached in ZITI_CONFIG_DIR rather than through the
+// LoginOptions still held in memory.
+func (s *cliTestState) testIdentityFileLoginThenCachedRequest(t *testing.T) {
+	s.removeZitiDir(t)
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false, // the cached identity is the thing under test
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NoError(t, opts.Run(), "file-based login should succeed")
+	require.NotEmpty(t, opts.ApiSession)
+
+	// `ziti edge list identities` lands here: load the cached identity, build a client from it, replay
+	// the saved session.
+	_, err := util.EdgeControllerList("identities", nil, false, os.Stdout, 10, false)
+	require.NoError(t, err, "a command run after 'ziti edge login -f' must still be authorized")
+}
+
+// testClientCertLoginThenCachedRequest is the same check for --client-cert/--client-key, which caches the
+// same way and so has the same exposure.
+func (s *cliTestState) testClientCertLoginThenCachedRequest(t *testing.T) {
+	s.removeZitiDir(t)
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		ClientCert:    s.controllerUnderTest.AdminCertFile,
+		ClientKey:     s.controllerUnderTest.AdminKeyFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NoError(t, opts.Run(), "client cert login should succeed")
+	require.NotEmpty(t, opts.ApiSession)
+
+	_, err := util.EdgeControllerList("identities", nil, false, os.Stdout, 10, false)
+	require.NoError(t, err, "a command run after 'ziti edge login --client-cert' must still be authorized")
+}
+
+// testIdentityFileLoginThenSeparateProcess is the same sequence with a real process boundary, so nothing
+// in memory can carry the certificate across for it.
+func (s *cliTestState) testIdentityFileLoginThenSeparateProcess(t *testing.T) {
+	s.removeZitiDir(t)
+
+	opts := &edge.LoginOptions{
+		Options:       s.commonOpts,
+		ControllerUrl: s.controllerUnderTest.ControllerHostPort(),
+		Yes:           true,
+		IgnoreConfig:  false,
+		File:          s.controllerUnderTest.AdminIdFile,
+		NetworkId:     s.controllerUnderTest.NetworkDialingIdFile,
+	}
+	require.NoError(t, opts.Run(), "file-based login should succeed")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// ZITI_CONFIG_DIR is already set for the suite, so the child reads the identity this login just wrote.
+	cmd := exec.CommandContext(ctx, s.zitiPath, "edge", "list", "identities")
+	out, err := cmd.CombinedOutput()
+	t.Logf("ziti edge list identities:\n%s", strings.TrimSpace(string(out)))
+	require.NoError(t, err, "'ziti edge list identities' after 'ziti edge login -f' must still be authorized")
 }
 
 func (s *cliTestState) testExternalJWTAuthentication(t *testing.T) {
