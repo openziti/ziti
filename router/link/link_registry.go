@@ -504,9 +504,10 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
 		id:        id,
+		ctrlId:    ctrlId,
 		version:   version,
 		healthy:   healthy,
 		listeners: listeners,
@@ -613,6 +614,12 @@ func (self *linkRegistryImpl) evaluateLinkStateQueue() {
 			return
 		}
 		heap.Pop(self.linkStateQueue)
+		// Removing a destination leaves its linkMap intact, so the check below cannot
+		// tell that this state's destination is gone. Dialing anyway reaches whoever
+		// now answers that address.
+		if self.destinations[next.dest.id] != next.dest {
+			continue
+		}
 		// A queued state that is no longer the live entry for its key has been
 		// detached (e.g. by a local dialer rescan). Drop the stale entry rather
 		// than evaluate it, or it would redial through a dialer that rescan has
@@ -621,6 +628,20 @@ func (self *linkRegistryImpl) evaluateLinkStateQueue() {
 			continue
 		}
 		self.evaluateLinkState(next)
+	}
+}
+
+// closeUnaccountedLink closes a dialed link the registry has no state to attach to. Such a link is invisible
+// to this router: it is never reported, faulted or closed, while the far end keeps it and uses its id to
+// refuse the dialer's later attempts for the same pair. A link this router accepted is left alone, since the
+// listener side holds no state for one.
+//
+// Closed unconditionally rather than after an IsClosed check. Close is idempotent, and a link that closes
+// between the check and the call would defeat the check anyway.
+func (self *linkRegistryImpl) closeUnaccountedLink(link xlink.Xlink) {
+	if err := link.Close(); err != nil {
+		pfxlog.Logger().WithError(err).WithField("linkId", link.Id()).WithField("linkDest", link.DestinationId()).
+			Error("error closing link with no state in the registry")
 	}
 }
 

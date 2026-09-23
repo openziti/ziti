@@ -466,7 +466,7 @@ func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
 	// matching dialer yet, so the listener doesn't produce a linkState.
 	destId := "peer-router-1"
 	tenv.setDialers(nil)
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -497,7 +497,7 @@ func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
 	// shouldn't create a state because there's no group intersection.
 	destId := "peer-router-2"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -822,7 +822,7 @@ func Test_LinkRegistry_RescanDetachesRemovedDialerPairing(t *testing.T) {
 	// A matching dialer + listener produces a linkState.
 	destId := "peer-router-3"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 	req.Eventually(func() bool {
@@ -957,7 +957,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 
 	destId := "peer-router-1"
-	reg.UpdateLinkDest(destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -968,7 +968,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 
 	// PeerState_Unhealthy carries no listeners, so the cache empties. It has to
 	// drop out entirely rather than appear with an empty set.
-	reg.UpdateLinkDest(destId, "v0", false, nil)
+	reg.UpdateLinkDest("ctrl1", destId, "v0", false, nil)
 
 	req.Eventually(func() bool {
 		snapshot, ok := reg.GetDestinationListeners()
@@ -1006,3 +1006,84 @@ func (self *reconnectOnSendChannel) Send(s channel.Sendable) error {
 	self.reg.ctrlSynchronizer.markReconnected("ctrl1")
 	return self.flakySendChannel.Send(s)
 }
+
+// Test_LinkRegistry_UnaccountedDialedLinkIsClosed: a dial that completes after its destination has been
+// removed cannot be recorded. Only warning left the link up and unreported, while the far end kept it and
+// used its id to refuse the dialer's later attempts for the same pair.
+func Test_LinkRegistry_UnaccountedDialedLinkIsClosed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	link := &stubXlink{id: "orphan", dialed: true, destId: "removed-dest"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+
+	req.True(link.IsClosed(), "a dialed link with no destination to belong to must be closed, not just logged")
+}
+
+// Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen: the listener side keeps no state for a link it
+// accepted, so absence there is normal and says nothing about whether the link is wanted.
+func Test_LinkRegistry_UnaccountedAcceptedLinkIsLeftOpen(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	link := &stubXlink{id: "accepted", dialed: false, destId: "no-state-here"}
+	(&updateLinkStatusForLink{link: link, status: StatusEstablished}).Handle(reg)
+
+	req.False(link.IsClosed(), "an accepted link must not be closed for having no dial state")
+}
+
+// Test_LinkRegistry_RemovedDestIsNotDialed: removing a destination leaves its linkMap intact, so a state
+// still sitting in the dial queue looked live and got dialed anyway. That dial reaches whoever now answers
+// the address, and its result has no state to be recorded against, which is how the orphan above is made.
+func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "doomed-dest"
+
+	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	stateC := make(chan *linkState, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		for _, state := range r.destinations[destId].linkMap {
+			stateC <- state
+			return
+		}
+		stateC <- nil
+	}))
+	state := <-stateC
+	req.NotNil(state)
+
+	reg.RemoveLinkDest(destId)
+
+	// Queue it as the only due entry: scheduled to dial, with its destination removed out from under it.
+	statusC := make(chan linkStatus, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		state.dialActive.Store(false)
+		state.nextDial = time.Now().Add(-time.Minute)
+		*r.linkStateQueue = linkStateHeap{}
+		heap.Push(r.linkStateQueue, state)
+		r.evaluateLinkStateQueue()
+		statusC <- state.status
+	}))
+
+	req.Equal(StatusDestRemoved, <-statusC, "a removed destination's link state must be left alone, not dialed")
+}
+
+// funcEvent runs an arbitrary function on the registry's event loop, so a test can read or poke registry
+// state without racing the loop.
+type funcEvent func(*linkRegistryImpl)
+
+func (self funcEvent) Handle(registry *linkRegistryImpl) { self(registry) }

@@ -53,19 +53,19 @@ func (r *gcStubRegistry) GetDestinationListeners() (map[string][]*ctrl_pb.Listen
 }
 
 // The rest of xlink.Registry isn't exercised by RunStaleLinkGc.
-func (*gcStubRegistry) UpdateLinkDest(string, string, bool, []*ctrl_pb.Listener) {}
-func (*gcStubRegistry) RemoveLinkDest(string)                                    {}
-func (*gcStubRegistry) GetLink(string) (xlink.Xlink, bool)                       { return nil, false }
-func (*gcStubRegistry) GetLinkById(string) (xlink.Xlink, bool)                   { return nil, false }
-func (*gcStubRegistry) DialSucceeded(xlink.Xlink) (xlink.Xlink, bool)            { return nil, false }
-func (*gcStubRegistry) LinkAccepted(xlink.Xlink) (xlink.Xlink, bool)             { return nil, false }
-func (*gcStubRegistry) LinkClosed(xlink.Xlink)                                   {}
-func (*gcStubRegistry) Shutdown()                                                {}
-func (*gcStubRegistry) SendRouterLinkMessage(xlink.Xlink, ...channel.Channel)    {}
-func (*gcStubRegistry) Inspect(time.Duration) *inspect.LinksInspectResult        { return nil }
-func (*gcStubRegistry) DebugForgetLink(string) bool                              { return false }
-func (*gcStubRegistry) GetLinkKey(string, string, string, string) string         { return "" }
-func (*gcStubRegistry) RescanForDialOpportunities()                              {}
+func (*gcStubRegistry) UpdateLinkDest(string, string, string, bool, []*ctrl_pb.Listener) {}
+func (*gcStubRegistry) RemoveLinkDest(string)                                            {}
+func (*gcStubRegistry) GetLink(string) (xlink.Xlink, bool)                               { return nil, false }
+func (*gcStubRegistry) GetLinkById(string) (xlink.Xlink, bool)                           { return nil, false }
+func (*gcStubRegistry) DialSucceeded(xlink.Xlink) (xlink.Xlink, bool)                    { return nil, false }
+func (*gcStubRegistry) LinkAccepted(xlink.Xlink) (xlink.Xlink, bool)                     { return nil, false }
+func (*gcStubRegistry) LinkClosed(xlink.Xlink)                                           {}
+func (*gcStubRegistry) Shutdown()                                                        {}
+func (*gcStubRegistry) SendRouterLinkMessage(xlink.Xlink, ...channel.Channel)            {}
+func (*gcStubRegistry) Inspect(time.Duration) *inspect.LinksInspectResult                { return nil }
+func (*gcStubRegistry) DebugForgetLink(string) bool                                      { return false }
+func (*gcStubRegistry) GetLinkKey(string, string, string, string) string                 { return "" }
+func (*gcStubRegistry) RescanForDialOpportunities()                                      {}
 
 // gcStubEnv satisfies link.XlinkEnv.
 type gcStubEnv struct {

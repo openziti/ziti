@@ -38,6 +38,7 @@ type stubXlink struct {
 	linkProtocol string
 	linkKey      xlink.LinkKey
 	closed       bool
+	destId       string
 }
 
 func (*stubXlink) GetDestinationType() string { return "link" }
@@ -51,7 +52,7 @@ func (s *stubXlink) IsClosed() bool           { return s.closed }
 
 // Required by the interface but not exercised by these tests.
 func (*stubXlink) Iteration() uint32           { return 0 }
-func (*stubXlink) DestinationId() string       { return "" }
+func (s *stubXlink) DestinationId() string     { return s.destId }
 func (*stubXlink) DestVersion() string         { return "" }
 func (*stubXlink) CloseOnce(func())            {}
 func (s *stubXlink) Close() error              { s.closed = true; return nil }

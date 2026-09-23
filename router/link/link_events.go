@@ -61,7 +61,9 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 }
 
 type linkDestUpdate struct {
-	id        string
+	id string
+	// ctrlId is the controller the update came from, empty for a synthetic update from a local rescan.
+	ctrlId    string
 	version   string
 	healthy   bool
 	listeners []*ctrl_pb.Listener
@@ -204,6 +206,23 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 	for linkKey := range currentLinkKeys {
 		if v, ok := dest.linkMap[linkKey]; ok {
 			delete(dest.linkMap, linkKey)
+
+			// Logged even when nothing is closed: a detached pairing cannot redial or report, so a dial
+			// already in flight lands with nowhere to go, and nothing else records why.
+			source := "local dialer rescan"
+			if closeOrphans {
+				source = "peer listener update"
+			}
+			pfxlog.Logger().
+				WithField("routerId", self.id).
+				WithField("ctrlId", self.ctrlId).
+				WithField("linkKey", linkKey).
+				WithField("linkId", v.linkId).
+				WithField("status", v.status).
+				WithField("hasLink", v.link != nil).
+				WithField("source", source).
+				Info("detaching link pairing that no longer matches")
+
 			if closeOrphans && v.link != nil {
 				log := pfxlog.Logger().WithField("routerId", self.id).
 					WithField("linkKey", linkKey)
@@ -225,7 +244,11 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	dest, found := registry.destinations[link.DestinationId()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
-			log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link destination not present in registry", self.status)
+			// Reached when a dial completes after its destination has been removed. The link cannot be
+			// recorded, so closing it is the only way it ever ends.
+			log.WithField("linkDest", link.DestinationId()).WithField("status", self.status).
+				Warn("closing dialed link, its destination is not present in registry")
+			registry.closeUnaccountedLink(link)
 		}
 		return
 	}
@@ -241,7 +264,9 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 				log.WithField("linkDest", link.DestinationId()).Info("reporting fault for closed detached link")
 				registry.sendLinkFaultDirect(link)
 			} else {
-				log.WithField("linkDest", link.DestinationId()).Warnf("unable to mark link as %s, link state not present in registry", self.status)
+				log.WithField("linkDest", link.DestinationId()).WithField("status", self.status).
+					Warn("closing dialed link, its state is not present in registry")
+				registry.closeUnaccountedLink(link)
 			}
 		}
 		return
