@@ -63,17 +63,17 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v5 v5.0.27
+	github.com/openziti/channel/v5 v5.0.29
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.36.0
-	github.com/openziti/foundation/v2 v2.0.100
+	github.com/openziti/foundation/v2 v2.0.102
 	github.com/openziti/identity v1.0.140
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/runzmd v1.0.92
-	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
+	github.com/openziti/sdk-golang/v2 v2.0.0-pre4.0.20260922011606-a029d472238f
 	github.com/openziti/secretstream v0.1.52
-	github.com/openziti/transport/v2 v2.0.220
+	github.com/openziti/transport/v2 v2.0.221
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.5
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -91,7 +91,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.49.2
+	github.com/zitadel/oidc/v3 v3.49.6
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
@@ -181,7 +181,7 @@ require (
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/shirou/gopsutil/v4 v4.26.7 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.8 // indirect
 	github.com/shoenig/go-m1cpu v0.2.2 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.15.0 // indirect

@@ -18,15 +18,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/michaelquigley/pfxlog v1.0.0
-	github.com/openziti/channel/v5 v5.0.27
+	github.com/openziti/channel/v5 v5.0.29
 	github.com/openziti/edge-api v0.36.0
 	github.com/openziti/fablab v0.6.23
-	github.com/openziti/foundation/v2 v2.0.100
+	github.com/openziti/foundation/v2 v2.0.102
 	github.com/openziti/identity v1.0.140
 	github.com/openziti/metrics v1.4.5
 	github.com/openziti/sdk-golang/acquire v0.3.0
-	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
-	github.com/openziti/transport/v2 v2.0.220
+	github.com/openziti/sdk-golang/v2 v2.0.0-pre4.0.20260922011606-a029d472238f
+	github.com/openziti/transport/v2 v2.0.221
 	github.com/openziti/ziti/v2 v2.0.3
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -207,7 +207,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
-	github.com/shirou/gopsutil/v4 v4.26.7 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.8 // indirect
 	github.com/shoenig/go-m1cpu v0.2.2 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -226,7 +226,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	github.com/zitadel/oidc/v3 v3.49.2 // indirect
+	github.com/zitadel/oidc/v3 v3.49.6 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
 	go.mozilla.org/pkcs7 v0.10.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
