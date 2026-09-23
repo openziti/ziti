@@ -55,6 +55,7 @@ func (r *gcStubRegistry) GetDestinationListeners() (map[string][]*ctrl_pb.Listen
 // The rest of xlink.Registry isn't exercised by RunStaleLinkGc.
 func (*gcStubRegistry) UpdateLinkDest(string, string, string, bool, []*ctrl_pb.Listener) {}
 func (*gcStubRegistry) RemoveLinkDest(string)                                            {}
+func (*gcStubRegistry) LinkListenersChanged()                                            {}
 func (*gcStubRegistry) GetLink(string) (xlink.Xlink, bool)                               { return nil, false }
 func (*gcStubRegistry) GetLinkById(string) (xlink.Xlink, bool)                           { return nil, false }
 func (*gcStubRegistry) DialSucceeded(xlink.Xlink) (xlink.Xlink, bool)                    { return nil, false }

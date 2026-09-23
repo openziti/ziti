@@ -54,6 +54,10 @@ type Registry interface {
 	// SendRouterLinkMessage will notify the given controllers about the existing link
 	SendRouterLinkMessage(link Xlink, channels ...channel.Channel)
 
+	// LinkListenersChanged notifies the registry that the router's link listener set changed, so it is
+	// republished to every controller
+	LinkListenersChanged()
+
 	// Inspect will return debug information about the state of links and the registry
 	Inspect(timeout time.Duration) *inspect.LinksInspectResult
 

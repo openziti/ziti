@@ -27,26 +27,31 @@ func listenerSet(addr string) []*ctrl_pb.Listener {
 	return []*ctrl_pb.Listener{{Address: addr, Protocol: "tls"}}
 }
 
+func setListeners(r *Router, listeners []*ctrl_pb.Listener, generation uint64) bool {
+	_, recorded := r.SetLinkListeners(listeners, generation)
+	return recorded
+}
+
 func TestRouter_SetLinkListeners_DropsSupersededGeneration(t *testing.T) {
 	req := require.New(t)
 	r := &Router{}
 
-	req.True(r.SetLinkListeners(listenerSet("a"), 1))
+	req.True(setListeners(r, listenerSet("a"), 1))
 	req.Equal("a", r.GetLinkListeners()[0].Address)
 
-	req.True(r.SetLinkListeners(listenerSet("b"), 2))
+	req.True(setListeners(r, listenerSet("b"), 2))
 	req.Equal("b", r.GetLinkListeners()[0].Address)
 
 	// An update that lost the race must not push the router back onto listeners
 	// it has already replaced, since the set is redistributed to every peer.
-	req.False(r.SetLinkListeners(listenerSet("a"), 1))
+	req.False(setListeners(r, listenerSet("a"), 1))
 	req.Equal("b", r.GetLinkListeners()[0].Address, "the newer set must survive")
 
 	// The same generation is also refused: nothing new to record.
-	req.False(r.SetLinkListeners(listenerSet("c"), 2))
+	req.False(setListeners(r, listenerSet("c"), 2))
 	req.Equal("b", r.GetLinkListeners()[0].Address)
 
-	req.True(r.SetLinkListeners(listenerSet("d"), 3))
+	req.True(setListeners(r, listenerSet("d"), 3))
 	req.Equal("d", r.GetLinkListeners()[0].Address)
 }
 
@@ -57,12 +62,12 @@ func TestRouter_ResetLinkListeners_AllowsRestartedRouter(t *testing.T) {
 	req := require.New(t)
 	r := &Router{}
 
-	req.True(r.SetLinkListeners(listenerSet("old"), 47))
-	req.False(r.SetLinkListeners(listenerSet("new"), 1), "without a reset, a restart looks superseded")
+	req.True(setListeners(r, listenerSet("old"), 47))
+	req.False(setListeners(r, listenerSet("new"), 1), "without a reset, a restart looks superseded")
 
 	r.ResetLinkListeners()
 	req.Empty(r.GetLinkListeners(), "reset clears the recorded set")
-	req.True(r.SetLinkListeners(listenerSet("new"), 1), "after a reset the new session starts fresh")
+	req.True(setListeners(r, listenerSet("new"), 1), "after a reset the new session starts fresh")
 	req.Equal("new", r.GetLinkListeners()[0].Address)
 }
 
@@ -71,6 +76,23 @@ func TestRouter_SetLinkListeners_FirstUpdateAlwaysRecorded(t *testing.T) {
 	// rather than being read as "already superseded".
 	req := require.New(t)
 	r := &Router{}
-	req.True(r.SetLinkListeners(listenerSet("a"), 0))
+	req.True(setListeners(r, listenerSet("a"), 0))
 	req.Equal("a", r.GetLinkListeners()[0].Address)
+}
+
+func TestRouter_SetLinkListeners_ReturnsTheSetItHeld(t *testing.T) {
+	req := require.New(t)
+	r := &Router{}
+
+	previous, recorded := r.SetLinkListeners(listenerSet("a"), 1)
+	req.True(recorded)
+	req.Empty(previous)
+
+	previous, recorded = r.SetLinkListeners(listenerSet("b"), 2)
+	req.True(recorded)
+	req.Equal("a", previous[0].Address, "a recorded update returns the set it replaced")
+
+	previous, recorded = r.SetLinkListeners(listenerSet("c"), 2)
+	req.False(recorded)
+	req.Equal("b", previous[0].Address, "a refused update returns the set still held")
 }
