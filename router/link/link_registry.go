@@ -36,12 +36,14 @@ import (
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type Env interface {
 	GetRouterId() *identity.TokenId
 	GetNetworkControllers() env.NetworkControllers
 	GetXlinkDialers() []xlink.Dialer
+	GetXlinkListeners() []xlink.Listener
 	GetCloseNotify() <-chan struct{}
 	GetLinkDialerPool() goroutines.Pool
 	GetRateLimiterPool() goroutines.Pool
@@ -78,17 +80,18 @@ type linkRegistryImpl struct {
 	env          Env
 	destinations map[string]*linkDest
 	// ctrlSynchronizer holds what each controller is still owed: a full refresh after a reconnect, which gates
-	// incremental reports to it.
+	// incremental reports to it, and the current link listener set.
 	ctrlSynchronizer *ctrlSynchronizer
 
 	// fullRefreshSendTimeout bounds one attempt at the reconnect announcement. A field so tests can reach the
 	// timeout, which is the only way to tell a message that was queued and then discarded from one that
 	// reached the wire.
-	fullRefreshSendTimeout time.Duration
-	linkStateQueue         *linkStateHeap
-	events                 chan event
-	triggerNotifyC         chan struct{}
-	notifyInProgress       atomic.Bool
+	fullRefreshSendTimeout   time.Duration
+	linkStateQueue           *linkStateHeap
+	events                   chan event
+	triggerNotifyC           chan struct{}
+	notifyInProgress         atomic.Bool
+	listenerNotifyInProgress atomic.Bool
 }
 
 func (self *linkRegistryImpl) runGcLinkMetricsLoop() {
@@ -401,7 +404,7 @@ const fullRefreshSendTimeout = 5 * time.Second
 // NotifyOfReconnect records that a controller has (re)connected and owes a full link announcement. The
 // announcement is sent by the registry loop (see notifyControllersOfRefresh) and retried each tick until it
 // is written. Until then the controller is unsynced and incremental link reports to it are held (see
-// ctrlSynchronizer); once written, the held reports follow.
+// ctrlSynchronizer); once written, the held reports and the current link listeners follow.
 func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	self.ctrlSynchronizer.markReconnected(ch.Id())
 	self.triggerNotify()
@@ -500,6 +503,76 @@ func (self *linkRegistryImpl) snapshotDialedLinks(ctrlId string) (*ctrl_pb.Route
 	return routerLinks, onComplete
 }
 
+// LinkListenersChanged implements xlink.Registry. The current listener set becomes pending for every
+// controller and is sent by the notify loop, retrying until written.
+func (self *linkRegistryImpl) LinkListenersChanged() {
+	self.ctrlSynchronizer.markListenersChanged()
+	self.triggerNotify()
+}
+
+// notifyControllersOfLinkListeners sends the current link listener set to every synced, connected
+// controller that has not been sent it. Runs on the registry loop; the sends run on the rate limiter pool.
+func (self *linkRegistryImpl) notifyControllersOfLinkListeners() {
+	if self.listenerNotifyInProgress.Load() {
+		return
+	}
+
+	targets := map[string]env.NetworkController{}
+	for ctrlId, ctrl := range self.ctrls.GetAll() {
+		if ctrl.IsConnected() && self.ctrlSynchronizer.isSynced(ctrlId) && self.ctrlSynchronizer.isListenersSendPending(ctrlId) {
+			targets[ctrlId] = ctrl
+		}
+	}
+
+	if len(targets) == 0 {
+		return
+	}
+
+	self.listenerNotifyInProgress.Store(true)
+	err := self.env.GetRateLimiterPool().QueueOrError(func() {
+		defer self.listenerNotifyInProgress.Store(false)
+		self.sendLinkListeners(targets)
+	})
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithField("op", "link-notify").Info("unable to queue link listener notifications")
+		self.listenerNotifyInProgress.Store(false)
+	}
+}
+
+// sendLinkListeners sends the current link listener set to each target, marking the set sent for those it
+// was written to. A set that changes after it is built stays pending, so the next pass sends the newer one.
+func (self *linkRegistryImpl) sendLinkListeners(targets map[string]env.NetworkController) {
+	gen := self.ctrlSynchronizer.currentListenersGen()
+	listeners := ListenersToProto(self.env.GetXlinkListeners())
+	buf, err := proto.Marshal(listeners)
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithField("op", "link-notify").Error("unable to marshal link listeners")
+		return
+	}
+
+	for ctrlId, ctrl := range targets {
+		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("op", "link-notify").
+			WithField("listenerCount", len(listeners.Listeners))
+
+		// Captured before the write so a reconnect landing during it leaves the set owed to the new
+		// connection. A controller that went unsynced since it was chosen is skipped; it is sent after its
+		// refresh.
+		reconnectGen := self.ctrlSynchronizer.reconnectGen(ctrlId)
+		if !self.ctrlSynchronizer.isSynced(ctrlId) {
+			continue
+		}
+
+		// A fresh message per controller: sending mutates message state.
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateLinkListenersType), buf)
+		if err := msg.WithTimeout(10 * time.Second).SendAndWaitForWire(ctrl.Channel()); err != nil {
+			log.WithError(err).Warn("failed to send link listeners to controller, will retry")
+			continue
+		}
+		self.ctrlSynchronizer.markListenersSent(ctrlId, gen, reconnectGen)
+		log.Info("sent link listeners to controller")
+	}
+}
+
 func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
@@ -586,10 +659,12 @@ func (self *linkRegistryImpl) run() {
 		case <-self.triggerNotifyC:
 			self.notifyControllersOfRefresh()
 			self.notifyControllersOfLinks()
+			self.notifyControllersOfLinkListeners()
 		case <-queueCheckTicker.C:
 			self.evaluateLinkStateQueue()
 			self.notifyControllersOfRefresh()
 			self.notifyControllersOfLinks()
+			self.notifyControllersOfLinkListeners()
 		case <-fullScanTicker.C:
 			self.evaluateDestinations()
 			self.syncRequiredLinkStates()

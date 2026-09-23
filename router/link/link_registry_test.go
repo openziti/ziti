@@ -98,6 +98,10 @@ func (self *testEnv) GetXlinkDialers() []xlink.Dialer {
 	return out
 }
 
+func (self *testEnv) GetXlinkListeners() []xlink.Listener {
+	return nil
+}
+
 func (self *testEnv) GetCloseNotify() <-chan struct{} {
 	return self.closeNotify
 }
@@ -614,7 +618,7 @@ func markRefreshed(t *testing.T, reg *linkRegistryImpl, ctrlId string) {
 // Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands covers the retry. A router announces its full link
 // set once per controller reconnect and nothing re-asks, so an announcement lost to send-queue back-pressure
 // leaves that controller unable to route over the router's links, and unable to prune the ones it should have
-// dropped, until the next reconnect. Once written, the controller is synced.
+// dropped, until the next reconnect. Once written, the controller is synced and owes the listener set.
 func Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands(t *testing.T) {
 	reg, _ := newReconnectTestRegistry(t)
 	ch := newFlakySendChannel(2)
@@ -629,6 +633,7 @@ func Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands(t *testing.T) {
 
 	require.Equal(t, int32(3), ch.sends.Load(), "the announcement should have been retried until it reached the wire")
 	require.True(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+	require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"))
 
 	tickRefresh(t, reg, "ctrl1")
 	require.Equal(t, int32(3), ch.sends.Load(), "a written announcement is not sent again")
@@ -809,6 +814,84 @@ func Test_linkReports_DisconnectedUnsyncedController(t *testing.T) {
 		reg.sendLinkFaults([]stateAndFaults{{state: &linkState{}, faults: []linkFault{{linkId: "l1", iteration: 1}}}})
 		require.Equal(t, int32(0), ch.sends.Load())
 		require.Len(t, reg.events, 1, "the fault is marked notified")
+	})
+}
+
+// Test_sendLinkListeners covers the listener publish: a controller owes the set after a reconnect and after a
+// change, a written set clears what it owes, a failed write leaves it owed, and a change made while a send is
+// being built is not cleared by that send. The loop pass only sends to synced controllers.
+func Test_sendLinkListeners(t *testing.T) {
+	t.Run("a reconnect leaves the set owed until the refresh is written and the set sent", func(t *testing.T) {
+		reg, _ := newReconnectTestRegistry(t)
+		ch := newFlakySendChannel(0)
+		withCtrl(reg, "ctrl1", ch)
+
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+		reg.notifyControllersOfLinkListeners()
+		require.Eventually(t, func() bool { return !reg.listenerNotifyInProgress.Load() }, time.Second, time.Millisecond)
+		require.Equal(t, int32(0), ch.sends.Load(), "listeners wait for the refresh")
+
+		markRefreshed(t, reg, "ctrl1")
+		reg.notifyControllersOfLinkListeners()
+		require.Eventually(t, func() bool { return !reg.ctrlSynchronizer.isListenersSendPending("ctrl1") }, time.Second, time.Millisecond)
+		require.Equal(t, int32(1), ch.sends.Load())
+	})
+
+	t.Run("a change makes the set owed again and a failed write leaves it owed", func(t *testing.T) {
+		reg, _ := newReconnectTestRegistry(t)
+		ch := newFlakySendChannel(1)
+		ctrl := withCtrl(reg, "ctrl1", ch)
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+		markRefreshed(t, reg, "ctrl1")
+		reg.ctrlSynchronizer.markListenersSent("ctrl1", reg.ctrlSynchronizer.currentListenersGen(), reg.ctrlSynchronizer.reconnectGen("ctrl1"))
+		require.False(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"))
+
+		reg.LinkListenersChanged()
+		require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"))
+
+		reg.sendLinkListeners(map[string]env.NetworkController{"ctrl1": ctrl})
+		require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"), "a failed write leaves the set owed")
+
+		reg.sendLinkListeners(map[string]env.NetworkController{"ctrl1": ctrl})
+		require.False(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"))
+	})
+
+	t.Run("a controller that reconnected since it was chosen is not sent to", func(t *testing.T) {
+		reg, _ := newReconnectTestRegistry(t)
+		ch := newFlakySendChannel(0)
+		ctrl := withCtrl(reg, "ctrl1", ch)
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+		markRefreshed(t, reg, "ctrl1")
+
+		reg.ctrlSynchronizer.markReconnected("ctrl1") // reconnect after the target was chosen
+		reg.sendLinkListeners(map[string]env.NetworkController{"ctrl1": ctrl})
+
+		require.Equal(t, int32(0), ch.sends.Load(), "an unsynced controller waits for its refresh")
+		require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"))
+	})
+
+	t.Run("a reconnect during the write leaves the new connection owed", func(t *testing.T) {
+		reg, _ := newReconnectTestRegistry(t)
+		ch := &reconnectOnSendChannel{flakySendChannel: newFlakySendChannel(0), reg: reg}
+		ctrl := withCtrl(reg, "ctrl1", ch)
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+		markRefreshed(t, reg, "ctrl1")
+
+		reg.sendLinkListeners(map[string]env.NetworkController{"ctrl1": ctrl})
+
+		require.Equal(t, int32(1), ch.sends.Load())
+		require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"), "the write reached the previous connection")
+	})
+
+	t.Run("a change during a send is not cleared by that send", func(t *testing.T) {
+		reg, _ := newReconnectTestRegistry(t)
+		gen := reg.ctrlSynchronizer.currentListenersGen()
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+
+		reg.LinkListenersChanged()
+		reg.ctrlSynchronizer.markListenersSent("ctrl1", gen, reg.ctrlSynchronizer.reconnectGen("ctrl1"))
+
+		require.True(t, reg.ctrlSynchronizer.isListenersSendPending("ctrl1"), "the send built before the change cannot satisfy it")
 	})
 }
 

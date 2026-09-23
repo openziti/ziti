@@ -18,15 +18,22 @@ package link
 
 import (
 	"sync"
+
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/router/xlink"
 )
 
 // ctrlSynchronizer tracks what the router still owes each controller. A controller it has (re)connected to owes a
 // full link refresh, and until that refresh is written the controller is not synced: incremental link
 // reports to it are held, since a report that lands ahead of the refresh is either pruned by it or re-adds
-// a link the refresh omitted. Safe for concurrent use.
+// a link the refresh omitted. Each controller also owes the current link listener set whenever that set
+// has changed since it was last written there. Safe for concurrent use.
 type ctrlSynchronizer struct {
-	lock   sync.Mutex
-	states map[string]*ctrlSyncState
+	lock sync.Mutex
+	// listenersGen counts listener set changes. It starts at 1 so a controller that has never been sent
+	// the set (sentGen 0) is pending.
+	listenersGen uint64
+	states       map[string]*ctrlSyncState
 }
 
 type ctrlSyncState struct {
@@ -36,11 +43,12 @@ type ctrlSyncState struct {
 	refreshInFlight bool
 	// reconnectGen counts reconnects. A refresh is built for the generation current when it was begun and
 	// only satisfies the debt if no reconnect happened before it was written.
-	reconnectGen uint64
+	reconnectGen     uint64
+	listenersSentGen uint64
 }
 
 func newCtrlSynchronizer() *ctrlSynchronizer {
-	return &ctrlSynchronizer{states: map[string]*ctrlSyncState{}}
+	return &ctrlSynchronizer{listenersGen: 1, states: map[string]*ctrlSyncState{}}
 }
 
 func (self *ctrlSynchronizer) state(ctrlId string) *ctrlSyncState {
@@ -52,12 +60,13 @@ func (self *ctrlSynchronizer) state(ctrlId string) *ctrlSyncState {
 	return result
 }
 
-// markReconnected records that ctrlId owes a full refresh.
+// markReconnected records that ctrlId owes a full refresh and the current listener set.
 func (self *ctrlSynchronizer) markReconnected(ctrlId string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	state := self.state(ctrlId)
 	state.refreshPending = true
+	state.listenersSentGen = 0
 	state.reconnectGen++
 }
 
@@ -113,8 +122,56 @@ func (self *ctrlSynchronizer) isSynced(ctrlId string) bool {
 	return !found || !state.refreshPending
 }
 
+// markListenersChanged records that the listener set changed, making it pending for every controller. It
+// returns the new generation.
+func (self *ctrlSynchronizer) markListenersChanged() uint64 {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.listenersGen++
+	return self.listenersGen
+}
+
+// currentListenersGen returns the generation a send built now should report with markListenersSent.
+func (self *ctrlSynchronizer) currentListenersGen() uint64 {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.listenersGen
+}
+
+// isListenersSendPending reports whether ctrlId has not been sent the current listener set.
+func (self *ctrlSynchronizer) isListenersSendPending(ctrlId string) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	state, found := self.states[ctrlId]
+	return !found || state.listenersSentGen != self.listenersGen
+}
+
+// reconnectGen returns ctrlId's current reconnect generation, for fencing a send begun now against a later
+// reconnect.
+func (self *ctrlSynchronizer) reconnectGen(ctrlId string) uint64 {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.state(ctrlId).reconnectGen
+}
+
+// markListenersSent records that the listener set of generation gen was written to ctrlId over the connection
+// of reconnect generation reconnectGen. A set that changed again since gen was built stays pending, and so
+// does the whole set when ctrlId has reconnected since reconnectGen was taken: that write reached the previous
+// connection, not the current one.
+func (self *ctrlSynchronizer) markListenersSent(ctrlId string, gen uint64, reconnectGen uint64) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	state := self.state(ctrlId)
+	if state.reconnectGen != reconnectGen {
+		return
+	}
+	if gen > state.listenersSentGen {
+		state.listenersSentGen = gen
+	}
+}
+
 // forget drops tracking for controllers that are no longer in known and are owed nothing. A state that owes a
-// refresh is kept even when its controller is absent from known: known is a snapshot, and
+// refresh or the listener set is kept even when its controller is absent from known: known is a snapshot, and
 // a controller that connected after it was taken has just recorded that debt. Dropping the state would read
 // as synced and nothing would ever announce to it. A settled state is safe to drop, since a controller that
 // reappears records a fresh debt.
@@ -125,9 +182,24 @@ func (self *ctrlSynchronizer) forget(known map[string]struct{}) {
 		if _, ok := known[ctrlId]; ok {
 			continue
 		}
-		settled := !state.refreshPending && !state.refreshInFlight
+		settled := !state.refreshPending && !state.refreshInFlight && state.listenersSentGen == self.listenersGen
 		if settled {
 			delete(self.states, ctrlId)
 		}
 	}
+}
+
+// ListenersToProto converts the router's link listeners to the wire shape used in the hello ListenersHeader
+// and in UpdateLinkListeners, in the order given.
+func ListenersToProto(listeners []xlink.Listener) *ctrl_pb.Listeners {
+	result := &ctrl_pb.Listeners{}
+	for _, listener := range listeners {
+		result.Listeners = append(result.Listeners, &ctrl_pb.Listener{
+			Address:      listener.GetAdvertisement(),
+			Protocol:     listener.GetLinkProtocol(),
+			Groups:       listener.GetGroups(),
+			LocalBinding: listener.GetLocalBinding(),
+		})
+	}
+	return result
 }
