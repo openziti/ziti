@@ -134,10 +134,13 @@ the SDK via `TrySend` (non-blocking) and verifies the SDK still has the bind.
 If invalid, the router queues a remove.
 
 A second post-create inspect is queued in `markEstablishedEvent.handle()` if
-establishment took >30 seconds. This covers the case where the initial inspect
+establishment took >30 seconds, measured from the bind (`establishStart`) rather
+than from the last create re-send. This covers the case where the initial inspect
 confirmed validity but the SDK subsequently timed out waiting for BindSuccess
 (the SDK has a 1-minute establishment timeout). The re-inspect catches stale
-validity from the first check.
+validity from the first check. The SDK's deadline does not move when the router
+re-sends the create, so timing this from the last attempt would let a stalled
+establishment look fresh and skip the re-inspect.
 
 ### Controller-side (TerminatorCreated validation)
 

@@ -166,3 +166,94 @@ func TestSettleGateIsPerTerminator(t *testing.T) {
 	req.NotContains(registry.establishSet, settled.id, "the settled terminator must be dequeued")
 	req.Contains(registry.establishSet, holding.id, "the holding terminator must remain queued")
 }
+
+// stubRateLimitControl is a rate.RateLimitControl that records how each outcome was signaled, so
+// tests can assert the router classified an establishment as a success or a backoff.
+type stubRateLimitControl struct {
+	success int
+	backoff int
+	failed  int
+}
+
+func (self *stubRateLimitControl) Success() { self.success++ }
+func (self *stubRateLimitControl) Backoff() { self.backoff++ }
+func (self *stubRateLimitControl) Failed()  { self.failed++ }
+
+func Test_tunnelTerminator_rateLimitSignaling(t *testing.T) {
+	t.Run("establishment under threshold reports success", func(t *testing.T) {
+		req := require.New(t)
+
+		ctrl := &stubRateLimitControl{}
+		term := &tunnelTerminator{}
+		term.replaceRateLimitCallback(ctrl)
+		req.Equal(0, ctrl.backoff, "storing a control with no prior attempt must not signal backoff")
+
+		term.resolveRateLimitCallback(xgress_common.EstablishmentTimeout - time.Second)
+
+		req.Equal(1, ctrl.success)
+		req.Equal(0, ctrl.backoff)
+		req.Equal(0, ctrl.failed)
+		req.Nil(term.GetAndClearRateLimitCallback(), "control must be cleared once resolved")
+	})
+
+	t.Run("establishment at or over threshold reports backoff", func(t *testing.T) {
+		req := require.New(t)
+
+		ctrl := &stubRateLimitControl{}
+		term := &tunnelTerminator{}
+		term.replaceRateLimitCallback(ctrl)
+
+		term.resolveRateLimitCallback(xgress_common.EstablishmentTimeout)
+
+		req.Equal(0, ctrl.success)
+		req.Equal(1, ctrl.backoff)
+		req.Equal(0, ctrl.failed)
+		req.Nil(term.GetAndClearRateLimitCallback(), "control must be cleared once resolved")
+	})
+
+	t.Run("resolving with no outstanding control is a no-op", func(t *testing.T) {
+		term := &tunnelTerminator{}
+		require.NotPanics(t, func() {
+			term.resolveRateLimitCallback(time.Hour)
+		})
+	})
+
+	t.Run("re-send resolves the prior control with backoff instead of orphaning it", func(t *testing.T) {
+		req := require.New(t)
+
+		prior := &stubRateLimitControl{}
+		term := &tunnelTerminator{}
+		term.replaceRateLimitCallback(prior)
+		req.Equal(0, prior.backoff)
+
+		next := &stubRateLimitControl{}
+		term.replaceRateLimitCallback(next)
+
+		req.Equal(1, prior.backoff, "the superseded control must be resolved with backoff, not orphaned")
+		req.Equal(0, prior.success)
+		req.Equal(0, next.backoff, "the new control is still outstanding and must not be resolved yet")
+
+		got := term.GetAndClearRateLimitCallback()
+		req.NotNil(got)
+		req.Same(next, got.(*stubRateLimitControl), "the new control must be the one now stored")
+	})
+}
+
+// TestEstablishQueueResolvesSupersededRateLimitControl verifies the re-send path resolves the
+// stalled attempt's control rather than dropping it, which would hold its slot in the limiter
+// window until the limiter's own expiry reclaimed it.
+func TestEstablishQueueResolvesSupersededRateLimitControl(t *testing.T) {
+	req := require.New(t)
+
+	registry, ctrlCh := newSettleTestRegistry()
+	terminator := newSettleTestTerminator("t1", time.Now().Add(-establishSettleTime-time.Second))
+	prior := &stubRateLimitControl{}
+	terminator.rateLimitCallback = prior
+	registry.establishSet[terminator.id] = terminator
+
+	registry.evaluateEstablishQueue()
+
+	req.Equal(int32(1), ctrlCh.sends.Load(), "the terminator must be re-sent")
+	req.Equal(1, prior.backoff, "the superseded control must be resolved with backoff, not orphaned")
+	req.Equal(0, prior.success)
+}
