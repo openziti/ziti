@@ -18,6 +18,11 @@ package link
 
 import (
 	"errors"
+	"math"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
@@ -30,14 +35,13 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 type testEnv struct {
 	metricsRegistry metrics.UsageRegistry
 	closeNotify     chan struct{}
 	ctrls           env.NetworkControllers
+	rateLimiterPool goroutines.Pool
 }
 
 func (self *testEnv) GetRouterId() *identity.TokenId {
@@ -63,7 +67,7 @@ func (self *testEnv) GetLinkDialerPool() goroutines.Pool {
 }
 
 func (self *testEnv) GetRateLimiterPool() goroutines.Pool {
-	panic("implement me")
+	return self.rateLimiterPool
 }
 
 func (self *testEnv) GetMetricsRegistry() metrics.UsageRegistry {
@@ -184,10 +188,23 @@ func newTestEnv() *testEnv {
 	ctrls := env.NewNetworkControllers(time.Second, func(address transport.Address, bindHandler channel.BindHandler) error {
 		return errors.New("implement me")
 	}, env.NewDefaultHeartbeatOptions())
+	pool, err := goroutines.NewPool(goroutines.PoolConfig{
+		QueueSize:      32,
+		MinWorkers:     0,
+		MaxWorkers:     2,
+		IdleTime:       10 * time.Second,
+		CloseNotify:    closeNotify,
+		PanicHandler:   func(err interface{}) {},
+		WorkerFunction: func(_ uint32, f func()) { f() },
+	})
+	if err != nil {
+		panic(err)
+	}
 	return &testEnv{
 		metricsRegistry: metricsRegistry,
 		closeNotify:     closeNotify,
 		ctrls:           ctrls,
+		rateLimiterPool: pool,
 	}
 
 }
@@ -338,3 +355,348 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsDoesntHave(linkId2, getRegistryMetrics())
 	checkLinkMetricsDoesntHave(linkId5, getRegistryMetrics())
 }
+
+// flakySendChannel is a channel.Channel double whose sends fail a set number of times before succeeding. It
+// embeds the interface, so any method these tests do not exercise panics rather than returning a zero value.
+type flakySendChannel struct {
+	channel.Channel
+	failures    atomic.Int32
+	sends       atomic.Int32
+	closed      atomic.Bool
+	closeNotify chan struct{}
+}
+
+func newFlakySendChannel(failures int) *flakySendChannel {
+	result := &flakySendChannel{closeNotify: make(chan struct{})}
+	result.failures.Store(int32(failures))
+	return result
+}
+
+func (self *flakySendChannel) Id() string     { return "ctrl1" }
+func (self *flakySendChannel) Label() string  { return "ctrl1" }
+func (self *flakySendChannel) IsClosed() bool { return self.closed.Load() }
+
+func (self *flakySendChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+func (self *flakySendChannel) Underlay() channel.Underlay   { return headerlessUnderlay{} }
+
+func (self *flakySendChannel) Send(s channel.Sendable) error {
+	if self.sends.Add(1) <= self.failures.Load() {
+		return errors.New("timeout waiting for space in send queue")
+	}
+	// What the tx loop does once the message is actually written.
+	s.SendListener().NotifyAfterWrite()
+	return nil
+}
+
+// newReconnectTestRegistry builds a registry with no links and no event loop. An empty link set is a case
+// worth covering rather than avoiding: the reconnect announcement is the only message that prunes, so a
+// router with nothing to report still has to send one to clear stale controller state. Tests drive the
+// loop's passes by hand.
+func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
+	t.Helper()
+	routerEnv := newTestEnv()
+	t.Cleanup(func() { close(routerEnv.closeNotify) })
+	return &linkRegistryImpl{
+		env:              routerEnv,
+		ctrls:            routerEnv.ctrls,
+		destinations:     map[string]*linkDest{},
+		linkMap:          map[string]xlink.Xlink{},
+		events:           make(chan event, 16),
+		triggerNotifyC:   make(chan struct{}, 1),
+		ctrlSynchronizer: newCtrlSynchronizer(),
+		// Production's pacing is not this test's concern; the timeout has to stay reachable, though, since it
+		// is what distinguishes a discarded message from a delivered one.
+		fullRefreshSendTimeout: 20 * time.Millisecond,
+	}, routerEnv
+}
+
+// testCtrls is an env.NetworkControllers double exposing a fixed controller set.
+type testCtrls struct {
+	env.NetworkControllers
+	all map[string]env.NetworkController
+}
+
+func (self *testCtrls) GetAll() map[string]env.NetworkController { return self.all }
+
+// testCtrl is an env.NetworkController double over a test channel.
+type testCtrl struct {
+	env.NetworkController
+	ch           channel.Channel
+	connected    atomic.Bool
+	sinceContact time.Duration
+}
+
+func (self *testCtrl) IsConnected() bool { return self.connected.Load() }
+
+// Channel wraps the test channel so its underlay reports this controller's connectivity, which is how the
+// incremental senders decide whether a controller is connected.
+func (self *testCtrl) Channel() channel.Channel {
+	return &testCtrlChannel{Channel: self.ch, ctrl: self}
+}
+func (self *testCtrl) TimeSinceLastContact() time.Duration { return self.sinceContact }
+
+// withCtrl points the registry at a single connected controller reached over ch.
+func withCtrl(reg *linkRegistryImpl, ctrlId string, ch channel.Channel) *testCtrl {
+	ctrl := &testCtrl{ch: ch}
+	ctrl.connected.Store(true)
+	reg.ctrls = &testCtrls{all: map[string]env.NetworkController{ctrlId: ctrl}}
+	return ctrl
+}
+
+// tickRefresh runs one loop pass of the refresh sender and waits for the attempt it queued, if any, to finish.
+func tickRefresh(t *testing.T, reg *linkRegistryImpl, ctrlId string) {
+	t.Helper()
+	reg.notifyControllersOfRefresh()
+	require.Eventually(t, func() bool { return !reg.ctrlSynchronizer.isRefreshInFlight(ctrlId) }, time.Second, time.Millisecond)
+}
+
+// markRefreshed records a written refresh for ctrlId without sending one.
+func markRefreshed(t *testing.T, reg *linkRegistryImpl, ctrlId string) {
+	t.Helper()
+	gen, ok := reg.ctrlSynchronizer.beginRefresh(ctrlId)
+	require.True(t, ok)
+	require.True(t, reg.ctrlSynchronizer.markRefreshWritten(ctrlId, gen))
+}
+
+// Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands covers the retry. A router announces its full link
+// set once per controller reconnect and nothing re-asks, so an announcement lost to send-queue back-pressure
+// leaves that controller unable to route over the router's links, and unable to prune the ones it should have
+// dropped, until the next reconnect. Once written, the controller is synced.
+func Test_NotifyOfReconnect_RetriesUntilTheAnnouncementLands(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(2)
+	withCtrl(reg, "ctrl1", ch)
+
+	reg.NotifyOfReconnect(ch)
+	require.False(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+
+	for i := 0; i < 3; i++ {
+		tickRefresh(t, reg, "ctrl1")
+	}
+
+	require.Equal(t, int32(3), ch.sends.Load(), "the announcement should have been retried until it reached the wire")
+	require.True(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+
+	tickRefresh(t, reg, "ctrl1")
+	require.Equal(t, int32(3), ch.sends.Load(), "a written announcement is not sent again")
+}
+
+// Test_NotifyOfReconnect_KeepsRetryingWhileTheDebtStands: the retry is not bounded by a count. A channel that
+// never drains is retried every pass, with the controller held unsynced, for as long as it is connected.
+func Test_NotifyOfReconnect_KeepsRetryingWhileTheDebtStands(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(math.MaxInt32)
+	ctrl := withCtrl(reg, "ctrl1", ch)
+
+	reg.NotifyOfReconnect(ch)
+	for i := 0; i < 6; i++ {
+		tickRefresh(t, reg, "ctrl1")
+	}
+	require.Equal(t, int32(6), ch.sends.Load(), "the announcement should be retried on every pass")
+	require.False(t, reg.ctrlSynchronizer.isSynced("ctrl1"), "the controller stays unsynced until the announcement lands")
+
+	ctrl.connected.Store(false)
+	tickRefresh(t, reg, "ctrl1")
+	require.Equal(t, int32(6), ch.sends.Load(), "a disconnected controller is left owed rather than retried")
+	require.False(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+}
+
+// acceptThenDiscardChannel models what a real channel does to a message queued behind a backlog: the send is
+// accepted, and the message is dropped when its deadline expires before the queue drains. Nothing calls back,
+// because a plain send's listener ignores the error.
+type acceptThenDiscardChannel struct {
+	channel.Channel
+	sends       atomic.Int32
+	closeNotify chan struct{}
+}
+
+func (self *acceptThenDiscardChannel) Id() string                   { return "ctrl1" }
+func (self *acceptThenDiscardChannel) Label() string                { return "ctrl1" }
+func (self *acceptThenDiscardChannel) IsClosed() bool               { return false }
+func (self *acceptThenDiscardChannel) CloseNotify() <-chan struct{} { return self.closeNotify }
+func (self *acceptThenDiscardChannel) Underlay() channel.Underlay   { return headerlessUnderlay{} }
+func (self *acceptThenDiscardChannel) Send(channel.Sendable) error {
+	self.sends.Add(1)
+	return nil // queued, and never written
+}
+
+// Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure is the guard on how the announcement is sent.
+// A plain Send returns once the message is queued, and the deadline stays live afterwards, so the tx loop can
+// drop it with nobody told: a plain send's listener ignores the error. Reporting that as success marks the
+// links announced and leaves the controller permanently without them.
+func Test_NotifyOfReconnect_TreatsADiscardedAnnouncementAsFailure(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := &acceptThenDiscardChannel{closeNotify: make(chan struct{})}
+	withCtrl(reg, "ctrl1", ch)
+
+	reg.NotifyOfReconnect(ch)
+	for i := 0; i < 3; i++ {
+		tickRefresh(t, reg, "ctrl1")
+	}
+
+	require.Equal(t, int32(3), ch.sends.Load(),
+		"an announcement accepted into the queue but never written must count as a failure and be retried")
+	require.False(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+}
+
+// Test_NotifyOfReconnect_OneAnnouncementInFlightPerController: a pass does not queue a second announcement
+// for a controller whose previous one has not finished.
+func Test_NotifyOfReconnect_OneAnnouncementInFlightPerController(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(0)
+	withCtrl(reg, "ctrl1", ch)
+
+	reg.NotifyOfReconnect(ch)
+	_, ok := reg.ctrlSynchronizer.beginRefresh("ctrl1") // an announcement is in flight
+	require.True(t, ok)
+
+	reg.notifyControllersOfRefresh()
+	require.Equal(t, int32(0), ch.sends.Load(), "no second announcement while one is in flight")
+
+	reg.ctrlSynchronizer.markRefreshFailed("ctrl1")
+	tickRefresh(t, reg, "ctrl1")
+	require.Equal(t, int32(1), ch.sends.Load())
+	require.True(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+}
+
+// Test_NotifyOfReconnect_ReconnectDuringAnnouncementLeavesItOwed: an announcement built before a further
+// reconnect describes a channel state since replaced, so landing it does not sync the controller; the next
+// pass announces again.
+func Test_NotifyOfReconnect_ReconnectDuringAnnouncementLeavesItOwed(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(0)
+	withCtrl(reg, "ctrl1", ch)
+
+	reg.NotifyOfReconnect(ch)
+	gen, ok := reg.ctrlSynchronizer.beginRefresh("ctrl1")
+	require.True(t, ok)
+	reg.NotifyOfReconnect(ch) // reconnect while the announcement for gen is in flight
+
+	reg.sendFullRefresh("ctrl1", ch, gen)
+	require.Equal(t, int32(1), ch.sends.Load())
+	require.False(t, reg.ctrlSynchronizer.isSynced("ctrl1"), "the stale announcement does not satisfy the later reconnect")
+
+	tickRefresh(t, reg, "ctrl1")
+	require.Equal(t, int32(2), ch.sends.Load(), "one more announcement follows the later reconnect")
+	require.True(t, reg.ctrlSynchronizer.isSynced("ctrl1"))
+}
+
+// Test_sendNewLinks_HeldUntilTheReconnectAnnouncementIsWritten covers the gate. A new-link report that reaches
+// a controller ahead of the full refresh is pruned by it, and a fault that arrives ahead of it re-adds a link
+// the refresh omitted, so incremental reports to an unsynced controller stay pending rather than being sent
+// or marked done.
+func Test_sendNewLinks_HeldUntilTheReconnectAnnouncementIsWritten(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(0)
+	withCtrl(reg, "ctrl1", ch)
+	link := &reportTestLink{id: "l1", destId: "peer"}
+	report := []stateAndLink{{state: &linkState{linkId: link.Id()}, link: link}}
+
+	reg.ctrlSynchronizer.markReconnected("ctrl1")
+	reg.sendNewLinks(report)
+	require.Equal(t, int32(0), ch.sends.Load(), "reports to an unsynced controller are held")
+	require.Empty(t, reg.events, "a held report is not marked as notified")
+
+	markRefreshed(t, reg, "ctrl1")
+	reg.sendNewLinks(report)
+	require.Equal(t, int32(1), ch.sends.Load(), "reports flow once the announcement is written")
+	require.Len(t, reg.events, 1, "a delivered report is marked as notified")
+}
+
+// Test_sendLinkFaults_HeldUntilTheReconnectAnnouncementIsWritten is the fault half of the gate.
+func Test_sendLinkFaults_HeldUntilTheReconnectAnnouncementIsWritten(t *testing.T) {
+	reg, _ := newReconnectTestRegistry(t)
+	ch := newFlakySendChannel(0)
+	withCtrl(reg, "ctrl1", ch)
+	faults := []stateAndFaults{{state: &linkState{}, faults: []linkFault{{linkId: "l1", iteration: 1}}}}
+
+	reg.ctrlSynchronizer.markReconnected("ctrl1")
+	reg.sendLinkFaults(faults)
+	require.Equal(t, int32(0), ch.sends.Load())
+	require.Empty(t, reg.events)
+
+	markRefreshed(t, reg, "ctrl1")
+	reg.sendLinkFaults(faults)
+	require.Equal(t, int32(1), ch.sends.Load())
+	require.Len(t, reg.events, 1)
+}
+
+// Test_linkReports_DisconnectedUnsyncedController covers a controller that owes a refresh but is not
+// connected. The sync gate applies only to connected controllers, so it keeps the handling it always had:
+// new-link reports skip it, since the refresh on reconnect covers them, and faults are held through a brief
+// outage and retired for it after a long one. Holding either for the whole outage would re-send them to the
+// healthy controllers on every tick.
+func Test_linkReports_DisconnectedUnsyncedController(t *testing.T) {
+	newReg := func(sinceContact time.Duration) (*linkRegistryImpl, *flakySendChannel) {
+		reg, _ := newReconnectTestRegistry(t)
+		ch := newFlakySendChannel(0)
+		ctrl := withCtrl(reg, "ctrl1", ch)
+		ctrl.connected.Store(false)
+		ctrl.sinceContact = sinceContact
+		reg.ctrlSynchronizer.markReconnected("ctrl1")
+		return reg, ch
+	}
+
+	t.Run("new link reports are retired", func(t *testing.T) {
+		reg, ch := newReg(time.Hour)
+		link := &reportTestLink{id: "l1", destId: "peer"}
+		reg.sendNewLinks([]stateAndLink{{state: &linkState{linkId: link.Id()}, link: link}})
+		require.Equal(t, int32(0), ch.sends.Load())
+		require.Len(t, reg.events, 1, "the report is marked notified")
+	})
+
+	t.Run("faults are held through a brief outage", func(t *testing.T) {
+		reg, ch := newReg(time.Second)
+		reg.sendLinkFaults([]stateAndFaults{{state: &linkState{}, faults: []linkFault{{linkId: "l1", iteration: 1}}}})
+		require.Equal(t, int32(0), ch.sends.Load())
+		require.Empty(t, reg.events)
+	})
+
+	t.Run("faults are retired after a long outage", func(t *testing.T) {
+		reg, ch := newReg(time.Hour)
+		reg.sendLinkFaults([]stateAndFaults{{state: &linkState{}, faults: []linkFault{{linkId: "l1", iteration: 1}}}})
+		require.Equal(t, int32(0), ch.sends.Load())
+		require.Len(t, reg.events, 1, "the fault is marked notified")
+	})
+}
+
+// reportTestLink is an xlink.Xlink double carrying only what a new-link report reads.
+type reportTestLink struct {
+	xlink.Xlink
+	id     string
+	destId string
+}
+
+func (self *reportTestLink) Id() string                               { return self.id }
+func (self *reportTestLink) DestinationId() string                    { return self.destId }
+func (self *reportTestLink) LinkProtocol() string                     { return "tls" }
+func (self *reportTestLink) DialAddress() string                      { return "tls:peer:6000" }
+func (self *reportTestLink) Iteration() uint32                        { return 1 }
+func (self *reportTestLink) IsDialed() bool                           { return true }
+func (self *reportTestLink) GetLinkConnState() *ctrl_pb.LinkConnState { return nil }
+
+// headerlessUnderlay is a channel.Underlay double with no hello headers, as from a controller advertising no
+// capabilities.
+type headerlessUnderlay struct {
+	channel.Underlay
+}
+
+func (headerlessUnderlay) Headers() map[int32][]byte { return nil }
+
+// testCtrlChannel is a channel whose underlay reports its test controller's connectivity.
+type testCtrlChannel struct {
+	channel.Channel
+	ctrl *testCtrl
+}
+
+func (self *testCtrlChannel) Underlay() channel.Underlay {
+	return connectivityUnderlay{connected: self.ctrl.connected.Load()}
+}
+
+// connectivityUnderlay is a headerless channel.Underlay double reporting a fixed connectivity.
+type connectivityUnderlay struct {
+	headerlessUnderlay
+	connected bool
+}
+
+func (self connectivityUnderlay) IsConnected() bool { return self.connected }
