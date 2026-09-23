@@ -186,6 +186,27 @@ func TestClientCertificate(t *testing.T) {
 	})
 }
 
+// The controller verifies the certificate binding when a token is refreshed as well as on ordinary
+// requests, so the client that performs the refresh has to carry the certificate too. Building it from
+// only the root CAs drops it and the refresh fails once the access token expires.
+func TestRefreshClientCarriesTheClientCertificate(t *testing.T) {
+	dir := t.TempDir()
+	certPath, keyPath := writeKeyPair(t, dir)
+
+	id := &RestClientEdgeIdentity{ClientCert: certPath, ClientKey: keyPath}
+	tlsClientConfig, err := id.NewTlsClientConfig()
+	require.NoError(t, err)
+
+	components := newComponentsWithTls(tlsClientConfig)
+	require.NotNil(t, components.HttpClient)
+	require.NotNil(t, components.TlsAwareTransport)
+
+	transportTls := components.TlsAwareTransport.GetTlsClientConfig()
+	require.Len(t, transportTls.Certificates, 1, "the refresh transport has to present the client certificate")
+	require.Equal(t, tlsClientConfig.RootCAs, transportTls.RootCAs)
+	require.Equal(t, tlsClientConfig.RootCAs, components.CaPool)
+}
+
 func TestNewTlsClientConfigPresentsClientCertificate(t *testing.T) {
 	dir := t.TempDir()
 	certPath, keyPath := writeKeyPair(t, dir)
