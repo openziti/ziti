@@ -51,6 +51,7 @@ func (s *cliTestState) loginTests(t *testing.T) {
 	t.Run("client cert auth then cached request", s.testClientCertLoginThenCachedRequest)
 	t.Run("identity file given as a relative path", s.testIdentityFileRelativePath)
 	t.Run("identity file auth then token refresh", s.testIdentityFileLoginThenTokenRefresh)
+	t.Run("cached management client", s.cachedMgmtClientTests)
 	t.Run("external JWT authentication", s.testExternalJWTAuthentication)
 	t.Run("network identity zitified connection", s.testNetworkIdentityZitifiedConnection)
 
