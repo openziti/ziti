@@ -94,7 +94,7 @@ var m = &model.Model{
 	StructureFactories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
 			err := m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
-				host.InstanceType = "c5.xlarge"
+				host.InstanceType = "c5.2xlarge"
 				return nil
 			})
 
