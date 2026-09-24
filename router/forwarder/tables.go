@@ -19,6 +19,7 @@ package forwarder
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -103,7 +104,14 @@ func (ft *forwardTable) debug() string {
 // destinationTable implements a directory of destinations, keyed by Address.
 type destinationTable struct {
 	destinations cmap.ConcurrentMap[string, env.Destination]
-	xgress       cmap.ConcurrentMap[string, []xgress.Address]
+
+	// circuitLock serializes the read-modify-write sequences on xgress below. cmap makes each
+	// individual operation atomic but not a get followed by a set, and both endpoints of a
+	// single-router circuit link and unlink against the same circuit id concurrently. Losing an
+	// address there strands its destination: it is never returned by getAddressesForCircuit, so
+	// it is never unrouted, and once the circuit's forward table is gone nothing can reach it.
+	circuitLock sync.Mutex
+	xgress      cmap.ConcurrentMap[string, []xgress.Address]
 }
 
 func newDestinationTable() *destinationTable {
@@ -135,14 +143,11 @@ func (dt *destinationTable) removeDestinationIfMatches(addr xgress.Address, dest
 }
 
 func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
-	var addresses []xgress.Address
-	if i, found := dt.xgress.Get(circuitId); found {
-		addresses = i
-	} else {
-		addresses = make([]xgress.Address, 0)
-	}
-	addresses = append(addresses, address)
-	dt.xgress.Set(circuitId, addresses)
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, _ := dt.xgress.Get(circuitId)
+	dt.xgress.Set(circuitId, append(addresses, address))
 }
 
 func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
@@ -152,8 +157,49 @@ func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.A
 	return nil, false
 }
 
-func (dt *destinationTable) unlinkCircuit(circuitId string) {
+// takeAddressesForCircuit removes the circuit's address list and returns it in one step, for a
+// caller retiring every endpoint of a circuit at once.
+//
+// Reading the list and clearing it separately loses any address linked in between: the caller
+// retires the addresses it snapshotted and then clears an entry that has since grown, stranding
+// the new destination with nothing able to reach it. Taking the list instead means a later link
+// starts a fresh entry, which stays discoverable for whoever ends the circuit next.
+func (dt *destinationTable) takeAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, found := dt.xgress.Get(circuitId)
+	if !found {
+		return nil, false
+	}
 	dt.xgress.Remove(circuitId)
+	return addresses, true
+}
+
+// unlinkDestinationFromCircuit removes a single address from the circuit's address list, leaving
+// any other addresses linked to the circuit intact. It returns true if the circuit still has
+// addresses linked after removal (another endpoint remains on this router), false if that was the
+// last one (in which case the circuit's entry is removed entirely).
+func (dt *destinationTable) unlinkDestinationFromCircuit(circuitId string, address xgress.Address) bool {
+	dt.circuitLock.Lock()
+	defer dt.circuitLock.Unlock()
+
+	addresses, found := dt.xgress.Get(circuitId)
+	if !found {
+		return false
+	}
+	var remaining []xgress.Address
+	for _, addr := range addresses {
+		if addr != address {
+			remaining = append(remaining, addr)
+		}
+	}
+	if len(remaining) == 0 {
+		dt.xgress.Remove(circuitId)
+		return false
+	}
+	dt.xgress.Set(circuitId, remaining)
+	return true
 }
 
 func (dt *destinationTable) debug() string {
