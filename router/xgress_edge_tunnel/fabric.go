@@ -329,10 +329,33 @@ func (self *tunnelTerminator) updateState(oldState, newState xgress_common.Termi
 	return success
 }
 
-func (self *tunnelTerminator) SetRateLimitCallback(control rate.RateLimitControl) {
+// replaceRateLimitCallback stores control as the rate-limit control for a new establishment attempt.
+// If a control from a prior attempt is still outstanding, that attempt exceeded EstablishmentTimeout
+// without completing, so its control is resolved with Backoff (signaling congestion and reclaiming its
+// slot) rather than being orphaned and left for the limiter's internal timeout to clean up.
+func (self *tunnelTerminator) replaceRateLimitCallback(control rate.RateLimitControl) {
 	self.lock.Lock()
-	defer self.lock.Unlock()
+	previous := self.rateLimitCallback
 	self.rateLimitCallback = control
+	self.lock.Unlock()
+
+	if previous != nil {
+		previous.Backoff()
+	}
+}
+
+// resolveRateLimitCallback resolves the terminator's outstanding rate-limit control based on how long
+// establishment took. An establishment that completed within EstablishmentTimeout reports Success,
+// growing the limiter window; one that took at least EstablishmentTimeout reports Backoff, signaling
+// congestion so the window shrinks. It is a no-op if no control is outstanding.
+func (self *tunnelTerminator) resolveRateLimitCallback(latency time.Duration) {
+	if control := self.GetAndClearRateLimitCallback(); control != nil {
+		if latency >= xgress_common.EstablishmentTimeout {
+			control.Backoff()
+		} else {
+			control.Success()
+		}
+	}
 }
 
 func (self *tunnelTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {

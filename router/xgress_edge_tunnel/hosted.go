@@ -175,7 +175,7 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 			return
 		}
 
-		if !terminator.operationActive.CompareAndSwap(false, true) && time.Since(terminator.lastAttempt) < 30*time.Second {
+		if !terminator.operationActive.CompareAndSwap(false, true) && time.Since(terminator.lastAttempt) < xgress_common.EstablishmentTimeout {
 			rateLimitCtrl.Failed()
 			continue
 		}
@@ -183,7 +183,10 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 		log.Info("queuing terminator to send create")
 
 		dequeue()
-		terminator.SetRateLimitCallback(rateLimitCtrl)
+		// A re-attempt here means the previous attempt exceeded EstablishmentTimeout without
+		// completing. Resolve its outstanding rate-limit control with Backoff so the stall is
+		// signaled as congestion and its slot is reclaimed, rather than orphaning it.
+		terminator.replaceRateLimitCallback(rateLimitCtrl)
 		terminator.lastAttempt = time.Now()
 
 		if err = self.establishTerminator(terminator); err != nil {
@@ -214,7 +217,7 @@ func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 		}
 
 		if terminator.operationActive.Load() {
-			if time.Since(terminator.lastAttempt) > 30*time.Second {
+			if time.Since(terminator.lastAttempt) > xgress_common.EstablishmentTimeout {
 				terminator.operationActive.Store(false)
 			} else {
 				continue
@@ -265,7 +268,10 @@ func (self *HostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*t
 		}
 
 		if ctrlId, err := self.RemoveTerminators(terminatorIds); err != nil {
-			if command.WasRateLimited(err) {
+			// Backoff on anything meaning the controller couldn't keep up: an explicit rate-limit
+			// rejection, or a timeout, whether that was waiting for send-queue room, for the wire,
+			// or for the reply. Other errors say nothing about load, so they report Failed.
+			if command.WasRateLimited(err) || channel.IsTimeout(err) {
 				rateLimitCtrl.Backoff()
 			} else {
 				rateLimitCtrl.Failed()
@@ -664,9 +670,11 @@ func (self *markEstablishedEvent) handle(registry *HostedServiceRegistry) {
 		WithField("terminatorId", self.terminator.id).
 		WithField("lifetime", time.Since(self.terminator.createTime))
 
-	if rateLimitCallback := self.terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
-		rateLimitCallback.Success()
-	}
+	// Congestion signaling is about the create we last sent, so it times this attempt
+	// (lastAttempt), not the terminator's lifetime (createTime): a reconnect re-establishes a
+	// long-lived terminator without resetting createTime, so createTime would flag every
+	// reconnect as slow and back off during recovery.
+	self.terminator.resolveRateLimitCallback(time.Since(self.terminator.lastAttempt))
 
 	if !self.terminator.updateState(xgress_common.TerminatorStateEstablishing, xgress_common.TerminatorStateEstablished, self.reason) {
 		log.Info("received additional terminator created notification")
