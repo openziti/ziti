@@ -31,6 +31,8 @@ import (
 
 var zitiCliContextCollection *ziti.CtxCollection
 
+var networkIdWarning sync.Once
+
 func init() {
 	zitiCliContextCollection = ziti.NewSdkCollection()
 }
@@ -102,40 +104,45 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 	return self.ReadOnly
 }
 
-// clientCertificate returns the certificate this login authenticated with, or nil when the login used a
-// credential that isn't certificate based. Certificate authentication binds the session to the
-// certificate, and the controller verifies proof of possession on every request, so each new client has
-// to present it again.
-func (self *RestClientEdgeIdentity) clientCertificate() (*tls.Certificate, error) {
-	if self.ClientIdFile != "" {
-		cfg, err := ziti.NewConfigFromFile(self.ClientIdFile)
+// ClientCertificate loads the certificate a certificate based login authenticates with. idFile is an
+// enrolled identity file; certFile and keyFile are a PEM certificate and its key. Returns nil when none
+// of them are set.
+func ClientCertificate(idFile, certFile, keyFile string) (*tls.Certificate, error) {
+	if idFile != "" {
+		cfg, err := ziti.NewConfigFromFile(idFile)
 		if err != nil {
-			return nil, errors.Errorf("client identity file [%s] is no longer readable: %v. Run 'ziti edge login' to log in again", self.ClientIdFile, err)
+			return nil, errors.Errorf("client identity file [%s] is no longer readable: %v. Run 'ziti edge login' to log in again", idFile, err)
 		}
 
 		id, err := identity.LoadIdentity(cfg.ID)
 		if err != nil {
-			return nil, errors.Errorf("could not load the identity in [%s]: %v. Run 'ziti edge login' to log in again", self.ClientIdFile, err)
+			return nil, errors.Errorf("could not load the identity in [%s]: %v. Run 'ziti edge login' to log in again", idFile, err)
 		}
 
 		cert := id.Cert()
 		if cert == nil || len(cert.Certificate) == 0 {
-			return nil, errors.Errorf("the identity in [%s] has no certificate to authenticate with. Run 'ziti edge login' to log in again", self.ClientIdFile)
+			return nil, errors.Errorf("the identity in [%s] has no certificate to authenticate with. Run 'ziti edge login' to log in again", idFile)
 		}
 
 		return cert, nil
 	}
 
-	if self.ClientCert != "" && self.ClientKey != "" {
-		cert, err := tls.LoadX509KeyPair(self.ClientCert, self.ClientKey)
+	if certFile != "" && keyFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			return nil, errors.Errorf("client certificate [%s] and key [%s] are no longer usable: %v. Run 'ziti edge login' to log in again", self.ClientCert, self.ClientKey, err)
+			return nil, errors.Errorf("client certificate [%s] and key [%s] are no longer usable: %v. Run 'ziti edge login' to log in again", certFile, keyFile, err)
 		}
 
 		return &cert, nil
 	}
 
 	return nil, nil
+}
+
+// clientCertificate returns the certificate this login authenticated with, or nil for a login that was
+// not certificate based.
+func (self *RestClientEdgeIdentity) clientCertificate() (*tls.Certificate, error) {
+	return ClientCertificate(self.ClientIdFile, self.ClientCert, self.ClientKey)
 }
 
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
@@ -187,8 +194,11 @@ func (self *RestClientEdgeIdentity) getHttpTransport(log *log.Logger, verbose bo
 		} else {
 			if self.NetworkIdFile != "" {
 				if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile, terminator); ztFromFileErr != nil {
-					// the default transport still works, so warn and carry on rather than failing
-					_, _ = fmt.Fprintf(os.Stderr, "WARNING: network identity [%s] is no longer usable, falling back to a direct connection: %v\n", self.NetworkIdFile, ztFromFileErr)
+					// the default transport still works, so warn and carry on rather than failing. A single
+					// command builds more than one client, so only the first of them warns.
+					networkIdWarning.Do(func() {
+						_, _ = fmt.Fprintf(os.Stderr, "WARNING: network identity [%s] is no longer usable, falling back to a direct connection: %v\n", self.NetworkIdFile, ztFromFileErr)
+					})
 				} else {
 					if verbose {
 						log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
@@ -288,8 +298,7 @@ func OidcRefreshTokenValid(sess edge_apis.ApiSession) bool {
 }
 
 // newComponentsWithTls builds the http components an edge-apis client needs, carrying the whole TLS
-// config rather than only the root CAs. The controller verifies the certificate binding on a token
-// refresh too, so a cert based session has to present its certificate there as well.
+// config rather than only the root CAs.
 func newComponentsWithTls(tlsClientConfig *tls.Config) *edge_apis.Components {
 	components := edge_apis.NewComponentsWithConfig(&edge_apis.ComponentsConfig{
 		Proxy: http.ProxyFromEnvironment,

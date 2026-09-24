@@ -17,10 +17,8 @@
 package edge
 
 import (
-	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -386,8 +384,7 @@ func (o *LoginOptions) Run() error {
 		}
 	}
 	if !o.IgnoreConfig {
-		// a certificate based login binds the session to the certificate, so record how to find it again.
-		// Later commands build a new client and have to present it or the controller rejects the session.
+		// record how to find the credential again, so a later command run from anywhere can present it
 		clientIdFile := absPathOrSelf(o.File)
 		clientCert := absPathOrSelf(o.ClientCert)
 		clientKey := absPathOrSelf(o.ClientKey)
@@ -402,7 +399,7 @@ func (o *LoginOptions) Run() error {
 			ClientCert:    clientCert,
 			ClientKey:     clientKey,
 			ReadOnly:      o.ReadOnly,
-			NetworkIdFile: o.NetworkId,
+			NetworkIdFile: absPathOrSelf(o.NetworkId),
 			ApiSession:    sess,
 		}
 		o.Printf("Saving identity '%v' to %v\n", id, configFile)
@@ -573,11 +570,21 @@ func (o *LoginOptions) terminatorId() string {
 }
 
 func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
+	// a certificate based login has to present its certificate whichever transport carries the request
+	cert, certErr := util.ClientCertificate(o.File, o.ClientCert, o.ClientKey)
+	if certErr != nil {
+		return nil, certErr
+	}
+
 	// if cli param supplied - use it first
 	if o.NetworkId != "" {
 		t, e := util.NewZitifiedTransportFromFile(o.NetworkId, o.terminatorId())
+		if e != nil {
+			return nil, e
+		}
+		attachClientCert(t, cert)
 		o.transport = t
-		return t, e
+		return t, nil
 	}
 
 	// if env var set - use it
@@ -588,6 +595,7 @@ func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 		if zt != nil {
 			o.Printf("NetworkId found by env var [%s], zitified transport enabled\n", constants.ZitiCliNetworkIdVarName)
 			o.NetworkId = ""
+			attachClientCert(zt, cert)
 			o.transport = zt
 			return zt, nil
 		}
@@ -597,11 +605,27 @@ func (o *LoginOptions) createHttpTransport() (*http.Transport, error) {
 	if caErr != nil {
 		return nil, caErr
 	}
-	return &http.Transport{
+
+	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs: caPool,
 		},
-	}, nil
+	}
+	attachClientCert(transport, cert)
+
+	return transport, nil
+}
+
+// attachClientCert adds the login's certificate to a transport, leaving the rest of its TLS settings as
+// they were.
+func attachClientCert(transport *http.Transport, cert *tls.Certificate) {
+	if cert == nil {
+		return
+	}
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	}
+	transport.TLSClientConfig.Certificates = []tls.Certificate{*cert}
 }
 
 func (o *LoginOptions) PopulateFromCache() {
@@ -627,6 +651,16 @@ func (o *LoginOptions) PopulateFromCache() {
 	}
 	if o.NetworkId == "" {
 		o.NetworkId = cachedCliConfig.NetworkIdFile
+	}
+	// commands that reuse a cached login still have to present the certificate it authenticated with
+	if o.File == "" {
+		o.File = cachedCliConfig.ClientIdFile
+	}
+	if o.ClientCert == "" {
+		o.ClientCert = cachedCliConfig.ClientCert
+	}
+	if o.ClientKey == "" {
+		o.ClientKey = cachedCliConfig.ClientKey
 	}
 	if o.CaCert == "" {
 		cachedUrl := addHttpsIfNeeded(cachedCliConfig.Url)
@@ -831,31 +865,29 @@ func (o *LoginOptions) Login() (edge_apis.ApiSession, error) {
 	} else if o.Username != "" && o.Password != "" {
 		authCreds = edge_apis.NewUpdbCredentials(o.Username, o.Password)
 	} else if o.ClientCert != "" || o.ClientKey != "" {
-		var key crypto.PrivateKey
-		if keyPEM, err := os.ReadFile(o.ClientKey); err != nil {
+		keyPEM, err := os.ReadFile(o.ClientKey)
+		if err != nil {
 			return nil, fmt.Errorf("failed to read key: %w", err)
-		} else {
-			keyBlock, _ := pem.Decode(keyPEM)
-			k, _ := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
-			key = k
 		}
 
-		var cert *x509.Certificate
-		if certPEM, err := os.ReadFile(o.ClientCert); err != nil {
+		certPEM, err := os.ReadFile(o.ClientCert)
+		if err != nil {
 			return nil, fmt.Errorf("failed to read cert: %w", err)
-		} else {
-			block, _ := pem.Decode(certPEM)
-			if block == nil {
-				return nil, fmt.Errorf("invalid cert pem")
-			}
-			c, err := x509.ParseCertificate(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse cert: %w", err)
-			}
-			cert = c
 		}
 
-		authCreds = edge_apis.NewCertCredentials([]*x509.Certificate{cert}, key)
+		// X509KeyPair accepts RSA, EC and PKCS#8 keys alike, and is what later commands use to load this
+		// same pair back out of the cache
+		pair, err := tls.X509KeyPair(certPEM, keyPEM)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load client certificate and key: %w", err)
+		}
+
+		cert, err := x509.ParseCertificate(pair.Certificate[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse cert: %w", err)
+		}
+
+		authCreds = edge_apis.NewCertCredentials([]*x509.Certificate{cert}, pair.PrivateKey)
 	} else if o.File != "" {
 		cfg, err := ziti.NewConfigFromFile(o.File)
 		if err != nil {
