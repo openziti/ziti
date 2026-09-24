@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/inspect"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/internal/apiproxy"
@@ -76,6 +77,11 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    int32(edge_ctrl_pb.ContentType_CreateTerminatorV2ResponseType),
 		Handler: factory.hostedServices.HandleCreateTerminatorResponse,
+	})
+
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type:    int32(ctrl_pb.ContentType_RemoveTerminatorsV2ResponseType),
+		Handler: factory.hostedServices.HandleRemoveTerminatorsV2Response,
 	})
 
 	return nil
