@@ -39,7 +39,7 @@ link:
     - binding:          transport
       split: false
       options:
-        connectTimeout: 30s
+        connectTimeoutMs: 30000
 
 listeners:
 {{if .Component.HasTag "tunneler"}}
