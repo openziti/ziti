@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.actor != 'dependabot[bot]' &&
-      !contains(fromJson('["andrewpmartinez", "dovholuknf","ekoby","michaelquigley", "mikegorman-nf", "plorenz", "emoscardini","scarey","smilindave26"]'), github.actor)
+      !contains(fromJson('["andrewpmartinez", "CLBRITTON2", "dovholuknf", "ekoby", "emoscardini", "michaelquigley", "mikegorman-nf", "plorenz", "scareything", "smilindave26"]'), github.actor)
     steps:
       - name: Mint project token
         id: app-token
