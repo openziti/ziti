@@ -40,7 +40,8 @@ type ZitiEdgeTunnelType struct {
 	Version     string
 	ZitiVersion string
 	LocalPath   string
-	// LogVerbosity is the ziti-edge-tunnel ZITI_LOG spec (e.g. "2;bind.c=6"); empty leaves it unset.
+	// LogVerbosity is the ziti-edge-tunnel ZITI_LOG spec; empty leaves it unset. It is inserted into
+	// the start command unescaped, so shell-quote a spec containing metacharacters (e.g. "'2;bind.c=6'").
 	LogVerbosity   string
 	VerbosityLevel uint16
 	ConfigPathF    func(c *model.Component) string
