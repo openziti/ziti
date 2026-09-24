@@ -492,7 +492,11 @@ func (self *linkRegistryImpl) snapshotLinks(ch channel.Channel) (*ctrl_pb.Router
 
 	var onComplete []func()
 
-	routerLinks := &ctrl_pb.RouterLinks{}
+	// If controllers are just disconnected and not down, they may miss link faults. When they get the complete set
+	// with the FullRefresh flag set to true, the controller will know to prune any links not in the set
+	routerLinks := &ctrl_pb.RouterLinks{
+		FullRefresh: true,
+	}
 	for link := range self.Iter() {
 		if alwaysSend || link.IsDialed() {
 			routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{

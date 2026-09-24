@@ -17,6 +17,10 @@
 package model
 
 import (
+	"math"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/storage/objectz"
@@ -24,10 +28,7 @@ import (
 	"github.com/openziti/ziti/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/controller/config"
 	"github.com/openziti/ziti/controller/idgen"
-	"github.com/orcaman/concurrent-map/v2"
-	"math"
-	"sync"
-	"time"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 type LinkManager struct {
@@ -171,6 +172,10 @@ func (self *LinkManager) Get(linkId string) (*Link, bool) {
 
 func (self *LinkManager) All() []*Link {
 	return self.linkTable.all()
+}
+
+func (self *LinkManager) IterateLinks() <-chan cmap.Tuple[string, *Link] {
+	return self.linkTable.links.IterBuffered()
 }
 
 func (self *LinkManager) GetLinkMap() map[string]*Link {
