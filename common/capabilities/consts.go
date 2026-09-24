@@ -45,6 +45,11 @@ const (
 	// ControllerSupportsJWTLegacySessions indicates that the controller generates legacy
 	// session tokens as JWTs, carrying identity and service information
 	ControllerSupportsJWTLegacySessions int = 6
+
+	// ControllerAsyncTerminatorRemove indicates the controller accepts RemoveTerminatorsV2Request
+	// and answers it asynchronously with a RemoveTerminatorsV2Response, letting routers remove
+	// terminators without holding a request slot open waiting for a synchronous reply
+	ControllerAsyncTerminatorRemove int = 7
 )
 
 // Router Capabilities
@@ -62,5 +67,6 @@ func GetControllerCapabilitiesMask() *big.Int {
 	capabilityMask.SetBit(capabilityMask, ControllerRouterDataModel, 1)
 	capabilityMask.SetBit(capabilityMask, ControllerGroupedCtrlChan, 1)
 	capabilityMask.SetBit(capabilityMask, ControllerSupportsJWTLegacySessions, 1)
+	capabilityMask.SetBit(capabilityMask, ControllerAsyncTerminatorRemove, 1)
 	return capabilityMask
 }
