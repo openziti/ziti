@@ -186,6 +186,7 @@ message RouterLinks {
   }
 
   repeated RouterLink links = 1;
+  bool fullRefresh = 2;
 }
 
 enum FaultSubject {

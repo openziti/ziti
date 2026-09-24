@@ -19,6 +19,8 @@ ctrl:
   endpoints: {{ range $host := .Model.MustSelectHosts "component.ctrl" 1 }}
     - tls:{{ $host.PublicIp }}:6262{{end}}
   startupTimeout: 5m
+  options:
+    connectTimeoutMs: 15000
 
 healthChecks:
   ctrlPingCheck:
@@ -41,7 +43,7 @@ link:
   dialers:
     - binding:          transport
       options:
-        connectTimeout: 30s
+        connectTimeoutMs: 30000
 
 listeners:
 {{if .Component.HasTag "tunneler"}}

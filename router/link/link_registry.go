@@ -19,6 +19,11 @@ package link
 import (
 	"container/heap"
 	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
@@ -32,10 +37,6 @@ import (
 	"github.com/openziti/ziti/router/env"
 	"github.com/openziti/ziti/router/xlink"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type Env interface {
@@ -50,14 +51,16 @@ type Env interface {
 
 func NewLinkRegistry(routerEnv Env) xlink.Registry {
 	result := &linkRegistryImpl{
-		linkMap:        map[string]xlink.Xlink{},
-		linkByIdMap:    map[string]xlink.Xlink{},
-		ctrls:          routerEnv.GetNetworkControllers(),
-		events:         make(chan event, 16),
-		env:            routerEnv,
-		destinations:   map[string]*linkDest{},
-		linkStateQueue: &linkStateHeap{},
-		triggerNotifyC: make(chan struct{}, 1),
+		linkMap:                map[string]xlink.Xlink{},
+		linkByIdMap:            map[string]xlink.Xlink{},
+		ctrls:                  routerEnv.GetNetworkControllers(),
+		events:                 make(chan event, 16),
+		env:                    routerEnv,
+		destinations:           map[string]*linkDest{},
+		linkStateQueue:         &linkStateHeap{},
+		triggerNotifyC:         make(chan struct{}, 1),
+		ctrlSynchronizer:       newCtrlSynchronizer(),
+		fullRefreshSendTimeout: fullRefreshSendTimeout,
 	}
 
 	go result.run()
@@ -79,6 +82,15 @@ type linkRegistryImpl struct {
 	events           chan event
 	triggerNotifyC   chan struct{}
 	notifyInProgress atomic.Bool
+
+	// ctrlSynchronizer holds what each controller is still owed: a link announcement after a reconnect,
+	// which gates incremental reports to it.
+	ctrlSynchronizer *ctrlSynchronizer
+
+	// fullRefreshSendTimeout bounds one attempt at the reconnect announcement. A field so tests can reach the
+	// timeout, which is the only way to tell a message that was queued and then discarded from one that
+	// reached the wire.
+	fullRefreshSendTimeout time.Duration
 }
 
 func (self *linkRegistryImpl) runGcLinkMetricsLoop() {
@@ -396,16 +408,95 @@ func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
 	return result
 }
 
+// fullRefreshSendTimeout bounds one attempt at the reconnect announcement. Attempts are not otherwise
+// bounded: a router announces its links once per reconnect and nothing re-asks, so an announcement that never
+// lands leaves the controller unable to route over those links. A failed attempt is retried on the
+// registry's next tick.
+const fullRefreshSendTimeout = 5 * time.Second
+
+// NotifyOfReconnect records that a controller has (re)connected and owes a link announcement. The
+// announcement is sent by the registry loop (see notifyControllersOfRefresh) and retried each tick until it
+// is written. Until then the controller is unsynced and incremental link reports to it are held (see
+// ctrlSynchronizer); once written, the held reports follow.
 func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
+	self.ctrlSynchronizer.markReconnected(ch.Id())
+	self.triggerNotify()
+}
+
+// notifyControllersOfRefresh queues a link announcement for every connected controller that owes one and has
+// none in flight. Runs on the registry loop; the sends run on the rate limiter pool.
+func (self *linkRegistryImpl) notifyControllersOfRefresh() {
+	known := map[string]struct{}{}
+	defer func() { self.ctrlSynchronizer.forget(known) }()
+
+	for ctrlId, ctrl := range self.ctrls.GetAll() {
+		known[ctrlId] = struct{}{}
+		if !ctrl.IsConnected() {
+			continue
+		}
+		gen, ok := self.ctrlSynchronizer.beginRefresh(ctrlId)
+		if !ok {
+			continue
+		}
+		ch := ctrl.Channel()
+		err := self.env.GetRateLimiterPool().QueueOrError(func() {
+			self.sendFullRefresh(ctrlId, ch, gen)
+		})
+		if err != nil {
+			pfxlog.Logger().WithError(err).WithField("ctrlId", ctrlId).Info("unable to queue link state announcement")
+			self.ctrlSynchronizer.markRefreshFailed(ctrlId)
+		}
+	}
+}
+
+// sendFullRefresh announces the router's links to one controller. Each attempt announces the links held at
+// that moment, so a retried announcement is never stale. The link set is snapshotted under the registry lock
+// and sent outside it; ordering against incremental reports is provided by the ctrlSynchronizer gate. gen is
+// the reconnect generation the announcement is for; a reconnect since then leaves the debt in place.
+func (self *linkRegistryImpl) sendFullRefresh(ctrlId string, ch channel.Channel, gen uint64) {
+	log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+	log.Info("resending link states after reconnect")
+
+	routerLinks, onComplete := self.snapshotLinks(ch)
+	log = log.WithField("linkCount", len(routerLinks.Links))
+
+	// SendAndWaitForWire, not Send: Send returns once the message is queued, and the deadline stays live, so
+	// the tx loop discards it if the queue drains too slowly, with nothing told.
+	if err := protobufs.MarshalTyped(routerLinks).WithTimeout(self.fullRefreshSendTimeout).SendAndWaitForWire(ch); err != nil {
+		log.WithError(err).Warn("link states not yet announced after reconnect, will retry; this controller cannot route over this router's links until they are")
+		self.ctrlSynchronizer.markRefreshFailed(ctrlId)
+		return
+	}
+
+	for _, f := range onComplete {
+		f()
+	}
+
+	if self.ctrlSynchronizer.markRefreshWritten(ctrlId, gen) {
+		log.Info("sent router links on reconnect")
+	} else {
+		log.Info("sent router links on reconnect, but the controller reconnected meanwhile; announcing again")
+	}
+	self.triggerNotify()
+}
+
+// snapshotLinks builds the reconnect report for ch: every dialed link, and every link when the controller
+// predates single-source link reporting. It also returns the per-link callbacks to run once the report is
+// written.
+func (self *linkRegistryImpl) snapshotLinks(ch channel.Channel) (*ctrl_pb.RouterLinks, []func()) {
 	self.Lock()
 	defer self.Unlock()
 
-	pfxlog.Logger().WithField("ctrlId", ch.Id()).Info("resending link states after reconnect")
 	alwaysSend := !capabilities.IsCapable(ch, capabilities.ControllerSingleRouterLinkSource)
+	ctrlId := ch.Id()
 
 	var onComplete []func()
 
-	routerLinks := &ctrl_pb.RouterLinks{}
+	// If controllers are just disconnected and not down, they may miss link faults. When they get the complete set
+	// with the FullRefresh flag set to true, the controller will know to prune any links not in the set
+	routerLinks := &ctrl_pb.RouterLinks{
+		FullRefresh: true,
+	}
 	for link := range self.Iter() {
 		if alwaysSend || link.IsDialed() {
 			routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{
@@ -419,34 +510,42 @@ func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 
 			if multiConnLink, ok := link.(xlink.MultiConnXLink); ok {
 				onComplete = append(onComplete, func() {
-					multiConnLink.MarkLinkStateSynced(ch.Id())
+					multiConnLink.MarkLinkStateSynced(ctrlId)
 				})
 			}
 		}
 	}
-
-	if err := protobufs.MarshalTyped(routerLinks).Send(ch); err != nil {
-		logrus.WithError(err).Error("failed to send router links on reconnect")
-	} else {
-		for _, f := range onComplete {
-			f()
-		}
-	}
+	return routerLinks, onComplete
 }
 
 func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
 		id:        id,
+		ctrlId:    ctrlId,
 		version:   version,
 		healthy:   healthy,
 		listeners: listeners,
 	}
 
 	self.queueEvent(updateEvent)
+}
+
+// closeUnaccountedLink closes a dialed link the registry has no state to attach to. Such a link is invisible
+// to this router: it is never reported, faulted or closed, while the far end keeps it and uses its id to
+// refuse the dialer's later attempts for the same pair. A link this router accepted is left alone, since the
+// listener side holds no state for one.
+//
+// Closed unconditionally rather than after an IsClosed check. Close is idempotent, and a link that closes
+// between the check and the call would defeat the check anyway.
+func (self *linkRegistryImpl) closeUnaccountedLink(link xlink.Xlink) {
+	if err := link.Close(); err != nil {
+		pfxlog.Logger().WithError(err).WithField("linkId", link.Id()).WithField("linkDest", link.DestinationId()).
+			Error("error closing link with no state in the registry")
+	}
 }
 
 func (self *linkRegistryImpl) RemoveLinkDest(id string) {
@@ -499,9 +598,11 @@ func (self *linkRegistryImpl) run() {
 		case evt := <-self.events:
 			evt.Handle(self)
 		case <-self.triggerNotifyC:
+			self.notifyControllersOfRefresh()
 			self.notifyControllersOfLinks()
 		case <-queueCheckTicker.C:
 			self.evaluateLinkStateQueue()
+			self.notifyControllersOfRefresh()
 			self.notifyControllersOfLinks()
 		case <-fullScanTicker.C:
 			self.evaluateDestinations()
@@ -527,6 +628,11 @@ func (self *linkRegistryImpl) evaluateLinkStateQueue() {
 			return
 		}
 		heap.Pop(self.linkStateQueue)
+		// Removing a destination leaves its linkMap intact, so a queued state can outlive it. Dialing
+		// anyway reaches whoever now answers that address, with nowhere to record the result.
+		if self.destinations[next.dest.id] != next.dest {
+			continue
+		}
 		self.evaluateLinkState(next)
 	}
 }
@@ -808,6 +914,13 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 		connectedChecker := ctrl.Channel().Underlay().(interface{ IsConnected() bool })
 		log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("op", "link-notify")
 		if connectedChecker.IsConnected() {
+			// Held, not skipped: the report stays pending so it follows the reconnect announcement once that is
+			// written. A disconnected controller is skipped as before; the announcement it gets on reconnect covers
+			// these links.
+			if !self.ctrlSynchronizer.isSynced(ctrlId) {
+				allSent = false
+				continue
+			}
 			msgEnv := protobufs.MarshalTyped(routerLinks).WithTimeout(10 * time.Second)
 			if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
 				log.WithError(err).Error("timeout sending new router links")
@@ -856,6 +969,12 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 				connectedChecker := ctrl.Channel().Underlay().(interface{ IsConnected() bool })
 
 				if connectedChecker.IsConnected() {
+					// Held for a connected controller still owed its reconnect announcement. A disconnected one keeps the
+					// brief-outage hold and long-outage expiry below.
+					if !self.ctrlSynchronizer.isSynced(ctrlId) {
+						allSent = false
+						continue
+					}
 					msgEnv := protobufs.MarshalTyped(faultMsg).WithTimeout(10 * time.Second)
 					if err := msgEnv.SendAndWaitForWire(ctrl.Channel()); err != nil {
 						log.WithError(err).Error("timeout sending link fault")
