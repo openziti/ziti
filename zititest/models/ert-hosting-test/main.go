@@ -80,26 +80,24 @@ var svcIdCache = cmap.New[string]()
 
 var m = &model.Model{
 	Id: "ert-hosting-test",
-	Scope: model.Scope{
-		Defaults: model.Variables{
-			"environment": "ert-hosting-test",
-			"credentials": model.Variables{
-				"aws": model.Variables{
-					"managed_key": true,
-				},
-				"ssh": model.Variables{
-					"username": "ubuntu",
-				},
-				"edge": model.Variables{
-					"username": "admin",
-					"password": "admin",
-				},
+	Defaults: model.Variables{
+		"environment": "ert-hosting-test",
+		"credentials": model.Variables{
+			"aws": model.Variables{
+				"managed_key": true,
 			},
-			"metrics": model.Variables{
-				"influxdb": model.Variables{
-					"url": "http://localhost:8086",
-					"db":  "ziti",
-				},
+			"ssh": model.Variables{
+				"username": "ubuntu",
+			},
+			"edge": model.Variables{
+				"username": "admin",
+				"password": "admin",
+			},
+		},
+		"metrics": model.Variables{
+			"influxdb": model.Variables{
+				"url": "http://localhost:8086",
+				"db":  "ziti",
 			},
 		},
 	},
@@ -287,6 +285,8 @@ var m = &model.Model{
 					}
 					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
 				}
+				// Concurrency is deliberately low. This model's controller returns 429s and timeouts
+				// under a wider fan-out, which the retry policy cannot absorb.
 				return parallel.ExecuteLabeled(tasks, 10, models.RetryPolicy)
 			}))
 
@@ -311,30 +311,36 @@ var m = &model.Model{
 
 				for i, identity := range identities {
 					name := fmt.Sprintf("service-policy-%03d", i)
-					identityId, err := models.GetIdentityId(ctrl1, identity, 5*time.Second)
-					if err != nil {
-						return err
-					}
-					identityRole := fmt.Sprintf("@%s", identityId)
-					var serviceRoles []string
+
+					// Only the service names are resolved here. The id lookups belong inside the task,
+					// where a transient failure is retried instead of ending the action.
+					var serviceNames []string
 					for j := 0; j < 10; j++ {
-						idx := serviceIdx % serviceCount
-						svcName := fmt.Sprintf("service-%04d", idx)
-						svcId, ok := svcIdCache.Get(svcName)
-						if !ok {
-							svcId, err = models.GetServiceId(ctrl1, svcName, 5*time.Second)
-							if err != nil {
-								return err
-							}
-							svcIdCache.Set(svcName, svcId)
-						}
-						serviceRoles = append(serviceRoles, fmt.Sprintf("@%s", svcId))
+						serviceNames = append(serviceNames, fmt.Sprintf("service-%04d", serviceIdx%serviceCount))
 						serviceIdx++
 					}
 
 					task := func() error {
-						err := models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
-							IdentityRoles: []string{identityRole},
+						identityId, err := models.GetIdentityId(ctrl1, identity, 5*time.Second)
+						if err != nil {
+							return err
+						}
+
+						var serviceRoles []string
+						for _, svcName := range serviceNames {
+							svcId, ok := svcIdCache.Get(svcName)
+							if !ok {
+								svcId, err = models.GetServiceId(ctrl1, svcName, 5*time.Second)
+								if err != nil {
+									return err
+								}
+								svcIdCache.Set(svcName, svcId)
+							}
+							serviceRoles = append(serviceRoles, fmt.Sprintf("@%s", svcId))
+						}
+
+						err = models.CreateServicePolicy(ctrl1, &rest_model.ServicePolicyCreate{
+							IdentityRoles: []string{fmt.Sprintf("@%s", identityId)},
 							Name:          &name,
 							Semantic:      util.Ptr(rest_model.SemanticAnyOf),
 							ServiceRoles:  serviceRoles,
@@ -349,7 +355,7 @@ var m = &model.Model{
 						return err
 					}
 
-					tasks = append(tasks, parallel.TaskWithLabel("create.service", "create service "+name, task))
+					tasks = append(tasks, parallel.TaskWithLabel("create.service-policy", "create service policy "+name, task))
 				}
 
 				return parallel.ExecuteLabeled(tasks, 25, models.RetryPolicy)
