@@ -236,9 +236,18 @@ func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 	var deleteList []*tunnelTerminator
 
 	for terminatorId, terminator := range self.deleteSet {
-		log := logrus.
-			WithField("terminatorId", terminator.id).
-			WithField("state", terminator.state.Load())
+		// Leave the terminator queued until it is actually batched. The in-flight check below skips it
+		// for now rather than discarding it, and dequeuing before that check would drop the delete
+		// until the retry scan noticed it minutes later.
+		if terminator.operationActive.Load() {
+			if time.Since(terminator.lastAttempt) <= xgress_common.EstablishmentTimeout {
+				// A create or an earlier remove is still outstanding. Sending the delete now would race
+				// it, and the controller cannot tell an id that is gone from one whose create has not
+				// applied yet, so it waits.
+				continue
+			}
+			terminator.operationActive.Store(false) // presumed stuck, so stop waiting on it
+		}
 
 		delete(self.deleteSet, terminatorId)
 
@@ -250,15 +259,10 @@ func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 			continue
 		}
 
-		if terminator.operationActive.Load() {
-			if time.Since(terminator.lastAttempt) > xgress_common.EstablishmentTimeout {
-				terminator.operationActive.Store(false)
-			} else {
-				continue
-			}
-		}
-
-		log.Info("added terminator to batch delete")
+		logrus.
+			WithField("terminatorId", terminator.id).
+			WithField("state", terminator.state.Load()).
+			Info("added terminator to batch delete")
 		deleteList = append(deleteList, terminator)
 		if len(deleteList) >= 50 {
 			if !self.RemoveTerminatorsRateLimited(deleteList) {
@@ -467,7 +471,9 @@ func (self *HostedServiceRegistry) queueRemoveTerminatorSync(terminator *tunnelT
 
 func (self *HostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *tunnelTerminator, reason string) {
 	terminator.setState(xgress_common.TerminatorStateDeleting, reason)
-	terminator.operationActive.Store(false)
+	// operationActive is deliberately left as it is. These callers close a terminator for reasons of
+	// their own, and a create may still be outstanding; clearing it here would let the delete be sent
+	// while that create is in flight. evaluateDeleteQueue waits for it, with its own timeout.
 	self.deleteSet[terminator.id] = terminator
 }
 
@@ -515,6 +521,9 @@ func (self *HostedServiceRegistry) Remove(terminator *tunnelTerminator, reason s
 }
 
 func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTerminator) error {
+	// An attempt that overran EstablishmentTimeout may still be unanswered; it is superseded by this one.
+	terminator.clearCreateRequest()
+
 	start := time.Now().UnixMilli()
 	log := pfxlog.Logger().
 		WithField("routerId", self.env.GetRouterId().Token).
@@ -549,17 +558,48 @@ func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTermina
 
 	log.Info("sending create tunnel terminator v2 request")
 
-	queued, err := ctrlCh.TrySend(protobufs.MarshalTyped(request).ToSendable())
+	// Sent as an explicit message rather than through protobufs.MarshalTyped so it can be wrapped in a
+	// createRequestSendable, which records the attempt as the sequence is assigned.
+	body, err := proto.Marshal(request)
 	if err != nil {
 		return err
 	}
-	if !queued {
+
+	msg := channel.NewMessage(request.GetContentType(), body)
+	queued, err := ctrlCh.TrySend(&createRequestSendable{
+		Message:    msg,
+		terminator: terminator,
+		ctrlId:     ctrlCh.Id(),
+	})
+	if err != nil || !queued {
+		// The sequence, and with it the attempt, was recorded before the send failed.
+		terminator.clearCreateRequest()
+		if err != nil {
+			return err
+		}
 		return errors.New("channel too busy")
 	}
 	return nil
 }
 
-func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
+// createRequestSendable records a create terminator request as the outstanding attempt at the moment
+// the sender assigns its sequence, which is before the message can reach the tx goroutine. Recording
+// after TrySend returns would leave a window in which the response arrives first and is read as
+// answering an attempt that is not yet known.
+type createRequestSendable struct {
+	*channel.Message
+	terminator *tunnelTerminator
+	ctrlId     string
+}
+
+var _ channel.Sendable = (*createRequestSendable)(nil)
+
+func (self *createRequestSendable) SetSequence(seq int32) {
+	self.Message.SetSequence(seq)
+	self.terminator.noteCreateRequestSent(self.ctrlId, seq)
+}
+
+func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, ch channel.Channel) {
 	defer self.triggerEvaluates()
 
 	log := pfxlog.Logger().WithField("routerId", self.env.GetRouterId().Token)
@@ -580,6 +620,12 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 	}
 
 	log = log.WithField("lifetime", time.Since(terminator.createTime))
+
+	// Attempts overlap once one overruns EstablishmentTimeout, and they all carry the same terminator
+	// id, so the response is matched to an attempt by reply sequence rather than by id.
+	if !terminator.resolveCreateRequest(ch.Id(), msg.ReplyFor()) {
+		log.Info("create response answers a superseded attempt; a later create is still outstanding")
+	}
 
 	if response.Result == edge_ctrl_pb.CreateTerminatorResult_FailedBusy {
 		log.Info("controller too busy to handle create terminator, retrying later")
@@ -604,7 +650,7 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 			WithField("error", response.Msg).
 			Warn("controller rejected create terminator, will retry on the next scan (in 2-3 minutes)")
 
-		terminator.operationActive.Store(false)
+		terminator.endOperationIfIdle()
 		return
 	}
 
@@ -725,5 +771,7 @@ func (self *markEstablishedEvent) handle(registry *HostedServiceRegistry) {
 		log.Info("terminator established")
 	}
 
-	self.terminator.operationActive.Store(false)
+	// This event also fires for a reply to a superseded create and for a controller validation
+	// message, either of which can arrive while a later create is still in flight.
+	self.terminator.endOperationIfIdle()
 }
