@@ -145,7 +145,7 @@ var m = &model.Model{
 	Id: "circuit-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"ha":          "false",
+			"ha":          "true",
 			"tcpdump":     "false",
 			"environment": "circuit-test",
 			"credentials": model.Variables{
