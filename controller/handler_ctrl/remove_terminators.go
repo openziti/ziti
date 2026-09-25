@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/handler_common"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +67,7 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 	// are kept (not pre-filtered by presence): the create for a terminator may be in-flight in raft
 	// but not yet applied to the DB, so sending it through raft orders the delete after the create,
 	// and ApplyDeleteBatch handles non-existent ids gracefully.
-	toDelete := self.selectOwnedTerminators(request.TerminatorIds)
+	toDelete := self.selectRemovableTerminators(request.TerminatorIds, nil)
 	if len(toDelete) == 0 {
 		handler_common.SendSuccess(msg, ch, "")
 		return
@@ -80,9 +79,7 @@ func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Messa
 			WithField("terminatorIds", toDelete).
 			Info("removed terminators")
 		handler_common.SendSuccess(msg, ch, "")
-	} else if command.WasRateLimited(err) || command.WasLeaderless(err) {
-		// A leaderless cluster (during a membership change) is transient; signal busy so the router retries
-		// rather than treating the removal as a permanent failure.
+	} else if wasControllerBusy(err) {
 		handler_common.SendServerBusy(msg, ch, "remove.terminators")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())

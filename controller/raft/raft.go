@@ -160,10 +160,20 @@ type Controller struct {
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState, leaderId string)]
 	clusterStateChangeLock     sync.Mutex
 	isLeader                   atomic.Bool
-	clusterEvents              chan raft.Observation
-	raftRateLimiter            rate.AdaptiveRateLimitTracker
-	errorMappers               map[string]func(map[string]any) error
-	decoders                   command.Decoders
+	// leaderCaughtUp records that this node's current leadership has applied everything that was
+	// committed when it began. It starts false and is set only by a completed barrier, so a node that
+	// has just been elected is never treated as current before one runs.
+	//
+	// caughtUpLock guards leaderTerm and every write to leaderCaughtUp, so a barrier completing
+	// alongside a leadership change cannot record a result for a term that has already ended.
+	// leaderCaughtUp is atomic so the read path needs no lock.
+	caughtUpLock    sync.Mutex
+	leaderTerm      uint64
+	leaderCaughtUp  atomic.Bool
+	clusterEvents   chan raft.Observation
+	raftRateLimiter rate.AdaptiveRateLimitTracker
+	errorMappers    map[string]func(map[string]any) error
+	decoders        command.Decoders
 }
 
 // GetDecoders returns the command decoder registry this controller's raft FSM uses to decode
@@ -264,6 +274,59 @@ func (self *Controller) GetDb() boltz.Db {
 // IsLeader returns true if the current node is the RAFT leader
 func (self *Controller) IsLeader() bool {
 	return self.Raft.State() == raft.Leader
+}
+
+// IsLeaderAndCaughtUp reports whether this node is the leader and has applied everything that was
+// committed when it took leadership. Deciding from a local read whether a replicated mutation is
+// needed requires this rather than IsLeader, which is true from the moment an election is won,
+// before the applies that make the local view current.
+//
+// It does not order the read against concurrent commands, so it is sufficient only where the absence
+// being tested must already have been committed.
+func (self *Controller) IsLeaderAndCaughtUp() bool {
+	return self.leaderCaughtUp.Load() && self.IsLeader()
+}
+
+// beginLeaderTerm starts a new leadership term, which is never caught up until its barrier completes,
+// and returns the term for awaitCaughtUp to record against. endLeaderTerm ends the current one.
+func (self *Controller) beginLeaderTerm() uint64 {
+	self.caughtUpLock.Lock()
+	defer self.caughtUpLock.Unlock()
+	self.leaderTerm++
+	self.leaderCaughtUp.Store(false)
+	return self.leaderTerm
+}
+
+func (self *Controller) endLeaderTerm() {
+	self.caughtUpLock.Lock()
+	defer self.caughtUpLock.Unlock()
+	self.leaderTerm++
+	self.leaderCaughtUp.Store(false)
+}
+
+// awaitCaughtUp records that term's leadership has applied everything committed when it began, once
+// a barrier confirms it. On any failure nothing is recorded, which costs the optimizations that
+// depend on being caught up but stays correct.
+func (self *Controller) awaitCaughtUp(term uint64) {
+	log := pfxlog.Logger().WithField("leaderTerm", term)
+
+	if err := self.Raft.Barrier(self.Config.ApplyTimeout).Error(); err != nil {
+		log.WithError(err).Warn("leader barrier failed, local reads will not be treated as caught up")
+		return
+	}
+
+	// Checked and recorded under the lock, so a leadership change cannot slip between the two and
+	// leave this barrier's result standing for a term it does not describe.
+	self.caughtUpLock.Lock()
+	defer self.caughtUpLock.Unlock()
+
+	if self.leaderTerm != term {
+		log.Info("leadership changed while waiting for barrier, discarding result")
+		return
+	}
+
+	self.leaderCaughtUp.Store(true)
+	log.Info("leader has applied all entries committed at election, local reads are current")
 }
 
 func (self *Controller) IsLeaderOrLeaderless() bool {
@@ -913,9 +976,11 @@ func (self *Controller) processRaftObservation(observation raft.Observation, eve
 		self.clusterStateChangeLock.Lock()
 		if raftState == raft.Leader {
 			if wasLeader := self.isLeader.Swap(true); !wasLeader {
+				go self.awaitCaughtUp(self.beginLeaderTerm())
 				self.handleClusterStateChange(ClusterEventLeadershipGained, eventState)
 			}
 		} else if wasLeader := self.isLeader.Swap(false); wasLeader {
+			self.endLeaderTerm()
 			self.handleClusterStateChange(ClusterEventLeadershipLost, eventState)
 		}
 		self.clusterStateChangeLock.Unlock()

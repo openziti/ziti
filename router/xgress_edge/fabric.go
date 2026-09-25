@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -65,9 +66,24 @@ type edgeTerminator struct {
 	operationActive     atomic.Bool
 	createTime          time.Time
 	lastAttempt         time.Time
-	lock                sync.Mutex
-	rateLimitCallback   rate.RateLimitControl
-	failureCount        atomic.Uint32
+	// establishStart marks when the current establishment attempt began, i.e. the bind or
+	// re-establish that started it. Unlike lastAttempt it is not moved by create re-sends.
+	establishStart    concurrenz.AtomicValue[time.Time]
+	lock              sync.Mutex
+	rateLimitCallback rate.RateLimitControl
+	failureCount      atomic.Uint32
+	retryAfter        time.Time        // guarded by lock; earliest time to re-attempt after a rate-limit rejection
+	retryBackoff      time.Duration    // guarded by lock; current backoff ceiling, doubles per consecutive rejection
+	createConfirmed   atomic.Bool      // set once the controller acknowledges the create; lets a later remove use the leader fast-path
+	createRequest     *createRequestId // guarded by lock; nil when no create is awaiting a response
+}
+
+// createRequestId identifies a create terminator request by the control channel it went out on and
+// the message sequence assigned to it. Every attempt for a terminator carries the same terminator id,
+// so the id alone cannot tell a reply to the outstanding attempt from a reply to a superseded one.
+type createRequestId struct {
+	ctrlId   string
+	sequence int32
 }
 
 func (self *edgeTerminator) getIdentityId() string {
@@ -85,8 +101,12 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	operationActive := other.operationActive.Load()
 	createTime := other.createTime
 	lastAttempt := other.lastAttempt
+	createConfirmed := other.createConfirmed.Load()
+	createRequest := other.createRequest
 	other.lock.Unlock()
 
+	// establishStart is deliberately not inherited: the SDK deadline that matters belongs to
+	// this terminator's own bind, not to the bind being taken over.
 	self.lock.Lock()
 	self.terminatorId = terminatorId
 	self.setState(otherState, "replacing existing terminator")
@@ -94,6 +114,11 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	self.operationActive.Store(operationActive)
 	self.createTime = createTime
 	self.lastAttempt = lastAttempt
+	// Carry over the create confirmation: the adopted terminator's id is already established on the
+	// controller, so a later remove can still use the confirmed-absent fast-path without a re-create.
+	self.createConfirmed.Store(createConfirmed)
+	// The terminator id comes across too, so a create still awaiting a reply is this terminator's now.
+	self.createRequest = createRequest
 	self.lock.Unlock()
 }
 
@@ -235,10 +260,55 @@ func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error
 	return result, nil
 }
 
-func (self *edgeTerminator) SetRateLimitCallback(control rate.RateLimitControl) {
+// replaceRateLimitCallback stores control as the rate-limit control for a new establishment attempt.
+// If a control from a prior attempt is still outstanding, that attempt exceeded EstablishmentTimeout
+// without completing, so its control is resolved with Backoff (signaling congestion and reclaiming its
+// slot) rather than being orphaned and left for the limiter's internal timeout to clean up.
+func (self *edgeTerminator) replaceRateLimitCallback(control rate.RateLimitControl) {
 	self.lock.Lock()
-	defer self.lock.Unlock()
+	previous := self.rateLimitCallback
 	self.rateLimitCallback = control
+	self.lock.Unlock()
+
+	if previous != nil {
+		previous.Backoff()
+	}
+}
+
+// resolveRateLimitCallback resolves the terminator's outstanding rate-limit control based on how long
+// establishment took. An establishment that completed within EstablishmentTimeout reports Success,
+// growing the limiter window; one that took at least EstablishmentTimeout reports Backoff, signaling
+// congestion so the window shrinks. It is a no-op if no control is outstanding.
+func (self *edgeTerminator) resolveRateLimitCallback(latency time.Duration) {
+	if control := self.GetAndClearRateLimitCallback(); control != nil {
+		if latency >= xgress_common.EstablishmentTimeout {
+			control.Backoff()
+		} else {
+			control.Success()
+		}
+	}
+}
+
+// establishmentAge returns how long the current establishment attempt has been running, measured
+// from the bind that started it rather than from the last create re-send. This is the clock to
+// compare against SDK-side bind deadlines, which are blind to the router's re-sends. A terminator
+// with no recorded start reports an age large enough to be treated as overdue.
+func (self *edgeTerminator) establishmentAge() time.Duration {
+	return time.Since(self.establishStart.Load())
+}
+
+// postEstablishInspectThreshold is the establishment age past which a completed establishment gets
+// a second inspect of the SDK's listener. It is anchored to the SDK's one minute bind deadline
+// (sdk-golang multiListener.forward), not to controller load: past that deadline the SDK closes the
+// listener, which makes the post-bind inspect's confirmation stale. Kept well under the deadline so
+// the re-inspect is queued before the listener is certainly gone.
+const postEstablishInspectThreshold = 30 * time.Second
+
+// needsPostEstablishInspect reports whether the SDK should be re-inspected now that establishment
+// has completed. True once establishment has run long enough that the SDK may have given up on its
+// bind and closed the listener, leaving the post-bind inspect's confirmation stale.
+func (self *edgeTerminator) needsPostEstablishInspect() bool {
+	return self.supportsInspect && self.establishmentAge() >= postEstablishInspectThreshold
 }
 
 func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {
@@ -247,6 +317,101 @@ func (self *edgeTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl
 	result := self.rateLimitCallback
 	self.rateLimitCallback = nil
 	return result
+}
+
+// scheduleRetryBackoff pushes out the terminator's next establish/remove attempt after the controller
+// rejected the previous one (e.g. rate limited). The backoff ceiling doubles on each consecutive
+// rejection, from minRetryBackoff up to maxRetryBackoff, and the actual delay is jittered within the
+// upper half of that ceiling so a fleet of terminators backing off together doesn't retry in lockstep.
+// This is what keeps a fast-failing (rate-limited) operation from being retried in a tight loop.
+func (self *edgeTerminator) scheduleRetryBackoff() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	next := self.retryBackoff * 2
+	if next < minRetryBackoff {
+		next = minRetryBackoff
+	}
+	if next > maxRetryBackoff {
+		next = maxRetryBackoff
+	}
+	self.retryBackoff = next
+
+	// equal jitter: delay in [next/2, next]
+	delay := next/2 + time.Duration(rand.Int63n(int64(next/2)+1))
+	self.retryAfter = time.Now().Add(delay)
+}
+
+// clearRetryBackoff resets the retry backoff after an attempt succeeds, so the next time work is
+// needed it starts from a clean slate rather than an inflated backoff.
+func (self *edgeTerminator) clearRetryBackoff() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.retryBackoff = 0
+	self.retryAfter = time.Time{}
+}
+
+// retryBackoffActive reports whether the terminator is still within its retry backoff window and so
+// should be skipped by the establish/delete evaluation loops for now.
+func (self *edgeTerminator) retryBackoffActive() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return time.Now().Before(self.retryAfter)
+}
+
+// clearCreateRequest drops any outstanding create attempt along with the create confirmation, leaving
+// nothing in flight and nothing vouched for. Callers invoke it before sending a create, so a reply to
+// the attempt being superseded can neither confirm the terminator nor report it as idle, and to roll
+// back an attempt whose send failed after its sequence was assigned.
+func (self *edgeTerminator) clearCreateRequest() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.createRequest = nil
+	self.createConfirmed.Store(false)
+}
+
+// noteCreateRequestSent records the create request just sent to ctrlId as sequence, making it the
+// attempt that a response must match to be treated as answering this terminator's create.
+func (self *edgeTerminator) noteCreateRequestSent(ctrlId string, sequence int32) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.createRequest = &createRequestId{ctrlId: ctrlId, sequence: sequence}
+}
+
+// resolveCreateRequest reports whether a response arriving on ctrlId in reply to replyFor answers the
+// outstanding create attempt, clearing that attempt if it does. A response belonging to a superseded
+// attempt returns false and leaves the outstanding attempt in place. succeeded records the create as
+// confirmed on a match; callers pass it rather than setting the flag themselves so a retry beginning
+// between the match and the confirmation cannot inherit this response's vouching.
+func (self *edgeTerminator) resolveCreateRequest(ctrlId string, replyFor int32, succeeded bool) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.createRequest == nil || *self.createRequest != (createRequestId{ctrlId: ctrlId, sequence: replyFor}) {
+		return false
+	}
+	self.createRequest = nil
+	if succeeded {
+		self.createConfirmed.Store(true)
+	}
+	return true
+}
+
+// hasOutstandingCreate reports whether a create request is still awaiting a response.
+func (self *edgeTerminator) hasOutstandingCreate() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.createRequest != nil
+}
+
+// endOperationIfIdle clears the in-flight marker unless a create is still awaiting a response. The
+// marker is what holds a queued delete back from racing a live create, so only an outcome that leaves
+// nothing outstanding may clear it.
+func (self *edgeTerminator) endOperationIfIdle() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.createRequest == nil {
+		self.operationActive.Store(false)
+	}
 }
 
 const (

@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/ziti/v2/common/config"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	yaml3 "gopkg.in/yaml.v3"
@@ -57,8 +58,8 @@ const (
 	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
 	CtrlEndpointBindMapKey = "bind"
 
-	// CtrlRateLimiterMinSizeValue is the minimum size that can be configured for the control channel rate limiter
-	// window range
+	// CtrlRateLimiterMinSizeValue is the smallest maximum window size that can be configured for the
+	// control channel rate limiter. It does not bound minSize, which floors at 1.
 	CtrlRateLimiterMinSizeValue = 5
 
 	// CtrlRateLimiterMaxSizeValue is the maximum size that can be configured for the control channel rate limiter
@@ -1037,13 +1038,22 @@ func (c *Config) loadCtrlRateLimiterConfig(cfgmap map[interface{}]interface{}) e
 					rateLimitConfig.MaxSize, CtrlRateLimiterMaxSizeValue)
 			}
 
-			if rateLimitConfig.MinSize < CtrlRateLimiterMinSizeValue {
-				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at least %v",
-					rateLimitConfig.MinSize, CtrlRateLimiterMinSizeValue)
-			}
+			// No lower bound on minSize here: the router deliberately floors at 1 above so the
+			// window can shrink all the way down under load, and AdaptiveRateLimiterConfig.Load
+			// already rejects minSize below 1 or above maxSize.
 			if rateLimitConfig.MinSize > CtrlRateLimiterMaxSizeValue {
 				return errors.Errorf("invalid value %v for ctrl.rateLimiter.minSize, must be at most %v",
 					rateLimitConfig.MinSize, CtrlRateLimiterMaxSizeValue)
+			}
+
+			// Warn rather than reject: the router still works, it just stops being the thing that
+			// classifies slow terminator operations, so the window ends up reacting to sweep timing.
+			if rateLimitConfig.Timeout < xgress_common.EstablishmentTimeout {
+				pfxlog.Logger().
+					WithField("timeout", rateLimitConfig.Timeout).
+					WithField("establishmentTimeout", xgress_common.EstablishmentTimeout).
+					Warn("ctrl.rateLimiter.timeout is below the terminator establishment timeout; " +
+						"outstanding work will be expired as congestion before the router can report how long it took")
 			}
 		} else {
 			return errors.Errorf("invalid type for ctrl.rateLimiter, should be map instead of %T", value)

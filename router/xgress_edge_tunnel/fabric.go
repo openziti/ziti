@@ -258,6 +258,63 @@ type tunnelTerminator struct {
 	lastAttempt       time.Time
 	rateLimitCallback rate.RateLimitControl
 	lock              sync.Mutex
+	createRequest     *createRequestId // guarded by lock; nil when no create is awaiting a response
+}
+
+// createRequestId identifies a create terminator request by the control channel it went out on and
+// the message sequence assigned to it. Every attempt for a terminator carries the same terminator id,
+// so the id alone cannot tell a reply to the outstanding attempt from a reply to a superseded one.
+type createRequestId struct {
+	ctrlId   string
+	sequence int32
+}
+
+// clearCreateRequest drops any outstanding create attempt, leaving nothing in flight. Callers invoke
+// it before sending a create, so a reply to the attempt being superseded can no longer report the
+// terminator as idle, and to roll back an attempt whose send failed after its sequence was assigned.
+func (self *tunnelTerminator) clearCreateRequest() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.createRequest = nil
+}
+
+// noteCreateRequestSent records the create request just sent to ctrlId as sequence, making it the
+// attempt that a response must match to be treated as answering this terminator's create.
+func (self *tunnelTerminator) noteCreateRequestSent(ctrlId string, sequence int32) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.createRequest = &createRequestId{ctrlId: ctrlId, sequence: sequence}
+}
+
+// resolveCreateRequest reports whether a response arriving on ctrlId in reply to replyFor answers the
+// outstanding create attempt, clearing that attempt if it does. A response belonging to a superseded
+// attempt returns false and leaves the outstanding attempt in place.
+func (self *tunnelTerminator) resolveCreateRequest(ctrlId string, replyFor int32) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.createRequest == nil || *self.createRequest != (createRequestId{ctrlId: ctrlId, sequence: replyFor}) {
+		return false
+	}
+	self.createRequest = nil
+	return true
+}
+
+// hasOutstandingCreate reports whether a create request is still awaiting a response.
+func (self *tunnelTerminator) hasOutstandingCreate() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.createRequest != nil
+}
+
+// endOperationIfIdle clears the in-flight marker unless a create is still awaiting a response. The
+// marker is what holds a queued delete back from racing a live create, so only an outcome that leaves
+// nothing outstanding may clear it.
+func (self *tunnelTerminator) endOperationIfIdle() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.createRequest == nil {
+		self.operationActive.Store(false)
+	}
 }
 
 func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
@@ -329,10 +386,33 @@ func (self *tunnelTerminator) updateState(oldState, newState xgress_common.Termi
 	return success
 }
 
-func (self *tunnelTerminator) SetRateLimitCallback(control rate.RateLimitControl) {
+// replaceRateLimitCallback stores control as the rate-limit control for a new establishment attempt.
+// If a control from a prior attempt is still outstanding, that attempt exceeded EstablishmentTimeout
+// without completing, so its control is resolved with Backoff (signaling congestion and reclaiming its
+// slot) rather than being orphaned and left for the limiter's internal timeout to clean up.
+func (self *tunnelTerminator) replaceRateLimitCallback(control rate.RateLimitControl) {
 	self.lock.Lock()
-	defer self.lock.Unlock()
+	previous := self.rateLimitCallback
 	self.rateLimitCallback = control
+	self.lock.Unlock()
+
+	if previous != nil {
+		previous.Backoff()
+	}
+}
+
+// resolveRateLimitCallback resolves the terminator's outstanding rate-limit control based on how long
+// establishment took. An establishment that completed within EstablishmentTimeout reports Success,
+// growing the limiter window; one that took at least EstablishmentTimeout reports Backoff, signaling
+// congestion so the window shrinks. It is a no-op if no control is outstanding.
+func (self *tunnelTerminator) resolveRateLimitCallback(latency time.Duration) {
+	if control := self.GetAndClearRateLimitCallback(); control != nil {
+		if latency >= xgress_common.EstablishmentTimeout {
+			control.Backoff()
+		} else {
+			control.Success()
+		}
+	}
 }
 
 func (self *tunnelTerminator) GetAndClearRateLimitCallback() rate.RateLimitControl {

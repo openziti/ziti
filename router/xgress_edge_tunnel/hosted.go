@@ -175,7 +175,7 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 			return
 		}
 
-		if !terminator.operationActive.CompareAndSwap(false, true) && time.Since(terminator.lastAttempt) < 30*time.Second {
+		if !terminator.operationActive.CompareAndSwap(false, true) && time.Since(terminator.lastAttempt) < xgress_common.EstablishmentTimeout {
 			rateLimitCtrl.Failed()
 			continue
 		}
@@ -183,7 +183,10 @@ func (self *HostedServiceRegistry) evaluateEstablishQueue() {
 		log.Info("queuing terminator to send create")
 
 		dequeue()
-		terminator.SetRateLimitCallback(rateLimitCtrl)
+		// A re-attempt here means the previous attempt exceeded EstablishmentTimeout without
+		// completing. Resolve its outstanding rate-limit control with Backoff so the stall is
+		// signaled as congestion and its slot is reclaimed, rather than orphaning it.
+		terminator.replaceRateLimitCallback(rateLimitCtrl)
 		terminator.lastAttempt = time.Now()
 
 		if err = self.establishTerminator(terminator); err != nil {
@@ -199,9 +202,18 @@ func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 	var deleteList []*tunnelTerminator
 
 	for terminatorId, terminator := range self.deleteSet {
-		log := logrus.
-			WithField("terminatorId", terminator.id).
-			WithField("state", terminator.state.Load())
+		// Leave the terminator queued until it is actually batched. The in-flight check below skips it
+		// for now rather than discarding it, and dequeuing before that check would drop the delete
+		// until the retry scan noticed it minutes later.
+		if terminator.operationActive.Load() {
+			if time.Since(terminator.lastAttempt) <= xgress_common.EstablishmentTimeout {
+				// A create or an earlier remove is still outstanding. Sending the delete now would race
+				// it, and the controller cannot tell an id that is gone from one whose create has not
+				// applied yet, so it waits.
+				continue
+			}
+			terminator.operationActive.Store(false) // presumed stuck, so stop waiting on it
+		}
 
 		delete(self.deleteSet, terminatorId)
 
@@ -213,15 +225,10 @@ func (self *HostedServiceRegistry) evaluateDeleteQueue() {
 			continue
 		}
 
-		if terminator.operationActive.Load() {
-			if time.Since(terminator.lastAttempt) > 30*time.Second {
-				terminator.operationActive.Store(false)
-			} else {
-				continue
-			}
-		}
-
-		log.Info("added terminator to batch delete")
+		logrus.
+			WithField("terminatorId", terminator.id).
+			WithField("state", terminator.state.Load()).
+			Info("added terminator to batch delete")
 		deleteList = append(deleteList, terminator)
 		if len(deleteList) >= 50 {
 			if !self.RemoveTerminatorsRateLimited(deleteList) {
@@ -265,7 +272,10 @@ func (self *HostedServiceRegistry) RemoveTerminatorsRateLimited(terminators []*t
 		}
 
 		if ctrlId, err := self.RemoveTerminators(terminatorIds); err != nil {
-			if command.WasRateLimited(err) {
+			// Backoff on anything meaning the controller couldn't keep up: an explicit rate-limit
+			// rejection, or a timeout, whether that was waiting for send-queue room, for the wire,
+			// or for the reply. Other errors say nothing about load, so they report Failed.
+			if command.WasRateLimited(err) || channel.IsTimeout(err) {
 				rateLimitCtrl.Backoff()
 			} else {
 				rateLimitCtrl.Failed()
@@ -427,7 +437,9 @@ func (self *HostedServiceRegistry) queueRemoveTerminatorSync(terminator *tunnelT
 
 func (self *HostedServiceRegistry) queueRemoveTerminatorUnchecked(terminator *tunnelTerminator, reason string) {
 	terminator.setState(xgress_common.TerminatorStateDeleting, reason)
-	terminator.operationActive.Store(false)
+	// operationActive is deliberately left as it is. These callers close a terminator for reasons of
+	// their own, and a create may still be outstanding; clearing it here would let the delete be sent
+	// while that create is in flight. evaluateDeleteQueue waits for it, with its own timeout.
 	self.deleteSet[terminator.id] = terminator
 }
 
@@ -475,6 +487,9 @@ func (self *HostedServiceRegistry) Remove(terminator *tunnelTerminator, reason s
 }
 
 func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTerminator) error {
+	// An attempt that overran EstablishmentTimeout may still be unanswered; it is superseded by this one.
+	terminator.clearCreateRequest()
+
 	start := time.Now().UnixMilli()
 	log := pfxlog.Logger().
 		WithField("routerId", self.env.GetRouterId().Token).
@@ -509,17 +524,48 @@ func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTermina
 
 	log.Info("sending create tunnel terminator v2 request")
 
-	queued, err := ctrlCh.TrySend(protobufs.MarshalTyped(request).ToSendable())
+	// Sent as an explicit message rather than through protobufs.MarshalTyped so it can be wrapped in a
+	// createRequestSendable, which records the attempt as the sequence is assigned.
+	body, err := proto.Marshal(request)
 	if err != nil {
 		return err
 	}
-	if !queued {
+
+	msg := channel.NewMessage(request.GetContentType(), body)
+	queued, err := ctrlCh.TrySend(&createRequestSendable{
+		Message:    msg,
+		terminator: terminator,
+		ctrlId:     ctrlCh.Id(),
+	})
+	if err != nil || !queued {
+		// The sequence, and with it the attempt, was recorded before the send failed.
+		terminator.clearCreateRequest()
+		if err != nil {
+			return err
+		}
 		return errors.New("channel too busy")
 	}
 	return nil
 }
 
-func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, _ channel.Channel) {
+// createRequestSendable records a create terminator request as the outstanding attempt at the moment
+// the sender assigns its sequence, which is before the message can reach the tx goroutine. Recording
+// after TrySend returns would leave a window in which the response arrives first and is read as
+// answering an attempt that is not yet known.
+type createRequestSendable struct {
+	*channel.Message
+	terminator *tunnelTerminator
+	ctrlId     string
+}
+
+var _ channel.Sendable = (*createRequestSendable)(nil)
+
+func (self *createRequestSendable) SetSequence(seq int32) {
+	self.Message.SetSequence(seq)
+	self.terminator.noteCreateRequestSent(self.ctrlId, seq)
+}
+
+func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.Message, ch channel.Channel) {
 	defer self.triggerEvaluates()
 
 	log := pfxlog.Logger().WithField("routerId", self.env.GetRouterId().Token)
@@ -541,6 +587,12 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 
 	log = log.WithField("lifetime", time.Since(terminator.createTime))
 
+	// Attempts overlap once one overruns EstablishmentTimeout, and they all carry the same terminator
+	// id, so the response is matched to an attempt by reply sequence rather than by id.
+	if !terminator.resolveCreateRequest(ch.Id(), msg.ReplyFor()) {
+		log.Info("create response answers a superseded attempt; a later create is still outstanding")
+	}
+
 	if response.Result == edge_ctrl_pb.CreateTerminatorResult_FailedBusy {
 		log.Info("controller too busy to handle create terminator, retrying later")
 		if rateLimitCallback := terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
@@ -555,7 +607,7 @@ func (self *HostedServiceRegistry) HandleCreateTerminatorResponse(msg *channel.M
 			rateLimitCallback.Success()
 		}
 
-		terminator.operationActive.Store(false)
+		terminator.endOperationIfIdle()
 		return
 	}
 
@@ -664,9 +716,11 @@ func (self *markEstablishedEvent) handle(registry *HostedServiceRegistry) {
 		WithField("terminatorId", self.terminator.id).
 		WithField("lifetime", time.Since(self.terminator.createTime))
 
-	if rateLimitCallback := self.terminator.GetAndClearRateLimitCallback(); rateLimitCallback != nil {
-		rateLimitCallback.Success()
-	}
+	// Congestion signaling is about the create we last sent, so it times this attempt
+	// (lastAttempt), not the terminator's lifetime (createTime): a reconnect re-establishes a
+	// long-lived terminator without resetting createTime, so createTime would flag every
+	// reconnect as slow and back off during recovery.
+	self.terminator.resolveRateLimitCallback(time.Since(self.terminator.lastAttempt))
 
 	if !self.terminator.updateState(xgress_common.TerminatorStateEstablishing, xgress_common.TerminatorStateEstablished, self.reason) {
 		log.Info("received additional terminator created notification")
@@ -674,5 +728,7 @@ func (self *markEstablishedEvent) handle(registry *HostedServiceRegistry) {
 		log.Info("terminator established")
 	}
 
-	self.terminator.operationActive.Store(false)
+	// This event also fires for a reply to a superseded create and for a controller validation
+	// message, either of which can arrive while a later create is still in flight.
+	self.terminator.endOperationIfIdle()
 }

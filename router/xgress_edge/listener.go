@@ -1121,6 +1121,7 @@ func (self *edgeClientConn) processBindV2(serviceSessionToken *state.ServiceSess
 	}
 
 	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
+	terminator.establishStart.Store(time.Now())
 
 	checkResult, err := self.listener.factory.hostedServices.checkForExistingListenerId(terminator)
 	if err != nil {
