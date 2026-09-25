@@ -1114,7 +1114,7 @@ func (ctx *TestContext) waitForPortClose(address string, duration time.Duration)
 		_ = conn.Close()
 		now = time.Now()
 		if !now.Before(endTime) {
-			return err
+			return fmt.Errorf("port %s still open after %s", address, duration)
 		}
 		maxWait = endTime.Sub(now)
 		time.Sleep(10 * time.Millisecond)

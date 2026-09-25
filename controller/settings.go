@@ -52,14 +52,12 @@ func (o OnConnectSettingsHandler) RouterConnected(r *model.Router) {
 }
 
 type OnConnectCtrlAddressesUpdateHandler struct {
-	ctrlAddress string
-	raft        *raft.Controller
+	raft *raft.Controller
 }
 
-func NewOnConnectCtrlAddressesUpdateHandler(ctrlAddress string, raft *raft.Controller) *OnConnectCtrlAddressesUpdateHandler {
+func NewOnConnectCtrlAddressesUpdateHandler(raft *raft.Controller) *OnConnectCtrlAddressesUpdateHandler {
 	return &OnConnectCtrlAddressesUpdateHandler{
-		ctrlAddress: ctrlAddress,
-		raft:        raft,
+		raft: raft,
 	}
 }
 

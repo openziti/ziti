@@ -342,7 +342,7 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 	if c.raftController != nil {
 		logrus.Info("Adding router presence handler to send out ctrl addresses")
 		c.network.AddRouterPresenceHandler(
-			NewOnConnectCtrlAddressesUpdateHandler(c.config.Ctrl.Listener.String(), c.raftController),
+			NewOnConnectCtrlAddressesUpdateHandler(c.raftController),
 		)
 	}
 
@@ -664,6 +664,13 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
+		// In cluster mode Db belongs to the raft FSM, so raft must stop applying entries first.
+		if c.raftController != nil {
+			if err := c.raftController.Shutdown(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to shutdown raft")
+			}
+		}
+
 		if c.config.Db != nil {
 			if err := c.config.Db.Close(); err != nil {
 				pfxlog.Logger().WithError(err).Error("failed to close db")
@@ -671,12 +678,6 @@ func (c *Controller) Shutdown() {
 		}
 
 		go c.xweb.Shutdown()
-
-		if c.raftController != nil {
-			if err := c.raftController.Shutdown(); err != nil {
-				pfxlog.Logger().WithError(err).Error("failed to shutdown raft")
-			}
-		}
 
 		c.config.Id.StopWatchingFiles()
 		if c.config.Edge.Enrollment.SigningCert != nil {

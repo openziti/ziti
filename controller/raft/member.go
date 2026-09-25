@@ -119,6 +119,20 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 		return fmt.Errorf("unsupported peer address format '%s'", req.Addr)
 	}
 
+	r := self.GetRaft()
+
+	configFuture := r.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return errors.Wrap(err, "failed to get raft configuration")
+	}
+
+	// A request naming an existing member at a new address, with unchanged suffrage, moves it.
+	for _, srv := range configFuture.Configuration().Servers {
+		if string(srv.ID) == req.Id && string(srv.Address) != req.Addr && (srv.Suffrage == raft.Voter) == req.IsVoter {
+			return self.UpdateMemberAddressAsLeader(srv.ID, "", raft.ServerAddress(req.Addr))
+		}
+	}
+
 	peerId, peerAddr, err := self.Mesh.GetPeerInfo(req.Addr, 15*time.Second)
 	if err != nil {
 		// GetPeerInfo reuses an already-established connection if one exists, so reaching
@@ -131,15 +145,14 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 			"joining node instead ('ziti agent cluster add -i <joining-node> <joining-node-advertise-addr>')", req.Addr)
 	}
 
-	r := self.GetRaft()
-
-	configFuture := r.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		return errors.Wrap(err, "failed to get raft configuration")
-	}
-
 	id := peerId
 	addr := peerAddr
+
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == id && srv.Address != addr && (srv.Suffrage == raft.Voter) == req.IsVoter {
+			return self.UpdateMemberAddressAsLeader(id, "", addr)
+		}
+	}
 
 	for _, srv := range configFuture.Configuration().Servers {
 		// If a node already exists with either the joining node's ID or address,
@@ -171,6 +184,127 @@ func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error 
 	}
 
 	return nil
+}
+
+// UpdateMemberAddressAsLeader changes the raft address of an existing member in place, keeping its
+// suffrage. It succeeds without change if the member is already at addr. It fails if id is not a
+// member, if another member is stored at addr, or if fromAddr is non-empty and the member is stored
+// at an address other than fromAddr. Unless id is this node, addr is dialed first and must present
+// id. The change is conditioned on the configuration index it was checked against, so a concurrent
+// membership change makes it fail rather than apply. Must be called on the leader.
+func (self *Controller) UpdateMemberAddressAsLeader(id raft.ServerID, fromAddr, addr raft.ServerAddress) error {
+	r := self.GetRaft()
+
+	configuration, configIndex, err := self.getLatestConfiguration()
+	if err != nil {
+		return errors.Wrap(err, "failed to get raft configuration")
+	}
+
+	var member *raft.Server
+	for _, srv := range configuration.Servers {
+		if srv.ID == id {
+			member = &srv
+		} else if srv.Address == addr {
+			return errors.Errorf("unable to move member %s to address %s, address belongs to member %s", id, addr, srv.ID)
+		}
+	}
+
+	if member == nil {
+		return errors.Errorf("unable to update address of %s, not a cluster member", id)
+	}
+
+	if member.Address == addr {
+		return nil
+	}
+
+	if fromAddr != "" && member.Address != fromAddr {
+		return errors.Errorf("unable to move member %s from address %s, it is stored at %s", id, fromAddr, member.Address)
+	}
+
+	if string(id) != self.env.GetId().Token {
+		probedId, _, err := self.Mesh.ProbePeer(string(addr), memberAddressProbeTimeout)
+		if err != nil {
+			return errors.Wrapf(err, "unable to reach member %s at new address %s", id, addr)
+		}
+		if probedId != id {
+			return errors.Errorf("unable to move member %s to address %s, address is served by %s", id, addr, probedId)
+		}
+	}
+
+	var f raft.IndexFuture
+	if member.Suffrage == raft.Voter {
+		f = r.AddVoter(id, addr, configIndex, 0)
+	} else {
+		f = r.AddNonvoter(id, addr, configIndex, 0)
+	}
+
+	if err := f.Error(); err != nil {
+		return errors.Wrapf(err, "failed to update address of member %s", id)
+	}
+
+	logrus.WithField("memberId", id).
+		WithField("oldAddr", member.Address).
+		WithField("newAddr", addr).
+		Info("updated cluster member address")
+
+	return nil
+}
+
+// getLatestConfiguration returns the latest raft configuration, committed or not, with the index of
+// the log entry that set it, read from the raft log and snapshot stores. Unlike
+// raft.Raft.GetConfiguration, whose Index is always zero, the index can be passed as prevIndex to
+// make a membership change conditional. An entry appended after the read makes the pair stale, which
+// a conditional change then rejects.
+func (self *Controller) getLatestConfiguration() (raft.Configuration, uint64, error) {
+	var configuration raft.Configuration
+	var configIndex, snapshotIndex uint64
+
+	snapshots, err := self.snapshotStore.List()
+	if err != nil {
+		return configuration, 0, errors.Wrap(err, "unable to list raft snapshots")
+	}
+	if len(snapshots) > 0 {
+		configuration, configIndex = snapshots[0].Configuration, snapshots[0].ConfigurationIndex
+		snapshotIndex = snapshots[0].Index
+	}
+
+	firstIndex, err := self.logStore.FirstIndex()
+	if err != nil {
+		return configuration, 0, errors.Wrap(err, "unable to read first raft log index")
+	}
+	lastIndex, err := self.logStore.LastIndex()
+	if err != nil {
+		return configuration, 0, errors.Wrap(err, "unable to read last raft log index")
+	}
+
+	// Only entries above the snapshot can supersede its configuration. Retained entries below it may
+	// be separated from newer ones by a gap the snapshot covers, e.g. after a snapshot install.
+	for idx := lastIndex; idx > snapshotIndex && idx >= firstIndex && idx > 0; idx-- {
+		entry := &raft.Log{}
+		if err = self.logStore.GetLog(idx, entry); err != nil {
+			return configuration, 0, errors.Wrapf(err, "unable to read raft log entry %d", idx)
+		}
+		if entry.Type == raft.LogConfiguration {
+			return raft.DecodeConfiguration(entry.Data), idx, nil
+		}
+	}
+
+	if configIndex == 0 {
+		return configuration, 0, errors.New("no raft configuration found")
+	}
+	return configuration, configIndex, nil
+}
+
+// HandleUpdatePeerAddress moves an existing member to a new raft address, keeping its suffrage. See
+// UpdateMemberAddressAsLeader. Forwarded to the leader when this node isn't the leader.
+func (self *Controller) HandleUpdatePeerAddress(req *cmd_pb.UpdatePeerAddressRequest) error {
+	if self.IsLeader() {
+		if _, err := transport.ParseAddress(req.Addr); err != nil {
+			return fmt.Errorf("unsupported peer address format '%s'", req.Addr)
+		}
+		return self.UpdateMemberAddressAsLeader(raft.ServerID(req.Id), raft.ServerAddress(req.FromAddr), raft.ServerAddress(req.Addr))
+	}
+	return self.forwardToLeader(req)
 }
 
 func (self *Controller) HandleRemovePeerAsLeader(req *cmd_pb.RemovePeerRequest) error {
