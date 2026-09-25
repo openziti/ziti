@@ -2,6 +2,7 @@ package ctrlchan
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -726,4 +727,134 @@ func TestReject_BindErrorNotEstablishedOrRxStarted(t *testing.T) {
 	// rx a moment to (not) happen.
 	req.Never(func() bool { return established.Load() != 0 || rxFired.Load() }, 500*time.Millisecond, 50*time.Millisecond,
 		"a rejected bind must not establish a channel or start its receive loop")
+}
+
+// TestDialCtrlChannel_ReconnectRedialsFreshGroup covers the heartbeat recovery path: Reconnect closes
+// every underlay of an established group, the channel itself survives, and the group is rebuilt as a
+// new iteration the controller accepts as a new channel rather than an attach to the old one.
+func TestDialCtrlChannel_ReconnectRedialsFreshGroup(t *testing.T) {
+	req := require.New(t)
+
+	listenerAddr := "tcp:127.0.0.1:40031"
+	id := &identity.TokenId{Token: "test-controller"}
+
+	var acceptedChannels []channel.MultiChannel
+	var acceptedLock sync.Mutex
+
+	multiListener := channel.NewMultiListener(
+		func(underlay channel.Underlay, closeCallback func()) (channel.MultiChannel, error) {
+			listenerChannel := NewListenerCtrlChannel()
+			multiConfig := &channel.MultiChannelConfig{
+				LogicalName:     "ctrl/" + underlay.ConnectionId(),
+				Options:         channel.DefaultOptions(),
+				UnderlayHandler: listenerChannel,
+				Underlay:        underlay,
+				BindHandler: channel.BindHandlerF(func(binding channel.Binding) error {
+					binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+						closeCallback()
+					}))
+					return nil
+				}),
+			}
+			multiCh, err := channel.NewMultiChannel(multiConfig)
+			if err != nil {
+				return nil, err
+			}
+			acceptedLock.Lock()
+			acceptedChannels = append(acceptedChannels, multiCh)
+			acceptedLock.Unlock()
+			return multiCh, nil
+		},
+		func(underlay channel.Underlay) error {
+			return fmt.Errorf("ungrouped connections not supported")
+		},
+	)
+
+	bindAddr, err := transport.ParseAddress(listenerAddr)
+	req.NoError(err)
+	listener, err := channel.NewClassicListenerF(id, bindAddr, channel.ListenerConfig{
+		ConnectOptions: channel.DefaultOptions().ConnectOptions,
+	}, multiListener.AcceptUnderlay)
+	req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	acceptedChannel := func(idx int) channel.MultiChannel {
+		acceptedLock.Lock()
+		defer acceptedLock.Unlock()
+		if idx < len(acceptedChannels) {
+			return acceptedChannels[idx]
+		}
+		return nil
+	}
+	totalUnderlays := func(ch channel.Channel) int {
+		total := 0
+		for _, count := range ch.GetUnderlayCountsByType() {
+			total += count
+		}
+		return total
+	}
+
+	headers := channel.Headers{}
+	headers.PutStringHeader(channel.TypeHeader, ChannelTypeDefault)
+	headers.PutBoolHeader(channel.IsGroupedHeader, true)
+	headers.PutBoolHeader(channel.IsFirstGroupConnection, true)
+
+	dialer := channel.NewClassicDialer(channel.DialerConfig{
+		Identity: id,
+		Endpoint: bindAddr,
+	})
+	initialUnderlay, err := dialer.CreateWithHeaders(5*time.Second, headers)
+	req.NoError(err)
+
+	// sawZero records that the change callback reported the channel dropping to no underlays, which is
+	// the disconnect notification the router acts on.
+	var sawZero atomic.Bool
+	dialChannel := NewDialCtrlChannel(DialCtrlChannelConfig{
+		Dialer:                  dialer,
+		MaxDefaultChannels:      1,
+		MaxHighPriorityChannels: 1,
+		MaxLowPriorityChannels:  0,
+		UnderlayChangeCallback: func(ch *DialCtrlChannel, oldCount, newCount uint32) {
+			if newCount == 0 {
+				sawZero.Store(true)
+			}
+		},
+	})
+
+	multiCh, err := channel.NewMultiChannel(&channel.MultiChannelConfig{
+		LogicalName:     "ctrl/router-test",
+		Options:         channel.DefaultOptions(),
+		UnderlayHandler: dialChannel,
+		Underlay:        initialUnderlay,
+	})
+	req.NoError(err)
+	defer func() { _ = multiCh.Close() }()
+
+	// both sides fully established: default and high-priority underlays
+	req.Eventually(func() bool {
+		first := acceptedChannel(0)
+		return first != nil && totalUnderlays(first) == 2 && totalUnderlays(multiCh) == 2
+	}, 10*time.Second, 10*time.Millisecond, "both underlays should be established on both sides")
+	firstAccepted := acceptedChannel(0)
+	req.False(sawZero.Load())
+
+	t.Log("reconnecting from the dial side")
+	req.NoError(dialChannel.Reconnect())
+
+	req.Eventually(func() bool {
+		return firstAccepted.IsClosed()
+	}, 5*time.Second, 10*time.Millisecond, "peer channel should close once its underlays are gone")
+	req.False(multiCh.IsClosed(), "dial-side channel must stay open across a reconnect")
+	req.True(sawZero.Load(), "the change callback must report the drop to zero underlays")
+
+	req.Eventually(func() bool {
+		second := acceptedChannel(1)
+		return second != nil && totalUnderlays(second) == 2 && totalUnderlays(multiCh) == 2
+	}, 15*time.Second, 10*time.Millisecond, "dial side should rebuild the group with both underlays")
+	req.False(multiCh.IsClosed())
+
+	second := acceptedChannel(1)
+	req.NotEqual(firstAccepted.ConnectionId(), second.ConnectionId(),
+		"the rebuilt group must carry a fresh iteration id, not reattach to the old one")
+	req.True(strings.HasSuffix(second.ConnectionId(), "-1"), "iteration id was %s", second.ConnectionId())
 }

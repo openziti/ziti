@@ -876,7 +876,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	if len(controllers) > 0 {
-		self.ctrls.UpdateControllerDetails(controllers)
+		self.ctrls.LoadControllerDetails(controllers)
 	} else {
 		self.ctrls.ConnectToInitialEndpoints(endpoints)
 	}

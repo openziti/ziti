@@ -27,8 +27,8 @@ require (
 	github.com/gaissmai/extnetip v1.3.2
 	github.com/go-acme/lego/v4 v4.35.2
 	github.com/go-jose/go-jose/v4 v4.1.5
-	github.com/go-openapi/errors v0.22.8
-	github.com/go-openapi/jsonpointer v1.0.1
+	github.com/go-openapi/errors v0.22.9
+	github.com/go-openapi/jsonpointer v1.0.2
 	github.com/go-openapi/loads v0.25.3
 	github.com/go-openapi/runtime v0.33.2
 	github.com/go-openapi/spec v1.0.1
@@ -91,9 +91,9 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.51.1
+	github.com/zitadel/oidc/v3 v3.51.6
 	go.etcd.io/bbolt v1.5.0
-	go.uber.org/atomic v1.11.0
+	go.uber.org/atomic v1.12.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.57.0
 	golang.org/x/net v0.59.0
@@ -115,9 +115,9 @@ require (
 	github.com/Azure/go-amqp v1.7.0 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
-	github.com/andybalholm/brotli v1.2.4 // indirect
+	github.com/andybalholm/brotli v1.2.5 // indirect
 	github.com/antchfx/xpath v1.3.8 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -126,7 +126,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/ebitengine/purego v0.11.0 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
@@ -148,7 +148,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.29.2 // indirect
 	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20260917010721-cc30ffac3c05 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20260923180740-94fc73f6b1a3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.7.0 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect
