@@ -152,6 +152,8 @@ type Controller struct {
 	Raft                       *raft.Raft
 	Fsm                        *BoltDbFsm
 	raftStore                  *raftboltdb.BoltStore
+	logStore                   raft.LogStore
+	snapshotStore              raft.SnapshotStore
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
 	indexTracker               IndexTracker
@@ -166,13 +168,14 @@ type Controller struct {
 	// caughtUpLock guards leaderTerm and every write to leaderCaughtUp, so a barrier completing
 	// alongside a leadership change cannot record a result for a term that has already ended.
 	// leaderCaughtUp is atomic so the read path needs no lock.
-	caughtUpLock    sync.Mutex
-	leaderTerm      uint64
-	leaderCaughtUp  atomic.Bool
-	clusterEvents   chan raft.Observation
-	raftRateLimiter rate.AdaptiveRateLimitTracker
-	errorMappers    map[string]func(map[string]any) error
-	decoders        command.Decoders
+	caughtUpLock              sync.Mutex
+	leaderTerm                uint64
+	leaderCaughtUp            atomic.Bool
+	clusterEvents             chan raft.Observation
+	raftRateLimiter           rate.AdaptiveRateLimitTracker
+	errorMappers              map[string]func(map[string]any) error
+	decoders                  command.Decoders
+	advertiseReconcileRunning atomic.Bool
 }
 
 // GetDecoders returns the command decoder registry this controller's raft FSM uses to decode
@@ -205,6 +208,20 @@ func (self *Controller) IsPeerMember(id string) bool {
 		}
 	}
 	return false
+}
+
+// GetMemberId returns the id of the cluster member stored at the given raft address. It reads the
+// FSM's cached configuration, so it is safe to call from the raft transport before raft has
+// finished starting.
+func (self *Controller) GetMemberId(address raft.ServerAddress) (raft.ServerID, bool) {
+	if state := self.Fsm.GetCachedServers(); state != nil {
+		for _, srv := range state.Servers {
+			if srv.Address == address {
+				return srv.ID, true
+			}
+		}
+	}
+	return "", false
 }
 
 // GetNonMemberGrace returns the configured grace period for non-member peer
@@ -706,6 +723,7 @@ func (self *Controller) Init() error {
 		logrus.WithError(err).Error("failed to initialize raft bolt storage")
 		return err
 	}
+	self.logStore = self.raftStore
 
 	snapshotsDir := raftConfig.DataDir
 	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, raftConfig.Logger)
@@ -713,6 +731,7 @@ func (self *Controller) Init() error {
 		logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize raft snapshot store in: '%v'", snapshotsDir)
 		return err
 	}
+	self.snapshotStore = snapshotStore
 
 	helloHeaderProviders := self.env.GetHelloHeaderProviders()
 
@@ -768,6 +787,7 @@ func (self *Controller) StartEventGeneration() {
 	go self.eventLoop()
 	self.setupPreferredLeaderTransfer()
 	self.setupClusterIdBackfill()
+	self.setupAdvertiseAddressReconcile()
 	self.Mesh.StartPeerDialer(&self.Config.PeerDialer)
 }
 
@@ -777,10 +797,10 @@ func (self *Controller) GetPeerAddresses() []string {
 	if result == nil {
 		return nil
 	}
-	localAddr := string(self.Mesh.GetAdvertiseAddr())
+	localId := raft.ServerID(self.env.GetId().Token)
 	var addresses []string
 	for _, srv := range result.Servers {
-		if string(srv.Address) != localAddr {
+		if srv.ID != localId {
 			addresses = append(addresses, string(srv.Address))
 		}
 	}

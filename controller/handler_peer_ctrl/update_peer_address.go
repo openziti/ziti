@@ -28,42 +28,36 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newAddPeerHandler(controller *raft.Controller) channel.ContentTypeReceiver {
-	return &addPeerHandler{
+func newUpdatePeerAddressHandler(controller *raft.Controller) channel.ContentTypeReceiver {
+	return &updatePeerAddressHandler{
 		controller: controller,
 	}
 }
 
-type addPeerHandler struct {
+type updatePeerAddressHandler struct {
 	controller *raft.Controller
 }
 
-func (self *addPeerHandler) ContentType() int32 {
-	return int32(cmd_pb.ContentType_AddPeerRequestType)
+func (self *updatePeerAddressHandler) ContentType() int32 {
+	return int32(cmd_pb.ContentType_UpdatePeerAddressRequestType)
 }
 
-func (self *addPeerHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *updatePeerAddressHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
-	request := &cmd_pb.AddPeerRequest{}
+	request := &cmd_pb.UpdatePeerAddressRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		log.WithError(err).Error("failed to unmarshal add peer message")
+		log.WithError(err).Error("failed to unmarshal update peer address message")
 		go sendErrorResponse(msg, ch, err, peermsg.ErrorCodeBadMessage)
 		return
 	}
-	go self.handleAddPeer(msg, ch, request)
+	go self.handleUpdatePeerAddress(msg, ch, request)
 }
 
-func (self *addPeerHandler) handleAddPeer(m *channel.Message, ch channel.Channel, req *cmd_pb.AddPeerRequest) {
+func (self *updatePeerAddressHandler) handleUpdatePeerAddress(m *channel.Message, ch channel.Channel, req *cmd_pb.UpdatePeerAddressRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
+	log.Infof("received update peer address request id: %v, from: %v, to: %v", req.Id, req.FromAddr, req.Addr)
 
-	log.Infof("received join request id: %v, addr: %v, voter: %v", req.Id, req.Addr, req.IsVoter)
-
-	if !self.controller.IsBootstrapped() {
-		sendErrorResponse(m, ch, errors.New("node not member of bootstrapped cluster, unable to add peers"), peermsg.ErrorCodeGeneric)
-		return
-	}
-
-	if err := self.controller.HandleAddPeer(req); err != nil {
+	if err := self.controller.HandleUpdatePeerAddress(req); err != nil {
 		if errors.Is(err, raft2.ErrNotLeader) {
 			sendErrorResponse(m, ch, err, peermsg.ErrorCodeNotLeader)
 		} else {

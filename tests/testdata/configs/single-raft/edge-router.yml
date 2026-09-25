@@ -1,0 +1,36 @@
+v: 3
+
+# Edge router for the single-raft config set. The identity files are written by enrollment at test
+# runtime; the names are distinct from the other sets' routers so they don't clobber each other.
+identity:
+  cert: testdata/edge-router/single-raft-edge-router-client.cert.pem
+  server_cert: testdata/edge-router/single-raft-edge-router-server.cert.pem
+  key: testdata/edge-router/single-raft-edge-router.key.pem
+  ca: testdata/edge-router/single-raft-edge-router-ca-chain.cert.pem
+
+ctrl:
+  endpoint: tls:127.0.0.1:6262
+
+edge:
+  heartbeatIntervalSeconds: 10
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+    sans:
+      dns:
+        - "localhost"
+      ip:
+        - "127.0.0.1"
+
+dialers:
+  - binding: udp
+  - binding: transport
+
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:3022
+    options:
+      advertise: 127.0.0.1:3022

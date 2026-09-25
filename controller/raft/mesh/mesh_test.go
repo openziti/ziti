@@ -311,3 +311,77 @@ func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
 func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
 }
+
+// memberIdEnv is an Env whose only implemented method is GetMemberId.
+type memberIdEnv struct {
+	Env
+	members map[raft.ServerAddress]raft.ServerID
+}
+
+func (self *memberIdEnv) GetMemberId(address raft.ServerAddress) (raft.ServerID, bool) {
+	id, found := self.members[address]
+	return id, found
+}
+
+func Test_getMemberPeer(t *testing.T) {
+	const storedAddr = "tls:old.example:6262"
+	const connectedAddr = "tls:new.example:6262"
+
+	peer := &Peer{Id: "ctrl3", Address: connectedAddr}
+	m := &impl{
+		env: &memberIdEnv{members: map[raft.ServerAddress]raft.ServerID{
+			storedAddr:    "ctrl3",
+			connectedAddr: "ctrl2",
+		}},
+		Peers: map[string]*Peer{connectedAddr: peer},
+	}
+
+	t.Run("returns the peer connected at the address", func(t *testing.T) {
+		assert.Same(t, peer, m.getMemberPeer(connectedAddr))
+	})
+
+	t.Run("falls back to the member id stored at the address", func(t *testing.T) {
+		assert.Same(t, peer, m.getMemberPeer(storedAddr))
+	})
+
+	t.Run("returns nil for an address with no member", func(t *testing.T) {
+		assert.Nil(t, m.getMemberPeer("tls:unknown.example:6262"))
+	})
+
+	t.Run("returns nil when the member is not connected", func(t *testing.T) {
+		m.Peers = map[string]*Peer{}
+		assert.Nil(t, m.getMemberPeer(storedAddr))
+	})
+}
+
+// probeUnderlay is an Underlay whose only implemented methods are Headers and Close.
+type probeUnderlay struct {
+	channel.Underlay
+	headers map[int32][]byte
+	closed  bool
+}
+
+func (self *probeUnderlay) Headers() map[int32][]byte {
+	return self.headers
+}
+
+func (self *probeUnderlay) Close() error {
+	self.closed = true
+	return nil
+}
+
+func Test_AcceptUnderlay_ClosesProbeWithoutRegisteringPeer(t *testing.T) {
+	existing := &Peer{Id: "ctrl1", Address: "tls:ctrl1.example:6262"}
+	m := &impl{
+		Peers: map[string]*Peer{existing.Address: existing},
+	}
+
+	underlay := &probeUnderlay{headers: map[int32][]byte{
+		PeerAddrHeader: []byte(existing.Address),
+		ProbeHeader:    {1},
+	}}
+
+	assert.NoError(t, m.AcceptUnderlay(underlay))
+	assert.True(t, underlay.closed, "probe connection should be closed")
+	assert.Equal(t, map[string]*Peer{existing.Address: existing}, m.Peers, "probe must not register or displace a peer")
+}
