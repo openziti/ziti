@@ -39,6 +39,7 @@ import (
 
 type cliTestState struct {
 	homeDir             string
+	zitiPath            string
 	zitiContext         *ziti.Context
 	zitiTransport       *http.Transport
 	commonOpts          api.Options
@@ -93,6 +94,7 @@ func Test_CLI_Test_Suite(t *testing.T) {
 
 	testState := &cliTestState{
 		homeDir:             testRunHome,
+		zitiPath:            zitiPath,
 		zitiContext:         nil,
 		zitiTransport:       nil,
 		externalZiti:        testutil.CreateOverlay(t, externalCtx, 600*time.Second, testRunHome, "external"),
