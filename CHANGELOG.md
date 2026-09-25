@@ -8,6 +8,13 @@
 
 * github.com/openziti/ziti/v2: [v2.0.6 -> v2.0.7](https://github.com/openziti/ziti/compare/v2.0.6...v2.0.7)
     * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
+    * [Issue #4466](https://github.com/openziti/ziti/issues/4466) - [Backport-2.0] Router mis-signals congestion on terminator establish/remove timeouts
+    * [Issue #4444](https://github.com/openziti/ziti/issues/4444) - [Backport-2.0] Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
+    * [Issue #4402](https://github.com/openziti/ziti/issues/4402) - ziti edge login -f succeeds, every command after it returns 401
+    * [Issue #4467](https://github.com/openziti/ziti/issues/4467) - [Backport-2.0] SDK terminator removal can enter a self-sustaining retry storm under heavy churn
+    * [Issue #4470](https://github.com/openziti/ziti/issues/4470) - [Backport-2.0] Router config with a ctrl.rateLimiter stanza that omits minSize fails to load
+    * [Issue #4379](https://github.com/openziti/ziti/issues/4379) - [Backport-2.0] Api session enforcer delete meter only marks when the batch delete fails
+
 
 # Release 2.0.6
 

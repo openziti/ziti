@@ -75,7 +75,13 @@ type NetworkControllers interface {
 	MarkChannelEstablished()
 	EverConnected() bool
 	GetControllerDetails() map[string]*ctrl_pb.CtrlDetail
+	// UpdateControllerDetails replaces the controller set with one a controller advertised. From then on
+	// a controller absent from the set is treated as removed.
 	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
+	// LoadControllerDetails replaces the controller set with one recorded earlier, such as the endpoints
+	// file. It is a starting point, not an authority: a controller reached that is absent from it is
+	// still registered, and the first advertised set corrects it.
+	LoadControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
 	ConnectToInitialEndpoints(endpoints []string)
 	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
@@ -171,6 +177,18 @@ func (self *networkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlD
 }
 
 func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+	return self.replaceControllerDetails(controllers, true)
+}
+
+func (self *networkControllers) LoadControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+	return self.replaceControllerDetails(controllers, false)
+}
+
+// replaceControllerDetails installs controllers as the set, dropping and dialing to match. authoritative
+// marks the set as advertised by a controller; a recorded set never is, since the ids in it may no longer
+// match the controllers at those addresses, and refusing what they reach would leave the router unable
+// to connect until the file is removed.
+func (self *networkControllers) replaceControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -180,7 +198,9 @@ func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.C
 	}
 
 	self.controllerDetails.Store(newIdSet)
-	self.detailsAuthoritative.Store(true)
+	if authoritative {
+		self.detailsAuthoritative.Store(true)
+	}
 
 	changed := false
 	log := pfxlog.Logger()
@@ -243,8 +263,7 @@ func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_p
 // controller that never advertises a cluster (a standalone controller sends none) is otherwise known
 // only as the endpoint it was dialed on, and the close handler redials only controllers it has a detail
 // for. Once a controller has advertised the cluster's controller set, nothing is learned: that set is
-// authoritative, and a controller absent from it was removed. Callers decide whether the dial was one
-// that may learn; see connectToController.
+// authoritative, and a controller absent from it was removed.
 func (self *networkControllers) learnControllerDetail(ctrlId string, endpoint string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -339,7 +358,7 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 			return err
 		}
 
-		err = self.connectToController(ep.Address, addr, detail.Id == "")
+		err = self.connectToController(ep.Address, addr)
 		if err != nil {
 			if ctrlId, ok := self.duplicateResolved(err); ok {
 				log.WithField("endpoint", ep.Address).WithField("ctrlId", ctrlId).
@@ -385,11 +404,11 @@ func firstUnderlayHeaders(base channel.Headers) channel.Headers {
 	return first
 }
 
-// connectToController dials endpoint and registers the resulting control channel. learnDetail records
-// the endpoint as the controller's detail when none is known, which only a dial started from a bare
-// endpoint may do: a dial started from a detail that has since been removed reached a controller the
-// cluster no longer has, and must not put it back.
-func (self *networkControllers) connectToController(endpoint string, addr transport.Address, learnDetail bool) error {
+// connectToController dials endpoint and registers the resulting control channel, recording the endpoint
+// as the reached controller's detail while no controller has advertised the cluster's set. The dial may
+// have started from a recorded detail whose id the controller no longer has; the detail is recorded under
+// the id the controller reports, which is the one a close handler looks up.
+func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
 	headers, err := self.dialEnv.GetChannelHeaders()
 	if err != nil {
 		return err
@@ -464,9 +483,7 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 			return err
 		}
 
-		if learnDetail {
-			self.learnControllerDetail(id, endpoint)
-		}
+		self.learnControllerDetail(id, endpoint)
 
 		binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
 			self.handleChannelClose(id, ctrl, time.Second)

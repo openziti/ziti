@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	routerEnv "github.com/openziti/ziti/v2/router/env"
 )
 
@@ -35,15 +36,32 @@ const (
 	reconnectWait = 45 * time.Second
 )
 
-// startEdgeRouterWithFastHeartbeats starts the test edge router with control channel heartbeats fast
-// enough for the heartbeat check to act within the test, and with no endpoints file, so the router knows
-// the controller only by the endpoint in its config, as a router on a standalone network does.
+// fastHeartbeats configures control channel heartbeats fast enough for the heartbeat check to act within
+// a test, and points the endpoints file into the test's temp dir, where nothing exists unless the test
+// writes it.
+func (ctx *TestContext) fastHeartbeats(cfg *routerEnv.Config) {
+	cfg.Ctrl.EndpointsFile = ctx.T().TempDir() + "/endpoints.yml"
+	cfg.Ctrl.Heartbeats.SendInterval = 500 * time.Millisecond
+	cfg.Ctrl.Heartbeats.CheckInterval = 100 * time.Millisecond
+	cfg.Ctrl.Heartbeats.CloseUnresponsiveTimeout = reconnectHeartbeatCloseTimeout
+}
+
+// startEdgeRouterWithFastHeartbeats starts the test edge router with no endpoints file, so the router
+// knows the controller only by the endpoint in its config, as a router on a standalone network does.
 func (ctx *TestContext) startEdgeRouterWithFastHeartbeats() *EdgeRouterHelper {
+	return ctx.startEdgeRouter(ctx.fastHeartbeats)
+}
+
+// startEdgeRouterWithStaleRecordedController starts the test edge router with an endpoints file that
+// records the controller's address under an id the controller does not have, which is what a file left
+// behind by a rebuilt cluster or a move from HA to standalone looks like.
+func (ctx *TestContext) startEdgeRouterWithStaleRecordedController() *EdgeRouterHelper {
 	return ctx.startEdgeRouter(func(cfg *routerEnv.Config) {
-		cfg.Ctrl.EndpointsFile = ctx.T().TempDir() + "/endpoints.yml"
-		cfg.Ctrl.Heartbeats.SendInterval = 500 * time.Millisecond
-		cfg.Ctrl.Heartbeats.CheckInterval = 100 * time.Millisecond
-		cfg.Ctrl.Heartbeats.CloseUnresponsiveTimeout = reconnectHeartbeatCloseTimeout
+		ctx.fastHeartbeats(cfg)
+		ctx.Req.NoError(cfg.SaveControllerDetails([]*ctrl_pb.CtrlDetail{{
+			Id:        "stale-controller-id",
+			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: ctx.ControllerConfig.Ctrl.Listener.String()}},
+		}}))
 	})
 }
 
@@ -140,6 +158,42 @@ func Test_RouterRedialsStandaloneControllerAfterCtrlChannelClose(t *testing.T) {
 		current := ctrls.GetNetworkController(ctrlId)
 		return current != nil && current != original && current.IsConnected()
 	}, reconnectWait, 100*time.Millisecond, "router should register a new control channel to the controller")
+
+	ctx.requireRouterConnected("controller should see the router connected again")
+}
+
+// Test_RouterRedialsStandaloneControllerRecordedUnderStaleId: the router dials from a recorded detail
+// whose id is stale, registers the controller under the id it actually reports, and must be able to
+// redial it after a close. A standalone controller sends no cluster update that would correct the
+// recorded id, so the redial depends on the router having recorded the controller it reached.
+func Test_RouterRedialsStandaloneControllerRecordedUnderStaleId(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.createAndEnrollEdgeRouter(false)
+	edgeRouter := ctx.startEdgeRouterWithStaleRecordedController()
+	ctx.requireRouterConnected("router should connect to the controller from the stale recorded detail")
+
+	ctrls := edgeRouter.Router.GetNetworkControllers()
+	registered := ctrls.GetAll()
+	ctx.Req.Len(registered, 1, "the router should have exactly one controller registered")
+
+	var ctrlId string
+	var original routerEnv.NetworkController
+	for id, ctrl := range registered {
+		ctrlId = id
+		original = ctrl
+	}
+	ctx.Req.NotEqual("stale-controller-id", ctrlId, "the controller is registered under the id it reports")
+
+	ctx.Req.NoError(original.Channel().Close())
+
+	ctx.Req.Eventually(func() bool {
+		current := ctrls.GetNetworkController(ctrlId)
+		return current != nil && current != original && current.IsConnected()
+	}, reconnectWait, 100*time.Millisecond, "router should redial the controller it reached, not the id it recorded")
 
 	ctx.requireRouterConnected("controller should see the router connected again")
 }

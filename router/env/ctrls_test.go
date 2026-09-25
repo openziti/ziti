@@ -626,6 +626,31 @@ func TestAdd_RefusesControllerAbsentFromAuthoritativeSet(t *testing.T) {
 	require.NoError(t, err, "a controller in the advertised set is registered")
 }
 
+// TestLoadControllerDetails_IsNotAuthoritative: a set recorded earlier, the endpoints file at startup, may
+// name controllers by ids that no longer match what is at those addresses, as after a cluster is rebuilt.
+// The controller actually reached must still be registered, or the router can never connect and fails
+// startup on every restart until the file is removed. Only a set a controller advertises is authoritative.
+func TestLoadControllerDetails_IsNotAuthoritative(t *testing.T) {
+	nc := newTestNetworkControllers()
+	nc.closed.Store(true) // stops the load and update at their dial guard, so they record the set without a network dial
+	underlay := newTestUnderlay(t)
+
+	nc.LoadControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "stale", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl:6262"}}}})
+	require.NotNil(t, nc.getControllerDetail("stale"), "the recorded set is installed")
+
+	reached := &ctrlsTestChannel{id: "ctrl1", label: "reached"}
+	_, err := nc.Add("tls:ctrl:6262", &ctrlsTestCtrlChannel{ch: reached}, reached, underlay)
+	require.NoError(t, err, "a controller outside a recorded set must still be registered")
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl:6262")
+	require.NotNil(t, nc.getControllerDetail("ctrl1"), "a recorded set does not stop learning either")
+
+	nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl:6262"}}}})
+	other := &ctrlsTestChannel{id: "ctrl9", label: "other"}
+	_, err = nc.Add("tls:ctrl9:6262", &ctrlsTestCtrlChannel{ch: other}, other, underlay)
+	require.Error(t, err, "once a controller has advertised the set, a controller outside it is refused")
+}
+
 // TestAdd_AllowsAnyControllerBeforeAuthoritativeSet: until a controller has advertised the cluster, the
 // router knows controllers only by the endpoints it was configured with, and registers whatever they reach.
 func TestAdd_AllowsAnyControllerBeforeAuthoritativeSet(t *testing.T) {
