@@ -118,11 +118,14 @@ type networkControllers struct {
 	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
 	idsBeingDialed        cmap.ConcurrentMap[string, struct{}]
-	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
-	leaderId              concurrenz.AtomicValue[string]
-	ctrlChangeListeners   concurrenz.CopyOnWriteSlice[*ctrlEventQueue]
-	controllerDetails     concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
-	closed                atomic.Bool
+	// detailsAuthoritative is set once a controller has sent the cluster's controller set. From then on
+	// omission from that set means removal, and nothing learned from a dial may add to it.
+	detailsAuthoritative atomic.Bool
+	ctrls                concurrenz.CopyOnWriteMap[string, NetworkController]
+	leaderId             concurrenz.AtomicValue[string]
+	ctrlChangeListeners  concurrenz.CopyOnWriteSlice[*ctrlEventQueue]
+	controllerDetails    concurrenz.AtomicValue[map[string]*ctrl_pb.CtrlDetail]
+	closed               atomic.Bool
 	// everConnected records that a control channel was established at some point. It is never cleared, so it
 	// answers whether the router has ever reached a controller rather than whether it is reachable now.
 	everConnected atomic.Bool
@@ -177,6 +180,7 @@ func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.C
 	}
 
 	self.controllerDetails.Store(newIdSet)
+	self.detailsAuthoritative.Store(true)
 
 	changed := false
 	log := pfxlog.Logger()
@@ -233,6 +237,31 @@ func (self *networkControllers) UpdateLeader(leaderId string) {
 
 func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_pb.CtrlDetail {
 	return self.controllerDetails.Load()[controllerId]
+}
+
+// learnControllerDetail records endpoint as the detail for a controller no detail is known for. A
+// controller that never advertises a cluster (a standalone controller sends none) is otherwise known
+// only as the endpoint it was dialed on, and the close handler redials only controllers it has a detail
+// for. Once a controller has advertised the cluster's controller set, nothing is learned: that set is
+// authoritative, and a controller absent from it was removed. Callers decide whether the dial was one
+// that may learn; see connectToController.
+func (self *networkControllers) learnControllerDetail(ctrlId string, endpoint string) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.detailsAuthoritative.Load() || self.getControllerDetail(ctrlId) != nil {
+		return
+	}
+
+	details := maps.Clone(self.controllerDetails.Load())
+	if details == nil {
+		details = map[string]*ctrl_pb.CtrlDetail{}
+	}
+	details[ctrlId] = &ctrl_pb.CtrlDetail{
+		Id:        ctrlId,
+		Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: endpoint}},
+	}
+	self.controllerDetails.Store(details)
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.CtrlDetail) {
@@ -310,12 +339,19 @@ func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.C
 			return err
 		}
 
-		err = self.connectToController(ep.Address, addr)
+		err = self.connectToController(ep.Address, addr, detail.Id == "")
 		if err != nil {
 			if ctrlId, ok := self.duplicateResolved(err); ok {
 				log.WithField("endpoint", ep.Address).WithField("ctrlId", ctrlId).
 					Info("endpoint reached an already connected controller, exiting retry")
 				return nil
+			}
+			var notInCluster *errControllerNotInCluster
+			if errors.As(err, &notInCluster) {
+				// The cluster does not advertise this controller; should it come back, an update dials it.
+				log.WithField("endpoint", ep.Address).WithField("ctrlId", notInCluster.ctrlId).
+					Info("endpoint reached a controller the cluster does not advertise, exiting retry")
+				return backoff.Permanent(err)
 			}
 			log.WithField("endpoint", ep.Address).WithError(err).Error("unable to connect controller")
 		}
@@ -349,7 +385,11 @@ func firstUnderlayHeaders(base channel.Headers) channel.Headers {
 	return first
 }
 
-func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
+// connectToController dials endpoint and registers the resulting control channel. learnDetail records
+// the endpoint as the controller's detail when none is known, which only a dial started from a bare
+// endpoint may do: a dial started from a detail that has since been removed reached a controller the
+// cluster no longer has, and must not put it back.
+func (self *networkControllers) connectToController(endpoint string, addr transport.Address, learnDetail bool) error {
 	headers, err := self.dialEnv.GetChannelHeaders()
 	if err != nil {
 		return err
@@ -422,6 +462,10 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		ctrl, err := self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay)
 		if err != nil {
 			return err
+		}
+
+		if learnDetail {
+			self.learnControllerDetail(id, endpoint)
 		}
 
 		binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
@@ -497,6 +541,14 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 	// controller id, so idsBeingDialed cannot keep them apart.
 	self.lock.Lock()
 
+	// Once a controller has advertised the cluster's controller set, a controller absent from it was
+	// removed, however the channel to it came about: a dial that started from a bare endpoint before the
+	// set arrived, or the controller dialing in.
+	if self.detailsAuthoritative.Load() && self.getControllerDetail(ch.Id()) == nil {
+		self.lock.Unlock()
+		return nil, &errControllerNotInCluster{ctrlId: ch.Id()}
+	}
+
 	existing := self.ctrls.Get(ch.Id())
 	if isUsable(existing) {
 		self.lock.Unlock()
@@ -536,6 +588,16 @@ func (self *errDuplicateChannel) Error() string {
 	return fmt.Sprintf("controller %v is already connected on another channel", self.ctrlId)
 }
 
+// errControllerNotInCluster reports that a control channel was refused because the controller it reached is
+// not in the cluster's advertised controller set.
+type errControllerNotInCluster struct {
+	ctrlId string
+}
+
+func (self *errControllerNotInCluster) Error() string {
+	return fmt.Sprintf("controller %v is not in the cluster's controller set", self.ctrlId)
+}
+
 // duplicateResolved reports the controller id when err is a refusal by a controller whose registration is
 // still usable, meaning another channel already did what this dial set out to do. A dial that only reaches
 // an endpoint learns the controller's id here and nowhere else, which is why the refusal has to carry it.
@@ -569,16 +631,16 @@ func (self *networkControllers) removeIfCurrent(ctrlId string, ctrl NetworkContr
 	})
 }
 
-// handleChannelClose releases ctrl's registration and starts reconnecting to the controller. It is a
-// no-op when ctrl is no longer the registered entry, either because a newer channel has taken over or
-// because the controller was removed from the cluster. Reconnects are delayed by redialDelay, which
-// paces a dial the controller rejects outright.
-func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkController, redialDelay time.Duration) {
+// handleChannelClose releases ctrl's registration and starts reconnecting to the controller, reporting
+// whether a reconnect was started. It is a no-op when ctrl is no longer the registered entry, either
+// because a newer channel has taken over or because the controller was removed from the cluster.
+// Reconnects are delayed by redialDelay, which paces a dial the controller rejects outright.
+func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkController, redialDelay time.Duration) bool {
 	log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("ch", ctrl.Channel().Label())
 
 	if !self.removeIfCurrent(ctrlId, ctrl) {
 		log.Info("superseded control channel closed, leaving the current registration in place")
-		return
+		return false
 	}
 
 	log.Info("control channel closed, controller unregistered")
@@ -587,7 +649,7 @@ func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkCo
 	detail := self.getControllerDetail(ctrlId)
 	if detail == nil {
 		log.Info("controller is no longer known, not reconnecting")
-		return
+		return false
 	}
 
 	if redialDelay > 0 {
@@ -597,6 +659,7 @@ func (self *networkControllers) handleChannelClose(ctrlId string, ctrl NetworkCo
 	} else {
 		self.connectToControllerWithBackoff(detail)
 	}
+	return true
 }
 
 func (self *networkControllers) AcceptCtrlChannel(address string, ctrlCh ctrlchan.CtrlChannel, binding channel.Binding, underlay channel.Underlay) error {

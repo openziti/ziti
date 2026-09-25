@@ -26,15 +26,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// heartbeatTestChannel is a ctrlchan.CtrlChannel double that records Close calls. It embeds the interface,
-// so any method the heartbeat path does not use panics rather than silently returning a zero value.
+// heartbeatTestChannel is a ctrlchan.CtrlChannel double that records Close and Reconnect calls. It
+// embeds the interface, so any method the heartbeat path does not use panics rather than silently
+// returning a zero value.
 type heartbeatTestChannel struct {
 	ctrlchan.CtrlChannel
-	closed atomic.Bool
+	closed     atomic.Bool
+	reconnects atomic.Int32
 }
 
 func (self *heartbeatTestChannel) Close() error {
 	self.closed.Store(true)
+	return nil
+}
+
+func (self *heartbeatTestChannel) Reconnect() error {
+	self.reconnects.Add(1)
 	return nil
 }
 
@@ -51,25 +58,79 @@ func newHeartbeatTestCtrl(t *testing.T) (*networkCtrl, *heartbeatTestChannel) {
 	return newNetworkCtrl(ch, "tls:localhost:6262", options), ch
 }
 
-// TestCheckHeartBeat_ClosesWhenNoResponse covers the recovery path for a control channel whose peer has
-// stopped answering. Until it is closed, the channel keeps its group and only ever dials additional
-// underlays, which the controller refuses once it has torn its side of the group down, so the router can
-// never re-establish it.
-func TestCheckHeartBeat_ClosesWhenNoResponse(t *testing.T) {
+// TestCheckHeartBeat_ReconnectsWhenNoResponse covers the recovery path for a control channel whose
+// peer has stopped answering. Its underlays are closed so the dial policy re-establishes the group, but
+// the channel itself must survive: closing it would drop the controller registration, and a router that
+// has no controller details for the peer would then never redial.
+func TestCheckHeartBeat_ReconnectsWhenNoResponse(t *testing.T) {
 	ctrl, ch := newHeartbeatTestCtrl(t)
 
 	// A fresh channel is not judged unresponsive before its first heartbeat could be answered.
 	ctrl.CheckHeartBeat()
-	require.False(t, ch.IsClosed(), "a channel that has just connected must not be closed")
+	require.Zero(t, ch.reconnects.Load(), "a channel that has just connected must be left alone")
 
 	// No response for longer than the timeout.
 	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
 	ctrl.CheckHeartBeat()
-	require.True(t, ch.IsClosed(), "a channel with no heartbeat response in time must be closed")
+	require.EqualValues(t, 1, ch.reconnects.Load(), "a channel with no heartbeat response in time must be reconnected")
+	require.False(t, ch.IsClosed(), "the channel itself must stay open so its registration survives")
+}
+
+// TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect: a reconnect restarts the response window.
+// Without that, every check until the next answered heartbeat would act again on the underlays that had
+// just been re-established, and the channel could never come back.
+func TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect(t *testing.T) {
+	ctrl, ch := newHeartbeatTestCtrl(t)
+
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 1, ch.reconnects.Load())
+
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 1, ch.reconnects.Load(), "a check immediately after a reconnect must not act again")
+	require.False(t, ch.IsClosed())
+	require.Less(t, ctrl.timeSinceLastResponse(), time.Minute)
+}
+
+// TestCheckHeartBeat_ConsecutiveTimeoutCloses: a reconnect that has not produced an answered heartbeat by
+// the next timeout is not going to. The controller is still gone, or a dead underlay is stuck in the
+// channel and keeps every redial on the old group; either way only a channel that shares nothing with
+// this one can recover, so the check closes it and leaves the redial to the close handler.
+func TestCheckHeartBeat_ConsecutiveTimeoutCloses(t *testing.T) {
+	ctrl, ch := newHeartbeatTestCtrl(t)
+
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 1, ch.reconnects.Load())
+	require.False(t, ch.IsClosed(), "the first timeout reconnects rather than closes")
+
+	// Another full window with no answer.
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.True(t, ch.IsClosed(), "a timeout following an unanswered reconnect must close the channel")
+	require.EqualValues(t, 1, ch.reconnects.Load(), "the second timeout must not reconnect again")
+}
+
+// TestCheckHeartBeat_AnsweredHeartbeatResetsEscalation: an answered heartbeat after a reconnect means the
+// reconnect worked, so a later timeout starts over with a reconnect rather than closing.
+func TestCheckHeartBeat_AnsweredHeartbeatResetsEscalation(t *testing.T) {
+	ctrl, ch := newHeartbeatTestCtrl(t)
+
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 1, ch.reconnects.Load())
+
+	// The rebuilt group answers a heartbeat.
+	ctrl.HeartbeatRespRx(time.Now().UnixNano())
+
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 2, ch.reconnects.Load(), "a timeout after an answered heartbeat reconnects again")
+	require.False(t, ch.IsClosed())
 }
 
 // TestCheckHeartBeat_SlowButAnsweringIsNotClosed guards the control channel's preference for staying up:
-// high latency only deprioritizes a controller when choosing between them. Closing a channel that is
+// high latency only deprioritizes a controller when choosing between them. Recycling a channel that is
 // merely slow would add control-plane downtime, so only a peer that has stopped answering entirely is
 // torn down.
 func TestCheckHeartBeat_SlowButAnsweringIsNotClosed(t *testing.T) {
@@ -82,7 +143,8 @@ func TestCheckHeartBeat_SlowButAnsweringIsNotClosed(t *testing.T) {
 	ctrl.CheckHeartBeat()
 
 	require.True(t, ctrl.IsUnresponsive(), "high latency should mark the controller unresponsive")
-	require.False(t, ch.IsClosed(), "a channel that is still answering must not be closed")
+	require.Zero(t, ch.reconnects.Load(), "a channel that is still answering must be left alone")
+	require.False(t, ch.IsClosed())
 }
 
 // TestCheckHeartBeat_ZeroTimeoutDisablesClose: a zero timeout turns the teardown off, for deployments that
@@ -94,7 +156,8 @@ func TestCheckHeartBeat_ZeroTimeoutDisablesClose(t *testing.T) {
 	ctrl.lastRx = time.Now().Add(-time.Hour).UnixMilli()
 	ctrl.CheckHeartBeat()
 
-	require.False(t, ch.IsClosed(), "a zero close timeout must disable the teardown")
+	require.Zero(t, ch.reconnects.Load(), "a zero close timeout must disable the teardown")
+	require.False(t, ch.IsClosed())
 }
 
 // TestNewHeartbeatOptions_KeysLandInOwnFields covers the overlay this package puts on top of the channel

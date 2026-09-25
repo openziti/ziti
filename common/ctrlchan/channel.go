@@ -36,6 +36,7 @@
 package ctrlchan
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -254,6 +255,10 @@ type CtrlChannel interface {
 	GetLowPrioritySender() channel.Sender
 	IsConnected() bool
 	Close() error
+	// Reconnect re-establishes the connection to the peer when the channel is judged dead. The dial
+	// side rebuilds its underlay group, keeping the channel and its registration; the listener side
+	// closes, since only the peer can redial.
+	Reconnect() error
 	IsClosed() bool
 }
 
@@ -287,6 +292,27 @@ func (self *DialCtrlChannel) Start(channel channel.MultiChannel) {
 // IsConnected returns true if the dial-side ctrl channel has at least one active underlay.
 func (self *DialCtrlChannel) IsConnected() bool {
 	return self.underlayCount.Load() != 0
+}
+
+// Reconnect closes every underlay so the group is rebuilt: the closes drive the underlay count to zero,
+// and the next dial then starts a new iteration with IsFirstGroupConnection set. The channel and its
+// registration survive.
+//
+// The closes take effect asynchronously, and the dial the first removal starts decides whether it
+// begins a new iteration from the count at that moment. CreateGroupedUnderlay waits a second after the
+// last close before deciding, which lets every close here land first when the underlays' goroutines
+// exit promptly, as they do on a closed socket. An underlay whose reader is stuck in a handler may not
+// leave at all, since its writer only wakes for traffic of its own type; while it is counted, every dial
+// joins the old group and is refused. Reconnect does not resolve that itself. The caller's next timeout
+// does, by closing the channel; see networkCtrl.CheckHeartBeat.
+func (self *DialCtrlChannel) Reconnect() error {
+	var errs []error
+	for _, underlay := range self.ch.GetUnderlays() {
+		if err := underlay.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (self *DialCtrlChannel) HandleUnderlayClose(ch channel.MultiChannel, underlay channel.Underlay) {
@@ -420,6 +446,11 @@ func (self *ListenerCtrlChannel) HandleUnderlayAccepted(_ channel.MultiChannel, 
 	if channel.GetUnderlayType(underlay) == ChannelTypeHighPriority {
 		self.hasHighPriorityChan.Store(true)
 	}
+}
+
+// Reconnect closes the channel. A listener-side channel dials nothing, so the peer redials.
+func (self *ListenerCtrlChannel) Reconnect() error {
+	return self.Close()
 }
 
 // IsConnected returns true if the listener-side ctrl channel has not been closed.

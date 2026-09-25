@@ -1,3 +1,14 @@
+# Release 2.0.7
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.6 -> v2.0.7](https://github.com/openziti/ziti/compare/v2.0.6...v2.0.7)
+    * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
+
 # Release 2.0.6
 
 ## What's New

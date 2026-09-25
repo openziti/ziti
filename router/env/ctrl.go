@@ -64,6 +64,9 @@ type networkCtrl struct {
 	lastRx           int64
 	latency          atomic.Int64
 	unresponsive     atomic.Bool
+	// reconnectPending is set when the heartbeat check has reconnected the channel and cleared by the next
+	// answered heartbeat. A timeout while it is set means the reconnect did not produce a live channel.
+	reconnectPending atomic.Bool
 	versionInfo      *versions.VersionInfo
 	lastContact      atomic.Int64
 	currentIndex     atomic.Uint64
@@ -140,6 +143,7 @@ func (self *networkCtrl) HeartbeatRespRx(ts int64) {
 	self.lastRx = now.UnixMilli()
 	self.latency.Store(now.UnixNano() - ts)
 	self.lastContact.Store(self.lastRx)
+	self.reconnectPending.Store(false)
 }
 
 func (self *networkCtrl) CheckHeartBeat() {
@@ -157,15 +161,33 @@ func (self *networkCtrl) CheckHeartBeat() {
 
 	// Unresponsive alone only deprioritizes. A channel whose underlays are dead but undetected keeps its
 	// group and dials only additional underlays, which the controller refuses once its side is gone, so
-	// nothing re-establishes the group until the OS abandons the connection minutes later.
+	// nothing re-establishes the group until the OS abandons the connection minutes later. Reconnect lets
+	// the channel do what its side allows: a dialed channel rebuilds its underlay group while the channel
+	// and its registration stay in place; an accepted channel closes so the controller redials. A reconnect
+	// that has not produced an answered heartbeat within another timeout window is not going to: either the
+	// controller is still gone, or something on this channel is wedged. Closing then lets the close handler
+	// redial a channel that shares nothing with this one.
 	if timeout := self.heartbeatOptions.CloseUnresponsiveTimeout; timeout > 0 && self.timeSinceLastResponse() > timeout {
 		log := pfxlog.Logger().
 			WithField("address", self.address).
 			WithField("timeSinceLastResponse", self.timeSinceLastResponse())
-		log.Error("no heartbeat response from controller in time, closing control channel")
-		if err := self.ch.Close(); err != nil {
-			log.WithError(err).Error("error closing unresponsive control channel")
+
+		if self.reconnectPending.Load() {
+			log.Error("no heartbeat response from controller since reconnecting, closing control channel")
+			if err := self.ch.Close(); err != nil {
+				log.WithError(err).Error("error closing unresponsive control channel")
+			}
+			return
 		}
+
+		log.Error("no heartbeat response from controller in time, reconnecting control channel")
+		if err := self.ch.Reconnect(); err != nil {
+			log.WithError(err).Error("error reconnecting unresponsive control channel")
+		}
+		self.reconnectPending.Store(true)
+		// Restart the timeout window, otherwise every check until the next answered heartbeat would tear
+		// down the underlays that have just been re-established.
+		self.lastRx = time.Now().UnixMilli()
 	}
 }
 
