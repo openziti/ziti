@@ -18,6 +18,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/identity"
 	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti"
 	zitiCommon "github.com/openziti/ziti/v2/common"
@@ -29,6 +30,8 @@ import (
 )
 
 var zitiCliContextCollection *ziti.CtxCollection
+
+var networkIdWarning sync.Once
 
 func init() {
 	zitiCliContextCollection = ziti.NewSdkCollection()
@@ -89,6 +92,9 @@ type RestClientEdgeIdentity struct {
 	Token         string                           `json:"token"`
 	LoginTime     string                           `json:"loginTime"`
 	CaCert        string                           `json:"caCert,omitempty"`
+	ClientIdFile  string                           `json:"clientIdentity,omitempty"`
+	ClientCert    string                           `json:"clientCert,omitempty"`
+	ClientKey     string                           `json:"clientKey,omitempty"`
 	ReadOnly      bool                             `json:"readOnly"`
 	NetworkIdFile string                           `json:"networkId"`
 	ApiSession    *edge_apis.ApiSessionJsonWrapper `json:"apiSession"`
@@ -98,13 +104,54 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 	return self.ReadOnly
 }
 
+// ClientCertificate loads the certificate a certificate based login authenticates with. idFile is an
+// enrolled identity file; certFile and keyFile are a PEM certificate and its key. Returns nil when none
+// of them are set.
+func ClientCertificate(idFile, certFile, keyFile string) (*tls.Certificate, error) {
+	if idFile != "" {
+		cfg, err := ziti.NewConfigFromFile(idFile)
+		if err != nil {
+			return nil, errors.Errorf("client identity file [%s] is no longer readable: %v. Run 'ziti edge login' to log in again", idFile, err)
+		}
+
+		id, err := identity.LoadIdentity(cfg.ID)
+		if err != nil {
+			return nil, errors.Errorf("could not load the identity in [%s]: %v. Run 'ziti edge login' to log in again", idFile, err)
+		}
+
+		cert := id.Cert()
+		if cert == nil || len(cert.Certificate) == 0 {
+			return nil, errors.Errorf("the identity in [%s] has no certificate to authenticate with. Run 'ziti edge login' to log in again", idFile)
+		}
+
+		return cert, nil
+	}
+
+	if certFile != "" && keyFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, errors.Errorf("client certificate [%s] and key [%s] are no longer usable: %v. Run 'ziti edge login' to log in again", certFile, keyFile, err)
+		}
+
+		return &cert, nil
+	}
+
+	return nil, nil
+}
+
+// clientCertificate returns the certificate this login authenticated with, or nil for a login that was
+// not certificate based.
+func (self *RestClientEdgeIdentity) clientCertificate() (*tls.Certificate, error) {
+	return ClientCertificate(self.ClientIdFile, self.ClientCert, self.ClientKey)
+}
+
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 	rootCaPool := x509.NewCertPool()
 
 	if self.CaCert != "" {
 		rootPemData, err := os.ReadFile(self.CaCert)
 		if err != nil {
-			return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+			return nil, errors.Errorf("could not read session certificates [%s]: %v. Run 'ziti edge login' to log in again", self.CaCert, err)
 		}
 
 		rootCaPool.AppendCertsFromPEM(rootPemData)
@@ -116,9 +163,19 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 		}
 	}
 
-	return &tls.Config{
+	tlsConfig := &tls.Config{
 		RootCAs: rootCaPool,
-	}, nil
+	}
+
+	cert, err := self.clientCertificate()
+	if err != nil {
+		return nil, err
+	}
+	if cert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*cert}
+	}
+
+	return tlsConfig, nil
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
@@ -137,10 +194,11 @@ func (self *RestClientEdgeIdentity) getHttpTransport(log *log.Logger, verbose bo
 		} else {
 			if self.NetworkIdFile != "" {
 				if ztFromFile, ztFromFileErr := NewZitifiedTransportFromFile(self.NetworkIdFile, terminator); ztFromFileErr != nil {
-					// ignore any error around the networkId file
-					if verbose {
-						log.Printf("Ziti transport from cached file failed: %v", ztFromFileErr)
-					}
+					// the default transport still works, so warn and carry on rather than failing. A single
+					// command builds more than one client, so only the first of them warns.
+					networkIdWarning.Do(func() {
+						_, _ = fmt.Fprintf(os.Stderr, "WARNING: network identity [%s] is no longer usable, falling back to a direct connection: %v\n", self.NetworkIdFile, ztFromFileErr)
+					})
 				} else {
 					if verbose {
 						log.Printf("Using Ziti transport from cached file: %s", self.NetworkIdFile)
@@ -166,6 +224,13 @@ func (self *RestClientEdgeIdentity) NewClientByTerminator(timeout time.Duration,
 	client.GetClient().Transport = transport
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
+	}
+	cert, err := self.clientCertificate()
+	if err != nil {
+		return nil, err
+	}
+	if cert != nil {
+		client.SetCertificates(*cert)
 	}
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)
@@ -232,6 +297,17 @@ func OidcRefreshTokenValid(sess edge_apis.ApiSession) bool {
 	return time.Now().Add(oidcTokenLeeway).Before(exp.Time)
 }
 
+// newComponentsWithTls builds the http components an edge-apis client needs, carrying the whole TLS
+// config rather than only the root CAs.
+func newComponentsWithTls(tlsClientConfig *tls.Config) *edge_apis.Components {
+	components := edge_apis.NewComponentsWithConfig(&edge_apis.ComponentsConfig{
+		Proxy: http.ProxyFromEnvironment,
+	})
+	components.TlsAwareTransport.SetTlsClientConfig(tlsClientConfig)
+	components.CaPool = tlsClientConfig.RootCAs
+	return components
+}
+
 // refreshOidcTokenIfExpired refreshes the cached OIDC access token when it has expired and the
 // refresh token is still valid. It returns true when the session was refreshed so the caller can
 // persist the updated config. Non-OIDC sessions and still-valid access tokens are no-ops. An expired
@@ -259,7 +335,11 @@ func (self *RestClientEdgeIdentity) refreshOidcTokenIfExpired() (bool, error) {
 
 	_, _ = fmt.Fprintln(os.Stderr, "Access token has expired, refreshing it using the cached refresh token...")
 
-	mgmtClient := edge_apis.NewManagementApiClient([]*url.URL{ctrlUrl}, tlsClientConfig.RootCAs, nil)
+	mgmtClient := edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
+		ApiUrls:    []*url.URL{ctrlUrl},
+		CaPool:     tlsClientConfig.RootCAs,
+		Components: newComponentsWithTls(tlsClientConfig),
+	})
 	refreshed, refreshErr := mgmtClient.AuthenticateWithPreviousSession(&edge_apis.EmptyCredentials{}, self.ApiSession.ApiSession)
 	if refreshErr != nil || refreshed == nil {
 		return false, errors.Wrap(refreshErr, "failed to refresh the access token using the cached refresh token, please login again")
