@@ -511,7 +511,11 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 		return nil, errors.New("totp not found")
 	}
 
-	ok, _ = s.env.GetManagers().Mfa.Verify(totp, code, ctx)
+	ok, verifyErr := s.env.GetManagers().Mfa.Verify(totp, code, ctx)
+
+	if verifyErr != nil {
+		return nil, verifyErr
+	}
 
 	if !ok {
 		return nil, apierror.NewInvalidMfaTokenError()
