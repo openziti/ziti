@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/metrics"
 	"github.com/openziti/ziti/common/runner"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
@@ -38,6 +39,11 @@ const (
 type RevocationEnforcer struct {
 	appEnv     *env.AppEnv
 	dispatcher command.Dispatcher
+	// Resolved once and held. A Meter lookup takes a reference on every call and only Dispose releases
+	// one, so looking one up per run accumulates references and leaves the meter sampling after the
+	// registry is disposed. Timer is not reference counted, and is held here so the two read alike.
+	runTimer    metrics.Timer
+	deleteMeter metrics.Meter
 	*runner.BaseOperation
 }
 
@@ -46,6 +52,8 @@ func NewRevocationEnforcer(appEnv *env.AppEnv, frequency time.Duration, dispatch
 	return &RevocationEnforcer{
 		appEnv:        appEnv,
 		dispatcher:    dispatcher,
+		runTimer:      appEnv.GetMetricsRegistry().Timer(RevocationEnforcerRun),
+		deleteMeter:   appEnv.GetMetricsRegistry().Meter(RevocationEnforcerDelete),
 		BaseOperation: runner.NewBaseOperation("RevocationEnforcer", frequency),
 	}
 }
@@ -59,7 +67,7 @@ func (e *RevocationEnforcer) Run() error {
 	startTime := time.Now()
 
 	defer func() {
-		e.appEnv.GetMetricsRegistry().Timer(RevocationEnforcerRun).UpdateSince(startTime)
+		e.runTimer.UpdateSince(startTime)
 	}()
 
 	ctx := change.New().SetSourceType(RevocationEnforcerSource).SetChangeAuthorType(change.AuthorTypeController)
@@ -72,7 +80,7 @@ func (e *RevocationEnforcer) Run() error {
 
 	if total > 0 {
 		pfxlog.Logger().Debugf("removed %d expired revocations", total)
-		e.appEnv.GetMetricsRegistry().Meter(RevocationEnforcerDelete).Mark(int64(total))
+		e.deleteMeter.Mark(int64(total))
 	}
 
 	return nil
