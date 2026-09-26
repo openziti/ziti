@@ -17,6 +17,7 @@
 package xlink_transport
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,6 +28,80 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
+
+// heartbeatControl holds a link's channel heartbeat handles and the settings
+// generation they run. Embedded into the link impls to satisfy xlink.Xlink's
+// SetHeartbeatControl / UpdateHeartbeat. A link has one control per channel: one
+// for a single or multi-underlay link, two for a split link.
+type heartbeatControl struct {
+	lock     sync.Mutex
+	controls []channel.HeartbeatControl
+	settings xlink.HeartbeatSettings
+	// haveSettings distinguishes "nothing registered yet" from settings at
+	// generation 0, which is what a router with no managed link config publishes.
+	haveSettings bool
+}
+
+// SetHeartbeatControl registers one channel's heartbeat handle and the settings
+// it was configured from. Calls accumulate, one per channel. Registration
+// reconciles: the link keeps the newest generation any channel was configured
+// from, and every channel is re-tuned to it.
+func (self *heartbeatControl) SetHeartbeatControl(hc channel.HeartbeatControl, settings xlink.HeartbeatSettings) {
+	if hc == nil {
+		return
+	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.controls = append(self.controls, hc)
+
+	if !self.haveSettings {
+		// Nothing to reconcile against, and hc is already tuned to these.
+		self.settings = settings
+		self.haveSettings = true
+		return
+	}
+	if settings.Generation > self.settings.Generation {
+		self.applyLocked(settings)
+		return
+	}
+	if settings.Generation < self.settings.Generation {
+		hc.UpdateIntervals(self.settings.SendInterval, self.settings.CheckInterval)
+	}
+}
+
+// HeartbeatSettings implements xlink.Xlink.
+func (self *heartbeatControl) HeartbeatSettings() xlink.HeartbeatSettings {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.settings
+}
+
+// UpdateHeartbeat implements xlink.Xlink. A generation at or below the one
+// applied is ignored, so a late or duplicate update is harmless. Runs under the
+// lock, so a generation and its intervals are applied as one step; UpdateIntervals
+// never blocks, so holding the lock is cheap.
+func (self *heartbeatControl) UpdateHeartbeat(next xlink.HeartbeatSettings) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if next.Generation <= self.settings.Generation {
+		return
+	}
+	self.applyLocked(next)
+}
+
+// applyLocked publishes next and re-tunes every registered control. Caller holds
+// the lock. The order of the two steps doesn't matter: a retune lands on the
+// channel's next pulse regardless, and the callback re-arms its deadline when the
+// generation changes.
+func (self *heartbeatControl) applyLocked(next xlink.HeartbeatSettings) {
+	self.settings = next
+	self.haveSettings = true
+
+	for _, hc := range self.controls {
+		hc.UpdateIntervals(next.SendInterval, next.CheckInterval)
+	}
+}
 
 type impl struct {
 	id            string
@@ -45,6 +120,7 @@ type impl struct {
 	dialed       bool
 	iteration    uint32
 	dupsRejected uint32
+	heartbeatControl
 
 	droppedMsgMeter    metrics.Meter
 	droppedXgMsgMeter  metrics.Meter

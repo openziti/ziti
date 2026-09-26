@@ -17,219 +17,37 @@
 package link
 
 import (
-	"encoding/json"
-	"fmt"
-	"time"
-
-	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/config/routerlink"
 )
 
-// ConfigBaseType is the un-versioned config family this package owns.
-const ConfigBaseType = "router.link"
-
-// ConfigTypeV1 is the controller-defined ConfigType.Name for version 1.
-const ConfigTypeV1 = "router.link.v1"
-
-// Config is the typed view of router.link.v1 JSON. Field tags match the
-// schema property names. Strings rather than time.Duration are used for
-// duration fields so they round-trip cleanly into the existing
-// channel.LoadOptions parser, which already understands "30s" / "100ms".
-type Config struct {
-	Listeners              []ListenerConfig  `json:"listeners,omitempty"`
-	Dialers                []DialerConfig    `json:"dialers,omitempty"`
-	Heartbeats             *HeartbeatsConfig `json:"heartbeats,omitempty"`
-	PayloadSenderQueueSize int               `json:"payloadSenderQueueSize,omitempty"`
-	AckSenderQueueSize     int               `json:"ackSenderQueueSize,omitempty"`
-	// GcMode is the auto-GC policy for links this router's own configuration
-	// has made stale: "preserve" (default, never close on that basis),
-	// "orphaned" (close links whose supporting listener/dialer is entirely
-	// gone), or "changed" (close links whose details have shifted). Empty
-	// string is treated as "preserve".
-	//
-	// The policy covers local staleness only. A peer withdrawing or moving a
-	// listener still closes the affected link at once, under every mode,
-	// because the peer's advertised listener set is authoritative about what
-	// it will accept. "preserve" is therefore not a guarantee that links
-	// survive every config change.
-	GcMode string `json:"gcMode,omitempty"`
-}
-
-// GcMode names the auto-GC policy applied by the router after each
-// successful link-config Apply. Mirrors the CLI `--mode` for
-// `ziti ops verify stale-links`, plus a `Preserve` value that disables
-// local-staleness GC entirely. It governs only links made stale by this
-// router's own configuration; peer-driven closures are unaffected.
-type GcMode int
+// The router.link config definition and validation live in common/config/routerlink
+// so the controller applies the same rules without importing the link subsystem.
 
 const (
-	GcModePreserve GcMode = iota
-	GcModeOrphaned
-	GcModeChanged
+	ConfigBaseType = routerlink.ConfigBaseType
+	ConfigTypeV1   = routerlink.ConfigTypeV1
 )
 
-func (m GcMode) String() string {
-	switch m {
-	case GcModeOrphaned:
-		return "orphaned"
-	case GcModeChanged:
-		return "changed"
-	default:
-		return "preserve"
-	}
-}
+type (
+	Config             = routerlink.Config
+	ListenerConfig     = routerlink.ListenerConfig
+	DialerConfig       = routerlink.DialerConfig
+	ChannelOptions     = routerlink.ChannelOptions
+	BackoffConfig      = routerlink.BackoffConfig
+	HeartbeatsConfig   = routerlink.HeartbeatsConfig
+	HeartbeatDurations = routerlink.HeartbeatDurations
+	Groups             = routerlink.Groups
+	GcMode             = routerlink.GcMode
+)
 
-// ParseGcMode normalizes the string form (as it appears in the JSON
-// config or local YAML) into the enum. Unknown values return
-// GcModePreserve and an error; the caller decides whether to fall back
-// or reject the config.
-func ParseGcMode(s string) (GcMode, error) {
-	switch s {
-	case "", "preserve":
-		return GcModePreserve, nil
-	case "orphaned":
-		return GcModeOrphaned, nil
-	case "changed":
-		return GcModeChanged, nil
-	default:
-		return GcModePreserve, fmt.Errorf("unknown gcMode %q (expected preserve|orphaned|changed)", s)
-	}
-}
+const (
+	GcModePreserve = routerlink.GcModePreserve
+	GcModeOrphaned = routerlink.GcModeOrphaned
+	GcModeChanged  = routerlink.GcModeChanged
+)
 
-// ListenerConfig matches the schema's listener entry. Bind is the only
-// required field.
-type ListenerConfig struct {
-	Binding       string          `json:"binding,omitempty"`
-	Bind          string          `json:"bind"`
-	Advertise     string          `json:"advertise,omitempty"`
-	BindInterface string          `json:"bindInterface,omitempty"`
-	Groups        Groups          `json:"groups,omitempty"`
-	Options       *ChannelOptions `json:"options,omitempty"`
-}
+// ParseConfig unmarshals raw JSON into a Config.
+func ParseConfig(data string) (*Config, error) { return routerlink.ParseConfig(data) }
 
-// DialerConfig matches the schema's dialer entry.
-//
-// Split is carried here for local-config fidelity only. The router's own YAML
-// may set the transport's `split` dialer flag (the legacy split-vs-single
-// fallback used when dialing a router too old for multi-underlay links);
-// dropping it on translation would silently flip an explicit `split: false`
-// back to the transport default of true. It is deliberately absent from the
-// controller-managed router.link schema, so it cannot be set from the
-// controller. A nil pointer means "unset", letting the transport default apply.
-type DialerConfig struct {
-	Binding               string          `json:"binding,omitempty"`
-	MaxDefaultConnections int             `json:"maxDefaultConnections,omitempty"`
-	MaxAckConnections     *int            `json:"maxAckConnections,omitempty"`
-	Split                 *bool           `json:"split,omitempty"`
-	StartupDelay          string          `json:"startupDelay,omitempty"`
-	BindInterface         string          `json:"bindInterface,omitempty"`
-	Groups                Groups          `json:"groups,omitempty"`
-	HealthyDialBackoff    *BackoffConfig  `json:"healthyDialBackoff,omitempty"`
-	UnhealthyDialBackoff  *BackoffConfig  `json:"unhealthyDialBackoff,omitempty"`
-	Options               *ChannelOptions `json:"options,omitempty"`
-}
-
-// ChannelOptions matches the shared channelOptions definition.
-//
-// OutQueueSize and MaxQueuedConnects are pointers because zero is a valid
-// setting for both — each sizes a buffered channel, and zero means unbuffered.
-// A plain int with omitempty would make an explicit 0 indistinguishable from
-// unset and silently substitute the default.
-type ChannelOptions struct {
-	OutQueueSize           *int   `json:"outQueueSize,omitempty"`
-	MaxQueuedConnects      *int   `json:"maxQueuedConnects,omitempty"`
-	MaxOutstandingConnects int    `json:"maxOutstandingConnects,omitempty"`
-	ConnectTimeout         string `json:"connectTimeout,omitempty"`
-	WriteTimeout           string `json:"writeTimeout,omitempty"`
-}
-
-// BackoffConfig matches the shared backoff definition.
-type BackoffConfig struct {
-	RetryBackoffFactor float64 `json:"retryBackoffFactor,omitempty"`
-	MinRetryInterval   string  `json:"minRetryInterval,omitempty"`
-	MaxRetryInterval   string  `json:"maxRetryInterval,omitempty"`
-}
-
-// HeartbeatsConfig matches the heartbeats definition.
-type HeartbeatsConfig struct {
-	SendInterval             string `json:"sendInterval,omitempty"`
-	CheckInterval            string `json:"checkInterval,omitempty"`
-	CloseUnresponsiveTimeout string `json:"closeUnresponsiveTimeout,omitempty"`
-}
-
-// Groups is a list of group names. The schema allows the JSON value to be
-// either a single string or an array of strings; UnmarshalJSON normalizes
-// both to a slice. MarshalJSON always emits an array for downstream
-// consumers that prefer one shape.
-type Groups []string
-
-// UnmarshalJSON accepts either a string or an array of strings per schema.
-func (g *Groups) UnmarshalJSON(data []byte) error {
-	var single string
-	if err := json.Unmarshal(data, &single); err == nil {
-		*g = Groups{single}
-		return nil
-	}
-	var slice []string
-	if err := json.Unmarshal(data, &slice); err != nil {
-		return err
-	}
-	*g = Groups(slice)
-	return nil
-}
-
-// MarshalJSON always emits the array form for stable downstream parsing.
-func (g Groups) MarshalJSON() ([]byte, error) {
-	if g == nil {
-		return []byte("null"), nil
-	}
-	return json.Marshal([]string(g))
-}
-
-// ParseConfig unmarshals raw JSON into a Config. Returns an error if the
-// JSON is malformed; does not enforce schema semantics (the schema is
-// enforced at the controller).
-func ParseConfig(data string) (*Config, error) {
-	var c Config
-	if err := json.Unmarshal([]byte(data), &c); err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-// Validate checks values the controller JSON schema can't express and that
-// would otherwise fail silently downstream. Callers run it before applying a
-// config so a bad value fails the apply rather than degrading behavior.
-func (c *Config) Validate() error {
-	for i := range c.Listeners {
-		if err := validateChannelOptions(c.Listeners[i].Options); err != nil {
-			return fmt.Errorf("listeners[%d].options: %w", i, err)
-		}
-	}
-	for i := range c.Dialers {
-		if err := validateChannelOptions(c.Dialers[i].Options); err != nil {
-			return fmt.Errorf("dialers[%d].options: %w", i, err)
-		}
-	}
-	return nil
-}
-
-// validateChannelOptions rejects a connectTimeout that the downstream channel
-// can't honor: it must parse as a duration and fall within
-// [channel.MinConnectTimeout, channel.MaxConnectTimeout], the range the channel
-// loader accepts.
-func validateChannelOptions(o *ChannelOptions) error {
-	if o == nil || o.ConnectTimeout == "" {
-		return nil
-	}
-	d, err := time.ParseDuration(o.ConnectTimeout)
-	if err != nil {
-		return fmt.Errorf("invalid connectTimeout %q: %w", o.ConnectTimeout, err)
-	}
-	if d < channel.MinConnectTimeout {
-		return fmt.Errorf("connectTimeout %s is below the minimum of %s", d, channel.MinConnectTimeout)
-	}
-	if d > channel.MaxConnectTimeout {
-		return fmt.Errorf("connectTimeout %s is above the maximum of %s", d, channel.MaxConnectTimeout)
-	}
-	return nil
-}
+// ParseGcMode normalizes the string form of gcMode into the enum.
+func ParseGcMode(s string) (GcMode, error) { return routerlink.ParseGcMode(s) }

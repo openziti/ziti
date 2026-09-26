@@ -42,6 +42,9 @@ type Router struct {
 	// mid-session changes from the router. Guarded by mu, so it is
 	// unexported: reach it through SetLinkListeners / GetLinkListeners.
 	listeners []*ctrl_pb.Listener
+	// listenerGeneration is the generation of the recorded listener set, scoped
+	// to the current control channel session. Zero means nothing recorded yet.
+	listenerGeneration uint64
 
 	// mu guards the fields a connected Router mutates mid-session, which
 	// today is just listeners. Fields added later should share it rather
@@ -167,10 +170,30 @@ func (entity *Router) addLinkListener(addr, linkProtocol string, groups []string
 // SetLinkListeners atomically replaces the router's link listener slice.
 // Callers do not mutate the previous slice — readers may still hold and
 // iterate it safely after a Set.
-func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener) {
+// SetLinkListeners records listeners when generation is newer than the last
+// recorded for this control channel session, and reports whether it did. Older
+// generations are dropped: a multi-underlay control channel doesn't order updates
+// across underlays, and a stale set would be redistributed to peers.
+func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener, generation uint64) bool {
 	entity.mu.Lock()
 	defer entity.mu.Unlock()
+	if generation <= entity.listenerGeneration && entity.listenerGeneration != 0 {
+		return false
+	}
 	entity.listeners = listeners
+	entity.listenerGeneration = generation
+	return true
+}
+
+// ResetLinkListeners clears the listener set and the generation it was recorded
+// at, for a newly-connected control channel. The router mints generations per
+// process, so they restart when it does; a generation remembered from a
+// previous session would reject a restarted router's first updates.
+func (entity *Router) ResetLinkListeners() {
+	entity.mu.Lock()
+	defer entity.mu.Unlock()
+	entity.listeners = nil
+	entity.listenerGeneration = 0
 }
 
 // GetLinkListeners returns the current link listener slice under a read
