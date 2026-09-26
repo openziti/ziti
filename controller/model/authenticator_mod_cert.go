@@ -352,7 +352,9 @@ func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certifica
 		return nil, nil
 	}
 
-	if proxyHeader := ctx.GetHeaders()[EdgeRouterProxyRequest]; proxyHeader != nil {
+	headers := ctx.GetHeaders()
+
+	if proxyHeader := headers.Get(EdgeRouterProxyRequest); proxyHeader != nil {
 		return module.getProxiedClientCerts(ctx)
 	}
 
@@ -438,11 +440,18 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	proxyRaw64 := ""
+	// An edge router sends the chain from its own TLS handshake as a single header value and
+	// drops whatever the client sent under the same name. More than one value means the
+	// request passed through a router that does not do that, and there is no way to tell the
+	// router's chain from a client-supplied one, so the request is refused.
+	headers := ctx.GetHeaders()
+	proxiedChains := headers.GetStrings(ClientCertHeader)
 
-	if proxyRaw64Interface := ctx.GetHeaders()[ClientCertHeader]; proxyRaw64Interface != nil {
-		proxyRaw64 = proxyRaw64Interface.(string)
+	if len(proxiedChains) != 1 {
+		return nil, apierror.NewInvalidAuth()
 	}
+
+	proxyRaw64 := proxiedChains[0]
 
 	if proxyRaw64 == "" {
 		return nil, apierror.NewInvalidAuth()
@@ -452,8 +461,11 @@ func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Ce
 		return nil, apierror.NewInvalidAuth()
 	}
 
+	// DecodedLen is an upper bound, so the buffer is cut to what was actually written. Handing
+	// the padding to the parser as well would look like trailing data after the last cert.
 	proxiedRaw := make([]byte, base64.StdEncoding.DecodedLen(len(proxyRaw64)))
-	_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxyRaw64))
+	decodedLen, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxyRaw64))
+	proxiedRaw = proxiedRaw[:decodedLen]
 
 	if err != nil {
 		return nil, &errorz.ApiError{
