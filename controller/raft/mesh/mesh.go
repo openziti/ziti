@@ -585,7 +585,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	rec.lastAttempt = time.Now()
 	self.lock.Unlock()
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != nil {
 		// introduce random delay in case ctrls are dialing each other and closing each other's connections
 		time.Sleep(time.Duration(rand.Intn(250)+1) * time.Millisecond)
 		return nil, errors.Wrapf(err, "error dialing peer %v", address)
@@ -665,6 +665,17 @@ func (self *impl) checkCerts(ch channel.Channel) error {
 }
 
 func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
+	// If a peer is already connected at this address, return its info directly.
+	// This avoids creating a temporary connection that would trigger tie-breaking
+	// on the remote side and potentially close an active request channel.
+	self.lock.RLock()
+	if existing := self.Peers[address]; existing != nil {
+		id, addr := existing.Id, raft.ServerAddress(existing.Address)
+		self.lock.RUnlock()
+		return id, addr, nil
+	}
+	self.lock.RUnlock()
+
 	log := pfxlog.Logger().WithField("address", address)
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
@@ -719,7 +730,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		return markerErr
 	})
 
-	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != markerErr {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, dialOptions); err != markerErr {
 		return "", "", errors.Wrapf(err, "unable to dial %v", address)
 	}
 
