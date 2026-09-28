@@ -18,6 +18,7 @@ import (
 	metrics2 "github.com/openziti/ziti/v2/router/metrics"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_router"
+	"github.com/openziti/ziti/v2/router/xlink"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,6 +78,13 @@ func (link *mirrorLink) HandleCloseNotification(f func()) {
 
 func (link *mirrorLink) DestinationId() string {
 	return "test"
+}
+
+func (link *mirrorLink) SetHeartbeatControl(channel.HeartbeatControl, xlink.HeartbeatSettings) {}
+
+func (link *mirrorLink) UpdateHeartbeat(xlink.HeartbeatSettings) {}
+func (link *mirrorLink) HeartbeatSettings() xlink.HeartbeatSettings {
+	return xlink.HeartbeatSettings{}
 }
 
 func (link *mirrorLink) Id() string {

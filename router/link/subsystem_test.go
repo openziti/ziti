@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/foundation/v2/util"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/v2/common/config/routerlink"
 	"github.com/openziti/ziti/v2/router/xlink"
 
 	"github.com/stretchr/testify/require"
@@ -149,6 +150,80 @@ func Test_Subsystem_Apply_BuildsListenersAndDialers(t *testing.T) {
 	req.Len(dialers, 1)
 	req.True(f.createdListeners[0].started, "Listener.Listen() should have been called")
 	req.Equal("tls:0.0.0.0:6262", f.createdListeners[0].bind)
+}
+
+func Test_Subsystem_CloseUnresponsiveTimeout(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, falls back to the default
+	req.Equal(defaultCloseUnresponsiveTimeout, r.Heartbeats().CloseUnresponsiveTimeout)
+
+	// an applied config with the field takes effect (for established links too)
+	req.NoError(r.Apply(1, `{"heartbeats":{"closeUnresponsiveTimeout":"45s"}}`))
+	req.Equal(45*time.Second, r.Heartbeats().CloseUnresponsiveTimeout)
+
+	// the value comes from the active config, so a later apply that omits it
+	// reverts to the default
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultCloseUnresponsiveTimeout, r.Heartbeats().CloseUnresponsiveTimeout)
+}
+
+func Test_Subsystem_HeartbeatIntervals(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, fall back to the channel defaults
+	req.Equal(defaultHeartbeatSendInterval, r.Heartbeats().SendInterval)
+	req.Equal(defaultHeartbeatCheckInterval, r.Heartbeats().CheckInterval)
+
+	// applied intervals take effect
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"3s","checkInterval":"250ms"}}`))
+	req.Equal(3*time.Second, r.Heartbeats().SendInterval)
+	req.Equal(250*time.Millisecond, r.Heartbeats().CheckInterval)
+
+	// the settings come from the active config, so a later apply that omits
+	// them reverts to the defaults
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultHeartbeatSendInterval, r.Heartbeats().SendInterval)
+	req.Equal(defaultHeartbeatCheckInterval, r.Heartbeats().CheckInterval)
+}
+
+func Test_Subsystem_Remove_RevertsHeartbeatsToDefaults(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"3s","checkInterval":"250ms","closeUnresponsiveTimeout":"45s"}}`))
+	req.Equal(3*time.Second, r.Heartbeats().SendInterval)
+	req.Equal(250*time.Millisecond, r.Heartbeats().CheckInterval)
+	req.Equal(45*time.Second, r.Heartbeats().CloseUnresponsiveTimeout)
+
+	// removing the config drops its heartbeat settings, reverting to the
+	// defaults just as a later apply that omits them would
+	req.NoError(r.Remove())
+	req.Equal(defaultHeartbeatSendInterval, r.Heartbeats().SendInterval)
+	req.Equal(defaultHeartbeatCheckInterval, r.Heartbeats().CheckInterval)
+	req.Equal(defaultCloseUnresponsiveTimeout, r.Heartbeats().CloseUnresponsiveTimeout)
+}
+
+func Test_Subsystem_QueueSizes(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// before any apply, fall back to the defaults
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
+
+	// applied sizes take effect (for links established afterward)
+	req.NoError(r.Apply(1, `{"payloadSenderQueueSize":256,"ackSenderQueueSize":96}`))
+	req.Equal(256, r.PayloadSenderQueueSize())
+	req.Equal(96, r.AckSenderQueueSize())
+
+	// the sizes come from the active config, so a later apply that omits them
+	// reverts to the defaults
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	req.Equal(defaultPayloadSenderQueueSize, r.PayloadSenderQueueSize())
+	req.Equal(defaultAckSenderQueueSize, r.AckSenderQueueSize())
 }
 
 func Test_Subsystem_Apply_MapsDialerBindInterfaceToTransportBind(t *testing.T) {
@@ -990,4 +1065,393 @@ func Test_EffectiveGcMode(t *testing.T) {
 	// Remove: always sweeps, since there is no longer a configuration whose
 	// policy could apply.
 	req.Equal(GcModeOrphaned, effectiveGcMode(nil))
+}
+
+func Test_Config_Validate_HeartbeatTimings(t *testing.T) {
+	tests := []struct {
+		name      string
+		data      string
+		expectErr string
+	}{
+		{
+			name: "no heartbeats section uses defaults",
+			data: `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`,
+		},
+		{
+			name: "sane explicit timings",
+			data: `{"heartbeats":{"sendInterval":"10s","checkInterval":"1s","closeUnresponsiveTimeout":"60s"}}`,
+		},
+		{
+			// The finding's case: the check interval outruns the timeout, so the
+			// pulse sends a heartbeat and condemns the link on the same tick.
+			name:      "check interval past the timeout",
+			data:      `{"heartbeats":{"checkInterval":"2m","closeUnresponsiveTimeout":"30s"}}`,
+			expectErr: "closeUnresponsiveTimeout",
+		},
+		{
+			name:      "timeout equal to send plus check",
+			data:      `{"heartbeats":{"sendInterval":"20s","checkInterval":"10s","closeUnresponsiveTimeout":"30s"}}`,
+			expectErr: "must be greater than sendInterval + checkInterval",
+		},
+		{
+			// A timeout below the default send interval is broken even though the
+			// config never names sendInterval. Caught by the floor first.
+			name:      "timeout under the default send interval",
+			data:      `{"heartbeats":{"closeUnresponsiveTimeout":"5s"}}`,
+			expectErr: "below the 10s minimum",
+		},
+		{
+			// Intervals tight enough that the sum rule would pass: only the
+			// absolute floor catches it. A timeout this short closes links that
+			// are merely recovering from ordinary packet loss.
+			name:      "timeout below the floor despite roomy intervals",
+			data:      `{"heartbeats":{"sendInterval":"100ms","checkInterval":"100ms","closeUnresponsiveTimeout":"1s"}}`,
+			expectErr: "below the 10s minimum",
+		},
+		{
+			name: "timeout exactly at the floor is accepted",
+			data: `{"heartbeats":{"sendInterval":"5s","checkInterval":"1s","closeUnresponsiveTimeout":"10s"}}`,
+		},
+		{
+			// Durations are int64 nanoseconds and the sum of two positive ones can
+			// only wrap negative, so the sum rule would compare against a negative
+			// and accept every timeout.
+			name:      "interval sum overflows",
+			data:      `{"heartbeats":{"sendInterval":"2562047h","checkInterval":"1h","closeUnresponsiveTimeout":"60s"}}`,
+			expectErr: "exceeds the largest representable duration",
+		},
+		{
+			// Representable, so the overflow guard stands aside and the sum rule
+			// judges it.
+			name:      "interval sum at the maximum is judged on its merits",
+			data:      `{"heartbeats":{"sendInterval":"2562047h47m16.854775806s","checkInterval":"1ns","closeUnresponsiveTimeout":"60s"}}`,
+			expectErr: "must be greater than sendInterval + checkInterval",
+		},
+		{
+			name:      "zero check interval",
+			data:      `{"heartbeats":{"checkInterval":"0s"}}`,
+			expectErr: "checkInterval must be positive",
+		},
+		{
+			name:      "negative send interval",
+			data:      `{"heartbeats":{"sendInterval":"-5s"}}`,
+			expectErr: "sendInterval must be positive",
+		},
+		{
+			name:      "unparseable duration",
+			data:      `{"heartbeats":{"checkInterval":"soon"}}`,
+			expectErr: "invalid heartbeats.checkInterval",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := require.New(t)
+			cfg, err := ParseConfig(tt.data)
+			req.NoError(err)
+
+			err = cfg.Validate()
+			if tt.expectErr == "" {
+				req.NoError(err)
+				return
+			}
+			req.Error(err)
+			req.Contains(err.Error(), tt.expectErr)
+		})
+	}
+}
+
+func Test_Subsystem_Apply_RejectsUnsafeHeartbeatTimings(t *testing.T) {
+	// Validation has to run on the apply path, not just as a standalone call,
+	// and a rejected apply must leave the previous settings in place.
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"10s","checkInterval":"1s","closeUnresponsiveTimeout":"60s"}}`))
+	req.Equal(time.Second, r.Heartbeats().CheckInterval)
+	req.Equal(60*time.Second, r.Heartbeats().CloseUnresponsiveTimeout)
+
+	err := r.Apply(1, `{"heartbeats":{"checkInterval":"2m","closeUnresponsiveTimeout":"30s"}}`)
+	req.Error(err)
+	req.Contains(err.Error(), "closeUnresponsiveTimeout")
+
+	req.Equal(time.Second, r.Heartbeats().CheckInterval, "a rejected apply must not change the live intervals")
+	req.Equal(60*time.Second, r.Heartbeats().CloseUnresponsiveTimeout)
+}
+
+func Test_HeartbeatDurations_HasThinMargin(t *testing.T) {
+	req := require.New(t)
+
+	mk := func(data string) HeartbeatDurations {
+		cfg, err := ParseConfig(data)
+		req.NoError(err)
+		timings, err := cfg.EffectiveHeartbeats()
+		req.NoError(err)
+		return timings
+	}
+
+	// Defaults: 60s over a 11s healthy gap, comfortably more than one cycle.
+	req.False(mk(`{}`).HasThinMargin())
+
+	// Valid, but one lost response reaches the timeout.
+	req.True(mk(`{"heartbeats":{"sendInterval":"30s","checkInterval":"5s","closeUnresponsiveTimeout":"60s"}}`).HasThinMargin())
+}
+
+func Test_Subsystem_Heartbeats_GenerationAdvancesPerApply(t *testing.T) {
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	// Before any apply: defaults at generation zero, so a link binding now and
+	// a link binding after the first apply are distinguishable.
+	initial := r.Heartbeats()
+	req.Zero(initial.Generation)
+	req.Equal(defaultHeartbeatSendInterval, initial.SendInterval)
+	req.Equal(defaultCloseUnresponsiveTimeout, initial.CloseUnresponsiveTimeout)
+
+	req.NoError(r.Apply(1, `{"heartbeats":{"sendInterval":"3s","checkInterval":"250ms","closeUnresponsiveTimeout":"45s"}}`))
+	first := r.Heartbeats()
+	req.Greater(first.Generation, initial.Generation)
+	req.Equal(3*time.Second, first.SendInterval)
+	req.Equal(250*time.Millisecond, first.CheckInterval)
+	req.Equal(45*time.Second, first.CloseUnresponsiveTimeout)
+
+	// A later apply that omits them reverts to defaults, as a new generation.
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	second := r.Heartbeats()
+	req.Greater(second.Generation, first.Generation)
+	req.Equal(defaultHeartbeatSendInterval, second.SendInterval)
+
+	// Remove also publishes a generation, so links are re-tuned off the removed
+	// values rather than keeping them.
+	req.NoError(r.Remove())
+	third := r.Heartbeats()
+	req.Greater(third.Generation, second.Generation)
+	req.Equal(defaultCloseUnresponsiveTimeout, third.CloseUnresponsiveTimeout)
+}
+
+func Test_Subsystem_Heartbeats_SnapshotIsCoherent(t *testing.T) {
+	// The point of one atomic swap: a reader can never see one generation's
+	// interval with another's timeout, however many applies race with it.
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	configs := []string{
+		`{"heartbeats":{"sendInterval":"1s","checkInterval":"100ms","closeUnresponsiveTimeout":"10s"}}`,
+		`{"heartbeats":{"sendInterval":"20s","checkInterval":"5s","closeUnresponsiveTimeout":"5m"}}`,
+	}
+	valid := map[xlink.HeartbeatSettings]bool{}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 200; i++ {
+			_ = r.Apply(1, configs[i%len(configs)])
+		}
+	}()
+
+	for i := 0; i < 2000; i++ {
+		s := r.Heartbeats()
+		// Every observed snapshot must be one of the coherent combinations,
+		// never a mix.
+		coherent := (s.SendInterval == time.Second && s.CheckInterval == 100*time.Millisecond && s.CloseUnresponsiveTimeout == 10*time.Second) ||
+			(s.SendInterval == 20*time.Second && s.CheckInterval == 5*time.Second && s.CloseUnresponsiveTimeout == 5*time.Minute) ||
+			(s.SendInterval == defaultHeartbeatSendInterval && s.CheckInterval == defaultHeartbeatCheckInterval && s.CloseUnresponsiveTimeout == defaultCloseUnresponsiveTimeout)
+		req.True(coherent, "observed a mixed snapshot: %+v", s)
+		valid[s] = true
+	}
+	<-done
+	req.NotEmpty(valid)
+}
+
+func Test_Subsystem_ListenerSnapshot_PairsGenerationWithItsListeners(t *testing.T) {
+	// Sampling the generation and the listeners separately would let a publisher
+	// stamp one generation's listeners with another's number, which a receiver
+	// discriminating on generation would then accept as the newest state.
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	gen0, listeners0 := r.ListenerSnapshot()
+	req.Zero(gen0)
+	req.Empty(listeners0)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`))
+	gen1, listeners1 := r.ListenerSnapshot()
+	req.Greater(gen1, gen0)
+	req.Len(listeners1, 1)
+
+	req.NoError(r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6263"},{"bind":"tls:0.0.0.0:6264"}]}`))
+	gen2, listeners2 := r.ListenerSnapshot()
+	req.Greater(gen2, gen1)
+	req.Len(listeners2, 2)
+
+	// Under concurrent applies, every snapshot must be a real pairing: the
+	// two-listener set never appears stamped with the one-listener generation.
+	seen := map[uint64]int{}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 200; i++ {
+			if i%2 == 0 {
+				_ = r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6262"}]}`)
+			} else {
+				_ = r.Apply(1, `{"listeners":[{"bind":"tls:0.0.0.0:6263"},{"bind":"tls:0.0.0.0:6264"}]}`)
+			}
+		}
+	}()
+
+	for i := 0; i < 2000; i++ {
+		gen, listeners := r.ListenerSnapshot()
+		if prev, found := seen[gen]; found {
+			req.Equal(prev, len(listeners),
+				"generation %d reported %d listeners and then %d", gen, prev, len(listeners))
+		}
+		seen[gen] = len(listeners)
+	}
+	<-done
+	req.NotEmpty(seen)
+}
+
+func Test_LocalYaml_ClampsTimeoutBelowFloor(t *testing.T) {
+	// Local link config is applied synchronously and a failure stops the router
+	// from starting, so a below-floor value from router YAML is raised to the
+	// floor rather than rejected. The managed path rejects it instead, where the
+	// operator sees the error on the API call and nothing is already running.
+	req := require.New(t)
+
+	hb := heartbeatsFromYamlOptions(channel.HeartbeatOptions{
+		SendInterval:             time.Second,
+		CheckInterval:            time.Second,
+		CloseUnresponsiveTimeout: 5 * time.Second,
+	})
+	req.NotNil(hb)
+	req.Equal(routerlink.MinCloseUnresponsiveTimeout.String(), hb.CloseUnresponsiveTimeout)
+
+	// And the clamped result must survive the validation it was clamped to pass.
+	cfg := &Config{Heartbeats: hb}
+	req.NoError(cfg.Validate())
+
+	// A value at or above the floor is passed through untouched.
+	hb = heartbeatsFromYamlOptions(channel.HeartbeatOptions{
+		SendInterval:             10 * time.Second,
+		CheckInterval:            time.Second,
+		CloseUnresponsiveTimeout: 45 * time.Second,
+	})
+	req.NotNil(hb)
+	req.Equal("45s", hb.CloseUnresponsiveTimeout)
+}
+
+func Test_LocalYaml_InvalidTimingFallsBackToDefaults(t *testing.T) {
+	// The env loader fills absent fields with non-zero defaults, so every input
+	// here is timing an operator wrote. Local link config failing validation
+	// stops the router from starting, and the send and check intervals were once
+	// ignored for links entirely, so timing that was never in force must not
+	// start blocking boot on upgrade: it falls back to the defaults instead.
+	cases := []struct {
+		name string
+		in   channel.HeartbeatOptions
+	}{
+		{
+			// Kept as "0s" so validation sees it, as the controller does, rather than
+			// read as an absent field and quietly defaulted.
+			name: "explicit zero check interval",
+			in:   channel.HeartbeatOptions{SendInterval: 10 * time.Second, CheckInterval: 0, CloseUnresponsiveTimeout: time.Minute},
+		},
+		{
+			name: "every field explicitly zero",
+			in:   channel.HeartbeatOptions{},
+		},
+		{
+			// Ignored before these settings reached links, and so harmless then.
+			name: "check interval past the timeout",
+			in:   channel.HeartbeatOptions{SendInterval: 10 * time.Second, CheckInterval: 2 * time.Minute, CloseUnresponsiveTimeout: 30 * time.Second},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := require.New(t)
+			req.Nil(heartbeatsFromYamlOptions(c.in), "invalid local timing must yield the defaults")
+
+			// And the router must still start: the translated config validates.
+			js, err := ConfigFromLocalYaml(LocalYamlConfig{
+				Listeners:  []map[interface{}]interface{}{{"binding": "transport", "bind": "tls:0.0.0.0:6262"}},
+				Heartbeats: c.in,
+			})
+			req.NoError(err)
+			cfg, err := ParseConfig(js)
+			req.NoError(err)
+			req.NoError(cfg.Validate())
+			timings, err := cfg.EffectiveHeartbeats()
+			req.NoError(err)
+			req.Equal(routerlink.DefaultCloseUnresponsiveTimeout, timings.CloseUnresponsiveTimeout)
+			req.Equal(routerlink.DefaultHeartbeatCheckInterval, timings.CheckInterval)
+		})
+	}
+}
+
+func Test_LocalYaml_ValidTimingPassesThrough(t *testing.T) {
+	req := require.New(t)
+	hb := heartbeatsFromYamlOptions(channel.HeartbeatOptions{
+		SendInterval:             5 * time.Second,
+		CheckInterval:            500 * time.Millisecond,
+		CloseUnresponsiveTimeout: 20 * time.Second,
+	})
+	req.NotNil(hb)
+	req.Equal(&HeartbeatsConfig{SendInterval: "5s", CheckInterval: "500ms", CloseUnresponsiveTimeout: "20s"}, hb)
+}
+
+func Test_Subsystem_QueueSizeOnlyChange_AppliesWithoutDispatching(t *testing.T) {
+	// Queue sizes are read when a link is created, so a change to them reaches
+	// new links only. There is nothing to do for established links and nothing
+	// about them has become stale, so the change must not reach the handler:
+	// that would run a GC pass and, under a non-preserve gcMode, close healthy
+	// links to resize a buffer.
+	//
+	// This is emergent from which flags hasWork consults, so it is pinned here
+	// rather than left for someone adding a flag to rediscover.
+	req := require.New(t)
+	r, _ := newTestRegistry(t)
+
+	const listener = `{"bind":"tls:0.0.0.0:6262"}`
+	req.NoError(r.Apply(1, fmt.Sprintf(`{"listeners":[%s],"gcMode":"changed","payloadSenderQueueSize":128}`, listener)))
+
+	rec := newChangeRecorder()
+	r.SetConfigurationChangeHandler(rec.handle)
+
+	req.NoError(r.Apply(1, fmt.Sprintf(`{"listeners":[%s],"gcMode":"changed","payloadSenderQueueSize":512,"ackSenderQueueSize":256}`, listener)))
+
+	req.False(rec.waitForChange(250*time.Millisecond),
+		"a queue-size-only change must not dispatch, or a tuning edit would close healthy links")
+
+	// Applied all the same: the next link built picks the new sizes up.
+	req.Equal(512, r.PayloadSenderQueueSize())
+	req.Equal(256, r.AckSenderQueueSize())
+	req.Equal(512, r.GetConfig().PayloadSenderQueueSize)
+}
+
+func Test_ConfigFromLocalYaml_LinkSectionWithoutSurfaceIsLocalConfig(t *testing.T) {
+	// A link section of any content takes precedence over the controller's
+	// router.link config, including one that only tunes heartbeats, so it is applied
+	// as local config rather than dropped.
+	req := require.New(t)
+
+	js, err := ConfigFromLocalYaml(LocalYamlConfig{
+		Configured: true,
+		Heartbeats: channel.HeartbeatOptions{
+			SendInterval:             5 * time.Second,
+			CheckInterval:            time.Second,
+			CloseUnresponsiveTimeout: 45 * time.Second,
+		},
+		PayloadSenderQueueSize: 256,
+		AckSenderQueueSize:     64,
+	})
+	req.NoError(err)
+	req.NotEmpty(js, "a link section must count as local config even with no listeners or dialers")
+
+	cfg, err := ParseConfig(js)
+	req.NoError(err)
+	req.NoError(cfg.Validate())
+	req.Empty(cfg.Listeners)
+	req.Empty(cfg.Dialers)
+	req.Equal("45s", cfg.Heartbeats.CloseUnresponsiveTimeout)
+	req.Equal(256, cfg.PayloadSenderQueueSize)
 }

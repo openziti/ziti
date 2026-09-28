@@ -50,6 +50,7 @@ type splitImpl struct {
 	iteration    uint32
 	dupsRejected uint32
 	lock         sync.Mutex
+	heartbeatControl
 
 	droppedMsgMeter    metrics.Meter
 	droppedXgMsgMeter  metrics.Meter

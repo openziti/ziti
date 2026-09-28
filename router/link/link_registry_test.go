@@ -110,14 +110,25 @@ func (self *testEnv) GetRateLimiterPool() goroutines.Pool {
 	panic("implement me")
 }
 
+func (self *testEnv) GetHeartbeatSettings() xlink.HeartbeatSettings {
+	return xlink.HeartbeatSettings{
+		Generation:               1,
+		SendInterval:             10 * time.Second,
+		CheckInterval:            time.Second,
+		CloseUnresponsiveTimeout: time.Minute,
+	}
+}
+
 func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
 type testLink struct {
-	id     string
-	key    string
-	destId string
+	id       string
+	key      string
+	destId   string
+	hbLock   sync.Mutex
+	hbPushed []xlink.HeartbeatSettings
 }
 
 func (self *testLink) GetDestinationType() string {
@@ -164,6 +175,28 @@ func (self *testLink) DestinationId() string {
 	return self.destId
 }
 
+func (self *testLink) SetHeartbeatControl(channel.HeartbeatControl, xlink.HeartbeatSettings) {}
+func (self *testLink) HeartbeatSettings() xlink.HeartbeatSettings {
+	self.hbLock.Lock()
+	defer self.hbLock.Unlock()
+	if len(self.hbPushed) == 0 {
+		return xlink.HeartbeatSettings{}
+	}
+	return self.hbPushed[len(self.hbPushed)-1]
+}
+
+func (self *testLink) heartbeatPushes() []xlink.HeartbeatSettings {
+	self.hbLock.Lock()
+	defer self.hbLock.Unlock()
+	return append([]xlink.HeartbeatSettings(nil), self.hbPushed...)
+}
+
+func (self *testLink) UpdateHeartbeat(settings xlink.HeartbeatSettings) {
+	self.hbLock.Lock()
+	defer self.hbLock.Unlock()
+	self.hbPushed = append(self.hbPushed, settings)
+}
+
 func (self *testLink) DestVersion() string {
 	panic("implement me")
 }
@@ -185,7 +218,7 @@ func (self *testLink) CloseOnce(func()) {
 }
 
 func (self *testLink) IsClosed() bool {
-	panic("implement me")
+	return false
 }
 
 func (self *testLink) InspectLink() *inspect.LinkInspectDetail {
@@ -197,11 +230,11 @@ func (self *testLink) GetLinkConnState() *ctrl_pb.LinkConnState {
 }
 
 func (self *testLink) IsDialed() bool {
-	panic("implement me")
+	return false
 }
 
 func (self *testLink) Iteration() uint32 {
-	panic("implement me")
+	return 0
 }
 
 func (self *testLink) AreFaultsSent() bool {
@@ -803,4 +836,25 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 		_, present := snapshot[destId]
 		return !present
 	}, 2*time.Second, 25*time.Millisecond, "unhealthy destination should drop out of the snapshot")
+}
+
+func Test_LinkRegistry_ReconcilesHeartbeatsOnRegistration(t *testing.T) {
+	// A link samples its heartbeat settings while binding and only reaches the
+	// registry afterwards. A change pushed in that window iterates the registry
+	// and cannot see it, so registration has to reconcile or the link runs the
+	// previous generation forever while reading the current timeout.
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+
+	link := &testLink{id: "l1", key: "k1", destId: "dest1"}
+	existing, applied := reg.DialSucceeded(link)
+	req.Nil(existing)
+	req.True(applied)
+
+	pushes := link.heartbeatPushes()
+	req.Len(pushes, 1, "registration must push the current generation")
+	req.Equal(tenv.GetHeartbeatSettings(), pushes[0])
 }

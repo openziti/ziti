@@ -18,32 +18,80 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/common/config/routerlink"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
+// ConfigDataValidator applies rules to a config's data that its JSON schema
+// can't express: relationships between fields, combinations of values, anything
+// needing more than per-field checks. Registered against a config type name and
+// run on create and update, after schema validation has passed.
+//
+// Return a field error (errorz.NewFieldError) to have the REST layer report the
+// offending field; a plain error is reported against the data as a whole.
+type ConfigDataValidator func(data map[string]interface{}) error
+
 func NewConfigManager(env Env) *ConfigManager {
 	manager := &ConfigManager{
 		baseEntityManager: newBaseEntityManager[*Config, *db.Config](env, env.GetStores().Config),
+		dataValidators:    map[string]ConfigDataValidator{},
 	}
 	manager.impl = manager
 
 	RegisterManagerDecoder[*Config](env, manager)
 
+	manager.RegisterDataValidator(routerlink.ConfigTypeV1, validateRouterLinkConfigData)
+
 	return manager
+}
+
+// validateRouterLinkConfigData applies the router.link rules its JSON schema
+// can't express, notably heartbeat timing, using the router's own validation.
+func validateRouterLinkConfigData(data map[string]interface{}) error {
+	js, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("unable to re-encode config data: %w", err)
+	}
+	cfg, err := routerlink.ParseConfig(string(js))
+	if err != nil {
+		return err
+	}
+	return cfg.Validate()
 }
 
 type ConfigManager struct {
 	baseEntityManager[*Config, *db.Config]
+
+	// dataValidators is keyed by config type name, which is stable across networks
+	// where ids are not. Written only during controller init, so reads need no lock.
+	dataValidators map[string]ConfigDataValidator
+}
+
+// RegisterDataValidator installs a semantic validator for the named config
+// type, to run after schema validation on every create and update. Call during
+// controller init; it is not safe to call once requests are being served.
+// Registering a second validator for the same type replaces the first.
+func (self *ConfigManager) RegisterDataValidator(configTypeName string, v ConfigDataValidator) {
+	self.dataValidators[configTypeName] = v
+}
+
+// validateData runs the validator registered for configTypeName, if any.
+func (self *ConfigManager) validateData(configTypeName string, data map[string]interface{}) error {
+	if v, found := self.dataValidators[configTypeName]; found {
+		return v(data)
+	}
+	return nil
 }
 
 func (self *ConfigManager) NewModelEntity() *Config {

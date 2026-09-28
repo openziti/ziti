@@ -52,8 +52,16 @@ func (self *updateLinkListenersHandler) HandleReceive(msg *channel.Message, ch c
 		return
 	}
 
-	self.router.SetLinkListeners(listeners.Listeners)
+	if !self.router.SetLinkListeners(listeners.Listeners, listeners.Generation) {
+		// Superseded by an update that arrived first. Redistributing this set
+		// would push peers back onto listeners the router has already replaced.
+		log.WithField("generation", listeners.Generation).
+			Info("ignoring superseded router link listener update")
+		return
+	}
+
 	log.WithField("listenerCount", len(listeners.Listeners)).
+		WithField("generation", listeners.Generation).
 		Info("updated router link listeners; redistributing to peers")
 
 	// Trigger the existing peer-redistribution path: peers receive a

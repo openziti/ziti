@@ -22,7 +22,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/config/routerlink"
 )
 
 // LocalYamlConfig is the slice of router env config we need to translate
@@ -30,6 +32,8 @@ import (
 // from router/env (which would create a circular import via router/link's
 // other consumers).
 type LocalYamlConfig struct {
+	// Configured reports that the router's config file has a link section.
+	Configured             bool
 	Listeners              []map[interface{}]interface{}
 	Dialers                []map[interface{}]interface{}
 	Heartbeats             channel.HeartbeatOptions
@@ -40,19 +44,20 @@ type LocalYamlConfig struct {
 
 // ConfigFromLocalYaml converts the YAML-decoded router config slice into a
 // typed Config and serializes it to JSON, ready for
-// managedconfig.Registry.ApplyLocal. Returns ("", nil) when no listeners
-// or dialers are configured locally — caller treats that as "no local
-// config; controller may manage."
+// managedconfig.Registry.ApplyLocal. Returns ("", nil) when the router config
+// has no link section, which leaves the router's links to the controller.
 //
-// Heartbeats and queue sizes alone don't count as local content: the
-// router env loader auto-fills heartbeat defaults regardless of whether
-// the YAML has a `link:` section, so treating those as "operator set
-// local config" would suppress controller management for every router.
-// Operator intent for local-wins requires explicit listeners or dialers.
+// A link section of any content is local config, and local config takes
+// precedence over the controller's for the whole router.link type, so one that
+// sets only heartbeats or queue sizes still leaves the router with no listeners
+// or dialers of its own. That is warned about rather than rejected.
 func ConfigFromLocalYaml(in LocalYamlConfig) (string, error) {
-	hasContent := len(in.Listeners) > 0 || len(in.Dialers) > 0
-	if !hasContent {
+	if !in.Configured && len(in.Listeners) == 0 && len(in.Dialers) == 0 {
 		return "", nil
+	}
+	if len(in.Listeners) == 0 && len(in.Dialers) == 0 {
+		pfxlog.Logger().Warn("router config has a link section with no listeners or dialers; it takes precedence " +
+			"over any controller-managed link config, so this router will have no links")
 	}
 
 	cfg := Config{
@@ -214,30 +219,30 @@ func yamlBackoff(m map[interface{}]interface{}, key string) (*BackoffConfig, err
 	return out, nil
 }
 
-// heartbeatsFromYamlOptions converts the channel-package HeartbeatOptions
-// (already parsed by the router env loader) into the typed
-// HeartbeatsConfig in duration-string form for round-trip through the
-// router.link.v1 JSON shape.
+// heartbeatsFromYamlOptions converts env-loaded HeartbeatOptions into a
+// HeartbeatsConfig. The env loader defaults absent fields, so a zero is explicit
+// and is kept as "0s". A closeUnresponsiveTimeout below the floor is raised to it,
+// and any other invalid timing is replaced by the defaults, both with a warning,
+// since local link config that fails validation stops the router from starting.
+// Returns nil when the defaults apply.
 func heartbeatsFromYamlOptions(h channel.HeartbeatOptions) *HeartbeatsConfig {
-	if !heartbeatsConfigured(h) {
+	closeTimeout := h.CloseUnresponsiveTimeout
+	if closeTimeout > 0 && closeTimeout < routerlink.MinCloseUnresponsiveTimeout {
+		pfxlog.Logger().Warnf("link heartbeat closeUnresponsiveTimeout %s in router config is below the %s minimum, using the minimum",
+			closeTimeout, routerlink.MinCloseUnresponsiveTimeout)
+		closeTimeout = routerlink.MinCloseUnresponsiveTimeout
+	}
+
+	hb := &HeartbeatsConfig{
+		SendInterval:             h.SendInterval.String(),
+		CheckInterval:            h.CheckInterval.String(),
+		CloseUnresponsiveTimeout: closeTimeout.String(),
+	}
+	if _, err := (&Config{Heartbeats: hb}).EffectiveHeartbeats(); err != nil {
+		pfxlog.Logger().WithError(err).Warn("link heartbeat timing in router config is invalid, using the defaults")
 		return nil
 	}
-	return &HeartbeatsConfig{
-		SendInterval:             durationString(h.SendInterval),
-		CheckInterval:            durationString(h.CheckInterval),
-		CloseUnresponsiveTimeout: durationString(h.CloseUnresponsiveTimeout),
-	}
-}
-
-func heartbeatsConfigured(h channel.HeartbeatOptions) bool {
-	return h.SendInterval != 0 || h.CheckInterval != 0 || h.CloseUnresponsiveTimeout != 0
-}
-
-func durationString(d time.Duration) string {
-	if d == 0 {
-		return ""
-	}
-	return d.String()
+	return hb
 }
 
 // yamlString reads m[key] as string; returns "" if absent.

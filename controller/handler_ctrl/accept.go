@@ -131,7 +131,10 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			return errors.New("no version info header, not accepting router connection")
 		}
 
-		r.SetLinkListeners(nil)
+		// A new control channel starts a new session: the router mints listener
+		// generations per process, so anything remembered from a previous one
+		// would reject its first updates.
+		r.ResetLinkListeners()
 		headers := ch.Underlay().Headers()
 
 		// Determine header locations based on router capabilities. 2.0+ routers
@@ -151,7 +154,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			if err = proto.Unmarshal(val, listeners); err != nil {
 				log.WithError(err).Error("unable to unmarshall listeners value")
 			} else {
-				r.SetLinkListeners(listeners.Listeners)
+				r.SetLinkListeners(listeners.Listeners, listeners.Generation)
 				for _, listener := range listeners.Listeners {
 					log.WithField("address", listener.GetAddress()).
 						WithField("protocol", listener.GetProtocol()).

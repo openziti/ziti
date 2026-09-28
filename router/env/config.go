@@ -152,6 +152,10 @@ type Config struct {
 		Listeners             []*CtrlListenerConfig
 	}
 	Link struct {
+		// Configured reports that the config file has a link section at all. The
+		// other fields are filled with defaults either way, so this is the only
+		// record of whether the operator wrote one.
+		Configured             bool
 		Listeners              []map[interface{}]interface{}
 		Dialers                []map[interface{}]interface{}
 		Heartbeats             channel.HeartbeatOptions
@@ -586,6 +590,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	cfg.Link.AckSenderQueueSize = DefaultLinkAckSenderQueueSize
 
 	if value, found := cfgmap["link"]; found {
+		cfg.Link.Configured = true
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["listeners"]; found {
 				if subarr, ok := value.([]interface{}); ok {

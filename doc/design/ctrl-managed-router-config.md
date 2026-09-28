@@ -214,8 +214,8 @@ the router has final say on what it applies.
 If a router has both local and controller-managed config for the same subsystem, local always wins.
 Routers are often deployed on systems owned by someone other than the network operator (one entity
 runs the network and uses it to manage devices for their customers). The customer needs control
-over what the router is capable of. Controller-managed config fills in gaps where local config is
-silent; it doesn't override what the operator has explicitly set.
+over what the router is capable of. Controller-managed config configures the subsystems local config
+leaves alone; it never overrides a subsystem the operator has configured.
 
 ### Source Tracking and Selection
 
@@ -230,8 +230,14 @@ Local takes precedence at the **base type level**. If the operator set anything 
 `router.link`, controller versions are ignored for that base. Matches operator intent: someone who
 set v1 locally probably doesn't want the controller silently upgrading them to v2.
 
-Per-field merge — the richest interpretation of "fills in gaps where local config is silent" — is
-out of scope for now. Wait for operator demand.
+For `router.link`, "set anything locally" means the router's config file has a `link` section at
+all. The env loader fills every link field with a default whether or not the section is present, so
+it records presence separately, and a section that only tunes heartbeats or queue sizes still counts.
+Such a section leaves the router with no listeners or dialers of its own while ignoring the
+controller's, so the router warns at startup when a `link` section has neither.
+
+Per-field merge, where local config would win only for the fields it sets, is out of scope for now.
+Wait for operator demand.
 
 ### YAML → JSON Translation
 
@@ -242,6 +248,13 @@ default `binding` if absent, and preserve the deprecated `split` dialer flag as 
 (translated through for config fidelity, but kept out of the controller schema so it can't be set
 from the controller). `costTags` was unused and has been removed from the router outright rather
 than translated. Per-type code, lives next to each handler. The registry itself is agnostic.
+
+Heartbeat timing is translated leniently, because local link config is applied synchronously and a
+failure stops the router from starting. An explicit zero is carried through as `0s` rather than
+dropped, so it isn't mistaken for an absent field. A `closeUnresponsiveTimeout` below the floor is
+raised to it, and any other timing that fails validation is replaced by the defaults, each with a
+warning. The controller path rejects the same values outright, where the error comes back on the
+API call.
 
 ### Hot Reconfiguration
 
@@ -258,8 +271,9 @@ General approach:
 
 ### Reconciliation Strategy
 
-The link handler takes the simple route: on Apply, build the new listener / dialer set, close the
-old listeners, swap in the new state, then `Listen()` on the new listeners. No per-item diffing.
+The link handler takes the simple route: on Apply, if the listener or dialer definitions changed,
+build the new listener / dialer set, close the old listeners, swap in the new state, then `Listen()`
+on the new listeners. No per-item diffing.
 
 This works without disturbing traffic because `xlink.Listener.Close()` only closes the listener's
 accept loop — already-accepted Xlinks survive. So the operator sees:
@@ -269,13 +283,58 @@ accept loop — already-accepted Xlinks survive. So the operator sees:
 - **Remove a listener**: same; established links on it stay up.
 - **Modify a listener** (advertise change, etc.): the new accept loop is bound with the new
   config; old established links unaffected.
-- **No actual change**: the deep-equality check in `notifyChange` no-ops the post-apply notify, but
-  the listener rebuild still runs. Cheap enough that we don't optimize for it.
+- **No change to listeners or dialers**: the rebuild is skipped, so a change confined to heartbeats,
+  queue sizes, or `gcMode` never rebinds a listen socket. Re-applying identical config returns
+  before doing anything at all.
 
 Per-item diffing (a `ReconcileSet[K, V]` helper that fires add/update/remove callbacks) is a
 plausible refinement when we have multiple subsystems with item-level identity (xgress listeners,
 ctrl-channel listeners), but the link subsystem doesn't need it. Add it when a second consumer
 shows up and the simple-rebuild approach has actual cost there.
+
+### Heartbeats and Queue Sizes
+
+Beyond listeners and dialers, the link handler applies the `router.link.v1` `heartbeats` settings
+and sender queue sizes from the effective config. These follow full-config (PUT) semantics: a field
+absent from the applied config reverts to its default rather than retaining a previously-applied
+value.
+
+- **Heartbeat timing** (`sendInterval`, `checkInterval`, `closeUnresponsiveTimeout`) is published as
+  one generation, stamped with the applied config's generation. New links take the current
+  generation at bind time; established links are pushed it in place through the channel
+  `HeartbeatControl` handle, with no teardown. Every channel backing a link is re-tuned, including
+  both channels of a split link, and a channel bound on the far side of a config change is
+  reconciled to the newest generation when it registers. A link ignores a generation at or below the
+  one it holds, so an overtaken update cannot roll it back.
+- **`payloadSenderQueueSize` / `ackSenderQueueSize`** are read when a link channel is built, so a
+  change applies to links established afterward; an established channel's send queues aren't resized.
+  A change confined to them asks nothing of established links and so triggers no notification or
+  GC pass, though the apply is still logged.
+
+A new generation re-arms each link's liveness deadline. Under the previous intervals a healthy
+link's last response can be most of a send + check cycle old, and a newly shortened timeout would
+read that accumulated age as unresponsiveness. The re-arm grants one fresh timeout window, not
+standing immunity.
+
+Two thresholds are evaluated against time since the last response, independently:
+
+- **Close**: `closeUnresponsiveTimeout`, as configured. A zero timeout closes nothing, since it
+  means no settings have been published yet.
+- **Unhealthy**: `max(30s, 2 × (sendInterval + checkInterval))`, meaning a response has actually
+  been missed. Reporting unhealthy poisons the link's latency metric, which the controller routes on,
+  so the threshold has to scale with the intervals; a fixed 30s would price a healthy link with a
+  long send interval out of routing every cycle. A link being closed is always reported unhealthy.
+
+Timing is validated on both the controller and the router: every duration must be positive,
+`sendInterval + checkInterval` must be representable, and `closeUnresponsiveTimeout` must be at least
+10s and greater than `sendInterval + checkInterval`, since a responsive link's own gap already reaches
+that sum. The floor exists because a healthy connection can go quiet for several seconds while TCP
+recovers from ordinary loss. A timeout under two heartbeat cycles is accepted with a warning, since
+a single lost response can close the link.
+
+Split links (the legacy fallback for peers without multi-underlay support) are deprecated;
+multi-underlay is a superset of split links, and the `split` option is slated for removal in
+OpenZiti 4.0.
 
 ### Config Application Strategy
 
@@ -339,6 +398,11 @@ rather than requiring peer agreement, because if the local side can no longer su
 the peer was going to see it disconnect anyway. Each closure logs `linkId`, `linkKey`, `side`,
 `mode`, and `reason`.
 
+Removing the config always sweeps, under `orphaned`, whatever mode the removed config carried. A
+removal leaves no listeners and no dialers, so every remaining link is one the router can never
+re-establish; `gcMode` governs links the router's configuration made stale, and after a removal there
+is no configuration.
+
 Operators who want a two-sided, controller-aggregated sweep use the `ziti ops verify stale-links`
 CLI (which fans CheckStaleLinks out to all routers and only GCs when both endpoints agree).
 
@@ -353,8 +417,8 @@ is this subsystem configured this way?":
 - What's currently applied (source + version).
 - Recent alerts (parse failures, rollbacks, offline subsystems).
 
-Wired into the existing inspect framework: `ziti fabric inspect <router> managed-config` returns
-the registry view.
+Wired into the existing inspect framework:
+`ziti fabric inspect router-config-registry [router id regex]` returns the registry view.
 
 ### Startup Behavior
 

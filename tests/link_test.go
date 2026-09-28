@@ -87,6 +87,16 @@ func (self *testRegistryEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+// GetHeartbeatSettings mirrors what a router reports before any link config has
+// been applied: the defaults, at generation zero.
+func (self *testRegistryEnv) GetHeartbeatSettings() xlink.HeartbeatSettings {
+	return xlink.HeartbeatSettings{
+		SendInterval:             10 * time.Second,
+		CheckInterval:            time.Second,
+		CloseUnresponsiveTimeout: time.Minute,
+	}
+}
+
 type testDial struct {
 	Key           string
 	LinkId        string

@@ -156,6 +156,12 @@ func (self *Router) GetXlinkDialers() []xlink.Dialer {
 	return self.linkSubsystem.Dialers()
 }
 
+// GetHeartbeatSettings returns the heartbeat generation currently in force,
+// for reconciling a link that registered while a change was being pushed.
+func (self *Router) GetHeartbeatSettings() xlink.HeartbeatSettings {
+	return self.linkSubsystem.Heartbeats()
+}
+
 func (self *Router) GetXlinkListeners() []xlink.Listener {
 	return self.linkSubsystem.Listeners()
 }
@@ -181,11 +187,11 @@ func (self *Router) GetMetricsRegistry() servermetrics.UsageRegistry {
 }
 
 func (self *Router) GetLinkPayloadSenderQueueSize() int {
-	return self.config.Link.PayloadSenderQueueSize
+	return self.linkSubsystem.PayloadSenderQueueSize()
 }
 
 func (self *Router) GetLinkAckSenderQueueSize() int {
-	return self.config.Link.AckSenderQueueSize
+	return self.linkSubsystem.AckSenderQueueSize()
 }
 
 func (self *Router) GetXgressRegistry() *env.Registry {
@@ -242,6 +248,20 @@ func (self *Router) GetIndexWatchers() env.IndexWatchers {
 
 func (self *Router) GetForwarder() env.Forwarder {
 	return self.forwarder
+}
+
+// GetForwarderImpl returns the concrete forwarder. It exists alongside
+// GetForwarder (which returns the env.Forwarder interface to avoid an
+// env->forwarder import cycle) so callers needing the concrete type — like the
+// link bind handler — can get it without a separate adapter.
+func (self *Router) GetForwarderImpl() *forwarder.Forwarder {
+	return self.forwarder
+}
+
+// GetLinkSettings returns the live, managed-config-driven link settings (backed
+// by the link subsystem) for the link bind handler.
+func (self *Router) GetLinkSettings() handler_link.LinkSettings {
+	return self.linkSubsystem
 }
 
 func (self *Router) GetXgressMetrics() env.XgressMetrics {
@@ -752,13 +772,7 @@ func (self *Router) NotifyCertsUpdated() {
 
 func (self *Router) registerComponents() error {
 	acceptor := newXlinkAccepter(self.forwarder)
-	xlinkChAccepter := handler_link.NewBindHandlerFactory(
-		self.ctrls,
-		self.forwarder,
-		&self.config.Link.Heartbeats,
-		self.metricsRegistry,
-		self.xlinkRegistry,
-	)
+	xlinkChAccepter := handler_link.NewBindHandlerFactory(self)
 
 	linkTransportConfig := map[interface{}]interface{}{}
 	for k, v := range self.config.Transport {
@@ -852,8 +866,12 @@ func (self *Router) registerPlugins() error {
 // header packing and the post-Apply publish path so both wire shapes
 // stay aligned.
 func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
-	listeners := &ctrl_pb.Listeners{}
-	for _, listener := range self.linkSubsystem.Listeners() {
+	// Generation and listeners come from one read: an update carries the
+	// generation of the set it actually contains, so a controller comparing
+	// generations can drop a superseded one.
+	generation, current := self.linkSubsystem.ListenerSnapshot()
+	listeners := &ctrl_pb.Listeners{Generation: generation}
+	for _, listener := range current {
 		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
 			Address:      listener.GetAdvertisement(),
 			Protocol:     listener.GetLinkProtocol(),
@@ -882,6 +900,15 @@ func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	}
 	if change.DialersChanged {
 		self.xlinkRegistry.RescanForDialOpportunities()
+	}
+	if change.HeartbeatsChanged {
+		// Push the whole generation, so intervals and the timeout they pair with
+		// arrive together. Links ignore generations they have already passed, and new
+		// links take the current one at bind time.
+		settings := self.linkSubsystem.Heartbeats()
+		for xl := range self.xlinkRegistry.Iter() {
+			xl.UpdateHeartbeat(settings)
+		}
 	}
 	link.RunStaleLinkGc(self, change.GcMode)
 }
@@ -917,6 +944,7 @@ func (self *Router) publishLinkListeners() {
 // bind address) surfaces as a startup error rather than just a log line.
 func (self *Router) applyLocalLinkConfig() error {
 	js, err := link.ConfigFromLocalYaml(link.LocalYamlConfig{
+		Configured:             self.config.Link.Configured,
 		Listeners:              self.config.Link.Listeners,
 		Dialers:                self.config.Link.Dialers,
 		Heartbeats:             self.config.Link.Heartbeats,
