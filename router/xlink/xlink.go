@@ -30,8 +30,8 @@ import (
 
 // Registry contains known link instances and manages link de-duplication
 type Registry interface {
-	// UpdateLinkDest adds or updates the state of the given destination
-	UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
+	// UpdateLinkDest adds or updates the state of the given destination, as reported by controller ctrlId
+	UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
 
 	// RemoveLinkDest removes the given link destination
 	RemoveLinkDest(id string)
@@ -53,6 +53,10 @@ type Registry interface {
 
 	// SendRouterLinkMessage will notify the given controllers about the existing link
 	SendRouterLinkMessage(link Xlink, channels ...channel.Channel)
+
+	// LinkListenersChanged notifies the registry that the router's link listener set changed, so it is
+	// republished to every controller
+	LinkListenersChanged()
 
 	// Inspect will return debug information about the state of links and the registry
 	Inspect(timeout time.Duration) *inspect.LinksInspectResult

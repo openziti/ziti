@@ -167,22 +167,22 @@ func (entity *Router) addLinkListener(addr, linkProtocol string, groups []string
 	})
 }
 
-// SetLinkListeners atomically replaces the router's link listener slice.
-// Callers do not mutate the previous slice — readers may still hold and
-// iterate it safely after a Set.
-// SetLinkListeners records listeners when generation is newer than the last
-// recorded for this control channel session, and reports whether it did. Older
-// generations are dropped: a multi-underlay control channel doesn't order updates
-// across underlays, and a stale set would be redistributed to peers.
-func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener, generation uint64) bool {
+// SetLinkListeners records listeners when generation is newer than the one recorded for this control channel
+// session, or when the recorded generation is zero, and reports whether it did. It returns the set held before
+// the call either way, read under the same lock, so a caller can tell whether the update changed anything.
+// Older and equal generations are dropped: a multi-underlay control channel doesn't order updates across
+// underlays, and a stale set would be redistributed to peers. Slices are replaced, never mutated, so a returned
+// set stays safe to iterate.
+func (entity *Router) SetLinkListeners(listeners []*ctrl_pb.Listener, generation uint64) (previous []*ctrl_pb.Listener, recorded bool) {
 	entity.mu.Lock()
 	defer entity.mu.Unlock()
+	previous = entity.listeners
 	if generation <= entity.listenerGeneration && entity.listenerGeneration != 0 {
-		return false
+		return previous, false
 	}
 	entity.listeners = listeners
 	entity.listenerGeneration = generation
-	return true
+	return previous, true
 }
 
 // ResetLinkListeners clears the listener set and the generation it was recorded

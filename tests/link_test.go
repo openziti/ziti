@@ -71,6 +71,10 @@ func (self *testRegistryEnv) GetXlinkDialers() []xlink.Dialer {
 	panic("implement me")
 }
 
+func (self *testRegistryEnv) GetXlinkListenerSnapshot() (uint64, []xlink.Listener) {
+	return 0, nil
+}
+
 func (self *testRegistryEnv) GetCloseNotify() <-chan struct{} {
 	return self.closeNotify
 }

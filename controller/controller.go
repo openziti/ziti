@@ -664,17 +664,19 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
-		if c.config.Db != nil {
-			if err := c.config.Db.Close(); err != nil {
-				pfxlog.Logger().WithError(err).Error("failed to close db")
-			}
-		}
-
 		go c.xweb.Shutdown()
 
+		// Raft first: its shutdown waits for the apply loop, and an apply against a closed db fails, which
+		// for a critical command halts the process.
 		if c.raftController != nil {
 			if err := c.raftController.Shutdown(); err != nil {
 				pfxlog.Logger().WithError(err).Error("failed to shutdown raft")
+			}
+		}
+
+		if c.config.Db != nil {
+			if err := c.config.Db.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to close db")
 			}
 		}
 

@@ -52,7 +52,19 @@ func (self *updateLinkListenersHandler) HandleReceive(msg *channel.Message, ch c
 		return
 	}
 
-	if !self.router.SetLinkListeners(listeners.Listeners, listeners.Generation) {
+	previous, recorded := self.router.SetLinkListeners(listeners.Listeners, listeners.Generation)
+
+	// Routers republish on connect whenever the set may have moved since their hello, so an unchanged set
+	// is expected here and must not fan a peer-state change out to every other router. A router with no
+	// link config publishes at generation zero, which the generation check always accepts.
+	if listenersEqual(previous, listeners.Listeners) {
+		log.WithField("listenerCount", len(listeners.Listeners)).
+			WithField("generation", listeners.Generation).
+			Debug("router link listeners unchanged")
+		return
+	}
+
+	if !recorded {
 		// Superseded by an update that arrived first. Redistributing this set
 		// would push peers back onto listeners the router has already replaced.
 		log.WithField("generation", listeners.Generation).
@@ -68,4 +80,17 @@ func (self *updateLinkListenersHandler) HandleReceive(msg *channel.Message, ch c
 	// PeerStateChange carrying this router's new listeners and update
 	// their local dial decisions.
 	self.network.RouterMessaging.RouterListenersUpdated(self.router)
+}
+
+// listenersEqual reports whether a and b hold the same listeners in the same order.
+func listenersEqual(a, b []*ctrl_pb.Listener) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !proto.Equal(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
 }

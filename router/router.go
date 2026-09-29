@@ -166,6 +166,12 @@ func (self *Router) GetXlinkListeners() []xlink.Listener {
 	return self.linkSubsystem.Listeners()
 }
 
+// GetXlinkListenerSnapshot returns the current link listeners and the config generation they belong to, read
+// under one lock.
+func (self *Router) GetXlinkListenerSnapshot() (uint64, []xlink.Listener) {
+	return self.linkSubsystem.ListenerSnapshot()
+}
+
 func (self *Router) GetXrctrls() []env.Xrctrl {
 	return self.xrctrls
 }
@@ -861,33 +867,17 @@ func (self *Router) registerPlugins() error {
 	return nil
 }
 
-// currentLinkListeners builds a ctrl_pb.Listeners snapshot from the
-// linkSubsystem's current listener slice. Shared between Hello-time
-// header packing and the post-Apply publish path so both wire shapes
-// stay aligned.
+// currentLinkListeners builds the hello ListenersHeader snapshot from the link subsystem's current listeners.
 func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
-	// Generation and listeners come from one read: an update carries the
-	// generation of the set it actually contains, so a controller comparing
-	// generations can drop a superseded one.
-	generation, current := self.linkSubsystem.ListenerSnapshot()
-	listeners := &ctrl_pb.Listeners{Generation: generation}
-	for _, listener := range current {
-		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address:      listener.GetAdvertisement(),
-			Protocol:     listener.GetLinkProtocol(),
-			Groups:       listener.GetGroups(),
-			LocalBinding: listener.GetLocalBinding(),
-		})
-	}
-	return listeners
+	return link.ListenersToProto(self.GetXlinkListenerSnapshot())
 }
 
 // onLinkSubsystemChanged is invoked after every Apply/Remove that
-// actually mutates the link subsystem. Listener changes get republished
-// to every connected controller so peer routers see the new state via
-// PeerStateChange. Dialer changes trigger a local rescan against known
-// peers, in case the new dialer set unlocks previously-unmatched
-// listeners. Under a non-preserve gcMode the change also drives an auto-GC
+// actually mutates the link subsystem. Listener changes are handed to the
+// link registry, which republishes them to every controller so peer
+// routers see the new state via PeerStateChange. Dialer changes trigger a
+// local rescan against known peers, in case the new dialer set unlocks
+// previously-unmatched listeners. Under a non-preserve gcMode the change also drives an auto-GC
 // pass over the xlink registry, closing entries it just made stale.
 //
 // The mode comes from the change rather than from the active config, so a
@@ -896,7 +886,7 @@ func (self *Router) currentLinkListeners() *ctrl_pb.Listeners {
 // unsupportable, so under orphaned or changed they are all closed.
 func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 	if change.ListenersChanged {
-		self.publishLinkListeners()
+		self.xlinkRegistry.LinkListenersChanged()
 	}
 	if change.DialersChanged {
 		self.xlinkRegistry.RescanForDialOpportunities()
@@ -911,29 +901,6 @@ func (self *Router) onLinkSubsystemChanged(change link.ConfigurationChange) {
 		}
 	}
 	link.RunStaleLinkGc(self, change.GcMode)
-}
-
-// publishLinkListeners marshals the current listener set and sends an
-// UpdateLinkListeners message to every connected controller. The
-// controller's handler updates Router.Listeners + triggers peer
-// redistribution. Hello continues to carry the initial snapshot at
-// connect time; this message handles mid-session changes.
-func (self *Router) publishLinkListeners() {
-	listeners := self.currentLinkListeners()
-	buf, err := proto.Marshal(listeners)
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error("unable to marshal Listeners for UpdateLinkListeners")
-		return
-	}
-	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
-		// Build a fresh message per controller: sending mutates message state,
-		// so a single shared message can't be sent to multiple channels safely.
-		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateLinkListenersType), buf)
-		if err := ch.Send(msg); err != nil {
-			pfxlog.Logger().WithError(err).WithField("ctrlId", ctrlId).
-				Warn("failed to send UpdateLinkListeners to controller")
-		}
-	})
 }
 
 // applyLocalLinkConfig translates the router's local YAML link config into

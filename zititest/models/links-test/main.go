@@ -114,7 +114,7 @@ var m = &model.Model{
 					c.Type = &clone
 					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
 					if c.ScaleIndex >= 14 {
-						clone.Version = "v1.5.4"
+						clone.Version = "v1.6.21"
 					}
 				}
 				return nil
