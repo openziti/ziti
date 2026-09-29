@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/raft"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/v2/controller/event"
@@ -242,4 +243,49 @@ func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
 
 func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
+}
+
+// firewalledPeerAddr is a well-formed transport address that is not reachable.
+// The reuse tests below register a peer at this address, then assert the mesh
+// returns the existing connection without attempting to dial it.
+const firewalledPeerAddr = "tls:firewalled-node.example:6262"
+
+// Test_GetPeerInfo_ReusesExistingConnectionWithoutDialing verifies that when the
+// leader adds a member that is behind a firewall (no inbound ports open), the
+// already-established inbound connection is reused. The joining node has opened an
+// outbound connection to the leader, and GetPeerInfo is the first place the
+// add-member flow could dial out, so it must return the already-connected peer's
+// id/address directly instead of dialing the unreachable advertise address (which
+// would time out and fail the join).
+func Test_GetPeerInfo_ReusesExistingConnectionWithoutDialing(t *testing.T) {
+	m := &impl{
+		Peers: map[string]*Peer{
+			firewalledPeerAddr: {Id: "joining-node-id", Address: firewalledPeerAddr},
+		},
+	}
+
+	start := time.Now()
+	id, addr, err := m.GetPeerInfo(firewalledPeerAddr, time.Second)
+	elapsed := time.Since(start)
+
+	assert.NoError(t, err)
+	assert.Equal(t, raft.ServerID("joining-node-id"), id)
+	assert.Equal(t, raft.ServerAddress(firewalledPeerAddr), addr)
+	assert.Less(t, elapsed, 200*time.Millisecond, "should reuse existing connection, not dial out")
+}
+
+// Test_GetOrConnectPeer_ReusesExistingConnection verifies that command forwarding to
+// the leader and the raft transport's Dial path reuse an established peer connection
+// and do not dial out when one already exists. This pins behavior that already held;
+// it is a regression guard rather than evidence of a fix.
+func Test_GetOrConnectPeer_ReusesExistingConnection(t *testing.T) {
+	peer := &Peer{Id: "joining-node-id", Address: firewalledPeerAddr}
+	m := &impl{
+		Peers:       map[string]*Peer{firewalledPeerAddr: peer},
+		closeNotify: make(chan struct{}),
+	}
+
+	got, err := m.GetOrConnectPeer(firewalledPeerAddr, time.Second)
+	assert.NoError(t, err)
+	assert.Same(t, peer, got)
 }
