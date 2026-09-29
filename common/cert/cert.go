@@ -181,6 +181,12 @@ type ClientSigner struct {
 	caCert          *x509.Certificate
 	caKey           crypto.PrivateKey
 	SerialGenerator SerialGenerator
+
+	// ExtKeyUsage is the extended key usage set placed on every certificate this signer issues.
+	// NewClientSigner defaults it to clientAuth alone. A signer whose certificates are also
+	// presented as TLS server certificates, such as the one issuing identity client certificates,
+	// must add serverAuth.
+	ExtKeyUsage []x509.ExtKeyUsage
 }
 
 func (s *ClientSigner) Cert() *x509.Certificate {
@@ -191,11 +197,14 @@ func (s *ClientSigner) Signer() crypto.Signer {
 	return s.caKey.(crypto.Signer)
 }
 
+// NewClientSigner returns a signer that issues clientAuth certificates from the given CA. Set
+// ExtKeyUsage on the result to issue a different set.
 func NewClientSigner(caCert *x509.Certificate, caKey crypto.PrivateKey) *ClientSigner {
 	return &ClientSigner{
 		caCert:          caCert,
 		caKey:           caKey,
 		SerialGenerator: &DefaultSerialGenerator{},
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 }
 
@@ -226,7 +235,7 @@ func (s *ClientSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) 
 		NotBefore:    time.Now().Add(-time.Minute),
 		NotAfter:     time.Now().AddDate(1, 0, 0),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		ExtKeyUsage:  s.ExtKeyUsage,
 		IsCA:         false,
 	}
 
