@@ -18,11 +18,13 @@ package chaos
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fablab/kernel/model"
-	"github.com/openziti/ziti/zitirest"
 	"math/rand"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fablab/kernel/lib/actions/component"
+	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/ziti/zitirest"
 )
 
 func StaticNumber(val int) func(int) int {
@@ -170,6 +172,23 @@ func ValidateUp(run model.Run, spec string, concurrency int, timeout time.Durati
 		pfxlog.Logger().Infof("all %v components for spec '%s' are running", len(components), spec)
 	}
 	return err
+}
+
+// EnsureUp waits for every component matching spec to be running, starting any that are not and
+// waiting again. Starting a running component is a no-op, so components that were already up are
+// left alone. Use it where the test must recover a component that exited rather than fail on it.
+func EnsureUp(run model.Run, spec string, concurrency int, timeout time.Duration) error {
+	err := ValidateUp(run, spec, concurrency, timeout)
+	if err == nil {
+		return nil
+	}
+
+	pfxlog.Logger().WithError(err).Errorf("validate up failed for '%s', starting all again", spec)
+	if err = component.StartInParallel(spec, concurrency).Execute(run); err != nil {
+		return err
+	}
+
+	return ValidateUp(run, spec, concurrency, timeout)
 }
 
 func EnsureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {

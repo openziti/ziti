@@ -133,7 +133,9 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 		Info("initialized controller router data model")
 	if strategy.ae.HostController.IsRaftEnabled() {
 		strategy.indexProvider = &RaftIndexProvider{
-			index: strategy.ae.GetHostController().GetRaftIndex(),
+			// The model is built from the database, so it must be gated on the applied index. Seeding
+			// from the log tip while a node is catching up rejects every changeset the FSM then applies.
+			index: strategy.ae.GetHostController().GetStartRaftIndex(),
 		}
 	} else {
 		strategy.indexProvider = &NonHaIndexProvider{

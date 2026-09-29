@@ -19,6 +19,10 @@ package main
 import (
 	"embed"
 	_ "embed"
+	"os"
+	"path"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -40,9 +44,6 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"os"
-	"path"
-	"time"
 )
 
 const TargetZitiVersion = ""
@@ -93,7 +94,7 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "t3.medium"
+					host.InstanceType = "c5.large"
 				}
 				return nil
 			})
@@ -101,21 +102,6 @@ var m = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.router", 1, func(host *model.Host) error {
 				host.InstanceType = "c5.xlarge"
-				return nil
-			})
-		}),
-	},
-	Factories: []model.Factory{
-		model.FactoryFunc(func(m *model.Model) error {
-			return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
-				if routerType, ok := c.Type.(*zitilab.RouterType); ok {
-					clone := *routerType
-					c.Type = &clone
-					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
-					if c.ScaleIndex >= 14 {
-						clone.Version = "v1.5.4"
-					}
-				}
 				return nil
 			})
 		}),
@@ -185,7 +171,6 @@ var m = &model.Model{
 			Site:   "eu-west-2a",
 			Hosts: model.Hosts{
 				"ctrl3": {
-					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
