@@ -19,8 +19,10 @@
 package tests
 
 import (
+	"bytes"
 	"crypto"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -36,7 +38,9 @@ import (
 	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // extJwtTestSigner holds the signing material and claims values of a registered test
@@ -201,7 +205,7 @@ func Test_FirstPartyCert_SeparateSigningCa(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 
 	testService := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
-	ctx.CreateEnrollAndStartEdgeRouter()
+	edgeRouter := ctx.CreateEnrollAndStartEdgeRouter()
 
 	testSigner, err := registerExtJwtSignerAllowedByDefaultPolicy(managementHelper)
 	ctx.Req.NoError(err)
@@ -230,6 +234,24 @@ func Test_FirstPartyCert_SeparateSigningCa(t *testing.T) {
 		ctx.Req.NoError(dialServiceWithFirstPartyCert(ctx, testSigner, identityId, certAuth, testService.Name))
 	})
 
+	t.Run("first-party CA keys converge across controllers and router", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		// Each controller's bundle holds only its own signing intermediate. The keys converge only if
+		// no controller publishes its intermediates, so every controller and the router must hold the
+		// same first-party CA keys with the same, empty, intermediates.
+		var lastErr error
+		deadline := time.Now().Add(30 * time.Second)
+		for time.Now().Before(deadline) {
+			lastErr = ctx.checkFirstPartyCaKeysConverged(edgeRouter)
+			if lastErr == nil {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+		ctx.Req.NoError(lastErr)
+	})
+
 	t.Run("controller store records hold full cert chains", func(t *testing.T) {
 		ctx.NextTest(t)
 
@@ -242,4 +264,48 @@ func Test_FirstPartyCert_SeparateSigningCa(t *testing.T) {
 			ctx.Req.GreaterOrEqual(len(certs), 2, "controller %s certPem should hold the full chain", controllerEntity.Id)
 		}
 	})
+}
+
+// firstPartyCaKeys returns the first-party CA public keys in publicKeys, by kid.
+func firstPartyCaKeys(publicKeys cmap.ConcurrentMap[string, *edge_ctrl_pb.DataState_PublicKey]) map[string]*edge_ctrl_pb.DataState_PublicKey {
+	result := map[string]*edge_ctrl_pb.DataState_PublicKey{}
+	for entry := range publicKeys.IterBuffered() {
+		if slices.Contains(entry.Val.Usages, edge_ctrl_pb.DataState_PublicKey_FirstPartyX509CertValidation) {
+			result[entry.Key] = entry.Val
+		}
+	}
+	return result
+}
+
+// checkFirstPartyCaKeysConverged verifies that the primary controller, every peer controller and the
+// router hold the same first-party CA keys, each with byte-identical intermediates, and that no key
+// carries intermediates.
+func (ctx *TestContext) checkFirstPartyCaKeysConverged(edgeRouter *EdgeRouterHelper) error {
+	reference := firstPartyCaKeys(ctx.EdgeController.AppEnv.Broker.GetRouterDataModel().PublicKeys)
+	if len(reference) == 0 {
+		return errors.New("primary controller publishes no first-party CA keys")
+	}
+
+	others := map[string]map[string]*edge_ctrl_pb.DataState_PublicKey{}
+	for _, peer := range ctx.peerControllers {
+		others["peer "+peer.ApiHost] = firstPartyCaKeys(peer.EdgeController.AppEnv.Broker.GetRouterDataModel().PublicKeys)
+	}
+	others["router"] = firstPartyCaKeys(edgeRouter.GetRouterDataModel().PublicKeys)
+
+	for kid, key := range reference {
+		if len(key.Intermediates) > 0 {
+			return fmt.Errorf("kid %s: first-party CA key carries %d intermediates; only roots are published", kid, len(key.Intermediates))
+		}
+
+		for source, keys := range others {
+			other, found := keys[kid]
+			if !found {
+				return fmt.Errorf("kid %s: not present on %s", kid, source)
+			}
+			if !slices.EqualFunc(key.Intermediates, other.Intermediates, bytes.Equal) {
+				return fmt.Errorf("kid %s: intermediates on %s differ from the primary controller (%d vs %d)", kid, source, len(other.Intermediates), len(key.Intermediates))
+			}
+		}
+	}
+	return nil
 }
