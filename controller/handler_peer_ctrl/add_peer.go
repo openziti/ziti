@@ -56,7 +56,7 @@ func (self *addPeerHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 func (self *addPeerHandler) handleAddPeer(m *channel.Message, ch channel.Channel, req *cmd_pb.AddPeerRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	log.Infof("received join request id: %v, addr: %v, voter: %v", req.Id, req.Addr, !req.IsVoter)
+	log.Infof("received join request id: %v, addr: %v, voter: %v", req.Id, req.Addr, req.IsVoter)
 
 	if !self.controller.IsBootstrapped() {
 		sendErrorResponse(m, ch, errors.New("node not member of bootstrapped cluster, unable to add peers"), peermsg.ErrorCodeGeneric)

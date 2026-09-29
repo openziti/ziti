@@ -82,11 +82,11 @@ testdata/configs/
   `edge-oidc` API. Used to verify that the OIDC discovery document returns issuer-specific
   endpoint URLs reflecting the port the client connected to.
 
-- **`single-raft`** (`SingleRaft`) — Controller-only config that runs a single controller in
-  raft/cluster mode (`cluster.dataDir` set instead of `db`). Used to exercise the raft
+- **`single-raft`** (`SingleRaft`) — Runs a single controller in raft/cluster mode
+  (`cluster.dataDir` set instead of `db`), plus an edge router config. Used to exercise the raft
   self-registration path, where the controller records itself in the Controller store on
-  leadership rather than relying on the non-raft synthesized-self fallback. Requires the
-  SPIFFE-capable PKI described above.
+  leadership rather than relying on the non-raft synthesized-self fallback, and advertise
+  address reconciliation across a restart. Requires the SPIFFE-capable PKI described above.
 
 - **`ha-3`** (`Ha3`) — Three-controller raft cluster whose edge signing CA root
   (`pki/signing-root`) is distinct from the ctrl-channel root CA (`pki/root`). Each controller
