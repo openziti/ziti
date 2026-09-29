@@ -1,3 +1,40 @@
+# Release 2.0.8
+
+## What's New
+
+* [Controller Advertise Address Updates](#controller-advertise-address-updates) - Changing an HA controller's `advertiseAddress` and restarting now updates the address the cluster and routers use
+
+## Controller Advertise Address Updates
+
+In an HA cluster, a controller's `ctrl.options.advertiseAddress` was only read when the cluster was
+initialized or the node joined. After that the address lived in the raft configuration, so changing it in
+the config file did nothing: other controllers kept dialing the old address, and routers and new enrollment
+JWTs kept getting it. The usual way into this is putting a proxy in front of the ctrl listener, on a
+different port, after the cluster already exists. A single-node cluster had no way out short of
+re-bootstrapping.
+
+The config file is now the source of truth. On startup, if a controller's configured advertise address
+differs from the one stored in the cluster, it asks the leader to update it, retrying until the change
+lands. The member keeps its voter or non-voter status, and connected routers get the new address through
+the usual cluster membership update.
+
+The leader refuses the change if another member already has the address, or if a different controller
+answers there. If the leader can't reach the new address at all, it makes the change anyway and logs a
+warning, since some controllers only dial out.
+
+Running `ziti agent cluster add` or `ziti fabric cluster add` for an existing member at a new address also
+updates its address in place, instead of removing and re-adding it.
+
+The leader must be running this version for the update to happen. An older leader ignores the request and
+the stored address stays as it is. The requesting controller logs a warning and keeps retrying, so the
+change goes through once the leader is upgraded.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.7 -> v2.0.8](https://github.com/openziti/ziti/compare/v2.0.7...v2.0.8)
+    * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
+
+
 # Release 2.0.7
 
 ## What's New

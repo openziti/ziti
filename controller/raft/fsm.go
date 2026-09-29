@@ -122,6 +122,12 @@ func (self *BoltDbFsm) Close() error {
 	return self.db.Close()
 }
 
+// GetCachedServers returns the FSM-tracked cluster member list cached from ctrl-ha.db, or nil if
+// Init has not yet populated it. Unlike GetCurrentState it does not consult a live raft instance.
+func (self *BoltDbFsm) GetCachedServers() *ServersWithIndex {
+	return self.currentState.Load()
+}
+
 func (self *BoltDbFsm) GetDb() boltz.Db {
 	self.dbReferenced.Store(true)
 	return self.db
