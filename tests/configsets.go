@@ -49,13 +49,14 @@ var DisabledOidcAutoBinding = ConfigSet{
 // StartServerRaft before each run and must match the cluster.dataDir in single-raft/ctrl.yml.
 const SingleRaftDataDir = "testdata/single-raft-data"
 
-// SingleRaft is a controller-only config set that runs a single controller in raft/cluster mode
-// (cluster.dataDir set instead of db). Used to exercise the raft self-registration path, where the
-// controller records itself in the Controller store on leadership rather than relying on the
-// non-raft synthesized-self fallback.
+// SingleRaft is a config set that runs a single controller in raft/cluster mode (cluster.dataDir
+// set instead of db), plus an edge router. Used to exercise the raft self-registration path, where
+// the controller records itself in the Controller store on leadership rather than relying on the
+// non-raft synthesized-self fallback, and advertise address reconciliation across a restart.
 var SingleRaft = ConfigSet{
 	Name:       "single-raft",
 	CtrlConfig: "testdata/configs/single-raft/ctrl.yml",
+	EdgeRouter: "testdata/configs/single-raft/edge-router.yml",
 }
 
 // Ha3DataDir is the parent raft data directory used by the Ha3 config set. It is cleaned by
