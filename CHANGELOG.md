@@ -794,6 +794,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4442](https://github.com/openziti/ziti/issues/4442) - Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
     * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails
     * [Issue #4434](https://github.com/openziti/ziti/issues/4434) - Update to Go 1.27
     * [Issue #4413](https://github.com/openziti/ziti/issues/4413) - debian controller & router packages hang on post-install script when installed via ansible
