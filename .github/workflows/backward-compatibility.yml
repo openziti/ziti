@@ -50,6 +50,8 @@ jobs:
 
       - name: Install Go
         uses: ./.github/actions/setup-go
+        with:
+          module-dirs: '. zititest'
 
       - name: Install Ziti CI
         uses: openziti/ziti-ci@v1
