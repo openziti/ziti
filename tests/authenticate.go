@@ -1246,6 +1246,18 @@ func (self *terminatorWatcher) waitForTerminators(service string, count int, tim
 	}
 }
 
+func (request *authenticatedRequests) waitForTerminatorState(serviceId string, check func([]*terminator) bool, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		terminators := request.listTerminators(fmt.Sprintf(`service="%s"`, serviceId))
+		if check(terminators) {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	request.testContext.Fail("timed out waiting for terminator state")
+}
+
 func newSelfSignedCert(commonName string) (*x509.Certificate, crypto.PrivateKey) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {

@@ -218,7 +218,7 @@ func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 			}
 
 			logrus.
-				WithField("apiSessionId", self.apiSession.Id).
+				WithField("apiSessionId", self.getApiSessionId()).
 				WithField("operation", self.handler.Label()).
 				WithField("router", self.sourceRouter.Name).
 				WithField("serviceName", name).

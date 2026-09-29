@@ -246,6 +246,9 @@ func (c *Controller) Run() {
 	}
 }
 
+// checkEdgeInitialized polls until a default admin exists, warning periodically while none does, so
+// that an uninitialized cluster member is diagnosable. It is advisory: a read failure is logged and
+// the check abandoned. On a controller without raft, the absence of a default admin is fatal.
 func (c *Controller) checkEdgeInitialized() {
 	log := pfxlog.Logger()
 	defaultAdminFound := false
@@ -256,7 +259,8 @@ func (c *Controller) checkEdgeInitialized() {
 		admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
 
 		if err != nil {
-			log.WithError(err).Panic("could not check if a default admin exists")
+			log.WithError(err).Error("could not check if a default admin exists")
+			return
 		}
 
 		if admin == nil {
