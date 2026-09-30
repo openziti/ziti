@@ -671,6 +671,11 @@ func (self *linkRegistryImpl) syncRequiredLinkStates() {
 			for _, ctrlId := range ctrlIds {
 				log := pfxlog.Logger().WithField("ctrlId", ctrlId).WithField("linkId", link.Id())
 				ctrlCh := self.ctrls.GetChannel(ctrlId)
+				if ctrlCh == nil {
+					// Not marked synced, so the state is still owed and goes out once the controller is back.
+					log.Debug("controller not connected, link state sync deferred")
+					continue
+				}
 
 				err := self.env.GetRateLimiterPool().QueueOrError(func() {
 					if err := protobufs.MarshalTyped(message).WithTimeout(100 * time.Millisecond).Send(ctrlCh); err != nil {
