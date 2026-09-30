@@ -65,14 +65,14 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v5 v5.0.27
 	github.com/openziti/cobra-to-md v1.0.1
-	github.com/openziti/edge-api v0.36.0
-	github.com/openziti/foundation/v2 v2.0.100
-	github.com/openziti/identity v1.0.140
+	github.com/openziti/edge-api v0.36.1
+	github.com/openziti/foundation/v2 v2.0.104
+	github.com/openziti/identity v1.0.143
 	github.com/openziti/jwks v1.0.6
 	github.com/openziti/metrics v1.4.5
-	github.com/openziti/runzmd v1.0.92
+	github.com/openziti/runzmd v1.0.96
 	github.com/openziti/sdk-golang/v2 v2.0.0-pre4
-	github.com/openziti/secretstream v0.1.52
+	github.com/openziti/secretstream v0.1.53
 	github.com/openziti/transport/v2 v2.0.220
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v3 v3.0.5
@@ -100,7 +100,7 @@ require (
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.23.0
 	golang.org/x/sys v0.48.0
-	golang.org/x/term v0.45.0
+	golang.org/x/term v0.46.0
 	golang.org/x/text v0.41.0
 	golang.org/x/tools v0.49.0
 	google.golang.org/protobuf v1.36.12
