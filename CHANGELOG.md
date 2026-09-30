@@ -809,6 +809,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4489](https://github.com/openziti/ziti/issues/4489) - Router panics sending a link state update to a controller it has unregistered
     * [Issue #4503](https://github.com/openziti/ziti/issues/4503) - Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4645](https://github.com/openziti/ziti/issues/4645) - Remove the edge router API proxy
     * [Issue #4611](https://github.com/openziti/ziti/issues/4611) - Controller deadlocks when posture data changes for an identity with legacy API sessions
