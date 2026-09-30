@@ -41,6 +41,7 @@ type peerController struct {
 	EdgeController   *server.Controller
 	ApiHost          string
 	config           *config.Config
+	configFile       string
 }
 
 // PeerControllerApiHosts returns the API host:port of each peer controller, in
@@ -119,11 +120,42 @@ func (ctx *TestContext) StartHaCluster(dataDir string) *ControllerHelper {
 // startPeerController starts one secondary cluster-member controller. Unlike the primary, no
 // default admin is initialized: peers get all replicated state through raft once joined.
 func (ctx *TestContext) startPeerController(configFile string) {
+	ctx.peerControllers = append(ctx.peerControllers, ctx.launchPeerController(configFile, nil))
+}
+
+// restartPeerController shuts down the peer controller at index and starts it again from its
+// config file and existing raft data, applying modifier (if non-nil) to the loaded config.
+// whileStopped, if non-nil, runs after shutdown and before the restart.
+func (ctx *TestContext) restartPeerController(index int, modifier func(*config.Config), whileStopped func()) {
+	peer := ctx.peerControllers[index]
+
+	// Controller.Shutdown leaves accepted router channels open, which a real process exit would
+	// not, so close them to have routers reconnect.
+	for _, r := range peer.fabricController.GetNetwork().AllConnectedRouters() {
+		ctx.Req.NoError(r.Control.Close())
+	}
+	peer.EdgeController.Shutdown()
+	peer.fabricController.Shutdown()
+	ctx.Req.NoError(ctx.waitForPortClose(peer.ApiHost, 30*time.Second))
+	ctx.Req.NoError(ctx.waitForPortClose(strings.TrimPrefix(peer.config.Ctrl.Listener.String(), "tls:"), 30*time.Second))
+
+	if whileStopped != nil {
+		whileStopped()
+	}
+
+	ctx.peerControllers[index] = ctx.launchPeerController(peer.configFile, modifier)
+}
+
+func (ctx *TestContext) launchPeerController(configFile string, modifier func(*config.Config)) *peerController {
 	log := pfxlog.Logger().WithField("config", configFile)
 	log.Info("starting peer controller")
 
 	cfg, err := config.LoadConfig(configFile)
 	ctx.Req.NoError(err)
+
+	if modifier != nil {
+		modifier(cfg)
+	}
 
 	fabricController, err := controller.NewController(cfg, NewVersionProviderTest())
 	ctx.Req.NoError(err)
@@ -142,11 +174,12 @@ func (ctx *TestContext) startPeerController(configFile string) {
 		EdgeController:   edgeController,
 		ApiHost:          cfg.Edge.Api.Address,
 		config:           cfg,
+		configFile:       configFile,
 	}
-	ctx.peerControllers = append(ctx.peerControllers, peer)
 
 	ctx.Req.NoError(ctx.waitForPort(peer.ApiHost, time.Minute))
 	log.WithField("apiHost", peer.ApiHost).Info("peer controller started")
+	return peer
 }
 
 // waitForClusterReady polls until the raft configuration lists memberCount voters and the
