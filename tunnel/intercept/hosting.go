@@ -452,6 +452,11 @@ func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityD
 			}
 			options.Identity = result
 		}
+
+		if lit := config.ListenOptions.ListenIdentityType; lit != nil && *lit == "dns" {
+			// dialing tunnelers typically get the identity from a dns query, which may not preserve case
+			options.Identity = strings.ToLower(options.Identity)
+		}
 	}
 
 	return options, nil

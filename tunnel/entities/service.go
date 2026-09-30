@@ -81,6 +81,7 @@ type HostV1ListenOptions struct {
 	ConnectTimeout        *time.Duration
 	Cost                  *uint16
 	Identity              string
+	ListenIdentityType    *string
 	MaxConnections        int
 	Precedence            *string
 }
@@ -160,6 +161,7 @@ type HostV2ListenOptions struct {
 	ConnectTimeout        *time.Duration
 	Cost                  *uint16
 	Identity              string
+	ListenIdentityType    *string
 	MaxConnections        int
 	Precedence            *string
 	Proxy                 *transport.ProxyConfiguration
