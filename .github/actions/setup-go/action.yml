@@ -1,8 +1,8 @@
 name: 'Setup Go'
-description: 'setup go using the current selected version'
+description: 'setup go using the current selected version, restoring the module and build caches saved on main'
 inputs:
   module-dirs:
-    description: 'Space-separated module directories whose dependencies are downloaded, with retries, before the job builds. Empty skips the download.'
+    description: 'Space-separated module directories whose dependencies are downloaded, with retries, before the job builds. Empty skips the download. On main every module is downloaded, so the saved cache is complete.'
     required: false
     default: '.'
 outputs:
@@ -17,11 +17,45 @@ runs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.27.x'
+          cache: false
+
+      - name: Locate Go caches
+        id: go-env
+        shell: bash
+        run: |
+          echo "modcache=$(go env GOMODCACHE)" >> "${GITHUB_OUTPUT}"
+          echo "buildcache=$(go env GOCACHE)" >> "${GITHUB_OUTPUT}"
+
+      # Only main saves. A cache saved by any other ref is visible to that ref alone, and those copies
+      # evict main's from the repo's cache quota; every ref can restore main's.
+      - name: Restore Go caches
+        if: github.ref != 'refs/heads/main'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ steps.go-env.outputs.modcache }}
+            ${{ steps.go-env.outputs.buildcache }}
+          key: go-${{ runner.os }}-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('go.sum', 'zititest/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ steps.setup-go.outputs.go-version }}-
+            go-${{ runner.os }}-
+
+      - name: Restore and save Go caches
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ steps.go-env.outputs.modcache }}
+            ${{ steps.go-env.outputs.buildcache }}
+          key: go-${{ runner.os }}-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('go.sum', 'zititest/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ steps.setup-go.outputs.go-version }}-
+            go-${{ runner.os }}-
 
       - name: Download Go modules
         shell: bash
         env:
-          MODULE_DIRS: ${{ inputs.module-dirs }}
+          MODULE_DIRS: ${{ github.ref == 'refs/heads/main' && '. zititest' || inputs.module-dirs }}
         run: |
           set -o errexit -o nounset -o pipefail
 
