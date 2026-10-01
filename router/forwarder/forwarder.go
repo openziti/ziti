@@ -320,6 +320,19 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 	return err
 }
 
+// ReportCircuitEndpointFault hands the fault to the faulter, which owns delivery, retry and
+// expiry. Like ReportForwardingFault it resolves the owning controller from the forward table when
+// the caller does not know it.
+func (forwarder *Forwarder) ReportCircuitEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject) {
+	if ctrlId == "" {
+		if ct, _ := forwarder.circuits.getForwardTable(circuitId, false); ct != nil {
+			ctrlId = ct.ctrlId
+		}
+	}
+
+	forwarder.faulter.ReportEndpointFault(circuitId, ctrlId, subject)
+}
+
 func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
 	if ctrlId == "" {
 		ct, _ := forwarder.circuits.getForwardTable(circuitId, false)
