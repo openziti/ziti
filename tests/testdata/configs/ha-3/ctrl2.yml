@@ -33,7 +33,7 @@ edge:
     signingCert:
       cert: testdata/pki/signing2/certs/signing2.chain.pem
       key: testdata/pki/signing2/keys/signing2.key
-      ca: testdata/pki/signing-root/certs/signing-bundle.pem
+      ca: testdata/pki/signing2/certs/signing2.chain.pem
     edgeIdentity:
       duration: 20m
     edgeRouter:
