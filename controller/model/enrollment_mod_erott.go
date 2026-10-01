@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/openziti/edge-api/rest_model"
@@ -33,6 +35,28 @@ const (
 	EdgeRouterEnrollmentCommonNameInvalidMessage = "The edge router CSR enrollment must have a common name that matches the edge router's id"
 	MethodEnrollEdgeRouterOtt                    = "erott"
 )
+
+// dropSpiffeIds returns uris without any spiffe:// entry.
+//
+// Router enrollment signs a CSR the enrolling router wrote, and the rest of the SAN fields
+// describe where the router can be reached, which only it knows. A SPIFFE id is different: it
+// names who the holder is, and both the controller and the routers accept one on a
+// network-issued certificate as proof of that. Copying it out of the CSR would let a router
+// enrollment token be turned into a certificate naming any identity, so the id has to come
+// from the controller or not at all.
+func dropSpiffeIds(uris []*url.URL) []*url.URL {
+	var result []*url.URL
+
+	for _, uri := range uris {
+		if uri == nil || strings.EqualFold(uri.Scheme, "spiffe") {
+			continue
+		}
+
+		result = append(result, uri)
+	}
+
+	return result
+}
 
 type EnrollModuleEr struct {
 	env                  Env
@@ -165,7 +189,7 @@ func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]by
 		DNSNames:       serverCsr.DNSNames,
 		EmailAddresses: serverCsr.EmailAddresses,
 		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
+		URIs:           dropSpiffeIds(serverCsr.URIs),
 	}
 
 	serverCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, so)
@@ -192,7 +216,7 @@ func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeR
 		DNSNames:       clientCsr.DNSNames,
 		EmailAddresses: clientCsr.EmailAddresses,
 		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
+		URIs:           dropSpiffeIds(clientCsr.URIs),
 	}
 
 	if clientCsr.Subject.CommonName != edgeRouterId {
