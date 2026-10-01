@@ -1,3 +1,14 @@
+# Release 1.6.22
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
+    * [Issue #4506](https://github.com/openziti/ziti/issues/4506) - [Backport-1.6] Router pins a CPU core reporting metrics while no controller is registered
+
 # Release 1.6.21
 
 ## What's New
