@@ -179,6 +179,11 @@ const (
 	MfaInvalidTokenMessage string = "An invalid token/code was provided"
 	MfaInvalidTokenStatus  int    = http.StatusBadRequest
 
+	/* #nosec */
+	MfaTooManyAttemptsCode    string = "MFA_TOO_MANY_ATTEMPTS"
+	MfaTooManyAttemptsMessage string = "Too many invalid tokens/codes were provided, try again later"
+	MfaTooManyAttemptsStatus  int    = http.StatusTooManyRequests
+
 	InvalidBackingTokenTypeCode    string = "INVALID_BACKING_TOKEN_TYPE"
 	InvalidBackingTokenTypeMessage        = "The backing token type is invalid"
 	InvalidBackingTokenTypeStatus         = http.StatusBadRequest

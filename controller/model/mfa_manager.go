@@ -21,6 +21,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dgryski/dgoogauth"
 	"github.com/michaelquigley/pfxlog"
@@ -34,6 +35,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
@@ -42,11 +44,23 @@ import (
 
 const (
 	WindowSizeTOTP int = 5
+
+	// TotpMaxFailedAttempts is how many codes an MFA record may get wrong inside
+	// TotpFailedAttemptWindow before further attempts are refused. A TOTP code is six digits
+	// and WindowSizeTOTP of them are valid at any moment, so without a cap an attacker holding
+	// the first factor can reach a working code by guessing.
+	TotpMaxFailedAttempts int = 10
+
+	// TotpFailedAttemptWindow is how long failed attempts count against the limit, and how
+	// long a record stays refused once the limit is reached. A correct code clears the count,
+	// so a user who mistypes and then gets it right is never held.
+	TotpFailedAttemptWindow = 5 * time.Minute
 )
 
 func NewMfaManager(env Env) *MfaManager {
 	manager := &MfaManager{
 		baseEntityManager: newBaseEntityManager[*Mfa, *db.Mfa](env, env.GetStores().Mfa),
+		failedAttempts:    cmap.New[*totpFailedAttempts](),
 	}
 	manager.impl = manager
 
@@ -58,6 +72,17 @@ func NewMfaManager(env Env) *MfaManager {
 
 type MfaManager struct {
 	baseEntityManager[*Mfa, *db.Mfa]
+
+	// failedAttempts holds one entry per MFA record that has recently failed a code check, so
+	// it is bounded by the number of enrolled identities. Entries are dropped on a correct
+	// code and when the record is deleted.
+	failedAttempts cmap.ConcurrentMap[string, *totpFailedAttempts]
+}
+
+// totpFailedAttempts counts failures for a single MFA record inside one window.
+type totpFailedAttempts struct {
+	count     int
+	windowEnd time.Time
 }
 
 func (self *MfaManager) NewModelEntity() *Mfa {
@@ -168,8 +193,14 @@ func (self *MfaManager) ReadOneByIdentityId(identityId string) (*Mfa, error) {
 	return resultList.Mfas[0], nil
 }
 
-// Verify will attempt to check a code (recovery or totp) against the current secret.
+// Verify will attempt to check a code (recovery or totp) against the current secret. Once an
+// MFA record has failed TotpMaxFailedAttempts checks inside TotpFailedAttemptWindow it is
+// refused with MFA_TOO_MANY_ATTEMPTS until the window passes.
 func (self *MfaManager) Verify(mfa *Mfa, code string, ctx *change.Context) (bool, error) {
+	if self.isRefusingAttempts(mfa.Id) {
+		return false, apierror.NewMfaTooManyAttemptsError()
+	}
+
 	//check recovery codes
 	for i, recoveryCode := range mfa.RecoveryCodes {
 		if recoveryCode == code {
@@ -177,6 +208,7 @@ func (self *MfaManager) Verify(mfa *Mfa, code string, ctx *change.Context) (bool
 			if err := self.Update(mfa, nil, ctx); err != nil {
 				return false, err
 			}
+			self.clearFailedAttempts(mfa.Id)
 			return true, nil
 		}
 	}
@@ -184,15 +216,72 @@ func (self *MfaManager) Verify(mfa *Mfa, code string, ctx *change.Context) (bool
 	return self.VerifyTOTP(mfa, code)
 }
 
-// VerifyTOTP verifies TOTP values only, not recovery codes
+// VerifyTOTP verifies TOTP values only, not recovery codes. It shares the failed attempt
+// limit with Verify.
 func (self *MfaManager) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
+	if self.isRefusingAttempts(mfa.Id) {
+		return false, apierror.NewMfaTooManyAttemptsError()
+	}
+
 	otp := dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,
 		WindowSize: WindowSizeTOTP,
 		UTC:        true,
 	}
 
-	return otp.Authenticate(code)
+	ok, err := otp.Authenticate(code)
+
+	if errors.Is(err, dgoogauth.ErrInvalidCode) {
+		// A code that is not six digits is reported as an error rather than a false result.
+		// Callers treat both the same way, so it counts as a failed attempt and returns false.
+		err = nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		self.recordFailedAttempt(mfa.Id)
+		return false, nil
+	}
+
+	self.clearFailedAttempts(mfa.Id)
+
+	return true, nil
+}
+
+// isRefusingAttempts reports whether the record has used up its attempts for the current
+// window. The check and the later count are separate, so a burst of concurrent requests can
+// slip a few attempts past the limit. That costs an attacker a handful of guesses per window
+// and keeps the check off the lock held during verification.
+func (self *MfaManager) isRefusingAttempts(mfaId string) bool {
+	attempts, found := self.failedAttempts.Get(mfaId)
+
+	if !found {
+		return false
+	}
+
+	return attempts.count >= TotpMaxFailedAttempts && time.Now().Before(attempts.windowEnd)
+}
+
+// recordFailedAttempt counts one wrong code. The window is not extended by later failures,
+// so a record held at the limit is released TotpFailedAttemptWindow after the failure that
+// opened the window.
+func (self *MfaManager) recordFailedAttempt(mfaId string) {
+	self.failedAttempts.Upsert(mfaId, nil, func(exists bool, current *totpFailedAttempts, _ *totpFailedAttempts) *totpFailedAttempts {
+		now := time.Now()
+
+		if !exists || current == nil || now.After(current.windowEnd) {
+			return &totpFailedAttempts{count: 1, windowEnd: now.Add(TotpFailedAttemptWindow)}
+		}
+
+		return &totpFailedAttempts{count: current.count + 1, windowEnd: current.windowEnd}
+	})
+}
+
+func (self *MfaManager) clearFailedAttempts(mfaId string) {
+	self.failedAttempts.Remove(mfaId)
 }
 
 func (self *MfaManager) DeleteForIdentity(identity *Identity, code string, ctx *change.Context) error {
@@ -218,6 +307,8 @@ func (self *MfaManager) DeleteForIdentity(identity *Identity, code string, ctx *
 	if err = self.Delete(mfa.Id, ctx); err != nil {
 		return err
 	}
+
+	self.clearFailedAttempts(mfa.Id)
 
 	return nil
 }
@@ -339,6 +430,13 @@ func (self *MfaManager) CompleteTotpEnrollment(identityId string, code string, c
 	ok, err := self.VerifyTOTP(mfa, code)
 
 	if err != nil {
+		// A refused attempt is reported as such. Anything else is a verification failure and
+		// stays indistinguishable from a wrong code.
+		apiErr := &errorz.ApiError{}
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
+
 		pfxlog.Logger().WithError(err).Error("could not verify TOTP code")
 		return apierror.NewInvalidMfaTokenError()
 	}
