@@ -26,55 +26,70 @@ import (
 )
 
 type controllersReporter struct {
-	ctrls env.NetworkControllers
-	msgs  []*metrics_pb.MetricsMessage
+	ctrls      env.NetworkControllers
+	maxBacklog int
+	backlog    []*metrics_pb.MetricsMessage
 }
 
+// AcceptMetrics queues message behind any undelivered ones and delivers the queue in order. It stops at
+// the first message no controller accepts, leaving it and the rest queued for the next call, so it never
+// blocks longer than one send timeout per controller per message. When the queue exceeds its bound, the
+// oldest messages are dropped. Not safe for concurrent use.
 func (reporter *controllersReporter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
-	reporter.msgs = append(reporter.msgs, message)
+	reporter.backlog = append(reporter.backlog, message)
 
-	for len(reporter.msgs) > 0 {
-		message = reporter.msgs[0]
+	if excess := len(reporter.backlog) - reporter.maxBacklog; excess > 0 {
+		pfxlog.Logger().WithField("dropped", excess).Warn("metrics backlog full, dropping oldest undelivered messages")
+		clear(reporter.backlog[:excess])
+		reporter.backlog = reporter.backlog[excess:]
+	}
 
-		successfulSend := false
-
-		for ctrlId, ctrl := range reporter.ctrls.GetAll() {
-			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-
-			// once we've had a successful send, tell other controllers not to propagate the event
-			message.DoNotPropagate = successfulSend
-
-			bytes, err := proto.Marshal(message)
-			if err != nil {
-				log.WithError(err).Error("Failed to encode metrics message")
-
-				// drop message, since it's invalid somehow
-				reporter.msgs[0] = nil
-				reporter.msgs = reporter.msgs[1:]
-				break
-			}
-
-			chMsg := channel.NewMessage(int32(metrics_pb.ContentType_MetricsType), bytes)
-
-			if err = chMsg.WithTimeout(reporter.ctrls.DefaultRequestTimeout()).SendAndWaitForWire(ctrl.Channel()); err != nil {
-				log.WithError(err).Error("failed to send metrics message")
-			} else {
-				log.Trace("reported metrics to fabric controller")
-
-				// after first successful send, remove the message from the queue
-				if !successfulSend {
-					reporter.msgs[0] = nil
-					reporter.msgs = reporter.msgs[1:]
-					successfulSend = true
-				}
-			}
+	for len(reporter.backlog) > 0 {
+		if !reporter.deliver(reporter.backlog[0]) {
+			pfxlog.Logger().WithField("backlog", len(reporter.backlog)).
+				Warn("no controller accepted metrics message, retrying on next report")
+			return
 		}
+		reporter.backlog[0] = nil
+		reporter.backlog = reporter.backlog[1:]
 	}
 }
 
-// NewControllersReporter creates a metrics handler which sends metrics messages to the controllers
-func NewControllersReporter(ctrls env.NetworkControllers) metrics.Handler {
+// deliver sends message to every registered controller, marking it DoNotPropagate once one has accepted
+// it. It reports whether the message is finished with: accepted by at least one controller, or
+// unencodable and so dropped.
+func (reporter *controllersReporter) deliver(message *metrics_pb.MetricsMessage) bool {
+	delivered := false
+
+	for ctrlId, ctrl := range reporter.ctrls.GetAll() {
+		log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+
+		message.DoNotPropagate = delivered
+
+		bytes, err := proto.Marshal(message)
+		if err != nil {
+			log.WithError(err).Error("failed to encode metrics message, dropping it")
+			return true
+		}
+
+		chMsg := channel.NewMessage(int32(metrics_pb.ContentType_MetricsType), bytes)
+
+		if err = chMsg.WithTimeout(reporter.ctrls.DefaultRequestTimeout()).SendAndWaitForWire(ctrl.Channel()); err != nil {
+			log.WithError(err).Error("failed to send metrics message")
+		} else {
+			log.Trace("reported metrics to fabric controller")
+			delivered = true
+		}
+	}
+
+	return delivered
+}
+
+// NewControllersReporter creates a metrics handler which sends metrics messages to the controllers,
+// holding up to maxBacklog undelivered messages while no controller accepts them.
+func NewControllersReporter(ctrls env.NetworkControllers, maxBacklog int) metrics.Handler {
 	return &controllersReporter{
-		ctrls: ctrls,
+		ctrls:      ctrls,
+		maxBacklog: max(maxBacklog, 1),
 	}
 }
