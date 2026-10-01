@@ -107,7 +107,7 @@ func NewApiSessionTokenFromJwt(jwtToken *jwt.Token, accessClaims *common.AccessC
 func NewApiSessionTokenFromProtobuf(apiSessionBuf *edge_ctrl_pb.ApiSession, controllerId string) *ApiSessionToken {
 	result := &ApiSessionToken{
 		ApiSession:   apiSessionBuf,
-		Hash:         logHash(apiSessionBuf.Token),
+		Hash:         LogHash(apiSessionBuf.Token),
 		Type:         ApiSessionTokenLegacyProtobuf,
 		ControllerId: controllerId,
 	}
@@ -126,7 +126,7 @@ func NewApiSessionTokenFromLegacyToken(token string) *ApiSessionToken {
 			Id:               "unknown",
 			IdentityId:       "unknown",
 		},
-		Hash: logHash(token),
+		Hash: LogHash(token),
 		Type: ApiSessionTokenLegacyTokenOnly,
 	}
 }
@@ -239,10 +239,10 @@ func (a *ApiSessionToken) IsLegacy() bool {
 	return false
 }
 
-// logHash creates a truncated SHA-256 hash of a token for safe logging.
+// LogHash creates a truncated SHA-256 hash of a token for safe logging.
 // Returns a 27-character base64url-encoded string that uniquely identifies
 // the token without exposing its actual value.
-func logHash(token string) string {
+func LogHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return base64.RawURLEncoding.EncodeToString(sum[:20])
 }

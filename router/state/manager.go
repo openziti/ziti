@@ -1449,7 +1449,17 @@ func (self *ManagerImpl) RemoveLegacyServiceSession(serviceSessionToken *Service
 // This addresses race conditions where clients attempt to use newly created sessions
 // before synchronization completes, using exponential backoff to balance responsiveness
 // with the system load during high session creation rates.
+//
+// The retry window only applies to legacy tokens, which are resolved against a cache the
+// controller fills asynchronously. A JWT carries its own claims and signature, so its
+// outcome is the same on every attempt. Retrying one would re-run the signature check for
+// the full timeout and hold the caller's goroutine, which an unauthenticated peer can
+// trigger at will by connecting with any JWT-shaped string.
 func (self *ManagerImpl) GetApiSessionTokenWithTimeout(token string, timeout time.Duration) *ApiSessionToken {
+	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+		return self.GetApiSessionToken(token)
+	}
+
 	deadline := time.Now().Add(timeout)
 	session := self.GetApiSessionToken(token)
 
