@@ -721,7 +721,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	}
 
 	cfg.Metrics.ReportInterval = time.Minute
-	cfg.Metrics.MessageQueueSize = 10
+	cfg.Metrics.MessageQueueSize = 120
 	cfg.Metrics.EventQueueSize = 256
 
 	if value, found := cfgmap["metrics"]; found {
