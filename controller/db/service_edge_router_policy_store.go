@@ -162,25 +162,23 @@ Optimizations
 */
 func (store *serviceEdgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *ServiceEdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolEdgeRouterRoles,
-		linkCollection:        store.edgeRouterCollection,
-		relatedLinkCollection: store.serviceCollection,
-		denormLinkCollection:  store.stores.edgeRouter.servicesCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolEdgeRouterRoles,
+		linkCollection: store.edgeRouterCollection,
+		pairs:          []denormPair{{related: store.serviceCollection, counts: store.stores.edgeRouter.servicesCollection}},
+		ErrorHolder:    persistCtx.Bucket,
 	}
 	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes, store.stores.edgeRouter.indexRoleAttributes)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.PersistContext, policy *ServiceEdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolServiceRoles,
-		linkCollection:        store.serviceCollection,
-		relatedLinkCollection: store.edgeRouterCollection,
-		denormLinkCollection:  store.stores.service.edgeRoutersCollection,
-		entityFilter:          store.stores.service.isNotFabricOnly,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolServiceRoles,
+		linkCollection: store.serviceCollection,
+		pairs:          []denormPair{{related: store.edgeRouterCollection, counts: store.stores.service.edgeRoutersCollection}},
+		entityFilter:   store.stores.service.isNotFabricOnly,
+		ErrorHolder:    persistCtx.Bucket,
 	}
 	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes, store.stores.service.indexRoleAttributes)
 }

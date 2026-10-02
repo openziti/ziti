@@ -222,8 +222,7 @@ func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, ro
 		policyRoleAttributesIndex: store.stores.edgeRouterPolicy.indexEdgeRouterRoleAttributes,
 		entityPoliciesSymbol:      store.symbolEdgeRouterPolicies,
 		linkCollection:            store.stores.edgeRouterPolicy.edgeRouterCollection,
-		relatedLinkCollection:     store.stores.edgeRouterPolicy.identityCollection,
-		denormLinkCollection:      store.identitiesCollection,
+		pairs:                     []denormPair{{related: store.stores.edgeRouterPolicy.identityCollection, counts: store.identitiesCollection}},
 		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
@@ -235,8 +234,7 @@ func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, ro
 		policyRoleAttributesIndex: store.stores.serviceEdgeRouterPolicy.indexEdgeRouterRoleAttributes,
 		entityPoliciesSymbol:      store.symbolServiceEdgeRouterPolicies,
 		linkCollection:            store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
-		relatedLinkCollection:     store.stores.serviceEdgeRouterPolicy.serviceCollection,
-		denormLinkCollection:      store.servicesCollection,
+		pairs:                     []denormPair{{related: store.stores.serviceEdgeRouterPolicy.serviceCollection, counts: store.servicesCollection}},
 		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)

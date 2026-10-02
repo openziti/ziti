@@ -557,7 +557,11 @@ attribute named `all`, since `#all` is always the wildcard. Policies that name a
 need no index: such a policy is linked to the entity for as long as it exists, so the entity's own
 links already lead to it. This is database version 49; the first start of an upgraded controller
 adds the wildcard entries to the existing indexes and logs a `policy role-attribute index rebuild
-summary` line per index. No configuration changes.
+summary` line per index. The same migration rebuilds the posture check to service tables that drive
+service-updated events when a posture check changes. They were only maintained when a policy's
+posture checks changed, not when its services did, and their service-side entries had been written
+into the services' identity tables. The rebuild logs a `rebuilt posture check to service links`
+line. No configuration changes.
 
 ## Logging Now Uses slog with an Async Handler
 
@@ -747,6 +751,7 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
     * [Issue #4513](https://github.com/openziti/ziti/issues/4513) - Policy evaluation scans every entity or policy on each write
     * [Issue #4514](https://github.com/openziti/ziti/issues/4514) - Changing a policy's semantic without changing its roles does not re-evaluate its links
+    * [Issue #4515](https://github.com/openziti/ziti/issues/4515) - Posture check to service reference counts are only maintained from the posture check side
     * [Issue #4410](https://github.com/openziti/ziti/issues/4410) - REST error responder logs ApiError.Code as a method value
     * [Issue #4184](https://github.com/openziti/ziti/issues/4184) - Router leaks LinkSendBuffer goroutines in `drainDeadlines()` — circuits accumulate until the router OOMs
     * [Issue #4278](https://github.com/openziti/ziti/issues/4278) - fabric inspect data-model-index doesn't move for writes outside the router data model

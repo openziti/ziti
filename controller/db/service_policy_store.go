@@ -9,6 +9,8 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/pkg/errors"
+	"go.etcd.io/bbolt"
 )
 
 type PolicyType string
@@ -330,27 +332,15 @@ Optimizations
 */
 func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolServiceRoles,
-		linkCollection:        store.serviceCollection,
-		relatedLinkCollection: store.identityCollection,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolServiceRoles,
+		linkCollection: store.serviceCollection,
 		// TEMPORARY(fabric-edge-collapse): keeps fabric-only services out of edge service policies
 		// (both #all/role denorm and explicit @id); remove with the fabric/edge split.
 		entityFilter: store.stores.service.isNotFabricOnly,
 		ErrorHolder:  persistCtx.Bucket,
 	}
-	if policy.PolicyType == PolicyTypeDial {
-		ctx.denormLinkCollection = store.stores.service.dialIdentitiesCollection
-		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
-		}
-	} else {
-		ctx.denormLinkCollection = store.stores.service.bindIdentitiesCollection
-		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
-		}
-	}
-
+	ctx.pairs = store.denormPairs(ctx, store.symbolServiceRoles, policy.PolicyType)
 	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService, add)
 	}
@@ -360,25 +350,12 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 
 func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolIdentityRoles,
-		linkCollection:        store.identityCollection,
-		relatedLinkCollection: store.serviceCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolIdentityRoles,
+		linkCollection: store.identityCollection,
+		ErrorHolder:    persistCtx.Bucket,
 	}
-
-	if policy.PolicyType == PolicyTypeDial {
-		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
-		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
-		}
-	} else {
-		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
-		ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
-		}
-	}
-
+	ctx.pairs = store.denormPairs(ctx, store.symbolIdentityRoles, policy.PolicyType)
 	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity, add)
 	}
@@ -388,28 +365,65 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 
 func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolPostureCheckRoles,
-		linkCollection:        store.postureCheckCollection,
-		relatedLinkCollection: store.serviceCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolPostureCheckRoles,
+		linkCollection: store.postureCheckCollection,
+		ErrorHolder:    persistCtx.Bucket,
 	}
-
-	ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-		ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
-	}
-
-	if policy.PolicyType == PolicyTypeDial {
-		ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
-	} else {
-		ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
-	}
-
+	ctx.pairs = store.denormPairs(ctx, store.symbolPostureCheckRoles, policy.PolicyType)
 	ctx.changeHandler = func(policyId []byte, relatedId []byte, add bool) {
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck, add)
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes, store.stores.postureCheck.indexRoleAttributes)
+}
+
+// denormPairs returns the reference-counted tables fed by links between a policy of policyType and
+// the entities selected by rolesSymbol, with the events each raises when a pair appears or
+// disappears. Service links feed both the identity and the posture check tables; identity and
+// posture check links feed the service tables of their own kind. Events are queued on ctx.
+func (store *servicePolicyStoreImpl) denormPairs(ctx *roleAttributeChangeContext, rolesSymbol boltz.EntitySetSymbol, policyType PolicyType) []denormPair {
+	stores := store.stores
+	accessChanged := func(identityId, serviceId []byte, add bool) {
+		ctx.addServicePolicyEvent(identityId, serviceId, policyType, add)
+	}
+	serviceChanged := func(serviceId []byte) {
+		ctx.addServiceUpdatedEvent(stores, ctx.tx(), serviceId)
+	}
+
+	switch rolesSymbol {
+	case store.symbolServiceRoles:
+		identities := denormPair{related: store.identityCollection, counts: stores.service.bindIdentitiesCollection}
+		postureChecks := denormPair{related: store.postureCheckCollection, counts: stores.service.bindPostureChecksCollection}
+		if policyType == PolicyTypeDial {
+			identities.counts = stores.service.dialIdentitiesCollection
+			postureChecks.counts = stores.service.dialPostureChecksCollection
+		}
+		identities.onChange = func(serviceId, identityId []byte, add bool) {
+			accessChanged(identityId, serviceId, add)
+		}
+		postureChecks.onChange = func(serviceId, _ []byte, _ bool) {
+			serviceChanged(serviceId)
+		}
+		return []denormPair{identities, postureChecks}
+	case store.symbolIdentityRoles:
+		services := denormPair{related: store.serviceCollection, counts: stores.identity.bindServicesCollection, onChange: accessChanged}
+		if policyType == PolicyTypeDial {
+			services.counts = stores.identity.dialServicesCollection
+		}
+		return []denormPair{services}
+	case store.symbolPostureCheckRoles:
+		services := denormPair{related: store.serviceCollection, counts: stores.postureCheck.bindServicesCollection}
+		if policyType == PolicyTypeDial {
+			services.counts = stores.postureCheck.dialServicesCollection
+		}
+		services.onChange = func(_, serviceId []byte, _ bool) {
+			serviceChanged(serviceId)
+		}
+		return []denormPair{services}
+	}
+	ctx.SetError(errors.Errorf("no denormalized tables are fed by %v", rolesSymbol.GetName()))
+	return nil
 }
 
 func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -433,54 +447,51 @@ func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id stri
 }
 
 func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
-	ctx := &denormCheckCtx{
-		name:                   "service-policies/bind",
-		mutateCtx:              mutateCtx,
-		sourceStore:            store.stores.identity,
-		targetStore:            store.stores.service,
-		policyStore:            store,
-		sourceCollection:       store.identityCollection,
-		targetCollection:       store.serviceCollection,
-		targetDenormCollection: store.stores.identity.bindServicesCollection,
-		errorSink:              errorSink,
-		repair:                 fix,
-		policyFilter: func(policyId []byte) bool {
-			policyType := PolicyTypeInvalid
-			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(mutateCtx.Tx(), policyId)); result != nil {
-				policyType = GetPolicyTypeForId(*result)
-			}
-			return policyType == PolicyTypeBind
-		},
-	}
-	if err := validatePolicyDenormalization(ctx); err != nil {
-		return err
+	checks := []struct {
+		name       string
+		policyType PolicyType
+		source     boltz.Store
+		collection boltz.LinkCollection
+		counts     boltz.RefCountedLinkCollection
+	}{
+		{"service-policies/bind", PolicyTypeBind, store.stores.identity, store.identityCollection, store.stores.identity.bindServicesCollection},
+		{"service-policies/dial", PolicyTypeDial, store.stores.identity, store.identityCollection, store.stores.identity.dialServicesCollection},
+		{"service-policies/posture-checks/bind", PolicyTypeBind, store.stores.postureCheck, store.postureCheckCollection, store.stores.postureCheck.bindServicesCollection},
+		{"service-policies/posture-checks/dial", PolicyTypeDial, store.stores.postureCheck, store.postureCheckCollection, store.stores.postureCheck.dialServicesCollection},
 	}
 
-	ctx = &denormCheckCtx{
-		name:                   "service-policies/dial",
-		mutateCtx:              mutateCtx,
-		sourceStore:            store.stores.identity,
-		targetStore:            store.stores.service,
-		policyStore:            store,
-		sourceCollection:       store.identityCollection,
-		targetCollection:       store.serviceCollection,
-		targetDenormCollection: store.stores.identity.dialServicesCollection,
-		errorSink:              errorSink,
-		repair:                 fix,
-		policyFilter: func(policyId []byte) bool {
-			policyType := PolicyTypeInvalid
-			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(mutateCtx.Tx(), policyId)); result != nil {
-				policyType = GetPolicyTypeForId(*result)
-			}
-			return policyType == PolicyTypeDial
-		},
-	}
-
-	if err := validatePolicyDenormalization(ctx); err != nil {
-		return err
+	for _, check := range checks {
+		policyType := check.policyType
+		ctx := &denormCheckCtx{
+			name:                   check.name,
+			mutateCtx:              mutateCtx,
+			sourceStore:            check.source,
+			targetStore:            store.stores.service,
+			policyStore:            store,
+			sourceCollection:       check.collection,
+			targetCollection:       store.serviceCollection,
+			targetDenormCollection: check.counts,
+			errorSink:              errorSink,
+			repair:                 fix,
+			policyFilter: func(policyId []byte) bool {
+				return store.getPolicyType(mutateCtx.Tx(), policyId) == policyType
+			},
+		}
+		if err := validatePolicyDenormalization(ctx); err != nil {
+			return err
+		}
 	}
 
 	return store.BaseStore.CheckIntegrity(mutateCtx, fix, errorSink)
+}
+
+// getPolicyType returns the stored type of the policy with the given id, or PolicyTypeInvalid when
+// it has none.
+func (store *servicePolicyStoreImpl) getPolicyType(tx *bbolt.Tx, policyId []byte) PolicyType {
+	if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(tx, policyId)); result != nil {
+		return GetPolicyTypeForId(*result)
+	}
+	return PolicyTypeInvalid
 }
 
 type FieldCheckerF func(string) bool

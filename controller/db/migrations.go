@@ -227,6 +227,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 49 {
 		m.backfillPolicyRoleAttributeIndexes(step) // migration 49: adds the #all entries
+		m.rebuildPostureCheckServiceLinks(step)
 	}
 
 	// current version

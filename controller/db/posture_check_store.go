@@ -179,8 +179,8 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 func (store *postureCheckStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolPostureChecks)
 
-	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindIdentities)
-	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindPostureChecks)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialPostureChecks)
 }
 
 func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -234,7 +234,6 @@ func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, 
 		policyRoleAttributesIndex: store.stores.servicePolicy.indexPostureCheckRoleAttributes,
 		entityPoliciesSymbol:      store.symbolServicePolicies,
 		linkCollection:            store.stores.servicePolicy.postureCheckCollection,
-		relatedLinkCollection:     store.stores.servicePolicy.serviceCollection,
 		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)

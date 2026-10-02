@@ -18,11 +18,24 @@ import (
 
 type ServicePolicyEventsKeyType string
 
+// serviceEventHandler queues service events raised during one write for dispatch when it commits.
 type serviceEventHandler struct {
-	events []*ServiceEvent
+	events          []*ServiceEvent
+	updatedServices map[string]struct{}
 }
 
+// addServiceUpdatedEvent queues a ServiceUpdated event for every identity that can dial or bind the
+// service. A service is expanded at most once per handler, so repeated calls for the same service
+// within one write queue nothing further.
 func (self *serviceEventHandler) addServiceUpdatedEvent(stores *stores, tx *bbolt.Tx, serviceId []byte) {
+	if _, done := self.updatedServices[string(serviceId)]; done {
+		return
+	}
+	if self.updatedServices == nil {
+		self.updatedServices = map[string]struct{}{}
+	}
+	self.updatedServices[string(serviceId)] = struct{}{}
+
 	cursor := stores.service.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
 
 	for cursor != nil && cursor.IsValid() {
@@ -53,14 +66,12 @@ func (self *serviceEventHandler) addServiceEvent(tx *bbolt.Tx, identityId, servi
 
 type roleAttributeChangeContext struct {
 	serviceEventHandler
-	mutateCtx             boltz.MutateContext
-	rolesSymbol           boltz.EntitySetSymbol
-	linkCollection        boltz.LinkCollection
-	relatedLinkCollection boltz.LinkCollection
-	denormLinkCollection  boltz.RefCountedLinkCollection
-	changeHandler         func(fromId []byte, toId []byte, add bool)
-	denormChangeHandler   func(fromId, toId []byte, add bool)
-	entityFilter          func(tx *bbolt.Tx, entityId []byte) bool
+	mutateCtx      boltz.MutateContext
+	rolesSymbol    boltz.EntitySetSymbol
+	linkCollection boltz.LinkCollection
+	pairs          []denormPair
+	changeHandler  func(fromId []byte, toId []byte, add bool)
+	entityFilter   func(tx *bbolt.Tx, entityId []byte) bool
 
 	// policyRoleAttributesIndex is the policy store's role-attribute index of rolesSymbol and
 	// entityPoliciesSymbol is the entity's list of linked policies. Both are required for entity-side
@@ -68,6 +79,17 @@ type roleAttributeChangeContext struct {
 	policyRoleAttributesIndex boltz.SetReadIndex
 	entityPoliciesSymbol      boltz.EntitySetSymbol
 	errorz.ErrorHolder
+}
+
+// denormPair is one reference-counted table fed by the links between a policy and the entity
+// under evaluation. Linking the entity adds a reference to its pair with every entity the policy
+// selects through related, and unlinking removes one. counts is the table as seen from the
+// evaluated entity's side. onChange, when set, runs when a pair gains its first reference or
+// loses its last.
+type denormPair struct {
+	related  boltz.LinkCollection
+	counts   boltz.RefCountedLinkCollection
+	onChange func(entityId, relatedId []byte, add bool)
 }
 
 // idSet accumulates candidate ids for policy evaluation without duplicates.
@@ -237,41 +259,7 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		if fieldType, policyTypeValue := policyTypeSymbol.Eval(ctx.tx(), policyId); fieldType == boltz.TypeInt32 {
 			policyType = GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
 		}
-		if policyType == PolicyTypeDial {
-			if isServices {
-				ctx.denormLinkCollection = store.stores.service.dialIdentitiesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
-				}
-			} else if isIdentity {
-				ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
-				}
-			} else {
-				ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-					ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
-				}
-			}
-		} else if isServices {
-			ctx.denormLinkCollection = store.stores.service.bindIdentitiesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
-			}
-		} else if isIdentity {
-			ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
-			}
-		} else {
-			ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-				ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
-			}
-		}
+		ctx.pairs = servicePolicyStore.denormPairs(ctx, ctx.rolesSymbol, policyType)
 
 		log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
 			WithFields(logrus.Fields{
@@ -426,16 +414,18 @@ func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, polic
 	// If we were added to a policy, we need to update all the link tables for all the entities on the
 	// other side of the policy. If we're the first link, we get added to the link table, otherwise we
 	// increment the count of policies linking these entities
-	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx(), policyId)
-	for ; cursor.IsValid(); cursor.Next() {
-		relatedEntityId := cursor.Current()
-		newCount, err := ctx.denormLinkCollection.IncrementLinkCount(ctx.tx(), entityId, relatedEntityId)
-		if ctx.SetError(err) {
-			return false
-		}
-		if ctx.denormChangeHandler != nil && newCount == 1 {
-			log.Tracef("denorm change add handler called for entity %s -> related entity %s", entityId, relatedEntityId)
-			ctx.denormChangeHandler(entityId, relatedEntityId, true)
+	for _, pair := range ctx.pairs {
+		cursor := pair.related.IterateLinks(ctx.tx(), policyId)
+		for ; cursor.IsValid(); cursor.Next() {
+			relatedEntityId := cursor.Current()
+			newCount, err := pair.counts.IncrementLinkCount(ctx.tx(), entityId, relatedEntityId)
+			if ctx.SetError(err) {
+				return false
+			}
+			if pair.onChange != nil && newCount == 1 {
+				log.Tracef("denorm change add handler called for entity %s -> related entity %s", entityId, relatedEntityId)
+				pair.onChange(entityId, relatedEntityId, true)
+			}
 		}
 	}
 	return true
@@ -457,16 +447,18 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 	// If we were remove from a policy, we need to update all the link tables for all the entities on the
 	// other side of the policy. If we're the last link, we get removed from the link table, otherwise we
 	// decrement the count of policies linking these entities
-	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx(), policyId)
-	for ; cursor.IsValid(); cursor.Next() {
-		relatedEntityId := cursor.Current()
-		newCount, err := ctx.denormLinkCollection.DecrementLinkCount(ctx.tx(), entityId, relatedEntityId)
-		if ctx.SetError(err) {
-			return false
-		}
-		if ctx.denormChangeHandler != nil && newCount == 0 {
-			log.Tracef("denorm change remove handler called for entity %s -> related entity %s", entityId, relatedEntityId)
-			ctx.denormChangeHandler(entityId, relatedEntityId, false)
+	for _, pair := range ctx.pairs {
+		cursor := pair.related.IterateLinks(ctx.tx(), policyId)
+		for ; cursor.IsValid(); cursor.Next() {
+			relatedEntityId := cursor.Current()
+			newCount, err := pair.counts.DecrementLinkCount(ctx.tx(), entityId, relatedEntityId)
+			if ctx.SetError(err) {
+				return false
+			}
+			if pair.onChange != nil && newCount == 0 {
+				log.Tracef("denorm change remove handler called for entity %s -> related entity %s", entityId, relatedEntityId)
+				pair.onChange(entityId, relatedEntityId, false)
+			}
 		}
 	}
 	return true
