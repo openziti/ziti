@@ -22,7 +22,7 @@ require (
 	github.com/gaissmai/extnetip v1.3.2
 	github.com/go-acme/lego/v4 v4.35.2
 	github.com/go-jose/go-jose/v4 v4.1.5
-	github.com/go-openapi/errors v0.22.8
+	github.com/go-openapi/errors v0.22.9
 	github.com/go-openapi/loads v0.25.3
 	github.com/go-openapi/runtime v0.33.2
 	github.com/go-openapi/spec v1.0.1
@@ -84,9 +84,9 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.51.1
+	github.com/zitadel/oidc/v3 v3.51.11
 	go.etcd.io/bbolt v1.5.0
-	go.uber.org/atomic v1.11.0
+	go.uber.org/atomic v1.12.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.57.0
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
@@ -110,7 +110,7 @@ require (
 	github.com/antchfx/xpath v1.3.8 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/biogo/store v0.0.0-20201120204734-aad293a2328f // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
